@@ -1,28 +1,29 @@
 package app.epistola.valtimo.plugin;
 
+import app.epistola.valtimo.service.EpistolaService;
 import com.ritense.plugin.PluginFactory;
 import com.ritense.plugin.service.PluginService;
+import com.ritense.valueresolver.ValueResolverService;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.context.ApplicationEventPublisher;
 
 public class EpistolaPluginFactory extends PluginFactory<EpistolaPlugin> {
 
-    private final ApplicationEventPublisher publisher;
+    private final EpistolaService epistolaService;
+    private final ValueResolverService valueResolverService;
 
     public EpistolaPluginFactory(
             @NotNull PluginService pluginService,
-            @NotNull ApplicationEventPublisher publisher
+            @NotNull EpistolaService epistolaService,
+            @NotNull ValueResolverService valueResolverService
     ) {
         super(pluginService);
-        this.publisher = publisher;
+        this.epistolaService = epistolaService;
+        this.valueResolverService = valueResolverService;
     }
 
     @NotNull
     @Override
     protected EpistolaPlugin create() {
-        return new EpistolaPlugin();
+        return new EpistolaPlugin(epistolaService, valueResolverService);
     }
-
 }
-
-

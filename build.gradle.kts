@@ -32,12 +32,16 @@ dependencies {
     compileOnly("com.ritense.valtimo:outbox")
     compileOnly("org.springframework.boot:spring-boot-starter-aop")
     compileOnly("com.ritense.valtimo:plugin")
+    compileOnly("com.ritense.valtimo:value-resolver")
+    compileOnly("com.ritense.valtimo:process-link")
 
     testImplementation("com.ritense.valtimo:core")
     testImplementation("com.ritense.valtimo:audit")
     testImplementation("com.ritense.valtimo:contract")
     testImplementation("com.ritense.valtimo:plugin")
     testImplementation("com.ritense.valtimo:outbox")
+    testImplementation("com.ritense.valtimo:value-resolver")
+    testImplementation("com.ritense.valtimo:process-link")
 
     // Test dependencies
     testImplementation("org.springframework.boot:spring-boot-starter-test")
