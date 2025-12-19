@@ -67,3 +67,20 @@ ehthumbs.db
 # JVM crash logs
 hs_err_pid*
 replay_pid*
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Angular
+dist/
+out-tsc/
+.angular/
+*.ngfactory.ts
+*.ngsummary.json
+
+# Coverage
+coverage/
+.nyc_output/

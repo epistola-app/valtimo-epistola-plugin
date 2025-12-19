@@ -1,0 +1,4 @@
+// Placeholder logo - a simple document icon in SVG format, base64 encoded
+// TODO: Replace with actual Epistola logo
+export const EPISTOLA_PLUGIN_LOGO_BASE64 =
+  'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0iIzMzNjZjYyI+PHBhdGggZD0iTTE0IDJINmMtMS4xIDAtMiAuOS0yIDJ2MTZjMCAxLjEuOSAyIDIgMmgxMmMxLjEgMCAyLS45IDItMlY4bC02LTZ6bTQgMThINlY0aDd2NWg1djExeiIvPjxwYXRoIGQ9Ik04IDEyaDh2Mkg4em0wIDRoOHYtMkg4em0wLThWNmg0djJ6Ii8+PC9zdmc+';

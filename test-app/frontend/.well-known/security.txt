@@ -1,0 +1,7 @@
+Contact: mailto:devops-infra@ritense.com
+Contact: mailto:security@ritense.com
+Contact: mailto:info@ritense.com
+Expires: 2028-01-01T00:00:00.000Z
+Encryption: https://keys.openpgp.org/vks/v1/by-fingerprint/1DE9E228E98776FC7F0A1889D7F08227C45D59E3
+Preferred-Languages: en, nl
+Policy: https://github.com/valtimo-platform/valtimo-backend-libraries/security/policy

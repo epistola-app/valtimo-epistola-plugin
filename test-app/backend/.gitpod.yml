@@ -1,0 +1,4 @@
+image: ritensebv/gitpod-java21-postgres:11-7-23-4
+vscode:
+  extensions:
+    - richardwillis.vscode-gradle

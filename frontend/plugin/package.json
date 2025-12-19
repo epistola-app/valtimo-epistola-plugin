@@ -1,0 +1,24 @@
+{
+  "name": "@epistola/valtimo-plugin",
+  "version": "1.0.0",
+  "description": "Epistola document generation plugin for Valtimo",
+  "license": "EUPL-1.2",
+  "scripts": {
+    "build": "ng-packagr -p ng-package.json",
+    "test": "echo 'No tests configured yet'"
+  },
+  "peerDependencies": {
+    "@angular/common": "^17.0.0",
+    "@angular/core": "^17.0.0",
+    "@valtimo/plugin": "^13.0.0",
+    "@valtimo/components": "^13.0.0"
+  },
+  "dependencies": {
+    "tslib": "^2.6.0"
+  },
+  "devDependencies": {
+    "ng-packagr": "^17.2.0",
+    "@angular/compiler-cli": "^17.0.0",
+    "typescript": "~5.2.0"
+  }
+}

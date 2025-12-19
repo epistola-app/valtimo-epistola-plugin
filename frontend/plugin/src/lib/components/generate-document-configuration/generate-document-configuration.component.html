@@ -1,0 +1,52 @@
+<v-form
+    (valueChange)="formValueChange($event)"
+    *ngIf="{
+      disabled: disabled$ | async,
+      prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null
+    } as obs"
+>
+  <v-input
+    name="templateId"
+    [title]="'templateId' | pluginTranslate: pluginId | async"
+    [tooltip]="'templateIdTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="obs.prefill?.templateId"
+    [disabled]="obs.disabled"
+    [required]="true"
+  >
+  </v-input>
+
+  <v-select
+    name="outputFormat"
+    [title]="'outputFormat' | pluginTranslate: pluginId | async"
+    [tooltip]="'outputFormatTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [items]="outputFormatOptions"
+    [defaultSelectionId]="obs.prefill?.outputFormat || 'PDF'"
+    [disabled]="obs.disabled"
+    [required]="true"
+  >
+  </v-select>
+
+  <v-input
+    name="filename"
+    [title]="'filename' | pluginTranslate: pluginId | async"
+    [tooltip]="'filenameTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="obs.prefill?.filename"
+    [disabled]="obs.disabled"
+    [required]="true"
+  >
+  </v-input>
+
+  <v-input
+    name="resultProcessVariable"
+    [title]="'resultProcessVariable' | pluginTranslate: pluginId | async"
+    [tooltip]="'resultProcessVariableTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="obs.prefill?.resultProcessVariable"
+    [disabled]="obs.disabled"
+    [required]="true"
+  >
+  </v-input>
+</v-form>
