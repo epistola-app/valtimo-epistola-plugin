@@ -21,6 +21,7 @@
 # mise.path = "./node_modules/.bin" # add a directory to PATH
 #
 [tools]
+gradle = "9.2.0"
 java = "temurin-21"
 node = "24.12.0"
 
