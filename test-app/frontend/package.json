@@ -64,6 +64,7 @@
     "@valtimo/swagger": "13.8.0",
     "@valtimo/task": "13.8.0",
     "@valtimo/task-management": "13.8.0",
+    "@epistola/valtimo-plugin": "file:../../dist/epistola-plugin",
     "@webcomponents/custom-elements": "1.6.0",
     "bpmn-js": "18.6.1",
     "bpmn-js-properties-panel": "5.35.0",

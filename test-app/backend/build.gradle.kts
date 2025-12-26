@@ -49,6 +49,9 @@ dependencies {
 
     implementation("com.ritense.valtimo:valtimo-dependencies")
 
+    // Epistola plugin
+    implementation(project(":backend:plugin"))
+
     implementation("com.ritense.valtimo:local-document-generation")
     implementation("com.ritense.valtimo:local-resource")
     implementation("com.ritense.valtimo:local-mail")

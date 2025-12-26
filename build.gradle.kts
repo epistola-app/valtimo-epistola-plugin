@@ -21,8 +21,8 @@ extra["testcontainersVersion"] = testcontainersVersion
 
 // Node.js configuration for frontend builds
 node {
-    version.set("20.10.0")
-    npmVersion.set("10.2.3")
+    version.set("22.12.0")
+    npmVersion.set("10.9.2")
     download.set(true)
     workDir.set(file("${project.projectDir}/.gradle/nodejs"))
     npmWorkDir.set(file("${project.projectDir}/.gradle/npm"))
@@ -55,7 +55,7 @@ subprojects {
 tasks.register<NpmTask>("frontendInstall") {
     description = "Install frontend plugin dependencies"
     workingDir.set(file("frontend/plugin"))
-    args.set(listOf("install"))
+    args.set(listOf("install", "--legacy-peer-deps"))
 }
 
 tasks.register<NpmTask>("frontendBuild") {
@@ -75,6 +75,7 @@ tasks.register<NpmTask>("frontendTest") {
 // Test app frontend build tasks
 tasks.register<NpmTask>("testAppFrontendInstall") {
     description = "Install test app frontend dependencies"
+    dependsOn("frontendBuild")  // Ensure plugin is built before npm install (file: dependency)
     workingDir.set(file("test-app/frontend"))
     args.set(listOf("install"))
 }

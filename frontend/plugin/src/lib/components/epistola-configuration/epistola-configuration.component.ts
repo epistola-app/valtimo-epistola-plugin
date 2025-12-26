@@ -1,5 +1,7 @@
 import {Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
-import {PluginConfigurationComponent} from '@valtimo/plugin';
+import {CommonModule} from '@angular/common';
+import {PluginConfigurationComponent, PluginTranslatePipeModule} from '@valtimo/plugin';
+import {FormModule, FormOutput, InputModule} from '@valtimo/components';
 import {BehaviorSubject, combineLatest, Observable, Subscription, take} from 'rxjs';
 import {EpistolaPluginConfig} from '../../models';
 
@@ -7,14 +9,16 @@ import {EpistolaPluginConfig} from '../../models';
   selector: 'epistola-configuration',
   templateUrl: './epistola-configuration.component.html',
   styleUrls: ['./epistola-configuration.component.scss'],
+  standalone: true,
+  imports: [CommonModule, PluginTranslatePipeModule, FormModule, InputModule]
 })
 export class EpistolaConfigurationComponent
   implements PluginConfigurationComponent, OnInit, OnDestroy
 {
-  @Input() save$: Observable<void>;
-  @Input() disabled$: Observable<boolean>;
-  @Input() pluginId: string;
-  @Input() prefillConfiguration$: Observable<EpistolaPluginConfig>;
+  @Input() save$!: Observable<void>;
+  @Input() disabled$!: Observable<boolean>;
+  @Input() pluginId!: string;
+  @Input() prefillConfiguration$!: Observable<EpistolaPluginConfig>;
 
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
   @Output() configuration: EventEmitter<EpistolaPluginConfig> = new EventEmitter<EpistolaPluginConfig>();
@@ -31,13 +35,14 @@ export class EpistolaConfigurationComponent
     this.saveSubscription?.unsubscribe();
   }
 
-  formValueChange(formValue: EpistolaPluginConfig): void {
+  formValueChange(formOutput: FormOutput): void {
+    const formValue = formOutput as unknown as EpistolaPluginConfig;
     this.formValue$.next(formValue);
     this.handleValid(formValue);
   }
 
   private handleValid(formValue: EpistolaPluginConfig): void {
-    const valid = !!(formValue.configurationTitle && formValue.tenantId);
+    const valid = !!(formValue?.configurationTitle && formValue?.tenantId);
     this.valid$.next(valid);
     this.valid.emit(valid);
   }

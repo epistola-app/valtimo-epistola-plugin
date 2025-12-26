@@ -1,5 +1,7 @@
 import {Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
-import {FunctionConfigurationComponent} from '@valtimo/plugin';
+import {CommonModule} from '@angular/common';
+import {FunctionConfigurationComponent, PluginTranslatePipeModule} from '@valtimo/plugin';
+import {FormModule, FormOutput, InputModule, SelectModule, SelectItem} from '@valtimo/components';
 import {BehaviorSubject, combineLatest, Observable, Subscription, take} from 'rxjs';
 import {GenerateDocumentConfig} from '../../models';
 
@@ -7,21 +9,23 @@ import {GenerateDocumentConfig} from '../../models';
   selector: 'epistola-generate-document-configuration',
   templateUrl: './generate-document-configuration.component.html',
   styleUrls: ['./generate-document-configuration.component.scss'],
+  standalone: true,
+  imports: [CommonModule, PluginTranslatePipeModule, FormModule, InputModule, SelectModule]
 })
 export class GenerateDocumentConfigurationComponent
   implements FunctionConfigurationComponent, OnInit, OnDestroy
 {
-  @Input() save$: Observable<void>;
-  @Input() disabled$: Observable<boolean>;
-  @Input() pluginId: string;
-  @Input() prefillConfiguration$: Observable<GenerateDocumentConfig>;
+  @Input() save$!: Observable<void>;
+  @Input() disabled$!: Observable<boolean>;
+  @Input() pluginId!: string;
+  @Input() prefillConfiguration$!: Observable<GenerateDocumentConfig>;
 
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
   @Output() configuration: EventEmitter<GenerateDocumentConfig> = new EventEmitter<GenerateDocumentConfig>();
 
-  outputFormatOptions = [
-    {label: 'PDF', value: 'PDF'},
-    {label: 'HTML', value: 'HTML'}
+  outputFormatOptions: SelectItem[] = [
+    {id: 'PDF', text: 'PDF'},
+    {id: 'HTML', text: 'HTML'}
   ];
 
   private saveSubscription!: Subscription;
@@ -36,17 +40,18 @@ export class GenerateDocumentConfigurationComponent
     this.saveSubscription?.unsubscribe();
   }
 
-  formValueChange(formValue: GenerateDocumentConfig): void {
+  formValueChange(formOutput: FormOutput): void {
+    const formValue = formOutput as unknown as GenerateDocumentConfig;
     this.formValue$.next(formValue);
     this.handleValid(formValue);
   }
 
   private handleValid(formValue: GenerateDocumentConfig): void {
     const valid = !!(
-      formValue.templateId &&
-      formValue.outputFormat &&
-      formValue.filename &&
-      formValue.resultProcessVariable
+      formValue?.templateId &&
+      formValue?.outputFormat &&
+      formValue?.filename &&
+      formValue?.resultProcessVariable
     );
     this.valid$.next(valid);
     this.valid.emit(valid);

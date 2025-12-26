@@ -6,16 +6,14 @@ import {EpistolaConfigurationComponent} from './components/epistola-configuratio
 import {GenerateDocumentConfigurationComponent} from './components/generate-document-configuration/generate-document-configuration.component';
 
 @NgModule({
-  declarations: [
-    EpistolaConfigurationComponent,
-    GenerateDocumentConfigurationComponent
-  ],
   imports: [
     CommonModule,
     PluginTranslatePipeModule,
     FormModule,
     InputModule,
-    SelectModule
+    SelectModule,
+    EpistolaConfigurationComponent,
+    GenerateDocumentConfigurationComponent
   ],
   exports: [
     EpistolaConfigurationComponent,

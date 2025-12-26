@@ -65,6 +65,7 @@ import {
   objecttypenApiPluginSpecification,
   PLUGINS_TOKEN,
 } from '@valtimo/plugin';
+import {EpistolaPluginModule, epistolaPluginSpecification} from '@epistola/valtimo-plugin';
 import {ObjectManagementModule} from '@valtimo/object-management';
 import {ObjectModule} from '@valtimo/object';
 import {AccessControlManagementModule} from '@valtimo/access-control-management';
@@ -128,6 +129,7 @@ export function tabsFactory() {
     ObjectenApiPluginModule,
     ObjecttypenApiPluginModule,
     ObjectTokenAuthenticationPluginModule,
+    EpistolaPluginModule,
     ObjectModule,
     ObjectManagementModule,
     DisplayWidgetTypesModule,
@@ -153,7 +155,8 @@ export function tabsFactory() {
       useValue: [
         objectenApiPluginSpecification,
         objecttypenApiPluginSpecification,
-        objectTokenAuthenticationPluginSpecification
+        objectTokenAuthenticationPluginSpecification,
+        epistolaPluginSpecification
       ]
     },
     provideHttpClient(withInterceptorsFromDi())
