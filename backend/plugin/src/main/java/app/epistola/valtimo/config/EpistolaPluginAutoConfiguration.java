@@ -2,6 +2,7 @@ package app.epistola.valtimo.config;
 
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
+import app.epistola.valtimo.web.rest.EpistolaPluginResource;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
@@ -29,5 +30,14 @@ public class EpistolaPluginAutoConfiguration {
             ValueResolverService valueResolverService
     ) {
         return new EpistolaPluginFactory(pluginService, epistolaService, valueResolverService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaPluginResource.class)
+    public EpistolaPluginResource epistolaPluginResource(
+            PluginService pluginService,
+            EpistolaService epistolaService
+    ) {
+        return new EpistolaPluginResource(pluginService, epistolaService);
     }
 }

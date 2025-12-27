@@ -27,8 +27,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       tenantId: 'Tenant ID',
       tenantIdTooltip: 'De tenant ID waar de document templates zijn opgeslagen in Epistola',
       'generate-document': 'Genereer Document',
-      templateId: 'Template ID',
-      templateIdTooltip: 'Het ID van het template dat gebruikt wordt voor documentgeneratie',
+      templateId: 'Template',
+      templateIdTooltip: 'Selecteer het template dat gebruikt wordt voor documentgeneratie',
       dataMapping: 'Data Mapping',
       dataMappingTooltip: 'Koppeling van template velden naar data bronnen (doc:, pv:, case:)',
       outputFormat: 'Uitvoerformaat',
@@ -38,7 +38,17 @@ const epistolaPluginSpecification: PluginSpecification = {
       resultProcessVariable: 'Resultaat Procesvariabele',
       resultProcessVariableTooltip: 'De naam van de procesvariabele waarin het request ID wordt opgeslagen',
       pdf: 'PDF',
-      html: 'HTML'
+      html: 'HTML',
+      // Data mapping builder translations
+      dataMappingTitle: 'Data Mapping',
+      dataMappingDescription: 'Koppel template velden aan Valtimo data bronnen',
+      templateField: 'Template veld',
+      dataSource: 'Data bron',
+      addMapping: 'Mapping toevoegen',
+      noMappings: 'Nog geen mappings toegevoegd. Klik op "Mapping toevoegen" om te beginnen.',
+      documentFields: 'Document velden',
+      processVariables: 'Procesvariabelen',
+      caseProperties: 'Zaak eigenschappen'
     },
     en: {
       title: 'Epistola Document Suite',
@@ -47,8 +57,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       tenantId: 'Tenant ID',
       tenantIdTooltip: 'The tenant ID where document templates are stored in Epistola',
       'generate-document': 'Generate Document',
-      templateId: 'Template ID',
-      templateIdTooltip: 'The ID of the template to use for document generation',
+      templateId: 'Template',
+      templateIdTooltip: 'Select the template to use for document generation',
       dataMapping: 'Data Mapping',
       dataMappingTooltip: 'Mapping of template fields to data sources (doc:, pv:, case:)',
       outputFormat: 'Output Format',
@@ -58,7 +68,17 @@ const epistolaPluginSpecification: PluginSpecification = {
       resultProcessVariable: 'Result Process Variable',
       resultProcessVariableTooltip: 'The name of the process variable to store the request ID in',
       pdf: 'PDF',
-      html: 'HTML'
+      html: 'HTML',
+      // Data mapping builder translations
+      dataMappingTitle: 'Data Mapping',
+      dataMappingDescription: 'Map template fields to Valtimo data sources',
+      templateField: 'Template field',
+      dataSource: 'Data source',
+      addMapping: 'Add mapping',
+      noMappings: 'No mappings added yet. Click "Add mapping" to start.',
+      documentFields: 'Document fields',
+      processVariables: 'Process variables',
+      caseProperties: 'Case properties'
     }
   }
 };

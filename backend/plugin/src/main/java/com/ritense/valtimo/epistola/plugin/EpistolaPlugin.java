@@ -49,6 +49,10 @@ public class EpistolaPlugin {
     )
     private String tenantId;
 
+    public String getTenantId() {
+        return tenantId;
+    }
+
     @PluginEvent(invokedOn = EventType.CREATE)
     public void onPluginCreate() {
         log.info("Epistola plugin configuration created with tenantId: {}", tenantId);
@@ -84,7 +88,7 @@ public class EpistolaPlugin {
             key = "generate-document",
             title = "Generate Document",
             description = "Submit a document generation request to Epistola. The request ID will be stored in the specified process variable.",
-            activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START}
+            activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START,ActivityTypeWithEventName.TASK_START}
     )
     public void generateDocument(
             DelegateExecution execution,

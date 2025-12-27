@@ -2,19 +2,24 @@
     (valueChange)="formValueChange($event)"
     *ngIf="{
       disabled: disabled$ | async,
-      prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null
+      prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null,
+      templateOptions: templateOptions$ | async,
+      templatesLoading: templatesLoading$ | async,
+      templateFieldsLoading: templateFieldsLoading$ | async
     } as obs"
 >
-  <v-input
+  <v-select
     name="templateId"
     [title]="'templateId' | pluginTranslate: pluginId | async"
     [tooltip]="'templateIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
-    [defaultValue]="obs.prefill?.templateId"
-    [disabled]="obs.disabled"
+    [items]="obs.templateOptions"
+    [defaultSelectionId]="obs.prefill?.templateId"
+    [disabled]="obs.disabled || obs.templatesLoading"
     [required]="true"
+    [loading]="obs.templatesLoading"
   >
-  </v-input>
+  </v-select>
 
   <v-select
     name="outputFormat"
@@ -50,3 +55,11 @@
   >
   </v-input>
 </v-form>
+
+<epistola-data-mapping-builder
+  [pluginId]="pluginId"
+  [templateFields$]="templateFields$"
+  [disabled$]="disabled$"
+  [prefillMapping$]="prefillDataMapping$"
+  (mappingChange)="onDataMappingChange($event)"
+></epistola-data-mapping-builder>
