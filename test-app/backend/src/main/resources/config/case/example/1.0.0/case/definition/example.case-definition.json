@@ -1,0 +1,7 @@
+{
+    "key": "example",
+    "name": "Example application",
+    "versionTag": "1.0.0",
+    "canHaveAssignee": true,
+    "autoAssignTasks": true
+}

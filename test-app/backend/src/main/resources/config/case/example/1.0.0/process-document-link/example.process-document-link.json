@@ -1,0 +1,8 @@
+[
+    {
+        "processDefinitionKey": "example",
+        "canInitializeDocument": true,
+        "startableByUser": true,
+        "processIsVisibleInMenu": true
+    }
+]
