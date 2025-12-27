@@ -9,7 +9,7 @@ const keycloakAuthenticationProviders: AuthProviders = {
 };
 
 export const keycloakConfig: KeycloakConfig = {
-  url: window['env']['keycloakUrl'] || 'http://localhost:8081/auth',
+  url: window['env']['keycloakUrl'] || 'http://localhost:8081',
   realm: window['env']['keycloakRealm'] || 'valtimo',
   clientId: window['env']['keycloakClientId'] || 'valtimo-console'
 };

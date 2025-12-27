@@ -54,6 +54,19 @@
         }
       ],
       "realmRoles": ["ROLE_USER"]
+    },
+    {
+      "username": "service-account-valtimo-backend",
+      "enabled": true,
+      "serviceAccountClientId": "valtimo-backend",
+      "clientRoles": {
+        "realm-management": [
+          "view-users",
+          "query-users",
+          "manage-users",
+          "view-clients"
+        ]
+      }
     }
   ],
   "clients": [
@@ -85,8 +98,10 @@
       "name": "Valtimo Backend",
       "enabled": true,
       "publicClient": false,
-      "bearerOnly": true,
-      "standardFlowEnabled": false
+      "bearerOnly": false,
+      "standardFlowEnabled": false,
+      "serviceAccountsEnabled": true,
+      "secret": "6ef6ca16-6b86-482a-a3d9-0561704c1db9"
     }
   ],
   "defaultDefaultClientScopes": [
