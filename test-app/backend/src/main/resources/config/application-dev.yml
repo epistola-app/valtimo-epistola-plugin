@@ -1,0 +1,43 @@
+# ===================================================================
+# Development profile configuration
+# ===================================================================
+
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5432/epistola
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8081/realms/valtimo/protocol/openid-connect/certs
+      client:
+        provider:
+          keycloakjwt:
+            issuer-uri: http://localhost:8081/realms/valtimo
+          keycloakapi:
+            issuer-uri: http://localhost:8081/realms/valtimo
+        registration:
+          keycloakjwt:
+            client-id: valtimo-console
+          keycloakapi:
+            client-id: valtimo-backend
+            client-secret: change-me
+
+valtimo:
+  annotation-scan:
+    accepted-packages:
+      - app.epistola
+  app:
+    hostname: localhost:8080
+  plugin:
+    encryption-secret: "0123456789abcdef0123456789abcdef"
+
+operaton:
+  bpm:
+    admin-user:
+      password: admin

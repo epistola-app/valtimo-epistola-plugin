@@ -23,7 +23,8 @@
 [tools]
 gradle = "9.2.0"
 java = "temurin-21"
-node = "24.12.0"
+node = "20.19.6"
+pnpm = "10.26.2"
 
 # terraform = '1.0.0'       # specify a single version
 # erlang = '26'             # specify a major version only

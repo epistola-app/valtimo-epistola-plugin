@@ -1,0 +1,29 @@
+packages:
+  - frontend/plugin
+  - test-app/frontend
+
+onlyBuiltDependencies:
+  - '@carbon/charts'
+  - '@carbon/colors'
+  - '@carbon/feature-flags'
+  - '@carbon/grid'
+  - '@carbon/icons'
+  - '@carbon/layout'
+  - '@carbon/motion'
+  - '@carbon/styles'
+  - '@carbon/themes'
+  - '@carbon/type'
+  - '@carbon/utils-position'
+  - '@parcel/watcher'
+  - '@scarf/scarf'
+  - '@tree-sitter-grammars/tree-sitter-yaml'
+  - carbon-components-angular
+  - core-js
+  - core-js-pure
+  - esbuild
+  - inferno
+  - less
+  - lmdb
+  - msgpackr-extract
+  - tree-sitter
+  - tree-sitter-json

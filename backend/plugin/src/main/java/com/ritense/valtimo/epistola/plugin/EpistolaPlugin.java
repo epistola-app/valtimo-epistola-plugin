@@ -1,4 +1,4 @@
-package app.epistola.valtimo.plugin;
+package com.ritense.valtimo.epistola.plugin;
 
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GeneratedDocument;
@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+// Placed here because Valtimo by default only scans com.ritense.valtimo package
 @Plugin(
         key = EpistolaPlugin.PLUGIN_KEY,
         description = "Document generation using Epistola",
@@ -49,17 +50,17 @@ public class EpistolaPlugin {
     private String tenantId;
 
     @PluginEvent(invokedOn = EventType.CREATE)
-    void onPluginCreate() {
+    public void onPluginCreate() {
         log.info("Epistola plugin configuration created with tenantId: {}", tenantId);
     }
 
     @PluginEvent(invokedOn = EventType.DELETE)
-    void onPluginDelete() {
+    public void onPluginDelete() {
         log.info("Epistola plugin configuration deleted");
     }
 
     @PluginEvent(invokedOn = EventType.UPDATE)
-    void onPluginUpdate() {
+    public void onPluginUpdate() {
         log.info("Epistola plugin configuration updated with tenantId: {}", tenantId);
     }
 

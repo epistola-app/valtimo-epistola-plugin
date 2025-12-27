@@ -1,8 +1,9 @@
-package app.epistola.valtimo.plugin;
+package app.epistola.valtimo.config;
 
 import app.epistola.valtimo.service.EpistolaService;
 import com.ritense.plugin.PluginFactory;
 import com.ritense.plugin.service.PluginService;
+import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import com.ritense.valueresolver.ValueResolverService;
 import org.jetbrains.annotations.NotNull;
 

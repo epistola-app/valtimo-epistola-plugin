@@ -1,0 +1,10 @@
+[
+  {
+    "id": "e6525773-1863-4e92-92a1-9ed79508a819",
+    "title": "Epistola Document Suite",
+    "pluginDefinitionKey": "epistola",
+    "properties": {
+      "tenantId": "tenantId"
+    }
+  }
+]

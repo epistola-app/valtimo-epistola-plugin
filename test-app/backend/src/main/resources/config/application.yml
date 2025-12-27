@@ -31,10 +31,10 @@ spring:
     datasource:
         type: com.zaxxer.hikari.HikariDataSource
         driver-class-name: org.postgresql.Driver
-        url: ${SPRING_DATASOURCE_URL}
-        name: ${SPRING_DATASOURCE_NAME}
-        username: ${SPRING_DATASOURCE_USERNAME}
-        password: ${SPRING_DATASOURCE_PASSWORD}
+        url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://127.0.0.1:4001/epistola}
+        name: ${SPRING_DATASOURCE_NAME:epistola}
+        username: ${SPRING_DATASOURCE_USERNAME:epistola}
+        password: ${SPRING_DATASOURCE_PASSWORD:epistola}
         hikari:
             poolName: "valtimo-core-pool"
             auto-commit: false

@@ -1,6 +1,5 @@
 package app.epistola.valtimo.config;
 
-import app.epistola.valtimo.plugin.EpistolaPluginFactory;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
 import com.ritense.plugin.service.PluginService;
