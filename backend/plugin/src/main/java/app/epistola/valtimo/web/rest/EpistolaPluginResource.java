@@ -39,7 +39,7 @@ public class EpistolaPluginResource {
      */
     @GetMapping("/configurations/{configurationId}/templates")
     public ResponseEntity<List<TemplateInfo>> getTemplates(
-            @PathVariable UUID configurationId
+            @PathVariable("configurationId") UUID configurationId
     ) {
         log.debug("Fetching templates for plugin configuration: {}", configurationId);
 
@@ -60,8 +60,8 @@ public class EpistolaPluginResource {
      */
     @GetMapping("/configurations/{configurationId}/templates/{templateId}")
     public ResponseEntity<TemplateDetails> getTemplateDetails(
-            @PathVariable UUID configurationId,
-            @PathVariable String templateId
+            @PathVariable("configurationId") UUID configurationId,
+            @PathVariable("templateId") String templateId
     ) {
         log.debug("Fetching template details for plugin configuration: {}, template: {}",
                 configurationId, templateId);
