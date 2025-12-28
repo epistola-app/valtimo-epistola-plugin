@@ -36,14 +36,14 @@
           <v-select
             [name]="'prefix_' + i"
             [items]="prefixOptions"
-            [defaultSelectionId]="extractPrefix(mapping.dataSource)"
+            [defaultSelectionId]="mapping.prefix"
             [disabled]="obs.disabled"
             (selectedChange)="onPrefixChange(i, $event)"
             class="prefix-select"
           ></v-select>
           <v-input
             [name]="'path_' + i"
-            [defaultValue]="extractPath(mapping.dataSource)"
+            [defaultValue]="mapping.path"
             [disabled]="obs.disabled"
             [required]="true"
             (valueChange)="onPathChange(i, $event)"

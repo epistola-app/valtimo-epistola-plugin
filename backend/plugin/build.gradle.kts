@@ -27,6 +27,7 @@ dependencies {
     compileOnly("com.ritense.valtimo:value-resolver")
     compileOnly("com.ritense.valtimo:process-link")
     compileOnly("org.springframework.boot:spring-boot-starter-aop")
+    compileOnly("org.springframework.boot:spring-boot-starter-security")
 
     // Lombok
     compileOnly("org.projectlombok:lombok:$lombokVersion")

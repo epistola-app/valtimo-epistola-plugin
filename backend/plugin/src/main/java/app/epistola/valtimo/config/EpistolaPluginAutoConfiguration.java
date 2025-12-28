@@ -40,4 +40,10 @@ public class EpistolaPluginAutoConfiguration {
     ) {
         return new EpistolaPluginResource(pluginService, epistolaService);
     }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaHttpSecurityConfigurer.class)
+    public EpistolaHttpSecurityConfigurer epistolaHttpSecurityConfigurer() {
+        return new EpistolaHttpSecurityConfigurer();
+    }
 }

@@ -5,7 +5,17 @@ import {PluginTranslatePipeModule} from '@valtimo/plugin';
 import {InputModule, SelectItem, SelectModule} from '@valtimo/components';
 import {BehaviorSubject, Observable, Subject} from 'rxjs';
 import {filter, takeUntil} from 'rxjs/operators';
-import {DataMappingEntry, TemplateField} from '../../models';
+import {TemplateField} from '../../models';
+
+/**
+ * Internal mapping entry with pre-computed prefix and path.
+ * This avoids calling methods in template bindings which causes change detection issues.
+ */
+interface MappingRow {
+  templateField: string;
+  prefix: string;
+  path: string;
+}
 
 /**
  * Data source prefix options for value resolution.
@@ -38,7 +48,7 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
   @Output() mappingChange = new EventEmitter<Record<string, string>>();
 
   readonly prefixOptions = DATA_SOURCE_PREFIXES;
-  mappings: DataMappingEntry[] = [];
+  mappings: MappingRow[] = [];
   templateFieldOptions$ = new BehaviorSubject<SelectItem[]>([]);
 
   private readonly destroy$ = new Subject<void>();
@@ -59,7 +69,7 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
   addMapping(): void {
     this.mappings = [
       ...this.mappings,
-      {templateField: '', dataSource: 'doc:'}
+      {templateField: '', prefix: 'doc:', path: ''}
     ];
     this.emitMappings();
   }
@@ -74,26 +84,26 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
 
   /**
    * Update a mapping's template field.
-   * SelectedValue is string | number | Array<string | number>
    */
   onTemplateFieldChange(index: number, fieldId: string | number | (string | number)[]): void {
     if (this.mappings[index]) {
-      const id = Array.isArray(fieldId) ? String(fieldId[0]) : String(fieldId);
-      this.mappings[index] = {...this.mappings[index], templateField: id || ''};
+      const id = Array.isArray(fieldId) ? String(fieldId[0] ?? '') : String(fieldId ?? '');
+      this.mappings = this.mappings.map((m, i) =>
+        i === index ? {...m, templateField: id} : m
+      );
       this.emitMappings();
     }
   }
 
   /**
    * Update a mapping's data source prefix.
-   * SelectedValue is string | number | Array<string | number>
    */
   onPrefixChange(index: number, prefix: string | number | (string | number)[]): void {
     if (this.mappings[index]) {
-      const prefixValue = Array.isArray(prefix) ? String(prefix[0]) : String(prefix);
-      const currentSource = this.mappings[index].dataSource;
-      const currentPath = this.extractPath(currentSource);
-      this.mappings[index] = {...this.mappings[index], dataSource: (prefixValue || 'doc:') + currentPath};
+      const prefixValue = Array.isArray(prefix) ? String(prefix[0] ?? 'doc:') : String(prefix ?? 'doc:');
+      this.mappings = this.mappings.map((m, i) =>
+        i === index ? {...m, prefix: prefixValue} : m
+      );
       this.emitMappings();
     }
   }
@@ -103,34 +113,11 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
    */
   onPathChange(index: number, path: string): void {
     if (this.mappings[index]) {
-      const currentSource = this.mappings[index].dataSource;
-      const currentPrefix = this.extractPrefix(currentSource);
-      this.mappings[index] = {...this.mappings[index], dataSource: currentPrefix + path};
+      this.mappings = this.mappings.map((m, i) =>
+        i === index ? {...m, path: path ?? ''} : m
+      );
       this.emitMappings();
     }
-  }
-
-  /**
-   * Extract the prefix from a data source value.
-   */
-  extractPrefix(dataSource: string): string {
-    const match = dataSource.match(/^(doc:|pv:|case:)/);
-    return match ? match[1] : 'doc:';
-  }
-
-  /**
-   * Extract the path from a data source value.
-   */
-  extractPath(dataSource: string): string {
-    return dataSource.replace(/^(doc:|pv:|case:)/, '');
-  }
-
-  /**
-   * Check if a template field is required.
-   */
-  isFieldRequired(fieldName: string, templateFields: TemplateField[]): boolean {
-    const field = templateFields.find(f => f.name === fieldName);
-    return field?.required ?? false;
   }
 
   private initTemplateFieldOptions(): void {
@@ -155,17 +142,27 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
       ).subscribe(mapping => {
         this.mappings = Object.entries(mapping).map(([templateField, dataSource]) => ({
           templateField,
-          dataSource
+          prefix: this.extractPrefix(dataSource),
+          path: this.extractPath(dataSource)
         }));
       });
     }
   }
 
+  private extractPrefix(dataSource: string): string {
+    const match = dataSource.match(/^(doc:|pv:|case:)/);
+    return match ? match[1] : 'doc:';
+  }
+
+  private extractPath(dataSource: string): string {
+    return dataSource.replace(/^(doc:|pv:|case:)/, '');
+  }
+
   private emitMappings(): void {
     const result: Record<string, string> = {};
     for (const mapping of this.mappings) {
-      if (mapping.templateField && mapping.dataSource) {
-        result[mapping.templateField] = mapping.dataSource;
+      if (mapping.templateField) {
+        result[mapping.templateField] = mapping.prefix + mapping.path;
       }
     }
     this.mappingChange.emit(result);
