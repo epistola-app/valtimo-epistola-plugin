@@ -56,11 +56,13 @@ export class GenerateDocumentConfigurationComponent
     {id: 'HTML', text: 'HTML'}
   ];
 
+  // Show data mapping builder only when template is selected
+  readonly selectedTemplateId$ = new BehaviorSubject<string>('');
+
   private readonly destroy$ = new Subject<void>();
   private saveSubscription!: Subscription;
   private readonly formValue$ = new BehaviorSubject<Partial<GenerateDocumentConfig> | null>(null);
   private readonly valid$ = new BehaviorSubject<boolean>(false);
-  private selectedTemplateId$ = new BehaviorSubject<string>('');
   private pluginConfigurationId$ = new BehaviorSubject<string>('');
 
   constructor(private readonly epistolaPluginService: EpistolaPluginService) {}

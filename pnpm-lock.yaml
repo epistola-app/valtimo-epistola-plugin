@@ -6,6 +6,8 @@ settings:
 
 importers:
 
+  .: {}
+
   frontend/plugin:
     dependencies:
       tslib:
@@ -29,7 +31,7 @@ importers:
         version: 19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.17(@angular/animations@19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2)
       '@valtimo/components':
         specifier: 13.8.0
-        version: 13.8.0(f07470985b68544252f8be3c3ee91952)
+        version: 13.8.0(adfbbmrbcygq26pqcjbxm5jhv4)
       '@valtimo/plugin':
         specifier: 13.8.0
         version: 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
@@ -94,8 +96,8 @@ importers:
         specifier: 1.23.6
         version: 1.23.6(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
       '@epistola/valtimo-plugin':
-        specifier: file:../../dist/epistola-plugin
-        version: file:dist/epistola-plugin(c2de0a3867e9c16d83e1b83efd1c57d9)
+        specifier: link:../../dist/epistola-plugin
+        version: link:../../dist/epistola-plugin
       '@foxythemes/bootstrap-datetime-picker-bs4':
         specifier: 2.3.5
         version: 2.3.5
@@ -137,7 +139,7 @@ importers:
         version: 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/components':
         specifier: 13.8.0
-        version: 13.8.0(cb4f03cc2948b3777bb223c32ed19ded)
+        version: 13.8.0(uhlc2cyp5ujao6cwcukijdhaty)
       '@valtimo/dashboard':
         specifier: 13.8.0
         version: 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
@@ -1239,16 +1241,6 @@ packages:
   '@discoveryjs/json-ext@0.6.3':
     resolution: {integrity: sha512-4B4OijXeVNOPZlYA2oEwWOTkzyltLao+xbotHQeqN++Rv27Y6s818+n2Qkp8q+Fxhn0t/5lA5X1Mxktud8eayQ==}
     engines: {node: '>=14.17.0'}
-
-  '@epistola/valtimo-plugin@file:dist/epistola-plugin':
-    resolution: {directory: dist/epistola-plugin, type: directory}
-    peerDependencies:
-      '@angular/common': '>=17.0.0'
-      '@angular/core': '>=17.0.0'
-      '@angular/forms': '>=17.0.0'
-      '@valtimo/components': ^13.0.0
-      '@valtimo/plugin': ^13.0.0
-      '@valtimo/shared': ^13.0.0
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -9087,16 +9079,6 @@ snapshots:
 
   '@discoveryjs/json-ext@0.6.3': {}
 
-  '@epistola/valtimo-plugin@file:dist/epistola-plugin(c2de0a3867e9c16d83e1b83efd1c57d9)':
-    dependencies:
-      '@angular/common': 19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
-      '@angular/core': 19.2.17(rxjs@7.8.2)(zone.js@0.15.1)
-      '@angular/forms': 19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.17(@angular/animations@19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2)
-      '@valtimo/components': 13.8.0(cb4f03cc2948b3777bb223c32ed19ded)
-      '@valtimo/plugin': 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
-      '@valtimo/shared': 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
-      tslib: 2.8.1
-
   '@esbuild/aix-ppc64@0.25.12':
     optional: true
 
@@ -9284,7 +9266,7 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@formio/angular@7.0.0(52efeeb52e7f73d562b301d5891b8657)':
+  '@formio/angular@7.0.0(t5jlp7gjwnowfyjqtrwyqz3wjq)':
     dependencies:
       '@angular/common': 19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.17(rxjs@7.8.2)(zone.js@0.15.1)
@@ -10830,17 +10812,16 @@ snapshots:
       '@angular/core': 19.2.17(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/components@13.8.0(cb4f03cc2948b3777bb223c32ed19ded)':
+  '@valtimo/components@13.8.0(adfbbmrbcygq26pqcjbxm5jhv4)':
     dependencies:
       '@angular/common': 19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.17(rxjs@7.8.2)(zone.js@0.15.1)
-      '@angular/elements': 19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@carbon/charts-angular': 1.23.6(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
       '@carbon/grid': 11.35.0
       '@carbon/icons': 11.59.0
-      '@carbon/styles': 1.80.0(sass@1.85.0)
+      '@carbon/styles': 1.80.0(sass@1.97.1)
       '@carbon/themes': 11.51.0
-      '@formio/angular': 7.0.0(52efeeb52e7f73d562b301d5891b8657)
+      '@formio/angular': 7.0.0(t5jlp7gjwnowfyjqtrwyqz3wjq)
       '@foxythemes/bootstrap-datetime-picker-bs4': 2.3.5
       '@mdi/font': 7.4.47
       '@ng-bootstrap/ng-bootstrap': 11.0.1(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(@angular/forms@19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.17(@angular/animations@19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))(@angular/localize@19.2.17(@angular/compiler-cli@19.2.17(@angular/compiler@19.2.17)(typescript@5.8.3))(@angular/compiler@19.2.17))(rxjs@7.8.2)
@@ -10849,7 +10830,7 @@ snapshots:
       '@tadashi/currency': 3.4.0
       '@types/topojson': 3.2.6
       bpmn-js: 18.6.1
-      carbon-components-angular: 5.57.6(@carbon/styles@1.80.0(sass@1.85.0))
+      carbon-components-angular: 5.57.6(@carbon/styles@1.80.0(sass@1.97.1))
       deepmerge-ts: 7.1.5
       flatpickr: 4.6.13
       formiojs: 4.19.5(encoding@0.1.13)
@@ -10876,16 +10857,17 @@ snapshots:
       - sass
       - zone.js
 
-  '@valtimo/components@13.8.0(f07470985b68544252f8be3c3ee91952)':
+  '@valtimo/components@13.8.0(uhlc2cyp5ujao6cwcukijdhaty)':
     dependencies:
       '@angular/common': 19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.17(rxjs@7.8.2)(zone.js@0.15.1)
+      '@angular/elements': 19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@carbon/charts-angular': 1.23.6(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
       '@carbon/grid': 11.35.0
       '@carbon/icons': 11.59.0
-      '@carbon/styles': 1.80.0(sass@1.97.1)
+      '@carbon/styles': 1.80.0(sass@1.85.0)
       '@carbon/themes': 11.51.0
-      '@formio/angular': 7.0.0(52efeeb52e7f73d562b301d5891b8657)
+      '@formio/angular': 7.0.0(t5jlp7gjwnowfyjqtrwyqz3wjq)
       '@foxythemes/bootstrap-datetime-picker-bs4': 2.3.5
       '@mdi/font': 7.4.47
       '@ng-bootstrap/ng-bootstrap': 11.0.1(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(@angular/forms@19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.17(@angular/animations@19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))(@angular/localize@19.2.17(@angular/compiler-cli@19.2.17(@angular/compiler@19.2.17)(typescript@5.8.3))(@angular/compiler@19.2.17))(rxjs@7.8.2)
@@ -10894,7 +10876,7 @@ snapshots:
       '@tadashi/currency': 3.4.0
       '@types/topojson': 3.2.6
       bpmn-js: 18.6.1
-      carbon-components-angular: 5.57.6(@carbon/styles@1.80.0(sass@1.97.1))
+      carbon-components-angular: 5.57.6(@carbon/styles@1.80.0(sass@1.85.0))
       deepmerge-ts: 7.1.5
       flatpickr: 4.6.13
       formiojs: 4.19.5(encoding@0.1.13)

@@ -1,0 +1,21 @@
+{
+  "name": "valtimo-epistola-plugin",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Epistola document generation plugin for Valtimo - Monorepo",
+  "license": "EUPL-1.2",
+  "scripts": {
+    "build": "pnpm build:plugin && pnpm build:test-app",
+    "build:plugin": "pnpm --filter @epistola/valtimo-plugin build && pnpm install",
+    "build:test-app": "pnpm --filter gzac-frontend-template build",
+    "start": "pnpm --filter gzac-frontend-template start",
+    "dev": "pnpm build:plugin && pnpm start",
+    "watch:plugin": "pnpm --filter @epistola/valtimo-plugin build && pnpm install && echo 'Plugin rebuilt and linked!'",
+    "test": "pnpm -r test",
+    "clean": "rm -rf node_modules && pnpm -r exec rm -rf node_modules dist"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=18"
+  }
+}

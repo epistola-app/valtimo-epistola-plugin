@@ -1,4 +1,4 @@
-import {Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
+import {Component, EventEmitter, Input, OnDestroy, OnInit, Output, TrackByFunction} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {PluginTranslatePipeModule} from '@valtimo/plugin';
@@ -12,6 +12,7 @@ import {TemplateField} from '../../models';
  * This avoids calling methods in template bindings which causes change detection issues.
  */
 interface MappingRow {
+  id: number; // Unique ID for trackBy
   templateField: string;
   prefix: string;
   path: string;
@@ -51,7 +52,13 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
   mappings: MappingRow[] = [];
   templateFieldOptions$ = new BehaviorSubject<SelectItem[]>([]);
 
+  // TrackBy function for ngFor to prevent re-rendering all items
+  readonly trackByMapping: TrackByFunction<MappingRow> = (_, mapping) => mapping.id;
+
   private readonly destroy$ = new Subject<void>();
+  private nextId = 0;
+  // Track newly added mapping IDs to skip their initial v-select events
+  private newMappingIds = new Set<number>();
 
   ngOnInit(): void {
     this.initTemplateFieldOptions();
@@ -67,17 +74,25 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
    * Add a new empty mapping row.
    */
   addMapping(): void {
+    const newId = this.nextId++;
+    // Track this as a new mapping to skip its initial v-select events
+    this.newMappingIds.add(newId);
+
     this.mappings = [
       ...this.mappings,
-      {templateField: '', prefix: 'doc:', path: ''}
+      {id: newId, templateField: '', prefix: 'doc:', path: ''}
     ];
-    this.emitMappings();
+    // Don't emit for empty mapping - wait until user fills it
   }
 
   /**
    * Remove a mapping row by index.
    */
   removeMapping(index: number): void {
+    const mapping = this.mappings[index];
+    if (mapping) {
+      this.newMappingIds.delete(mapping.id);
+    }
     this.mappings = this.mappings.filter((_, i) => i !== index);
     this.emitMappings();
   }
@@ -86,38 +101,86 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
    * Update a mapping's template field.
    */
   onTemplateFieldChange(index: number, fieldId: string | number | (string | number)[]): void {
-    if (this.mappings[index]) {
-      const id = Array.isArray(fieldId) ? String(fieldId[0] ?? '') : String(fieldId ?? '');
-      this.mappings = this.mappings.map((m, i) =>
-        i === index ? {...m, templateField: id} : m
-      );
-      this.emitMappings();
+    const mapping = this.mappings[index];
+    const id = Array.isArray(fieldId) ? String(fieldId[0] ?? '') : String(fieldId ?? '');
+
+    if (!mapping) {
+      return;
     }
+
+    // Skip if this is a newly added mapping and the value is empty (initial v-select event)
+    if (this.newMappingIds.has(mapping.id) && !id) {
+      return;
+    }
+
+    // Remove from new mappings set once user makes an actual selection
+    if (this.newMappingIds.has(mapping.id) && id) {
+      this.newMappingIds.delete(mapping.id);
+    }
+
+    // Skip if value hasn't changed
+    if (mapping.templateField === id) {
+      return;
+    }
+
+    this.mappings = this.mappings.map((m, i) =>
+      i === index ? {...m, templateField: id} : m
+    );
+    this.emitMappings();
   }
 
   /**
    * Update a mapping's data source prefix.
    */
   onPrefixChange(index: number, prefix: string | number | (string | number)[]): void {
-    if (this.mappings[index]) {
-      const prefixValue = Array.isArray(prefix) ? String(prefix[0] ?? 'doc:') : String(prefix ?? 'doc:');
-      this.mappings = this.mappings.map((m, i) =>
-        i === index ? {...m, prefix: prefixValue} : m
-      );
-      this.emitMappings();
+    const mapping = this.mappings[index];
+    const prefixValue = Array.isArray(prefix) ? String(prefix[0] ?? 'doc:') : String(prefix ?? 'doc:');
+
+    if (!mapping) {
+      return;
     }
+
+    // For prefix, skip only if value is the default 'doc:' on new mappings
+    if (this.newMappingIds.has(mapping.id) && prefixValue === 'doc:') {
+      return;
+    }
+
+    // Skip if value hasn't changed
+    if (mapping.prefix === prefixValue) {
+      return;
+    }
+
+    this.mappings = this.mappings.map((m, i) =>
+      i === index ? {...m, prefix: prefixValue} : m
+    );
+    this.emitMappings();
   }
 
   /**
    * Update a mapping's data source path.
    */
   onPathChange(index: number, path: string): void {
-    if (this.mappings[index]) {
-      this.mappings = this.mappings.map((m, i) =>
-        i === index ? {...m, path: path ?? ''} : m
-      );
-      this.emitMappings();
+    const mapping = this.mappings[index];
+    const newPath = path ?? '';
+
+    if (!mapping) {
+      return;
     }
+
+    // Skip if this is a newly added mapping and the path is empty (initial v-input event)
+    if (this.newMappingIds.has(mapping.id) && !newPath) {
+      return;
+    }
+
+    // Skip if value hasn't changed
+    if (mapping.path === newPath) {
+      return;
+    }
+
+    this.mappings = this.mappings.map((m, i) =>
+      i === index ? {...m, path: newPath} : m
+    );
+    this.emitMappings();
   }
 
   private initTemplateFieldOptions(): void {
@@ -141,6 +204,7 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
         filter(mapping => !!mapping && Object.keys(mapping).length > 0)
       ).subscribe(mapping => {
         this.mappings = Object.entries(mapping).map(([templateField, dataSource]) => ({
+          id: this.nextId++,
           templateField,
           prefix: this.extractPrefix(dataSource),
           path: this.extractPath(dataSource)

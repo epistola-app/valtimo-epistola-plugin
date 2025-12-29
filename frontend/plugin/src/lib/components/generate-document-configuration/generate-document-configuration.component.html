@@ -57,6 +57,7 @@
 </v-form>
 
 <epistola-data-mapping-builder
+  *ngIf="(selectedTemplateId$ | async)"
   [pluginId]="pluginId"
   [templateFields$]="templateFields$"
   [disabled$]="disabled$"

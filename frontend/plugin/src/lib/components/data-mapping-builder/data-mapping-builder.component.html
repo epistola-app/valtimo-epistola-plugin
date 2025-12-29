@@ -19,7 +19,7 @@
       <div class="mapping-cell actions-cell"></div>
     </div>
 
-    <div class="mapping-row" *ngFor="let mapping of mappings; let i = index">
+    <div class="mapping-row" *ngFor="let mapping of mappings; let i = index; trackBy: trackByMapping">
       <div class="mapping-cell template-field-cell">
         <v-select
           [name]="'templateField_' + i"
