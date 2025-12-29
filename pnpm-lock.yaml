@@ -6,13 +6,7 @@ settings:
 
 importers:
 
-  .: {}
-
-  frontend/plugin:
-    dependencies:
-      tslib:
-        specifier: ^2.6.0
-        version: 2.8.1
+  .:
     devDependencies:
       '@angular/common':
         specifier: ^19.0.0
@@ -38,9 +32,6 @@ importers:
       '@valtimo/shared':
         specifier: 13.8.0
         version: 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
-      ng-packagr:
-        specifier: ^19.0.0
-        version: 19.2.2(@angular/compiler-cli@19.2.17(@angular/compiler@19.2.17)(typescript@5.8.3))(tslib@2.8.1)(typescript@5.8.3)
       rxjs:
         specifier: ^7.8.0
         version: 7.8.2
@@ -50,6 +41,34 @@ importers:
       zone.js:
         specifier: ^0.15.0
         version: 0.15.1
+
+  frontend/plugin:
+    dependencies:
+      '@angular/common':
+        specifier: '>=17.0.0'
+        version: 19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
+      '@angular/core':
+        specifier: '>=17.0.0'
+        version: 19.2.17(rxjs@7.8.2)(zone.js@0.15.1)
+      '@angular/forms':
+        specifier: '>=17.0.0'
+        version: 19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.17(@angular/animations@19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2)
+      '@valtimo/components':
+        specifier: ^13.0.0
+        version: 13.8.0(adfbbmrbcygq26pqcjbxm5jhv4)
+      '@valtimo/plugin':
+        specifier: ^13.0.0
+        version: 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
+      '@valtimo/shared':
+        specifier: ^13.0.0
+        version: 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
+      tslib:
+        specifier: ^2.6.0
+        version: 2.8.1
+    devDependencies:
+      ng-packagr:
+        specifier: ^19.0.0
+        version: 19.2.2(@angular/compiler-cli@19.2.17(@angular/compiler@19.2.17)(typescript@5.8.3))(tslib@2.8.1)(typescript@5.8.3)
 
   test-app/frontend:
     dependencies:
@@ -96,8 +115,8 @@ importers:
         specifier: 1.23.6
         version: 1.23.6(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
       '@epistola/valtimo-plugin':
-        specifier: link:../../dist/epistola-plugin
-        version: link:../../dist/epistola-plugin
+        specifier: file:../../dist/epistola-plugin
+        version: file:dist/epistola-plugin(u5ajootfdmhhvcnicobrc5kzoi)
       '@foxythemes/bootstrap-datetime-picker-bs4':
         specifier: 2.3.5
         version: 2.3.5
@@ -1241,6 +1260,16 @@ packages:
   '@discoveryjs/json-ext@0.6.3':
     resolution: {integrity: sha512-4B4OijXeVNOPZlYA2oEwWOTkzyltLao+xbotHQeqN++Rv27Y6s818+n2Qkp8q+Fxhn0t/5lA5X1Mxktud8eayQ==}
     engines: {node: '>=14.17.0'}
+
+  '@epistola/valtimo-plugin@file:dist/epistola-plugin':
+    resolution: {directory: dist/epistola-plugin, type: directory}
+    peerDependencies:
+      '@angular/common': '>=17.0.0'
+      '@angular/core': '>=17.0.0'
+      '@angular/forms': '>=17.0.0'
+      '@valtimo/components': ^13.0.0
+      '@valtimo/plugin': ^13.0.0
+      '@valtimo/shared': ^13.0.0
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -8971,7 +9000,7 @@ snapshots:
     dependencies:
       '@carbon/colors': 11.43.0
       '@carbon/feature-flags': 0.26.0
-      '@carbon/grid': 11.35.0
+      '@carbon/grid': 11.46.0
       '@carbon/layout': 11.44.0
       '@carbon/motion': 11.38.0
       '@carbon/themes': 11.51.0
@@ -8993,7 +9022,7 @@ snapshots:
     dependencies:
       '@carbon/colors': 11.43.0
       '@carbon/feature-flags': 0.26.0
-      '@carbon/grid': 11.35.0
+      '@carbon/grid': 11.46.0
       '@carbon/layout': 11.44.0
       '@carbon/motion': 11.38.0
       '@carbon/themes': 11.51.0
@@ -9078,6 +9107,16 @@ snapshots:
       '@jridgewell/trace-mapping': 0.3.9
 
   '@discoveryjs/json-ext@0.6.3': {}
+
+  '@epistola/valtimo-plugin@file:dist/epistola-plugin(u5ajootfdmhhvcnicobrc5kzoi)':
+    dependencies:
+      '@angular/common': 19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
+      '@angular/core': 19.2.17(rxjs@7.8.2)(zone.js@0.15.1)
+      '@angular/forms': 19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.17(@angular/animations@19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2)
+      '@valtimo/components': 13.8.0(uhlc2cyp5ujao6cwcukijdhaty)
+      '@valtimo/plugin': 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
+      '@valtimo/shared': 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
+      tslib: 2.8.1
 
   '@esbuild/aix-ppc64@0.25.12':
     optional: true
@@ -9723,7 +9762,7 @@ snapshots:
 
   '@npmcli/fs@4.0.0':
     dependencies:
-      semver: 7.7.1
+      semver: 7.7.3
 
   '@npmcli/git@6.0.3':
     dependencies:
@@ -9733,7 +9772,7 @@ snapshots:
       npm-pick-manifest: 10.0.0
       proc-log: 5.0.0
       promise-retry: 2.0.1
-      semver: 7.7.1
+      semver: 7.7.3
       which: 5.0.0
 
   '@npmcli/installed-package-contents@3.0.0':
@@ -9750,7 +9789,7 @@ snapshots:
       hosted-git-info: 8.1.0
       json-parse-even-better-errors: 4.0.0
       proc-log: 5.0.0
-      semver: 7.7.1
+      semver: 7.7.3
       validate-npm-package-license: 3.0.4
 
   '@npmcli/promise-spawn@8.0.3':
@@ -11947,7 +11986,7 @@ snapshots:
       postcss-modules-scope: 3.2.1(postcss@8.5.2)
       postcss-modules-values: 4.0.0(postcss@8.5.2)
       postcss-value-parser: 4.2.0
-      semver: 7.7.1
+      semver: 7.7.3
     optionalDependencies:
       webpack: 5.98.0(esbuild@0.25.4)
 
@@ -13730,7 +13769,7 @@ snapshots:
       '@babel/parser': 7.28.5
       '@istanbuljs/schema': 0.1.3
       istanbul-lib-coverage: 3.2.2
-      semver: 7.7.1
+      semver: 7.7.3
     transitivePeerDependencies:
       - supports-color
 
@@ -14542,7 +14581,7 @@ snapshots:
       make-fetch-happen: 14.0.3
       nopt: 8.1.0
       proc-log: 5.0.0
-      semver: 7.7.1
+      semver: 7.7.3
       tar: 7.5.2
       tinyglobby: 0.2.15
       which: 5.0.0
@@ -14565,7 +14604,7 @@ snapshots:
 
   npm-install-checks@7.1.2:
     dependencies:
-      semver: 7.7.1
+      semver: 7.7.3
 
   npm-normalize-package-bin@4.0.0: {}
 
@@ -14573,7 +14612,7 @@ snapshots:
     dependencies:
       hosted-git-info: 8.1.0
       proc-log: 5.0.0
-      semver: 7.7.1
+      semver: 7.7.3
       validate-npm-package-name: 6.0.2
 
   npm-packlist@9.0.0:
@@ -14585,7 +14624,7 @@ snapshots:
       npm-install-checks: 7.1.2
       npm-normalize-package-bin: 4.0.0
       npm-package-arg: 12.0.2
-      semver: 7.7.1
+      semver: 7.7.3
 
   npm-registry-fetch@18.0.2:
     dependencies:
@@ -14919,7 +14958,7 @@ snapshots:
       cosmiconfig: 9.0.0(typescript@5.8.3)
       jiti: 1.21.7
       postcss: 8.5.2
-      semver: 7.7.1
+      semver: 7.7.3
     optionalDependencies:
       webpack: 5.98.0(esbuild@0.25.4)
     transitivePeerDependencies:

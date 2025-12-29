@@ -5,6 +5,7 @@
   "license": "EUPL-1.2",
   "scripts": {
     "build": "ng-packagr -p ng-package.json",
+    "watch": "ng-packagr -p ng-package.json --watch",
     "test": "echo 'No tests configured yet'"
   },
   "peerDependencies": {
@@ -19,17 +20,6 @@
     "tslib": "^2.6.0"
   },
   "devDependencies": {
-    "ng-packagr": "^19.0.0",
-    "@angular/compiler-cli": "^19.0.0",
-    "@angular/compiler": "^19.0.0",
-    "@angular/core": "^19.0.0",
-    "@angular/common": "^19.0.0",
-    "@angular/forms": "^19.0.0",
-    "@valtimo/plugin": "13.8.0",
-    "@valtimo/components": "13.8.0",
-    "@valtimo/shared": "13.8.0",
-    "typescript": "~5.8.0",
-    "rxjs": "^7.8.0",
-    "zone.js": "^0.15.0"
+    "ng-packagr": "^19.0.0"
   }
 }
