@@ -3,10 +3,12 @@ package app.epistola.valtimo.config;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
+import app.epistola.valtimo.web.rest.EpistolaCallbackResource;
 import app.epistola.valtimo.web.rest.EpistolaPluginResource;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
+import org.operaton.bpm.engine.RuntimeService;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -46,6 +48,12 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaService epistolaService
     ) {
         return new EpistolaPluginResource(pluginService, epistolaService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaCallbackResource.class)
+    public EpistolaCallbackResource epistolaCallbackResource(RuntimeService runtimeService) {
+        return new EpistolaCallbackResource(runtimeService);
     }
 
     @Bean
