@@ -2,6 +2,8 @@ package com.ritense.valtimo.epistola.plugin;
 
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GeneratedDocument;
+import app.epistola.valtimo.domain.GenerationJobDetail;
+import app.epistola.valtimo.domain.GenerationJobStatus;
 import app.epistola.valtimo.service.EpistolaService;
 import com.ritense.plugin.annotation.*;
 import com.ritense.plugin.domain.EventType;
@@ -179,6 +181,94 @@ public class EpistolaPlugin {
 
         log.info("Document generation request submitted. Request ID stored in variable '{}': {}",
                 resultProcessVariable, result.getDocumentId());
+    }
+
+    /**
+     * Check the status of a document generation job.
+     * <p>
+     * This action retrieves the current status of a generation request. It can be used
+     * in a polling pattern to wait for document generation to complete.
+     *
+     * @param execution               The process execution context
+     * @param requestIdVariable       The name of the process variable containing the request ID
+     * @param statusVariable          The name of the process variable to store the status in
+     * @param documentIdVariable      The name of the process variable to store the document ID in (when completed)
+     * @param errorMessageVariable    The name of the process variable to store any error message in (when failed)
+     */
+    @PluginAction(
+            key = "check-job-status",
+            title = "Check Job Status",
+            description = "Check the status of a document generation job. Stores status, document ID (if completed), and error message (if failed) in process variables.",
+            activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
+    )
+    public void checkJobStatus(
+            DelegateExecution execution,
+            @PluginActionProperty String requestIdVariable,
+            @PluginActionProperty String statusVariable,
+            @PluginActionProperty String documentIdVariable,
+            @PluginActionProperty String errorMessageVariable
+    ) {
+        String requestId = (String) execution.getVariable(requestIdVariable);
+        log.info("Checking job status for requestId: {}", requestId);
+
+        if (requestId == null || requestId.isBlank()) {
+            throw new IllegalArgumentException("Request ID variable '" + requestIdVariable + "' is null or empty");
+        }
+
+        GenerationJobDetail jobDetail = epistolaService.getJobStatus(baseUrl, apiKey, tenantId, requestId);
+
+        // Store the status
+        execution.setVariable(statusVariable, jobDetail.getStatus().name());
+
+        // Store document ID if available (when completed)
+        if (jobDetail.getDocumentId() != null && documentIdVariable != null && !documentIdVariable.isBlank()) {
+            execution.setVariable(documentIdVariable, jobDetail.getDocumentId());
+        }
+
+        // Store error message if available (when failed)
+        if (jobDetail.getErrorMessage() != null && errorMessageVariable != null && !errorMessageVariable.isBlank()) {
+            execution.setVariable(errorMessageVariable, jobDetail.getErrorMessage());
+        }
+
+        log.info("Job status for requestId {}: status={}, documentId={}, errorMessage={}",
+                requestId, jobDetail.getStatus(), jobDetail.getDocumentId(), jobDetail.getErrorMessage());
+    }
+
+    /**
+     * Download a generated document.
+     * <p>
+     * This action downloads a completed document from Epistola. The document must have
+     * been successfully generated (status = COMPLETED) before it can be downloaded.
+     *
+     * @param execution              The process execution context
+     * @param documentIdVariable     The name of the process variable containing the document ID
+     * @param contentVariable        The name of the process variable to store the document content (Base64 encoded)
+     */
+    @PluginAction(
+            key = "download-document",
+            title = "Download Document",
+            description = "Download a generated document from Epistola. Stores the document content as Base64 in the specified process variable.",
+            activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
+    )
+    public void downloadDocument(
+            DelegateExecution execution,
+            @PluginActionProperty String documentIdVariable,
+            @PluginActionProperty String contentVariable
+    ) {
+        String documentId = (String) execution.getVariable(documentIdVariable);
+        log.info("Downloading document: {}", documentId);
+
+        if (documentId == null || documentId.isBlank()) {
+            throw new IllegalArgumentException("Document ID variable '" + documentIdVariable + "' is null or empty");
+        }
+
+        byte[] content = epistolaService.downloadDocument(baseUrl, apiKey, tenantId, documentId);
+
+        // Store the content as Base64 encoded string
+        String base64Content = java.util.Base64.getEncoder().encodeToString(content);
+        execution.setVariable(contentVariable, base64Content);
+
+        log.info("Document {} downloaded successfully ({} bytes)", documentId, content.length);
     }
 
     /**
