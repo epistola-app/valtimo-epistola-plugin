@@ -32,6 +32,8 @@ node {
 subprojects {
     repositories {
         mavenCentral()
+        maven { url = uri("https://s01.oss.sonatype.org/content/repositories/releases/") }
+        maven { url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/") }
         maven {
             name = "sonatypeSnapshots"
             url = uri("https://central.sonatype.com/repository/maven-snapshots/")
@@ -39,6 +41,7 @@ subprojects {
                 snapshotsOnly()
             }
         }
+        mavenLocal()
     }
 
     tasks.withType<JavaCompile> {

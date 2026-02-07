@@ -66,7 +66,7 @@ java {
 
 tasks.test {
     // Don't fail if there are no tests yet
-//    failOnNoDiscoveredTests.set(false)
+    failOnNoDiscoveredTests.set(false)
 }
 
 publishing {

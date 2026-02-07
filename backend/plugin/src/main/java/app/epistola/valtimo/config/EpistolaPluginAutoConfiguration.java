@@ -1,5 +1,6 @@
 package app.epistola.valtimo.config;
 
+import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
 import app.epistola.valtimo.web.rest.EpistolaPluginResource;
@@ -17,9 +18,15 @@ import org.springframework.context.annotation.Bean;
 public class EpistolaPluginAutoConfiguration {
 
     @Bean
+    @ConditionalOnMissingBean(EpistolaApiClientFactory.class)
+    public EpistolaApiClientFactory epistolaApiClientFactory() {
+        return new EpistolaApiClientFactory();
+    }
+
+    @Bean
     @ConditionalOnMissingBean(EpistolaService.class)
-    public EpistolaService epistolaService() {
-        return new EpistolaServiceImpl();
+    public EpistolaService epistolaService(EpistolaApiClientFactory apiClientFactory) {
+        return new EpistolaServiceImpl(apiClientFactory);
     }
 
     @Bean

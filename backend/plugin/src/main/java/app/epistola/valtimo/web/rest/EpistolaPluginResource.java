@@ -44,9 +44,11 @@ public class EpistolaPluginResource {
         log.debug("Fetching templates for plugin configuration: {}", configurationId);
 
         EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        String tenantId = plugin.getTenantId();
-
-        List<TemplateInfo> templates = epistolaService.getTemplates(tenantId);
+        List<TemplateInfo> templates = epistolaService.getTemplates(
+                plugin.getBaseUrl(),
+                plugin.getApiKey(),
+                plugin.getTenantId()
+        );
 
         return ResponseEntity.ok(templates);
     }
@@ -67,9 +69,12 @@ public class EpistolaPluginResource {
                 configurationId, templateId);
 
         EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        String tenantId = plugin.getTenantId();
-
-        TemplateDetails templateDetails = epistolaService.getTemplateDetails(tenantId, templateId);
+        TemplateDetails templateDetails = epistolaService.getTemplateDetails(
+                plugin.getBaseUrl(),
+                plugin.getApiKey(),
+                plugin.getTenantId(),
+                templateId
+        );
 
         return ResponseEntity.ok(templateDetails);
     }

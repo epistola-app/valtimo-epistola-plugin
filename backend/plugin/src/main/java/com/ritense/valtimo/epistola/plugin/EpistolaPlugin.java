@@ -35,6 +35,28 @@ public class EpistolaPlugin {
     }
 
     /**
+     * The base URL of the Epistola API.
+     */
+    @PluginProperty(
+            key = "baseUrl",
+            title = "Base URL",
+            secret = false,
+            required = true
+    )
+    private String baseUrl;
+
+    /**
+     * The API key for authenticating with Epistola.
+     */
+    @PluginProperty(
+            key = "apiKey",
+            title = "API Key",
+            secret = true,
+            required = true
+    )
+    private String apiKey;
+
+    /**
      * The tenant ID where the document templates are stored in Epistola.
      */
     @PluginProperty(
@@ -45,13 +67,37 @@ public class EpistolaPlugin {
     )
     private String tenantId;
 
+    /**
+     * The default environment ID to use for document generation.
+     * Can be overridden per action.
+     */
+    @PluginProperty(
+            key = "defaultEnvironmentId",
+            title = "Default Environment",
+            secret = false,
+            required = false
+    )
+    private String defaultEnvironmentId;
+
+    public String getBaseUrl() {
+        return baseUrl;
+    }
+
+    public String getApiKey() {
+        return apiKey;
+    }
+
     public String getTenantId() {
         return tenantId;
     }
 
+    public String getDefaultEnvironmentId() {
+        return defaultEnvironmentId;
+    }
+
     @PluginEvent(invokedOn = EventType.CREATE)
     public void onPluginCreate() {
-        log.info("Epistola plugin configuration created with tenantId: {}", tenantId);
+        log.info("Epistola plugin configuration created: baseUrl={}, tenantId={}", baseUrl, tenantId);
     }
 
     @PluginEvent(invokedOn = EventType.DELETE)
@@ -61,7 +107,7 @@ public class EpistolaPlugin {
 
     @PluginEvent(invokedOn = EventType.UPDATE)
     public void onPluginUpdate() {
-        log.info("Epistola plugin configuration updated with tenantId: {}", tenantId);
+        log.info("Epistola plugin configuration updated: baseUrl={}, tenantId={}", baseUrl, tenantId);
     }
 
     /**
@@ -74,28 +120,34 @@ public class EpistolaPlugin {
      *
      * @param execution             The process execution context
      * @param templateId            The ID of the template to use for document generation
+     * @param variantId             The ID of the template variant to use
+     * @param environmentId         The environment ID (optional, uses plugin default if not specified)
      * @param dataMapping           Key-value mapping of template fields to data sources.
      *                              Values can use prefixes: doc: (case data), pv: (process variable)
      * @param outputFormat          The desired output format (PDF or HTML)
      * @param filename              The filename for the generated document (can use value resolvers)
+     * @param correlationId         Optional correlation ID for tracking across systems
      * @param resultProcessVariable The name of the process variable to store the request ID in
      */
     @PluginAction(
             key = "generate-document",
             title = "Generate Document",
             description = "Submit a document generation request to Epistola. The request ID will be stored in the specified process variable.",
-            activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START,ActivityTypeWithEventName.TASK_START}
+            activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
     )
     public void generateDocument(
             DelegateExecution execution,
             @PluginActionProperty String templateId,
+            @PluginActionProperty String variantId,
+            @PluginActionProperty String environmentId,
             @PluginActionProperty Map<String, String> dataMapping,
             @PluginActionProperty FileFormat outputFormat,
             @PluginActionProperty String filename,
+            @PluginActionProperty String correlationId,
             @PluginActionProperty String resultProcessVariable
     ) {
-        log.info("Starting document generation: templateId={}, outputFormat={}, filename={}",
-                templateId, outputFormat, filename);
+        log.info("Starting document generation: templateId={}, variantId={}, outputFormat={}, filename={}",
+                templateId, variantId, outputFormat, filename);
 
         // Resolve the data mapping values (doc:, pv:, etc.)
         Map<String, Object> resolvedData = resolveDataMapping(execution, dataMapping);
@@ -103,13 +155,23 @@ public class EpistolaPlugin {
         // Resolve the filename if it uses value resolvers
         String resolvedFilename = resolveValue(execution, filename);
 
+        // Use action-level environmentId if provided, otherwise fall back to plugin default
+        String effectiveEnvironmentId = (environmentId != null && !environmentId.isBlank())
+                ? environmentId
+                : defaultEnvironmentId;
+
         // Submit the document generation request
         GeneratedDocument result = epistolaService.generateDocument(
+                baseUrl,
+                apiKey,
                 tenantId,
                 templateId,
+                variantId,
+                effectiveEnvironmentId,
                 resolvedData,
                 outputFormat,
-                resolvedFilename
+                resolvedFilename,
+                correlationId
         );
 
         // Store the request ID in the process variable
