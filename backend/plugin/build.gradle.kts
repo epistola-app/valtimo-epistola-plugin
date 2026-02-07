@@ -54,6 +54,9 @@ dependencies {
     testImplementation("org.testcontainers:postgresql")
     testImplementation("org.testcontainers:junit-jupiter")
 
+    // WireMock for HTTP mocking
+    testImplementation("org.wiremock:wiremock-standalone:3.10.0")
+
     // Test Lombok
     testCompileOnly("org.projectlombok:lombok:$lombokVersion")
     testAnnotationProcessor("org.projectlombok:lombok:$lombokVersion")
