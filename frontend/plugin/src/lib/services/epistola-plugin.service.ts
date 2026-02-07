@@ -2,11 +2,11 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {ConfigService} from '@valtimo/shared';
 import {Observable} from 'rxjs';
-import {TemplateDetails, TemplateInfo} from '../models';
+import {EnvironmentInfo, TemplateDetails, TemplateInfo, VariantInfo} from '../models';
 
 /**
  * Service for interacting with Epistola plugin API endpoints.
- * Provides methods to fetch templates and template details.
+ * Provides methods to fetch templates, environments, and variants.
  */
 @Injectable()
 export class EpistolaPluginService {
@@ -41,6 +41,31 @@ export class EpistolaPluginService {
   getTemplateDetails(pluginConfigurationId: string, templateId: string): Observable<TemplateDetails> {
     return this.http.get<TemplateDetails>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}`
+    );
+  }
+
+  /**
+   * Get all available environments for a plugin configuration.
+   *
+   * @param pluginConfigurationId The plugin configuration ID
+   * @returns Observable of environment list
+   */
+  getEnvironments(pluginConfigurationId: string): Observable<EnvironmentInfo[]> {
+    return this.http.get<EnvironmentInfo[]>(
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/environments`
+    );
+  }
+
+  /**
+   * Get all variants for a specific template.
+   *
+   * @param pluginConfigurationId The plugin configuration ID
+   * @param templateId The template ID
+   * @returns Observable of variant list
+   */
+  getVariants(pluginConfigurationId: string, templateId: string): Observable<VariantInfo[]> {
+    return this.http.get<VariantInfo[]>(
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}/variants`
     );
   }
 }

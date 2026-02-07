@@ -5,7 +5,12 @@
       prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null,
       templateOptions: templateOptions$ | async,
       templatesLoading: templatesLoading$ | async,
-      templateFieldsLoading: templateFieldsLoading$ | async
+      variantOptions: variantOptions$ | async,
+      variantsLoading: variantsLoading$ | async,
+      environmentOptions: environmentOptions$ | async,
+      environmentsLoading: environmentsLoading$ | async,
+      templateFieldsLoading: templateFieldsLoading$ | async,
+      selectedTemplateId: selectedTemplateId$ | async
     } as obs"
 >
   <v-select
@@ -18,6 +23,32 @@
     [disabled]="obs.disabled || obs.templatesLoading"
     [required]="true"
     [loading]="obs.templatesLoading"
+  >
+  </v-select>
+
+  <v-select
+    name="variantId"
+    [title]="'variantId' | pluginTranslate: pluginId | async"
+    [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [items]="obs.variantOptions"
+    [defaultSelectionId]="obs.prefill?.variantId"
+    [disabled]="obs.disabled || obs.variantsLoading || !obs.selectedTemplateId"
+    [required]="true"
+    [loading]="obs.variantsLoading"
+  >
+  </v-select>
+
+  <v-select
+    name="environmentId"
+    [title]="'environmentId' | pluginTranslate: pluginId | async"
+    [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [items]="obs.environmentOptions"
+    [defaultSelectionId]="obs.prefill?.environmentId"
+    [disabled]="obs.disabled || obs.environmentsLoading"
+    [required]="false"
+    [loading]="obs.environmentsLoading"
   >
   </v-select>
 
@@ -41,6 +72,17 @@
     [defaultValue]="obs.prefill?.filename"
     [disabled]="obs.disabled"
     [required]="true"
+  >
+  </v-input>
+
+  <v-input
+    name="correlationId"
+    [title]="'correlationId' | pluginTranslate: pluginId | async"
+    [tooltip]="'correlationIdTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="obs.prefill?.correlationId"
+    [disabled]="obs.disabled"
+    [required]="false"
   >
   </v-input>
 

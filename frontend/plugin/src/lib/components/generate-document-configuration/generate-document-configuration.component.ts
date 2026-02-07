@@ -2,8 +2,8 @@ import {Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angula
 import {CommonModule} from '@angular/common';
 import {FunctionConfigurationComponent, PluginConfigurationData, PluginTranslatePipeModule} from '@valtimo/plugin';
 import {FormModule, FormOutput, InputModule, SelectItem, SelectModule} from '@valtimo/components';
-import {BehaviorSubject, combineLatest, Observable, Subject, Subscription} from 'rxjs';
-import {filter, map, take, takeUntil} from 'rxjs/operators';
+import {BehaviorSubject, combineLatest, Observable, of, Subject, Subscription} from 'rxjs';
+import {catchError, filter, map, take, takeUntil} from 'rxjs/operators';
 import {GenerateDocumentConfig, TemplateField} from '../../models';
 import {EpistolaPluginService} from '../../services';
 import {DataMappingBuilderComponent} from '../data-mapping-builder/data-mapping-builder.component';
@@ -41,6 +41,14 @@ export class GenerateDocumentConfigurationComponent
   templateOptions$ = new BehaviorSubject<SelectItem[]>([]);
   templatesLoading$ = new BehaviorSubject<boolean>(false);
 
+  // Variant options loaded based on selected template
+  variantOptions$ = new BehaviorSubject<SelectItem[]>([]);
+  variantsLoading$ = new BehaviorSubject<boolean>(false);
+
+  // Environment options loaded from API
+  environmentOptions$ = new BehaviorSubject<SelectItem[]>([]);
+  environmentsLoading$ = new BehaviorSubject<boolean>(false);
+
   // Template fields for data mapping
   templateFields$ = new BehaviorSubject<TemplateField[]>([]);
   templateFieldsLoading$ = new BehaviorSubject<boolean>(false);
@@ -58,6 +66,7 @@ export class GenerateDocumentConfigurationComponent
 
   // Show data mapping builder only when template is selected
   readonly selectedTemplateId$ = new BehaviorSubject<string>('');
+  readonly selectedVariantId$ = new BehaviorSubject<string>('');
 
   private readonly destroy$ = new Subject<void>();
   private saveSubscription!: Subscription;
@@ -71,6 +80,8 @@ export class GenerateDocumentConfigurationComponent
     this.initPrefillDataMapping();
     this.initPluginConfiguration();
     this.initTemplatesLoading();
+    this.initEnvironmentsLoading();
+    this.initVariantsLoading();
     this.initTemplateFieldsLoading();
     this.openSaveSubscription();
   }
@@ -85,9 +96,15 @@ export class GenerateDocumentConfigurationComponent
     const formValue = formOutput as unknown as Partial<GenerateDocumentConfig>;
     this.formValue$.next(formValue);
 
-    // Update selected template if changed
+    // Update selected template if changed (also clears variant selection)
     if (formValue.templateId && formValue.templateId !== this.selectedTemplateId$.getValue()) {
       this.selectedTemplateId$.next(formValue.templateId);
+      this.selectedVariantId$.next('');
+    }
+
+    // Update selected variant if changed
+    if (formValue.variantId && formValue.variantId !== this.selectedVariantId$.getValue()) {
+      this.selectedVariantId$.next(formValue.variantId);
     }
 
     this.handleValid(formValue);
@@ -108,12 +125,15 @@ export class GenerateDocumentConfigurationComponent
         map(config => config?.dataMapping || {})
       );
 
-      // Also set initial selected template
+      // Also set initial selected template and variant
       this.prefillConfiguration$.pipe(
         takeUntil(this.destroy$),
         filter(config => !!config?.templateId)
       ).subscribe(config => {
         this.selectedTemplateId$.next(config.templateId);
+        if (config.variantId) {
+          this.selectedVariantId$.next(config.variantId);
+        }
         if (config.dataMapping) {
           this.dataMapping$.next(config.dataMapping);
         }
@@ -141,20 +161,58 @@ export class GenerateDocumentConfigurationComponent
     ).subscribe(configurationId => {
       this.templatesLoading$.next(true);
       this.epistolaPluginService.getTemplates(configurationId).pipe(
-        takeUntil(this.destroy$)
-      ).subscribe({
-        next: templates => {
-          const options: SelectItem[] = templates.map(t => ({
-            id: t.id,
-            text: t.name
-          }));
-          this.templateOptions$.next(options);
-          this.templatesLoading$.next(false);
-        },
-        error: () => {
-          this.templatesLoading$.next(false);
-          this.templateOptions$.next([]);
-        }
+        takeUntil(this.destroy$),
+        catchError(() => of([]))
+      ).subscribe(templates => {
+        const options: SelectItem[] = templates.map(t => ({
+          id: t.id,
+          text: t.name
+        }));
+        this.templateOptions$.next(options);
+        this.templatesLoading$.next(false);
+      });
+    });
+  }
+
+  private initEnvironmentsLoading(): void {
+    this.pluginConfigurationId$.pipe(
+      takeUntil(this.destroy$),
+      filter(id => !!id)
+    ).subscribe(configurationId => {
+      this.environmentsLoading$.next(true);
+      this.epistolaPluginService.getEnvironments(configurationId).pipe(
+        takeUntil(this.destroy$),
+        catchError(() => of([]))
+      ).subscribe(environments => {
+        const options: SelectItem[] = environments.map(e => ({
+          id: e.id,
+          text: e.name
+        }));
+        this.environmentOptions$.next(options);
+        this.environmentsLoading$.next(false);
+      });
+    });
+  }
+
+  private initVariantsLoading(): void {
+    combineLatest([
+      this.pluginConfigurationId$,
+      this.selectedTemplateId$
+    ]).pipe(
+      takeUntil(this.destroy$),
+      filter(([configId, templateId]) => !!configId && !!templateId)
+    ).subscribe(([configurationId, templateId]) => {
+      this.variantsLoading$.next(true);
+      this.epistolaPluginService.getVariants(configurationId, templateId).pipe(
+        takeUntil(this.destroy$),
+        catchError(() => of([]))
+      ).subscribe(variants => {
+        const options: SelectItem[] = variants.map(v => ({
+          id: v.id,
+          text: v.name + (v.tags.length > 0 ? ` (${v.tags.join(', ')})` : '')
+        }));
+        this.variantOptions$.next(options);
+        this.variantsLoading$.next(false);
       });
     });
   }
@@ -169,16 +227,11 @@ export class GenerateDocumentConfigurationComponent
     ).subscribe(([configurationId, templateId]) => {
       this.templateFieldsLoading$.next(true);
       this.epistolaPluginService.getTemplateDetails(configurationId, templateId).pipe(
-        takeUntil(this.destroy$)
-      ).subscribe({
-        next: details => {
-          this.templateFields$.next(details.fields);
-          this.templateFieldsLoading$.next(false);
-        },
-        error: () => {
-          this.templateFieldsLoading$.next(false);
-          this.templateFields$.next([]);
-        }
+        takeUntil(this.destroy$),
+        catchError(() => of({fields: []} as any))
+      ).subscribe(details => {
+        this.templateFields$.next(details.fields || []);
+        this.templateFieldsLoading$.next(false);
       });
     });
   }
@@ -186,6 +239,7 @@ export class GenerateDocumentConfigurationComponent
   private handleValid(formValue: Partial<GenerateDocumentConfig>): void {
     const valid = !!(
       formValue?.templateId &&
+      formValue?.variantId &&
       formValue?.outputFormat &&
       formValue?.filename &&
       formValue?.resultProcessVariable
@@ -202,9 +256,12 @@ export class GenerateDocumentConfigurationComponent
           if (valid && formValue) {
             const config: GenerateDocumentConfig = {
               templateId: formValue.templateId!,
+              variantId: formValue.variantId!,
+              environmentId: formValue.environmentId || undefined,
               dataMapping: dataMapping,
               outputFormat: formValue.outputFormat as 'PDF' | 'HTML',
               filename: formValue.filename!,
+              correlationId: formValue.correlationId || undefined,
               resultProcessVariable: formValue.resultProcessVariable!
             };
             this.configuration.emit(config);

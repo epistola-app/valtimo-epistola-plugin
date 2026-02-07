@@ -33,3 +33,21 @@ export interface DataMappingEntry {
   templateField: string;
   dataSource: string;
 }
+
+/**
+ * Information about an Epistola environment.
+ */
+export interface EnvironmentInfo {
+  id: string;
+  name: string;
+}
+
+/**
+ * Information about an Epistola template variant.
+ */
+export interface VariantInfo {
+  id: string;
+  templateId: string;
+  name: string;
+  tags: string[];
+}

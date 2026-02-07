@@ -57,6 +57,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Integration Tests**: WireMock-based tests for `EpistolaServiceImpl` covering all API operations
 
+- **Frontend Components**:
+  - Updated generate-document configuration with variant, environment, and correlation ID fields
+  - Variant dropdown loads dynamically based on selected template
+  - Environment dropdown for optional environment override
+  - Added translations for all new fields (English and Dutch)
+
 ### Dependencies
 
 - Added `app.epistola.contract:client-spring3-restclient:1.0.0` for Epistola API calls
