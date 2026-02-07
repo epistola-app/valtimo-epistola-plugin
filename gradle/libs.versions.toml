@@ -1,0 +1,5 @@
+[versions]
+epistola-client = "1.0-SNAPSHOT"
+
+[libraries]
+epistola-client = { module = "app.epistola.contract:client-spring3-restclient", version.ref = "epistola-client" }

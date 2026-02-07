@@ -3,7 +3,7 @@ import {CommonModule} from '@angular/common';
 import {FunctionConfigurationComponent, PluginConfigurationData, PluginTranslatePipeModule} from '@valtimo/plugin';
 import {FormModule, FormOutput, InputModule, SelectItem, SelectModule} from '@valtimo/components';
 import {BehaviorSubject, combineLatest, Observable, Subject, Subscription} from 'rxjs';
-import {filter, map, switchMap, take, takeUntil} from 'rxjs/operators';
+import {filter, map, take, takeUntil} from 'rxjs/operators';
 import {GenerateDocumentConfig, TemplateField} from '../../models';
 import {EpistolaPluginService} from '../../services';
 import {DataMappingBuilderComponent} from '../data-mapping-builder/data-mapping-builder.component';

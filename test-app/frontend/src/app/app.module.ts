@@ -19,13 +19,13 @@ import {
   WidgetModule
 } from '@valtimo/components';
 import {
-  DefaultTabs,
   CaseDetailTabAuditComponent,
   CaseDetailTabDocumentsComponent,
   CaseDetailTabNotesComponent,
   CaseDetailTabProgressComponent,
   CaseDetailTabSummaryComponent,
   CaseModule,
+  DefaultTabs,
 } from '@valtimo/case';
 import {ProcessModule} from '@valtimo/process';
 import {FormsModule, ReactiveFormsModule} from '@angular/forms';

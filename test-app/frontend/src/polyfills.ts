@@ -17,15 +17,12 @@ import '@angular/localize/init';
  *
  * Learn more in https://angular.io/guide/browser-support
  */
-
 /***************************************************************************************************
  * BROWSER POLYFILLS
  */
-
 /** IE9, IE10, IE11, and Chrome <55 requires all of the following polyfills.
  *  This also includes Android Emulators with older versions of Chrome and Google Search/Googlebot
  */
-
 import 'core-js/es/symbol';
 import 'core-js/es/object';
 import 'core-js/es/function';
@@ -43,7 +40,6 @@ import 'core-js/es/set';
 
 /** IE10 and IE11 requires the following for the Reflect API. */
 // import 'core-js/es/reflect';
-
 /**
  * By default, zone.js will patch all possible macroTask and DomEvents
  * user can disable parts of macroTask/DomEvents patch by setting following flags
@@ -68,6 +64,8 @@ import 'core-js/es/set';
  *
  */
 import 'zone.js';
+import '@webcomponents/custom-elements/custom-elements.min';
+
 /***************************************************************************************************
  * APPLICATION IMPORTS
  */
@@ -79,4 +77,3 @@ window.Buffer = window.Buffer || require('buffer').Buffer;
 // https://stackoverflow.com/q/58454435/479156
 (window as any).process = {browser: true};
 
-import '@webcomponents/custom-elements/custom-elements.min';

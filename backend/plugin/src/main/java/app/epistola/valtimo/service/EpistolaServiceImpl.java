@@ -1,10 +1,6 @@
 package app.epistola.valtimo.service;
 
-import app.epistola.valtimo.domain.FileFormat;
-import app.epistola.valtimo.domain.GeneratedDocument;
-import app.epistola.valtimo.domain.TemplateDetails;
-import app.epistola.valtimo.domain.TemplateField;
-import app.epistola.valtimo.domain.TemplateInfo;
+import app.epistola.valtimo.domain.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 

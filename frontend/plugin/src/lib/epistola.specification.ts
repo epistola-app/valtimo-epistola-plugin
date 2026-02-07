@@ -1,6 +1,8 @@
 import {PluginSpecification} from '@valtimo/plugin';
 import {EpistolaConfigurationComponent} from './components/epistola-configuration/epistola-configuration.component';
-import {GenerateDocumentConfigurationComponent} from './components/generate-document-configuration/generate-document-configuration.component';
+import {
+  GenerateDocumentConfigurationComponent
+} from './components/generate-document-configuration/generate-document-configuration.component';
 import {EPISTOLA_PLUGIN_LOGO_BASE64} from './assets';
 
 const epistolaPluginSpecification: PluginSpecification = {

@@ -18,6 +18,9 @@ dependencyManagement {
 }
 
 dependencies {
+    // Epistola client
+    api(libs.epistola.client)
+
     // Valtimo dependencies (compileOnly - provided by implementing application)
     compileOnly("com.ritense.valtimo:core")
     compileOnly("com.ritense.valtimo:contract")
