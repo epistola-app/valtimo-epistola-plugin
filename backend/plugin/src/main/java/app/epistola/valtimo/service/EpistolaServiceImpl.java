@@ -10,21 +10,20 @@ import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
-import io.epistola.client.api.EnvironmentsApi;
-import io.epistola.client.api.GenerationApi;
-import io.epistola.client.api.TemplatesApi;
-import io.epistola.client.api.VariantsApi;
-import io.epistola.client.model.CreateTemplate201Response;
-import io.epistola.client.model.GenerateDocument202Response;
-import io.epistola.client.model.GenerateDocumentRequest;
-import io.epistola.client.model.GetGenerationJobStatus200Response;
-import io.epistola.client.model.GetGenerationJobStatus200ResponseItemsInner;
-import io.epistola.client.model.ListEnvironments200Response;
-import io.epistola.client.model.ListEnvironments200ResponseItemsInner;
-import io.epistola.client.model.ListTemplates200Response;
-import io.epistola.client.model.ListTemplates200ResponseItemsInner;
-import io.epistola.client.model.ListVariants200Response;
-import io.epistola.client.model.ListVariants200ResponseItemsInner;
+import app.epistola.client.api.EnvironmentsApi;
+import app.epistola.client.api.GenerationApi;
+import app.epistola.client.api.TemplatesApi;
+import app.epistola.client.api.VariantsApi;
+import app.epistola.client.model.DocumentGenerationItemDto;
+import app.epistola.client.model.EnvironmentDto;
+import app.epistola.client.model.EnvironmentListResponse;
+import app.epistola.client.model.GenerateDocumentRequest;
+import app.epistola.client.model.GenerationJobResponse;
+import app.epistola.client.model.TemplateDto;
+import app.epistola.client.model.TemplateListResponse;
+import app.epistola.client.model.TemplateSummaryDto;
+import app.epistola.client.model.VariantDto;
+import app.epistola.client.model.VariantListResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -53,7 +52,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         log.info("Fetching templates for tenant: {}", tenantId);
         try {
             TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
-            ListTemplates200Response response = templatesApi.listTemplates(tenantId, null);
+            TemplateListResponse response = templatesApi.listTemplates(tenantId, null);
 
             if (response == null || response.getItems() == null) {
                 return Collections.emptyList();
@@ -73,7 +72,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         log.info("Fetching template details for tenant: {}, template: {}", tenantId, templateId);
         try {
             TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
-            CreateTemplate201Response response = templatesApi.getTemplate(tenantId, templateId);
+            TemplateDto response = templatesApi.getTemplate(tenantId, templateId);
 
             if (response == null) {
                 throw new EpistolaApiException("Template not found: " + templateId);
@@ -93,7 +92,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         log.info("Fetching environments for tenant: {}", tenantId);
         try {
             EnvironmentsApi environmentsApi = apiClientFactory.createEnvironmentsApi(baseUrl, apiKey);
-            ListEnvironments200Response response = environmentsApi.listEnvironments(tenantId);
+            EnvironmentListResponse response = environmentsApi.listEnvironments(tenantId);
 
             if (response == null || response.getItems() == null) {
                 return Collections.emptyList();
@@ -113,7 +112,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         log.info("Fetching variants for tenant: {}, template: {}", tenantId, templateId);
         try {
             VariantsApi variantsApi = apiClientFactory.createVariantsApi(baseUrl, apiKey);
-            ListVariants200Response response = variantsApi.listVariants(tenantId, templateId);
+            VariantListResponse response = variantsApi.listVariants(tenantId, templateId);
 
             if (response == null || response.getItems() == null) {
                 return Collections.emptyList();
@@ -159,7 +158,7 @@ public class EpistolaServiceImpl implements EpistolaService {
                     correlationId
             );
 
-            GenerateDocument202Response response = generationApi.generateDocument(tenantId, request);
+            GenerationJobResponse response = generationApi.generateDocument(tenantId, request);
 
             UUID requestId = response.getRequestId();
 
@@ -180,7 +179,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         try {
             GenerationApi generationApi = apiClientFactory.createGenerationApi(baseUrl, apiKey);
             UUID requestUuid = UUID.fromString(requestId);
-            GetGenerationJobStatus200Response response = generationApi.getGenerationJobStatus(tenantId, requestUuid);
+            app.epistola.client.model.GenerationJobDetail response = generationApi.getGenerationJobStatus(tenantId, requestUuid);
 
             if (response == null) {
                 throw new EpistolaApiException("Job not found: " + requestId);
@@ -223,15 +222,15 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     // Mapping methods
 
-    private TemplateInfo mapToTemplateInfo(ListTemplates200ResponseItemsInner dto) {
+    private TemplateInfo mapToTemplateInfo(TemplateSummaryDto dto) {
         return new TemplateInfo(
                 dto.getId(),
                 dto.getName(),
-                null  // description is not available in ListTemplates200ResponseItemsInner
+                null  // description is not available in TemplateSummaryDto
         );
     }
 
-    private TemplateDetails mapToTemplateDetails(CreateTemplate201Response dto) {
+    private TemplateDetails mapToTemplateDetails(TemplateDto dto) {
         List<TemplateField> fields = extractFieldsFromSchema(dto.getSchema());
 
         return new TemplateDetails(
@@ -289,14 +288,14 @@ public class EpistolaServiceImpl implements EpistolaService {
         return Collections.emptyList();
     }
 
-    private EnvironmentInfo mapToEnvironmentInfo(ListEnvironments200ResponseItemsInner dto) {
+    private EnvironmentInfo mapToEnvironmentInfo(EnvironmentDto dto) {
         return new EnvironmentInfo(
                 dto.getId(),
                 dto.getName()
         );
     }
 
-    private VariantInfo mapToVariantInfo(ListVariants200ResponseItemsInner dto) {
+    private VariantInfo mapToVariantInfo(VariantDto dto) {
         // Convert Map<String, String> tags to List<String> for our domain model
         List<String> tagList = new ArrayList<>();
         if (dto.getTags() != null) {
@@ -310,7 +309,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         );
     }
 
-    private GenerationJobDetail mapToGenerationJobDetail(GetGenerationJobStatus200Response response, String requestId) {
+    private GenerationJobDetail mapToGenerationJobDetail(app.epistola.client.model.GenerationJobDetail response, String requestId) {
         // Get the first item from the response (for single document generation)
         GenerationJobStatus status = GenerationJobStatus.PENDING;
         String documentId = null;
@@ -338,7 +337,7 @@ public class EpistolaServiceImpl implements EpistolaService {
                 .build();
     }
 
-    private GenerationJobStatus mapToJobStatus(GetGenerationJobStatus200ResponseItemsInner.Status status) {
+    private GenerationJobStatus mapToJobStatus(DocumentGenerationItemDto.Status status) {
         if (status == null) {
             return GenerationJobStatus.PENDING;
         }

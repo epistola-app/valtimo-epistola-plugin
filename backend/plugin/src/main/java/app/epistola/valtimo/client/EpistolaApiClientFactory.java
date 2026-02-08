@@ -1,9 +1,9 @@
 package app.epistola.valtimo.client;
 
-import io.epistola.client.api.EnvironmentsApi;
-import io.epistola.client.api.GenerationApi;
-import io.epistola.client.api.TemplatesApi;
-import io.epistola.client.api.VariantsApi;
+import app.epistola.client.api.EnvironmentsApi;
+import app.epistola.client.api.GenerationApi;
+import app.epistola.client.api.TemplatesApi;
+import app.epistola.client.api.VariantsApi;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestClient;
