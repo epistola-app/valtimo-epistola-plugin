@@ -1,7 +1,7 @@
 <v-form
     (valueChange)="formValueChange($event)"
     *ngIf="{
-      disabled: disabled$ | async,
+      disabled: safeDisabled$ | async,
       prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null
     } as obs"
 >

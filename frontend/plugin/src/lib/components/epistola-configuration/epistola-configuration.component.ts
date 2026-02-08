@@ -3,6 +3,7 @@ import {CommonModule} from '@angular/common';
 import {PluginConfigurationComponent, PluginTranslatePipeModule} from '@valtimo/plugin';
 import {FormModule, FormOutput, InputModule} from '@valtimo/components';
 import {BehaviorSubject, combineLatest, Observable, Subscription, take} from 'rxjs';
+import {delay, startWith} from 'rxjs/operators';
 import {EpistolaPluginConfig} from '../../models';
 
 @Component({
@@ -27,7 +28,16 @@ export class EpistolaConfigurationComponent
   private readonly formValue$ = new BehaviorSubject<EpistolaPluginConfig | null>(null);
   private readonly valid$ = new BehaviorSubject<boolean>(false);
 
+  safeDisabled$!: Observable<boolean>;
+
   ngOnInit(): void {
+    // Wrap disabled$ with startWith and delay to prevent NG0100 ExpressionChangedAfterItHasBeenCheckedError
+    // The disabled$ observable from Valtimo's plugin framework can emit value changes after Angular's
+    // change detection cycle completes, causing the error.
+    this.safeDisabled$ = this.disabled$.pipe(
+      startWith(true),
+      delay(0)
+    );
     this.openSaveSubscription();
   }
 
