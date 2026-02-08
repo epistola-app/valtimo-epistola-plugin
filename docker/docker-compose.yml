@@ -1,4 +1,10 @@
 services:
+  epistola-mock:
+    image: ghcr.io/epistola-app/epistola-contract/mock-server:latest
+    container_name: epistola-mock
+    ports:
+      - "4010:4010"
+
   postgres:
     image: postgres:16-alpine
     container_name: epistola-postgres
