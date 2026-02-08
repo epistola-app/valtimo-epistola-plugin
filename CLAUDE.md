@@ -46,7 +46,11 @@ docker/            # Docker compose for local dependencies
 
 ## Important Notes
 
-- **Frontend changes**: Rebuild plugin AND restart test-app frontend
+- **Frontend changes**: After rebuilding the plugin, you MUST run `pnpm install` in `test-app/frontend` to pick up the changes, then restart the frontend:
+  ```bash
+  cd frontend/plugin && pnpm build
+  cd ../../test-app/frontend && pnpm install && pnpm start
+  ```
 - **Package name**: Epistola client uses `app.epistola.client` (not `io.epistola`)
 - **Plugin properties**: Backend `@PluginProperty` keys must match frontend field names exactly
 - **Translations**: Add both `nl` and `en` translations in `epistola.specification.ts`
