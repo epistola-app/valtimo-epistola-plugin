@@ -42,7 +42,12 @@ export class EpistolaConfigurationComponent
   }
 
   private handleValid(formValue: EpistolaPluginConfig): void {
-    const valid = !!(formValue?.configurationTitle && formValue?.tenantId);
+    const valid = !!(
+      formValue?.configurationTitle &&
+      formValue?.baseUrl &&
+      formValue?.apiKey &&
+      formValue?.tenantId
+    );
     this.valid$.next(valid);
     this.valid.emit(valid);
   }

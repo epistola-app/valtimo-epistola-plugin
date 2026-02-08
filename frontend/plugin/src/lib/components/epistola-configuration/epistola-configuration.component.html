@@ -14,6 +14,30 @@
     [required]="true"
   >
   </v-input>
+
+  <v-input
+    name="baseUrl"
+    [title]="'baseUrl' | pluginTranslate: pluginId | async"
+    [tooltip]="'baseUrlTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="obs.prefill?.baseUrl"
+    [disabled]="obs.disabled"
+    [required]="true"
+  >
+  </v-input>
+
+  <v-input
+    name="apiKey"
+    [title]="'apiKey' | pluginTranslate: pluginId | async"
+    [tooltip]="'apiKeyTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="obs.prefill?.apiKey"
+    [disabled]="obs.disabled"
+    [required]="true"
+    type="password"
+  >
+  </v-input>
+
   <v-input
     name="tenantId"
     [title]="'tenantId' | pluginTranslate: pluginId | async"
@@ -22,6 +46,17 @@
     [defaultValue]="obs.prefill?.tenantId"
     [disabled]="obs.disabled"
     [required]="true"
+  >
+  </v-input>
+
+  <v-input
+    name="defaultEnvironmentId"
+    [title]="'defaultEnvironmentId' | pluginTranslate: pluginId | async"
+    [tooltip]="'defaultEnvironmentIdTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="obs.prefill?.defaultEnvironmentId"
+    [disabled]="obs.disabled"
+    [required]="false"
   >
   </v-input>
 </v-form>
