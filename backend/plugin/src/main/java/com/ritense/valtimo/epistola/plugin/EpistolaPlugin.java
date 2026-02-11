@@ -4,6 +4,7 @@ import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GeneratedDocument;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
+import app.epistola.valtimo.service.DataMappingResolver;
 import app.epistola.valtimo.service.EpistolaService;
 import com.ritense.plugin.annotation.*;
 import com.ritense.plugin.domain.EventType;
@@ -335,6 +336,14 @@ public class EpistolaPlugin {
         for (Object value : mapping.values()) {
             if (value instanceof String str && isResolvableValue(str)) {
                 valuesToResolve.add(str);
+            } else if (DataMappingResolver.isArrayFieldMapping(value)) {
+                // Per-item array mapping: only the _source expression is resolvable,
+                // other entries are plain field name strings (not value resolver expressions)
+                Map<String, Object> arrayMapping = (Map<String, Object>) value;
+                Object source = arrayMapping.get(DataMappingResolver.ARRAY_SOURCE_KEY);
+                if (source instanceof String str && isResolvableValue(str)) {
+                    valuesToResolve.add(str);
+                }
             } else if (value instanceof Map<?, ?> nested) {
                 collectResolvableValues((Map<String, Object>) nested, valuesToResolve);
             }
@@ -346,7 +355,9 @@ public class EpistolaPlugin {
         Map<String, Object> result = new LinkedHashMap<>();
         for (var entry : mapping.entrySet()) {
             Object value = entry.getValue();
-            if (value instanceof Map<?, ?> nested) {
+            if (DataMappingResolver.isArrayFieldMapping(value)) {
+                result.put(entry.getKey(), resolveArrayFieldMapping((Map<String, Object>) value, resolvedValues));
+            } else if (value instanceof Map<?, ?> nested) {
                 result.put(entry.getKey(), applyResolvedValues((Map<String, Object>) nested, resolvedValues));
             } else if (value instanceof String str && isResolvableValue(str)) {
                 result.put(entry.getKey(), resolvedValues.get(str));
@@ -355,6 +366,35 @@ public class EpistolaPlugin {
             }
         }
         return result;
+    }
+
+    /**
+     * Resolve a per-item array field mapping.
+     * The _source expression is resolved to get the source list, then field name mappings
+     * are applied to each item via {@link DataMappingResolver#mapArrayItems}.
+     */
+    @SuppressWarnings("unchecked")
+    private Object resolveArrayFieldMapping(Map<String, Object> arrayMapping, Map<String, Object> resolvedValues) {
+        String sourceExpression = (String) arrayMapping.get(DataMappingResolver.ARRAY_SOURCE_KEY);
+        Object resolvedSource = (sourceExpression != null && isResolvableValue(sourceExpression))
+                ? resolvedValues.get(sourceExpression)
+                : sourceExpression;
+
+        // Extract field name mappings (all entries except _source)
+        Map<String, String> fieldMappings = new LinkedHashMap<>();
+        for (var entry : arrayMapping.entrySet()) {
+            if (!DataMappingResolver.ARRAY_SOURCE_KEY.equals(entry.getKey()) && entry.getValue() instanceof String str) {
+                fieldMappings.put(entry.getKey(), str);
+            }
+        }
+
+        if (resolvedSource instanceof List<?> sourceList) {
+            return DataMappingResolver.mapArrayItems(sourceList, fieldMappings);
+        }
+
+        // Source didn't resolve to a list — return as-is (may be null or unexpected type)
+        log.warn("Array field mapping _source did not resolve to a list: {}", resolvedSource);
+        return resolvedSource;
     }
 
     /**

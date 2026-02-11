@@ -53,9 +53,31 @@ public final class TemplateMappingValidator {
                     collectMissingRequired(field.children(), nestedMap, missing);
                 }
                 case ARRAY -> {
-                    // Arrays are mapped as a whole collection by name
-                    if (field.required() && !hasNonEmptyStringValue(field.name(), mapping)) {
-                        missing.add(field.path());
+                    Object arrayValue = mapping.get(field.name());
+                    if (DataMappingResolver.isArrayFieldMapping(arrayValue)) {
+                        // Per-item field mapping: validate _source and required children
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> arrayMapping = (Map<String, Object>) arrayValue;
+                        String source = (String) arrayMapping.get(DataMappingResolver.ARRAY_SOURCE_KEY);
+                        if (field.required() && (source == null || source.isBlank())) {
+                            missing.add(field.path());
+                        }
+                        // Check required children have non-empty mappings
+                        if (field.children() != null) {
+                            for (TemplateField child : field.children()) {
+                                if (child.required()) {
+                                    Object childMapping = arrayMapping.get(child.name());
+                                    if (!(childMapping instanceof String str) || str.isBlank()) {
+                                        missing.add(child.path());
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // Direct collection mapping (string value)
+                        if (field.required() && !hasNonEmptyStringValue(field.name(), mapping)) {
+                            missing.add(field.path());
+                        }
                     }
                 }
             }

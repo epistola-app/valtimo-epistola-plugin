@@ -223,6 +223,110 @@ class TemplateMappingValidatorTest {
         assertTrue(missing.isEmpty());
     }
 
+    // --- Per-item array field mapping (_source format) tests ---
+
+    @Test
+    void requiredArray_withSourceMapping_valid() {
+        List<TemplateField> fields = List.of(
+                new TemplateField("lineItems", "lineItems", "array", FieldType.ARRAY, true, null, List.of(
+                        scalar("product", "lineItems[].product", true),
+                        scalar("price", "lineItems[].price", true)
+                ))
+        );
+        Map<String, Object> mapping = Map.of(
+                "lineItems", Map.of(
+                        "_source", "doc:order.items",
+                        "product", "productName",
+                        "price", "unitPrice"
+                )
+        );
+
+        List<String> missing = TemplateMappingValidator.findMissingRequiredFields(fields, mapping);
+
+        assertTrue(missing.isEmpty());
+    }
+
+    @Test
+    void requiredArray_withSourceMapping_missingChild() {
+        List<TemplateField> fields = List.of(
+                new TemplateField("lineItems", "lineItems", "array", FieldType.ARRAY, true, null, List.of(
+                        scalar("product", "lineItems[].product", true),
+                        scalar("price", "lineItems[].price", true),
+                        scalar("quantity", "lineItems[].quantity", false)
+                ))
+        );
+        // Missing "price" mapping
+        Map<String, Object> mapping = Map.of(
+                "lineItems", Map.of(
+                        "_source", "doc:order.items",
+                        "product", "productName"
+                )
+        );
+
+        List<String> missing = TemplateMappingValidator.findMissingRequiredFields(fields, mapping);
+
+        assertEquals(1, missing.size());
+        assertEquals("lineItems[].price", missing.get(0));
+    }
+
+    @Test
+    void requiredArray_withSourceMapping_missingSource() {
+        List<TemplateField> fields = List.of(
+                new TemplateField("lineItems", "lineItems", "array", FieldType.ARRAY, true, null, List.of(
+                        scalar("product", "lineItems[].product", true)
+                ))
+        );
+        // _source is blank
+        Map<String, Object> mapping = Map.of(
+                "lineItems", Map.of(
+                        "_source", "   ",
+                        "product", "productName"
+                )
+        );
+
+        List<String> missing = TemplateMappingValidator.findMissingRequiredFields(fields, mapping);
+
+        assertEquals(1, missing.size());
+        assertEquals("lineItems", missing.get(0));
+    }
+
+    @Test
+    void requiredArray_directMapping_stillWorks() {
+        List<TemplateField> fields = List.of(
+                new TemplateField("lineItems", "lineItems", "array", FieldType.ARRAY, true, null, List.of(
+                        scalar("product", "lineItems[].product", true)
+                ))
+        );
+        // Direct string mapping (backwards compatible)
+        Map<String, Object> mapping = Map.of("lineItems", "doc:order.items");
+
+        List<String> missing = TemplateMappingValidator.findMissingRequiredFields(fields, mapping);
+
+        assertTrue(missing.isEmpty());
+    }
+
+    @Test
+    void optionalArray_withSourceMapping_missingChildNotReported() {
+        List<TemplateField> fields = List.of(
+                new TemplateField("notes", "notes", "array", FieldType.ARRAY, false, null, List.of(
+                        scalar("text", "notes[].text", true),
+                        scalar("author", "notes[].author", false)
+                ))
+        );
+        // _source is set but required child "text" is missing
+        Map<String, Object> mapping = Map.of(
+                "notes", Map.of(
+                        "_source", "doc:notes"
+                )
+        );
+
+        List<String> missing = TemplateMappingValidator.findMissingRequiredFields(fields, mapping);
+
+        // text is required within the array children, so it should be reported
+        assertEquals(1, missing.size());
+        assertEquals("notes[].text", missing.get(0));
+    }
+
     private static TemplateField scalar(String name, String path, boolean required) {
         return new TemplateField(name, path, "string", FieldType.SCALAR, required, null, Collections.emptyList());
     }

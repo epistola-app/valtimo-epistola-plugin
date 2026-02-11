@@ -1,6 +1,8 @@
 package app.epistola.valtimo.service;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -18,6 +20,69 @@ import java.util.Map;
 public final class DataMappingResolver {
 
     private DataMappingResolver() {
+    }
+
+    /**
+     * Key used in array field mappings to indicate the source collection expression.
+     * When an array mapping value is a Map containing this key, it represents a per-item
+     * field mapping rather than a direct collection reference.
+     */
+    public static final String ARRAY_SOURCE_KEY = "_source";
+
+    /**
+     * Check if a mapping value represents a per-item array field mapping.
+     * A per-item mapping is a Map that contains the {@link #ARRAY_SOURCE_KEY} entry.
+     *
+     * @param value the mapping value to check
+     * @return true if the value is a per-item array field mapping
+     */
+    public static boolean isArrayFieldMapping(Object value) {
+        return value instanceof Map<?, ?> map && map.containsKey(ARRAY_SOURCE_KEY);
+    }
+
+    /**
+     * Transform each item in a source list by renaming fields according to the mapping.
+     * Each mapping entry maps a template field name (key) to a source field name (value).
+     * Items that are not Maps are skipped.
+     *
+     * @param sourceItems   the source list of items (each item expected to be a Map)
+     * @param fieldMappings template field name → source field name pairs
+     * @return a new list with each item's fields renamed per the mapping
+     */
+    @SuppressWarnings("unchecked")
+    public static List<Map<String, Object>> mapArrayItems(
+            List<?> sourceItems,
+            Map<String, String> fieldMappings
+    ) {
+        if (sourceItems == null) {
+            return List.of();
+        }
+        if (fieldMappings == null || fieldMappings.isEmpty()) {
+            // No field mappings: pass through items as-is (cast Maps, skip non-Maps)
+            List<Map<String, Object>> result = new ArrayList<>(sourceItems.size());
+            for (Object item : sourceItems) {
+                if (item instanceof Map<?, ?> mapItem) {
+                    result.add((Map<String, Object>) mapItem);
+                }
+            }
+            return result;
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>(sourceItems.size());
+        for (Object item : sourceItems) {
+            if (!(item instanceof Map<?, ?>)) {
+                continue;
+            }
+            Map<String, Object> sourceItem = (Map<String, Object>) item;
+            Map<String, Object> mappedItem = new LinkedHashMap<>();
+            for (var mapping : fieldMappings.entrySet()) {
+                String templateFieldName = mapping.getKey();
+                String sourceFieldName = mapping.getValue();
+                mappedItem.put(templateFieldName, sourceItem.get(sourceFieldName));
+            }
+            result.add(mappedItem);
+        }
+        return result;
     }
 
     /**
