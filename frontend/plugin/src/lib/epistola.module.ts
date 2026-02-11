@@ -7,7 +7,8 @@ import {EpistolaConfigurationComponent} from './components/epistola-configuratio
 import {
   GenerateDocumentConfigurationComponent
 } from './components/generate-document-configuration/generate-document-configuration.component';
-import {DataMappingBuilderComponent} from './components/data-mapping-builder/data-mapping-builder.component';
+import {DataMappingTreeComponent} from './components/data-mapping-tree/data-mapping-tree.component';
+import {FieldTreeComponent} from './components/field-tree/field-tree.component';
 import {EpistolaPluginService} from './services';
 
 @NgModule({
@@ -20,12 +21,14 @@ import {EpistolaPluginService} from './services';
     SelectModule,
     EpistolaConfigurationComponent,
     GenerateDocumentConfigurationComponent,
-    DataMappingBuilderComponent
+    DataMappingTreeComponent,
+    FieldTreeComponent
   ],
   exports: [
     EpistolaConfigurationComponent,
     GenerateDocumentConfigurationComponent,
-    DataMappingBuilderComponent
+    DataMappingTreeComponent,
+    FieldTreeComponent
   ],
   providers: [
     EpistolaPluginService

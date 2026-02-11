@@ -71,7 +71,11 @@ const epistolaPluginSpecification: PluginSpecification = {
       requiredFieldsComplete: 'Alle verplichte velden zijn gekoppeld',
       validationSummary: 'verplichte velden gekoppeld',
       fieldRequired: 'Verplicht',
-      fieldOptional: 'Optioneel'
+      fieldOptional: 'Optioneel',
+      mapCollectionTo: 'Koppel collectie aan',
+      browseMode: 'Bladermodus',
+      expressionMode: 'Expressiemodus',
+      noTemplateFields: 'Geen template velden beschikbaar'
     },
     en: {
       title: 'Epistola Document Suite',
@@ -122,7 +126,11 @@ const epistolaPluginSpecification: PluginSpecification = {
       requiredFieldsComplete: 'All required fields are mapped',
       validationSummary: 'required fields mapped',
       fieldRequired: 'Required',
-      fieldOptional: 'Optional'
+      fieldOptional: 'Optional',
+      mapCollectionTo: 'Map collection to',
+      browseMode: 'Browse mode',
+      expressionMode: 'Expression mode',
+      noTemplateFields: 'No template fields available'
     }
   }
 };

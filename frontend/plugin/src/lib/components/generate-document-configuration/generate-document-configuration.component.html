@@ -98,7 +98,7 @@
   </v-input>
 </v-form>
 
-<epistola-data-mapping-builder
+<epistola-data-mapping-tree
   *ngIf="(selectedTemplateId$ | async)"
   [pluginId]="pluginId"
   [templateFields$]="templateFields$"
@@ -108,7 +108,7 @@
   [processVariables]="processVariables"
   (mappingChange)="onDataMappingChange($event)"
   (requiredFieldsStatus)="onRequiredFieldsStatusChange($event)"
-></epistola-data-mapping-builder>
+></epistola-data-mapping-tree>
 
 <div class="validation-summary" *ngIf="(selectedTemplateId$ | async) && requiredFieldsStatus.total > 0">
   <span *ngIf="requiredFieldsStatus.mapped === requiredFieldsStatus.total" class="validation-complete">

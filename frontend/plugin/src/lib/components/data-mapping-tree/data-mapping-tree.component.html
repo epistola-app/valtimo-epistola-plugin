@@ -1,0 +1,23 @@
+<div class="data-mapping-tree">
+  <div class="mapping-header">
+    <h5>{{ 'dataMappingTitle' | pluginTranslate: pluginId | async }}</h5>
+    <p class="helper-text">{{ 'dataMappingDescription' | pluginTranslate: pluginId | async }}</p>
+  </div>
+
+  <div class="field-tree-root" *ngIf="templateFields.length > 0">
+    <epistola-field-tree
+      *ngFor="let field of templateFields"
+      [field]="field"
+      [value]="getFieldValue(field.name)"
+      [pluginId]="pluginId"
+      [caseDefinitionKey]="caseDefinitionKey"
+      [processVariables]="processVariables"
+      [disabled]="disabled"
+      (valueChange)="onFieldValueChange(field.name, $event)"
+    ></epistola-field-tree>
+  </div>
+
+  <div class="no-fields" *ngIf="templateFields.length === 0">
+    <p>{{ 'noTemplateFields' | pluginTranslate: pluginId | async }}</p>
+  </div>
+</div>

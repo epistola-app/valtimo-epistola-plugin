@@ -72,7 +72,7 @@ export class EpistolaPluginService {
   validateMapping(
     pluginConfigurationId: string,
     templateId: string,
-    dataMapping: Record<string, string>
+    dataMapping: Record<string, any>
   ): Observable<ValidationResult> {
     return this.http.post<ValidationResult>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}/validate-mapping`,

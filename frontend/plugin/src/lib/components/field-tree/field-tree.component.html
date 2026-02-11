@@ -1,0 +1,120 @@
+<!-- SCALAR field: label row + input -->
+<div *ngIf="field.fieldType === 'SCALAR'" class="field-row" [class.field-required-unmapped]="field.required && !getStringValue()">
+  <div class="field-label">
+    <span class="field-name">{{ field.name }}</span>
+    <span class="field-meta">({{ field.type }}{{ field.required ? ', required' : '' }})</span>
+  </div>
+  <div class="field-input">
+    <button
+      type="button"
+      class="fx-toggle"
+      [class.fx-active]="fxMode"
+      [disabled]="disabled"
+      (click)="toggleFxMode()"
+      [title]="(fxMode ? 'browseMode' : 'expressionMode') | pluginTranslate: pluginId | async"
+    >
+      {{ fxMode ? 'fx' : '⊞' }}
+    </button>
+
+    <!-- Browse mode: ValuePathSelector -->
+    <div class="field-input-control" *ngIf="!fxMode">
+      <valtimo-value-path-selector
+        [name]="'field_' + field.path"
+        [caseDefinitionKey]="caseDefinitionKey"
+        [prefixes]="[ValuePathSelectorPrefix.DOC, ValuePathSelectorPrefix.CASE]"
+        [notation]="'dots'"
+        [disabled]="disabled"
+        [defaultValue]="getStringValue()"
+        [showCaseDefinitionSelector]="!caseDefinitionKey"
+        (valueChangeEvent)="onBrowseValueChange($event)"
+      ></valtimo-value-path-selector>
+    </div>
+
+    <!-- Expression mode: text input -->
+    <div class="field-input-control" *ngIf="fxMode">
+      <v-input
+        [name]="'fx_' + field.path"
+        [defaultValue]="getStringValue()"
+        [disabled]="disabled"
+        [placeholder]="'e.g. pv:variableName or doc:path.to.field'"
+        (valueChange)="onFxValueChange($event)"
+      ></v-input>
+    </div>
+  </div>
+</div>
+
+<!-- OBJECT field: collapsible section with children -->
+<div *ngIf="field.fieldType === 'OBJECT'" class="field-object">
+  <div class="field-object-header" (click)="toggleExpanded()" [class.field-required-unmapped]="totalRequired > 0 && mappedCount < totalRequired">
+    <span class="expand-icon">{{ expanded ? '▼' : '▶' }}</span>
+    <span class="field-name">{{ field.name }}</span>
+    <span class="field-meta">(object{{ field.required ? ', required' : '' }})</span>
+    <span class="completeness-badge" *ngIf="totalRequired > 0 && !expanded">
+      {{ mappedCount }}/{{ totalRequired }}
+    </span>
+  </div>
+  <div class="field-object-children" *ngIf="expanded">
+    <epistola-field-tree
+      *ngFor="let child of field.children"
+      [field]="child"
+      [value]="getChildValue(child.name)"
+      [pluginId]="pluginId"
+      [caseDefinitionKey]="caseDefinitionKey"
+      [processVariables]="processVariables"
+      [disabled]="disabled"
+      (valueChange)="onChildChange(child.name, $event)"
+    ></epistola-field-tree>
+  </div>
+</div>
+
+<!-- ARRAY field: collapsible section with collection mapping -->
+<div *ngIf="field.fieldType === 'ARRAY'" class="field-array">
+  <div class="field-array-header" (click)="toggleExpanded()" [class.field-required-unmapped]="field.required && !getStringValue()">
+    <span class="expand-icon">{{ expanded ? '▼' : '▶' }}</span>
+    <span class="field-name">{{ field.name }}</span>
+    <span class="field-meta">(array{{ field.required ? ', required' : '' }})</span>
+    <span class="mapped-indicator" *ngIf="getStringValue() && !expanded">✓</span>
+  </div>
+  <div class="field-array-content" *ngIf="expanded">
+    <div class="field-row">
+      <div class="field-label">
+        <span class="field-name">{{ 'mapCollectionTo' | pluginTranslate: pluginId | async }}</span>
+      </div>
+      <div class="field-input">
+        <button
+          type="button"
+          class="fx-toggle"
+          [class.fx-active]="fxMode"
+          [disabled]="disabled"
+          (click)="toggleFxMode()"
+          [title]="(fxMode ? 'browseMode' : 'expressionMode') | pluginTranslate: pluginId | async"
+        >
+          {{ fxMode ? 'fx' : '⊞' }}
+        </button>
+
+        <div class="field-input-control" *ngIf="!fxMode">
+          <valtimo-value-path-selector
+            [name]="'field_' + field.path"
+            [caseDefinitionKey]="caseDefinitionKey"
+            [prefixes]="[ValuePathSelectorPrefix.DOC, ValuePathSelectorPrefix.CASE]"
+            [notation]="'dots'"
+            [disabled]="disabled"
+            [defaultValue]="getStringValue()"
+            [showCaseDefinitionSelector]="!caseDefinitionKey"
+            (valueChangeEvent)="onBrowseValueChange($event)"
+          ></valtimo-value-path-selector>
+        </div>
+
+        <div class="field-input-control" *ngIf="fxMode">
+          <v-input
+            [name]="'fx_' + field.path"
+            [defaultValue]="getStringValue()"
+            [disabled]="disabled"
+            [placeholder]="'e.g. pv:variableName or doc:path.to.field'"
+            (valueChange)="onFxValueChange($event)"
+          ></v-input>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

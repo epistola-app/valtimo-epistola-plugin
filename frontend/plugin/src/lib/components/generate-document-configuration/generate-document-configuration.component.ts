@@ -11,7 +11,7 @@ import {BehaviorSubject, combineLatest, Observable, of, Subject, Subscription} f
 import {catchError, filter, map, take, takeUntil} from 'rxjs/operators';
 import {GenerateDocumentConfig, TemplateField} from '../../models';
 import {EpistolaPluginService} from '../../services';
-import {DataMappingBuilderComponent} from '../data-mapping-builder/data-mapping-builder.component';
+import {DataMappingTreeComponent} from '../data-mapping-tree/data-mapping-tree.component';
 
 @Component({
   selector: 'epistola-generate-document-configuration',
@@ -24,7 +24,7 @@ import {DataMappingBuilderComponent} from '../data-mapping-builder/data-mapping-
     FormModule,
     InputModule,
     SelectModule,
-    DataMappingBuilderComponent
+    DataMappingTreeComponent
   ]
 })
 export class GenerateDocumentConfigurationComponent
@@ -59,11 +59,11 @@ export class GenerateDocumentConfigurationComponent
   templateFields$ = new BehaviorSubject<TemplateField[]>([]);
   templateFieldsLoading$ = new BehaviorSubject<boolean>(false);
 
-  // Current data mapping
-  dataMapping$ = new BehaviorSubject<Record<string, string>>({});
+  // Current data mapping (nested structure mirroring template schema)
+  dataMapping$ = new BehaviorSubject<Record<string, any>>({});
 
-  // Prefill data mapping observable for the builder
-  prefillDataMapping$!: Observable<Record<string, string>>;
+  // Prefill data mapping observable for the tree
+  prefillDataMapping$!: Observable<Record<string, any>>;
 
   outputFormatOptions: SelectItem[] = [
     {id: 'PDF', text: 'PDF'},
@@ -126,7 +126,7 @@ export class GenerateDocumentConfigurationComponent
     this.handleValid(formValue);
   }
 
-  onDataMappingChange(mapping: Record<string, string>): void {
+  onDataMappingChange(mapping: Record<string, any>): void {
     this.dataMapping$.next(mapping);
     // Re-validate when data mapping changes
     const currentFormValue = this.formValue$.getValue();

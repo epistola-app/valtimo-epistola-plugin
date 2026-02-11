@@ -8,4 +8,5 @@ export * from './lib/epistola.module';
 export * from './lib/epistola.specification';
 export * from './lib/components/epistola-configuration/epistola-configuration.component';
 export * from './lib/components/generate-document-configuration/generate-document-configuration.component';
-export * from './lib/components/data-mapping-builder/data-mapping-builder.component';
+export * from './lib/components/field-tree/field-tree.component';
+export * from './lib/components/data-mapping-tree/data-mapping-tree.component';

@@ -19,7 +19,7 @@ export interface GenerateDocumentConfig {
   templateId: string;
   variantId: string;
   environmentId?: string;
-  dataMapping: Record<string, string>;
+  dataMapping: Record<string, any>;
   outputFormat: 'PDF' | 'HTML';
   filename: string;
   correlationId?: string;
