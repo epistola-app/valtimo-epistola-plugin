@@ -104,5 +104,18 @@
   [templateFields$]="templateFields$"
   [disabled$]="disabled$"
   [prefillMapping$]="prefillDataMapping$"
+  [caseDefinitionKey]="caseDefinitionKey"
+  [processVariables]="processVariables"
   (mappingChange)="onDataMappingChange($event)"
+  (requiredFieldsStatus)="onRequiredFieldsStatusChange($event)"
 ></epistola-data-mapping-builder>
+
+<div class="validation-summary" *ngIf="(selectedTemplateId$ | async) && requiredFieldsStatus.total > 0">
+  <span *ngIf="requiredFieldsStatus.mapped === requiredFieldsStatus.total" class="validation-complete">
+    {{ 'requiredFieldsComplete' | pluginTranslate: pluginId | async }}
+  </span>
+  <span *ngIf="requiredFieldsStatus.mapped < requiredFieldsStatus.total" class="validation-incomplete">
+    {{ requiredFieldsStatus.mapped }} / {{ requiredFieldsStatus.total }}
+    {{ 'validationSummary' | pluginTranslate: pluginId | async }}
+  </span>
+</div>

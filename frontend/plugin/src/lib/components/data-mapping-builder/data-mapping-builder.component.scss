@@ -39,19 +39,29 @@
     font-weight: 600;
     font-size: 0.875rem;
   }
+
+  &.mapping-row-required-unmapped {
+    border-left: 3px solid #dc3545;
+    background-color: #fff5f5;
+  }
 }
 
 .mapping-cell {
   padding: 0 0.5rem;
 
   &.template-field-cell {
-    flex: 0 0 35%;
-    min-width: 200px;
+    flex: 0 0 30%;
+    min-width: 180px;
+  }
+
+  &.source-type-cell {
+    flex: 0 0 160px;
+    min-width: 140px;
   }
 
   &.data-source-cell {
     flex: 1;
-    min-width: 300px;
+    min-width: 250px;
   }
 
   &.actions-cell {
@@ -62,18 +72,8 @@
   }
 }
 
-.data-source-input {
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-
-  .prefix-select {
-    flex: 0 0 180px;
-  }
-
-  .path-input {
-    flex: 1;
-  }
+.pv-input-group {
+  width: 100%;
 }
 
 .no-mappings {

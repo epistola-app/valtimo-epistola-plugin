@@ -2,29 +2,34 @@ import {Component, EventEmitter, Input, OnDestroy, OnInit, Output, TrackByFuncti
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {PluginTranslatePipeModule} from '@valtimo/plugin';
-import {InputModule, SelectItem, SelectModule} from '@valtimo/components';
+import {
+  InputModule,
+  SelectItem,
+  SelectModule,
+  ValuePathSelectorComponent,
+  ValuePathSelectorPrefix
+} from '@valtimo/components';
 import {BehaviorSubject, Observable, Subject} from 'rxjs';
 import {filter, takeUntil} from 'rxjs/operators';
-import {TemplateField} from '../../models';
+import {DataSourceType, TemplateField} from '../../models';
 
 /**
- * Internal mapping entry with pre-computed prefix and path.
- * This avoids calling methods in template bindings which causes change detection issues.
+ * Internal mapping entry with source type tracking.
  */
 interface MappingRow {
-  id: number; // Unique ID for trackBy
+  id: number;
   templateField: string;
-  prefix: string;
-  path: string;
+  sourceType: DataSourceType;
+  value: string; // The full value (e.g. "doc:customer.name", "pv:invoiceId", or literal)
 }
 
 /**
- * Data source prefix options for value resolution.
+ * Source type options for the selector.
  */
-const DATA_SOURCE_PREFIXES: SelectItem[] = [
-  {id: 'doc:', text: 'Document (doc:)'},
-  {id: 'pv:', text: 'Process Variable (pv:)'},
-  {id: 'case:', text: 'Case (case:)'}
+const SOURCE_TYPE_OPTIONS: SelectItem[] = [
+  {id: 'document', text: 'Document field'},
+  {id: 'processVariable', text: 'Process variable'},
+  {id: 'manual', text: 'Manual value'}
 ];
 
 @Component({
@@ -37,7 +42,8 @@ const DATA_SOURCE_PREFIXES: SelectItem[] = [
     FormsModule,
     PluginTranslatePipeModule,
     InputModule,
-    SelectModule
+    SelectModule,
+    ValuePathSelectorComponent
   ]
 })
 export class DataMappingBuilderComponent implements OnInit, OnDestroy {
@@ -45,24 +51,29 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
   @Input() templateFields$!: Observable<TemplateField[]>;
   @Input() disabled$!: Observable<boolean>;
   @Input() prefillMapping$!: Observable<Record<string, string>>;
+  @Input() caseDefinitionKey: string | null = null;
+  @Input() processVariables: string[] = [];
 
   @Output() mappingChange = new EventEmitter<Record<string, string>>();
+  @Output() requiredFieldsStatus = new EventEmitter<{mapped: number; total: number}>();
 
-  readonly prefixOptions = DATA_SOURCE_PREFIXES;
+  readonly sourceTypeOptions = SOURCE_TYPE_OPTIONS;
+  readonly ValuePathSelectorPrefix = ValuePathSelectorPrefix;
   mappings: MappingRow[] = [];
   templateFieldOptions$ = new BehaviorSubject<SelectItem[]>([]);
+  processVariableOptions$ = new BehaviorSubject<SelectItem[]>([]);
 
-  // TrackBy function for ngFor to prevent re-rendering all items
   readonly trackByMapping: TrackByFunction<MappingRow> = (_, mapping) => mapping.id;
 
   private readonly destroy$ = new Subject<void>();
   private nextId = 0;
-  // Track newly added mapping IDs to skip their initial v-select events
   private newMappingIds = new Set<number>();
+  private allTemplateFields: TemplateField[] = [];
 
   ngOnInit(): void {
     this.initTemplateFieldOptions();
     this.initPrefillMapping();
+    this.initProcessVariableOptions();
   }
 
   ngOnDestroy(): void {
@@ -70,24 +81,16 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  /**
-   * Add a new empty mapping row.
-   */
   addMapping(): void {
     const newId = this.nextId++;
-    // Track this as a new mapping to skip its initial v-select events
     this.newMappingIds.add(newId);
 
     this.mappings = [
       ...this.mappings,
-      {id: newId, templateField: '', prefix: 'doc:', path: ''}
+      {id: newId, templateField: '', sourceType: 'document', value: ''}
     ];
-    // Don't emit for empty mapping - wait until user fills it
   }
 
-  /**
-   * Remove a mapping row by index.
-   */
   removeMapping(index: number): void {
     const mapping = this.mappings[index];
     if (mapping) {
@@ -97,31 +100,16 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
     this.emitMappings();
   }
 
-  /**
-   * Update a mapping's template field.
-   */
   onTemplateFieldChange(index: number, fieldId: string | number | (string | number)[]): void {
     const mapping = this.mappings[index];
     const id = Array.isArray(fieldId) ? String(fieldId[0] ?? '') : String(fieldId ?? '');
 
-    if (!mapping) {
-      return;
-    }
-
-    // Skip if this is a newly added mapping and the value is empty (initial v-select event)
-    if (this.newMappingIds.has(mapping.id) && !id) {
-      return;
-    }
-
-    // Remove from new mappings set once user makes an actual selection
+    if (!mapping) return;
+    if (this.newMappingIds.has(mapping.id) && !id) return;
     if (this.newMappingIds.has(mapping.id) && id) {
       this.newMappingIds.delete(mapping.id);
     }
-
-    // Skip if value hasn't changed
-    if (mapping.templateField === id) {
-      return;
-    }
+    if (mapping.templateField === id) return;
 
     this.mappings = this.mappings.map((m, i) =>
       i === index ? {...m, templateField: id} : m
@@ -129,58 +117,128 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
     this.emitMappings();
   }
 
-  /**
-   * Update a mapping's data source prefix.
-   */
-  onPrefixChange(index: number, prefix: string | number | (string | number)[]): void {
+  onSourceTypeChange(index: number, sourceType: string | number | (string | number)[]): void {
     const mapping = this.mappings[index];
-    const prefixValue = Array.isArray(prefix) ? String(prefix[0] ?? 'doc:') : String(prefix ?? 'doc:');
+    const type = (Array.isArray(sourceType) ? String(sourceType[0] ?? 'document') : String(sourceType ?? 'document')) as DataSourceType;
 
-    if (!mapping) {
-      return;
-    }
+    if (!mapping) return;
+    if (this.newMappingIds.has(mapping.id) && type === 'document') return;
+    if (mapping.sourceType === type) return;
 
-    // For prefix, skip only if value is the default 'doc:' on new mappings
-    if (this.newMappingIds.has(mapping.id) && prefixValue === 'doc:') {
-      return;
-    }
-
-    // Skip if value hasn't changed
-    if (mapping.prefix === prefixValue) {
-      return;
-    }
-
+    // Clear value when switching source type
     this.mappings = this.mappings.map((m, i) =>
-      i === index ? {...m, prefix: prefixValue} : m
+      i === index ? {...m, sourceType: type, value: ''} : m
     );
     this.emitMappings();
   }
 
   /**
-   * Update a mapping's data source path.
+   * Handle value change from ValuePathSelector (doc: paths).
    */
-  onPathChange(index: number, path: string): void {
+  onDocValueChange(index: number, value: string): void {
     const mapping = this.mappings[index];
-    const newPath = path ?? '';
+    if (!mapping) return;
 
-    if (!mapping) {
-      return;
-    }
-
-    // Skip if this is a newly added mapping and the path is empty (initial v-input event)
-    if (this.newMappingIds.has(mapping.id) && !newPath) {
-      return;
-    }
-
-    // Skip if value hasn't changed
-    if (mapping.path === newPath) {
-      return;
-    }
+    // ValuePathSelector returns "doc:path" or "case:path" already prefixed
+    const fullValue = value || '';
+    if (mapping.value === fullValue) return;
 
     this.mappings = this.mappings.map((m, i) =>
-      i === index ? {...m, path: newPath} : m
+      i === index ? {...m, value: fullValue} : m
     );
     this.emitMappings();
+  }
+
+  /**
+   * Handle process variable selection.
+   */
+  onPvChange(index: number, pvName: string | number | (string | number)[]): void {
+    const mapping = this.mappings[index];
+    const name = Array.isArray(pvName) ? String(pvName[0] ?? '') : String(pvName ?? '');
+
+    if (!mapping) return;
+    if (this.newMappingIds.has(mapping.id) && !name) return;
+    if (this.newMappingIds.has(mapping.id) && name) {
+      this.newMappingIds.delete(mapping.id);
+    }
+
+    const fullValue = name ? `pv:${name}` : '';
+    if (mapping.value === fullValue) return;
+
+    this.mappings = this.mappings.map((m, i) =>
+      i === index ? {...m, value: fullValue} : m
+    );
+    this.emitMappings();
+  }
+
+  /**
+   * Handle manual path input change.
+   */
+  onManualValueChange(index: number, value: string): void {
+    const mapping = this.mappings[index];
+    const newValue = value ?? '';
+
+    if (!mapping) return;
+    if (this.newMappingIds.has(mapping.id) && !newValue) return;
+    if (mapping.value === newValue) return;
+
+    this.mappings = this.mappings.map((m, i) =>
+      i === index ? {...m, value: newValue} : m
+    );
+    this.emitMappings();
+  }
+
+  /**
+   * Get the default value for ValuePathSelector (strip prefix if needed).
+   */
+  getDocDefaultValue(mapping: MappingRow): string {
+    return mapping.value || '';
+  }
+
+  /**
+   * Get the process variable name from a pv: prefixed value.
+   */
+  getPvDefaultValue(mapping: MappingRow): string {
+    if (mapping.value.startsWith('pv:')) {
+      return mapping.value.substring(3);
+    }
+    return mapping.value;
+  }
+
+  /**
+   * Handle manual pv: input (when no suggestions are available).
+   */
+  onPvManualChange(index: number, value: string): void {
+    const mapping = this.mappings[index];
+    const name = value ?? '';
+
+    if (!mapping) return;
+    if (this.newMappingIds.has(mapping.id) && !name) return;
+
+    const fullValue = name ? `pv:${name}` : '';
+    if (mapping.value === fullValue) return;
+
+    this.mappings = this.mappings.map((m, i) =>
+      i === index ? {...m, value: fullValue} : m
+    );
+    this.emitMappings();
+  }
+
+  /**
+   * Check if a template field path is a required field.
+   */
+  isRequiredField(path: string): boolean {
+    const requiredPaths = this.collectRequiredPaths(this.allTemplateFields);
+    return requiredPaths.includes(path);
+  }
+
+  /**
+   * Get the display label for a template field path (with type badge).
+   */
+  getFieldLabel(field: TemplateField): string {
+    const typeLabel = field.type || 'string';
+    const requiredLabel = field.required ? ', required' : '';
+    return `${field.path} (${typeLabel}${requiredLabel})`;
   }
 
   private initTemplateFieldOptions(): void {
@@ -188,13 +246,33 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
       this.templateFields$.pipe(
         takeUntil(this.destroy$)
       ).subscribe(fields => {
-        const options: SelectItem[] = fields.map(field => ({
-          id: field.name,
-          text: field.required ? `${field.name} *` : field.name
-        }));
+        this.allTemplateFields = fields;
+        const options = this.flattenFieldsToOptions(fields);
         this.templateFieldOptions$.next(options);
+        this.autoPopulateRequiredFields(fields);
+        this.emitRequiredFieldsStatus();
       });
     }
+  }
+
+  private initProcessVariableOptions(): void {
+    // Process variables will be updated externally via input binding
+    this.updateProcessVariableOptions();
+  }
+
+  /**
+   * Called when processVariables input changes.
+   */
+  ngOnChanges(): void {
+    this.updateProcessVariableOptions();
+  }
+
+  private updateProcessVariableOptions(): void {
+    const options: SelectItem[] = this.processVariables.map(name => ({
+      id: name,
+      text: name
+    }));
+    this.processVariableOptions$.next(options);
   }
 
   private initPrefillMapping(): void {
@@ -206,29 +284,97 @@ export class DataMappingBuilderComponent implements OnInit, OnDestroy {
         this.mappings = Object.entries(mapping).map(([templateField, dataSource]) => ({
           id: this.nextId++,
           templateField,
-          prefix: this.extractPrefix(dataSource),
-          path: this.extractPath(dataSource)
+          sourceType: this.detectSourceType(dataSource),
+          value: dataSource
         }));
       });
     }
   }
 
-  private extractPrefix(dataSource: string): string {
-    const match = dataSource.match(/^(doc:|pv:|case:)/);
-    return match ? match[1] : 'doc:';
+  /**
+   * Flatten nested template fields into a flat list of SelectItem options.
+   * Uses path for identification, with type/required info in the label.
+   */
+  private flattenFieldsToOptions(fields: TemplateField[], result: SelectItem[] = []): SelectItem[] {
+    for (const field of fields) {
+      const requiredMarker = field.required ? ' *' : '';
+      const typeLabel = field.fieldType !== 'SCALAR' ? ` [${field.fieldType.toLowerCase()}]` : '';
+      result.push({
+        id: field.path,
+        text: `${field.path}${typeLabel}${requiredMarker}`
+      });
+      if (field.children && field.children.length > 0 && field.fieldType !== 'ARRAY') {
+        // For objects, also show children as mappable fields
+        this.flattenFieldsToOptions(field.children, result);
+      }
+    }
+    return result;
   }
 
-  private extractPath(dataSource: string): string {
-    return dataSource.replace(/^(doc:|pv:|case:)/, '');
+  /**
+   * Auto-populate rows for required fields that are not yet mapped.
+   */
+  private autoPopulateRequiredFields(fields: TemplateField[]): void {
+    const requiredPaths = this.collectRequiredPaths(fields);
+    const mappedPaths = new Set(this.mappings.map(m => m.templateField));
+
+    for (const path of requiredPaths) {
+      if (!mappedPaths.has(path)) {
+        this.mappings = [
+          ...this.mappings,
+          {id: this.nextId++, templateField: path, sourceType: 'document', value: ''}
+        ];
+      }
+    }
+  }
+
+  /**
+   * Collect all required leaf field paths from the tree.
+   */
+  private collectRequiredPaths(fields: TemplateField[]): string[] {
+    const paths: string[] = [];
+    for (const field of fields) {
+      if (field.fieldType === 'SCALAR' && field.required) {
+        paths.push(field.path);
+      } else if (field.fieldType === 'ARRAY' && field.required) {
+        paths.push(field.path);
+      } else if (field.fieldType === 'OBJECT' && field.children) {
+        paths.push(...this.collectRequiredPaths(field.children));
+      }
+    }
+    return paths;
+  }
+
+  private detectSourceType(dataSource: string): DataSourceType {
+    if (dataSource.startsWith('doc:') || dataSource.startsWith('case:')) {
+      return 'document';
+    }
+    if (dataSource.startsWith('pv:')) {
+      return 'processVariable';
+    }
+    return 'manual';
   }
 
   private emitMappings(): void {
     const result: Record<string, string> = {};
     for (const mapping of this.mappings) {
-      if (mapping.templateField) {
-        result[mapping.templateField] = mapping.prefix + mapping.path;
+      if (mapping.templateField && mapping.value) {
+        result[mapping.templateField] = mapping.value;
       }
     }
     this.mappingChange.emit(result);
+    this.emitRequiredFieldsStatus();
+  }
+
+  private emitRequiredFieldsStatus(): void {
+    const requiredPaths = this.collectRequiredPaths(this.allTemplateFields);
+    const mappedPaths = new Set(
+      this.mappings
+        .filter(m => m.templateField && m.value)
+        .map(m => m.templateField)
+    );
+
+    const mapped = requiredPaths.filter(p => mappedPaths.has(p)).length;
+    this.requiredFieldsStatus.emit({mapped, total: requiredPaths.length});
   }
 }

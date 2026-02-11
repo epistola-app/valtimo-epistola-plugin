@@ -1,7 +1,12 @@
 import {Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
 import {CommonModule} from '@angular/common';
-import {FunctionConfigurationComponent, PluginConfigurationData, PluginTranslatePipeModule} from '@valtimo/plugin';
+import {
+  FunctionConfigurationComponent,
+  PluginConfigurationData,
+  PluginTranslatePipeModule
+} from '@valtimo/plugin';
 import {FormModule, FormOutput, InputModule, SelectItem, SelectModule} from '@valtimo/components';
+import {CaseManagementParams, ManagementContext} from '@valtimo/shared';
 import {BehaviorSubject, combineLatest, Observable, of, Subject, Subscription} from 'rxjs';
 import {catchError, filter, map, take, takeUntil} from 'rxjs/operators';
 import {GenerateDocumentConfig, TemplateField} from '../../models';
@@ -33,6 +38,7 @@ export class GenerateDocumentConfigurationComponent
 
   // Optional inputs from FunctionConfigurationComponent
   @Input() selectedPluginConfigurationData$?: Observable<PluginConfigurationData>;
+  @Input() context$?: Observable<[ManagementContext, CaseManagementParams]>;
 
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
   @Output() configuration: EventEmitter<GenerateDocumentConfig> = new EventEmitter<GenerateDocumentConfig>();
@@ -68,6 +74,15 @@ export class GenerateDocumentConfigurationComponent
   readonly selectedTemplateId$ = new BehaviorSubject<string>('');
   readonly selectedVariantId$ = new BehaviorSubject<string>('');
 
+  // Case definition key from context (for ValuePathSelector)
+  caseDefinitionKey: string | null = null;
+
+  // Discovered process variables
+  processVariables: string[] = [];
+
+  // Required fields status
+  requiredFieldsStatus: {mapped: number; total: number} = {mapped: 0, total: 0};
+
   private readonly destroy$ = new Subject<void>();
   private saveSubscription!: Subscription;
   private readonly formValue$ = new BehaviorSubject<Partial<GenerateDocumentConfig> | null>(null);
@@ -77,6 +92,7 @@ export class GenerateDocumentConfigurationComponent
   constructor(private readonly epistolaPluginService: EpistolaPluginService) {}
 
   ngOnInit(): void {
+    this.initContext();
     this.initPrefillDataMapping();
     this.initPluginConfiguration();
     this.initTemplatesLoading();
@@ -116,6 +132,26 @@ export class GenerateDocumentConfigurationComponent
     const currentFormValue = this.formValue$.getValue();
     if (currentFormValue) {
       this.handleValid(currentFormValue);
+    }
+  }
+
+  onRequiredFieldsStatusChange(status: {mapped: number; total: number}): void {
+    this.requiredFieldsStatus = status;
+    // Re-validate when required fields status changes
+    const currentFormValue = this.formValue$.getValue();
+    if (currentFormValue) {
+      this.handleValid(currentFormValue);
+    }
+  }
+
+  private initContext(): void {
+    if (this.context$) {
+      this.context$.pipe(
+        takeUntil(this.destroy$),
+        filter(([context]) => context === 'case')
+      ).subscribe(([, params]) => {
+        this.caseDefinitionKey = params.caseDefinitionKey;
+      });
     }
   }
 
@@ -233,17 +269,38 @@ export class GenerateDocumentConfigurationComponent
         this.templateFields$.next(details.fields || []);
         this.templateFieldsLoading$.next(false);
       });
+
+      // Also load process variables if we have a case context
+      this.loadProcessVariables();
     });
   }
 
+  private loadProcessVariables(): void {
+    // Try to discover process variables (best-effort, may not always have context)
+    if (this.caseDefinitionKey) {
+      this.epistolaPluginService.getProcessVariables(this.caseDefinitionKey).pipe(
+        takeUntil(this.destroy$),
+        catchError(() => of([]))
+      ).subscribe(variables => {
+        this.processVariables = variables;
+      });
+    }
+  }
+
   private handleValid(formValue: Partial<GenerateDocumentConfig>): void {
-    const valid = !!(
+    const formComplete = !!(
       formValue?.templateId &&
       formValue?.variantId &&
       formValue?.outputFormat &&
       formValue?.filename &&
       formValue?.resultProcessVariable
     );
+
+    // Check if all required template fields are mapped
+    const requiredFieldsMapped = this.requiredFieldsStatus.total === 0 ||
+      this.requiredFieldsStatus.mapped === this.requiredFieldsStatus.total;
+
+    const valid = formComplete && requiredFieldsMapped;
     this.valid$.next(valid);
     this.valid.emit(valid);
   }

@@ -62,7 +62,16 @@ const epistolaPluginSpecification: PluginSpecification = {
       noMappings: 'Nog geen mappings toegevoegd. Klik op "Mapping toevoegen" om te beginnen.',
       documentFields: 'Document velden',
       processVariables: 'Procesvariabelen',
-      caseProperties: 'Zaak eigenschappen'
+      caseProperties: 'Zaak eigenschappen',
+      sourceType: 'Brontype',
+      sourceTypeDocument: 'Document veld',
+      sourceTypeProcessVariable: 'Procesvariabele',
+      sourceTypeManual: 'Handmatig',
+      requiredFieldsMissing: 'Niet alle verplichte velden zijn gekoppeld',
+      requiredFieldsComplete: 'Alle verplichte velden zijn gekoppeld',
+      validationSummary: 'verplichte velden gekoppeld',
+      fieldRequired: 'Verplicht',
+      fieldOptional: 'Optioneel'
     },
     en: {
       title: 'Epistola Document Suite',
@@ -104,7 +113,16 @@ const epistolaPluginSpecification: PluginSpecification = {
       noMappings: 'No mappings added yet. Click "Add mapping" to start.',
       documentFields: 'Document fields',
       processVariables: 'Process variables',
-      caseProperties: 'Case properties'
+      caseProperties: 'Case properties',
+      sourceType: 'Source type',
+      sourceTypeDocument: 'Document field',
+      sourceTypeProcessVariable: 'Process variable',
+      sourceTypeManual: 'Manual value',
+      requiredFieldsMissing: 'Not all required fields are mapped',
+      requiredFieldsComplete: 'All required fields are mapped',
+      validationSummary: 'required fields mapped',
+      fieldRequired: 'Required',
+      fieldOptional: 'Optional'
     }
   }
 };
