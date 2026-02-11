@@ -24,6 +24,9 @@ export class EpistolaConfigurationComponent
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
   @Output() configuration: EventEmitter<EpistolaPluginConfig> = new EventEmitter<EpistolaPluginConfig>();
 
+  /** Epistola slug pattern: lowercase alphanumeric with hyphens, no leading/trailing hyphens. */
+  private static readonly SLUG_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
+
   private saveSubscription!: Subscription;
   private readonly formValue$ = new BehaviorSubject<EpistolaPluginConfig | null>(null);
   private readonly valid$ = new BehaviorSubject<boolean>(false);
@@ -56,10 +59,27 @@ export class EpistolaConfigurationComponent
       formValue?.configurationTitle &&
       formValue?.baseUrl &&
       formValue?.apiKey &&
-      formValue?.tenantId
+      formValue?.tenantId &&
+      this.isValidSlug(formValue.tenantId, 3, 63) &&
+      this.isValidOptionalSlug(formValue.defaultEnvironmentId, 3, 30)
     );
     this.valid$.next(valid);
     this.valid.emit(valid);
+  }
+
+  private isValidSlug(value: string, minLength: number, maxLength: number): boolean {
+    return (
+      value.length >= minLength &&
+      value.length <= maxLength &&
+      EpistolaConfigurationComponent.SLUG_PATTERN.test(value)
+    );
+  }
+
+  private isValidOptionalSlug(value: string | undefined, minLength: number, maxLength: number): boolean {
+    if (!value) {
+      return true;
+    }
+    return this.isValidSlug(value, minLength, maxLength);
   }
 
   private openSaveSubscription(): void {

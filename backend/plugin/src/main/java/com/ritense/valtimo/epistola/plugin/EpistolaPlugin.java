@@ -15,6 +15,7 @@ import org.operaton.bpm.engine.delegate.DelegateExecution;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 // Placed here because Valtimo by default only scans com.ritense.valtimo package
@@ -27,6 +28,12 @@ import java.util.stream.Collectors;
 public class EpistolaPlugin {
 
     public static final String PLUGIN_KEY = "epistola";
+
+    /**
+     * Epistola slug pattern: lowercase alphanumeric with hyphens, no leading/trailing hyphens.
+     * Used for tenantId, environmentId, templateId, variantId.
+     */
+    private static final Pattern SLUG_PATTERN = Pattern.compile("^[a-z][a-z0-9]*(-[a-z0-9]+)*$");
 
     private final EpistolaService epistolaService;
     private final ValueResolverService valueResolverService;
@@ -59,7 +66,8 @@ public class EpistolaPlugin {
     private String apiKey;
 
     /**
-     * The tenant ID where the document templates are stored in Epistola.
+     * The tenant slug in Epistola. Must be lowercase alphanumeric with hyphens (3-63 chars).
+     * Example: "acme-corp", "my-tenant"
      */
     @PluginProperty(
             key = "tenantId",
@@ -70,8 +78,9 @@ public class EpistolaPlugin {
     private String tenantId;
 
     /**
-     * The default environment ID to use for document generation.
-     * Can be overridden per action.
+     * The default environment slug for document generation. Must be lowercase alphanumeric
+     * with hyphens (3-30 chars). Can be overridden per action.
+     * Example: "production", "staging"
      */
     @PluginProperty(
             key = "defaultEnvironmentId",
@@ -99,6 +108,7 @@ public class EpistolaPlugin {
 
     @PluginEvent(invokedOn = EventType.CREATE)
     public void onPluginCreate() {
+        validateProperties();
         log.info("Epistola plugin configuration created: baseUrl={}, tenantId={}", baseUrl, tenantId);
     }
 
@@ -109,7 +119,32 @@ public class EpistolaPlugin {
 
     @PluginEvent(invokedOn = EventType.UPDATE)
     public void onPluginUpdate() {
+        validateProperties();
         log.info("Epistola plugin configuration updated: baseUrl={}, tenantId={}", baseUrl, tenantId);
+    }
+
+    private void validateProperties() {
+        validateSlug("tenantId", tenantId, 3, 63);
+
+        if (defaultEnvironmentId != null && !defaultEnvironmentId.isBlank()) {
+            validateSlug("defaultEnvironmentId", defaultEnvironmentId, 3, 30);
+        }
+    }
+
+    private void validateSlug(String propertyName, String value, int minLength, int maxLength) {
+        if (value == null || value.isBlank()) {
+            return; // required-ness is handled by @PluginProperty(required)
+        }
+        if (value.length() < minLength || value.length() > maxLength) {
+            throw new IllegalArgumentException(
+                    String.format("'%s' must be between %d and %d characters, got %d: '%s'",
+                            propertyName, minLength, maxLength, value.length(), value));
+        }
+        if (!SLUG_PATTERN.matcher(value).matches()) {
+            throw new IllegalArgumentException(
+                    String.format("'%s' must be a lowercase slug (pattern: %s): '%s'",
+                            propertyName, SLUG_PATTERN.pattern(), value));
+        }
     }
 
     /**
