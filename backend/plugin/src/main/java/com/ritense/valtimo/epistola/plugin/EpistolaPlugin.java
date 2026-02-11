@@ -4,6 +4,7 @@ import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GeneratedDocument;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
+import app.epistola.valtimo.service.DataMappingResolver;
 import app.epistola.valtimo.service.EpistolaService;
 import com.ritense.plugin.annotation.*;
 import com.ritense.plugin.domain.EventType;
@@ -188,6 +189,9 @@ public class EpistolaPlugin {
 
         // Resolve the data mapping values (doc:, pv:, etc.)
         Map<String, Object> resolvedData = resolveDataMapping(execution, dataMapping);
+
+        // Convert flat dot-notation keys to nested structure for the Epistola API
+        resolvedData = DataMappingResolver.toNestedStructure(resolvedData);
 
         // Resolve the filename if it uses value resolvers
         String resolvedFilename = resolveValue(execution, filename);
