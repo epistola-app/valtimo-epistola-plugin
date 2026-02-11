@@ -5,6 +5,7 @@ import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.valtimo.service.EpistolaService;
+import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.TemplateMappingValidator;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingRequest;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingResponse;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -37,6 +39,7 @@ public class EpistolaPluginResource {
 
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
+    private final ProcessVariableDiscoveryService processVariableDiscoveryService;
 
     /**
      * Get all available templates for a plugin configuration.
@@ -168,5 +171,22 @@ public class EpistolaPluginResource {
                 missingFields.isEmpty(),
                 missingFields
         ));
+    }
+
+    /**
+     * Discover process variable names for a given process definition.
+     * Combines variables from historic process instances and BPMN model definitions.
+     *
+     * @param processDefinitionKey The process definition key
+     * @return Sorted list of discovered variable names
+     */
+    @GetMapping("/process-variables")
+    public ResponseEntity<List<String>> getProcessVariables(
+            @RequestParam("processDefinitionKey") String processDefinitionKey
+    ) {
+        log.debug("Discovering process variables for process definition: {}", processDefinitionKey);
+
+        List<String> variables = processVariableDiscoveryService.discoverVariables(processDefinitionKey);
+        return ResponseEntity.ok(variables);
     }
 }
