@@ -63,6 +63,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Environment dropdown for optional environment override
   - Added translations for all new fields (English and Dutch)
 
+- **Recursive JSON Schema Parsing**:
+  - `TemplateField` extended with `path` (dot-notation), `fieldType` (SCALAR/OBJECT/ARRAY), and `children`
+  - `extractFieldsFromSchema()` now recursively processes nested objects and arrays
+  - Nested fields visible in frontend with dot-notation paths (e.g., `invoice.lineItems[].total`)
+
+- **Nested JSON Reconstruction** (`DataMappingResolver`):
+  - Converts flat dot-notation keys from value resolvers into nested JSON structures
+  - Wired into `generateDocument()` before sending data to Epistola API
+
+- **Template Mapping Completeness Validation**:
+  - `TemplateMappingValidator` checks all required fields have non-empty mappings
+  - `POST /configurations/{id}/templates/{templateId}/validate-mapping` REST endpoint
+  - Frontend blocks save until all required fields are mapped
+
+- **Process Variable Discovery** (`ProcessVariableDiscoveryService`):
+  - Discovers variable names from Operaton historic instances
+  - Extracts variable names from BPMN model input/output parameters
+  - `GET /api/v1/plugin/epistola/process-variables` REST endpoint
+
+- **Enhanced Data Mapping UI**:
+  - Source type selector: Document field / Process variable / Manual value
+  - Valtimo `ValuePathSelectorComponent` for `doc:` and `case:` browsing
+  - Process variable autocomplete from discovery API with free-text fallback
+  - Auto-populate mapping rows for all required template fields
+  - Red indicator for required fields without mappings
+  - Validation summary showing mapped vs total required fields
+
 ### Dependencies
 
 - Added `app.epistola.contract:client-spring3-restclient:1.0.0` for Epistola API calls
