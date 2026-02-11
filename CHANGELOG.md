@@ -82,6 +82,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Extracts variable names from BPMN model input/output parameters
   - `GET /api/v1/plugin/epistola/process-variables` REST endpoint
 
+- **Input Mode Selector (Browse / PV / Expression)**:
+  - Replaced binary fx toggle with a 3-button input mode selector per field
+  - Browse mode (⊞): ValuePathSelector for doc:/case: document and case fields
+  - PV mode (pv): Dropdown of discovered process variables (with text input fallback)
+  - Expression mode (fx): Free-text input for manual expressions and literals
+  - Input mode auto-detected from prefilled values (doc:/case: → browse, pv: → PV, other → expression)
+
+- **Per-Item Array Field Mapping**:
+  - Array fields with children now support mapping individual item fields when source field names differ
+  - Toggle "Map field names per item" to switch between direct collection mapping and per-item mapping
+  - Per-item format: `{"_source": "doc:order.items", "product": "productName", "price": "unitPrice"}`
+  - `_source` key holds the collection source expression, other entries are template→source field name pairs
+  - Backend `DataMappingResolver.mapArrayItems()` transforms source items by renaming fields per the mapping
+  - `TemplateMappingValidator` validates both direct string and `_source` array mapping formats
+  - Completeness badge shows mapped source + required child fields when collapsed
+  - Backwards compatible: existing direct string array mappings continue to work
+
 - **Schema-Mirrored Tree Form for Data Mapping**:
   - Replaced flat table UI with a tree form that mirrors the template schema hierarchy
   - OBJECT fields render as collapsible sections with children indented inside
