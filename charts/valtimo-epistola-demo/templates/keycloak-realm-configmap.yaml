@@ -1,0 +1,101 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "valtimo-demo.fullname" . }}-keycloak-realm
+  labels:
+    {{- include "valtimo-demo.labels" . | nindent 4 }}
+data:
+  valtimo-realm.json: |
+    {
+      "realm": {{ .Values.backend.keycloak.realm | quote }},
+      "enabled": true,
+      "sslRequired": "none",
+      "registrationAllowed": false,
+      "loginWithEmailAllowed": true,
+      "duplicateEmailsAllowed": false,
+      "resetPasswordAllowed": true,
+      "editUsernameAllowed": false,
+      "bruteForceProtected": true,
+      "roles": {
+        "realm": [
+          { "name": "ROLE_USER", "description": "User role" },
+          { "name": "ROLE_ADMIN", "description": "Admin role" },
+          { "name": "ROLE_DEVELOPER", "description": "Developer role" }
+        ]
+      },
+      "users": [
+        {
+          "username": "admin",
+          "email": "admin@example.com",
+          "enabled": true,
+          "firstName": "Admin",
+          "lastName": "User",
+          "credentials": [
+            { "type": "password", "value": "admin", "temporary": false }
+          ],
+          "realmRoles": ["ROLE_USER", "ROLE_ADMIN", "ROLE_DEVELOPER"]
+        },
+        {
+          "username": "user",
+          "email": "user@example.com",
+          "enabled": true,
+          "firstName": "Test",
+          "lastName": "User",
+          "credentials": [
+            { "type": "password", "value": "user", "temporary": false }
+          ],
+          "realmRoles": ["ROLE_USER"]
+        },
+        {
+          "username": "service-account-valtimo-backend",
+          "enabled": true,
+          "serviceAccountClientId": {{ .Values.backend.keycloak.backendClientId | quote }},
+          "clientRoles": {
+            "realm-management": [
+              "view-users",
+              "query-users",
+              "manage-users",
+              "view-clients"
+            ]
+          }
+        }
+      ],
+      "clients": [
+        {
+          "clientId": {{ .Values.backend.keycloak.clientId | quote }},
+          "name": "Valtimo Console",
+          "enabled": true,
+          "publicClient": true,
+          "directAccessGrantsEnabled": true,
+          "standardFlowEnabled": true,
+          "implicitFlowEnabled": false,
+          "redirectUris": {{ .Values.keycloakRealm.redirectUris | toJson }},
+          "webOrigins": {{ .Values.keycloakRealm.webOrigins | toJson }},
+          "defaultClientScopes": [
+            "web-origins",
+            "profile",
+            "roles",
+            "email"
+          ]
+        },
+        {
+          "clientId": {{ .Values.backend.keycloak.backendClientId | quote }},
+          "name": "Valtimo Backend",
+          "enabled": true,
+          "publicClient": false,
+          "bearerOnly": false,
+          "standardFlowEnabled": false,
+          "serviceAccountsEnabled": true,
+          "secret": {{ .Values.backend.keycloak.backendClientSecret | quote }}
+        }
+      ],
+      "defaultDefaultClientScopes": [
+        "role_list",
+        "profile",
+        "email",
+        "roles",
+        "web-origins"
+      ]
+    }
+{{- end }}

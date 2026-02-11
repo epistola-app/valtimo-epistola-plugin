@@ -1,0 +1,55 @@
+
+Valtimo Epistola Demo has been deployed!
+
+=== Access ===
+
+{{- if .Values.ingress.enabled }}
+  {{- range .Values.ingress.hosts }}
+  Frontend: http://{{ .host }}
+  {{- end }}
+{{- else }}
+
+  To access the Valtimo frontend, run:
+
+    kubectl port-forward svc/{{ include "valtimo-demo.frontend.fullname" . }} 8080:{{ .Values.frontend.service.port }}
+
+  Then open: http://localhost:8080
+
+{{- end }}
+
+=== Default Credentials ===
+
+  Valtimo admin:
+    Username: admin
+    Password: admin
+
+  Valtimo user:
+    Username: user
+    Password: user
+
+{{- if .Values.keycloak.enabled }}
+
+  Keycloak admin console:
+    kubectl port-forward svc/{{ .Release.Name }}-keycloak 8081:{{ .Values.keycloak.service.ports.http | default 80 }}
+    URL:      http://localhost:8081
+    Username: {{ .Values.keycloak.auth.adminUser }}
+    Password: {{ .Values.keycloak.auth.adminPassword }}
+{{- end }}
+
+=== Components ===
+
+  Backend:    {{ include "valtimo-demo.backend.fullname" . }}:{{ .Values.backend.service.port }}
+  Frontend:   {{ include "valtimo-demo.frontend.fullname" . }}:{{ .Values.frontend.service.port }}
+  PostgreSQL: {{ include "valtimo-demo.postgresql.host" . }}:5432
+{{- if .Values.keycloak.enabled }}
+  Keycloak:   {{ .Release.Name }}-keycloak:{{ .Values.keycloak.service.ports.http | default 80 }}
+{{- end }}
+{{- if .Values.epistola.enabled }}
+  Epistola:   {{ .Release.Name }}-epistola
+{{- end }}
+
+=== Tips ===
+
+  - The backend may take 60-90 seconds to fully start (Spring Boot + DB migrations).
+  - Check pod status: kubectl get pods -l app.kubernetes.io/instance={{ .Release.Name }}
+  - Check backend logs: kubectl logs -l app.kubernetes.io/component=backend -f

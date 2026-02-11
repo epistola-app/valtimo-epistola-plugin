@@ -83,3 +83,6 @@ out-tsc/
 # Coverage
 coverage/
 .nyc_output/
+
+# Helm chart dependencies (downloaded via helm dependency build)
+charts/*/charts/*.tgz

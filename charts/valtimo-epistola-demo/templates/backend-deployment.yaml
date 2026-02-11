@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "valtimo-demo.backend.fullname" . }}
+  labels:
+    {{- include "valtimo-demo.backend.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "valtimo-demo.backend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "valtimo-demo.backend.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.backend.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: backend
+          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            # Spring profile
+            - name: SPRING_PROFILES_ACTIVE
+              value: {{ .Values.backend.springProfilesActive | quote }}
+
+            # Database
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://{{ include "valtimo-demo.postgresql.host" . }}:5432/{{ .Values.valtimoPostgresql.auth.database }}"
+            - name: SPRING_DATASOURCE_NAME
+              value: {{ .Values.valtimoPostgresql.auth.database | quote }}
+            - name: SPRING_DATASOURCE_USERNAME
+              value: {{ .Values.valtimoPostgresql.auth.username | quote }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ printf "%s-valtimopostgresql" .Release.Name }}
+                  key: password
+
+            # RabbitMQ (disabled via autoconfigure exclude in application.yml, but env vars set for completeness)
+            - name: SPRING_RABBITMQ_HOST
+              value: {{ .Values.backend.rabbitmq.host | quote }}
+            - name: SPRING_RABBITMQ_PORT
+              value: {{ .Values.backend.rabbitmq.port | quote }}
+            - name: SPRING_RABBITMQ_USERNAME
+              value: {{ .Values.backend.rabbitmq.username | quote }}
+            - name: SPRING_RABBITMQ_PASSWORD
+              value: {{ .Values.backend.rabbitmq.password | quote }}
+
+            # OAuth2 / Keycloak
+            {{- $keycloakInternalUrl := include "valtimo-demo.keycloak.internalUrl" . }}
+            {{- $keycloakRealm := .Values.backend.keycloak.realm }}
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI
+              value: "{{ $keycloakInternalUrl }}/realms/{{ $keycloakRealm }}/protocol/openid-connect/certs"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKJWT_ISSUERURI
+              value: "{{ $keycloakInternalUrl }}/realms/{{ $keycloakRealm }}"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKAPI_ISSUERURI
+              value: "{{ $keycloakInternalUrl }}/realms/{{ $keycloakRealm }}"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKJWT_CLIENTID
+              value: {{ .Values.backend.keycloak.clientId | quote }}
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTID
+              value: {{ .Values.backend.keycloak.backendClientId | quote }}
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTSECRET
+              value: {{ .Values.backend.keycloak.backendClientSecret | quote }}
+
+            # Valtimo
+            - name: VALTIMO_APP_HOSTNAME
+              value: {{ .Values.backend.valtimo.appHostname | quote }}
+            - name: VALTIMO_PLUGIN_ENCRYPTIONSECRET
+              value: {{ .Values.backend.valtimo.pluginEncryptionSecret | quote }}
+
+            # Operaton BPMN engine
+            - name: OPERATON_BPM_ADMINUSER_PASSWORD
+              value: {{ .Values.backend.operaton.adminPassword | quote }}
+
+            {{- with .Values.backend.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+
+          {{- with .Values.backend.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backend.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.backend.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.backend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.backend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

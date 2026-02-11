@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "valtimo-demo.frontend.fullname" . }}
+  labels:
+    {{- include "valtimo-demo.frontend.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "valtimo-demo.frontend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/nginx-config: {{ include (print $.Template.BasePath "/frontend-nginx-configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "valtimo-demo.frontend.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.frontend.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: frontend
+          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            {{- $keycloakExternalUrl := include "valtimo-demo.keycloak.externalUrl" . }}
+            - name: SWAGGER_URI
+              value: {{ .Values.frontend.env.swaggerUri | quote }}
+            - name: MOCK_API_URI
+              value: {{ .Values.frontend.env.mockApiUri | quote }}
+            - name: API_URI
+              value: {{ .Values.frontend.env.apiUri | quote }}
+            - name: KEYCLOAK_URL
+              value: {{ .Values.frontend.env.keycloakUrl | default $keycloakExternalUrl | quote }}
+            - name: KEYCLOAK_REALM
+              value: {{ .Values.frontend.env.keycloakRealm | quote }}
+            - name: KEYCLOAK_CLIENT_ID
+              value: {{ .Values.frontend.env.keycloakClientId | quote }}
+            - name: KEYCLOAK_REDIRECT_URI
+              value: {{ .Values.frontend.env.keycloakRedirectUri | quote }}
+            - name: KEYCLOAK_LOGOUT_REDIRECT_URI
+              value: {{ .Values.frontend.env.keycloakLogoutRedirectUri | quote }}
+            - name: WHITELISTED_DOMAIN
+              value: {{ .Values.frontend.env.whitelistedDomain | quote }}
+            - name: OPENZAAK_CATALOGUS_ID
+              value: {{ .Values.frontend.env.openZaakCatalogusId | quote }}
+            {{- with .Values.frontend.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d/default.conf
+              subPath: default.conf
+          {{- with .Values.frontend.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.frontend.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.frontend.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            runAsUser: 1000
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: {{ include "valtimo-demo.frontend.fullname" . }}-nginx
+      {{- with .Values.frontend.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.frontend.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
