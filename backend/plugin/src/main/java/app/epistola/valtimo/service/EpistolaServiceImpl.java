@@ -242,49 +242,83 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     /**
      * Extract fields from the template's JSON schema.
-     * The schema is expected to be a JSON Schema object with "properties" defining the fields.
+     * Recursively processes nested objects and arrays to produce a tree of TemplateField nodes.
      */
-    private List<TemplateField> extractFieldsFromSchema(Object schema) {
+    List<TemplateField> extractFieldsFromSchema(Object schema) {
         if (schema == null) {
             return Collections.emptyList();
         }
 
-        // The schema is typically a Map representing JSON Schema
         if (schema instanceof Map<?, ?> schemaMap) {
-            Object properties = schemaMap.get("properties");
-            Object requiredList = schemaMap.get("required");
-
-            List<String> required = Collections.emptyList();
-            if (requiredList instanceof List<?> list) {
-                required = list.stream()
-                        .filter(String.class::isInstance)
-                        .map(String.class::cast)
-                        .toList();
-            }
-
-            if (properties instanceof Map<?, ?> propsMap) {
-                List<String> finalRequired = required;
-                return propsMap.entrySet().stream()
-                        .map(entry -> {
-                            String fieldName = String.valueOf(entry.getKey());
-                            Map<?, ?> fieldDef = entry.getValue() instanceof Map<?, ?>
-                                    ? (Map<?, ?>) entry.getValue()
-                                    : Collections.emptyMap();
-
-                            String type = fieldDef.get("type") != null
-                                    ? String.valueOf(fieldDef.get("type"))
-                                    : "string";
-                            String description = fieldDef.get("description") != null
-                                    ? String.valueOf(fieldDef.get("description"))
-                                    : null;
-                            boolean isRequired = finalRequired.contains(fieldName);
-
-                            return new TemplateField(fieldName, type, isRequired, description);
-                        })
-                        .toList();
-            }
+            return extractFieldsFromObject(schemaMap, "");
         }
 
+        return Collections.emptyList();
+    }
+
+    private List<TemplateField> extractFieldsFromObject(Map<?, ?> schemaMap, String parentPath) {
+        Object properties = schemaMap.get("properties");
+        List<String> requiredNames = extractRequiredNames(schemaMap.get("required"));
+
+        if (!(properties instanceof Map<?, ?> propsMap)) {
+            return Collections.emptyList();
+        }
+
+        List<TemplateField> fields = new ArrayList<>();
+        for (Map.Entry<?, ?> entry : propsMap.entrySet()) {
+            String fieldName = String.valueOf(entry.getKey());
+            String fieldPath = parentPath.isEmpty() ? fieldName : parentPath + "." + fieldName;
+            boolean isRequired = requiredNames.contains(fieldName);
+
+            Map<?, ?> fieldDef = entry.getValue() instanceof Map<?, ?>
+                    ? (Map<?, ?>) entry.getValue()
+                    : Collections.emptyMap();
+
+            fields.add(buildTemplateField(fieldName, fieldPath, fieldDef, isRequired));
+        }
+
+        return fields;
+    }
+
+    private TemplateField buildTemplateField(String name, String path, Map<?, ?> fieldDef, boolean required) {
+        String type = fieldDef.get("type") != null ? String.valueOf(fieldDef.get("type")) : "string";
+        String description = fieldDef.get("description") != null ? String.valueOf(fieldDef.get("description")) : null;
+
+        if ("object".equals(type) && fieldDef.containsKey("properties")) {
+            List<TemplateField> children = extractFieldsFromObject(fieldDef, path);
+            return new TemplateField(name, path, type, TemplateField.FieldType.OBJECT, required, description, children);
+        }
+
+        if ("array".equals(type)) {
+            return buildArrayField(name, path, fieldDef, required, description);
+        }
+
+        // Scalar field (string, number, integer, boolean)
+        return new TemplateField(name, path, type, TemplateField.FieldType.SCALAR, required, description, Collections.emptyList());
+    }
+
+    private TemplateField buildArrayField(String name, String path, Map<?, ?> fieldDef, boolean required, String description) {
+        Object items = fieldDef.get("items");
+        if (items instanceof Map<?, ?> itemsDef) {
+            String itemType = itemsDef.get("type") != null ? String.valueOf(itemsDef.get("type")) : "string";
+            if ("object".equals(itemType) && itemsDef.containsKey("properties")) {
+                // Array of objects: recurse into item properties
+                String arrayPath = path + "[]";
+                List<TemplateField> children = extractFieldsFromObject(itemsDef, arrayPath);
+                return new TemplateField(name, path, "array", TemplateField.FieldType.ARRAY, required, description, children);
+            }
+        }
+        // Array of primitives: treat as scalar (maps to simple list)
+        return new TemplateField(name, path, "array", TemplateField.FieldType.SCALAR, required, description, Collections.emptyList());
+    }
+
+    private List<String> extractRequiredNames(Object requiredList) {
+        if (requiredList instanceof List<?> list) {
+            return list.stream()
+                    .filter(String.class::isInstance)
+                    .map(String.class::cast)
+                    .toList();
+        }
         return Collections.emptyList();
     }
 
