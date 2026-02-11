@@ -55,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `GenerationJobStatus`: Enum for job states (PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED)
   - `GenerationJobDetail`: Full job status with document ID and error message
 
-- **Integration Tests**: WireMock-based tests for `EpistolaServiceImpl` covering all API operations
+- **Integration Tests**: Contract mock server tests for `EpistolaServiceImpl` using Testcontainers with the Epistola Prism mock server
 
 - **Frontend Components**:
   - Updated generate-document configuration with variant, environment, and correlation ID fields
@@ -119,7 +119,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Dependencies
 
 - Added `app.epistola.contract:client-spring3-restclient:1.0.0` for Epistola API calls
-- Added `org.wiremock:wiremock-standalone:3.10.0` for testing
+- Uses Testcontainers with `ghcr.io/epistola-app/epistola-contract/mock-server` for API testing
 
 ## [1.0.0-SNAPSHOT] - Initial Development
 
