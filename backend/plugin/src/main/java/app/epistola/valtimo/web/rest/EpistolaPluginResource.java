@@ -5,6 +5,9 @@ import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.valtimo.service.EpistolaService;
+import app.epistola.valtimo.service.TemplateMappingValidator;
+import app.epistola.valtimo.web.rest.dto.ValidateMappingRequest;
+import app.epistola.valtimo.web.rest.dto.ValidateMappingResponse;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valtimo.contract.annotation.SkipComponentScan;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
@@ -13,6 +16,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -127,5 +132,41 @@ public class EpistolaPluginResource {
         );
 
         return ResponseEntity.ok(variants);
+    }
+
+    /**
+     * Validate that a data mapping covers all required template fields.
+     *
+     * @param configurationId The plugin configuration ID
+     * @param templateId      The template ID
+     * @param request         The data mapping to validate
+     * @return Validation result with missing required fields (if any)
+     */
+    @PostMapping("/configurations/{configurationId}/templates/{templateId}/validate-mapping")
+    public ResponseEntity<ValidateMappingResponse> validateMapping(
+            @PathVariable("configurationId") UUID configurationId,
+            @PathVariable("templateId") String templateId,
+            @RequestBody ValidateMappingRequest request
+    ) {
+        log.debug("Validating mapping for plugin configuration: {}, template: {}",
+                configurationId, templateId);
+
+        EpistolaPlugin plugin = pluginService.createInstance(configurationId);
+        TemplateDetails templateDetails = epistolaService.getTemplateDetails(
+                plugin.getBaseUrl(),
+                plugin.getApiKey(),
+                plugin.getTenantId(),
+                templateId
+        );
+
+        List<String> missingFields = TemplateMappingValidator.findMissingRequiredFields(
+                templateDetails.fields(),
+                request.dataMapping()
+        );
+
+        return ResponseEntity.ok(new ValidateMappingResponse(
+                missingFields.isEmpty(),
+                missingFields
+        ));
     }
 }
