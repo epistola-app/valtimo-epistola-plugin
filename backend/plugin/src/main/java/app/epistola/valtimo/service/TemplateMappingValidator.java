@@ -9,8 +9,8 @@ import java.util.Map;
 
 /**
  * Validates that all required template fields have been mapped to a data source.
- * Traverses the field tree to collect all required leaf paths and checks each
- * has a non-empty entry in the data mapping.
+ * Walks the field tree and the nested mapping tree in parallel to check that
+ * each required field has a non-empty value.
  */
 public final class TemplateMappingValidator {
 
@@ -19,37 +19,42 @@ public final class TemplateMappingValidator {
 
     /**
      * Find required template fields that are missing from the data mapping.
+     * The data mapping is a nested structure that mirrors the template field hierarchy:
+     * objects map to nested Maps, scalars and arrays map to String values.
      *
      * @param fields      the template field tree from schema parsing
-     * @param dataMapping the current data mapping (template field path -> value resolver expression)
+     * @param dataMapping the current nested data mapping (field name -> value or nested map)
      * @return list of missing required field paths (empty if all required fields are mapped)
      */
-    public static List<String> findMissingRequiredFields(List<TemplateField> fields, Map<String, String> dataMapping) {
+    public static List<String> findMissingRequiredFields(List<TemplateField> fields, Map<String, Object> dataMapping) {
         if (fields == null || fields.isEmpty()) {
             return Collections.emptyList();
         }
 
-        Map<String, String> mapping = dataMapping != null ? dataMapping : Collections.emptyMap();
+        Map<String, Object> mapping = dataMapping != null ? dataMapping : Collections.emptyMap();
         List<String> missing = new ArrayList<>();
         collectMissingRequired(fields, mapping, missing);
         return missing;
     }
 
-    private static void collectMissingRequired(List<TemplateField> fields, Map<String, String> mapping, List<String> missing) {
+    @SuppressWarnings("unchecked")
+    private static void collectMissingRequired(List<TemplateField> fields, Map<String, Object> mapping, List<String> missing) {
         for (TemplateField field : fields) {
             switch (field.fieldType()) {
                 case SCALAR -> {
-                    if (field.required() && !hasNonEmptyMapping(field.path(), mapping)) {
+                    if (field.required() && !hasNonEmptyStringValue(field.name(), mapping)) {
                         missing.add(field.path());
                     }
                 }
                 case OBJECT -> {
-                    // For objects, check children recursively
-                    collectMissingRequired(field.children(), mapping, missing);
+                    // Get the nested mapping for this object (if present)
+                    Object nested = mapping.get(field.name());
+                    Map<String, Object> nestedMap = (nested instanceof Map<?, ?>) ? (Map<String, Object>) nested : Collections.emptyMap();
+                    collectMissingRequired(field.children(), nestedMap, missing);
                 }
                 case ARRAY -> {
-                    // Arrays are mapped as a whole collection by path
-                    if (field.required() && !hasNonEmptyMapping(field.path(), mapping)) {
+                    // Arrays are mapped as a whole collection by name
+                    if (field.required() && !hasNonEmptyStringValue(field.name(), mapping)) {
                         missing.add(field.path());
                     }
                 }
@@ -57,8 +62,11 @@ public final class TemplateMappingValidator {
         }
     }
 
-    private static boolean hasNonEmptyMapping(String path, Map<String, String> mapping) {
-        String value = mapping.get(path);
-        return value != null && !value.isBlank();
+    private static boolean hasNonEmptyStringValue(String name, Map<String, Object> mapping) {
+        Object value = mapping.get(name);
+        if (value instanceof String str) {
+            return !str.isBlank();
+        }
+        return value != null;
     }
 }

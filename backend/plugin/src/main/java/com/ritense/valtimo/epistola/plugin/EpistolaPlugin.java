@@ -4,7 +4,6 @@ import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GeneratedDocument;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
-import app.epistola.valtimo.service.DataMappingResolver;
 import app.epistola.valtimo.service.EpistolaService;
 import com.ritense.plugin.annotation.*;
 import com.ritense.plugin.domain.EventType;
@@ -13,11 +12,11 @@ import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 // Placed here because Valtimo by default only scans com.ritense.valtimo package
 @Plugin(
@@ -178,7 +177,7 @@ public class EpistolaPlugin {
             @PluginActionProperty String templateId,
             @PluginActionProperty String variantId,
             @PluginActionProperty String environmentId,
-            @PluginActionProperty Map<String, String> dataMapping,
+            @PluginActionProperty Map<String, Object> dataMapping,
             @PluginActionProperty FileFormat outputFormat,
             @PluginActionProperty String filename,
             @PluginActionProperty String correlationId,
@@ -187,11 +186,8 @@ public class EpistolaPlugin {
         log.info("Starting document generation: templateId={}, variantId={}, outputFormat={}, filename={}",
                 templateId, variantId, outputFormat, filename);
 
-        // Resolve the data mapping values (doc:, pv:, etc.)
-        Map<String, Object> resolvedData = resolveDataMapping(execution, dataMapping);
-
-        // Convert flat dot-notation keys to nested structure for the Epistola API
-        resolvedData = DataMappingResolver.toNestedStructure(resolvedData);
+        // Resolve value expressions (doc:, pv:, etc.) recursively through the nested mapping
+        Map<String, Object> resolvedData = resolveNestedMapping(execution, dataMapping != null ? dataMapping : Map.of());
 
         // Resolve the filename if it uses value resolvers
         String resolvedFilename = resolveValue(execution, filename);
@@ -311,40 +307,53 @@ public class EpistolaPlugin {
     }
 
     /**
-     * Resolve data mapping values using the ValueResolverService.
-     * Values with prefixes (doc:, pv:, case:, etc.) will be resolved to their actual values.
+     * Recursively resolve value expressions in a nested data mapping.
+     * String values with prefixes (doc:, pv:, case:, etc.) are resolved via ValueResolverService.
+     * Nested maps are traversed recursively; other values are passed through as-is.
      */
-    private Map<String, Object> resolveDataMapping(DelegateExecution execution, Map<String, String> dataMapping) {
-        if (dataMapping == null || dataMapping.isEmpty()) {
-            return new HashMap<>();
-        }
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> resolveNestedMapping(DelegateExecution execution, Map<String, Object> mapping) {
+        // First pass: collect all resolvable string values from the entire tree
+        List<String> valuesToResolve = new ArrayList<>();
+        collectResolvableValues(mapping, valuesToResolve);
 
-        // Collect all values that need resolution
-        List<String> valuesToResolve = dataMapping.values().stream()
-                .filter(this::isResolvableValue)
-                .collect(Collectors.toList());
+        // Batch-resolve all values at once for efficiency
+        Map<String, Object> resolvedValues = valuesToResolve.isEmpty()
+                ? Map.of()
+                : valueResolverService.resolveValues(
+                        execution.getProcessInstanceId(),
+                        execution,
+                        valuesToResolve
+                );
 
-        // Resolve values
-        Map<String, Object> resolvedValues = valueResolverService.resolveValues(
-                execution.getProcessInstanceId(),
-                execution,
-                valuesToResolve
-        );
+        // Second pass: build resolved tree using the batch-resolved values
+        return applyResolvedValues(mapping, resolvedValues);
+    }
 
-        // Build the result map with resolved values
-        Map<String, Object> result = new HashMap<>();
-        for (Map.Entry<String, String> entry : dataMapping.entrySet()) {
-            String key = entry.getKey();
-            String value = entry.getValue();
-
-            if (isResolvableValue(value)) {
-                result.put(key, resolvedValues.get(value));
-            } else {
-                // Literal value, use as-is
-                result.put(key, value);
+    @SuppressWarnings("unchecked")
+    private void collectResolvableValues(Map<String, Object> mapping, List<String> valuesToResolve) {
+        for (Object value : mapping.values()) {
+            if (value instanceof String str && isResolvableValue(str)) {
+                valuesToResolve.add(str);
+            } else if (value instanceof Map<?, ?> nested) {
+                collectResolvableValues((Map<String, Object>) nested, valuesToResolve);
             }
         }
+    }
 
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> applyResolvedValues(Map<String, Object> mapping, Map<String, Object> resolvedValues) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (var entry : mapping.entrySet()) {
+            Object value = entry.getValue();
+            if (value instanceof Map<?, ?> nested) {
+                result.put(entry.getKey(), applyResolvedValues((Map<String, Object>) nested, resolvedValues));
+            } else if (value instanceof String str && isResolvableValue(str)) {
+                result.put(entry.getKey(), resolvedValues.get(str));
+            } else {
+                result.put(entry.getKey(), value);
+            }
+        }
         return result;
     }
 
