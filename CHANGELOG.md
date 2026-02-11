@@ -82,13 +82,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Extracts variable names from BPMN model input/output parameters
   - `GET /api/v1/plugin/epistola/process-variables` REST endpoint
 
-- **Enhanced Data Mapping UI**:
-  - Source type selector: Document field / Process variable / Manual value
-  - Valtimo `ValuePathSelectorComponent` for `doc:` and `case:` browsing
-  - Process variable autocomplete from discovery API with free-text fallback
-  - Auto-populate mapping rows for all required template fields
+- **Schema-Mirrored Tree Form for Data Mapping**:
+  - Replaced flat table UI with a tree form that mirrors the template schema hierarchy
+  - OBJECT fields render as collapsible sections with children indented inside
+  - SCALAR fields render as label + input rows (ValuePathSelector or text input)
+  - ARRAY fields render as collapsible sections with "map collection to" input
+  - fx toggle per field: switches between browse mode (ValuePathSelector) and expression mode (text input)
+  - Completeness badge on collapsed sections shows mapped/total required fields
   - Red indicator for required fields without mappings
-  - Validation summary showing mapped vs total required fields
+  - Auto-expand sections with unmapped required fields
+
+### Changed
+
+- **Nested Data Mapping Format**: Data mapping now uses a nested structure mirroring the template
+  schema hierarchy instead of flat dot-notation keys. Backend value resolution walks the tree
+  recursively with batch expression resolution for efficiency. `TemplateMappingValidator` walks
+  field tree and mapping tree in parallel by field name.
 
 ### Dependencies
 
