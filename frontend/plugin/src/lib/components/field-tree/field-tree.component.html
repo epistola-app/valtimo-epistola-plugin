@@ -1,23 +1,14 @@
-<!-- SCALAR field: label row + input -->
+<!-- SCALAR field: label row + input with 3-mode selector -->
 <div *ngIf="field.fieldType === 'SCALAR'" class="field-row" [class.field-required-unmapped]="field.required && !getStringValue()">
   <div class="field-label">
     <span class="field-name">{{ field.name }}</span>
     <span class="field-meta">({{ field.type }}{{ field.required ? ', required' : '' }})</span>
   </div>
   <div class="field-input">
-    <button
-      type="button"
-      class="fx-toggle"
-      [class.fx-active]="fxMode"
-      [disabled]="disabled"
-      (click)="toggleFxMode()"
-      [title]="(fxMode ? 'browseMode' : 'expressionMode') | pluginTranslate: pluginId | async"
-    >
-      {{ fxMode ? 'fx' : '⊞' }}
-    </button>
+    <ng-container *ngTemplateOutlet="inputModeGroup; context: { $implicit: inputMode, setter: setInputMode.bind(this) }"></ng-container>
 
     <!-- Browse mode: ValuePathSelector -->
-    <div class="field-input-control" *ngIf="!fxMode">
+    <div class="field-input-control" *ngIf="inputMode === 'browse'">
       <valtimo-value-path-selector
         [name]="'field_' + field.path"
         [caseDefinitionKey]="caseDefinitionKey"
@@ -30,14 +21,36 @@
       ></valtimo-value-path-selector>
     </div>
 
+    <!-- PV mode: dropdown (when available) or text fallback -->
+    <div class="field-input-control" *ngIf="inputMode === 'pv'">
+      <select
+        *ngIf="processVariables.length > 0; else pvFallback"
+        class="pv-select"
+        [disabled]="disabled"
+        (change)="onPvChange($any($event.target).value)"
+      >
+        <option value="">{{ 'pvPlaceholder' | pluginTranslate: pluginId | async }}</option>
+        <option *ngFor="let pv of processVariables" [value]="pv" [selected]="pv === getPvName()">{{ pv }}</option>
+      </select>
+      <ng-template #pvFallback>
+        <v-input
+          [name]="'pvfb_' + field.path"
+          [defaultValue]="getPvName()"
+          [disabled]="disabled"
+          [placeholder]="'pvPlaceholder' | pluginTranslate: pluginId | async"
+          (valueChange)="onPvChange($event)"
+        ></v-input>
+      </ng-template>
+    </div>
+
     <!-- Expression mode: text input -->
-    <div class="field-input-control" *ngIf="fxMode">
+    <div class="field-input-control" *ngIf="inputMode === 'expression'">
       <v-input
         [name]="'fx_' + field.path"
         [defaultValue]="getStringValue()"
         [disabled]="disabled"
         [placeholder]="'e.g. pv:variableName or doc:path.to.field'"
-        (valueChange)="onFxValueChange($event)"
+        (valueChange)="onExpressionValueChange($event)"
       ></v-input>
     </div>
   </div>
@@ -67,54 +80,135 @@
   </div>
 </div>
 
-<!-- ARRAY field: collapsible section with collection mapping -->
+<!-- ARRAY field: collapsible section with source collection + optional per-item mapping -->
 <div *ngIf="field.fieldType === 'ARRAY'" class="field-array">
-  <div class="field-array-header" (click)="toggleExpanded()" [class.field-required-unmapped]="field.required && !getStringValue()">
+  <div class="field-array-header" (click)="toggleExpanded()" [class.field-required-unmapped]="field.required && !getSourceValue()">
     <span class="expand-icon">{{ expanded ? '▼' : '▶' }}</span>
     <span class="field-name">{{ field.name }}</span>
     <span class="field-meta">(array{{ field.required ? ', required' : '' }})</span>
-    <span class="mapped-indicator" *ngIf="getStringValue() && !expanded">✓</span>
+    <span class="completeness-badge" *ngIf="totalRequired > 0 && !expanded">
+      {{ mappedCount }}/{{ totalRequired }}
+    </span>
+    <span class="mapped-indicator" *ngIf="totalRequired === 0 && getSourceValue() && !expanded">✓</span>
   </div>
   <div class="field-array-content" *ngIf="expanded">
+    <!-- Source collection input -->
     <div class="field-row">
       <div class="field-label">
         <span class="field-name">{{ 'mapCollectionTo' | pluginTranslate: pluginId | async }}</span>
       </div>
       <div class="field-input">
-        <button
-          type="button"
-          class="fx-toggle"
-          [class.fx-active]="fxMode"
-          [disabled]="disabled"
-          (click)="toggleFxMode()"
-          [title]="(fxMode ? 'browseMode' : 'expressionMode') | pluginTranslate: pluginId | async"
-        >
-          {{ fxMode ? 'fx' : '⊞' }}
-        </button>
+        <ng-container *ngTemplateOutlet="inputModeGroup; context: { $implicit: inputMode, setter: setInputMode.bind(this) }"></ng-container>
 
-        <div class="field-input-control" *ngIf="!fxMode">
+        <div class="field-input-control" *ngIf="inputMode === 'browse'">
           <valtimo-value-path-selector
             [name]="'field_' + field.path"
             [caseDefinitionKey]="caseDefinitionKey"
             [prefixes]="[ValuePathSelectorPrefix.DOC, ValuePathSelectorPrefix.CASE]"
             [notation]="'dots'"
             [disabled]="disabled"
-            [defaultValue]="getStringValue()"
+            [defaultValue]="getSourceValue()"
             [showCaseDefinitionSelector]="!caseDefinitionKey"
-            (valueChangeEvent)="onBrowseValueChange($event)"
+            (valueChangeEvent)="onSourceBrowseChange($event)"
           ></valtimo-value-path-selector>
         </div>
 
-        <div class="field-input-control" *ngIf="fxMode">
+        <div class="field-input-control" *ngIf="inputMode === 'pv'">
+          <select
+            *ngIf="processVariables.length > 0; else pvSourceFallback"
+            class="pv-select"
+            [disabled]="disabled"
+            (change)="onSourcePvChange($any($event.target).value)"
+          >
+            <option value="">{{ 'pvPlaceholder' | pluginTranslate: pluginId | async }}</option>
+            <option *ngFor="let pv of processVariables" [value]="pv" [selected]="pv === getSourcePvName()">{{ pv }}</option>
+          </select>
+          <ng-template #pvSourceFallback>
+            <v-input
+              [name]="'pvfb_' + field.path"
+              [defaultValue]="getSourcePvName()"
+              [disabled]="disabled"
+              [placeholder]="'pvPlaceholder' | pluginTranslate: pluginId | async"
+              (valueChange)="onSourcePvChange($event)"
+            ></v-input>
+          </ng-template>
+        </div>
+
+        <div class="field-input-control" *ngIf="inputMode === 'expression'">
           <v-input
             [name]="'fx_' + field.path"
-            [defaultValue]="getStringValue()"
+            [defaultValue]="getSourceValue()"
             [disabled]="disabled"
             [placeholder]="'e.g. pv:variableName or doc:path.to.field'"
-            (valueChange)="onFxValueChange($event)"
+            (valueChange)="onSourceExpressionChange($event)"
+          ></v-input>
+        </div>
+      </div>
+    </div>
+
+    <!-- Per-item field mapping toggle (only shown when array has children) -->
+    <div class="array-per-field-toggle" *ngIf="hasArrayChildren()">
+      <label class="toggle-label">
+        <input
+          type="checkbox"
+          [checked]="arrayPerFieldMode"
+          [disabled]="disabled"
+          (change)="toggleArrayPerFieldMode()"
+        />
+        <span>{{ 'itemFieldMapping' | pluginTranslate: pluginId | async }}</span>
+      </label>
+    </div>
+
+    <!-- Per-item field mappings -->
+    <div class="array-item-fields" *ngIf="arrayPerFieldMode && hasArrayChildren()">
+      <div class="item-fields-header">
+        <span class="item-fields-title">{{ 'itemFieldMappingTitle' | pluginTranslate: pluginId | async }}</span>
+      </div>
+      <div class="item-field-row" *ngFor="let child of field.children">
+        <div class="item-field-label">
+          <span class="field-name">{{ child.name }}</span>
+          <span class="field-meta">({{ child.type }}{{ child.required ? ', required' : '' }})</span>
+        </div>
+        <div class="item-field-input">
+          <v-input
+            [name]="'itemField_' + child.path"
+            [defaultValue]="getItemFieldValue(child.name)"
+            [disabled]="disabled"
+            [placeholder]="'sourceFieldPlaceholder' | pluginTranslate: pluginId | async"
+            (valueChange)="onItemFieldChange(child.name, $event)"
           ></v-input>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+<!-- Shared template: 3-button input mode group -->
+<ng-template #inputModeGroup let-currentMode let-setter="setter">
+  <div class="input-mode-group">
+    <button
+      type="button"
+      class="mode-btn"
+      [class.mode-active]="currentMode === 'browse'"
+      [disabled]="disabled"
+      (click)="setter('browse')"
+      [title]="'browseMode' | pluginTranslate: pluginId | async"
+    >⊞</button>
+    <button
+      type="button"
+      class="mode-btn"
+      [class.mode-active]="currentMode === 'pv'"
+      [disabled]="disabled"
+      (click)="setter('pv')"
+      [title]="'pvMode' | pluginTranslate: pluginId | async"
+    >pv</button>
+    <button
+      type="button"
+      class="mode-btn"
+      [class.mode-active]="currentMode === 'expression'"
+      [disabled]="disabled"
+      (click)="setter('expression')"
+      [title]="'expressionMode' | pluginTranslate: pluginId | async"
+    >fx</button>
+  </div>
+</ng-template>

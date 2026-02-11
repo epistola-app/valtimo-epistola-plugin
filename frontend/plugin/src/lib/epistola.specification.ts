@@ -74,7 +74,12 @@ const epistolaPluginSpecification: PluginSpecification = {
       fieldOptional: 'Optioneel',
       mapCollectionTo: 'Koppel collectie aan',
       browseMode: 'Bladermodus',
+      pvMode: 'Procesvariabele modus',
+      pvPlaceholder: 'Naam procesvariabele',
       expressionMode: 'Expressiemodus',
+      itemFieldMapping: 'Veldnamen per item koppelen',
+      itemFieldMappingTitle: 'Veldkoppeling per item:',
+      sourceFieldPlaceholder: 'Bronveldnaam',
       noTemplateFields: 'Geen template velden beschikbaar'
     },
     en: {
@@ -129,7 +134,12 @@ const epistolaPluginSpecification: PluginSpecification = {
       fieldOptional: 'Optional',
       mapCollectionTo: 'Map collection to',
       browseMode: 'Browse mode',
+      pvMode: 'Process variable mode',
+      pvPlaceholder: 'Process variable name',
       expressionMode: 'Expression mode',
+      itemFieldMapping: 'Map field names per item',
+      itemFieldMappingTitle: 'Item field mapping:',
+      sourceFieldPlaceholder: 'Source field name',
       noTemplateFields: 'No template fields available'
     }
   }

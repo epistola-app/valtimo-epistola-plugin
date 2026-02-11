@@ -105,6 +105,10 @@ export class DataMappingTreeComponent implements OnInit, OnDestroy {
         const val = mapping[field.name];
         if (typeof val === 'string' && val.trim().length > 0) {
           mapped++;
+        } else if (typeof val === 'object' && val !== null && '_source' in val) {
+          if (typeof val['_source'] === 'string' && val['_source'].trim().length > 0) {
+            mapped++;
+          }
         }
       } else if (field.fieldType === 'OBJECT' && field.children) {
         const nested = (typeof mapping[field.name] === 'object' && mapping[field.name] !== null)

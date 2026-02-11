@@ -43,43 +43,76 @@
   min-width: 0;
 }
 
-// -- fx toggle button --
-.fx-toggle {
-  flex: 0 0 32px;
-  width: 32px;
-  height: 32px;
+// -- 3-button input mode group --
+.input-mode-group {
+  flex: 0 0 auto;
+  display: flex;
   margin-top: 0.25rem;
-  padding: 0;
   border: 1px solid #c6c6c6;
   border-radius: 4px;
-  background: #f4f4f4;
-  color: #525252;
-  font-size: 0.75rem;
-  font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.15s, border-color 0.15s;
+  overflow: hidden;
 
-  &:hover:not(:disabled) {
-    background: #e0e0e0;
-    border-color: #8d8d8d;
-  }
+  .mode-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: none;
+    border-right: 1px solid #c6c6c6;
+    background: #f4f4f4;
+    color: #525252;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.15s;
 
-  &.fx-active {
-    background: #0f62fe;
-    color: #fff;
-    border-color: #0f62fe;
+    &:last-child {
+      border-right: none;
+    }
 
     &:hover:not(:disabled) {
-      background: #0353e9;
+      background: #e0e0e0;
     }
+
+    &.mode-active {
+      background: #0f62fe;
+      color: #fff;
+
+      &:hover:not(:disabled) {
+        background: #0353e9;
+      }
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// -- PV select dropdown --
+.pv-select {
+  width: 100%;
+  height: 2.5rem;
+  padding: 0 0.75rem;
+  border: 1px solid #c6c6c6;
+  border-radius: 4px;
+  background: #fff;
+  color: #161616;
+  font-size: 0.875rem;
+  cursor: pointer;
+
+  &:focus {
+    outline: 2px solid #0f62fe;
+    outline-offset: -2px;
   }
 
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+    background: #f4f4f4;
   }
 }
 
@@ -155,4 +188,68 @@
   padding-left: 1.25rem;
   border-left: 1px solid #e0e0e0;
   margin-left: 0.5rem;
+}
+
+// -- Array per-item field mapping --
+.array-per-field-toggle {
+  padding: 0.5rem 0;
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: #525252;
+
+    input[type="checkbox"] {
+      cursor: pointer;
+    }
+  }
+}
+
+.array-item-fields {
+  padding: 0.25rem 0 0.5rem;
+  margin-left: 0.5rem;
+  border-left: 1px dashed #c6c6c6;
+  padding-left: 1rem;
+}
+
+.item-fields-header {
+  padding-bottom: 0.25rem;
+
+  .item-fields-title {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: #6c757d;
+  }
+}
+
+.item-field-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+}
+
+.item-field-label {
+  flex: 0 0 180px;
+  min-width: 120px;
+  word-break: break-word;
+
+  .field-name {
+    font-weight: 500;
+    font-size: 0.875rem;
+  }
+
+  .field-meta {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-left: 0.25rem;
+  }
+}
+
+.item-field-input {
+  flex: 1;
+  min-width: 0;
 }
