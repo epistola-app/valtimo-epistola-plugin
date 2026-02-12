@@ -11,6 +11,7 @@ pluginManagement {
         id("org.jlleitschuh.gradle.ktlint") version "12.1.2"
         id("com.diffplug.spotless") version "6.25.0"
         id("com.avast.gradle.docker-compose") version "0.17.12"
+        id("com.vanniktech.maven.publish") version "0.30.0"
     }
 }
 plugins {

@@ -117,6 +117,6 @@ tasks.register("testAll") {
 
 tasks.register("publishAll") {
     description = "Publish all artifacts"
-    dependsOn(":backend:plugin:publish")
+    dependsOn(":backend:plugin:publishAndReleaseToMavenCentral")
     // npm publish is done separately from frontend/plugin directory
 }

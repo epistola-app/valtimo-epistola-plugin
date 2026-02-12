@@ -1,10 +1,12 @@
+import com.vanniktech.maven.publish.SonatypeHost
+
 plugins {
     `java-library`
-    id("maven-publish")
+    id("com.vanniktech.maven.publish")
     id("io.spring.dependency-management")
 }
 
-group = "app.epistola"
+group = "app.epistola.valtimo"
 version = rootProject.version
 
 val valtimoVersion: String by rootProject.extra
@@ -59,28 +61,37 @@ dependencies {
     testAnnotationProcessor("org.projectlombok:lombok:$lombokVersion")
 }
 
-java {
-    withJavadocJar()
-    withSourcesJar()
-}
-
 tasks.test {
     // Don't fail if there are no tests yet
     failOnNoDiscoveredTests.set(false)
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-            groupId = project.group.toString()
-            artifactId = "epistola-plugin"
-            version = project.version.toString()
+mavenPublishing {
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, automaticRelease = true)
+    signAllPublications()
+    coordinates("app.epistola.valtimo", "epistola-plugin", version.toString())
 
-            pom {
-                name.set("Epistola Plugin")
-                description.set("Document generation plugin for Valtimo using Epistola")
+    pom {
+        name.set("Epistola Valtimo Plugin")
+        description.set("Document generation plugin for Valtimo using Epistola")
+        url.set("https://github.com/epistola-app/valtimo-epistola-plugin")
+        licenses {
+            license {
+                name.set("European Union Public Licence 1.2")
+                url.set("https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12")
             }
+        }
+        developers {
+            developer {
+                id.set("epistola")
+                name.set("Epistola")
+                url.set("https://epistola.app")
+            }
+        }
+        scm {
+            url.set("https://github.com/epistola-app/valtimo-epistola-plugin")
+            connection.set("scm:git:git://github.com/epistola-app/valtimo-epistola-plugin.git")
+            developerConnection.set("scm:git:ssh://github.com/epistola-app/valtimo-epistola-plugin.git")
         }
     }
 }
