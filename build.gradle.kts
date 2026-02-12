@@ -12,7 +12,7 @@ version = "1.0.0-SNAPSHOT"
 // Shared configuration for all subprojects
 val valtimoVersion = "13.4.1.RELEASE"
 val lombokVersion = "1.18.42"
-val testcontainersVersion = "1.20.4"
+val testcontainersVersion = "2.0.3"
 
 // Make versions available to subprojects
 extra["valtimoVersion"] = valtimoVersion
