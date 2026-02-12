@@ -63,6 +63,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Environment dropdown for optional environment override
   - Added translations for all new fields (English and Dutch)
 
+- **CI/CD Pipeline** (GitHub Actions):
+  - CI workflow: builds and tests backend (JDK 21 + Gradle) and frontend (pnpm + Node 22) in parallel on every PR and push to main
+  - Release workflow: triggered by GitHub Release (`v*` tag), publishes backend to Maven Central, frontend to npm, and Docker images to GHCR
+  - Docker images signed with Cosign (sigstore) for supply chain security
+  - Version extracted from git tag, no version-bump commits needed
+
+- **Maven Central Publishing**:
+  - Configured `com.vanniktech.maven.publish` plugin for streamlined Maven Central publishing via Central Portal
+  - Full POM metadata: EUPL-1.2 license, SCM links, developer info
+  - GPG signing of all publications
+  - Coordinates: `app.epistola.valtimo:epistola-plugin`
+
 - **Recursive JSON Schema Parsing**:
   - `TemplateField` extended with `path` (dot-notation), `fieldType` (SCALAR/OBJECT/ARRAY), and `children`
   - `extractFieldsFromSchema()` now recursively processes nested objects and arrays
