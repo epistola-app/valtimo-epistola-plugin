@@ -57,7 +57,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build plugin
-        run: pnpm --filter @epistola/valtimo-plugin build
+        run: pnpm --filter @epistola.app/valtimo-plugin build
 
       - name: Build test-app
         run: pnpm --filter gzac-frontend-template build

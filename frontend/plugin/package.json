@@ -1,5 +1,5 @@
 {
-  "name": "@epistola/valtimo-plugin",
+  "name": "@epistola.app/valtimo-plugin",
   "version": "1.0.0",
   "description": "Epistola document generation plugin for Valtimo",
   "license": "EUPL-1.2",

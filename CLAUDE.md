@@ -35,7 +35,7 @@ Services:
 
 ```
 frontend/
-  plugin/          # Angular plugin library (@epistola/valtimo-plugin)
+  plugin/          # Angular plugin library (@epistola.app/valtimo-plugin)
 backend/
   plugin/          # Spring Boot plugin (app.epistola.valtimo:epistola-plugin)
 test-app/
