@@ -11,6 +11,7 @@ import com.ritense.plugin.domain.EventType;
 import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
+import org.operaton.bpm.engine.ExternalTaskService;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 
 import java.util.ArrayList;
@@ -212,8 +213,12 @@ public class EpistolaPlugin {
                 correlationId
         );
 
-        // Store the request ID in the process variable
+        // Store the request ID and tenant ID as process variables.
+        // The tenant ID is needed by the polling completion consumer to route
+        // status checks to the correct Epistola instance.
         execution.setVariable(resultProcessVariable, result.getDocumentId());
+        execution.setVariable("epistolaRequestId", result.getDocumentId());
+        execution.setVariable("epistolaTenantId", tenantId);
 
         log.info("Document generation request submitted. Request ID stored in variable '{}': {}",
                 resultProcessVariable, result.getDocumentId());

@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Async Completion Polling Infrastructure**: Centralized batch poller that queries Operaton for processes waiting on Epistola document generation, checks job statuses, and correlates BPMN messages when jobs complete. Replaces per-process timer polling with a single scheduled task.
+  - `EpistolaCompletionEventConsumer` interface for swappable notification strategies
+  - `PollingCompletionEventConsumer` initial implementation using `@Scheduled` batch polling
+  - `EpistolaMessageCorrelationService` shared correlation logic for both poller and webhook callback
+  - Multi-tenant routing: groups waiting jobs by `epistolaTenantId` and routes to correct plugin config
+  - Configurable via `epistola.poller.enabled` (default: true) and `epistola.poller.interval` (default: 30s)
+
+- **Async Documentation** (`docs/async.md`): Documents the recommended BPMN pattern using Message Intermediate Catch Events, the polling architecture, multi-tenant routing, and future evolution path
+
 - **Epistola REST API Integration**: Replaced mock implementation with real API calls using the Epistola client library (`app.epistola.contract:client-spring3-restclient`)
 
 - **Plugin Configuration Properties**:
@@ -122,6 +131,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Auto-expand sections with unmapped required fields
 
 ### Changed
+
+- **Callback Endpoint Refactored**: `EpistolaCallbackResource` now delegates to `EpistolaMessageCorrelationService` instead of using `RuntimeService` directly. Uses `correlateAllWithResult()` for safe multi-instance correlation.
+
+- **Generate Document Action**: Now stores `epistolaRequestId` and `epistolaTenantId` as process variables automatically (in addition to the user-configured result variable). Required for the polling completion consumer.
+
+- **Configuration Properties**: Replaced legacy `epistola.valtimo.*` prefix with `epistola.*` and added poller configuration (`epistola.poller.enabled`, `epistola.poller.interval`)
 
 - **Nested Data Mapping Format**: Data mapping now uses a nested structure mirroring the template
   schema hierarchy instead of flat dot-notation keys. Backend value resolution walks the tree

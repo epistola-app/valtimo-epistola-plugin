@@ -1,8 +1,11 @@
 package app.epistola.valtimo.config;
 
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
+import app.epistola.valtimo.service.EpistolaCompletionEventConsumer;
+import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
+import app.epistola.valtimo.service.PollingCompletionEventConsumer;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.web.rest.EpistolaCallbackResource;
 import app.epistola.valtimo.web.rest.EpistolaPluginResource;
@@ -14,12 +17,15 @@ import org.operaton.bpm.engine.RepositoryService;
 import org.operaton.bpm.engine.RuntimeService;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Slf4j
 @AutoConfiguration
 @EnableConfigurationProperties(EpistolaProperties.class)
+@EnableScheduling
 public class EpistolaPluginAutoConfiguration {
 
     @Bean
@@ -64,9 +70,36 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(EpistolaMessageCorrelationService.class)
+    public EpistolaMessageCorrelationService epistolaMessageCorrelationService(
+            RuntimeService runtimeService
+    ) {
+        return new EpistolaMessageCorrelationService(runtimeService);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(EpistolaCallbackResource.class)
-    public EpistolaCallbackResource epistolaCallbackResource(RuntimeService runtimeService) {
-        return new EpistolaCallbackResource(runtimeService);
+    public EpistolaCallbackResource epistolaCallbackResource(
+            EpistolaMessageCorrelationService correlationService
+    ) {
+        return new EpistolaCallbackResource(correlationService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaCompletionEventConsumer.class)
+    @ConditionalOnProperty(name = "epistola.poller.enabled", havingValue = "true", matchIfMissing = true)
+    public PollingCompletionEventConsumer pollingCompletionEventConsumer(
+            RuntimeService runtimeService,
+            PluginService pluginService,
+            EpistolaService epistolaService,
+            EpistolaMessageCorrelationService correlationService
+    ) {
+        return new PollingCompletionEventConsumer(
+                runtimeService,
+                pluginService,
+                epistolaService,
+                correlationService
+        );
     }
 
     @Bean

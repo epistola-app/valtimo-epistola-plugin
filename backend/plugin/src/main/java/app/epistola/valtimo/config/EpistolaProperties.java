@@ -4,25 +4,28 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-import java.time.Duration;
-
 /**
- * Configuration properties for Epistola Plugin.
- * Note that the spring boot configuration properties always take precedence over the configuration in the plugin.
+ * Configuration properties for Epistola Plugin runtime behavior.
  */
 @Data
-@ConfigurationProperties(prefix = "epistola.valtimo")
+@ConfigurationProperties(prefix = "epistola")
 @Validated
 public class EpistolaProperties {
 
-    private Boolean enabled = false;
-    private String runtimeBaseUrl;
-    private String applicationName;
-    private String applicationId;
-    private String projectId;
-    private Duration pingTimeout = Duration.ofSeconds(5);
-    private Duration pingDelay = Duration.ofSeconds(10);
-    private Boolean processAuditEvents = true;
-    private Boolean processOutboxMessages = true;
-    private Boolean processAsync = false;
+    private final Poller poller = new Poller();
+
+    @Data
+    public static class Poller {
+
+        /**
+         * Whether the polling completion event consumer is enabled.
+         * Disable when using webhooks or event API for completion notifications.
+         */
+        private boolean enabled = true;
+
+        /**
+         * Fixed delay in milliseconds between poll cycles.
+         */
+        private long interval = 30000;
+    }
 }
