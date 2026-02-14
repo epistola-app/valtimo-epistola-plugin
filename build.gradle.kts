@@ -1,23 +1,13 @@
 import com.github.gradle.node.npm.task.NpmTask
 
 plugins {
-    id("org.springframework.boot") apply false
-    id("io.spring.dependency-management") apply false
-    id("com.github.node-gradle.node")
+    alias(libs.plugins.spring.boot) apply false
+    alias(libs.plugins.spring.dependency.management) apply false
+    alias(libs.plugins.node.gradle)
 }
 
 group = "app.epistola"
 version = "1.0.0-SNAPSHOT"
-
-// Shared configuration for all subprojects
-val valtimoVersion = "13.4.1.RELEASE"
-val lombokVersion = "1.18.42"
-val testcontainersVersion = "2.0.3"
-
-// Make versions available to subprojects
-extra["valtimoVersion"] = valtimoVersion
-extra["lombokVersion"] = lombokVersion
-extra["testcontainersVersion"] = testcontainersVersion
 
 // Node.js configuration for frontend builds
 node {

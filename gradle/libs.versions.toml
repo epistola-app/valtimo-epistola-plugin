@@ -1,5 +1,85 @@
 [versions]
+# Dependencies
+valtimo = "13.4.1.RELEASE"
 epistola-client = "0.1.1"
+lombok = "1.18.42"
+testcontainers = "2.0.3"
+postgresql = "42.7.5"
+netty-resolver-dns-macos = "4.2.0.Final"
+mockito-kotlin = "5.4.0"
+
+# Plugins
+spring-boot = "3.4.1"
+spring-dependency-management = "1.1.7"
+kotlin = "2.0.21"
+node-gradle = "7.1.0"
+vanniktech-publish = "0.30.0"
+foojay-resolver = "0.8.0"
+idea-ext = "1.1.8"
+ktlint-gradle = "12.1.2"
+spotless = "6.25.0"
+docker-compose = "0.17.12"
 
 [libraries]
+# Epistola
 epistola-client = { module = "app.epistola.contract:client-spring3-restclient", version.ref = "epistola-client" }
+
+# Valtimo
+valtimo-bom = { module = "com.ritense.valtimo:valtimo-dependency-versions", version.ref = "valtimo" }
+valtimo-dependencies = { module = "com.ritense.valtimo:valtimo-dependencies" }
+valtimo-core = { module = "com.ritense.valtimo:core" }
+valtimo-contract = { module = "com.ritense.valtimo:contract" }
+valtimo-audit = { module = "com.ritense.valtimo:audit" }
+valtimo-outbox = { module = "com.ritense.valtimo:outbox" }
+valtimo-plugin = { module = "com.ritense.valtimo:plugin" }
+valtimo-value-resolver = { module = "com.ritense.valtimo:value-resolver" }
+valtimo-process-link = { module = "com.ritense.valtimo:process-link" }
+valtimo-test-utils-common = { module = "com.ritense.valtimo:test-utils-common" }
+valtimo-local-document-generation = { module = "com.ritense.valtimo:local-document-generation" }
+valtimo-local-resource = { module = "com.ritense.valtimo:local-resource" }
+valtimo-local-mail = { module = "com.ritense.valtimo:local-mail" }
+valtimo-milestones = { module = "com.ritense.valtimo:milestones" }
+valtimo-object-management = { module = "com.ritense.valtimo:object-management" }
+valtimo-objecten-api-authentication = { module = "com.ritense.valtimo:objecten-api-authentication" }
+valtimo-objecten-api = { module = "com.ritense.valtimo:objecten-api" }
+valtimo-objecttypen-api = { module = "com.ritense.valtimo:objecttypen-api" }
+valtimo-zaken-api = { module = "com.ritense.valtimo:zaken-api" }
+
+# Lombok
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+
+# Spring Boot (versions managed by BOM)
+spring-boot-starter-aop = { module = "org.springframework.boot:spring-boot-starter-aop" }
+spring-boot-starter-security = { module = "org.springframework.boot:spring-boot-starter-security" }
+spring-boot-starter-test = { module = "org.springframework.boot:spring-boot-starter-test" }
+
+# Database
+postgresql = { module = "org.postgresql:postgresql", version.ref = "postgresql" }
+netty-resolver-dns-macos = { module = "io.netty:netty-resolver-dns-native-macos", version.ref = "netty-resolver-dns-macos" }
+
+# Testing
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+mockito-core = { module = "org.mockito:mockito-core" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version.ref = "mockito-kotlin" }
+testcontainers-bom = { module = "org.testcontainers:testcontainers-bom", version.ref = "testcontainers" }
+testcontainers = { module = "org.testcontainers:testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:postgresql" }
+testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter" }
+
+# Logging
+kotlin-logging = { module = "io.github.oshai:kotlin-logging" }
+
+[plugins]
+spring-boot = { id = "org.springframework.boot", version.ref = "spring-boot" }
+spring-dependency-management = { id = "io.spring.dependency-management", version.ref = "spring-dependency-management" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-spring = { id = "org.jetbrains.kotlin.plugin.spring", version.ref = "kotlin" }
+kotlin-jpa = { id = "org.jetbrains.kotlin.plugin.jpa", version.ref = "kotlin" }
+kotlin-allopen = { id = "org.jetbrains.kotlin.plugin.allopen", version.ref = "kotlin" }
+node-gradle = { id = "com.github.node-gradle.node", version.ref = "node-gradle" }
+vanniktech-publish = { id = "com.vanniktech.maven.publish", version.ref = "vanniktech-publish" }
+foojay-resolver = { id = "org.gradle.toolchains.foojay-resolver-convention", version.ref = "foojay-resolver" }
+idea-ext = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "idea-ext" }
+ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }
+spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
+docker-compose = { id = "com.avast.gradle.docker-compose", version.ref = "docker-compose" }

@@ -2,20 +2,16 @@ import com.vanniktech.maven.publish.SonatypeHost
 
 plugins {
     `java-library`
-    id("com.vanniktech.maven.publish")
-    id("io.spring.dependency-management")
+    alias(libs.plugins.vanniktech.publish)
+    alias(libs.plugins.spring.dependency.management)
 }
 
 group = "app.epistola.valtimo"
 version = rootProject.version
 
-val valtimoVersion: String by rootProject.extra
-val lombokVersion: String by rootProject.extra
-val testcontainersVersion: String by rootProject.extra
-
 dependencyManagement {
     imports {
-        mavenBom("com.ritense.valtimo:valtimo-dependency-versions:$valtimoVersion")
+        mavenBom("${libs.valtimo.bom.get()}")
     }
 }
 
@@ -24,41 +20,41 @@ dependencies {
     api(libs.epistola.client)
 
     // Valtimo dependencies (compileOnly - provided by implementing application)
-    compileOnly("com.ritense.valtimo:core")
-    compileOnly("com.ritense.valtimo:contract")
-    compileOnly("com.ritense.valtimo:audit")
-    compileOnly("com.ritense.valtimo:outbox")
-    compileOnly("com.ritense.valtimo:plugin")
-    compileOnly("com.ritense.valtimo:value-resolver")
-    compileOnly("com.ritense.valtimo:process-link")
-    compileOnly("org.springframework.boot:spring-boot-starter-aop")
-    compileOnly("org.springframework.boot:spring-boot-starter-security")
+    compileOnly(libs.valtimo.core)
+    compileOnly(libs.valtimo.contract)
+    compileOnly(libs.valtimo.audit)
+    compileOnly(libs.valtimo.outbox)
+    compileOnly(libs.valtimo.plugin)
+    compileOnly(libs.valtimo.value.resolver)
+    compileOnly(libs.valtimo.process.link)
+    compileOnly(libs.spring.boot.starter.aop)
+    compileOnly(libs.spring.boot.starter.security)
 
     // Lombok
-    compileOnly("org.projectlombok:lombok:$lombokVersion")
-    annotationProcessor("org.projectlombok:lombok:$lombokVersion")
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
 
     // Test dependencies
-    testImplementation("com.ritense.valtimo:core")
-    testImplementation("com.ritense.valtimo:audit")
-    testImplementation("com.ritense.valtimo:contract")
-    testImplementation("com.ritense.valtimo:plugin")
-    testImplementation("com.ritense.valtimo:outbox")
-    testImplementation("com.ritense.valtimo:value-resolver")
-    testImplementation("com.ritense.valtimo:process-link")
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("com.ritense.valtimo:test-utils-common")
-    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation(libs.valtimo.core)
+    testImplementation(libs.valtimo.audit)
+    testImplementation(libs.valtimo.contract)
+    testImplementation(libs.valtimo.plugin)
+    testImplementation(libs.valtimo.outbox)
+    testImplementation(libs.valtimo.value.resolver)
+    testImplementation(libs.valtimo.process.link)
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.valtimo.test.utils.common)
+    testImplementation(libs.junit.jupiter)
 
     // Testcontainers
-    testImplementation(platform("org.testcontainers:testcontainers-bom:$testcontainersVersion"))
-    testImplementation("org.testcontainers:testcontainers")
-    testImplementation("org.testcontainers:postgresql")
-    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation(platform(libs.testcontainers.bom))
+    testImplementation(libs.testcontainers)
+    testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.junit.jupiter)
 
     // Test Lombok
-    testCompileOnly("org.projectlombok:lombok:$lombokVersion")
-    testAnnotationProcessor("org.projectlombok:lombok:$lombokVersion")
+    testCompileOnly(libs.lombok)
+    testAnnotationProcessor(libs.lombok)
 }
 
 tasks.test {
