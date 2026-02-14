@@ -13,6 +13,16 @@ dependencyManagement {
     imports {
         mavenBom("${libs.valtimo.bom.get()}")
     }
+    // Override Valtimo BOM's testcontainers version (1.20.6) with 2.0.3 for Docker Desktop compatibility
+    dependencies {
+        dependencySet("org.testcontainers:${libs.versions.testcontainers.get()}") {
+            entry("testcontainers")
+            entry("testcontainers-postgresql")
+            entry("testcontainers-junit-jupiter")
+            entry("testcontainers-jdbc")
+            entry("testcontainers-database-commons")
+        }
+    }
 }
 
 dependencies {
@@ -47,7 +57,6 @@ dependencies {
     testImplementation(libs.junit.jupiter)
 
     // Testcontainers
-    testImplementation(platform(libs.testcontainers.bom))
     testImplementation(libs.testcontainers)
     testImplementation(libs.testcontainers.postgresql)
     testImplementation(libs.testcontainers.junit.jupiter)
