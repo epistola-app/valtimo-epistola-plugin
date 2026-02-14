@@ -115,8 +115,8 @@ importers:
         specifier: 1.23.6
         version: 1.23.6(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
       '@epistola.app/valtimo-plugin':
-        specifier: file:../../dist/epistola-plugin
-        version: '@epistola/valtimo-plugin@file:dist/epistola-plugin(u5ajootfdmhhvcnicobrc5kzoi)'
+        specifier: workspace:*
+        version: link:../../frontend/plugin
       '@foxythemes/bootstrap-datetime-picker-bs4':
         specifier: 2.3.5
         version: 2.3.5
@@ -1260,16 +1260,6 @@ packages:
   '@discoveryjs/json-ext@0.6.3':
     resolution: {integrity: sha512-4B4OijXeVNOPZlYA2oEwWOTkzyltLao+xbotHQeqN++Rv27Y6s818+n2Qkp8q+Fxhn0t/5lA5X1Mxktud8eayQ==}
     engines: {node: '>=14.17.0'}
-
-  '@epistola/valtimo-plugin@file:dist/epistola-plugin':
-    resolution: {directory: dist/epistola-plugin, type: directory}
-    peerDependencies:
-      '@angular/common': '>=17.0.0'
-      '@angular/core': '>=17.0.0'
-      '@angular/forms': '>=17.0.0'
-      '@valtimo/components': ^13.0.0
-      '@valtimo/plugin': ^13.0.0
-      '@valtimo/shared': ^13.0.0
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -9107,16 +9097,6 @@ snapshots:
       '@jridgewell/trace-mapping': 0.3.9
 
   '@discoveryjs/json-ext@0.6.3': {}
-
-  '@epistola/valtimo-plugin@file:dist/epistola-plugin(u5ajootfdmhhvcnicobrc5kzoi)':
-    dependencies:
-      '@angular/common': 19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
-      '@angular/core': 19.2.17(rxjs@7.8.2)(zone.js@0.15.1)
-      '@angular/forms': 19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.17(@angular/animations@19.2.17(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2)
-      '@valtimo/components': 13.8.0(uhlc2cyp5ujao6cwcukijdhaty)
-      '@valtimo/plugin': 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
-      '@valtimo/shared': 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
-      tslib: 2.8.1
 
   '@esbuild/aix-ppc64@0.25.12':
     optional: true

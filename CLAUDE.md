@@ -4,14 +4,14 @@
 
 The frontend plugin must be built BEFORE the test-app frontend:
 
-1. **Build plugin library** (outputs to `dist/epistola-plugin`):
+1. **Build plugin library** (outputs to `frontend/plugin/dist/`):
    ```bash
    cd frontend/plugin && pnpm build
    ```
 
-2. **Start test-app frontend** (references plugin via `file:../../dist/epistola-plugin`):
+2. **Start test-app frontend** (references plugin via pnpm `workspace:*`):
    ```bash
-   cd test-app/frontend && pnpm install && pnpm start
+   cd test-app/frontend && pnpm start
    ```
 
 3. **Start test-app backend** (can run independently):
@@ -46,10 +46,10 @@ docker/            # Docker compose for local dependencies
 
 ## Important Notes
 
-- **Frontend changes**: After rebuilding the plugin, you MUST run `pnpm install` in `test-app/frontend` to pick up the changes, then restart the frontend:
+- **Frontend changes**: After rebuilding the plugin, just restart the test-app frontend (no `pnpm install` needed thanks to `workspace:*` symlink):
   ```bash
   cd frontend/plugin && pnpm build
-  cd ../../test-app/frontend && pnpm install && pnpm start
+  cd ../../test-app/frontend && pnpm start
   ```
 - **Package name**: Epistola client uses `app.epistola.client` (not `io.epistola`)
 - **Plugin properties**: Backend `@PluginProperty` keys must match frontend field names exactly
