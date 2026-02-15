@@ -39,6 +39,13 @@ repositories {
     maven { url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/") }
 }
 
+configurations.runtimeClasspath {
+    // js-community is a POM-only artifact (no JAR) that ends up on the classpath via
+    // valtimo:core → graalvm:js → graalvm:js-community. Spring's classpath scanner
+    // fails when it tries to open the .pom as a JAR (ZipException).
+    exclude(group = "org.graalvm.js", module = "js-community")
+}
+
 dependencies {
     implementation(platform(libs.valtimo.bom))
 
