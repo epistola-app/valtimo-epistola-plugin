@@ -1,0 +1,119 @@
+{
+    "display": "form",
+    "components": [
+        {
+            "key": "objector",
+            "type": "fieldset",
+            "label": "Bezwaarmaker",
+            "components": [
+                {
+                    "key": "objector.firstName",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Voornaam",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "objector.lastName",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Achternaam",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "objector.address.street",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Straat",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "objector.address.houseNumber",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Huisnummer",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "objector.address.postalCode",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Postcode",
+                    "validate": { "required": true, "pattern": "^[0-9]{4}[A-Z]{2}$" }
+                },
+                {
+                    "key": "objector.address.city",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Woonplaats",
+                    "validate": { "required": true }
+                }
+            ]
+        },
+        {
+            "key": "originalDecision",
+            "type": "fieldset",
+            "label": "Oorspronkelijk Besluit",
+            "components": [
+                {
+                    "key": "originalDecision.reference",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Kenmerk",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "originalDecision.date",
+                    "type": "datetime",
+                    "input": true,
+                    "label": "Datum besluit",
+                    "format": "yyyy-MM-dd",
+                    "enableDate": true,
+                    "enableTime": false,
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "originalDecision.subject",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Onderwerp",
+                    "validate": { "required": true }
+                }
+            ]
+        },
+        {
+            "key": "objection",
+            "type": "fieldset",
+            "label": "Bezwaar",
+            "components": [
+                {
+                    "key": "objection.grounds",
+                    "type": "textarea",
+                    "input": true,
+                    "label": "Gronden van het bezwaar",
+                    "rows": 5,
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "objection.receivedDate",
+                    "type": "datetime",
+                    "input": true,
+                    "label": "Datum ontvangst",
+                    "format": "yyyy-MM-dd",
+                    "enableDate": true,
+                    "enableTime": false,
+                    "validate": { "required": true }
+                }
+            ]
+        },
+        {
+            "key": "submit",
+            "type": "button",
+            "input": true,
+            "label": "Indienen",
+            "action": "submit",
+            "theme": "primary",
+            "disableOnInvalid": true
+        }
+    ]
+}

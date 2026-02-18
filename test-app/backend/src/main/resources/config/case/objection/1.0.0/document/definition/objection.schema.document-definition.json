@@ -1,0 +1,66 @@
+{
+    "$id": "objection.schema",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Bezwaarprocedure",
+    "description": "Bezwaar tegen een besluit met beoordelingsresultaat",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "objector": {
+            "type": "object",
+            "properties": {
+                "firstName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                },
+                "lastName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                },
+                "address": {
+                    "type": "object",
+                    "properties": {
+                        "street": { "type": "string" },
+                        "houseNumber": { "type": "string" },
+                        "postalCode": { "type": "string", "pattern": "^[0-9]{4}[A-Z]{2}$" },
+                        "city": { "type": "string" }
+                    },
+                    "required": ["street", "houseNumber", "postalCode", "city"]
+                }
+            },
+            "required": ["firstName", "lastName", "address"]
+        },
+        "originalDecision": {
+            "type": "object",
+            "properties": {
+                "reference": {
+                    "type": "string"
+                },
+                "date": {
+                    "type": "string",
+                    "format": "date"
+                },
+                "subject": {
+                    "type": "string"
+                }
+            },
+            "required": ["reference", "date", "subject"]
+        },
+        "objection": {
+            "type": "object",
+            "properties": {
+                "grounds": {
+                    "type": "string"
+                },
+                "receivedDate": {
+                    "type": "string",
+                    "format": "date"
+                }
+            },
+            "required": ["grounds", "receivedDate"]
+        }
+    },
+    "required": ["objector", "originalDecision", "objection"]
+}

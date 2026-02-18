@@ -1,0 +1,14 @@
+[
+    {
+        "activityId": "startEvent",
+        "activityType": "bpmn:StartEvent:start",
+        "processLinkType": "form",
+        "formDefinitionName": "objection-start"
+    },
+    {
+        "activityId": "assess-objection",
+        "activityType": "bpmn:UserTask:create",
+        "processLinkType": "form",
+        "formDefinitionName": "assess-objection"
+    }
+]
