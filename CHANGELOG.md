@@ -130,6 +130,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Red indicator for required fields without mappings
   - Auto-expand sections with unmapped required fields
 
+- **Frontend Config Components for check-job-status and download-document**:
+  - `CheckJobStatusConfigurationComponent`: 4 fields (requestIdVariable, statusVariable, documentIdVariable, errorMessageVariable) with sensible defaults
+  - `DownloadDocumentConfigurationComponent`: 2 fields (documentIdVariable, contentVariable) with sensible defaults
+  - Both registered in plugin specification with Dutch and English translations
+
+- **Demo Case: UC1 — Vergunningsaanvraag (Permit Application)** (`test-app`):
+  - Rich data mapping demo with nested objects (applicant, property) and arrays (activities)
+  - BPMN flow: generate confirmation letter → async wait → status check → download → user review
+  - FormIO forms for case intake and document review
+
+- **Demo Case: UC2 — Bezwaarprocedure (Objection Handling)** (`test-app`):
+  - Two sequential document generation cycles (acknowledgment + decision)
+  - Conditional template selection based on assessment outcome (gegrond/ongegrond/deels_gegrond)
+  - Demonstrates reuse of `epistolaRequestId` across sequential generation cycles
+
+- **Demo Case: UC3 — Massale Correspondentie (Bulk Generation)** (`test-app`):
+  - Multi-instance subprocess for parallel document generation from JSON taxpayer data
+  - `CounterIncrementDelegate` for thread-safe success/fail counting
+  - Groovy script task for JSON parsing
+  - Result overview user task showing generation statistics
+
+- **Demo Case: UC4 — Subsidie Zaakdossier (Subsidy with OpenZaak Archival)** (`test-app`):
+  - Parallel gateway generating 3 documents simultaneously (Subsidiebesluit, Financieel Overzicht, Voorwaarden Bijlage)
+  - Sequential archival via Documenten API (store) and Zaken API (link to zaak)
+  - ZGW plugin specifications registered in frontend (OpenZaak, Documenten API, Zaken API, Catalogi API)
+
 ### Changed
 
 - **Callback Endpoint Refactored**: `EpistolaCallbackResource` now delegates to `EpistolaMessageCorrelationService` instead of using `RuntimeService` directly. Uses `correlateAllWithResult()` for safe multi-instance correlation.
@@ -143,10 +169,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   recursively with batch expression resolution for efficiency. `TemplateMappingValidator` walks
   field tree and mapping tree in parallel by field name.
 
+### Fixed
+
+- **Variable scoping for parallel/multi-instance execution**: `epistolaRequestId` and `epistolaTenantId` are now stored as local variables (`setVariableLocal`) instead of process-instance variables. This prevents parallel branches and multi-instance iterations from overwriting each other's request IDs.
+
+- **Polling consumer direct execution targeting**: `PollingCompletionEventConsumer` now uses `runtimeService.messageEventReceived(messageName, executionId, variables)` to target specific executions directly, instead of process-variable-based correlation. Supports local variable fallback to process-instance scope for backwards compatibility.
+
+- **single-document.bpmn message reference**: Replaced `receiveTask` (without messageRef) with `intermediateCatchEvent` with proper `messageEventDefinition` referencing a `bpmn:message` element. The poller queries `messageEventSubscriptionName` and couldn't find tasks without a message reference.
+
 ### Dependencies
 
 - Added `app.epistola.contract:client-spring3-restclient:1.0.0` for Epistola API calls
 - Uses Testcontainers with `ghcr.io/epistola-app/epistola-contract/mock-server` for API testing
+- Added `com.ritense.valtimo:documenten-api` and `com.ritense.valtimo:catalogi-api` to test-app for UC4 OpenZaak integration
 
 ## [1.0.0-SNAPSHOT] - Initial Development
 
