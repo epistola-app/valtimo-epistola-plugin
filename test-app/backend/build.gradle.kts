@@ -63,6 +63,8 @@ dependencies {
     implementation(libs.valtimo.objecten.api)
     implementation(libs.valtimo.objecttypen.api)
     implementation(libs.valtimo.zaken.api)
+    implementation(libs.valtimo.documenten.api)
+    implementation(libs.valtimo.catalogi.api)
 
     implementation(libs.postgresql)
 

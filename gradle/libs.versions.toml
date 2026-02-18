@@ -44,6 +44,8 @@ valtimo-objecten-api-authentication = { module = "com.ritense.valtimo:objecten-a
 valtimo-objecten-api = { module = "com.ritense.valtimo:objecten-api" }
 valtimo-objecttypen-api = { module = "com.ritense.valtimo:objecttypen-api" }
 valtimo-zaken-api = { module = "com.ritense.valtimo:zaken-api" }
+valtimo-documenten-api = { module = "com.ritense.valtimo:documenten-api" }
+valtimo-catalogi-api = { module = "com.ritense.valtimo:catalogi-api" }
 
 # Lombok
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }

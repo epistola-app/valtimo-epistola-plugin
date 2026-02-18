@@ -57,12 +57,20 @@ import {TranslateLoader, TranslateModule} from '@ngx-translate/core';
 import {FormFlowManagementModule} from '@valtimo/form-flow-management';
 import {PluginManagementModule} from '@valtimo/plugin-management';
 import {
+  CatalogiApiPluginModule,
+  catalogiApiPluginSpecification,
+  DocumentenApiPluginModule,
+  documentenApiPluginSpecification,
   ObjectenApiPluginModule,
   objectenApiPluginSpecification,
   ObjectTokenAuthenticationPluginModule,
   objectTokenAuthenticationPluginSpecification,
   ObjecttypenApiPluginModule,
   objecttypenApiPluginSpecification,
+  OpenZaakPluginModule,
+  openZaakPluginSpecification,
+  ZakenApiPluginModule,
+  zakenApiPluginSpecification,
   PLUGINS_TOKEN,
 } from '@valtimo/plugin';
 import {EpistolaPluginModule, epistolaPluginSpecification} from '@epistola.app/valtimo-plugin';
@@ -129,6 +137,10 @@ export function tabsFactory() {
     ObjectenApiPluginModule,
     ObjecttypenApiPluginModule,
     ObjectTokenAuthenticationPluginModule,
+    OpenZaakPluginModule,
+    DocumentenApiPluginModule,
+    ZakenApiPluginModule,
+    CatalogiApiPluginModule,
     EpistolaPluginModule,
     ObjectModule,
     ObjectManagementModule,
@@ -156,6 +168,10 @@ export function tabsFactory() {
         objectenApiPluginSpecification,
         objecttypenApiPluginSpecification,
         objectTokenAuthenticationPluginSpecification,
+        openZaakPluginSpecification,
+        documentenApiPluginSpecification,
+        zakenApiPluginSpecification,
+        catalogiApiPluginSpecification,
         epistolaPluginSpecification
       ]
     },
