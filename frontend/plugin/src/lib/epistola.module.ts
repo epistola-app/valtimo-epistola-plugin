@@ -7,6 +7,12 @@ import {EpistolaConfigurationComponent} from './components/epistola-configuratio
 import {
   GenerateDocumentConfigurationComponent
 } from './components/generate-document-configuration/generate-document-configuration.component';
+import {
+  CheckJobStatusConfigurationComponent
+} from './components/check-job-status-configuration/check-job-status-configuration.component';
+import {
+  DownloadDocumentConfigurationComponent
+} from './components/download-document-configuration/download-document-configuration.component';
 import {DataMappingTreeComponent} from './components/data-mapping-tree/data-mapping-tree.component';
 import {FieldTreeComponent} from './components/field-tree/field-tree.component';
 import {EpistolaPluginService} from './services';
@@ -21,12 +27,16 @@ import {EpistolaPluginService} from './services';
     SelectModule,
     EpistolaConfigurationComponent,
     GenerateDocumentConfigurationComponent,
+    CheckJobStatusConfigurationComponent,
+    DownloadDocumentConfigurationComponent,
     DataMappingTreeComponent,
     FieldTreeComponent
   ],
   exports: [
     EpistolaConfigurationComponent,
     GenerateDocumentConfigurationComponent,
+    CheckJobStatusConfigurationComponent,
+    DownloadDocumentConfigurationComponent,
     DataMappingTreeComponent,
     FieldTreeComponent
   ],

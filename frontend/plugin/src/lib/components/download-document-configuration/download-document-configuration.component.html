@@ -1,0 +1,29 @@
+<v-form
+    (valueChange)="formValueChange($event)"
+    *ngIf="{
+      disabled: safeDisabled$ | async,
+      prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null
+    } as obs"
+>
+  <v-input
+    name="documentIdVariable"
+    [title]="'documentIdVariable' | pluginTranslate: pluginId | async"
+    [tooltip]="'documentIdVariableTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="obs.prefill?.documentIdVariable || 'epistolaDocumentId'"
+    [disabled]="obs.disabled"
+    [required]="true"
+  >
+  </v-input>
+
+  <v-input
+    name="contentVariable"
+    [title]="'contentVariable' | pluginTranslate: pluginId | async"
+    [tooltip]="'contentVariableTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="obs.prefill?.contentVariable || 'documentContent'"
+    [disabled]="obs.disabled"
+    [required]="true"
+  >
+  </v-input>
+</v-form>

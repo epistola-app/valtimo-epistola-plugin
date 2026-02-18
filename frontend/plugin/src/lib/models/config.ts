@@ -25,3 +25,23 @@ export interface GenerateDocumentConfig {
   correlationId?: string;
   resultProcessVariable: string;
 }
+
+/**
+ * Action configuration for the check-job-status action.
+ * Specifies which process variables to read from and write to.
+ */
+export interface CheckJobStatusConfig {
+  requestIdVariable: string;
+  statusVariable: string;
+  documentIdVariable?: string;
+  errorMessageVariable?: string;
+}
+
+/**
+ * Action configuration for the download-document action.
+ * Specifies which process variables to read from and write to.
+ */
+export interface DownloadDocumentConfig {
+  documentIdVariable: string;
+  contentVariable: string;
+}

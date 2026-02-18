@@ -3,6 +3,12 @@ import {EpistolaConfigurationComponent} from './components/epistola-configuratio
 import {
   GenerateDocumentConfigurationComponent
 } from './components/generate-document-configuration/generate-document-configuration.component';
+import {
+  CheckJobStatusConfigurationComponent
+} from './components/check-job-status-configuration/check-job-status-configuration.component';
+import {
+  DownloadDocumentConfigurationComponent
+} from './components/download-document-configuration/download-document-configuration.component';
 import {EPISTOLA_PLUGIN_LOGO_BASE64} from './assets';
 
 const epistolaPluginSpecification: PluginSpecification = {
@@ -18,6 +24,8 @@ const epistolaPluginSpecification: PluginSpecification = {
   // Map action keys to their configuration components
   functionConfigurationComponents: {
     'generate-document': GenerateDocumentConfigurationComponent,
+    'check-job-status': CheckJobStatusConfigurationComponent,
+    'download-document': DownloadDocumentConfigurationComponent,
   },
 
   // Translations
@@ -80,7 +88,21 @@ const epistolaPluginSpecification: PluginSpecification = {
       itemFieldMapping: 'Veldnamen per item koppelen',
       itemFieldMappingTitle: 'Veldkoppeling per item:',
       sourceFieldPlaceholder: 'Bronveldnaam',
-      noTemplateFields: 'Geen template velden beschikbaar'
+      noTemplateFields: 'Geen template velden beschikbaar',
+      // Check job status action
+      'check-job-status': 'Controleer Taakstatus',
+      requestIdVariable: 'Request ID Variabele',
+      requestIdVariableTooltip: 'Naam van de procesvariabele met het Epistola request ID',
+      statusVariable: 'Status Variabele',
+      statusVariableTooltip: 'Naam van de procesvariabele waarin de status wordt opgeslagen',
+      documentIdVariable: 'Document ID Variabele',
+      documentIdVariableTooltip: 'Naam van de procesvariabele waarin het document ID wordt opgeslagen (bij voltooiing)',
+      errorMessageVariable: 'Foutmelding Variabele',
+      errorMessageVariableTooltip: 'Naam van de procesvariabele waarin de foutmelding wordt opgeslagen (bij fout)',
+      // Download document action
+      'download-document': 'Download Document',
+      contentVariable: 'Inhoud Variabele',
+      contentVariableTooltip: 'Naam van de procesvariabele waarin de documentinhoud (Base64) wordt opgeslagen'
     },
     en: {
       title: 'Epistola Document Suite',
@@ -140,7 +162,21 @@ const epistolaPluginSpecification: PluginSpecification = {
       itemFieldMapping: 'Map field names per item',
       itemFieldMappingTitle: 'Item field mapping:',
       sourceFieldPlaceholder: 'Source field name',
-      noTemplateFields: 'No template fields available'
+      noTemplateFields: 'No template fields available',
+      // Check job status action
+      'check-job-status': 'Check Job Status',
+      requestIdVariable: 'Request ID Variable',
+      requestIdVariableTooltip: 'Name of the process variable containing the Epistola request ID',
+      statusVariable: 'Status Variable',
+      statusVariableTooltip: 'Name of the process variable to store the status in',
+      documentIdVariable: 'Document ID Variable',
+      documentIdVariableTooltip: 'Name of the process variable to store the document ID in (when completed)',
+      errorMessageVariable: 'Error Message Variable',
+      errorMessageVariableTooltip: 'Name of the process variable to store the error message in (when failed)',
+      // Download document action
+      'download-document': 'Download Document',
+      contentVariable: 'Content Variable',
+      contentVariableTooltip: 'Name of the process variable to store the document content (Base64) in'
     }
   }
 };
