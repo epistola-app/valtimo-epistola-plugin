@@ -1,0 +1,14 @@
+[
+    {
+        "activityId": "startEvent",
+        "activityType": "bpmn:StartEvent:start",
+        "processLinkType": "form",
+        "formDefinitionName": "permit-start"
+    },
+    {
+        "activityId": "review-document",
+        "activityType": "bpmn:UserTask:create",
+        "processLinkType": "form",
+        "formDefinitionName": "review-document"
+    }
+]

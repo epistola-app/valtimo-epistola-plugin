@@ -1,0 +1,35 @@
+{
+    "display": "form",
+    "components": [
+        {
+            "key": "pv:epistolaStatus",
+            "type": "textfield",
+            "input": true,
+            "label": "Generatie Status",
+            "disabled": true
+        },
+        {
+            "key": "pv:epistolaDocumentId",
+            "type": "textfield",
+            "input": true,
+            "label": "Document ID",
+            "disabled": true
+        },
+        {
+            "key": "info",
+            "type": "htmlelement",
+            "input": false,
+            "label": "",
+            "tag": "div",
+            "content": "<p>Het document is gegenereerd en gedownload. Controleer het document en klik op 'Goedkeuren' om het proces af te ronden.</p>"
+        },
+        {
+            "key": "submit",
+            "type": "button",
+            "input": true,
+            "label": "Goedkeuren",
+            "action": "submit",
+            "theme": "primary"
+        }
+    ]
+}

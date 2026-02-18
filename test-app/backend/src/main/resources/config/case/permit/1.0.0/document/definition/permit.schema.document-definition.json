@@ -1,0 +1,97 @@
+{
+    "$id": "permit.schema",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Vergunningsaanvraag",
+    "description": "Vergunningsaanvraag met aanvrager, locatie en activiteiten",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "applicant": {
+            "type": "object",
+            "properties": {
+                "firstName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                },
+                "lastName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                },
+                "bsn": {
+                    "type": "string",
+                    "pattern": "^[0-9]{9}$"
+                },
+                "address": {
+                    "type": "object",
+                    "properties": {
+                        "street": {
+                            "type": "string"
+                        },
+                        "houseNumber": {
+                            "type": "string"
+                        },
+                        "postalCode": {
+                            "type": "string",
+                            "pattern": "^[0-9]{4}[A-Z]{2}$"
+                        },
+                        "city": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["street", "houseNumber", "postalCode", "city"]
+                }
+            },
+            "required": ["firstName", "lastName", "bsn", "address"]
+        },
+        "property": {
+            "type": "object",
+            "properties": {
+                "address": {
+                    "type": "object",
+                    "properties": {
+                        "street": {
+                            "type": "string"
+                        },
+                        "houseNumber": {
+                            "type": "string"
+                        },
+                        "postalCode": {
+                            "type": "string",
+                            "pattern": "^[0-9]{4}[A-Z]{2}$"
+                        },
+                        "city": {
+                            "type": "string"
+                        }
+                    },
+                    "required": ["street", "houseNumber", "postalCode", "city"]
+                },
+                "kadastraalNummer": {
+                    "type": "string"
+                }
+            },
+            "required": ["address"]
+        },
+        "activities": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string"
+                    },
+                    "estimatedCost": {
+                        "type": "number",
+                        "minimum": 0
+                    }
+                },
+                "required": ["type", "description"]
+            }
+        }
+    },
+    "required": ["applicant", "property", "activities"]
+}
