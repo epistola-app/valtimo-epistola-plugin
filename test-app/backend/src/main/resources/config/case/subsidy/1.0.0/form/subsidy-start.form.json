@@ -1,0 +1,97 @@
+{
+    "display": "form",
+    "components": [
+        {
+            "key": "beneficiary",
+            "type": "fieldset",
+            "label": "Begunstigde",
+            "components": [
+                {
+                    "key": "beneficiary.name",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Naam",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "beneficiary.address.street",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Straat",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "beneficiary.address.houseNumber",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Huisnummer",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "beneficiary.address.postalCode",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Postcode",
+                    "validate": { "required": true, "pattern": "^[0-9]{4}[A-Z]{2}$" }
+                },
+                {
+                    "key": "beneficiary.address.city",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Woonplaats",
+                    "validate": { "required": true }
+                }
+            ]
+        },
+        {
+            "key": "subsidy",
+            "type": "fieldset",
+            "label": "Subsidie",
+            "components": [
+                {
+                    "key": "subsidy.programName",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Programma",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "subsidy.amount",
+                    "type": "number",
+                    "input": true,
+                    "label": "Bedrag (€)",
+                    "validate": { "required": true, "min": 0 }
+                },
+                {
+                    "key": "subsidy.decision",
+                    "type": "select",
+                    "input": true,
+                    "label": "Besluit",
+                    "data": {
+                        "values": [
+                            { "label": "Toegekend", "value": "toegekend" },
+                            { "label": "Afgewezen", "value": "afgewezen" }
+                        ]
+                    },
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "subsidy.conditions",
+                    "type": "textarea",
+                    "input": true,
+                    "label": "Voorwaarden",
+                    "rows": 3
+                }
+            ]
+        },
+        {
+            "key": "submit",
+            "type": "button",
+            "input": true,
+            "label": "Starten",
+            "action": "submit",
+            "theme": "primary",
+            "disableOnInvalid": true
+        }
+    ]
+}
