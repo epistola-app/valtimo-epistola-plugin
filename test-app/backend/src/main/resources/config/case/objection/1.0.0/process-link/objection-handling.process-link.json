@@ -6,9 +6,161 @@
         "formDefinitionName": "objection-start"
     },
     {
+        "activityId": "generate-ack",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "generate-document",
+        "actionProperties": {
+            "templateId": "ontvangstbevestiging-bezwaar",
+            "outputFormat": "PDF",
+            "filename": "ontvangstbevestiging.pdf",
+            "resultProcessVariable": "epistolaRequestId",
+            "dataMapping": {
+                "objector": {
+                    "firstName": "doc:/objector/firstName",
+                    "lastName": "doc:/objector/lastName",
+                    "address": {
+                        "street": "doc:/objector/address/street",
+                        "houseNumber": "doc:/objector/address/houseNumber",
+                        "postalCode": "doc:/objector/address/postalCode",
+                        "city": "doc:/objector/address/city"
+                    }
+                },
+                "originalDecision": {
+                    "reference": "doc:/originalDecision/reference",
+                    "date": "doc:/originalDecision/date",
+                    "subject": "doc:/originalDecision/subject"
+                },
+                "objection": {
+                    "grounds": "doc:/objection/grounds",
+                    "receivedDate": "doc:/objection/receivedDate"
+                }
+            }
+        }
+    },
+    {
+        "activityId": "download-ack",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "download-document",
+        "actionProperties": {
+            "documentIdVariable": "epistolaDocumentId",
+            "contentVariable": "ackDocumentContent"
+        }
+    },
+    {
         "activityId": "assess-objection",
         "activityType": "bpmn:UserTask:create",
         "processLinkType": "form",
         "formDefinitionName": "assess-objection"
+    },
+    {
+        "activityId": "generate-decision-gegrond",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "generate-document",
+        "actionProperties": {
+            "templateId": "besluit-bezwaar-gegrond",
+            "outputFormat": "PDF",
+            "filename": "besluit-gegrond.pdf",
+            "resultProcessVariable": "epistolaRequestId",
+            "dataMapping": {
+                "objector": {
+                    "firstName": "doc:/objector/firstName",
+                    "lastName": "doc:/objector/lastName",
+                    "address": {
+                        "street": "doc:/objector/address/street",
+                        "houseNumber": "doc:/objector/address/houseNumber",
+                        "postalCode": "doc:/objector/address/postalCode",
+                        "city": "doc:/objector/address/city"
+                    }
+                },
+                "originalDecision": {
+                    "reference": "doc:/originalDecision/reference",
+                    "date": "doc:/originalDecision/date",
+                    "subject": "doc:/originalDecision/subject"
+                },
+                "decision": "pv:decision",
+                "motivation": "pv:motivation"
+            }
+        }
+    },
+    {
+        "activityId": "generate-decision-ongegrond",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "generate-document",
+        "actionProperties": {
+            "templateId": "besluit-bezwaar-ongegrond",
+            "outputFormat": "PDF",
+            "filename": "besluit-ongegrond.pdf",
+            "resultProcessVariable": "epistolaRequestId",
+            "dataMapping": {
+                "objector": {
+                    "firstName": "doc:/objector/firstName",
+                    "lastName": "doc:/objector/lastName",
+                    "address": {
+                        "street": "doc:/objector/address/street",
+                        "houseNumber": "doc:/objector/address/houseNumber",
+                        "postalCode": "doc:/objector/address/postalCode",
+                        "city": "doc:/objector/address/city"
+                    }
+                },
+                "originalDecision": {
+                    "reference": "doc:/originalDecision/reference",
+                    "date": "doc:/originalDecision/date",
+                    "subject": "doc:/originalDecision/subject"
+                },
+                "decision": "pv:decision",
+                "motivation": "pv:motivation"
+            }
+        }
+    },
+    {
+        "activityId": "generate-decision-partial",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "generate-document",
+        "actionProperties": {
+            "templateId": "besluit-bezwaar-deels-gegrond",
+            "outputFormat": "PDF",
+            "filename": "besluit-deels-gegrond.pdf",
+            "resultProcessVariable": "epistolaRequestId",
+            "dataMapping": {
+                "objector": {
+                    "firstName": "doc:/objector/firstName",
+                    "lastName": "doc:/objector/lastName",
+                    "address": {
+                        "street": "doc:/objector/address/street",
+                        "houseNumber": "doc:/objector/address/houseNumber",
+                        "postalCode": "doc:/objector/address/postalCode",
+                        "city": "doc:/objector/address/city"
+                    }
+                },
+                "originalDecision": {
+                    "reference": "doc:/originalDecision/reference",
+                    "date": "doc:/originalDecision/date",
+                    "subject": "doc:/originalDecision/subject"
+                },
+                "decision": "pv:decision",
+                "motivation": "pv:motivation"
+            }
+        }
+    },
+    {
+        "activityId": "download-decision",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "download-document",
+        "actionProperties": {
+            "documentIdVariable": "epistolaDocumentId",
+            "contentVariable": "decisionDocumentContent"
+        }
     }
 ]

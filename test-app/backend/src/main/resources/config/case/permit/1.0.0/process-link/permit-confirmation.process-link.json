@@ -6,6 +6,53 @@
         "formDefinitionName": "permit-start"
     },
     {
+        "activityId": "generate-confirmation",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "generate-document",
+        "actionProperties": {
+            "templateId": "bevestigingsbrief-vergunning",
+            "outputFormat": "PDF",
+            "filename": "bevestigingsbrief.pdf",
+            "resultProcessVariable": "epistolaRequestId",
+            "dataMapping": {
+                "applicant": {
+                    "firstName": "doc:/applicant/firstName",
+                    "lastName": "doc:/applicant/lastName",
+                    "bsn": "doc:/applicant/bsn",
+                    "address": {
+                        "street": "doc:/applicant/address/street",
+                        "houseNumber": "doc:/applicant/address/houseNumber",
+                        "postalCode": "doc:/applicant/address/postalCode",
+                        "city": "doc:/applicant/address/city"
+                    }
+                },
+                "property": {
+                    "address": {
+                        "street": "doc:/property/address/street",
+                        "houseNumber": "doc:/property/address/houseNumber",
+                        "postalCode": "doc:/property/address/postalCode",
+                        "city": "doc:/property/address/city"
+                    },
+                    "kadastraalNummer": "doc:/property/kadastraalNummer"
+                },
+                "activities": "doc:/activities"
+            }
+        }
+    },
+    {
+        "activityId": "download-confirmation",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "download-document",
+        "actionProperties": {
+            "documentIdVariable": "epistolaDocumentId",
+            "contentVariable": "documentContent"
+        }
+    },
+    {
         "activityId": "review-document",
         "activityType": "bpmn:UserTask:create",
         "processLinkType": "form",
