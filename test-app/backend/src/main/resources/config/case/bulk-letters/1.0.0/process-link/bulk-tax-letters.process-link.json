@@ -1,0 +1,14 @@
+[
+    {
+        "activityId": "startEvent",
+        "activityType": "bpmn:StartEvent:start",
+        "processLinkType": "form",
+        "formDefinitionName": "bulk-start"
+    },
+    {
+        "activityId": "bulk-result",
+        "activityType": "bpmn:UserTask:create",
+        "processLinkType": "form",
+        "formDefinitionName": "bulk-result"
+    }
+]

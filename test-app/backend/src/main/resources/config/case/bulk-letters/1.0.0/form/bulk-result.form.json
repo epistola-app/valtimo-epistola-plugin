@@ -1,0 +1,41 @@
+{
+    "display": "form",
+    "components": [
+        {
+            "key": "info",
+            "type": "htmlelement",
+            "input": false,
+            "tag": "h3",
+            "content": "Resultaatoverzicht"
+        },
+        {
+            "key": "pv:totalCount",
+            "type": "number",
+            "input": true,
+            "label": "Totaal aantal brieven",
+            "disabled": true
+        },
+        {
+            "key": "pv:successCount",
+            "type": "number",
+            "input": true,
+            "label": "Succesvol gegenereerd",
+            "disabled": true
+        },
+        {
+            "key": "pv:failCount",
+            "type": "number",
+            "input": true,
+            "label": "Mislukt",
+            "disabled": true
+        },
+        {
+            "key": "submit",
+            "type": "button",
+            "input": true,
+            "label": "Afronden",
+            "action": "submit",
+            "theme": "primary"
+        }
+    ]
+}
