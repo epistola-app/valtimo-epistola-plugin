@@ -26,10 +26,15 @@ import java.util.Set;
  * It works by:
  * <ol>
  *   <li>Querying Operaton for all executions waiting on message {@code "EpistolaDocumentGenerated"}</li>
- *   <li>Grouping them by {@code epistolaTenantId} process variable</li>
+ *   <li>Grouping them by {@code epistolaTenantId} local variable on the execution that set it</li>
  *   <li>For each group: loading the matching plugin config and calling {@code getJobStatus()} per job</li>
- *   <li>Correlating BPMN messages for completed/failed/cancelled jobs</li>
+ *   <li>Delivering messages directly to the specific waiting execution via {@code messageEventReceived()}</li>
  * </ol>
+ * <p>
+ * Variables are read as local variables from the execution that produced them (via
+ * {@code setVariableLocal} in the generate-document action). This supports parallel
+ * gateways and multi-instance subprocesses where each branch has its own
+ * {@code epistolaRequestId} and {@code epistolaTenantId}.
  * <p>
  * This approach centralizes polling into a single scheduled task instead of
  * per-process timer loops, which doesn't scale. When Epistola's event API
@@ -49,7 +54,6 @@ public class PollingCompletionEventConsumer implements EpistolaCompletionEventCo
     private final RuntimeService runtimeService;
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
-    private final EpistolaMessageCorrelationService correlationService;
 
     private volatile boolean running = false;
 
@@ -105,30 +109,39 @@ public class PollingCompletionEventConsumer implements EpistolaCompletionEventCo
     }
 
     /**
-     * Group waiting executions by their {@code epistolaTenantId} process variable.
+     * Group waiting executions by their {@code epistolaTenantId} variable.
+     * <p>
+     * The variables are set as local variables on the execution that ran the
+     * generate-document action. Because the message catch event may be a different
+     * execution in the same scope, we first try local, then fall back to
+     * process-instance level for backwards compatibility.
      */
     private Map<String, List<WaitingJob>> groupByTenant(List<Execution> executions) {
         Map<String, List<WaitingJob>> result = new HashMap<>();
 
         for (Execution execution : executions) {
             try {
+                String executionId = execution.getId();
                 String processInstanceId = execution.getProcessInstanceId();
-                String requestId = (String) runtimeService.getVariable(
-                        processInstanceId, EpistolaMessageCorrelationService.VAR_REQUEST_ID);
-                String tenantId = (String) runtimeService.getVariable(
-                        processInstanceId, EpistolaMessageCorrelationService.VAR_TENANT_ID);
+
+                // Try local first (set by generate-document in the same execution scope),
+                // then fall back to process-instance level for backwards compatibility
+                String requestId = getVariableWithFallback(executionId, processInstanceId,
+                        EpistolaMessageCorrelationService.VAR_REQUEST_ID);
+                String tenantId = getVariableWithFallback(executionId, processInstanceId,
+                        EpistolaMessageCorrelationService.VAR_TENANT_ID);
 
                 if (requestId == null || tenantId == null) {
                     log.warn("Execution {} is waiting for {} but missing required variables " +
                                     "(requestId={}, tenantId={}). Skipping.",
-                            execution.getId(),
+                            executionId,
                             EpistolaMessageCorrelationService.MESSAGE_NAME,
                             requestId, tenantId);
                     continue;
                 }
 
                 result.computeIfAbsent(tenantId, k -> new ArrayList<>())
-                        .add(new WaitingJob(requestId, processInstanceId));
+                        .add(new WaitingJob(requestId, executionId, processInstanceId));
             } catch (Exception e) {
                 log.warn("Failed to read variables for execution {}: {}",
                         execution.getId(), e.getMessage());
@@ -136,6 +149,18 @@ public class PollingCompletionEventConsumer implements EpistolaCompletionEventCo
         }
 
         return result;
+    }
+
+    /**
+     * Try to read a variable locally from the execution first, then fall back
+     * to process-instance scope.
+     */
+    private String getVariableWithFallback(String executionId, String processInstanceId, String variableName) {
+        Object localValue = runtimeService.getVariableLocal(executionId, variableName);
+        if (localValue != null) {
+            return (String) localValue;
+        }
+        return (String) runtimeService.getVariable(processInstanceId, variableName);
     }
 
     /**
@@ -167,6 +192,11 @@ public class PollingCompletionEventConsumer implements EpistolaCompletionEventCo
 
     /**
      * Check job statuses for a batch of waiting jobs belonging to the same tenant.
+     * <p>
+     * Uses {@code messageEventReceived()} to deliver the message directly to the
+     * specific waiting execution, rather than correlating by process variable.
+     * This ensures correct behavior in parallel gateways and multi-instance
+     * subprocesses where multiple executions may be waiting simultaneously.
      */
     private void checkJobStatuses(EpistolaPlugin plugin, String tenantId, List<WaitingJob> jobs) {
         for (WaitingJob job : jobs) {
@@ -175,12 +205,20 @@ public class PollingCompletionEventConsumer implements EpistolaCompletionEventCo
                         plugin.getBaseUrl(), plugin.getApiKey(), tenantId, job.requestId());
 
                 if (TERMINAL_STATUSES.contains(detail.getStatus())) {
-                    correlationService.correlateCompletion(
-                            job.requestId(),
-                            detail.getStatus().name(),
-                            detail.getDocumentId(),
-                            detail.getErrorMessage()
+                    Map<String, Object> variables = new HashMap<>();
+                    variables.put(EpistolaMessageCorrelationService.VAR_STATUS, detail.getStatus().name());
+                    variables.put(EpistolaMessageCorrelationService.VAR_DOCUMENT_ID, detail.getDocumentId());
+                    variables.put(EpistolaMessageCorrelationService.VAR_ERROR_MESSAGE, detail.getErrorMessage());
+
+                    runtimeService.messageEventReceived(
+                            EpistolaMessageCorrelationService.MESSAGE_NAME,
+                            job.executionId(),
+                            variables
                     );
+
+                    log.info("Delivered message {} to execution {} for requestId={} (status={})",
+                            EpistolaMessageCorrelationService.MESSAGE_NAME,
+                            job.executionId(), job.requestId(), detail.getStatus());
                 } else {
                     log.debug("Job {} still in progress (status={})", job.requestId(), detail.getStatus());
                 }
@@ -192,7 +230,8 @@ public class PollingCompletionEventConsumer implements EpistolaCompletionEventCo
     }
 
     /**
-     * A job waiting for completion: the Epistola request ID and the process instance it belongs to.
+     * A job waiting for completion: the Epistola request ID, the execution ID
+     * (for direct message delivery), and the process instance ID.
      */
-    record WaitingJob(String requestId, String processInstanceId) {}
+    record WaitingJob(String requestId, String executionId, String processInstanceId) {}
 }

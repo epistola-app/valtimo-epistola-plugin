@@ -91,14 +91,12 @@ public class EpistolaPluginAutoConfiguration {
     public PollingCompletionEventConsumer pollingCompletionEventConsumer(
             RuntimeService runtimeService,
             PluginService pluginService,
-            EpistolaService epistolaService,
-            EpistolaMessageCorrelationService correlationService
+            EpistolaService epistolaService
     ) {
         return new PollingCompletionEventConsumer(
                 runtimeService,
                 pluginService,
-                epistolaService,
-                correlationService
+                epistolaService
         );
     }
 

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_09n7z48" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.23.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.21.0">
+  <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
   <bpmn:process id="single-document" name="Generate Single Document" isExecutable="true">
     <bpmn:documentation>Example that demonstrates how you can generate a single document.</bpmn:documentation>
     <bpmn:startEvent id="startEvent">
@@ -7,18 +8,13 @@
     </bpmn:startEvent>
     <bpmn:sequenceFlow id="Flow_03oqn8d" sourceRef="startEvent" targetRef="generate-document" />
     <bpmn:serviceTask id="generate-document" name="Generate document">
-      <bpmn:extensionElements>
-        <camunda:inputOutput>
-          <camunda:inputParameter name="documentId">document1</camunda:inputParameter>
-        </camunda:inputOutput>
-      </bpmn:extensionElements>
       <bpmn:incoming>Flow_03oqn8d</bpmn:incoming>
       <bpmn:outgoing>Flow_1l49nmw</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:endEvent id="Event_1y3ssks">
       <bpmn:incoming>Flow_0nqt7u2</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:sequenceFlow id="Flow_1l49nmw" sourceRef="generate-document" targetRef="Activity_1malqje" />
+    <bpmn:sequenceFlow id="Flow_1l49nmw" sourceRef="generate-document" targetRef="wait-for-generation" />
     <bpmn:boundaryEvent id="Event_16eyf7u" name="EpistolaGenerationError" attachedToRef="generate-document">
       <bpmn:outgoing>Flow_1x2dibs</bpmn:outgoing>
       <bpmn:errorEventDefinition id="ErrorEventDefinition_01bt0pg" errorRef="Error_0ypykz9" camunda:errorCodeVariable="errorCode" camunda:errorMessageVariable="errorMessage" />
@@ -26,23 +22,13 @@
     <bpmn:sequenceFlow id="Flow_1x2dibs" sourceRef="Event_16eyf7u" targetRef="Event_0zwlsi5" />
     <bpmn:endEvent id="Event_0zwlsi5">
       <bpmn:incoming>Flow_1x2dibs</bpmn:incoming>
-      <bpmn:incoming>Flow_1tgzlaf</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:sequenceFlow id="Flow_0nqt7u2" sourceRef="Activity_1malqje" targetRef="Event_1y3ssks" />
-    <bpmn:receiveTask id="Activity_1malqje" name="Generation Complete">
-      <bpmn:extensionElements>
-        <camunda:inputOutput>
-          <camunda:inputParameter name="documentId">document1</camunda:inputParameter>
-        </camunda:inputOutput>
-      </bpmn:extensionElements>
+    <bpmn:sequenceFlow id="Flow_0nqt7u2" sourceRef="wait-for-generation" targetRef="Event_1y3ssks" />
+    <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wait for generation">
       <bpmn:incoming>Flow_1l49nmw</bpmn:incoming>
       <bpmn:outgoing>Flow_0nqt7u2</bpmn:outgoing>
-    </bpmn:receiveTask>
-    <bpmn:boundaryEvent id="Event_0qfpt0b" attachedToRef="Activity_1malqje">
-      <bpmn:outgoing>Flow_1tgzlaf</bpmn:outgoing>
-      <bpmn:errorEventDefinition id="ErrorEventDefinition_09780wr" errorRef="Error_0ypykz9" />
-    </bpmn:boundaryEvent>
-    <bpmn:sequenceFlow id="Flow_1tgzlaf" sourceRef="Event_0qfpt0b" targetRef="Event_0zwlsi5" />
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_EpistolaDocumentGenerated" />
+    </bpmn:intermediateCatchEvent>
     <bpmn:textAnnotation id="TextAnnotation_0e3bvwm">
       <bpmn:text>Deze taak vereist een Valtimo process koppeling</bpmn:text>
     </bpmn:textAnnotation>
@@ -59,14 +45,16 @@
         <bpmndi:BPMNLabel />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Event_1y3ssks_di" bpmnElement="Event_1y3ssks">
-        <dc:Bounds x="752" y="99" width="36" height="36" />
+        <dc:Bounds x="652" y="99" width="36" height="36" />
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Activity_0nm2li1_di" bpmnElement="Activity_1malqje">
-        <dc:Bounds x="500" y="77" width="100" height="80" />
-        <bpmndi:BPMNLabel />
+      <bpmndi:BPMNShape id="Event_wait_di" bpmnElement="wait-for-generation">
+        <dc:Bounds x="492" y="99" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="468" y="142" width="85" height="14" />
+        </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Event_03sf1wc_di" bpmnElement="Event_0zwlsi5">
-        <dc:Bounds x="582" y="312" width="36" height="36" />
+        <dc:Bounds x="492" y="262" width="36" height="36" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Association_0gngtw5_di" bpmnElement="Association_0gngtw5">
         <di:waypoint x="316" y="157" />
@@ -78,33 +66,22 @@
           <dc:Bounds x="316" y="182" width="88" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Event_0f8e3wq_di" bpmnElement="Event_0qfpt0b">
-        <dc:Bounds x="532" y="139" width="36" height="36" />
-      </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_03oqn8d_di" bpmnElement="Flow_03oqn8d">
         <di:waypoint x="215" y="117" />
         <di:waypoint x="300" y="117" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_1l49nmw_di" bpmnElement="Flow_1l49nmw">
         <di:waypoint x="400" y="117" />
-        <di:waypoint x="500" y="117" />
+        <di:waypoint x="492" y="117" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_1x2dibs_di" bpmnElement="Flow_1x2dibs">
         <di:waypoint x="360" y="175" />
-        <di:waypoint x="360" y="330" />
-        <di:waypoint x="582" y="330" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="334" y="205" width="82" height="14" />
-        </bpmndi:BPMNLabel>
+        <di:waypoint x="360" y="280" />
+        <di:waypoint x="492" y="280" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_0nqt7u2_di" bpmnElement="Flow_0nqt7u2">
-        <di:waypoint x="600" y="117" />
-        <di:waypoint x="752" y="117" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_1tgzlaf_di" bpmnElement="Flow_1tgzlaf">
-        <di:waypoint x="550" y="175" />
-        <di:waypoint x="550" y="330" />
-        <di:waypoint x="582" y="330" />
+        <di:waypoint x="528" y="117" />
+        <di:waypoint x="652" y="117" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNShape id="TextAnnotation_0e3bvwm_di" bpmnElement="TextAnnotation_0e3bvwm">
         <dc:Bounds x="200" y="220" width="100" height="70" />

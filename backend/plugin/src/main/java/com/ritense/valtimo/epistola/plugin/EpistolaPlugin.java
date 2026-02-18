@@ -213,12 +213,14 @@ public class EpistolaPlugin {
                 correlationId
         );
 
-        // Store the request ID and tenant ID as process variables.
-        // The tenant ID is needed by the polling completion consumer to route
-        // status checks to the correct Epistola instance.
+        // Store the request ID and tenant ID as LOCAL variables.
+        // Local scoping is essential for parallel gateways and multi-instance
+        // subprocesses — each branch/iteration gets its own execution scope,
+        // so setVariableLocal ensures variables don't overwrite each other.
+        // The polling consumer reads these via getVariableLocal on the waiting execution.
         execution.setVariable(resultProcessVariable, result.getDocumentId());
-        execution.setVariable("epistolaRequestId", result.getDocumentId());
-        execution.setVariable("epistolaTenantId", tenantId);
+        execution.setVariableLocal("epistolaRequestId", result.getDocumentId());
+        execution.setVariableLocal("epistolaTenantId", tenantId);
 
         log.info("Document generation request submitted. Request ID stored in variable '{}': {}",
                 resultProcessVariable, result.getDocumentId());

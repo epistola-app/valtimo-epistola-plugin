@@ -11,8 +11,13 @@ import java.util.List;
 /**
  * Shared service for correlating BPMN messages when Epistola document generation completes.
  * <p>
- * Both the callback endpoint and the poller delegate to this service to ensure
- * consistent correlation behavior and variable naming.
+ * The callback endpoint uses this service for message correlation via
+ * {@code processInstanceVariableEquals}. This works for sequential processes
+ * and single-branch cases, but does <b>not</b> support parallel branches
+ * within a single process instance (callbacks don't know execution IDs).
+ * <p>
+ * For parallel/multi-instance support, the {@link PollingCompletionEventConsumer}
+ * uses direct {@code messageEventReceived()} targeting specific executions instead.
  */
 @Slf4j
 @RequiredArgsConstructor

@@ -12,7 +12,9 @@ import org.operaton.bpm.engine.runtime.Execution;
 import org.operaton.bpm.engine.runtime.ExecutionQuery;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -27,7 +29,6 @@ class PollingCompletionEventConsumerTest {
     private RuntimeService runtimeService;
     private PluginService pluginService;
     private EpistolaService epistolaService;
-    private EpistolaMessageCorrelationService correlationService;
     private PollingCompletionEventConsumer consumer;
 
     private ExecutionQuery executionQuery;
@@ -37,9 +38,8 @@ class PollingCompletionEventConsumerTest {
         runtimeService = mock(RuntimeService.class);
         pluginService = mock(PluginService.class);
         epistolaService = mock(EpistolaService.class);
-        correlationService = mock(EpistolaMessageCorrelationService.class);
         consumer = new PollingCompletionEventConsumer(
-                runtimeService, pluginService, epistolaService, correlationService);
+                runtimeService, pluginService, epistolaService);
 
         executionQuery = mock(ExecutionQuery.class);
         when(runtimeService.createExecutionQuery()).thenReturn(executionQuery);
@@ -56,7 +56,7 @@ class PollingCompletionEventConsumerTest {
 
         consumer.poll();
 
-        verifyNoInteractions(pluginService, epistolaService, correlationService);
+        verifyNoInteractions(pluginService, epistolaService);
     }
 
     @Test
@@ -65,25 +65,23 @@ class PollingCompletionEventConsumerTest {
 
         consumer.poll();
 
-        verifyNoInteractions(pluginService, epistolaService, correlationService);
+        verifyNoInteractions(pluginService, epistolaService);
     }
 
     @Test
-    void poll_shouldCorrelateCompletedJob() {
-        // Set up a waiting execution
+    void poll_shouldDeliverMessageToExecutionOnCompletedJob() {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariable("proc-1", "epistolaRequestId")).thenReturn("req-123");
-        when(runtimeService.getVariable("proc-1", "epistolaTenantId")).thenReturn("tenant-a");
+        // Variables are read locally from the execution first
+        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-123");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("tenant-a");
 
-        // Set up plugin configuration
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any())).thenReturn(List.of(config));
         when(pluginService.createInstance(config)).thenReturn(plugin);
 
-        // Job is completed
         when(epistolaService.getJobStatus("https://api.epistola.app", "api-key-1", "tenant-a", "req-123"))
                 .thenReturn(GenerationJobDetail.builder()
                         .requestId("req-123")
@@ -93,16 +91,20 @@ class PollingCompletionEventConsumerTest {
 
         consumer.poll();
 
-        verify(correlationService).correlateCompletion("req-123", "COMPLETED", "doc-456", null);
+        verify(runtimeService).messageEventReceived(
+                EpistolaMessageCorrelationService.MESSAGE_NAME,
+                "exec-1",
+                expectedVariables("COMPLETED", "doc-456", null)
+        );
     }
 
     @Test
-    void poll_shouldCorrelateFailedJob() {
+    void poll_shouldDeliverMessageOnFailedJob() {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariable("proc-1", "epistolaRequestId")).thenReturn("req-fail");
-        when(runtimeService.getVariable("proc-1", "epistolaTenantId")).thenReturn("tenant-a");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-fail");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("tenant-a");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -118,7 +120,11 @@ class PollingCompletionEventConsumerTest {
 
         consumer.poll();
 
-        verify(correlationService).correlateCompletion("req-fail", "FAILED", null, "Template not found");
+        verify(runtimeService).messageEventReceived(
+                EpistolaMessageCorrelationService.MESSAGE_NAME,
+                "exec-1",
+                expectedVariables("FAILED", null, "Template not found")
+        );
     }
 
     @Test
@@ -126,8 +132,8 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariable("proc-1", "epistolaRequestId")).thenReturn("req-pending");
-        when(runtimeService.getVariable("proc-1", "epistolaTenantId")).thenReturn("tenant-a");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-pending");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("tenant-a");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -142,22 +148,52 @@ class PollingCompletionEventConsumerTest {
 
         consumer.poll();
 
-        verifyNoInteractions(correlationService);
+        verify(runtimeService, never()).messageEventReceived(any(), any(), any());
+    }
+
+    @Test
+    void poll_shouldFallBackToProcessVariableWhenLocalNotSet() {
+        Execution execution = mockExecution("exec-1", "proc-1");
+        when(executionQuery.list()).thenReturn(List.of(execution));
+
+        // Local variables return null, fall back to process instance level
+        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn(null);
+        when(runtimeService.getVariable("proc-1", "epistolaRequestId")).thenReturn("req-fallback");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn(null);
+        when(runtimeService.getVariable("proc-1", "epistolaTenantId")).thenReturn("tenant-a");
+
+        EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
+        PluginConfiguration config = mock(PluginConfiguration.class);
+        when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any())).thenReturn(List.of(config));
+        when(pluginService.createInstance(config)).thenReturn(plugin);
+
+        when(epistolaService.getJobStatus("https://api.epistola.app", "api-key-1", "tenant-a", "req-fallback"))
+                .thenReturn(GenerationJobDetail.builder()
+                        .requestId("req-fallback")
+                        .status(GenerationJobStatus.COMPLETED)
+                        .documentId("doc-fb")
+                        .build());
+
+        consumer.poll();
+
+        verify(runtimeService).messageEventReceived(
+                eq(EpistolaMessageCorrelationService.MESSAGE_NAME),
+                eq("exec-1"),
+                any()
+        );
     }
 
     @Test
     void poll_shouldGroupByTenantAndUseCorrectPlugin() {
-        // Two executions from different tenants
         Execution exec1 = mockExecution("exec-1", "proc-1");
         Execution exec2 = mockExecution("exec-2", "proc-2");
         when(executionQuery.list()).thenReturn(List.of(exec1, exec2));
 
-        when(runtimeService.getVariable("proc-1", "epistolaRequestId")).thenReturn("req-1");
-        when(runtimeService.getVariable("proc-1", "epistolaTenantId")).thenReturn("tenant-a");
-        when(runtimeService.getVariable("proc-2", "epistolaRequestId")).thenReturn("req-2");
-        when(runtimeService.getVariable("proc-2", "epistolaTenantId")).thenReturn("tenant-b");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-1");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("tenant-a");
+        when(runtimeService.getVariableLocal("exec-2", "epistolaRequestId")).thenReturn("req-2");
+        when(runtimeService.getVariableLocal("exec-2", "epistolaTenantId")).thenReturn("tenant-b");
 
-        // Two plugin configs for different tenants
         EpistolaPlugin pluginA = mockPlugin("https://a.epistola.app", "key-a", "tenant-a");
         EpistolaPlugin pluginB = mockPlugin("https://b.epistola.app", "key-b", "tenant-b");
         PluginConfiguration configA = mock(PluginConfiguration.class);
@@ -176,8 +212,8 @@ class PollingCompletionEventConsumerTest {
 
         consumer.poll();
 
-        verify(correlationService).correlateCompletion("req-1", "COMPLETED", "doc-1", null);
-        verify(correlationService).correlateCompletion("req-2", "COMPLETED", "doc-2", null);
+        verify(runtimeService).messageEventReceived(eq(EpistolaMessageCorrelationService.MESSAGE_NAME), eq("exec-1"), any());
+        verify(runtimeService).messageEventReceived(eq(EpistolaMessageCorrelationService.MESSAGE_NAME), eq("exec-2"), any());
     }
 
     @Test
@@ -185,13 +221,14 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        // Missing tenantId variable
-        when(runtimeService.getVariable("proc-1", "epistolaRequestId")).thenReturn("req-123");
+        // Both local and process-instance level return null for tenantId
+        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-123");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn(null);
         when(runtimeService.getVariable("proc-1", "epistolaTenantId")).thenReturn(null);
 
         consumer.poll();
 
-        verifyNoInteractions(epistolaService, correlationService);
+        verifyNoInteractions(epistolaService);
     }
 
     @Test
@@ -199,16 +236,15 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariable("proc-1", "epistolaRequestId")).thenReturn("req-123");
-        when(runtimeService.getVariable("proc-1", "epistolaTenantId")).thenReturn("unknown-tenant");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-123");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("unknown-tenant");
 
-        // No plugin configurations
         when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
                 .thenReturn(Collections.emptyList());
 
         consumer.poll();
 
-        verifyNoInteractions(epistolaService, correlationService);
+        verifyNoInteractions(epistolaService);
     }
 
     @Test
@@ -217,17 +253,16 @@ class PollingCompletionEventConsumerTest {
         Execution exec2 = mockExecution("exec-2", "proc-2");
         when(executionQuery.list()).thenReturn(List.of(exec1, exec2));
 
-        when(runtimeService.getVariable("proc-1", "epistolaRequestId")).thenReturn("req-error");
-        when(runtimeService.getVariable("proc-1", "epistolaTenantId")).thenReturn("tenant-a");
-        when(runtimeService.getVariable("proc-2", "epistolaRequestId")).thenReturn("req-ok");
-        when(runtimeService.getVariable("proc-2", "epistolaTenantId")).thenReturn("tenant-a");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-error");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("tenant-a");
+        when(runtimeService.getVariableLocal("exec-2", "epistolaRequestId")).thenReturn("req-ok");
+        when(runtimeService.getVariableLocal("exec-2", "epistolaTenantId")).thenReturn("tenant-a");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
         PluginConfiguration config = mock(PluginConfiguration.class);
         when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any())).thenReturn(List.of(config));
         when(pluginService.createInstance(config)).thenReturn(plugin);
 
-        // First job throws, second succeeds
         when(epistolaService.getJobStatus("https://api.epistola.app", "api-key-1", "tenant-a", "req-error"))
                 .thenThrow(new RuntimeException("API timeout"));
         when(epistolaService.getJobStatus("https://api.epistola.app", "api-key-1", "tenant-a", "req-ok"))
@@ -236,18 +271,20 @@ class PollingCompletionEventConsumerTest {
 
         consumer.poll();
 
-        // Should still correlate the second job despite the first one failing
-        verify(correlationService, never()).correlateCompletion(eq("req-error"), any(), any(), any());
-        verify(correlationService).correlateCompletion("req-ok", "COMPLETED", "doc-ok", null);
+        // Should still deliver message for the second job despite the first one failing
+        verify(runtimeService, never()).messageEventReceived(
+                eq(EpistolaMessageCorrelationService.MESSAGE_NAME), eq("exec-1"), any());
+        verify(runtimeService).messageEventReceived(
+                eq(EpistolaMessageCorrelationService.MESSAGE_NAME), eq("exec-2"), any());
     }
 
     @Test
-    void poll_shouldCorrelateCancelledJob() {
+    void poll_shouldDeliverMessageOnCancelledJob() {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariable("proc-1", "epistolaRequestId")).thenReturn("req-cancel");
-        when(runtimeService.getVariable("proc-1", "epistolaTenantId")).thenReturn("tenant-a");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-cancel");
+        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("tenant-a");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -262,7 +299,11 @@ class PollingCompletionEventConsumerTest {
 
         consumer.poll();
 
-        verify(correlationService).correlateCompletion("req-cancel", "CANCELLED", null, null);
+        verify(runtimeService).messageEventReceived(
+                EpistolaMessageCorrelationService.MESSAGE_NAME,
+                "exec-1",
+                expectedVariables("CANCELLED", null, null)
+        );
     }
 
     // Helper methods
@@ -280,5 +321,13 @@ class PollingCompletionEventConsumerTest {
         when(plugin.getApiKey()).thenReturn(apiKey);
         when(plugin.getTenantId()).thenReturn(tenantId);
         return plugin;
+    }
+
+    private Map<String, Object> expectedVariables(String status, String documentId, String errorMessage) {
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("epistolaStatus", status);
+        variables.put("epistolaDocumentId", documentId);
+        variables.put("epistolaErrorMessage", errorMessage);
+        return variables;
     }
 }
