@@ -150,7 +150,7 @@ public class EpistolaServiceImpl implements EpistolaService {
             // Build the request using the constructor (Kotlin data class - immutable)
             GenerateDocumentRequest request = new GenerateDocumentRequest(
                     templateId,
-                    variantId,
+                    variantId != null ? variantId : "",
                     data,
                     null,  // versionId - not used when environmentId is specified
                     environmentId,

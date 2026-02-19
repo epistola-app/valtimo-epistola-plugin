@@ -66,6 +66,10 @@ dependencies {
     testAnnotationProcessor(libs.lombok)
 }
 
+tasks.withType<JavaCompile> {
+    options.compilerArgs.add("-parameters")
+}
+
 tasks.test {
     // Don't fail if there are no tests yet
     failOnNoDiscoveredTests.set(false)

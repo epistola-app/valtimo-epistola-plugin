@@ -180,6 +180,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`@PluginActionProperty` values null at runtime**: Added `-parameters` Java compiler flag to `build.gradle.kts`. Without it, Valtimo's reflection-based property resolution couldn't match JSON keys to method parameter names, causing all action properties to be `null`.
+
+- **Null `variantId` causing NPE**: `EpistolaServiceImpl` now defaults `variantId` to empty string when not provided, preventing `NullPointerException` from the Kotlin client's non-null constructor parameter. Note: this is a workaround until the client library makes `variantId` optional (see `docs/todo.md`).
+
 - **Variable scoping for parallel/multi-instance execution**: `epistolaRequestId` and `epistolaTenantId` are now stored as local variables (`setVariableLocal`) instead of process-instance variables. This prevents parallel branches and multi-instance iterations from overwriting each other's request IDs.
 
 - **Polling consumer direct execution targeting**: `PollingCompletionEventConsumer` now uses `runtimeService.messageEventReceived(messageName, executionId, variables)` to target specific executions directly, instead of process-variable-based correlation. Supports local variable fallback to process-instance scope for backwards compatibility.
