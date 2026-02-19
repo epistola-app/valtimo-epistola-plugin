@@ -1,0 +1,12 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../out-tsc/e2e",
+    "module": "es2020",
+    "target": "ES2022",
+    "types": ["node"]
+  },
+  "include": [
+    "**/*.ts"
+  ]
+}

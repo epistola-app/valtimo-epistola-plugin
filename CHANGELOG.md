@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Playwright MCP Configuration** (`.mcp.json`): Enables Claude Code to interactively drive a browser for UI verification during development sessions
+- **Playwright E2E Test Suite** (`test-app/frontend/e2e/`):
+  - Keycloak authentication setup with `storageState` persistence
+  - Plugin configuration form tests (field rendering, validation, slug format)
+  - Generate document action tests with API mocking for templates/variants/environments
+  - Check job status and download document action smoke tests
+  - Page objects for plugin management navigation
+  - Sequential execution (single worker) for simplicity and reliability
+
 - **Async Completion Polling Infrastructure**: Centralized batch poller that queries Operaton for processes waiting on Epistola document generation, checks job statuses, and correlates BPMN messages when jobs complete. Replaces per-process timer polling with a single scheduled task.
   - `EpistolaCompletionEventConsumer` interface for swappable notification strategies
   - `PollingCompletionEventConsumer` initial implementation using `@Scheduled` batch polling

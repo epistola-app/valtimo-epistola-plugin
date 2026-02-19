@@ -8,7 +8,10 @@
     "build": "node --max_old_space_size=5048 ./node_modules/@angular/cli/bin/ng build --output-path=deployment/dist",
     "test": "ng test",
     "lint": "ng lint",
-    "e2e": "ng e2e"
+    "e2e": "playwright test --config=e2e/playwright.config.ts",
+    "e2e:headed": "playwright test --config=e2e/playwright.config.ts --headed",
+    "e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui",
+    "e2e:install": "playwright install chromium"
   },
   "private": true,
   "dependencies": {
@@ -117,6 +120,7 @@
     "moment-duration-format": "2.3.2",
     "replace": "1.2.2",
     "ts-node": "10.9.1",
-    "typescript": "5.8.3"
+    "typescript": "5.8.3",
+    "@playwright/test": "^1.50.0"
   }
 }
