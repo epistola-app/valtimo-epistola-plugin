@@ -40,7 +40,7 @@
                 },
                 "date": {
                     "type": "string",
-                    "format": "date"
+                    "format": "date-time"
                 },
                 "subject": {
                     "type": "string"
@@ -56,7 +56,7 @@
                 },
                 "receivedDate": {
                     "type": "string",
-                    "format": "date"
+                    "format": "date-time"
                 }
             },
             "required": ["grounds", "receivedDate"]
