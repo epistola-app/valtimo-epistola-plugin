@@ -14,10 +14,15 @@ export interface EpistolaPluginConfig extends PluginConfigurationData {
 /**
  * Action configuration for the generate-document action.
  * Contains all parameters needed to generate a document.
+ *
+ * Variant selection supports two modes:
+ * - Explicit: set variantId directly
+ * - By attributes: set variantAttributes with key-value pairs (values can be value resolver expressions)
  */
 export interface GenerateDocumentConfig {
   templateId: string;
-  variantId: string;
+  variantId?: string;
+  variantAttributes?: Record<string, string>;
   environmentId?: string;
   dataMapping: Record<string, any>;
   outputFormat: 'PDF' | 'HTML';

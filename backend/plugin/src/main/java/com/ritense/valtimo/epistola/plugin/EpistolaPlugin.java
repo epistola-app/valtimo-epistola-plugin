@@ -1,5 +1,6 @@
 package com.ritense.valtimo.epistola.plugin;
 
+import app.epistola.client.model.VariantSelectionAttribute;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GeneratedDocument;
 import app.epistola.valtimo.domain.GenerationJobDetail;
@@ -11,7 +12,6 @@ import com.ritense.plugin.domain.EventType;
 import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
-import org.operaton.bpm.engine.ExternalTaskService;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 
 import java.util.ArrayList;
@@ -156,10 +156,21 @@ public class EpistolaPlugin {
      * asynchronous - a request ID is returned immediately and stored in the specified
      * process variable. The actual document will be available via a callback when
      * generation is complete.
+     * <p>
+     * Variant selection supports three modes:
+     * <ul>
+     *   <li>Default: omit both variantId and variantAttributes — the template's default variant is used</li>
+     *   <li>Explicit: specify variantId directly</li>
+     *   <li>By attributes: specify variantAttributes (key-value pairs), and the API selects the matching variant.
+     *       Values can use value resolver expressions (doc:, pv:, case:).</li>
+     * </ul>
+     * variantId and variantAttributes are mutually exclusive.
      *
      * @param execution             The process execution context
      * @param templateId            The ID of the template to use for document generation
-     * @param variantId             The ID of the template variant to use
+     * @param variantId             The ID of the template variant (optional — omit to use default or attribute selection)
+     * @param variantAttributes     Key-value attributes for automatic variant selection (optional).
+     *                              Values can use value resolver expressions (doc:, pv:, case:).
      * @param environmentId         The environment ID (optional, uses plugin default if not specified)
      * @param dataMapping           Key-value mapping of template fields to data sources.
      *                              Values can use prefixes: doc: (case data), pv: (process variable)
@@ -178,6 +189,7 @@ public class EpistolaPlugin {
             DelegateExecution execution,
             @PluginActionProperty String templateId,
             @PluginActionProperty String variantId,
+            @PluginActionProperty Map<String, String> variantAttributes,
             @PluginActionProperty String environmentId,
             @PluginActionProperty Map<String, Object> dataMapping,
             @PluginActionProperty FileFormat outputFormat,
@@ -185,8 +197,16 @@ public class EpistolaPlugin {
             @PluginActionProperty String correlationId,
             @PluginActionProperty String resultProcessVariable
     ) {
-        log.info("Starting document generation: templateId={}, variantId={}, outputFormat={}, filename={}",
-                templateId, variantId, outputFormat, filename);
+        log.info("Starting document generation: templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
+                templateId, variantId, variantAttributes, outputFormat, filename);
+
+        // Validate: variantId and variantAttributes are mutually exclusive.
+        // If neither is provided, the API will use the template's default variant.
+        boolean hasVariantId = variantId != null && !variantId.isBlank();
+        boolean hasAttributes = variantAttributes != null && !variantAttributes.isEmpty();
+        if (hasVariantId && hasAttributes) {
+            throw new IllegalArgumentException("Cannot specify both variantId and variantAttributes");
+        }
 
         // Resolve value expressions (doc:, pv:, etc.) recursively through the nested mapping
         Map<String, Object> resolvedData = resolveNestedMapping(execution, dataMapping != null ? dataMapping : Map.of());
@@ -199,13 +219,19 @@ public class EpistolaPlugin {
                 ? environmentId
                 : defaultEnvironmentId;
 
+        // Build variant selection attributes if using attribute-based selection
+        List<VariantSelectionAttribute> resolvedAttributes = hasAttributes
+                ? resolveVariantAttributes(execution, variantAttributes)
+                : null;
+
         // Submit the document generation request
         GeneratedDocument result = epistolaService.generateDocument(
                 baseUrl,
                 apiKey,
                 tenantId,
                 templateId,
-                variantId,
+                hasVariantId ? variantId : null,
+                resolvedAttributes,
                 effectiveEnvironmentId,
                 resolvedData,
                 outputFormat,
@@ -420,6 +446,40 @@ public class EpistolaPlugin {
 
         Object resolvedValue = resolved.get(value);
         return resolvedValue != null ? resolvedValue.toString() : value;
+    }
+
+    /**
+     * Resolve variant attributes, resolving any value resolver expressions in the values.
+     */
+    private List<VariantSelectionAttribute> resolveVariantAttributes(
+            DelegateExecution execution,
+            Map<String, String> attributes
+    ) {
+        // Collect resolvable attribute values
+        List<String> valuesToResolve = attributes.values().stream()
+                .filter(this::isResolvableValue)
+                .toList();
+
+        // Batch-resolve all values at once
+        Map<String, Object> resolvedValues = valuesToResolve.isEmpty()
+                ? Map.of()
+                : valueResolverService.resolveValues(
+                        execution.getProcessInstanceId(),
+                        execution,
+                        valuesToResolve
+                );
+
+        // Build VariantSelectionAttribute list with resolved values
+        return attributes.entrySet().stream()
+                .map(entry -> {
+                    String key = entry.getKey();
+                    String rawValue = entry.getValue();
+                    String resolvedValue = isResolvableValue(rawValue) && resolvedValues.containsKey(rawValue)
+                            ? String.valueOf(resolvedValues.get(rawValue))
+                            : rawValue;
+                    return new VariantSelectionAttribute(key, resolvedValue, null);
+                })
+                .toList();
     }
 
     /**

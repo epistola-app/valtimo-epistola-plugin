@@ -13,3 +13,138 @@
     font-weight: 500;
   }
 }
+
+.variant-mode-toggle {
+  margin-bottom: 1rem;
+  padding: 0 0.75rem;
+}
+
+.variant-mode-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.375rem;
+}
+
+.variant-mode-buttons {
+  display: flex;
+  gap: 0;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  overflow: hidden;
+  width: fit-content;
+}
+
+.variant-mode-btn {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  background: #fff;
+  border: none;
+  border-right: 1px solid #d1d5db;
+  cursor: pointer;
+  color: #374151;
+  transition: background-color 0.15s, color 0.15s;
+
+  &:last-child {
+    border-right: none;
+  }
+
+  &:hover:not([disabled]) {
+    background: #f3f4f6;
+  }
+
+  &.active {
+    background: #2563eb;
+    color: #fff;
+  }
+
+  &[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.variant-attributes-section {
+  margin-bottom: 1rem;
+  padding: 0 0.75rem;
+}
+
+.variant-attributes-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.375rem;
+}
+
+.variant-attributes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.variant-attribute-row {
+  display: flex;
+  gap: 0.375rem;
+  align-items: center;
+}
+
+.variant-attribute-input {
+  flex: 1;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.8125rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  outline: none;
+
+  &:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 1px #2563eb;
+  }
+
+  &[disabled] {
+    opacity: 0.5;
+    background: #f9fafb;
+  }
+}
+
+.variant-attribute-remove-btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 1rem;
+  line-height: 1;
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #6b7280;
+
+  &:hover:not([disabled]) {
+    color: #dc3545;
+    border-color: #dc3545;
+  }
+
+  &[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.variant-attribute-add-btn {
+  margin-top: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  background: none;
+  border: 1px dashed #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #6b7280;
+
+  &:hover:not([disabled]) {
+    color: #2563eb;
+    border-color: #2563eb;
+  }
+
+  &[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}

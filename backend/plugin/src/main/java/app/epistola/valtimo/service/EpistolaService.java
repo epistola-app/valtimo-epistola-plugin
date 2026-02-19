@@ -1,5 +1,6 @@
 package app.epistola.valtimo.service;
 
+import app.epistola.client.model.VariantSelectionAttribute;
 import app.epistola.valtimo.domain.*;
 
 import java.util.List;
@@ -57,17 +58,23 @@ public interface EpistolaService {
 
     /**
      * Generate a document using a template.
+     * <p>
+     * Variant selection modes (mutually exclusive):
+     * - If neither variantId nor variantAttributes is provided, the template's default variant is used.
+     * - If variantId is provided, that specific variant is used.
+     * - If variantAttributes is provided, the API selects the matching variant automatically.
      *
-     * @param baseUrl       The Epistola API base URL
-     * @param apiKey        The API key for authentication
-     * @param tenantId      The tenant ID in Epistola
-     * @param templateId    The ID of the template to use
-     * @param variantId     The ID of the variant to use
-     * @param environmentId The ID of the environment (optional)
-     * @param data          The data to populate the template with (already resolved values)
-     * @param format        The output format (PDF or HTML)
-     * @param filename      The desired filename for the generated document
-     * @param correlationId Optional correlation ID for tracking
+     * @param baseUrl            The Epistola API base URL
+     * @param apiKey             The API key for authentication
+     * @param tenantId           The tenant ID in Epistola
+     * @param templateId         The ID of the template to use
+     * @param variantId          The ID of the variant to use (nullable when using attribute selection)
+     * @param variantAttributes  Attributes for automatic variant selection (nullable when using explicit variantId)
+     * @param environmentId      The ID of the environment (optional)
+     * @param data               The data to populate the template with (already resolved values)
+     * @param format             The output format (PDF or HTML)
+     * @param filename           The desired filename for the generated document
+     * @param correlationId      Optional correlation ID for tracking
      * @return The generated document information
      */
     GeneratedDocument generateDocument(
@@ -76,6 +83,7 @@ public interface EpistolaService {
             String tenantId,
             String templateId,
             String variantId,
+            List<VariantSelectionAttribute> variantAttributes,
             String environmentId,
             Map<String, Object> data,
             FileFormat format,

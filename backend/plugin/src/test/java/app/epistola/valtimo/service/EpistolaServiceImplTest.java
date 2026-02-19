@@ -35,7 +35,7 @@ class EpistolaServiceImplTest {
 
     @Container
     private static final GenericContainer<?> MOCK_SERVER = new GenericContainer<>(
-            "ghcr.io/epistola-app/epistola-contract/mock-server:0.1.3"
+            "ghcr.io/epistola-app/epistola-contract/mock-server:0.1.7"
     )
             .withExposedPorts(4010)
             .waitingFor(Wait.forHttp("/tenants/test/templates")
@@ -128,6 +128,7 @@ class EpistolaServiceImplTest {
                 TENANT_ID,
                 templateId,
                 variantId,
+                null,  // no variant attributes when using explicit variantId
                 "production",
                 Map.of("customer", Map.of("name", "Test Customer", "email", "test@example.com")),
                 FileFormat.PDF,

@@ -1,5 +1,6 @@
 import {Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
 import {CommonModule} from '@angular/common';
+import {FormsModule} from '@angular/forms';
 import {
   FunctionConfigurationComponent,
   PluginConfigurationData,
@@ -9,9 +10,11 @@ import {FormModule, FormOutput, InputModule, SelectItem, SelectModule} from '@va
 import {CaseManagementParams, ManagementContext} from '@valtimo/shared';
 import {BehaviorSubject, combineLatest, Observable, of, Subject, Subscription} from 'rxjs';
 import {catchError, filter, map, take, takeUntil} from 'rxjs/operators';
-import {GenerateDocumentConfig, TemplateField} from '../../models';
+import {GenerateDocumentConfig, TemplateField, VariantInfo} from '../../models';
 import {EpistolaPluginService} from '../../services';
 import {DataMappingTreeComponent} from '../data-mapping-tree/data-mapping-tree.component';
+
+export type VariantSelectionMode = 'explicit' | 'attributes';
 
 @Component({
   selector: 'epistola-generate-document-configuration',
@@ -20,6 +23,7 @@ import {DataMappingTreeComponent} from '../data-mapping-tree/data-mapping-tree.c
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     PluginTranslatePipeModule,
     FormModule,
     InputModule,
@@ -73,6 +77,12 @@ export class GenerateDocumentConfigurationComponent
   // Show data mapping builder only when template is selected
   readonly selectedTemplateId$ = new BehaviorSubject<string>('');
   readonly selectedVariantId$ = new BehaviorSubject<string>('');
+
+  // Variant selection mode: 'explicit' (dropdown) or 'attributes' (key-value pairs)
+  variantSelectionMode: VariantSelectionMode = 'explicit';
+
+  // Variant attributes for attribute-based selection
+  variantAttributeEntries: {key: string; value: string}[] = [];
 
   // Case definition key from context (for ValuePathSelector)
   caseDefinitionKey: string | null = null;
@@ -144,6 +154,45 @@ export class GenerateDocumentConfigurationComponent
     }
   }
 
+  onVariantSelectionModeChange(mode: VariantSelectionMode): void {
+    this.variantSelectionMode = mode;
+    if (mode === 'attributes' && this.variantAttributeEntries.length === 0) {
+      this.variantAttributeEntries = [{key: '', value: ''}];
+    }
+    // Re-validate
+    const currentFormValue = this.formValue$.getValue();
+    if (currentFormValue) {
+      this.handleValid(currentFormValue);
+    }
+  }
+
+  addAttributeEntry(): void {
+    this.variantAttributeEntries = [...this.variantAttributeEntries, {key: '', value: ''}];
+    this.revalidate();
+  }
+
+  removeAttributeEntry(index: number): void {
+    this.variantAttributeEntries = this.variantAttributeEntries.filter((_, i) => i !== index);
+    this.revalidate();
+  }
+
+  onAttributeEntryChange(): void {
+    this.revalidate();
+  }
+
+  private revalidate(): void {
+    const currentFormValue = this.formValue$.getValue();
+    if (currentFormValue) {
+      this.handleValid(currentFormValue);
+    }
+  }
+
+  private formatAttributes(attributes: Record<string, string>): string {
+    const entries = Object.entries(attributes || {});
+    if (entries.length === 0) return '';
+    return ` (${entries.map(([k, v]) => `${k}=${v}`).join(', ')})`;
+  }
+
   private initContext(): void {
     if (this.context$) {
       this.context$.pipe(
@@ -161,13 +210,18 @@ export class GenerateDocumentConfigurationComponent
         map(config => config?.dataMapping || {})
       );
 
-      // Also set initial selected template and variant
+      // Also set initial selected template, variant mode, and variant
       this.prefillConfiguration$.pipe(
         takeUntil(this.destroy$),
         filter(config => !!config?.templateId)
       ).subscribe(config => {
         this.selectedTemplateId$.next(config.templateId);
-        if (config.variantId) {
+        if (config.variantAttributes && Object.keys(config.variantAttributes).length > 0) {
+          this.variantSelectionMode = 'attributes';
+          this.variantAttributeEntries = Object.entries(config.variantAttributes)
+            .map(([key, value]) => ({key, value}));
+        } else if (config.variantId) {
+          this.variantSelectionMode = 'explicit';
           this.selectedVariantId$.next(config.variantId);
         }
         if (config.dataMapping) {
@@ -245,7 +299,7 @@ export class GenerateDocumentConfigurationComponent
       ).subscribe(variants => {
         const options: SelectItem[] = variants.map(v => ({
           id: v.id,
-          text: v.name + (v.tags.length > 0 ? ` (${v.tags.join(', ')})` : '')
+          text: v.name + this.formatAttributes(v.attributes)
         }));
         this.variantOptions$.next(options);
         this.variantsLoading$.next(false);
@@ -288,19 +342,25 @@ export class GenerateDocumentConfigurationComponent
   }
 
   private handleValid(formValue: Partial<GenerateDocumentConfig>): void {
-    const formComplete = !!(
+    const baseComplete = !!(
       formValue?.templateId &&
-      formValue?.variantId &&
       formValue?.outputFormat &&
       formValue?.filename &&
       formValue?.resultProcessVariable
     );
 
+    // Variant selection: if attribute mode is used, all entries must have both key and value filled.
+    // Neither variant nor attributes are required — omitting both uses the template's default variant.
+    let variantValid = true;
+    if (this.variantSelectionMode === 'attributes' && this.variantAttributeEntries.length > 0) {
+      variantValid = this.variantAttributeEntries.every(e => !!e.key && !!e.value);
+    }
+
     // Check if all required template fields are mapped
     const requiredFieldsMapped = this.requiredFieldsStatus.total === 0 ||
       this.requiredFieldsStatus.mapped === this.requiredFieldsStatus.total;
 
-    const valid = formComplete && requiredFieldsMapped;
+    const valid = baseComplete && variantValid && requiredFieldsMapped;
     this.valid$.next(valid);
     this.valid.emit(valid);
   }
@@ -313,7 +373,6 @@ export class GenerateDocumentConfigurationComponent
           if (valid && formValue) {
             const config: GenerateDocumentConfig = {
               templateId: formValue.templateId!,
-              variantId: formValue.variantId!,
               environmentId: formValue.environmentId || undefined,
               dataMapping: dataMapping,
               outputFormat: formValue.outputFormat as 'PDF' | 'HTML',
@@ -321,6 +380,18 @@ export class GenerateDocumentConfigurationComponent
               correlationId: formValue.correlationId || undefined,
               resultProcessVariable: formValue.resultProcessVariable!
             };
+
+            if (this.variantSelectionMode === 'explicit') {
+              config.variantId = formValue.variantId!;
+            } else {
+              config.variantAttributes = {};
+              for (const entry of this.variantAttributeEntries) {
+                if (entry.key && entry.value) {
+                  config.variantAttributes[entry.key] = entry.value;
+                }
+              }
+            }
+
             this.configuration.emit(config);
           }
         });

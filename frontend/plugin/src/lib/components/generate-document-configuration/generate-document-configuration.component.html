@@ -26,7 +26,30 @@
   >
   </v-select>
 
+  <!-- Variant selection mode toggle -->
+  <div class="variant-mode-toggle" *ngIf="obs.selectedTemplateId">
+    <label class="variant-mode-label">{{ 'variantSelectionMode' | pluginTranslate: pluginId | async }}</label>
+    <div class="variant-mode-buttons">
+      <button
+        type="button"
+        class="variant-mode-btn"
+        [class.active]="variantSelectionMode === 'explicit'"
+        (click)="onVariantSelectionModeChange('explicit')"
+        [disabled]="obs.disabled"
+      >{{ 'selectByVariant' | pluginTranslate: pluginId | async }}</button>
+      <button
+        type="button"
+        class="variant-mode-btn"
+        [class.active]="variantSelectionMode === 'attributes'"
+        (click)="onVariantSelectionModeChange('attributes')"
+        [disabled]="obs.disabled"
+      >{{ 'selectByAttributes' | pluginTranslate: pluginId | async }}</button>
+    </div>
+  </div>
+
+  <!-- Explicit variant selection (dropdown) -->
   <v-select
+    *ngIf="variantSelectionMode === 'explicit'"
     name="variantId"
     [title]="'variantId' | pluginTranslate: pluginId | async"
     [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
@@ -34,10 +57,48 @@
     [items]="obs.variantOptions"
     [defaultSelectionId]="obs.prefill?.variantId"
     [disabled]="obs.disabled || obs.variantsLoading || !obs.selectedTemplateId"
-    [required]="true"
+    [required]="false"
     [loading]="obs.variantsLoading"
   >
   </v-select>
+
+  <!-- Attribute-based variant selection -->
+  <div *ngIf="variantSelectionMode === 'attributes' && obs.selectedTemplateId" class="variant-attributes-section">
+    <label class="variant-attributes-label">{{ 'variantAttributes' | pluginTranslate: pluginId | async }}</label>
+    <div class="variant-attributes-list">
+      <div *ngFor="let entry of variantAttributeEntries; let i = index" class="variant-attribute-row">
+        <input
+          type="text"
+          class="variant-attribute-input"
+          [placeholder]="'attributeKey' | pluginTranslate: pluginId | async"
+          [(ngModel)]="entry.key"
+          (ngModelChange)="onAttributeEntryChange()"
+          [disabled]="obs.disabled"
+        />
+        <input
+          type="text"
+          class="variant-attribute-input"
+          [placeholder]="'attributeValue' | pluginTranslate: pluginId | async"
+          [(ngModel)]="entry.value"
+          (ngModelChange)="onAttributeEntryChange()"
+          [disabled]="obs.disabled"
+        />
+        <button
+          type="button"
+          class="variant-attribute-remove-btn"
+          (click)="removeAttributeEntry(i)"
+          [disabled]="obs.disabled"
+          title="{{ 'removeAttribute' | pluginTranslate: pluginId | async }}"
+        >&times;</button>
+      </div>
+    </div>
+    <button
+      type="button"
+      class="variant-attribute-add-btn"
+      (click)="addAttributeEntry()"
+      [disabled]="obs.disabled"
+    >+ {{ 'addAttribute' | pluginTranslate: pluginId | async }}</button>
+  </div>
 
   <v-select
     name="environmentId"

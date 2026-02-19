@@ -66,5 +66,5 @@ export interface VariantInfo {
   id: string;
   templateId: string;
   name: string;
-  tags: string[];
+  attributes: Record<string, string>;
 }

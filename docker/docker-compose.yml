@@ -1,6 +1,6 @@
 services:
   epistola-mock:
-    image: ghcr.io/epistola-app/epistola-contract/mock-server:0.1.3
+    image: ghcr.io/epistola-app/epistola-contract/mock-server:0.1.7
     container_name: epistola-mock
     ports:
       - "4010:4010"

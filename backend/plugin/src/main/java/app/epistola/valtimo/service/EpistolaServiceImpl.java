@@ -19,6 +19,7 @@ import app.epistola.client.model.EnvironmentDto;
 import app.epistola.client.model.EnvironmentListResponse;
 import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.GenerationJobResponse;
+import app.epistola.client.model.VariantSelectionAttribute;
 import app.epistola.client.model.TemplateDto;
 import app.epistola.client.model.TemplateListResponse;
 import app.epistola.client.model.TemplateSummaryDto;
@@ -134,14 +135,15 @@ public class EpistolaServiceImpl implements EpistolaService {
             String tenantId,
             String templateId,
             String variantId,
+            List<VariantSelectionAttribute> variantAttributes,
             String environmentId,
             Map<String, Object> data,
             FileFormat format,
             String filename,
             String correlationId
     ) {
-        log.info("Submitting document generation request: tenantId={}, templateId={}, variantId={}, format={}, filename={}",
-                tenantId, templateId, variantId, format, filename);
+        log.info("Submitting document generation request: tenantId={}, templateId={}, variantId={}, attributes={}, format={}, filename={}",
+                tenantId, templateId, variantId, variantAttributes, format, filename);
         log.debug("Template data: {}", data);
 
         try {
@@ -150,9 +152,10 @@ public class EpistolaServiceImpl implements EpistolaService {
             // Build the request using the constructor (Kotlin data class - immutable)
             GenerateDocumentRequest request = new GenerateDocumentRequest(
                     templateId,
-                    variantId != null ? variantId : "",
                     data,
-                    null,  // versionId - not used when environmentId is specified
+                    variantId,          // nullable - omit when using attribute-based selection
+                    variantAttributes,  // nullable - for attribute-based variant selection
+                    null,               // versionId - not used when environmentId is specified
                     environmentId,
                     filename,
                     correlationId
@@ -330,16 +333,11 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     private VariantInfo mapToVariantInfo(VariantDto dto) {
-        // Convert Map<String, String> tags to List<String> for our domain model
-        List<String> tagList = new ArrayList<>();
-        if (dto.getTags() != null) {
-            dto.getTags().forEach((key, value) -> tagList.add(key + "=" + value));
-        }
         return new VariantInfo(
                 dto.getId(),
                 dto.getTemplateId(),
                 dto.getTitle() != null ? dto.getTitle() : dto.getId(),  // fallback to id if no title
-                tagList
+                dto.getAttributes() != null ? dto.getAttributes() : Map.of()
         );
     }
 

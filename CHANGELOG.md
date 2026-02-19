@@ -9,6 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Attribute-Based Variant Selection**: Generate document action now supports selecting variants by attributes instead of explicit variant ID. When configured with `variantAttributes`, the API automatically selects the matching variant based on key-value pairs. Attribute values support value resolver expressions (`doc:`, `pv:`, `case:`), enabling runtime variant selection based on process data (e.g., language, brand).
+
+- **Variant Selection Mode Toggle** (Frontend): Generate document configuration now has a mode toggle between "Select variant" (existing dropdown) and "Select by attributes" (key-value pair inputs). Users can add/remove attribute entries, and values support value resolver expressions.
+
+### Changed
+
+- **`VariantInfo.tags` renamed to `attributes`**: The domain model and frontend interface now use `Map<String, String> attributes` instead of `List<String> tags`, matching the Epistola API v0.1.7 contract. Variant dropdowns display attributes as `key=value` pairs.
+
+- **`EpistolaService.generateDocument()` signature updated**: Added `variantAttributes` parameter (`List<VariantSelectionAttribute>`) and made `variantId` nullable. Either `variantId` or `variantAttributes` must be provided, not both.
+
+- **`GenerateDocumentConfig.variantId` now optional** (Frontend): The config interface allows either `variantId` or `variantAttributes` to be set.
+
+### Dependencies
+
+- Upgraded `app.epistola.contract:client-spring3-restclient` from 0.1.1 to 0.1.7
+- Updated mock server image from `0.1.3` to `0.1.7` (docker-compose and Testcontainers)
+
+### Breaking Changes
+
+- `VariantInfo.tags` (List<String>) replaced by `VariantInfo.attributes` (Map<String, String>) — affects any code reading variant tags
+- `EpistolaService.generateDocument()` has an additional `variantAttributes` parameter
+
+### Added (previous)
+
 - **Playwright MCP Configuration** (`.mcp.json`): Enables Claude Code to interactively drive a browser for UI verification during development sessions
 - **Playwright E2E Test Suite** (`test-app/frontend/e2e/`):
   - Keycloak authentication setup with `storageState` persistence
