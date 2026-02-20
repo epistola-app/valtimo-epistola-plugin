@@ -1,11 +1,27 @@
 services:
+  epistola-server:
+    profiles: ["server"]
+    image: ghcr.io/epistola-app/epistola-suite:0.13.0
+    container_name: epistola-server
+    environment:
+      SPRING_PROFILES_ACTIVE: demo
+      SPRING_DATASOURCE_URL: jdbc:postgresql://epistola-postgres:5432/epistola
+      SPRING_DATASOURCE_USERNAME: epistola
+      SPRING_DATASOURCE_PASSWORD: epistola
+    ports:
+      - "4010:4000"
+    depends_on:
+      epistola-postgres:
+        condition: service_healthy
+
   epistola-mock:
-    image: ghcr.io/epistola-app/epistola-contract/mock-server:0.1.7
+    profiles: ["mock"]
+    image: ghcr.io/epistola-app/epistola-contract/mock-server:0.1.8
     container_name: epistola-mock
     ports:
       - "4010:4010"
 
-  postgres:
+  epistola-postgres:
     image: postgres:16-alpine
     container_name: epistola-postgres
     environment:

@@ -21,15 +21,26 @@ The frontend plugin must be built BEFORE the test-app frontend:
 
 ## Local Development with Docker
 
-Start local dependencies:
+Start infrastructure only (PostgreSQL + Keycloak):
 ```bash
 docker compose -f docker/docker-compose.yml up -d
 ```
 
+Start with real Epistola server (recommended for E2E testing):
+```bash
+docker compose -f docker/docker-compose.yml --profile server up -d
+```
+
+Start with mock server (for CI or quick tests):
+```bash
+docker compose -f docker/docker-compose.yml --profile mock up -d
+```
+
 Services:
 - PostgreSQL: localhost:5432
-- Keycloak: localhost:8082
-- Epistola Mock Server: localhost:4010
+- Keycloak: localhost:8081
+- Epistola Server: localhost:4010 (real, `demo` profile seeds test data — use `--profile server`)
+- Epistola Mock Server: localhost:4010 (use `--profile mock`)
 
 ## Project Structure
 
