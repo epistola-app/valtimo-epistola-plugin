@@ -5,7 +5,7 @@ services:
     container_name: epistola-server
     environment:
       SPRING_PROFILES_ACTIVE: demo
-      SPRING_DATASOURCE_URL: jdbc:postgresql://epistola-postgres:5432/epistola
+      SPRING_DATASOURCE_URL: jdbc:postgresql://epistola-postgres:5432/epistola_suite
       SPRING_DATASOURCE_USERNAME: epistola
       SPRING_DATASOURCE_PASSWORD: epistola
     ports:
@@ -32,6 +32,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U epistola"]
       interval: 10s
