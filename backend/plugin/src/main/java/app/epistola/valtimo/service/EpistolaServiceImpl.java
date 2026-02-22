@@ -234,7 +234,8 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     private TemplateDetails mapToTemplateDetails(TemplateDto dto) {
-        List<TemplateField> fields = extractFieldsFromSchema(dto.getSchema());
+        Object schemaSource = dto.getDataModel() != null ? dto.getDataModel() : dto.getSchema();
+        List<TemplateField> fields = extractFieldsFromSchema(schemaSource);
 
         return new TemplateDetails(
                 dto.getId(),
