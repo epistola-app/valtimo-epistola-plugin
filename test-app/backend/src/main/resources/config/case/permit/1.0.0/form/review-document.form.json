@@ -16,6 +16,20 @@
             "disabled": true
         },
         {
+            "key": "pv:epistolaTenantId",
+            "type": "hidden",
+            "input": true,
+            "label": "Tenant ID"
+        },
+        {
+            "key": "downloadLink",
+            "type": "htmlelement",
+            "input": false,
+            "label": "",
+            "tag": "div",
+            "content": "<a href=\"/api/v1/plugin/epistola/documents/{{ data['pv:epistolaDocumentId'] }}/download?tenantId={{ data['pv:epistolaTenantId'] }}&filename=bevestigingsbrief.pdf\" target=\"_blank\" class=\"btn btn-outline-primary\"><i class=\"mdi mdi-download mr-1\"></i>Download PDF</a>"
+        },
+        {
             "key": "info",
             "type": "htmlelement",
             "input": false,

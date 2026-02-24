@@ -9,11 +9,15 @@ import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.TemplateMappingValidator;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingRequest;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingResponse;
+import com.ritense.plugin.domain.PluginConfiguration;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valtimo.contract.annotation.SkipComponentScan;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -188,5 +192,63 @@ public class EpistolaPluginResource {
 
         List<String> variables = processVariableDiscoveryService.discoverVariables(processDefinitionKey);
         return ResponseEntity.ok(variables);
+    }
+
+    /**
+     * Download a generated document directly from Epistola.
+     * Resolves the plugin configuration by tenantId and proxies the download.
+     *
+     * @param documentId The Epistola document ID
+     * @param tenantId   The Epistola tenant ID (used to find the correct plugin configuration)
+     * @param filename   The desired filename for the download (defaults to "document.pdf")
+     * @return The document bytes with PDF content type and attachment disposition
+     */
+    @GetMapping("/documents/{documentId}/download")
+    public ResponseEntity<byte[]> downloadDocument(
+            @PathVariable("documentId") String documentId,
+            @RequestParam("tenantId") String tenantId,
+            @RequestParam(value = "filename", defaultValue = "document.pdf") String filename
+    ) {
+        log.debug("Downloading document {} for tenantId={}", documentId, tenantId);
+
+        EpistolaPlugin plugin = findPluginByTenantId(tenantId);
+        if (plugin == null) {
+            log.warn("No Epistola plugin configuration found for tenantId='{}'", tenantId);
+            return ResponseEntity.notFound().build();
+        }
+
+        byte[] content = epistolaService.downloadDocument(
+                plugin.getBaseUrl(), plugin.getApiKey(), tenantId, documentId);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(ContentDisposition.attachment()
+                .filename(filename)
+                .build());
+
+        return ResponseEntity.ok().headers(headers).body(content);
+    }
+
+    /**
+     * Find the Epistola plugin configuration matching the given tenantId.
+     *
+     * @return The matching plugin instance, or null if not found
+     */
+    private EpistolaPlugin findPluginByTenantId(String tenantId) {
+        List<?> configurations = pluginService.findPluginConfigurations(
+                EpistolaPlugin.class, props -> true);
+
+        for (Object config : configurations) {
+            try {
+                EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
+                        (PluginConfiguration) config);
+                if (tenantId.equals(plugin.getTenantId())) {
+                    return plugin;
+                }
+            } catch (Exception e) {
+                log.warn("Failed to create plugin instance from configuration: {}", e.getMessage());
+            }
+        }
+        return null;
     }
 }

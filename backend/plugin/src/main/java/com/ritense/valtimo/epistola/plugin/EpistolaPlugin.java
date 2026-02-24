@@ -262,6 +262,10 @@ public class EpistolaPlugin {
         // Store the request ID in the user-configured process variable
         execution.setVariable(resultProcessVariable, result.getRequestId());
 
+        // Store tenantId as a standalone process variable so it can be used in forms
+        // (e.g. for building document download URLs without parsing the composite jobPath)
+        execution.setVariable("epistolaTenantId", tenantId);
+
         // Store a single composite job path that encodes both tenantId and requestId.
         // This avoids scoping issues where separate variables might not both be visible
         // to the polling consumer's execution.
