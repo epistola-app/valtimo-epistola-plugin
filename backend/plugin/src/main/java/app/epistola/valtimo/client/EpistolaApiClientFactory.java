@@ -65,8 +65,11 @@ public class EpistolaApiClientFactory {
 
     /**
      * Create a RestClient with authentication headers configured.
+     * <p>
+     * Public so callers can make direct HTTP calls for endpoints where
+     * the generated client's return type doesn't work (e.g., binary downloads).
      */
-    private RestClient createRestClient(String baseUrl, String apiKey) {
+    public RestClient createRestClient(String baseUrl, String apiKey) {
         return RestClient.builder()
                 .baseUrl(baseUrl)
                 .defaultHeader(API_KEY_HEADER, apiKey)

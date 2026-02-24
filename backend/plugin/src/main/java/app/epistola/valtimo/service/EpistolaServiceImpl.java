@@ -30,9 +30,6 @@ import app.epistola.client.model.VariantListResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
@@ -203,22 +200,24 @@ public class EpistolaServiceImpl implements EpistolaService {
     public byte[] downloadDocument(String baseUrl, String apiKey, String tenantId, String documentId) {
         log.info("Downloading document for tenant: {}, documentId: {}", tenantId, documentId);
         try {
-            GenerationApi generationApi = apiClientFactory.createGenerationApi(baseUrl, apiKey);
-            UUID documentUuid = UUID.fromString(documentId);
-            File file = generationApi.downloadDocument(tenantId, documentUuid);
+            // Use RestClient directly instead of the generated client, because the generated
+            // client returns java.io.File which requires an HttpMessageConverter for
+            // application/pdf → File that Spring doesn't provide out of the box.
+            byte[] content = apiClientFactory.createRestClient(baseUrl, apiKey)
+                    .get()
+                    .uri("/tenants/{tenantId}/documents/{documentId}", tenantId, documentId)
+                    .accept(org.springframework.http.MediaType.APPLICATION_PDF)
+                    .retrieve()
+                    .body(byte[].class);
 
-            // Read file contents and return as byte array
-            byte[] content = Files.readAllBytes(file.toPath());
-
-            // Clean up temp file
-            if (!file.delete()) {
-                log.warn("Failed to delete temporary file: {}", file.getAbsolutePath());
+            if (content == null || content.length == 0) {
+                throw new EpistolaApiException("Downloaded document is empty: " + documentId);
             }
 
+            log.info("Downloaded document {} ({} bytes)", documentId, content.length);
             return content;
-        } catch (IOException e) {
-            log.error("Failed to read downloaded document for tenant {}, documentId {}: {}", tenantId, documentId, e.getMessage());
-            throw new EpistolaApiException("Failed to read downloaded document", e);
+        } catch (EpistolaApiException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to download document for tenant {}, documentId {}: {}", tenantId, documentId, e.getMessage());
             throw new EpistolaApiException("Failed to download document", e);
