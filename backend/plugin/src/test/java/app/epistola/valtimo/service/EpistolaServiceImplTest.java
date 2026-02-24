@@ -137,8 +137,8 @@ class EpistolaServiceImplTest {
         );
 
         assertNotNull(result);
-        assertNotNull(result.getDocumentId());
-        assertFalse(result.getDocumentId().isBlank());
+        assertNotNull(result.getRequestId());
+        assertFalse(result.getRequestId().isBlank());
     }
 
     @Test

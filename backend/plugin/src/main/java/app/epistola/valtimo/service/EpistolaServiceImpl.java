@@ -165,12 +165,12 @@ public class EpistolaServiceImpl implements EpistolaService {
 
             GenerationJobResponse response = generationApi.generateDocument(tenantId, request);
 
-            UUID requestId = response.getRequestId();
-
-            log.info("Document generation request submitted: requestId={}", requestId);
+            log.info("Document generation request submitted: requestId={}, status={}",
+                    response.getRequestId(), response.getStatus());
 
             return GeneratedDocument.builder()
-                    .documentId(requestId.toString())
+                    .requestId(response.getRequestId().toString())
+                    .status(response.getStatus().getValue())
                     .build();
         } catch (Exception e) {
             log.error("Failed to submit document generation request: {}", e.getMessage());

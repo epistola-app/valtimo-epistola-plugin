@@ -264,14 +264,14 @@ public class EpistolaPlugin {
         // (each branch gets its own scope). Process-instance variables provide a fallback
         // for the polling consumer, since the message catch event runs on a different
         // execution than the service task that set the local variables.
-        execution.setVariable(resultProcessVariable, result.getDocumentId());
-        execution.setVariableLocal("epistolaRequestId", result.getDocumentId());
-        execution.setVariable("epistolaRequestId", result.getDocumentId());
+        execution.setVariable(resultProcessVariable, result.getRequestId());
+        execution.setVariableLocal("epistolaRequestId", result.getRequestId());
+        execution.setVariable("epistolaRequestId", result.getRequestId());
         execution.setVariableLocal("epistolaTenantId", tenantId);
         execution.setVariable("epistolaTenantId", tenantId);
 
         log.info("Document generation request submitted. Request ID stored in variable '{}': {}",
-                resultProcessVariable, result.getDocumentId());
+                resultProcessVariable, result.getRequestId());
     }
 
     /**
