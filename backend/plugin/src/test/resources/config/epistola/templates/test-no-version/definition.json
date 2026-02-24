@@ -1,0 +1,6 @@
+{
+  "slug": "test-no-version",
+  "name": "No Version Template",
+  "dataModel": { "type": "object", "properties": {} },
+  "templateModel": { "modelVersion": 1 }
+}

@@ -115,8 +115,12 @@ public class EpistolaTemplateSyncService {
     }
 
     private ImportTemplateDto toImportDto(TemplateDefinition def) {
-        // Convert templateModel JsonNode to TemplateDocumentDto
-        TemplateDocumentDto templateModel = objectMapper.convertValue(def.templateModel(), TemplateDocumentDto.class);
+        // Convert templateModel JsonNode to TemplateDocumentDto.
+        // We use readValue(writeValueAsString()) instead of convertValue() because the
+        // OpenAPI-generated TemplateDocumentDto has a Kotlin enum for modelVersion that expects
+        // a string "1" via @JsonProperty, but definition files store it as integer 1.
+        // readValue handles this coercion correctly while convertValue does not.
+        TemplateDocumentDto templateModel = readAs(def.templateModel(), TemplateDocumentDto.class);
 
         // Convert data examples
         List<DataExampleDto> dataExamples = def.dataExamples().stream()
@@ -133,9 +137,7 @@ public class EpistolaTemplateSyncService {
                         v.id(),
                         v.title(),
                         v.attributes(),
-                        v.templateModel() != null
-                                ? objectMapper.convertValue(v.templateModel(), TemplateDocumentDto.class)
-                                : null
+                        v.templateModel() != null ? readAs(v.templateModel(), TemplateDocumentDto.class) : null
                 ))
                 .toList();
 
@@ -154,6 +156,22 @@ public class EpistolaTemplateSyncService {
                 variants.isEmpty() ? null : variants,
                 def.publishTo().isEmpty() ? null : def.publishTo()
         );
+    }
+
+    /**
+     * Converts a JsonNode to a typed DTO, working around a code-generation quirk where
+     * the Kotlin enum for modelVersion expects a string "1" but definition files use integer 1.
+     * We serialize the node to JSON string and replace the integer with a quoted string before deserializing.
+     */
+    private <T> T readAs(JsonNode node, Class<T> type) {
+        try {
+            String json = objectMapper.writeValueAsString(node);
+            // Fix modelVersion: integer 1 → string "1" for Kotlin enum compatibility
+            json = json.replace("\"modelVersion\":1", "\"modelVersion\":\"1\"");
+            return objectMapper.readValue(json, type);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new IllegalArgumentException("Failed to convert JsonNode to " + type.getSimpleName(), e);
+        }
     }
 
     /**

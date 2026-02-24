@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Template Sync**: Automatic synchronization of template definitions from classpath to Epistola server on startup
+  - `templateSyncEnabled` plugin property with frontend checkbox toggle
+  - Classpath scanner for `config/epistola/templates/*/definition.json` files
+  - Version-based change detection (only syncs changed templates)
+  - Bulk import via `POST /tenants/{tenantId}/templates/import` endpoint
+  - Handles partial failures (tracks successful imports, retries failed ones on next sync)
+- **Template definitions**: 10 government letter templates for all test-app BPMN processes (subsidy, objection, permit, bulk tax, example)
+- **Tests**: Unit tests for `TemplateDefinitionScanner` and `EpistolaTemplateSyncService` (version tracking, change detection, partial failure handling)
+
+### Changed
+
+- Upgraded `epistola-client` from `0.1.7` to `0.1.10` (adds import API support)
+
 - **Attribute-Based Variant Selection**: Generate document action now supports selecting variants by attributes instead of explicit variant ID. When configured with `variantAttributes`, the API automatically selects the matching variant based on key-value pairs. Attribute values support value resolver expressions (`doc:`, `pv:`, `case:`), enabling runtime variant selection based on process data (e.g., language, brand).
 
 - **Variant Selection Mode Toggle** (Frontend): Generate document configuration now has a mode toggle between "Select variant" (existing dropdown) and "Select by attributes" (key-value pair inputs). Users can add/remove attribute entries, and values support value resolver expressions.
