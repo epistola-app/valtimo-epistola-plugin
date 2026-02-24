@@ -152,14 +152,16 @@ public class PollingCompletionEventConsumer implements EpistolaCompletionEventCo
     }
 
     /**
-     * Try to read a variable locally from the execution first, then fall back
-     * to process-instance scope.
+     * Read a variable from the execution. Uses getVariable (not getVariableLocal)
+     * which walks up the execution hierarchy to the process instance scope.
      */
     private String getVariableWithFallback(String executionId, String processInstanceId, String variableName) {
-        Object localValue = runtimeService.getVariableLocal(executionId, variableName);
-        if (localValue != null) {
-            return (String) localValue;
+        // getVariable walks up the execution hierarchy (local → parent → process instance)
+        Object value = runtimeService.getVariable(executionId, variableName);
+        if (value != null) {
+            return (String) value;
         }
+        // Fallback: try process instance directly (e.g. if variable was set on a different branch)
         return (String) runtimeService.getVariable(processInstanceId, variableName);
     }
 
