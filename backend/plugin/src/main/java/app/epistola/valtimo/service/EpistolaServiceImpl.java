@@ -19,6 +19,8 @@ import app.epistola.client.model.EnvironmentDto;
 import app.epistola.client.model.EnvironmentListResponse;
 import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.GenerationJobResponse;
+import app.epistola.client.model.ImportTemplatesRequest;
+import app.epistola.client.model.ImportTemplatesResponse;
 import app.epistola.client.model.VariantSelectionAttribute;
 import app.epistola.client.model.TemplateDto;
 import app.epistola.client.model.TemplateListResponse;
@@ -220,6 +222,20 @@ public class EpistolaServiceImpl implements EpistolaService {
         } catch (Exception e) {
             log.error("Failed to download document for tenant {}, documentId {}: {}", tenantId, documentId, e.getMessage());
             throw new EpistolaApiException("Failed to download document", e);
+        }
+    }
+
+    @Override
+    public ImportTemplatesResponse importTemplates(String baseUrl, String apiKey, String tenantId, ImportTemplatesRequest request) {
+        log.info("Importing {} templates for tenant: {}", request.getTemplates().size(), tenantId);
+        try {
+            TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
+            ImportTemplatesResponse response = templatesApi.importTemplates(tenantId, request);
+            log.info("Template import completed for tenant: {}", tenantId);
+            return response;
+        } catch (Exception e) {
+            log.error("Failed to import templates for tenant {}: {}", tenantId, e.getMessage());
+            throw new EpistolaApiException("Failed to import templates", e);
         }
     }
 

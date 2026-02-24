@@ -92,6 +92,18 @@ public class EpistolaPlugin {
     )
     private String defaultEnvironmentId;
 
+    /**
+     * Whether to enable automatic template synchronization from classpath to Epistola.
+     * When enabled, template definitions from config/epistola/templates/ are synced on startup.
+     */
+    @PluginProperty(
+            key = "templateSyncEnabled",
+            title = "Template Sync",
+            secret = false,
+            required = false
+    )
+    private Boolean templateSyncEnabled;
+
     public String getBaseUrl() {
         return baseUrl;
     }
@@ -106,6 +118,14 @@ public class EpistolaPlugin {
 
     public String getDefaultEnvironmentId() {
         return defaultEnvironmentId;
+    }
+
+    public Boolean getTemplateSyncEnabled() {
+        return templateSyncEnabled;
+    }
+
+    public boolean isTemplateSyncEnabled() {
+        return Boolean.TRUE.equals(templateSyncEnabled);
     }
 
     @PluginEvent(invokedOn = EventType.CREATE)

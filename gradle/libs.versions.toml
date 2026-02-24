@@ -1,7 +1,7 @@
 [versions]
 # Dependencies
 valtimo = "13.4.1.RELEASE"
-epistola-client = "0.1.7"
+epistola-client = "0.1.10"
 lombok = "1.18.42"
 testcontainers = "2.0.3"
 postgresql = "42.7.5"

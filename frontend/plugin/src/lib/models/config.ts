@@ -9,6 +9,7 @@ export interface EpistolaPluginConfig extends PluginConfigurationData {
   apiKey: string;
   tenantId: string;
   defaultEnvironmentId?: string;
+  templateSyncEnabled?: boolean;
 }
 
 /**

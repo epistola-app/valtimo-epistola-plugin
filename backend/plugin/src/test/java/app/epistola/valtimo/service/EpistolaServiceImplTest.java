@@ -35,7 +35,7 @@ class EpistolaServiceImplTest {
 
     @Container
     private static final GenericContainer<?> MOCK_SERVER = new GenericContainer<>(
-            "ghcr.io/epistola-app/epistola-contract/mock-server:0.1.7"
+            "ghcr.io/epistola-app/epistola-contract/mock-server:0.1.10"
     )
             .withExposedPorts(4010)
             .waitingFor(Wait.forHttp("/tenants/test/templates")

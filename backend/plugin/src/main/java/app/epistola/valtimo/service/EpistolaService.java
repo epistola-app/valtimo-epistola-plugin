@@ -1,5 +1,7 @@
 package app.epistola.valtimo.service;
 
+import app.epistola.client.model.ImportTemplatesRequest;
+import app.epistola.client.model.ImportTemplatesResponse;
 import app.epistola.client.model.VariantSelectionAttribute;
 import app.epistola.valtimo.domain.*;
 
@@ -112,4 +114,16 @@ public interface EpistolaService {
      * @return The document bytes
      */
     byte[] downloadDocument(String baseUrl, String apiKey, String tenantId, String documentId);
+
+    /**
+     * Import templates into Epistola using bulk import.
+     * Creates or updates templates, their variants, and optionally publishes to environments.
+     *
+     * @param baseUrl  The Epistola API base URL
+     * @param apiKey   The API key for authentication
+     * @param tenantId The tenant ID in Epistola
+     * @param request  The import request containing template definitions
+     * @return The import response with per-template results
+     */
+    ImportTemplatesResponse importTemplates(String baseUrl, String apiKey, String tenantId, ImportTemplatesRequest request);
 }

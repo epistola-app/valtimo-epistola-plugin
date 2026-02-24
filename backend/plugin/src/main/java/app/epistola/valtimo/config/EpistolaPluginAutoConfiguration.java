@@ -1,6 +1,9 @@
 package app.epistola.valtimo.config;
 
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
+import app.epistola.valtimo.deploy.EpistolaTemplateSyncService;
+import app.epistola.valtimo.deploy.EpistolaTemplateSyncTrigger;
+import app.epistola.valtimo.deploy.TemplateDefinitionScanner;
 import app.epistola.valtimo.service.EpistolaCompletionEventConsumer;
 import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.EpistolaService;
@@ -9,6 +12,7 @@ import app.epistola.valtimo.service.PollingCompletionEventConsumer;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.web.rest.EpistolaCallbackResource;
 import app.epistola.valtimo.web.rest.EpistolaPluginResource;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
@@ -104,5 +108,30 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(EpistolaHttpSecurityConfigurer.class)
     public EpistolaHttpSecurityConfigurer epistolaHttpSecurityConfigurer() {
         return new EpistolaHttpSecurityConfigurer();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(TemplateDefinitionScanner.class)
+    public TemplateDefinitionScanner templateDefinitionScanner(ObjectMapper objectMapper) {
+        return new TemplateDefinitionScanner(objectMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaTemplateSyncService.class)
+    public EpistolaTemplateSyncService epistolaTemplateSyncService(
+            TemplateDefinitionScanner scanner,
+            EpistolaService epistolaService,
+            ObjectMapper objectMapper
+    ) {
+        return new EpistolaTemplateSyncService(scanner, epistolaService, objectMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaTemplateSyncTrigger.class)
+    public EpistolaTemplateSyncTrigger epistolaTemplateSyncTrigger(
+            PluginService pluginService,
+            EpistolaTemplateSyncService syncService
+    ) {
+        return new EpistolaTemplateSyncTrigger(pluginService, syncService);
     }
 }
