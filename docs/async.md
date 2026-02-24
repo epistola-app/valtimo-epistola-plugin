@@ -18,7 +18,7 @@ Use a **Message Intermediate Catch Event** instead of a timer loop:
 
 ```
 [Service Task: generate-document]
-  → sets process variables: epistolaRequestId, epistolaTenantId
+  → sets process variable: epistolaJobPath (epistola:job:{tenantId}/{requestId})
 → [Message Catch Event: "EpistolaDocumentGenerated"]
   → receives: epistolaStatus, epistolaDocumentId, epistolaErrorMessage
 → [Exclusive Gateway: epistolaStatus == "COMPLETED"?]
@@ -32,18 +32,19 @@ The process simply waits for a message. It doesn't know or care how that message
 
 | Variable | Set By | Description |
 |----------|--------|-------------|
-| `epistolaRequestId` | `generate-document` action | The Epistola generation request ID |
-| `epistolaTenantId` | `generate-document` action | The Epistola tenant slug (for multi-tenant routing) |
+| `epistolaJobPath` | `generate-document` action | Composite job identifier: `epistola:job:{tenantId}/{requestId}` |
 | `epistolaStatus` | Correlation service | Job status: `COMPLETED`, `FAILED`, or `CANCELLED` |
 | `epistolaDocumentId` | Correlation service | Document ID when completed (null otherwise) |
 | `epistolaErrorMessage` | Correlation service | Error message when failed (null otherwise) |
+
+The `generate-document` action also stores the raw request ID in a user-configured process variable (e.g., `epistolaRequestId`) via the `resultProcessVariable` parameter.
 
 ### Message Catch Event Configuration
 
 In your BPMN model, add a Message Intermediate Catch Event with:
 - **Message Name**: `EpistolaDocumentGenerated`
 
-No additional configuration is needed. The correlation uses `epistolaRequestId` as the correlation key, which is set automatically by the `generate-document` action.
+No additional configuration is needed. The `epistolaJobPath` variable is set automatically by the `generate-document` action.
 
 ## Architecture
 
@@ -68,10 +69,10 @@ Infrastructure:
 Both the poller and the callback endpoint delegate to this shared service for message correlation. This ensures consistent variable naming and correlation behavior:
 
 ```java
-correlationService.correlateCompletion(requestId, status, documentId, errorMessage);
+correlationService.correlateCompletion(tenantId, requestId, status, documentId, errorMessage);
 ```
 
-Internally, it uses `correlateAllWithResult()` which correlates all matching process instances (safe and idempotent).
+The service builds the composite `epistolaJobPath` from `tenantId` and `requestId` for correlation. Internally, it uses `correlateAllWithResult()` which correlates all matching process instances (safe and idempotent).
 
 ### EpistolaCompletionEventConsumer
 
@@ -91,19 +92,19 @@ Implementations decide how to discover completed jobs and when to trigger messag
 A `@Scheduled` service that polls Epistola for job completion:
 
 1. Queries Operaton for all executions waiting on message `"EpistolaDocumentGenerated"`
-2. Groups them by `epistolaTenantId` (process variable)
-3. For each tenant: loads the matching plugin configuration, calls `getJobStatus()` per waiting job
-4. Correlates BPMN messages for completed/failed/cancelled jobs
+2. Reads the `epistolaJobPath` variable from each execution and parses out `tenantId` and `requestId`
+3. Groups by `tenantId` and loads the matching plugin configuration per tenant
+4. Calls `getJobStatus()` per waiting job, delivers BPMN messages for completed/failed/cancelled jobs
 
 This centralizes polling into one scheduled task instead of N timer loops in the engine.
 
 ## Multi-Tenant Routing
 
-The poller needs to know which Epistola instance to query for each waiting process. Since Valtimo's plugin framework doesn't expose the configuration ID to action methods, the `generate-document` action stores `epistolaTenantId` as a process variable.
+The poller needs to know which Epistola instance to query for each waiting process. The `generate-document` action stores a single composite `epistolaJobPath` variable (format: `epistola:job:{tenantId}/{requestId}`) that encodes both the tenant and request ID atomically.
 
 The polling flow:
 1. Query all waiting executions
-2. Read `epistolaTenantId` from each process instance
+2. Read `epistolaJobPath` from each execution, parse into `tenantId` + `requestId`
 3. Load all Epistola plugin configurations (via `PluginService`)
 4. Match by `tenantId` to find the correct API credentials
 5. Call `getJobStatus()` with the matched plugin's `baseUrl` and `apiKey`
@@ -127,6 +128,7 @@ The callback endpoint at `POST /api/v1/plugin/epistola/callback/generation-compl
 
 ```json
 {
+  "tenantId": "...",
   "requestId": "...",
   "status": "COMPLETED",
   "documentId": "...",

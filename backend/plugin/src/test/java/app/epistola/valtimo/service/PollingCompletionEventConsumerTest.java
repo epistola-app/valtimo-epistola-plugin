@@ -73,9 +73,8 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        // Variables are read locally from the execution first
-        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-123");
-        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("tenant-a");
+        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+                .thenReturn("epistola:job:tenant-a/req-123");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -103,8 +102,8 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-fail");
-        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("tenant-a");
+        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+                .thenReturn("epistola:job:tenant-a/req-fail");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -132,8 +131,8 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-pending");
-        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("tenant-a");
+        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+                .thenReturn("epistola:job:tenant-a/req-pending");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -152,47 +151,15 @@ class PollingCompletionEventConsumerTest {
     }
 
     @Test
-    void poll_shouldFallBackToProcessVariableWhenLocalNotSet() {
-        Execution execution = mockExecution("exec-1", "proc-1");
-        when(executionQuery.list()).thenReturn(List.of(execution));
-
-        // Local variables return null, fall back to process instance level
-        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn(null);
-        when(runtimeService.getVariable("proc-1", "epistolaRequestId")).thenReturn("req-fallback");
-        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn(null);
-        when(runtimeService.getVariable("proc-1", "epistolaTenantId")).thenReturn("tenant-a");
-
-        EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
-        PluginConfiguration config = mock(PluginConfiguration.class);
-        when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any())).thenReturn(List.of(config));
-        when(pluginService.createInstance(config)).thenReturn(plugin);
-
-        when(epistolaService.getJobStatus("https://api.epistola.app", "api-key-1", "tenant-a", "req-fallback"))
-                .thenReturn(GenerationJobDetail.builder()
-                        .requestId("req-fallback")
-                        .status(GenerationJobStatus.COMPLETED)
-                        .documentId("doc-fb")
-                        .build());
-
-        consumer.poll();
-
-        verify(runtimeService).messageEventReceived(
-                eq(EpistolaMessageCorrelationService.MESSAGE_NAME),
-                eq("exec-1"),
-                any()
-        );
-    }
-
-    @Test
     void poll_shouldGroupByTenantAndUseCorrectPlugin() {
         Execution exec1 = mockExecution("exec-1", "proc-1");
         Execution exec2 = mockExecution("exec-2", "proc-2");
         when(executionQuery.list()).thenReturn(List.of(exec1, exec2));
 
-        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-1");
-        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("tenant-a");
-        when(runtimeService.getVariableLocal("exec-2", "epistolaRequestId")).thenReturn("req-2");
-        when(runtimeService.getVariableLocal("exec-2", "epistolaTenantId")).thenReturn("tenant-b");
+        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+                .thenReturn("epistola:job:tenant-a/req-1");
+        when(runtimeService.getVariable("exec-2", "epistolaJobPath"))
+                .thenReturn("epistola:job:tenant-b/req-2");
 
         EpistolaPlugin pluginA = mockPlugin("https://a.epistola.app", "key-a", "tenant-a");
         EpistolaPlugin pluginB = mockPlugin("https://b.epistola.app", "key-b", "tenant-b");
@@ -217,14 +184,11 @@ class PollingCompletionEventConsumerTest {
     }
 
     @Test
-    void poll_shouldSkipExecutionWithMissingVariables() {
+    void poll_shouldSkipExecutionWithMissingJobPath() {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        // Both local and process-instance level return null for tenantId
-        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-123");
-        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn(null);
-        when(runtimeService.getVariable("proc-1", "epistolaTenantId")).thenReturn(null);
+        when(runtimeService.getVariable("exec-1", "epistolaJobPath")).thenReturn(null);
 
         consumer.poll();
 
@@ -236,8 +200,8 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-123");
-        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("unknown-tenant");
+        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+                .thenReturn("epistola:job:unknown-tenant/req-123");
 
         when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
                 .thenReturn(Collections.emptyList());
@@ -253,10 +217,10 @@ class PollingCompletionEventConsumerTest {
         Execution exec2 = mockExecution("exec-2", "proc-2");
         when(executionQuery.list()).thenReturn(List.of(exec1, exec2));
 
-        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-error");
-        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("tenant-a");
-        when(runtimeService.getVariableLocal("exec-2", "epistolaRequestId")).thenReturn("req-ok");
-        when(runtimeService.getVariableLocal("exec-2", "epistolaTenantId")).thenReturn("tenant-a");
+        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+                .thenReturn("epistola:job:tenant-a/req-error");
+        when(runtimeService.getVariable("exec-2", "epistolaJobPath"))
+                .thenReturn("epistola:job:tenant-a/req-ok");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
         PluginConfiguration config = mock(PluginConfiguration.class);
@@ -283,8 +247,8 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariableLocal("exec-1", "epistolaRequestId")).thenReturn("req-cancel");
-        when(runtimeService.getVariableLocal("exec-1", "epistolaTenantId")).thenReturn("tenant-a");
+        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+                .thenReturn("epistola:job:tenant-a/req-cancel");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
         PluginConfiguration config = mock(PluginConfiguration.class);

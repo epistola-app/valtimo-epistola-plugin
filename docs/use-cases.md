@@ -395,9 +395,9 @@ The `pv:taxpayers` process variable is a JSON array provided at start:
 
 ### Design considerations
 
-**Multi-instance + message correlation**: Each subprocess instance gets its own `epistolaRequestId` process variable, so the centralized poller can correlate each completion independently. The `correlateAllWithResult()` call in `EpistolaMessageCorrelationService` handles multiple matching executions safely.
+**Multi-instance + message correlation**: Each subprocess instance gets its own `epistolaJobPath` process variable (encoding both tenant and request ID), so the centralized poller can correlate each completion independently. The `correlateAllWithResult()` call in `EpistolaMessageCorrelationService` handles multiple matching executions safely.
 
-**Centralized poller efficiency**: The poller queries all executions waiting on `"EpistolaDocumentGenerated"` in a single database query, groups them by `epistolaTenantId`, and checks job status in batches. With 1000 concurrent waiting instances, this is one scheduled task making N API calls — not 1000 timer loops in the engine. See [async.md](async.md) for details.
+**Centralized poller efficiency**: The poller queries all executions waiting on `"EpistolaDocumentGenerated"` in a single database query, extracts tenant and request ID from the composite `epistolaJobPath` variable, groups by tenant, and checks job status in batches. With 1000 concurrent waiting instances, this is one scheduled task making N API calls — not 1000 timer loops in the engine. See [async.md](async.md) for details.
 
 **Throttling options**: For very large batches, consider:
 - **Sequential multi-instance** instead of parallel (set `isSequential="true"`) to limit concurrent API load

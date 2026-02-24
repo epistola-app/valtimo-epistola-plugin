@@ -206,7 +206,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Callback Endpoint Refactored**: `EpistolaCallbackResource` now delegates to `EpistolaMessageCorrelationService` instead of using `RuntimeService` directly. Uses `correlateAllWithResult()` for safe multi-instance correlation.
 
-- **Generate Document Action**: Now stores `epistolaRequestId` and `epistolaTenantId` as process variables automatically (in addition to the user-configured result variable). Required for the polling completion consumer.
+- **Generate Document Action**: Now stores a composite `epistolaJobPath` variable (`epistola:job:{tenantId}/{requestId}`) automatically (in addition to the user-configured result variable). This single variable atomically encodes both tenant and request ID, avoiding Operaton execution scoping issues where separate variables might not both be visible on downstream executions.
 
 - **Configuration Properties**: Replaced legacy `epistola.valtimo.*` prefix with `epistola.*` and added poller configuration (`epistola.poller.enabled`, `epistola.poller.interval`)
 
@@ -221,7 +221,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Null `variantId` causing NPE**: `EpistolaServiceImpl` now defaults `variantId` to empty string when not provided, preventing `NullPointerException` from the Kotlin client's non-null constructor parameter. Note: this is a workaround until the client library makes `variantId` optional (see `docs/todo.md`).
 
-- **Variable scoping for parallel/multi-instance execution**: `epistolaRequestId` and `epistolaTenantId` are now stored as local variables (`setVariableLocal`) instead of process-instance variables. This prevents parallel branches and multi-instance iterations from overwriting each other's request IDs.
+- **Variable scoping for parallel/multi-instance execution**: Replaced separate `epistolaRequestId` and `epistolaTenantId` variables with a single composite `epistolaJobPath` variable. This prevents scoping issues where separate variables might not both be visible on message catch event executions.
 
 - **Polling consumer direct execution targeting**: `PollingCompletionEventConsumer` now uses `runtimeService.messageEventReceived(messageName, executionId, variables)` to target specific executions directly, instead of process-variable-based correlation. Supports local variable fallback to process-instance scope for backwards compatibility.
 

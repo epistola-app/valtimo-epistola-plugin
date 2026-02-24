@@ -52,6 +52,7 @@ public class EpistolaCallbackResource {
 
         try {
             int count = correlationService.correlateCompletion(
+                    payload.tenantId(),
                     payload.requestId(),
                     payload.status(),
                     payload.documentId(),
@@ -72,6 +73,7 @@ public class EpistolaCallbackResource {
     /**
      * Payload for generation complete callback.
      *
+     * @param tenantId      The Epistola tenant ID
      * @param requestId     The original request ID from the generate call
      * @param status        The job status (COMPLETED, FAILED, CANCELLED)
      * @param documentId    The document ID if generation was successful (null otherwise)
@@ -79,6 +81,7 @@ public class EpistolaCallbackResource {
      * @param correlationId The client-provided correlation ID (if any)
      */
     public record GenerationCompletePayload(
+            String tenantId,
             String requestId,
             String status,
             String documentId,

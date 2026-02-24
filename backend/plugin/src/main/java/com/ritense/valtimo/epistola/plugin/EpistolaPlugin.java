@@ -4,8 +4,8 @@ import app.epistola.client.model.VariantSelectionAttribute;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
 import app.epistola.valtimo.domain.GenerationJobDetail;
-import app.epistola.valtimo.domain.GenerationJobStatus;
 import app.epistola.valtimo.service.DataMappingResolver;
+import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.EpistolaService;
 import com.ritense.plugin.annotation.*;
 import com.ritense.plugin.domain.EventType;
@@ -259,19 +259,17 @@ public class EpistolaPlugin {
                 correlationId
         );
 
-        // Store the request ID and tenant ID as both local and process-instance variables.
-        // Local variables support parallel gateways and multi-instance subprocesses
-        // (each branch gets its own scope). Process-instance variables provide a fallback
-        // for the polling consumer, since the message catch event runs on a different
-        // execution than the service task that set the local variables.
+        // Store the request ID in the user-configured process variable
         execution.setVariable(resultProcessVariable, result.getRequestId());
-        execution.setVariableLocal("epistolaRequestId", result.getRequestId());
-        execution.setVariable("epistolaRequestId", result.getRequestId());
-        execution.setVariableLocal("epistolaTenantId", tenantId);
-        execution.setVariable("epistolaTenantId", tenantId);
 
-        log.info("Document generation request submitted. Request ID stored in variable '{}': {}",
-                resultProcessVariable, result.getRequestId());
+        // Store a single composite job path that encodes both tenantId and requestId.
+        // This avoids scoping issues where separate variables might not both be visible
+        // to the polling consumer's execution.
+        String jobPath = EpistolaMessageCorrelationService.buildJobPath(tenantId, result.getRequestId());
+        execution.setVariable(EpistolaMessageCorrelationService.VAR_JOB_PATH, jobPath);
+
+        log.info("Document generation request submitted. jobPath={}, resultVar={}",
+                jobPath, resultProcessVariable);
     }
 
     /**
