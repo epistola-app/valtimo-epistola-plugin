@@ -15,6 +15,7 @@ import {
 } from './components/download-document-configuration/download-document-configuration.component';
 import {DataMappingTreeComponent} from './components/data-mapping-tree/data-mapping-tree.component';
 import {FieldTreeComponent} from './components/field-tree/field-tree.component';
+import {EpistolaDownloadComponent} from './components/epistola-download/epistola-download.component';
 import {EpistolaPluginService} from './services';
 
 @NgModule({
@@ -30,7 +31,8 @@ import {EpistolaPluginService} from './services';
     CheckJobStatusConfigurationComponent,
     DownloadDocumentConfigurationComponent,
     DataMappingTreeComponent,
-    FieldTreeComponent
+    FieldTreeComponent,
+    EpistolaDownloadComponent
   ],
   exports: [
     EpistolaConfigurationComponent,
@@ -38,7 +40,8 @@ import {EpistolaPluginService} from './services';
     CheckJobStatusConfigurationComponent,
     DownloadDocumentConfigurationComponent,
     DataMappingTreeComponent,
-    FieldTreeComponent
+    FieldTreeComponent,
+    EpistolaDownloadComponent
   ],
   providers: [
     EpistolaPluginService

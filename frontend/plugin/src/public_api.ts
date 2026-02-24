@@ -12,3 +12,5 @@ export * from './lib/components/check-job-status-configuration/check-job-status-
 export * from './lib/components/download-document-configuration/download-document-configuration.component';
 export * from './lib/components/field-tree/field-tree.component';
 export * from './lib/components/data-mapping-tree/data-mapping-tree.component';
+export * from './lib/components/epistola-download/epistola-download.component';
+export * from './lib/components/epistola-download/epistola-download.formio';

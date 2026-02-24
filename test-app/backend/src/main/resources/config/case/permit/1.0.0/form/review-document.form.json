@@ -22,12 +22,12 @@
             "label": "Tenant ID"
         },
         {
-            "key": "downloadLink",
-            "type": "htmlelement",
+            "type": "epistola-download",
+            "key": "downloadData",
             "input": false,
-            "label": "",
-            "tag": "div",
-            "content": "<a href=\"/api/v1/plugin/epistola/documents/{{ data['pv:epistolaDocumentId'] }}/download?tenantId={{ data['pv:epistolaTenantId'] }}&filename=bevestigingsbrief.pdf\" target=\"_blank\" class=\"btn btn-outline-primary\"><i class=\"mdi mdi-download mr-1\"></i>Download PDF</a>"
+            "label": "Download PDF",
+            "calculateValue": "value = { documentId: data['pv:epistolaDocumentId'], tenantId: data['pv:epistolaTenantId'] }",
+            "filename": "bevestigingsbrief.pdf"
         },
         {
             "key": "info",
