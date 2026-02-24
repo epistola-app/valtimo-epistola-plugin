@@ -383,7 +383,7 @@ class EpistolaTemplateSyncServiceTest {
         }
 
         @Override
-        public GeneratedDocument generateDocument(String baseUrl, String apiKey, String tenantId,
+        public GenerationJobResult submitGenerationJob(String baseUrl, String apiKey, String tenantId,
                 String templateId, String variantId, List<VariantSelectionAttribute> variantAttributes,
                 String environmentId, Map<String, Object> data, FileFormat format,
                 String filename, String correlationId) {

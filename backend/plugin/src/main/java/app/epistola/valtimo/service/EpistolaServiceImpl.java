@@ -3,7 +3,7 @@ package app.epistola.valtimo.service;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.FileFormat;
-import app.epistola.valtimo.domain.GeneratedDocument;
+import app.epistola.valtimo.domain.GenerationJobResult;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
 import app.epistola.valtimo.domain.TemplateDetails;
@@ -131,7 +131,7 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
-    public GeneratedDocument generateDocument(
+    public GenerationJobResult submitGenerationJob(
             String baseUrl,
             String apiKey,
             String tenantId,
@@ -168,7 +168,7 @@ public class EpistolaServiceImpl implements EpistolaService {
             log.info("Document generation request submitted: requestId={}, status={}",
                     response.getRequestId(), response.getStatus());
 
-            return GeneratedDocument.builder()
+            return GenerationJobResult.builder()
                     .requestId(response.getRequestId().toString())
                     .status(response.getStatus().getValue())
                     .build();

@@ -3,7 +3,7 @@ package app.epistola.valtimo.service;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.FileFormat;
-import app.epistola.valtimo.domain.GeneratedDocument;
+import app.epistola.valtimo.domain.GenerationJobResult;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
 import app.epistola.valtimo.domain.TemplateDetails;
@@ -122,7 +122,7 @@ class EpistolaServiceImplTest {
         assertFalse(variants.isEmpty());
         String variantId = variants.get(0).id();
 
-        GeneratedDocument result = service.generateDocument(
+        GenerationJobResult result = service.submitGenerationJob(
                 baseUrl,
                 API_KEY,
                 TENANT_ID,

@@ -4,11 +4,11 @@ import lombok.Builder;
 import lombok.Value;
 
 /**
- * Result of submitting a document generation request to Epistola.
+ * Result of submitting a document generation job to Epistola.
  */
 @Value
 @Builder
-public class GeneratedDocument {
+public class GenerationJobResult {
 
     /**
      * Unique identifier of the generation request (job) in Epistola.

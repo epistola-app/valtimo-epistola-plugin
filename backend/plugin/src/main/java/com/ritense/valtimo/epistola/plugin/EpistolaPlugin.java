@@ -2,7 +2,7 @@ package com.ritense.valtimo.epistola.plugin;
 
 import app.epistola.client.model.VariantSelectionAttribute;
 import app.epistola.valtimo.domain.FileFormat;
-import app.epistola.valtimo.domain.GeneratedDocument;
+import app.epistola.valtimo.domain.GenerationJobResult;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
 import app.epistola.valtimo.service.DataMappingResolver;
@@ -245,7 +245,7 @@ public class EpistolaPlugin {
                 : null;
 
         // Submit the document generation request
-        GeneratedDocument result = epistolaService.generateDocument(
+        GenerationJobResult result = epistolaService.submitGenerationJob(
                 baseUrl,
                 apiKey,
                 tenantId,

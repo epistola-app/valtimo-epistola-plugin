@@ -77,9 +77,9 @@ public interface EpistolaService {
      * @param format             The output format (PDF or HTML)
      * @param filename           The desired filename for the generated document
      * @param correlationId      Optional correlation ID for tracking
-     * @return The generated document information
+     * @return The generation job result containing the request ID
      */
-    GeneratedDocument generateDocument(
+    GenerationJobResult submitGenerationJob(
             String baseUrl,
             String apiKey,
             String tenantId,
