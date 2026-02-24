@@ -1,0 +1,633 @@
+{
+  "slug": "financieel-overzicht",
+  "name": "Financieel Overzicht Subsidie",
+  "version": "1.0.0",
+  "dataModel": {
+    "type": "object",
+    "properties": {
+      "beneficiary": {
+        "type": "object",
+        "description": "Gegevens van de subsidieaanvrager",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Naam van de aanvrager"
+          }
+        },
+        "required": ["name"]
+      },
+      "subsidy": {
+        "type": "object",
+        "description": "Gegevens van de subsidie",
+        "properties": {
+          "programName": {
+            "type": "string",
+            "description": "Naam van het subsidieprogramma"
+          },
+          "amount": {
+            "type": "number",
+            "description": "Subsidiebedrag in euro's",
+            "minimum": 0
+          }
+        },
+        "required": ["programName", "amount"]
+      }
+    },
+    "required": ["beneficiary", "subsidy"]
+  },
+  "dataExamples": [
+    {
+      "id": "standaard-overzicht",
+      "name": "Standaard financieel overzicht",
+      "data": {
+        "beneficiary": {
+          "name": "Stichting De Groene Toekomst"
+        },
+        "subsidy": {
+          "programName": "Regeling Duurzame Energie Initiatieven 2026",
+          "amount": 45000.00
+        }
+      }
+    },
+    {
+      "id": "klein-bedrag",
+      "name": "Klein subsidiebedrag",
+      "data": {
+        "beneficiary": {
+          "name": "Buurtvereniging De Samenkomst"
+        },
+        "subsidy": {
+          "programName": "Subsidieregeling Wijkinitiatieven 2026",
+          "amount": 2500.00
+        }
+      }
+    }
+  ],
+  "templateModel": {
+    "modelVersion": 1,
+    "root": "n-root",
+    "themeRef": { "type": "inherit" },
+    "pageSettingsOverride": {
+      "format": "A4",
+      "orientation": "portrait",
+      "margins": { "top": 40, "right": 40, "bottom": 40, "left": 40 }
+    },
+    "documentStylesOverride": {
+      "fontFamily": "Helvetica",
+      "fontSize": "10pt",
+      "color": "#333333",
+      "lineHeight": "1.5"
+    },
+    "nodes": {
+      "n-root": {
+        "id": "n-root",
+        "type": "root",
+        "slots": ["s-root-children"]
+      },
+
+      "n-header": {
+        "id": "n-header",
+        "type": "container",
+        "slots": ["s-header-children"],
+        "styles": {
+          "marginBottom": "24px",
+          "paddingBottom": "16px",
+          "borderBottom": "2px solid #154273"
+        }
+      },
+      "n-municipality": {
+        "id": "n-municipality",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "11pt",
+          "fontWeight": "bold",
+          "color": "#154273",
+          "marginBottom": "4px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Gemeente Voorbeeld" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-department": {
+        "id": "n-department",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "9pt",
+          "color": "#666666",
+          "marginBottom": "4px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Afdeling Subsidies en Maatschappelijke Ontwikkeling" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-title": {
+        "id": "n-title",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "16pt",
+          "fontWeight": "bold",
+          "color": "#154273",
+          "marginBottom": "8px",
+          "textAlign": "center"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Financieel Overzicht" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-subtitle": {
+        "id": "n-subtitle",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "11pt",
+          "color": "#666666",
+          "marginBottom": "24px",
+          "textAlign": "center"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "subsidy.programName" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-summary-box": {
+        "id": "n-summary-box",
+        "type": "container",
+        "slots": ["s-summary-children"],
+        "styles": {
+          "padding": "20px",
+          "backgroundColor": "#f0f4f8",
+          "borderRadius": "4px",
+          "marginBottom": "24px",
+          "border": "1px solid #d0d8e0"
+        }
+      },
+      "n-summary-label": {
+        "id": "n-summary-label",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "9pt",
+          "fontWeight": "bold",
+          "color": "#666666",
+          "marginBottom": "4px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "SAMENVATTING" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-summary-columns": {
+        "id": "n-summary-columns",
+        "type": "columns",
+        "slots": ["s-summary-col-0", "s-summary-col-1"],
+        "props": {
+          "columnSizes": [1, 1],
+          "gap": 20
+        }
+      },
+      "n-beneficiary-info": {
+        "id": "n-beneficiary-info",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "lineHeight": "1.6"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Begunstigde:", "marks": [{ "type": "bold" }] },
+                  { "type": "hard_break" },
+                  { "type": "expression", "attrs": { "expression": "beneficiary.name" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-program-info": {
+        "id": "n-program-info",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "lineHeight": "1.6"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Programma:", "marks": [{ "type": "bold" }] },
+                  { "type": "hard_break" },
+                  { "type": "expression", "attrs": { "expression": "subsidy.programName" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-financial-details": {
+        "id": "n-financial-details",
+        "type": "container",
+        "slots": ["s-financial-children"],
+        "styles": {
+          "marginBottom": "24px"
+        }
+      },
+      "n-financial-header": {
+        "id": "n-financial-header",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "12pt",
+          "fontWeight": "bold",
+          "color": "#154273",
+          "marginBottom": "12px",
+          "paddingBottom": "8px",
+          "borderBottom": "1px solid #d0d8e0"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Financiele gegevens" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-amount-table": {
+        "id": "n-amount-table",
+        "type": "table",
+        "slots": [
+          "s-amt-cell-0-0", "s-amt-cell-0-1",
+          "s-amt-cell-1-0", "s-amt-cell-1-1"
+        ],
+        "styles": {
+          "marginBottom": "16px"
+        },
+        "props": {
+          "columnWidths": [60, 40],
+          "borderStyle": "horizontal",
+          "rows": [
+            { "isHeader": true },
+            { "isHeader": false }
+          ]
+        }
+      },
+      "n-col-header-desc": {
+        "id": "n-col-header-desc",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontWeight": "bold",
+          "backgroundColor": "#154273",
+          "color": "#ffffff",
+          "padding": "8px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Omschrijving" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-col-header-amount": {
+        "id": "n-col-header-amount",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontWeight": "bold",
+          "backgroundColor": "#154273",
+          "color": "#ffffff",
+          "padding": "8px",
+          "textAlign": "right"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Bedrag" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-row-subsidy-desc": {
+        "id": "n-row-subsidy-desc",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "padding": "8px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Verleend subsidiebedrag voor " },
+                  { "type": "expression", "attrs": { "expression": "subsidy.programName" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-row-subsidy-amount": {
+        "id": "n-row-subsidy-amount",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "padding": "8px",
+          "textAlign": "right",
+          "fontWeight": "bold"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "\u20ac " },
+                  { "type": "expression", "attrs": { "expression": "subsidy.amount" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-total-box": {
+        "id": "n-total-box",
+        "type": "container",
+        "slots": ["s-total-children"],
+        "styles": {
+          "padding": "16px",
+          "backgroundColor": "#154273",
+          "borderRadius": "4px",
+          "marginBottom": "24px"
+        }
+      },
+      "n-total-columns": {
+        "id": "n-total-columns",
+        "type": "columns",
+        "slots": ["s-total-col-0", "s-total-col-1"],
+        "props": {
+          "columnSizes": [1, 1],
+          "gap": 20
+        }
+      },
+      "n-total-label": {
+        "id": "n-total-label",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "12pt",
+          "fontWeight": "bold",
+          "color": "#ffffff"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Totaal verleend" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-total-amount": {
+        "id": "n-total-amount",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "14pt",
+          "fontWeight": "bold",
+          "color": "#ffffff",
+          "textAlign": "right"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "\u20ac " },
+                  { "type": "expression", "attrs": { "expression": "subsidy.amount" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-disclaimer": {
+        "id": "n-disclaimer",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "8pt",
+          "color": "#999999",
+          "marginTop": "32px",
+          "paddingTop": "12px",
+          "borderTop": "1px solid #d0d8e0",
+          "fontStyle": "italic"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Dit overzicht is opgesteld door de afdeling Subsidies en Maatschappelijke Ontwikkeling van Gemeente Voorbeeld. Voor vragen over dit overzicht kunt u contact opnemen via subsidies@gemeentevoorbeeld.nl." }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+
+    "slots": {
+      "s-root-children": {
+        "id": "s-root-children",
+        "nodeId": "n-root",
+        "name": "children",
+        "children": [
+          "n-header",
+          "n-title",
+          "n-subtitle",
+          "n-summary-box",
+          "n-financial-details",
+          "n-total-box",
+          "n-disclaimer"
+        ]
+      },
+      "s-header-children": {
+        "id": "s-header-children",
+        "nodeId": "n-header",
+        "name": "children",
+        "children": ["n-municipality", "n-department"]
+      },
+      "s-summary-children": {
+        "id": "s-summary-children",
+        "nodeId": "n-summary-box",
+        "name": "children",
+        "children": ["n-summary-label", "n-summary-columns"]
+      },
+      "s-summary-col-0": {
+        "id": "s-summary-col-0",
+        "nodeId": "n-summary-columns",
+        "name": "column-0",
+        "children": ["n-beneficiary-info"]
+      },
+      "s-summary-col-1": {
+        "id": "s-summary-col-1",
+        "nodeId": "n-summary-columns",
+        "name": "column-1",
+        "children": ["n-program-info"]
+      },
+      "s-financial-children": {
+        "id": "s-financial-children",
+        "nodeId": "n-financial-details",
+        "name": "children",
+        "children": ["n-financial-header", "n-amount-table"]
+      },
+      "s-amt-cell-0-0": {
+        "id": "s-amt-cell-0-0",
+        "nodeId": "n-amount-table",
+        "name": "cell-0-0",
+        "children": ["n-col-header-desc"]
+      },
+      "s-amt-cell-0-1": {
+        "id": "s-amt-cell-0-1",
+        "nodeId": "n-amount-table",
+        "name": "cell-0-1",
+        "children": ["n-col-header-amount"]
+      },
+      "s-amt-cell-1-0": {
+        "id": "s-amt-cell-1-0",
+        "nodeId": "n-amount-table",
+        "name": "cell-1-0",
+        "children": ["n-row-subsidy-desc"]
+      },
+      "s-amt-cell-1-1": {
+        "id": "s-amt-cell-1-1",
+        "nodeId": "n-amount-table",
+        "name": "cell-1-1",
+        "children": ["n-row-subsidy-amount"]
+      },
+      "s-total-children": {
+        "id": "s-total-children",
+        "nodeId": "n-total-box",
+        "name": "children",
+        "children": ["n-total-columns"]
+      },
+      "s-total-col-0": {
+        "id": "s-total-col-0",
+        "nodeId": "n-total-columns",
+        "name": "column-0",
+        "children": ["n-total-label"]
+      },
+      "s-total-col-1": {
+        "id": "s-total-col-1",
+        "nodeId": "n-total-columns",
+        "name": "column-1",
+        "children": ["n-total-amount"]
+      }
+    }
+  },
+  "variants": [
+    {
+      "id": "default",
+      "title": "Standaard",
+      "attributes": {
+        "language": "nl"
+      }
+    }
+  ],
+  "publishTo": ["production"]
+}

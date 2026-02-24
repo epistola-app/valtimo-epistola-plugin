@@ -1,0 +1,914 @@
+{
+  "slug": "bevestigingsbrief-vergunning",
+  "name": "Bevestigingsbrief Omgevingsvergunning",
+  "version": "1.0.0",
+  "dataModel": {
+    "type": "object",
+    "properties": {
+      "applicant": {
+        "type": "object",
+        "description": "Gegevens van de aanvrager",
+        "properties": {
+          "firstName": {
+            "type": "string",
+            "description": "Voornaam"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Achternaam"
+          },
+          "bsn": {
+            "type": "string",
+            "pattern": "^\\d{9}$",
+            "description": "Burgerservicenummer (9 cijfers)"
+          },
+          "address": {
+            "type": "object",
+            "description": "Adresgegevens aanvrager",
+            "properties": {
+              "street": { "type": "string" },
+              "houseNumber": { "type": "string" },
+              "postalCode": { "type": "string", "pattern": "^\\d{4}\\s?[A-Z]{2}$" },
+              "city": { "type": "string" }
+            },
+            "required": ["street", "houseNumber", "postalCode", "city"]
+          }
+        },
+        "required": ["firstName", "lastName", "bsn", "address"]
+      },
+      "property": {
+        "type": "object",
+        "description": "Gegevens van het bouwobject",
+        "properties": {
+          "address": {
+            "type": "object",
+            "description": "Adres van het bouwobject",
+            "properties": {
+              "street": { "type": "string" },
+              "houseNumber": { "type": "string" },
+              "postalCode": { "type": "string", "pattern": "^\\d{4}\\s?[A-Z]{2}$" },
+              "city": { "type": "string" }
+            },
+            "required": ["street", "houseNumber", "postalCode", "city"]
+          },
+          "kadastraalNummer": {
+            "type": "string",
+            "description": "Kadastraal nummer (optioneel)"
+          }
+        },
+        "required": ["address"]
+      },
+      "activities": {
+        "type": "array",
+        "description": "Vergunde activiteiten",
+        "items": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "description": "Type activiteit"
+            },
+            "description": {
+              "type": "string",
+              "description": "Omschrijving activiteit"
+            },
+            "estimatedCost": {
+              "type": "number",
+              "description": "Geschatte kosten (optioneel)",
+              "minimum": 0
+            }
+          },
+          "required": ["type", "description"]
+        },
+        "minItems": 1
+      }
+    },
+    "required": ["applicant", "property", "activities"]
+  },
+  "dataExamples": [
+    {
+      "id": "voorbeeld-aanbouw",
+      "name": "Vergunning aanbouw woning",
+      "data": {
+        "applicant": {
+          "firstName": "Johannes",
+          "lastName": "de Vries",
+          "bsn": "123456789",
+          "address": {
+            "street": "Kerkstraat",
+            "houseNumber": "42",
+            "postalCode": "3511 LX",
+            "city": "Utrecht"
+          }
+        },
+        "property": {
+          "address": {
+            "street": "Kerkstraat",
+            "houseNumber": "42",
+            "postalCode": "3511 LX",
+            "city": "Utrecht"
+          },
+          "kadastraalNummer": "UTR01-A-1234"
+        },
+        "activities": [
+          {
+            "type": "Bouwen",
+            "description": "Uitbreiding achterzijde woning met aanbouw van 4x6 meter",
+            "estimatedCost": 45000
+          },
+          {
+            "type": "Slopen",
+            "description": "Verwijderen bestaande schuur op achtererf",
+            "estimatedCost": 3500
+          }
+        ]
+      }
+    },
+    {
+      "id": "voorbeeld-dakkapel",
+      "name": "Vergunning dakkapel zonder kadastraal nummer",
+      "data": {
+        "applicant": {
+          "firstName": "Maria",
+          "lastName": "Jansen",
+          "bsn": "987654321",
+          "address": {
+            "street": "Dorpsweg",
+            "houseNumber": "17a",
+            "postalCode": "2641 AB",
+            "city": "Pijnacker"
+          }
+        },
+        "property": {
+          "address": {
+            "street": "Dorpsweg",
+            "houseNumber": "17a",
+            "postalCode": "2641 AB",
+            "city": "Pijnacker"
+          }
+        },
+        "activities": [
+          {
+            "type": "Bouwen",
+            "description": "Plaatsen dakkapel aan voorzijde woning, breedte 3 meter"
+          }
+        ]
+      }
+    }
+  ],
+  "templateModel": {
+    "modelVersion": 1,
+    "root": "n-root",
+    "themeRef": { "type": "inherit" },
+    "pageSettingsOverride": {
+      "format": "A4",
+      "orientation": "portrait",
+      "margins": { "top": 40, "right": 40, "bottom": 40, "left": 40 }
+    },
+    "documentStylesOverride": {
+      "fontFamily": "Helvetica",
+      "fontSize": "10pt",
+      "color": "#333333",
+      "lineHeight": "1.5"
+    },
+    "nodes": {
+      "n-root": {
+        "id": "n-root",
+        "type": "root",
+        "slots": ["s-root-children"]
+      },
+
+      "n-header": {
+        "id": "n-header",
+        "type": "container",
+        "slots": ["s-header-children"],
+        "styles": {
+          "marginBottom": "20px",
+          "paddingBottom": "15px",
+          "borderBottom": "2px solid #154273"
+        }
+      },
+      "n-header-columns": {
+        "id": "n-header-columns",
+        "type": "columns",
+        "slots": ["s-header-col-0", "s-header-col-1"],
+        "props": {
+          "columnSizes": [2, 1],
+          "gap": 20
+        }
+      },
+      "n-municipality": {
+        "id": "n-municipality",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "16pt",
+          "fontWeight": "bold",
+          "color": "#154273"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Gemeente Utrecht" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-department": {
+        "id": "n-department",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "9pt",
+          "color": "#555555",
+          "lineHeight": "1.5"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Afdeling Vergunningen, Toezicht en Handhaving" },
+                  { "type": "hard_break" },
+                  { "type": "text", "text": "Postbus 16200" },
+                  { "type": "hard_break" },
+                  { "type": "text", "text": "3500 CE Utrecht" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-header-date": {
+        "id": "n-header-date",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "9pt",
+          "textAlign": "right",
+          "color": "#555555"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Datum: 24 februari 2026" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-recipient": {
+        "id": "n-recipient",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginBottom": "25px",
+          "fontSize": "10pt",
+          "lineHeight": "1.6"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "applicant.firstName" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "applicant.lastName" } },
+                  { "type": "hard_break" },
+                  { "type": "expression", "attrs": { "expression": "applicant.address.street" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "applicant.address.houseNumber" } },
+                  { "type": "hard_break" },
+                  { "type": "expression", "attrs": { "expression": "applicant.address.postalCode" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "applicant.address.city" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-subject": {
+        "id": "n-subject",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "12pt",
+          "fontWeight": "bold",
+          "color": "#154273",
+          "marginBottom": "20px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Betreft: Bevestiging verleende omgevingsvergunning" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-salutation": {
+        "id": "n-salutation",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginBottom": "15px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Geachte " },
+                  { "type": "expression", "attrs": { "expression": "applicant.firstName" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "applicant.lastName" } },
+                  { "type": "text", "text": "," }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-intro": {
+        "id": "n-intro",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginBottom": "15px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Hierbij bevestigen wij dat uw aanvraag voor een omgevingsvergunning is verleend. De vergunning heeft betrekking op het perceel aan de " },
+                  { "type": "expression", "attrs": { "expression": "property.address.street" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "property.address.houseNumber" } },
+                  { "type": "text", "text": ", " },
+                  { "type": "expression", "attrs": { "expression": "property.address.postalCode" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "property.address.city" } },
+                  { "type": "text", "text": "." }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-bsn-ref": {
+        "id": "n-bsn-ref",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginBottom": "15px",
+          "fontSize": "9pt",
+          "color": "#555555"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "BSN aanvrager: " },
+                  { "type": "expression", "attrs": { "expression": "applicant.bsn" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-kadastraal-conditional": {
+        "id": "n-kadastraal-conditional",
+        "type": "conditional",
+        "slots": ["s-kadastraal-cond-children"],
+        "props": {
+          "condition": {
+            "raw": "$exists(property.kadastraalNummer)",
+            "language": "jsonata"
+          }
+        }
+      },
+      "n-kadastraal-text": {
+        "id": "n-kadastraal-text",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginBottom": "15px",
+          "fontSize": "9pt",
+          "color": "#555555"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Kadastraal nummer: " },
+                  { "type": "expression", "attrs": { "expression": "property.kadastraalNummer" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-activities-heading": {
+        "id": "n-activities-heading",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "11pt",
+          "fontWeight": "bold",
+          "color": "#154273",
+          "marginBottom": "10px",
+          "marginTop": "10px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Vergunde activiteiten" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-activities-table-header": {
+        "id": "n-activities-table-header",
+        "type": "table",
+        "slots": [
+          "s-ath-cell-0-0", "s-ath-cell-0-1", "s-ath-cell-0-2"
+        ],
+        "styles": {
+          "marginBottom": "0px"
+        },
+        "props": {
+          "columnWidths": [20, 55, 25],
+          "borderStyle": "all",
+          "rows": [
+            { "isHeader": true }
+          ]
+        }
+      },
+      "n-ath-type": {
+        "id": "n-ath-type",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontWeight": "bold",
+          "backgroundColor": "#154273",
+          "color": "#ffffff",
+          "padding": "8px",
+          "fontSize": "9pt"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Type" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-ath-description": {
+        "id": "n-ath-description",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontWeight": "bold",
+          "backgroundColor": "#154273",
+          "color": "#ffffff",
+          "padding": "8px",
+          "fontSize": "9pt"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Omschrijving" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-ath-cost": {
+        "id": "n-ath-cost",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontWeight": "bold",
+          "backgroundColor": "#154273",
+          "color": "#ffffff",
+          "padding": "8px",
+          "fontSize": "9pt",
+          "textAlign": "right"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Geschatte kosten" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-activities-loop": {
+        "id": "n-activities-loop",
+        "type": "loop",
+        "slots": ["s-activities-loop-children"],
+        "props": {
+          "expression": {
+            "raw": "activities"
+          },
+          "itemAlias": "activity",
+          "indexAlias": "idx"
+        }
+      },
+      "n-activity-row-table": {
+        "id": "n-activity-row-table",
+        "type": "table",
+        "slots": [
+          "s-art-cell-0-0", "s-art-cell-0-1", "s-art-cell-0-2"
+        ],
+        "props": {
+          "columnWidths": [20, 55, 25],
+          "borderStyle": "horizontal",
+          "rows": [
+            { "isHeader": false }
+          ]
+        }
+      },
+      "n-activity-type-text": {
+        "id": "n-activity-type-text",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "padding": "8px",
+          "fontSize": "9pt"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "activity.type" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-activity-desc-text": {
+        "id": "n-activity-desc-text",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "padding": "8px",
+          "fontSize": "9pt"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "activity.description" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-activity-cost-text": {
+        "id": "n-activity-cost-text",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "padding": "8px",
+          "fontSize": "9pt",
+          "textAlign": "right"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "activity.estimatedCost" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-conditions": {
+        "id": "n-conditions",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginTop": "20px",
+          "marginBottom": "15px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Aan de vergunning zijn de gebruikelijke voorwaarden verbonden conform het Omgevingsplan en de toepasselijke regelgeving. De volledige voorwaarden zijn opgenomen in de bijlage bij dit besluit." }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-objection": {
+        "id": "n-objection",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginBottom": "15px",
+          "fontSize": "9pt",
+          "padding": "12px",
+          "backgroundColor": "#f0f4f8",
+          "borderRadius": "4px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Bezwaar: Tegen dit besluit kunt u binnen zes weken na de dag van verzending van dit besluit een bezwaarschrift indienen bij het college van burgemeester en wethouders van de gemeente Utrecht, Postbus 16200, 3500 CE Utrecht." }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-closing": {
+        "id": "n-closing",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginTop": "25px",
+          "marginBottom": "10px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Hoogachtend," }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-signature": {
+        "id": "n-signature",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginTop": "40px",
+          "lineHeight": "1.6"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Burgemeester en wethouders van Utrecht," },
+                  { "type": "hard_break" },
+                  { "type": "text", "text": "namens dezen," },
+                  { "type": "hard_break" },
+                  { "type": "hard_break" },
+                  { "type": "text", "text": "Hoofd afdeling Vergunningen, Toezicht en Handhaving" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-footer": {
+        "id": "n-footer",
+        "type": "container",
+        "slots": ["s-footer-children"],
+        "styles": {
+          "marginTop": "40px",
+          "paddingTop": "15px",
+          "borderTop": "1px solid #cccccc",
+          "textAlign": "center"
+        }
+      },
+      "n-footer-text": {
+        "id": "n-footer-text",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "7pt",
+          "color": "#999999",
+          "lineHeight": "1.5"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Gemeente Utrecht | Afdeling Vergunningen, Toezicht en Handhaving" },
+                  { "type": "hard_break" },
+                  { "type": "text", "text": "Postbus 16200, 3500 CE Utrecht | Tel: 030-286 00 00 | www.utrecht.nl" }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+
+    "slots": {
+      "s-root-children": {
+        "id": "s-root-children",
+        "nodeId": "n-root",
+        "name": "children",
+        "children": [
+          "n-header",
+          "n-recipient",
+          "n-subject",
+          "n-salutation",
+          "n-intro",
+          "n-bsn-ref",
+          "n-kadastraal-conditional",
+          "n-activities-heading",
+          "n-activities-table-header",
+          "n-activities-loop",
+          "n-conditions",
+          "n-objection",
+          "n-closing",
+          "n-signature",
+          "n-footer"
+        ]
+      },
+
+      "s-header-children": {
+        "id": "s-header-children",
+        "nodeId": "n-header",
+        "name": "children",
+        "children": ["n-header-columns"]
+      },
+      "s-header-col-0": {
+        "id": "s-header-col-0",
+        "nodeId": "n-header-columns",
+        "name": "column-0",
+        "children": ["n-municipality", "n-department"]
+      },
+      "s-header-col-1": {
+        "id": "s-header-col-1",
+        "nodeId": "n-header-columns",
+        "name": "column-1",
+        "children": ["n-header-date"]
+      },
+
+      "s-kadastraal-cond-children": {
+        "id": "s-kadastraal-cond-children",
+        "nodeId": "n-kadastraal-conditional",
+        "name": "children",
+        "children": ["n-kadastraal-text"]
+      },
+
+      "s-ath-cell-0-0": {
+        "id": "s-ath-cell-0-0",
+        "nodeId": "n-activities-table-header",
+        "name": "cell-0-0",
+        "children": ["n-ath-type"]
+      },
+      "s-ath-cell-0-1": {
+        "id": "s-ath-cell-0-1",
+        "nodeId": "n-activities-table-header",
+        "name": "cell-0-1",
+        "children": ["n-ath-description"]
+      },
+      "s-ath-cell-0-2": {
+        "id": "s-ath-cell-0-2",
+        "nodeId": "n-activities-table-header",
+        "name": "cell-0-2",
+        "children": ["n-ath-cost"]
+      },
+
+      "s-activities-loop-children": {
+        "id": "s-activities-loop-children",
+        "nodeId": "n-activities-loop",
+        "name": "children",
+        "children": ["n-activity-row-table"]
+      },
+      "s-art-cell-0-0": {
+        "id": "s-art-cell-0-0",
+        "nodeId": "n-activity-row-table",
+        "name": "cell-0-0",
+        "children": ["n-activity-type-text"]
+      },
+      "s-art-cell-0-1": {
+        "id": "s-art-cell-0-1",
+        "nodeId": "n-activity-row-table",
+        "name": "cell-0-1",
+        "children": ["n-activity-desc-text"]
+      },
+      "s-art-cell-0-2": {
+        "id": "s-art-cell-0-2",
+        "nodeId": "n-activity-row-table",
+        "name": "cell-0-2",
+        "children": ["n-activity-cost-text"]
+      },
+
+      "s-footer-children": {
+        "id": "s-footer-children",
+        "nodeId": "n-footer",
+        "name": "children",
+        "children": ["n-footer-text"]
+      }
+    }
+  },
+  "variants": [
+    {
+      "id": "default",
+      "title": "Standaard",
+      "attributes": {
+        "language": "nl"
+      }
+    }
+  ],
+  "publishTo": ["production"]
+}

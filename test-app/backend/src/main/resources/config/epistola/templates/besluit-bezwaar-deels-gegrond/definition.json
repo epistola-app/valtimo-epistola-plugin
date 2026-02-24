@@ -1,0 +1,356 @@
+{
+  "slug": "besluit-bezwaar-deels-gegrond",
+  "name": "Besluit op bezwaar - Deels gegrond",
+  "version": "1.0.0",
+  "dataModel": {
+    "type": "object",
+    "properties": {
+      "objector": {
+        "type": "object",
+        "properties": {
+          "firstName": { "type": "string", "description": "Voornaam van de bezwaarmaker" },
+          "lastName": { "type": "string", "description": "Achternaam van de bezwaarmaker" },
+          "address": {
+            "type": "object",
+            "properties": {
+              "street": { "type": "string", "description": "Straatnaam" },
+              "houseNumber": { "type": "string", "description": "Huisnummer" },
+              "postalCode": { "type": "string", "description": "Postcode" },
+              "city": { "type": "string", "description": "Woonplaats" }
+            },
+            "required": ["street", "houseNumber", "postalCode", "city"]
+          }
+        },
+        "required": ["firstName", "lastName", "address"]
+      },
+      "originalDecision": {
+        "type": "object",
+        "properties": {
+          "reference": { "type": "string", "description": "Kenmerk van het oorspronkelijke besluit" },
+          "date": { "type": "string", "format": "date-time", "description": "Datum van het oorspronkelijke besluit" },
+          "subject": { "type": "string", "description": "Onderwerp van het oorspronkelijke besluit" }
+        },
+        "required": ["reference", "date", "subject"]
+      },
+      "decision": {
+        "type": "string",
+        "description": "De beslissing op het bezwaar"
+      },
+      "motivation": {
+        "type": "string",
+        "description": "De motivering van de beslissing"
+      }
+    },
+    "required": ["objector", "originalDecision", "decision", "motivation"]
+  },
+  "dataExamples": [
+    {
+      "id": "deels-gegrond-voorbeeld",
+      "name": "Bezwaar deels gegrond verklaard",
+      "data": {
+        "objector": {
+          "firstName": "Anneke",
+          "lastName": "van den Berg",
+          "address": {
+            "street": "Laan van Meerdervoort",
+            "houseNumber": "108",
+            "postalCode": "2517 BD",
+            "city": "Den Haag"
+          }
+        },
+        "originalDecision": {
+          "reference": "BES-2026-003456",
+          "date": "2026-01-10T00:00:00Z",
+          "subject": "Hoogte bijzondere bijstand voor inrichtingskosten"
+        },
+        "decision": "Het bezwaar wordt deels gegrond verklaard. Het besluit van 10 januari 2026 wordt herroepen voor zover het de hoogte van de toegekende bijzondere bijstand betreft. Het bedrag wordt verhoogd van EUR 1.500 naar EUR 2.250. Voor het overige wordt het bezwaar ongegrond verklaard.",
+        "motivation": "Na heroverweging is gebleken dat bij de berekening van het toe te kennen bedrag ten onrechte geen rekening is gehouden met de kosten voor vloerbedekking. Deze kosten worden alsnog meegenomen, waardoor het totaalbedrag wordt verhoogd. Het bezwaar ten aanzien van de kosten voor tuininrichting wordt ongegrond verklaard, omdat deze kosten niet vallen onder de regeling bijzondere bijstand voor inrichtingskosten."
+      }
+    }
+  ],
+  "templateModel": {
+    "modelVersion": 1,
+    "root": "n-root",
+    "themeRef": { "type": "inherit" },
+    "pageSettingsOverride": {
+      "format": "A4",
+      "orientation": "portrait",
+      "margins": { "top": 40, "right": 40, "bottom": 40, "left": 40 }
+    },
+    "nodes": {
+      "n-root": {
+        "id": "n-root",
+        "type": "container",
+        "slots": ["s-root-children"],
+        "styles": {},
+        "props": {}
+      },
+      "n-address-block": {
+        "id": "n-address-block",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "24pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "objector.firstName" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "objector.lastName" } }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "objector.address.street" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "objector.address.houseNumber" } }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "objector.address.postalCode" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "objector.address.city" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-date-reference": {
+        "id": "n-date-reference",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "24pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Ons kenmerk: " },
+                  { "type": "expression", "attrs": { "expression": "originalDecision.reference" } }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Betreft: Beslissing op uw bezwaarschrift - Deels gegrond" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-salutation": {
+        "id": "n-salutation",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "12pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Geachte " },
+                  { "type": "expression", "attrs": { "expression": "objector.firstName" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "objector.lastName" } },
+                  { "type": "text", "text": "," }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-intro": {
+        "id": "n-intro",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "12pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Op " },
+                  { "type": "expression", "attrs": { "expression": "originalDecision.date" } },
+                  { "type": "text", "text": " hebben wij een besluit genomen met kenmerk " },
+                  { "type": "expression", "attrs": { "expression": "originalDecision.reference" } },
+                  { "type": "text", "text": " inzake " },
+                  { "type": "expression", "attrs": { "expression": "originalDecision.subject" } },
+                  { "type": "text", "text": ". Tegen dit besluit hebt u een bezwaarschrift ingediend." }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-decision-heading": {
+        "id": "n-decision-heading",
+        "type": "text",
+        "slots": [],
+        "styles": { "fontWeight": "bold", "marginBottom": "6pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Beslissing" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-decision-body": {
+        "id": "n-decision-body",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "12pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Wij verklaren uw bezwaar " },
+                  { "type": "text", "text": "deels gegrond", "marks": [{ "type": "bold" }] },
+                  { "type": "text", "text": "." }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "decision" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-motivation-heading": {
+        "id": "n-motivation-heading",
+        "type": "text",
+        "slots": [],
+        "styles": { "fontWeight": "bold", "marginBottom": "6pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Motivering" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-motivation-body": {
+        "id": "n-motivation-body",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "12pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "motivation" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-legal-remedy": {
+        "id": "n-legal-remedy",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "12pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Rechtsmiddel", "marks": [{ "type": "bold" }] }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Indien u het niet eens bent met deze beslissing, kunt u binnen zes weken na de dag van verzending van dit besluit een beroepschrift indienen bij de Rechtbank. Het beroepschrift moet worden ondertekend en bevat ten minste uw naam en adres, de dagtekening, een omschrijving van het besluit waartegen het beroep is gericht en de gronden van het beroep." }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-closing": {
+        "id": "n-closing",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "24pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Met vriendelijke groet," }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Het college van burgemeester en wethouders" }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "slots": {
+      "s-root-children": {
+        "id": "s-root-children",
+        "nodeId": "n-root",
+        "name": "children",
+        "children": [
+          "n-address-block",
+          "n-date-reference",
+          "n-salutation",
+          "n-intro",
+          "n-decision-heading",
+          "n-decision-body",
+          "n-motivation-heading",
+          "n-motivation-body",
+          "n-legal-remedy",
+          "n-closing"
+        ]
+      }
+    }
+  },
+  "variants": [],
+  "publishTo": ["production"]
+}

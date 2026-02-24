@@ -1,0 +1,523 @@
+{
+  "slug": "voorwaarden-bijlage",
+  "name": "Voorwaarden Bijlage",
+  "version": "1.0.0",
+  "dataModel": {
+    "type": "object",
+    "properties": {
+      "beneficiary": {
+        "type": "object",
+        "description": "Gegevens van de subsidieaanvrager",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Naam van de aanvrager"
+          }
+        },
+        "required": ["name"]
+      },
+      "subsidy": {
+        "type": "object",
+        "description": "Gegevens van de subsidie",
+        "properties": {
+          "programName": {
+            "type": "string",
+            "description": "Naam van het subsidieprogramma"
+          },
+          "conditions": {
+            "type": "string",
+            "description": "Voorwaarden verbonden aan de subsidie"
+          }
+        },
+        "required": ["programName", "conditions"]
+      }
+    },
+    "required": ["beneficiary", "subsidy"]
+  },
+  "dataExamples": [
+    {
+      "id": "standaard-voorwaarden",
+      "name": "Standaard voorwaarden bijlage",
+      "data": {
+        "beneficiary": {
+          "name": "Stichting De Groene Toekomst"
+        },
+        "subsidy": {
+          "programName": "Regeling Duurzame Energie Initiatieven 2026",
+          "conditions": "De subsidie dient uiterlijk op 31 december 2026 te zijn besteed aan de in de aanvraag beschreven activiteiten. Binnen zes maanden na afronding van het project dient een inhoudelijk en financieel verslag te worden ingediend. De subsidieontvanger is verplicht om een deugdelijke administratie bij te houden van alle aan het project gerelateerde kosten. De subsidie mag uitsluitend worden besteed aan de activiteiten waarvoor deze is verleend. Bij wijziging van de activiteiten dient vooraf toestemming te worden gevraagd aan het college van burgemeester en wethouders."
+        }
+      }
+    },
+    {
+      "id": "korte-voorwaarden",
+      "name": "Korte voorwaarden",
+      "data": {
+        "beneficiary": {
+          "name": "Wijkraad Noord"
+        },
+        "subsidy": {
+          "programName": "Subsidieregeling Wijkinitiatieven 2026",
+          "conditions": "De activiteiten dienen binnen het kalenderjaar 2026 te zijn uitgevoerd. Na afloop dient een kort verslag met foto's te worden ingediend."
+        }
+      }
+    }
+  ],
+  "templateModel": {
+    "modelVersion": 1,
+    "root": "n-root",
+    "themeRef": { "type": "inherit" },
+    "pageSettingsOverride": {
+      "format": "A4",
+      "orientation": "portrait",
+      "margins": { "top": 40, "right": 40, "bottom": 40, "left": 40 }
+    },
+    "documentStylesOverride": {
+      "fontFamily": "Helvetica",
+      "fontSize": "10pt",
+      "color": "#333333",
+      "lineHeight": "1.5"
+    },
+    "nodes": {
+      "n-root": {
+        "id": "n-root",
+        "type": "root",
+        "slots": ["s-root-children"]
+      },
+
+      "n-header": {
+        "id": "n-header",
+        "type": "container",
+        "slots": ["s-header-children"],
+        "styles": {
+          "marginBottom": "24px",
+          "paddingBottom": "16px",
+          "borderBottom": "2px solid #154273"
+        }
+      },
+      "n-municipality": {
+        "id": "n-municipality",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "11pt",
+          "fontWeight": "bold",
+          "color": "#154273",
+          "marginBottom": "4px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Gemeente Voorbeeld" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-department": {
+        "id": "n-department",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "9pt",
+          "color": "#666666",
+          "marginBottom": "4px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Afdeling Subsidies en Maatschappelijke Ontwikkeling" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-bijlage-label": {
+        "id": "n-bijlage-label",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "9pt",
+          "fontWeight": "bold",
+          "color": "#999999",
+          "marginBottom": "8px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "BIJLAGE" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-title": {
+        "id": "n-title",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "16pt",
+          "fontWeight": "bold",
+          "color": "#154273",
+          "marginBottom": "8px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Voorwaarden Subsidieverlening" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-subtitle": {
+        "id": "n-subtitle",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "11pt",
+          "color": "#666666",
+          "marginBottom": "24px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "subsidy.programName" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-intro": {
+        "id": "n-intro",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginBottom": "16px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Onderstaande voorwaarden zijn van toepassing op de subsidieverlening aan " },
+                  { "type": "expression", "attrs": { "expression": "beneficiary.name" } },
+                  { "type": "text", "text": " in het kader van de " },
+                  { "type": "expression", "attrs": { "expression": "subsidy.programName" } },
+                  { "type": "text", "text": ". Door aanvaarding van de subsidie verklaart de ontvanger zich akkoord met deze voorwaarden." }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-specific-header": {
+        "id": "n-specific-header",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "12pt",
+          "fontWeight": "bold",
+          "color": "#154273",
+          "marginBottom": "8px",
+          "marginTop": "16px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "1. Specifieke voorwaarden" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-specific-conditions-box": {
+        "id": "n-specific-conditions-box",
+        "type": "container",
+        "slots": ["s-specific-conditions-children"],
+        "styles": {
+          "padding": "16px",
+          "backgroundColor": "#f0f4f8",
+          "borderRadius": "4px",
+          "borderLeft": "4px solid #154273",
+          "marginBottom": "20px"
+        }
+      },
+      "n-specific-conditions-text": {
+        "id": "n-specific-conditions-text",
+        "type": "text",
+        "slots": [],
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "subsidy.conditions" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-general-header": {
+        "id": "n-general-header",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "12pt",
+          "fontWeight": "bold",
+          "color": "#154273",
+          "marginBottom": "8px",
+          "marginTop": "16px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "2. Algemene voorwaarden" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-general-meldingsplicht": {
+        "id": "n-general-meldingsplicht",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginBottom": "12px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Meldingsplicht", "marks": [{ "type": "bold" }] }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "De subsidieontvanger is verplicht onverwijld schriftelijk melding te doen aan het college zodra aannemelijk is dat de activiteiten waarvoor de subsidie is verleend niet, niet tijdig of niet geheel zullen worden verricht, dan wel niet of niet geheel aan de aan de subsidie verbonden verplichtingen zal worden voldaan." }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-general-administratie": {
+        "id": "n-general-administratie",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginBottom": "12px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Administratieplicht", "marks": [{ "type": "bold" }] }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "De subsidieontvanger voert een zodanig ingerichte administratie dat daaruit te allen tijde de voor de vaststelling van de subsidie van belang zijnde rechten en verplichtingen alsmede de betalingen en ontvangsten kunnen worden nagegaan." }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-general-medewerking": {
+        "id": "n-general-medewerking",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginBottom": "12px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Medewerking controle", "marks": [{ "type": "bold" }] }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "De subsidieontvanger verleent medewerking aan een door of namens het college ingesteld onderzoek dat erop is gericht het college inlichtingen te verschaffen ten behoeve van de ontwikkeling van beleid." }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-general-terugvordering": {
+        "id": "n-general-terugvordering",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "marginBottom": "12px"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Terugvordering", "marks": [{ "type": "bold" }] }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Het college kan de subsidievaststelling intrekken of ten nadele van de ontvanger wijzigen indien niet is voldaan aan de aan de subsidie verbonden verplichtingen. Onverschuldigd betaalde subsidiebedragen worden teruggevorderd." }
+                ]
+              }
+            ]
+          }
+        }
+      },
+
+      "n-footer-separator": {
+        "id": "n-footer-separator",
+        "type": "container",
+        "slots": ["s-footer-children"],
+        "styles": {
+          "marginTop": "32px",
+          "paddingTop": "12px",
+          "borderTop": "1px solid #d0d8e0"
+        }
+      },
+      "n-footer-text": {
+        "id": "n-footer-text",
+        "type": "text",
+        "slots": [],
+        "styles": {
+          "fontSize": "8pt",
+          "color": "#999999",
+          "fontStyle": "italic"
+        },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Deze bijlage maakt onlosmakelijk onderdeel uit van het subsidiebesluit inzake de " },
+                  { "type": "expression", "attrs": { "expression": "subsidy.programName" } },
+                  { "type": "text", "text": " ten behoeve van " },
+                  { "type": "expression", "attrs": { "expression": "beneficiary.name" } },
+                  { "type": "text", "text": ". Bij tegenstrijdigheid tussen deze bijlage en het subsidiebesluit prevaleert het subsidiebesluit." }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+
+    "slots": {
+      "s-root-children": {
+        "id": "s-root-children",
+        "nodeId": "n-root",
+        "name": "children",
+        "children": [
+          "n-header",
+          "n-bijlage-label",
+          "n-title",
+          "n-subtitle",
+          "n-intro",
+          "n-specific-header",
+          "n-specific-conditions-box",
+          "n-general-header",
+          "n-general-meldingsplicht",
+          "n-general-administratie",
+          "n-general-medewerking",
+          "n-general-terugvordering",
+          "n-footer-separator"
+        ]
+      },
+      "s-header-children": {
+        "id": "s-header-children",
+        "nodeId": "n-header",
+        "name": "children",
+        "children": ["n-municipality", "n-department"]
+      },
+      "s-specific-conditions-children": {
+        "id": "s-specific-conditions-children",
+        "nodeId": "n-specific-conditions-box",
+        "name": "children",
+        "children": ["n-specific-conditions-text"]
+      },
+      "s-footer-children": {
+        "id": "s-footer-children",
+        "nodeId": "n-footer-separator",
+        "name": "children",
+        "children": ["n-footer-text"]
+      }
+    }
+  },
+  "variants": [
+    {
+      "id": "default",
+      "title": "Standaard",
+      "attributes": {
+        "language": "nl"
+      }
+    }
+  ],
+  "publishTo": ["production"]
+}

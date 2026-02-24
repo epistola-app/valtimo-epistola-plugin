@@ -1,0 +1,341 @@
+{
+  "slug": "ontvangstbevestiging-bezwaar",
+  "name": "Ontvangstbevestiging bezwaarschrift",
+  "version": "1.0.0",
+  "dataModel": {
+    "type": "object",
+    "properties": {
+      "objector": {
+        "type": "object",
+        "properties": {
+          "firstName": { "type": "string", "description": "Voornaam van de bezwaarmaker" },
+          "lastName": { "type": "string", "description": "Achternaam van de bezwaarmaker" },
+          "address": {
+            "type": "object",
+            "properties": {
+              "street": { "type": "string", "description": "Straatnaam" },
+              "houseNumber": { "type": "string", "description": "Huisnummer" },
+              "postalCode": { "type": "string", "description": "Postcode" },
+              "city": { "type": "string", "description": "Woonplaats" }
+            },
+            "required": ["street", "houseNumber", "postalCode", "city"]
+          }
+        },
+        "required": ["firstName", "lastName", "address"]
+      },
+      "originalDecision": {
+        "type": "object",
+        "properties": {
+          "reference": { "type": "string", "description": "Kenmerk van het oorspronkelijke besluit" },
+          "date": { "type": "string", "format": "date-time", "description": "Datum van het oorspronkelijke besluit" },
+          "subject": { "type": "string", "description": "Onderwerp van het oorspronkelijke besluit" }
+        },
+        "required": ["reference", "date", "subject"]
+      },
+      "objection": {
+        "type": "object",
+        "properties": {
+          "grounds": { "type": "string", "description": "Gronden van het bezwaar" },
+          "receivedDate": { "type": "string", "format": "date-time", "description": "Datum van ontvangst van het bezwaarschrift" }
+        },
+        "required": ["grounds", "receivedDate"]
+      }
+    },
+    "required": ["objector", "originalDecision", "objection"]
+  },
+  "dataExamples": [
+    {
+      "id": "standaard-ontvangst",
+      "name": "Standaard ontvangstbevestiging",
+      "data": {
+        "objector": {
+          "firstName": "Pieter",
+          "lastName": "de Vries",
+          "address": {
+            "street": "Kerkstraat",
+            "houseNumber": "42",
+            "postalCode": "1012 AB",
+            "city": "Amsterdam"
+          }
+        },
+        "originalDecision": {
+          "reference": "BES-2026-001234",
+          "date": "2026-01-15T00:00:00Z",
+          "subject": "Afwijzing omgevingsvergunning verbouwing woning"
+        },
+        "objection": {
+          "grounds": "Bezwaarmaker is van mening dat het besluit onvoldoende rekening houdt met de bijzondere omstandigheden van het pand en de historische context van de buurt.",
+          "receivedDate": "2026-02-10T00:00:00Z"
+        }
+      }
+    },
+    {
+      "id": "minimaal-ontvangst",
+      "name": "Minimaal voorbeeld",
+      "data": {
+        "objector": {
+          "firstName": "Maria",
+          "lastName": "Jansen",
+          "address": {
+            "street": "Dorpsweg",
+            "houseNumber": "7a",
+            "postalCode": "3421 HK",
+            "city": "Oudewater"
+          }
+        },
+        "originalDecision": {
+          "reference": "BES-2026-005678",
+          "date": "2026-01-28T00:00:00Z",
+          "subject": "Weigering subsidieaanvraag"
+        },
+        "objection": {
+          "grounds": "De aanvraag voldoet wel degelijk aan de gestelde criteria.",
+          "receivedDate": "2026-02-20T00:00:00Z"
+        }
+      }
+    }
+  ],
+  "templateModel": {
+    "modelVersion": 1,
+    "root": "n-root",
+    "themeRef": { "type": "inherit" },
+    "pageSettingsOverride": {
+      "format": "A4",
+      "orientation": "portrait",
+      "margins": { "top": 40, "right": 40, "bottom": 40, "left": 40 }
+    },
+    "nodes": {
+      "n-root": {
+        "id": "n-root",
+        "type": "container",
+        "slots": ["s-root-children"],
+        "styles": {},
+        "props": {}
+      },
+      "n-address-block": {
+        "id": "n-address-block",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "24pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "objector.firstName" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "objector.lastName" } }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "objector.address.street" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "objector.address.houseNumber" } }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "objector.address.postalCode" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "objector.address.city" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-date-reference": {
+        "id": "n-date-reference",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "24pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Ons kenmerk: " },
+                  { "type": "expression", "attrs": { "expression": "originalDecision.reference" } }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Betreft: Ontvangstbevestiging bezwaarschrift" }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-salutation": {
+        "id": "n-salutation",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "12pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Geachte " },
+                  { "type": "expression", "attrs": { "expression": "objector.firstName" } },
+                  { "type": "text", "text": " " },
+                  { "type": "expression", "attrs": { "expression": "objector.lastName" } },
+                  { "type": "text", "text": "," }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-intro": {
+        "id": "n-intro",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "12pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Op " },
+                  { "type": "expression", "attrs": { "expression": "objection.receivedDate" } },
+                  { "type": "text", "text": " hebben wij uw bezwaarschrift ontvangen, gericht tegen ons besluit van " },
+                  { "type": "expression", "attrs": { "expression": "originalDecision.date" } },
+                  { "type": "text", "text": " met kenmerk " },
+                  { "type": "expression", "attrs": { "expression": "originalDecision.reference" } },
+                  { "type": "text", "text": " inzake " },
+                  { "type": "expression", "attrs": { "expression": "originalDecision.subject" } },
+                  { "type": "text", "text": "." }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-body": {
+        "id": "n-body",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "12pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Hierbij bevestigen wij de ontvangst van uw bezwaarschrift. Uw bezwaar is in behandeling genomen." }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "U hebt in uw bezwaarschrift de volgende gronden aangevoerd:" }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "expression", "attrs": { "expression": "objection.grounds" } }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-procedure": {
+        "id": "n-procedure",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "12pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "De bezwaarprocedure verloopt als volgt:" }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Wij streven ernaar om binnen zes weken na ontvangst van uw bezwaarschrift een beslissing te nemen. Mocht dit niet haalbaar zijn, dan informeren wij u tijdig over de verdere voortgang." }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "U wordt in de gelegenheid gesteld om uw bezwaar mondeling toe te lichten. Hierover ontvangt u separaat bericht." }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "n-closing": {
+        "id": "n-closing",
+        "type": "text",
+        "slots": [],
+        "styles": { "marginBottom": "24pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Mocht u vragen hebben over de procedure, dan kunt u contact opnemen met de afdeling Juridische Zaken." }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Met vriendelijke groet," }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Het college van burgemeester en wethouders" }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "slots": {
+      "s-root-children": {
+        "id": "s-root-children",
+        "nodeId": "n-root",
+        "name": "children",
+        "children": [
+          "n-address-block",
+          "n-date-reference",
+          "n-salutation",
+          "n-intro",
+          "n-body",
+          "n-procedure",
+          "n-closing"
+        ]
+      }
+    }
+  },
+  "variants": [],
+  "publishTo": ["production"]
+}
