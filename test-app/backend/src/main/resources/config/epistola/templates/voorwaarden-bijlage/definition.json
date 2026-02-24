@@ -510,14 +510,6 @@
       }
     }
   },
-  "variants": [
-    {
-      "id": "default",
-      "title": "Standaard",
-      "attributes": {
-        "language": "nl"
-      }
-    }
-  ],
+  "variants": [],
   "publishTo": ["production"]
 }
