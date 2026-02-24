@@ -115,8 +115,7 @@ spring:
                     keycloakapi:
                         client-id: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTID}
                         client-secret: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTSECRET}
-                        authorization-grant-type: authorization_code
-                        scope: openid
+                        authorization-grant-type: client_credentials
 
 server:
     port: 8080
