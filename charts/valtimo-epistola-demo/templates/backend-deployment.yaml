@@ -76,6 +76,10 @@ spec:
             - name: VALTIMO_PLUGIN_ENCRYPTIONSECRET
               value: {{ .Values.backend.valtimo.pluginEncryptionSecret | quote }}
 
+            # Epistola
+            - name: EPISTOLA_BASE_URL
+              value: {{ include "valtimo-demo.epistola.serviceUrl" . | quote }}
+
             # Operaton BPMN engine
             - name: OPERATON_BPM_ADMINUSER_PASSWORD
               value: {{ .Values.backend.operaton.adminPassword | quote }}

@@ -122,7 +122,7 @@ Epistola service URL (for Valtimo backend to reach Epistola).
 */}}
 {{- define "valtimo-demo.epistola.serviceUrl" -}}
 {{- if .Values.epistola.enabled }}
-{{- printf "http://%s-epistola:%v" .Release.Name (.Values.epistola.service.port | default 8080) }}
+{{- printf "http://%s-epistola:%v/api" .Release.Name (.Values.epistola.service.port | default 8080) }}
 {{- else }}
 {{- .Values.externalEpistola.url }}
 {{- end }}

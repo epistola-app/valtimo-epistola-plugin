@@ -168,6 +168,8 @@ externalKeycloak:
   frontendUrl: ""
 
 externalEpistola:
+  # URL of an external Epistola instance (must include the /api path suffix)
+  # Example: http://epistola.my-namespace.svc.cluster.local:8080/api
   url: ""
 
 # =============================================================================
