@@ -8,7 +8,8 @@ import {
 } from '@valtimo/plugin';
 import {FormModule, FormOutput, InputModule, SelectItem, SelectModule} from '@valtimo/components';
 import {CaseManagementParams, ManagementContext} from '@valtimo/shared';
-import {BehaviorSubject, combineLatest, Observable, of, Subject, Subscription} from 'rxjs';
+import {ProcessLinkStateService} from '@valtimo/process-link';
+import {BehaviorSubject, combineLatest, merge, Observable, of, Subject, Subscription} from 'rxjs';
 import {catchError, filter, map, take, takeUntil} from 'rxjs/operators';
 import {GenerateDocumentConfig, TemplateField, VariantInfo} from '../../models';
 import {EpistolaPluginService} from '../../services';
@@ -99,7 +100,10 @@ export class GenerateDocumentConfigurationComponent
   private readonly valid$ = new BehaviorSubject<boolean>(false);
   private pluginConfigurationId$ = new BehaviorSubject<string>('');
 
-  constructor(private readonly epistolaPluginService: EpistolaPluginService) {}
+  constructor(
+    private readonly epistolaPluginService: EpistolaPluginService,
+    private readonly processLinkStateService: ProcessLinkStateService
+  ) {}
 
   ngOnInit(): void {
     this.initContext();
@@ -234,14 +238,32 @@ export class GenerateDocumentConfigurationComponent
   }
 
   private initPluginConfiguration(): void {
+    const sources: Observable<string>[] = [];
+
+    // Create mode: framework emits when user selects a plugin configuration
     if (this.selectedPluginConfigurationData$) {
-      this.selectedPluginConfigurationData$.pipe(
-        takeUntil(this.destroy$),
-        filter(config => !!config?.configurationId)
-      ).subscribe(config => {
-        this.pluginConfigurationId$.next(config.configurationId);
-      });
+      sources.push(
+        this.selectedPluginConfigurationData$.pipe(
+          filter(config => !!config?.configurationId),
+          map(config => config.configurationId)
+        )
+      );
     }
+
+    // Edit mode: read pluginConfigurationId from the ProcessLink entity
+    // (selectedPluginConfigurationData$ does not emit in edit mode)
+    sources.push(
+      this.processLinkStateService.selectedProcessLink$.pipe(
+        filter(processLink => !!processLink?.pluginConfigurationId),
+        map(processLink => processLink.pluginConfigurationId!)
+      )
+    );
+
+    merge(...sources).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(configurationId => {
+      this.pluginConfigurationId$.next(configurationId);
+    });
   }
 
   private initTemplatesLoading(): void {
