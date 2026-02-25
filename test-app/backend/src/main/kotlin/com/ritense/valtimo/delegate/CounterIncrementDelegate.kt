@@ -15,10 +15,10 @@ import org.springframework.stereotype.Component
  */
 @Component("counterIncrement")
 class CounterIncrementDelegate : JavaDelegate {
-
     override fun execute(execution: DelegateExecution) {
-        val varName = execution.getVariable("counterVariable") as? String
-            ?: throw IllegalArgumentException("Input parameter 'counterVariable' is required")
+        val varName =
+            execution.getVariable("counterVariable") as? String
+                ?: throw IllegalArgumentException("Input parameter 'counterVariable' is required")
 
         // Synchronize on the process instance ID to prevent concurrent modification
         // when multiple parallel multi-instance iterations complete simultaneously
