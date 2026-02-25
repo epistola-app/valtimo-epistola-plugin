@@ -21,7 +21,6 @@ export interface EpistolaPluginConfig extends PluginConfigurationData {
  * - By attributes: set variantAttributes with key-value pairs (values can be value resolver expressions)
  */
 export interface GenerateDocumentConfig {
-  pluginConfigurationId?: string;
   templateId: string;
   variantId?: string;
   variantAttributes?: Record<string, string>;

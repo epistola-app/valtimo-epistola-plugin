@@ -8,6 +8,7 @@ import {
 } from '@valtimo/plugin';
 import {FormModule, FormOutput, InputModule, SelectItem, SelectModule} from '@valtimo/components';
 import {CaseManagementParams, ManagementContext} from '@valtimo/shared';
+import {ProcessLinkStateService} from '@valtimo/process-link';
 import {BehaviorSubject, combineLatest, merge, Observable, of, Subject, Subscription} from 'rxjs';
 import {catchError, filter, map, take, takeUntil} from 'rxjs/operators';
 import {GenerateDocumentConfig, TemplateField, VariantInfo} from '../../models';
@@ -99,7 +100,10 @@ export class GenerateDocumentConfigurationComponent
   private readonly valid$ = new BehaviorSubject<boolean>(false);
   private pluginConfigurationId$ = new BehaviorSubject<string>('');
 
-  constructor(private readonly epistolaPluginService: EpistolaPluginService) {}
+  constructor(
+    private readonly epistolaPluginService: EpistolaPluginService,
+    private readonly processLinkStateService: ProcessLinkStateService
+  ) {}
 
   ngOnInit(): void {
     this.initContext();
@@ -246,23 +250,20 @@ export class GenerateDocumentConfigurationComponent
       );
     }
 
-    // Edit mode: read pluginConfigurationId from saved config
-    if (this.prefillConfiguration$) {
-      sources.push(
-        this.prefillConfiguration$.pipe(
-          filter(config => !!config?.pluginConfigurationId),
-          map(config => config.pluginConfigurationId!)
-        )
-      );
-    }
+    // Edit mode: read pluginConfigurationId from the ProcessLink entity
+    // (selectedPluginConfigurationData$ does not emit in edit mode)
+    sources.push(
+      this.processLinkStateService.selectedProcessLink$.pipe(
+        filter(processLink => !!processLink?.pluginConfigurationId),
+        map(processLink => processLink.pluginConfigurationId!)
+      )
+    );
 
-    if (sources.length > 0) {
-      merge(...sources).pipe(
-        takeUntil(this.destroy$)
-      ).subscribe(configurationId => {
-        this.pluginConfigurationId$.next(configurationId);
-      });
-    }
+    merge(...sources).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(configurationId => {
+      this.pluginConfigurationId$.next(configurationId);
+    });
   }
 
   private initTemplatesLoading(): void {
@@ -388,12 +389,11 @@ export class GenerateDocumentConfigurationComponent
 
   private openSaveSubscription(): void {
     this.saveSubscription = this.save$?.subscribe(() => {
-      combineLatest([this.formValue$, this.valid$, this.dataMapping$, this.pluginConfigurationId$])
+      combineLatest([this.formValue$, this.valid$, this.dataMapping$])
         .pipe(take(1))
-        .subscribe(([formValue, valid, dataMapping, pluginConfigurationId]) => {
+        .subscribe(([formValue, valid, dataMapping]) => {
           if (valid && formValue) {
             const config: GenerateDocumentConfig = {
-              pluginConfigurationId: pluginConfigurationId || undefined,
               templateId: formValue.templateId!,
               environmentId: formValue.environmentId || undefined,
               dataMapping: dataMapping,
