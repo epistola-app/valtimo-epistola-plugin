@@ -59,6 +59,9 @@ importers:
       '@valtimo/plugin':
         specifier: ^13.0.0
         version: 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
+      '@valtimo/process-link':
+        specifier: ^13.0.0
+        version: 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/shared':
         specifier: ^13.0.0
         version: 13.8.0(@angular/common@19.2.17(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.17(rxjs@7.8.2)(zone.js@0.15.1))
