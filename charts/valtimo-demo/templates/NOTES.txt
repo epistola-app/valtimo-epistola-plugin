@@ -40,7 +40,13 @@ Valtimo Epistola Demo has been deployed!
 
   Backend:    {{ include "valtimo-demo.backend.fullname" . }}:{{ .Values.backend.service.port }}
   Frontend:   {{ include "valtimo-demo.frontend.fullname" . }}:{{ .Values.frontend.service.port }}
-  PostgreSQL: {{ include "valtimo-demo.postgresql.host" . }}:5432
+{{- if eq .Values.database.type "cnpg" }}
+  PostgreSQL: {{ include "valtimo-demo.cnpg.clusterName" . }} (CNPG Cluster)
+{{- else if eq .Values.database.type "cnpgExisting" }}
+  PostgreSQL: {{ .Values.database.cnpgExisting.clusterName }} (existing CNPG Cluster)
+{{- else if eq .Values.database.type "external" }}
+  PostgreSQL: {{ .Values.database.external.host }}:{{ .Values.database.external.port }}
+{{- end }}
 {{- if .Values.keycloak.enabled }}
   Keycloak:   {{ .Release.Name }}-keycloak:{{ .Values.keycloak.service.ports.http | default 80 }}
 {{- end }}

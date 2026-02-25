@@ -23,11 +23,6 @@ dependencies:
     repository: "oci://ghcr.io/epistola-app/charts"
     condition: epistola.enabled
 
-  - name: postgresql
-    version: "~16"
-    repository: "oci://registry-1.docker.io/bitnamicharts"
-    alias: valtimoPostgresql
-
   - name: keycloak
     version: "~24"
     repository: "oci://registry-1.docker.io/bitnamicharts"

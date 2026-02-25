@@ -1,12 +1,9 @@
 dependencies:
 - name: epistola
   repository: oci://ghcr.io/epistola-app/charts
-  version: 0.1.1
-- name: postgresql
-  repository: oci://registry-1.docker.io/bitnamicharts
-  version: 16.7.27
+  version: 1.0.0
 - name: keycloak
   repository: oci://registry-1.docker.io/bitnamicharts
   version: 24.9.0
-digest: sha256:7eb6124ef799b080c78569d3feae319700730fce13a42fcd042f3617f870dc63
-generated: "2026-02-11T21:31:58.599005+01:00"
+digest: sha256:e871d227fd373304937328fbd945a6a0ed9345821416a42d50e49884006273d2
+generated: "2026-02-25T13:41:21.957751+01:00"

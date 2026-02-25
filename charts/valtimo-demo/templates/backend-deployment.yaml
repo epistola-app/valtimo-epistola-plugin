@@ -46,17 +46,33 @@ spec:
               value: {{ .Values.backend.springProfilesActive | quote }}
 
             # Database
+            {{- if or (eq .Values.database.type "cnpg") (eq .Values.database.type "cnpgExisting") }}
             - name: SPRING_DATASOURCE_URL
-              value: "jdbc:postgresql://{{ include "valtimo-demo.postgresql.host" . }}:5432/{{ .Values.valtimoPostgresql.auth.database }}"
-            - name: SPRING_DATASOURCE_NAME
-              value: {{ .Values.valtimoPostgresql.auth.database | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "valtimo-demo.cnpg.secretName" . }}
+                  key: jdbc-uri
             - name: SPRING_DATASOURCE_USERNAME
-              value: {{ .Values.valtimoPostgresql.auth.username | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "valtimo-demo.cnpg.secretName" . }}
+                  key: username
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ printf "%s-valtimopostgresql" .Release.Name }}
+                  name: {{ include "valtimo-demo.cnpg.secretName" . }}
                   key: password
+            {{- else if eq .Values.database.type "external" }}
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://{{ .Values.database.external.host }}:{{ .Values.database.external.port }}/{{ .Values.database.external.database }}"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: {{ .Values.database.external.username | quote }}
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ required "database.external.existingSecret is required" .Values.database.external.existingSecret }}
+                  key: {{ .Values.database.external.secretKey }}
+            {{- end }}
 
             # RabbitMQ (disabled via autoconfigure exclude in application.yml, but env vars set for completeness)
             - name: SPRING_RABBITMQ_HOST

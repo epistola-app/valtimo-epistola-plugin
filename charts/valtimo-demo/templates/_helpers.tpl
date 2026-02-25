@@ -111,10 +111,31 @@ Falls back to internal URL if not explicitly set.
 {{- end }}
 
 {{/*
-Valtimo PostgreSQL hostname.
+CNPG cluster name for Valtimo database.
 */}}
-{{- define "valtimo-demo.postgresql.host" -}}
-{{- printf "%s-valtimopostgresql" .Release.Name }}
+{{- define "valtimo-demo.cnpg.clusterName" -}}
+{{- if .Values.database.cnpg.name }}
+{{- .Values.database.cnpg.name }}
+{{- else }}
+{{- printf "%s-db" (include "valtimo-demo.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+{{- end }}
+
+{{/*
+CNPG secret name for Valtimo database credentials.
+For cnpg: auto-generated "{clusterName}-app"
+For cnpgExisting: explicit secretName or "{clusterName}-app"
+*/}}
+{{- define "valtimo-demo.cnpg.secretName" -}}
+{{- if eq .Values.database.type "cnpgExisting" }}
+{{- if .Values.database.cnpgExisting.secretName }}
+{{- .Values.database.cnpgExisting.secretName }}
+{{- else }}
+{{- printf "%s-app" .Values.database.cnpgExisting.clusterName }}
+{{- end }}
+{{- else }}
+{{- printf "%s-app" (include "valtimo-demo.cnpg.clusterName" .) }}
+{{- end }}
 {{- end }}
 
 {{/*

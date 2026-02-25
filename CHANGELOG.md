@@ -202,6 +202,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Sequential archival via Documenten API (store) and Zaken API (link to zaak)
   - ZGW plugin specifications registered in frontend (OpenZaak, Documenten API, Zaken API, Catalogi API)
 
+- **Helm**: Replaced Bitnami PostgreSQL subchart with CloudNativePG (CNPG) database support in the valtimo-demo chart. Three modes: `cnpg` (create Cluster), `cnpgExisting` (use existing Cluster), `external` (plain JDBC). Default: `cnpg`. **Breaking**: `valtimoPostgresql` values key replaced by `database`.
+
 ### Changed
 
 - **Callback Endpoint Refactored**: `EpistolaCallbackResource` now delegates to `EpistolaMessageCorrelationService` instead of using `RuntimeService` directly. Uses `correlateAllWithResult()` for safe multi-instance correlation.

@@ -186,17 +186,38 @@ epistola:
   #     host: my-epistola-db
 
 # =============================================================================
-# Subchart: PostgreSQL (Bitnami) for Valtimo
+# Database (Valtimo PostgreSQL)
 # =============================================================================
-valtimoPostgresql:
-  auth:
-    username: epistola
-    password: epistola
-    database: epistola
+database:
+  # Options: cnpg, cnpgExisting, external
+  type: "cnpg"
 
-  primary:
-    persistence:
+  # Create a new CNPG Cluster (type: cnpg)
+  cnpg:
+    name: ""              # defaults to "{fullname}-db"
+    instances: 1
+    postgresVersion: 17
+    database: valtimo
+    owner: valtimo
+    storage:
       size: 2Gi
+      storageClass: ""
+    resources: {}
+    parameters: {}
+
+  # Use existing CNPG Cluster (type: cnpgExisting)
+  cnpgExisting:
+    clusterName: ""       # required
+    secretName: ""        # defaults to "{clusterName}-app"
+
+  # External PostgreSQL (type: external)
+  external:
+    host: ""
+    port: 5432
+    database: valtimo
+    username: valtimo
+    existingSecret: ""    # required — secret containing password
+    secretKey: password
 
 # =============================================================================
 # Subchart: Keycloak (Bitnami)
