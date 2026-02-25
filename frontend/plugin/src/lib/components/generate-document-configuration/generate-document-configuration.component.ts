@@ -8,7 +8,7 @@ import {
 } from '@valtimo/plugin';
 import {FormModule, FormOutput, InputModule, SelectItem, SelectModule} from '@valtimo/components';
 import {CaseManagementParams, ManagementContext} from '@valtimo/shared';
-import {BehaviorSubject, combineLatest, Observable, of, Subject, Subscription} from 'rxjs';
+import {BehaviorSubject, combineLatest, merge, Observable, of, Subject, Subscription} from 'rxjs';
 import {catchError, filter, map, take, takeUntil} from 'rxjs/operators';
 import {GenerateDocumentConfig, TemplateField, VariantInfo} from '../../models';
 import {EpistolaPluginService} from '../../services';
@@ -234,12 +234,33 @@ export class GenerateDocumentConfigurationComponent
   }
 
   private initPluginConfiguration(): void {
+    const sources: Observable<string>[] = [];
+
+    // Create mode: framework emits when user selects a plugin configuration
     if (this.selectedPluginConfigurationData$) {
-      this.selectedPluginConfigurationData$.pipe(
-        takeUntil(this.destroy$),
-        filter(config => !!config?.configurationId)
-      ).subscribe(config => {
-        this.pluginConfigurationId$.next(config.configurationId);
+      sources.push(
+        this.selectedPluginConfigurationData$.pipe(
+          filter(config => !!config?.configurationId),
+          map(config => config.configurationId)
+        )
+      );
+    }
+
+    // Edit mode: read pluginConfigurationId from saved config
+    if (this.prefillConfiguration$) {
+      sources.push(
+        this.prefillConfiguration$.pipe(
+          filter(config => !!config?.pluginConfigurationId),
+          map(config => config.pluginConfigurationId!)
+        )
+      );
+    }
+
+    if (sources.length > 0) {
+      merge(...sources).pipe(
+        takeUntil(this.destroy$)
+      ).subscribe(configurationId => {
+        this.pluginConfigurationId$.next(configurationId);
       });
     }
   }
@@ -367,11 +388,12 @@ export class GenerateDocumentConfigurationComponent
 
   private openSaveSubscription(): void {
     this.saveSubscription = this.save$?.subscribe(() => {
-      combineLatest([this.formValue$, this.valid$, this.dataMapping$])
+      combineLatest([this.formValue$, this.valid$, this.dataMapping$, this.pluginConfigurationId$])
         .pipe(take(1))
-        .subscribe(([formValue, valid, dataMapping]) => {
+        .subscribe(([formValue, valid, dataMapping, pluginConfigurationId]) => {
           if (valid && formValue) {
             const config: GenerateDocumentConfig = {
+              pluginConfigurationId: pluginConfigurationId || undefined,
               templateId: formValue.templateId!,
               environmentId: formValue.environmentId || undefined,
               dataMapping: dataMapping,
