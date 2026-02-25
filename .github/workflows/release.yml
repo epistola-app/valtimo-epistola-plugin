@@ -84,7 +84,7 @@ jobs:
     needs: [prepare, publish-backend]
     runs-on: ubuntu-latest
     env:
-      IMAGE: ghcr.io/epistola-app/valtimo-epistola-plugin/backend
+      IMAGE: ghcr.io/epistola-app/valtimo/demo-backend
     steps:
       - uses: actions/checkout@v4
 
@@ -127,7 +127,7 @@ jobs:
     needs: [prepare, publish-frontend]
     runs-on: ubuntu-latest
     env:
-      IMAGE: ghcr.io/epistola-app/valtimo-epistola-plugin/frontend
+      IMAGE: ghcr.io/epistola-app/valtimo/demo-frontend
     steps:
       - uses: actions/checkout@v4
 

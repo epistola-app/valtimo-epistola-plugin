@@ -19,8 +19,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  CHART_NAME: valtimo-epistola-demo
-  CHART_PATH: charts/valtimo-epistola-demo
+  CHART_NAME: valtimo-demo
+  CHART_PATH: charts/valtimo-demo
 
 jobs:
   lint:
