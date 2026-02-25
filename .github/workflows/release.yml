@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     branches:
+      - main
       - 'release/**'
   workflow_dispatch:
     inputs:
@@ -20,6 +21,10 @@ jobs:
   version:
     name: Determine version
     runs-on: ubuntu-latest
+    if: >-
+      contains(github.event.head_commit.message, '[release]') ||
+      github.event_name == 'workflow_dispatch' ||
+      startsWith(github.ref, 'refs/heads/release/')
     outputs:
       version: ${{ steps.version.outputs.version }}
       major_minor: ${{ steps.version.outputs.major_minor }}
@@ -40,17 +45,27 @@ jobs:
             exit 0
           fi
 
-          # Extract major.minor from branch name (release/X.Y → X.Y)
+          # Read major.minor from build.gradle.kts
+          PROJECT_VERSION=$(grep -E '^version\s*=' build.gradle.kts | head -1 | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
+          if [ -z "$PROJECT_VERSION" ]; then
+            echo "::error::Could not read version from build.gradle.kts"
+            exit 1
+          fi
+          MAJOR_MINOR=$(echo "$PROJECT_VERSION" | sed -E 's/([0-9]+\.[0-9]+)\.[0-9]+/\1/')
+          echo "build.gradle.kts version: ${PROJECT_VERSION}, Major.Minor: ${MAJOR_MINOR}"
+
+          # For release/* branches, validate that branch version matches build.gradle.kts
           BRANCH="${GITHUB_REF#refs/heads/}"
           if [[ "$BRANCH" == release/* ]]; then
-            MAJOR_MINOR="${BRANCH#release/}"
-          else
-            echo "::error::Cannot determine version: not a release branch and no version override provided"
-            exit 1
+            BRANCH_VERSION="${BRANCH#release/}"
+            if [ "$BRANCH_VERSION" != "$MAJOR_MINOR" ]; then
+              echo "::error::Branch version ${BRANCH_VERSION} does not match build.gradle.kts version ${MAJOR_MINOR}"
+              exit 1
+            fi
+            echo "Branch version ${BRANCH_VERSION} matches build.gradle.kts"
           fi
 
           echo "major_minor=${MAJOR_MINOR}" >> "$GITHUB_OUTPUT"
-          echo "Branch: ${BRANCH}, Major.Minor: ${MAJOR_MINOR}"
 
           # Find highest patch version among existing tags for this major.minor
           LATEST_PATCH=-1
