@@ -1,33 +1,106 @@
 name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - 'release/**'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version override (e.g. 1.0.3). Leave empty for auto-increment.'
+        required: false
+        type: string
 
 permissions:
-  contents: read
+  contents: write
   packages: write
   id-token: write
 
 jobs:
-  prepare:
-    name: Prepare
+  version:
+    name: Determine version
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
       major_minor: ${{ steps.version.outputs.major_minor }}
     steps:
-      - name: Extract version from tag
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate version
         id: version
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "major_minor=${VERSION%.*}" >> "$GITHUB_OUTPUT"
-          echo "Releasing version: $VERSION"
+          # Manual override takes precedence
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION="${{ inputs.version }}"
+            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+            echo "major_minor=${VERSION%.*}" >> "$GITHUB_OUTPUT"
+            echo "Using manual version override: ${VERSION}"
+            exit 0
+          fi
+
+          # Extract major.minor from branch name (release/X.Y → X.Y)
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          if [[ "$BRANCH" == release/* ]]; then
+            MAJOR_MINOR="${BRANCH#release/}"
+          else
+            echo "::error::Cannot determine version: not a release branch and no version override provided"
+            exit 1
+          fi
+
+          echo "major_minor=${MAJOR_MINOR}" >> "$GITHUB_OUTPUT"
+          echo "Branch: ${BRANCH}, Major.Minor: ${MAJOR_MINOR}"
+
+          # Find highest patch version among existing tags for this major.minor
+          LATEST_PATCH=-1
+          for tag in $(git tag -l "v${MAJOR_MINOR}.*"); do
+            PATCH=$(echo "$tag" | sed -E "s/v${MAJOR_MINOR}\.([0-9]+)/\1/")
+            if [ "$PATCH" -gt "$LATEST_PATCH" ] 2>/dev/null; then
+              LATEST_PATCH=$PATCH
+            fi
+          done
+
+          NEXT_PATCH=$((LATEST_PATCH + 1))
+          VERSION="${MAJOR_MINOR}.${NEXT_PATCH}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Release version: ${VERSION} (previous highest patch: ${LATEST_PATCH})"
+
+  build:
+    name: Build & Test
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build & test backend plugin
+        run: ./gradlew :backend:plugin:build -Pversion=${{ needs.version.outputs.version }}
+
+      - name: Build frontend plugin
+        run: pnpm --filter @epistola.app/valtimo-plugin build
 
   publish-backend:
     name: Publish Backend to Maven Central
-    needs: prepare
+    needs: [version, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +113,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Publish to Maven Central
-        run: ./gradlew :backend:plugin:publishAndReleaseToMavenCentral -Pversion=${{ needs.prepare.outputs.version }}
+        run: ./gradlew :backend:plugin:publishAndReleaseToMavenCentral -Pversion=${{ needs.version.outputs.version }}
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.OSSRH_USERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.OSSRH_PASSWORD }}
@@ -50,7 +123,7 @@ jobs:
 
   publish-frontend:
     name: Publish Frontend to npm
-    needs: prepare
+    needs: [version, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -74,14 +147,14 @@ jobs:
       - name: Set version and publish
         working-directory: dist/epistola-plugin
         run: |
-          npm version "${{ needs.prepare.outputs.version }}" --no-git-tag-version
+          npm version "${{ needs.version.outputs.version }}" --no-git-tag-version
           npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   docker-backend:
     name: Docker Backend
-    needs: [prepare, publish-backend]
+    needs: [version, publish-backend]
     runs-on: ubuntu-latest
     env:
       IMAGE: ghcr.io/epistola-app/valtimo/demo-backend
@@ -96,7 +169,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build WAR
-        run: ./gradlew :test-app:backend:bootWar -Pversion=${{ needs.prepare.outputs.version }}
+        run: ./gradlew :test-app:backend:bootWar -Pversion=${{ needs.version.outputs.version }}
 
       - uses: docker/login-action@v3
         with:
@@ -113,8 +186,8 @@ jobs:
           context: test-app/backend
           push: true
           tags: |
-            ${{ env.IMAGE }}:${{ needs.prepare.outputs.version }}
-            ${{ env.IMAGE }}:${{ needs.prepare.outputs.major_minor }}
+            ${{ env.IMAGE }}:${{ needs.version.outputs.version }}
+            ${{ env.IMAGE }}:${{ needs.version.outputs.major_minor }}
             ${{ env.IMAGE }}:sha-${{ github.sha }}
 
       - uses: sigstore/cosign-installer@v3
@@ -124,7 +197,7 @@ jobs:
 
   docker-frontend:
     name: Docker Frontend
-    needs: [prepare, publish-frontend]
+    needs: [version, publish-frontend]
     runs-on: ubuntu-latest
     env:
       IMAGE: ghcr.io/epistola-app/valtimo/demo-frontend
@@ -164,11 +237,54 @@ jobs:
           context: test-app/frontend
           push: true
           tags: |
-            ${{ env.IMAGE }}:${{ needs.prepare.outputs.version }}
-            ${{ env.IMAGE }}:${{ needs.prepare.outputs.major_minor }}
+            ${{ env.IMAGE }}:${{ needs.version.outputs.version }}
+            ${{ env.IMAGE }}:${{ needs.version.outputs.major_minor }}
             ${{ env.IMAGE }}:sha-${{ github.sha }}
 
       - uses: sigstore/cosign-installer@v3
 
       - name: Sign image
         run: cosign sign --yes "${{ env.IMAGE }}@${{ steps.build.outputs.digest }}"
+
+  github-release:
+    name: Create GitHub Release
+    needs: [version, docker-backend, docker-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: v${{ needs.version.outputs.version }}
+          body: |
+            ## v${{ needs.version.outputs.version }}
+
+            ### Maven (backend plugin)
+            ```xml
+            <dependency>
+                <groupId>app.epistola.valtimo</groupId>
+                <artifactId>epistola-plugin</artifactId>
+                <version>${{ needs.version.outputs.version }}</version>
+            </dependency>
+            ```
+
+            ### Gradle (Kotlin DSL)
+            ```kotlin
+            implementation("app.epistola.valtimo:epistola-plugin:${{ needs.version.outputs.version }}")
+            ```
+
+            ### npm (frontend plugin)
+            ```bash
+            npm install @epistola.app/valtimo-plugin@${{ needs.version.outputs.version }}
+            ```
+
+            ### Docker images
+            ```
+            ghcr.io/epistola-app/valtimo/demo-backend:${{ needs.version.outputs.version }}
+            ghcr.io/epistola-app/valtimo/demo-frontend:${{ needs.version.outputs.version }}
+            ```
+          draft: false
+          prerelease: false
+          generate_release_notes: true
