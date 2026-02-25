@@ -1,0 +1,25 @@
+{
+    "display": "form",
+    "components": [
+        {
+            "key": "pv:companyName",
+            "type": "textfield",
+            "input": true,
+            "label": "Company Name",
+            "tableView": true,
+            "validate": {
+                "required": true
+            }
+        },
+        {
+            "key": "submit",
+            "type": "button",
+            "input": true,
+            "label": "Submit",
+            "tableView": false,
+            "disableOnInvalid": true,
+            "action": "submit",
+            "theme": "primary"
+        }
+    ]
+}

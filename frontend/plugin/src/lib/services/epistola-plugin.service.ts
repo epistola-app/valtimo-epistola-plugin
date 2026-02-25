@@ -2,11 +2,12 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {ConfigService} from '@valtimo/shared';
 import {Observable} from 'rxjs';
-import {TemplateDetails, TemplateInfo} from '../models';
+import {EnvironmentInfo, TemplateDetails, TemplateInfo, ValidationResult, VariantInfo} from '../models';
 
 /**
  * Service for interacting with Epistola plugin API endpoints.
- * Provides methods to fetch templates and template details.
+ * Provides methods to fetch templates, environments, variants,
+ * process variables, and validate mappings.
  */
 @Injectable()
 export class EpistolaPluginService {
@@ -21,9 +22,6 @@ export class EpistolaPluginService {
 
   /**
    * Get all available templates for a plugin configuration.
-   *
-   * @param pluginConfigurationId The plugin configuration ID
-   * @returns Observable of template list
    */
   getTemplates(pluginConfigurationId: string): Observable<TemplateInfo[]> {
     return this.http.get<TemplateInfo[]>(
@@ -33,14 +31,52 @@ export class EpistolaPluginService {
 
   /**
    * Get template details including its fields.
-   *
-   * @param pluginConfigurationId The plugin configuration ID
-   * @param templateId The template ID
-   * @returns Observable of template details
    */
   getTemplateDetails(pluginConfigurationId: string, templateId: string): Observable<TemplateDetails> {
     return this.http.get<TemplateDetails>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}`
+    );
+  }
+
+  /**
+   * Get all available environments for a plugin configuration.
+   */
+  getEnvironments(pluginConfigurationId: string): Observable<EnvironmentInfo[]> {
+    return this.http.get<EnvironmentInfo[]>(
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/environments`
+    );
+  }
+
+  /**
+   * Get all variants for a specific template.
+   */
+  getVariants(pluginConfigurationId: string, templateId: string): Observable<VariantInfo[]> {
+    return this.http.get<VariantInfo[]>(
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}/variants`
+    );
+  }
+
+  /**
+   * Discover process variable names for a given process definition.
+   */
+  getProcessVariables(processDefinitionKey: string): Observable<string[]> {
+    return this.http.get<string[]>(
+      `${this.apiEndpoint}/process-variables`,
+      {params: {processDefinitionKey}}
+    );
+  }
+
+  /**
+   * Validate that a data mapping covers all required template fields.
+   */
+  validateMapping(
+    pluginConfigurationId: string,
+    templateId: string,
+    dataMapping: Record<string, any>
+  ): Observable<ValidationResult> {
+    return this.http.post<ValidationResult>(
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}/validate-mapping`,
+      {dataMapping}
     );
   }
 }

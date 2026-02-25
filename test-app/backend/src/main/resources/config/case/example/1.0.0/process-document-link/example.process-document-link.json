@@ -4,5 +4,11 @@
         "canInitializeDocument": true,
         "startableByUser": true,
         "processIsVisibleInMenu": true
+    },
+    {
+        "processDefinitionKey": "single-document",
+        "canInitializeDocument": false,
+        "startableByUser": true,
+        "processIsVisibleInMenu": false
     }
 ]

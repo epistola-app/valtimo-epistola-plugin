@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  id="Definitions_bulk"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  exporter="Camunda Modeler" exporterVersion="5.23.0">
+
+  <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
+  <bpmn:error id="Error_EpistolaDocumentError" name="EpistolaDocumentError" />
+
+  <bpmn:process id="bulk-tax-letters" name="Massale Belastingbrieven" isExecutable="true">
+    <bpmn:documentation>Generates tax letters for multiple taxpayers in parallel using a multi-instance subprocess.</bpmn:documentation>
+
+    <bpmn:startEvent id="startEvent" name="Bulk job gestart">
+      <bpmn:outgoing>Flow_to_parse</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- Parse the JSON input into a list of taxpayer maps -->
+    <bpmn:scriptTask id="parse-taxpayers" name="Parse Taxpayer Data" camunda:scriptFormat="groovy">
+      <bpmn:incoming>Flow_to_parse</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_subprocess</bpmn:outgoing>
+      <bpmn:script><![CDATA[
+import groovy.json.JsonSlurper
+
+def jsonSlurper = new JsonSlurper()
+def taxpayers = jsonSlurper.parseText(execution.getVariable("taxpayersJson") as String)
+
+execution.setVariable("taxpayers", taxpayers)
+execution.setVariable("totalCount", taxpayers.size())
+execution.setVariable("successCount", 0)
+execution.setVariable("failCount", 0)
+      ]]></bpmn:script>
+    </bpmn:scriptTask>
+
+    <!-- Multi-instance subprocess: one iteration per taxpayer -->
+    <bpmn:subProcess id="letter-subprocess" name="Genereer Brief">
+      <bpmn:incoming>Flow_to_subprocess</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_result</bpmn:outgoing>
+      <bpmn:multiInstanceLoopCharacteristics isSequential="false"
+          camunda:collection="${taxpayers}" camunda:elementVariable="taxpayer" />
+
+      <!-- Subprocess internal flow -->
+      <bpmn:startEvent id="sub-start">
+        <bpmn:outgoing>Flow_sub_to_generate</bpmn:outgoing>
+      </bpmn:startEvent>
+
+      <bpmn:serviceTask id="generate-letter" name="Genereer Belastingbrief">
+        <bpmn:incoming>Flow_sub_to_generate</bpmn:incoming>
+        <bpmn:outgoing>Flow_sub_to_wait</bpmn:outgoing>
+      </bpmn:serviceTask>
+
+      <bpmn:boundaryEvent id="boundary-generate-error" attachedToRef="generate-letter">
+        <bpmn:outgoing>Flow_gen_error_to_fail</bpmn:outgoing>
+        <bpmn:errorEventDefinition id="ErrorDef_gen" errorRef="Error_EpistolaDocumentError" />
+      </bpmn:boundaryEvent>
+
+      <bpmn:intermediateCatchEvent id="wait-for-letter" name="Wacht op brief">
+        <bpmn:incoming>Flow_sub_to_wait</bpmn:incoming>
+        <bpmn:outgoing>Flow_sub_to_check</bpmn:outgoing>
+        <bpmn:messageEventDefinition id="MessageDef_letter" messageRef="Message_EpistolaDocumentGenerated" />
+      </bpmn:intermediateCatchEvent>
+
+      <bpmn:exclusiveGateway id="check-letter-status" name="Brief gereed?">
+        <bpmn:incoming>Flow_sub_to_check</bpmn:incoming>
+        <bpmn:outgoing>Flow_letter_ok</bpmn:outgoing>
+        <bpmn:outgoing>Flow_letter_fail</bpmn:outgoing>
+      </bpmn:exclusiveGateway>
+
+      <bpmn:serviceTask id="download-letter" name="Download Brief">
+        <bpmn:incoming>Flow_letter_ok</bpmn:incoming>
+        <bpmn:outgoing>Flow_to_inc_success</bpmn:outgoing>
+      </bpmn:serviceTask>
+
+      <!-- Increment success counter -->
+      <bpmn:serviceTask id="increment-success" name="Tel succes"
+                         camunda:delegateExpression="${counterIncrement}">
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="counterVariable">successCount</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_to_inc_success</bpmn:incoming>
+        <bpmn:outgoing>Flow_to_sub_end_ok</bpmn:outgoing>
+      </bpmn:serviceTask>
+
+      <!-- Increment fail counter -->
+      <bpmn:serviceTask id="increment-fail" name="Tel fout"
+                         camunda:delegateExpression="${counterIncrement}">
+        <bpmn:extensionElements>
+          <camunda:inputOutput>
+            <camunda:inputParameter name="counterVariable">failCount</camunda:inputParameter>
+          </camunda:inputOutput>
+        </bpmn:extensionElements>
+        <bpmn:incoming>Flow_gen_error_to_fail</bpmn:incoming>
+        <bpmn:incoming>Flow_letter_fail</bpmn:incoming>
+        <bpmn:outgoing>Flow_to_sub_end_fail</bpmn:outgoing>
+      </bpmn:serviceTask>
+
+      <bpmn:endEvent id="sub-end-ok">
+        <bpmn:incoming>Flow_to_sub_end_ok</bpmn:incoming>
+      </bpmn:endEvent>
+
+      <bpmn:endEvent id="sub-end-fail">
+        <bpmn:incoming>Flow_to_sub_end_fail</bpmn:incoming>
+      </bpmn:endEvent>
+
+      <!-- Subprocess sequence flows -->
+      <bpmn:sequenceFlow id="Flow_sub_to_generate" sourceRef="sub-start" targetRef="generate-letter" />
+      <bpmn:sequenceFlow id="Flow_sub_to_wait" sourceRef="generate-letter" targetRef="wait-for-letter" />
+      <bpmn:sequenceFlow id="Flow_gen_error_to_fail" sourceRef="boundary-generate-error" targetRef="increment-fail" />
+      <bpmn:sequenceFlow id="Flow_sub_to_check" sourceRef="wait-for-letter" targetRef="check-letter-status" />
+      <bpmn:sequenceFlow id="Flow_letter_ok" name="Ja" sourceRef="check-letter-status" targetRef="download-letter">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaStatus == 'COMPLETED'}</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="Flow_letter_fail" name="Nee" sourceRef="check-letter-status" targetRef="increment-fail">
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaStatus != 'COMPLETED'}</bpmn:conditionExpression>
+      </bpmn:sequenceFlow>
+      <bpmn:sequenceFlow id="Flow_to_inc_success" sourceRef="download-letter" targetRef="increment-success" />
+      <bpmn:sequenceFlow id="Flow_to_sub_end_ok" sourceRef="increment-success" targetRef="sub-end-ok" />
+      <bpmn:sequenceFlow id="Flow_to_sub_end_fail" sourceRef="increment-fail" targetRef="sub-end-fail" />
+    </bpmn:subProcess>
+
+    <!-- Result overview -->
+    <bpmn:userTask id="bulk-result" name="Resultaatoverzicht">
+      <bpmn:incoming>Flow_to_result</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_end</bpmn:outgoing>
+    </bpmn:userTask>
+
+    <bpmn:endEvent id="end-success" name="Bulk job afgerond">
+      <bpmn:incoming>Flow_to_end</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- Main process sequence flows -->
+    <bpmn:sequenceFlow id="Flow_to_parse" sourceRef="startEvent" targetRef="parse-taxpayers" />
+    <bpmn:sequenceFlow id="Flow_to_subprocess" sourceRef="parse-taxpayers" targetRef="letter-subprocess" />
+    <bpmn:sequenceFlow id="Flow_to_result" sourceRef="letter-subprocess" targetRef="bulk-result" />
+    <bpmn:sequenceFlow id="Flow_to_end" sourceRef="bulk-result" targetRef="end-success" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="bulk-tax-letters">
+      <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent">
+        <dc:Bounds x="179" y="259" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="parse-taxpayers_di" bpmnElement="parse-taxpayers">
+        <dc:Bounds x="280" y="237" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="letter-subprocess_di" bpmnElement="letter-subprocess" isExpanded="true">
+        <dc:Bounds x="440" y="120" width="720" height="320" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sub-start_di" bpmnElement="sub-start">
+        <dc:Bounds x="470" y="249" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="generate-letter_di" bpmnElement="generate-letter">
+        <dc:Bounds x="560" y="227" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="boundary-generate-error_di" bpmnElement="boundary-generate-error">
+        <dc:Bounds x="592" y="289" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-for-letter_di" bpmnElement="wait-for-letter">
+        <dc:Bounds x="722" y="249" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="check-letter-status_di" bpmnElement="check-letter-status" isMarkerVisible="true">
+        <dc:Bounds x="805" y="242" width="50" height="50" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="download-letter_di" bpmnElement="download-letter">
+        <dc:Bounds x="900" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="increment-success_di" bpmnElement="increment-success">
+        <dc:Bounds x="1040" y="160" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="increment-fail_di" bpmnElement="increment-fail">
+        <dc:Bounds x="900" y="330" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sub-end-ok_di" bpmnElement="sub-end-ok">
+        <dc:Bounds x="1072" y="252" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="sub-end-fail_di" bpmnElement="sub-end-fail">
+        <dc:Bounds x="1072" y="352" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="bulk-result_di" bpmnElement="bulk-result">
+        <dc:Bounds x="1220" y="237" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-success_di" bpmnElement="end-success">
+        <dc:Bounds x="1382" y="259" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Main process edges -->
+      <bpmndi:BPMNEdge id="Flow_to_parse_di" bpmnElement="Flow_to_parse">
+        <di:waypoint x="215" y="277" />
+        <di:waypoint x="280" y="277" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_subprocess_di" bpmnElement="Flow_to_subprocess">
+        <di:waypoint x="380" y="277" />
+        <di:waypoint x="440" y="277" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_result_di" bpmnElement="Flow_to_result">
+        <di:waypoint x="1160" y="277" />
+        <di:waypoint x="1220" y="277" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_end_di" bpmnElement="Flow_to_end">
+        <di:waypoint x="1320" y="277" />
+        <di:waypoint x="1382" y="277" />
+      </bpmndi:BPMNEdge>
+
+      <!-- Subprocess edges -->
+      <bpmndi:BPMNEdge id="Flow_sub_to_generate_di" bpmnElement="Flow_sub_to_generate">
+        <di:waypoint x="506" y="267" />
+        <di:waypoint x="560" y="267" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_sub_to_wait_di" bpmnElement="Flow_sub_to_wait">
+        <di:waypoint x="660" y="267" />
+        <di:waypoint x="722" y="267" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_gen_error_to_fail_di" bpmnElement="Flow_gen_error_to_fail">
+        <di:waypoint x="610" y="325" />
+        <di:waypoint x="610" y="370" />
+        <di:waypoint x="900" y="370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_sub_to_check_di" bpmnElement="Flow_sub_to_check">
+        <di:waypoint x="758" y="267" />
+        <di:waypoint x="805" y="267" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_letter_ok_di" bpmnElement="Flow_letter_ok">
+        <di:waypoint x="830" y="242" />
+        <di:waypoint x="830" y="200" />
+        <di:waypoint x="900" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_letter_fail_di" bpmnElement="Flow_letter_fail">
+        <di:waypoint x="830" y="292" />
+        <di:waypoint x="830" y="370" />
+        <di:waypoint x="900" y="370" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_inc_success_di" bpmnElement="Flow_to_inc_success">
+        <di:waypoint x="1000" y="200" />
+        <di:waypoint x="1040" y="200" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_sub_end_ok_di" bpmnElement="Flow_to_sub_end_ok">
+        <di:waypoint x="1090" y="240" />
+        <di:waypoint x="1090" y="252" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_sub_end_fail_di" bpmnElement="Flow_to_sub_end_fail">
+        <di:waypoint x="1000" y="370" />
+        <di:waypoint x="1072" y="370" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

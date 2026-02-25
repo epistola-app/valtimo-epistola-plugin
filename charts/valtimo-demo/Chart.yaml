@@ -1,0 +1,34 @@
+apiVersion: v2
+name: valtimo-demo
+description: Demo deployment of Valtimo BPM with the Epistola document generation plugin
+type: application
+version: 0.1.0
+appVersion: "0.0.1"
+maintainers:
+  - name: epistola-app
+    url: https://github.com/epistola-app
+home: https://github.com/epistola-app/valtimo-epistola-plugin
+sources:
+  - https://github.com/epistola-app/valtimo-epistola-plugin
+keywords:
+  - valtimo
+  - epistola
+  - bpm
+  - demo
+  - document-generation
+
+dependencies:
+  - name: epistola
+    version: ">=0.1.0"
+    repository: "oci://ghcr.io/epistola-app/charts"
+    condition: epistola.enabled
+
+  - name: postgresql
+    version: "~16"
+    repository: "oci://registry-1.docker.io/bitnamicharts"
+    alias: valtimoPostgresql
+
+  - name: keycloak
+    version: "~24"
+    repository: "oci://registry-1.docker.io/bitnamicharts"
+    condition: keycloak.enabled

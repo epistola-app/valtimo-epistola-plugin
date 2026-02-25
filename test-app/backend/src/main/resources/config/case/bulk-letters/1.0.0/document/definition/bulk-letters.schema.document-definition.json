@@ -1,0 +1,15 @@
+{
+    "$id": "bulk-letters.schema",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Massale Correspondentie",
+    "description": "Bulk generation job metadata",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "description": {
+            "type": "string",
+            "maxLength": 500
+        }
+    },
+    "required": ["description"]
+}

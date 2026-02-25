@@ -1,0 +1,140 @@
+{
+    "display": "form",
+    "components": [
+        {
+            "key": "applicant",
+            "type": "fieldset",
+            "label": "Aanvrager",
+            "components": [
+                {
+                    "key": "applicant.firstName",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Voornaam",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "applicant.lastName",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Achternaam",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "applicant.bsn",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "BSN",
+                    "validate": { "required": true, "pattern": "^[0-9]{9}$" }
+                },
+                {
+                    "key": "applicant.address.street",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Straat",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "applicant.address.houseNumber",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Huisnummer",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "applicant.address.postalCode",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Postcode",
+                    "validate": { "required": true, "pattern": "^[0-9]{4}[A-Z]{2}$" }
+                },
+                {
+                    "key": "applicant.address.city",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Woonplaats",
+                    "validate": { "required": true }
+                }
+            ]
+        },
+        {
+            "key": "property",
+            "type": "fieldset",
+            "label": "Locatie",
+            "components": [
+                {
+                    "key": "property.address.street",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Straat",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "property.address.houseNumber",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Huisnummer",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "property.address.postalCode",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Postcode",
+                    "validate": { "required": true, "pattern": "^[0-9]{4}[A-Z]{2}$" }
+                },
+                {
+                    "key": "property.address.city",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Woonplaats",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "property.kadastraalNummer",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Kadastraal nummer"
+                }
+            ]
+        },
+        {
+            "key": "activities",
+            "type": "datagrid",
+            "input": true,
+            "label": "Activiteiten",
+            "reorder": true,
+            "components": [
+                {
+                    "key": "type",
+                    "type": "textfield",
+                    "input": true,
+                    "label": "Type activiteit",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "description",
+                    "type": "textarea",
+                    "input": true,
+                    "label": "Beschrijving",
+                    "validate": { "required": true }
+                },
+                {
+                    "key": "estimatedCost",
+                    "type": "number",
+                    "input": true,
+                    "label": "Geschatte kosten (€)"
+                }
+            ]
+        },
+        {
+            "key": "submit",
+            "type": "button",
+            "input": true,
+            "label": "Indienen",
+            "action": "submit",
+            "theme": "primary",
+            "disableOnInvalid": true
+        }
+    ]
+}

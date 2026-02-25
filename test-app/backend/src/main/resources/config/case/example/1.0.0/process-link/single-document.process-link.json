@@ -1,0 +1,24 @@
+[
+    {
+        "activityId": "startEvent",
+        "activityType": "bpmn:StartEvent:start",
+        "processLinkType": "form",
+        "formDefinitionName": "single-document-start"
+    },
+    {
+        "activityId": "generate-document",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "generate-document",
+        "actionProperties": {
+            "templateId": "example-template",
+            "outputFormat": "PDF",
+            "filename": "example-document.pdf",
+            "resultProcessVariable": "epistolaRequestId",
+            "dataMapping": {
+                "firstName": "doc:/firstName"
+            }
+        }
+    }
+]

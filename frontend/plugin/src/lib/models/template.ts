@@ -18,12 +18,16 @@ export interface TemplateDetails {
 
 /**
  * Represents a field in an Epistola template.
+ * Supports nested structures through the children property.
  */
 export interface TemplateField {
   name: string;
+  path: string;
   type: string;
+  fieldType: 'SCALAR' | 'OBJECT' | 'ARRAY';
   required: boolean;
   description?: string;
+  children?: TemplateField[];
 }
 
 /**
@@ -32,4 +36,35 @@ export interface TemplateField {
 export interface DataMappingEntry {
   templateField: string;
   dataSource: string;
+}
+
+/**
+ * Source type for data mapping: how the value is provided.
+ */
+export type DataSourceType = 'document' | 'processVariable' | 'manual';
+
+/**
+ * Validation result from the backend.
+ */
+export interface ValidationResult {
+  valid: boolean;
+  missingRequiredFields: string[];
+}
+
+/**
+ * Information about an Epistola environment.
+ */
+export interface EnvironmentInfo {
+  id: string;
+  name: string;
+}
+
+/**
+ * Information about an Epistola template variant.
+ */
+export interface VariantInfo {
+  id: string;
+  templateId: string;
+  name: string;
+  attributes: Record<string, string>;
 }

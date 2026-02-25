@@ -1,0 +1,328 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  id="Definitions_subsidy"
+                  targetNamespace="http://bpmn.io/schema/bpmn"
+                  exporter="Camunda Modeler" exporterVersion="5.23.0">
+
+  <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
+  <bpmn:error id="Error_EpistolaDocumentError" name="EpistolaDocumentError" />
+
+  <bpmn:process id="subsidy-decision-package" name="Subsidie Besluitpakket" isExecutable="true">
+    <bpmn:documentation>Generates 3 documents in parallel (decision, financial overview, conditions), then archives them via Documenten API.</bpmn:documentation>
+
+    <bpmn:startEvent id="startEvent" name="Start">
+      <bpmn:outgoing>Flow_to_fork</bpmn:outgoing>
+    </bpmn:startEvent>
+
+    <!-- ===== Parallel fork: generate 3 documents simultaneously ===== -->
+
+    <bpmn:parallelGateway id="fork" name="Genereer parallel">
+      <bpmn:incoming>Flow_to_fork</bpmn:incoming>
+      <bpmn:outgoing>Flow_fork_to_a</bpmn:outgoing>
+      <bpmn:outgoing>Flow_fork_to_b</bpmn:outgoing>
+      <bpmn:outgoing>Flow_fork_to_c</bpmn:outgoing>
+    </bpmn:parallelGateway>
+
+    <!-- Branch A: Subsidiebesluit -->
+    <bpmn:serviceTask id="generate-doc1" name="Genereer Subsidiebesluit">
+      <bpmn:incoming>Flow_fork_to_a</bpmn:incoming>
+      <bpmn:outgoing>Flow_a_to_wait</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:intermediateCatchEvent id="wait-doc1" name="Wacht op besluit">
+      <bpmn:incoming>Flow_a_to_wait</bpmn:incoming>
+      <bpmn:outgoing>Flow_a_to_download</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageDef_doc1" messageRef="Message_EpistolaDocumentGenerated" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:serviceTask id="download-doc1" name="Download Subsidiebesluit">
+      <bpmn:incoming>Flow_a_to_download</bpmn:incoming>
+      <bpmn:outgoing>Flow_a_to_join</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Branch B: Financieel Overzicht -->
+    <bpmn:serviceTask id="generate-doc2" name="Genereer Financieel Overzicht">
+      <bpmn:incoming>Flow_fork_to_b</bpmn:incoming>
+      <bpmn:outgoing>Flow_b_to_wait</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:intermediateCatchEvent id="wait-doc2" name="Wacht op overzicht">
+      <bpmn:incoming>Flow_b_to_wait</bpmn:incoming>
+      <bpmn:outgoing>Flow_b_to_download</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageDef_doc2" messageRef="Message_EpistolaDocumentGenerated" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:serviceTask id="download-doc2" name="Download Financieel Overzicht">
+      <bpmn:incoming>Flow_b_to_download</bpmn:incoming>
+      <bpmn:outgoing>Flow_b_to_join</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Branch C: Voorwaarden Bijlage -->
+    <bpmn:serviceTask id="generate-doc3" name="Genereer Voorwaarden Bijlage">
+      <bpmn:incoming>Flow_fork_to_c</bpmn:incoming>
+      <bpmn:outgoing>Flow_c_to_wait</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:intermediateCatchEvent id="wait-doc3" name="Wacht op bijlage">
+      <bpmn:incoming>Flow_c_to_wait</bpmn:incoming>
+      <bpmn:outgoing>Flow_c_to_download</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageDef_doc3" messageRef="Message_EpistolaDocumentGenerated" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:serviceTask id="download-doc3" name="Download Voorwaarden Bijlage">
+      <bpmn:incoming>Flow_c_to_download</bpmn:incoming>
+      <bpmn:outgoing>Flow_c_to_join</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- ===== Parallel join: all documents downloaded ===== -->
+
+    <bpmn:parallelGateway id="join" name="Alle documenten gereed">
+      <bpmn:incoming>Flow_a_to_join</bpmn:incoming>
+      <bpmn:incoming>Flow_b_to_join</bpmn:incoming>
+      <bpmn:incoming>Flow_c_to_join</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_store1</bpmn:outgoing>
+    </bpmn:parallelGateway>
+
+    <!-- ===== Sequential archival: store + link each document ===== -->
+
+    <!-- Document 1: Subsidiebesluit -->
+    <bpmn:serviceTask id="store-doc1" name="Archiveer Subsidiebesluit">
+      <bpmn:incoming>Flow_to_store1</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_link1</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="link-doc1" name="Koppel aan zaak">
+      <bpmn:incoming>Flow_to_link1</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_store2</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Document 2: Financieel Overzicht -->
+    <bpmn:serviceTask id="store-doc2" name="Archiveer Financieel Overzicht">
+      <bpmn:incoming>Flow_to_store2</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_link2</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="link-doc2" name="Koppel aan zaak">
+      <bpmn:incoming>Flow_to_link2</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_store3</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <!-- Document 3: Voorwaarden Bijlage -->
+    <bpmn:serviceTask id="store-doc3" name="Archiveer Voorwaarden Bijlage">
+      <bpmn:incoming>Flow_to_store3</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_link3</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="link-doc3" name="Koppel aan zaak">
+      <bpmn:incoming>Flow_to_link3</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_end</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:endEvent id="end-success" name="Besluitpakket gearchiveerd">
+      <bpmn:incoming>Flow_to_end</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <!-- ===== Sequence flows ===== -->
+
+    <bpmn:sequenceFlow id="Flow_to_fork" sourceRef="startEvent" targetRef="fork" />
+
+    <!-- Fork → branches -->
+    <bpmn:sequenceFlow id="Flow_fork_to_a" sourceRef="fork" targetRef="generate-doc1" />
+    <bpmn:sequenceFlow id="Flow_fork_to_b" sourceRef="fork" targetRef="generate-doc2" />
+    <bpmn:sequenceFlow id="Flow_fork_to_c" sourceRef="fork" targetRef="generate-doc3" />
+
+    <!-- Branch A flows -->
+    <bpmn:sequenceFlow id="Flow_a_to_wait" sourceRef="generate-doc1" targetRef="wait-doc1" />
+    <bpmn:sequenceFlow id="Flow_a_to_download" sourceRef="wait-doc1" targetRef="download-doc1" />
+    <bpmn:sequenceFlow id="Flow_a_to_join" sourceRef="download-doc1" targetRef="join" />
+
+    <!-- Branch B flows -->
+    <bpmn:sequenceFlow id="Flow_b_to_wait" sourceRef="generate-doc2" targetRef="wait-doc2" />
+    <bpmn:sequenceFlow id="Flow_b_to_download" sourceRef="wait-doc2" targetRef="download-doc2" />
+    <bpmn:sequenceFlow id="Flow_b_to_join" sourceRef="download-doc2" targetRef="join" />
+
+    <!-- Branch C flows -->
+    <bpmn:sequenceFlow id="Flow_c_to_wait" sourceRef="generate-doc3" targetRef="wait-doc3" />
+    <bpmn:sequenceFlow id="Flow_c_to_download" sourceRef="wait-doc3" targetRef="download-doc3" />
+    <bpmn:sequenceFlow id="Flow_c_to_join" sourceRef="download-doc3" targetRef="join" />
+
+    <!-- Archival flows -->
+    <bpmn:sequenceFlow id="Flow_to_store1" sourceRef="join" targetRef="store-doc1" />
+    <bpmn:sequenceFlow id="Flow_to_link1" sourceRef="store-doc1" targetRef="link-doc1" />
+    <bpmn:sequenceFlow id="Flow_to_store2" sourceRef="link-doc1" targetRef="store-doc2" />
+    <bpmn:sequenceFlow id="Flow_to_link2" sourceRef="store-doc2" targetRef="link-doc2" />
+    <bpmn:sequenceFlow id="Flow_to_store3" sourceRef="link-doc2" targetRef="store-doc3" />
+    <bpmn:sequenceFlow id="Flow_to_link3" sourceRef="store-doc3" targetRef="link-doc3" />
+    <bpmn:sequenceFlow id="Flow_to_end" sourceRef="link-doc3" targetRef="end-success" />
+
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="subsidy-decision-package">
+      <!-- Start -->
+      <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent">
+        <dc:Bounds x="179" y="342" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Fork -->
+      <bpmndi:BPMNShape id="fork_di" bpmnElement="fork">
+        <dc:Bounds x="275" y="335" width="50" height="50" />
+      </bpmndi:BPMNShape>
+
+      <!-- Branch A (y=160) -->
+      <bpmndi:BPMNShape id="generate-doc1_di" bpmnElement="generate-doc1">
+        <dc:Bounds x="400" y="120" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-doc1_di" bpmnElement="wait-doc1">
+        <dc:Bounds x="562" y="142" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="download-doc1_di" bpmnElement="download-doc1">
+        <dc:Bounds x="660" y="120" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Branch B (y=340) -->
+      <bpmndi:BPMNShape id="generate-doc2_di" bpmnElement="generate-doc2">
+        <dc:Bounds x="400" y="320" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-doc2_di" bpmnElement="wait-doc2">
+        <dc:Bounds x="562" y="342" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="download-doc2_di" bpmnElement="download-doc2">
+        <dc:Bounds x="660" y="320" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Branch C (y=520) -->
+      <bpmndi:BPMNShape id="generate-doc3_di" bpmnElement="generate-doc3">
+        <dc:Bounds x="400" y="520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-doc3_di" bpmnElement="wait-doc3">
+        <dc:Bounds x="562" y="542" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="download-doc3_di" bpmnElement="download-doc3">
+        <dc:Bounds x="660" y="520" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- Join -->
+      <bpmndi:BPMNShape id="join_di" bpmnElement="join">
+        <dc:Bounds x="825" y="335" width="50" height="50" />
+      </bpmndi:BPMNShape>
+
+      <!-- Archival row (y=360) -->
+      <bpmndi:BPMNShape id="store-doc1_di" bpmnElement="store-doc1">
+        <dc:Bounds x="940" y="320" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="link-doc1_di" bpmnElement="link-doc1">
+        <dc:Bounds x="1080" y="320" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="store-doc2_di" bpmnElement="store-doc2">
+        <dc:Bounds x="1220" y="320" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="link-doc2_di" bpmnElement="link-doc2">
+        <dc:Bounds x="1360" y="320" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="store-doc3_di" bpmnElement="store-doc3">
+        <dc:Bounds x="1500" y="320" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="link-doc3_di" bpmnElement="link-doc3">
+        <dc:Bounds x="1640" y="320" width="100" height="80" />
+      </bpmndi:BPMNShape>
+
+      <!-- End -->
+      <bpmndi:BPMNShape id="end-success_di" bpmnElement="end-success">
+        <dc:Bounds x="1802" y="342" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Edges: start → fork -->
+      <bpmndi:BPMNEdge id="Flow_to_fork_di" bpmnElement="Flow_to_fork">
+        <di:waypoint x="215" y="360" />
+        <di:waypoint x="275" y="360" />
+      </bpmndi:BPMNEdge>
+
+      <!-- Fork → branches -->
+      <bpmndi:BPMNEdge id="Flow_fork_to_a_di" bpmnElement="Flow_fork_to_a">
+        <di:waypoint x="300" y="335" />
+        <di:waypoint x="300" y="160" />
+        <di:waypoint x="400" y="160" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_fork_to_b_di" bpmnElement="Flow_fork_to_b">
+        <di:waypoint x="325" y="360" />
+        <di:waypoint x="400" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_fork_to_c_di" bpmnElement="Flow_fork_to_c">
+        <di:waypoint x="300" y="385" />
+        <di:waypoint x="300" y="560" />
+        <di:waypoint x="400" y="560" />
+      </bpmndi:BPMNEdge>
+
+      <!-- Branch A edges -->
+      <bpmndi:BPMNEdge id="Flow_a_to_wait_di" bpmnElement="Flow_a_to_wait">
+        <di:waypoint x="500" y="160" />
+        <di:waypoint x="562" y="160" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_a_to_download_di" bpmnElement="Flow_a_to_download">
+        <di:waypoint x="598" y="160" />
+        <di:waypoint x="660" y="160" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_a_to_join_di" bpmnElement="Flow_a_to_join">
+        <di:waypoint x="760" y="160" />
+        <di:waypoint x="850" y="160" />
+        <di:waypoint x="850" y="335" />
+      </bpmndi:BPMNEdge>
+
+      <!-- Branch B edges -->
+      <bpmndi:BPMNEdge id="Flow_b_to_wait_di" bpmnElement="Flow_b_to_wait">
+        <di:waypoint x="500" y="360" />
+        <di:waypoint x="562" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_b_to_download_di" bpmnElement="Flow_b_to_download">
+        <di:waypoint x="598" y="360" />
+        <di:waypoint x="660" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_b_to_join_di" bpmnElement="Flow_b_to_join">
+        <di:waypoint x="760" y="360" />
+        <di:waypoint x="825" y="360" />
+      </bpmndi:BPMNEdge>
+
+      <!-- Branch C edges -->
+      <bpmndi:BPMNEdge id="Flow_c_to_wait_di" bpmnElement="Flow_c_to_wait">
+        <di:waypoint x="500" y="560" />
+        <di:waypoint x="562" y="560" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_c_to_download_di" bpmnElement="Flow_c_to_download">
+        <di:waypoint x="598" y="560" />
+        <di:waypoint x="660" y="560" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_c_to_join_di" bpmnElement="Flow_c_to_join">
+        <di:waypoint x="760" y="560" />
+        <di:waypoint x="850" y="560" />
+        <di:waypoint x="850" y="385" />
+      </bpmndi:BPMNEdge>
+
+      <!-- Archival edges -->
+      <bpmndi:BPMNEdge id="Flow_to_store1_di" bpmnElement="Flow_to_store1">
+        <di:waypoint x="875" y="360" />
+        <di:waypoint x="940" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_link1_di" bpmnElement="Flow_to_link1">
+        <di:waypoint x="1040" y="360" />
+        <di:waypoint x="1080" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_store2_di" bpmnElement="Flow_to_store2">
+        <di:waypoint x="1180" y="360" />
+        <di:waypoint x="1220" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_link2_di" bpmnElement="Flow_to_link2">
+        <di:waypoint x="1320" y="360" />
+        <di:waypoint x="1360" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_store3_di" bpmnElement="Flow_to_store3">
+        <di:waypoint x="1460" y="360" />
+        <di:waypoint x="1500" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_link3_di" bpmnElement="Flow_to_link3">
+        <di:waypoint x="1600" y="360" />
+        <di:waypoint x="1640" y="360" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_end_di" bpmnElement="Flow_to_end">
+        <di:waypoint x="1740" y="360" />
+        <di:waypoint x="1802" y="360" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

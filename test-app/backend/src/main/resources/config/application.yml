@@ -115,8 +115,7 @@ spring:
                     keycloakapi:
                         client-id: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTID}
                         client-secret: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTSECRET}
-                        authorization-grant-type: authorization_code
-                        scope: openid
+                        authorization-grant-type: client_credentials
 
 server:
     port: 8080
@@ -188,6 +187,9 @@ scheduling:
             syncAuth0LogsEvents: 0 0 3 * * ? # Every day at 3:00
             cleanupAuditEvents: 0 0 4 * * ? # Every day at 00:00
             taskNotificationReminder: 0 0 10 * * ? # Every day at 10:00
+
+epistola:
+    base-url: ${EPISTOLA_BASE_URL:http://localhost:4000/api}
 
 operaton:
     bpm:

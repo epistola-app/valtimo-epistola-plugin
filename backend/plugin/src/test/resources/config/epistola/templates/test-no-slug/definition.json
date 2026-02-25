@@ -1,0 +1,6 @@
+{
+  "name": "No Slug Template",
+  "version": "1.0.0",
+  "dataModel": { "type": "object", "properties": {} },
+  "templateModel": { "modelVersion": 1 }
+}

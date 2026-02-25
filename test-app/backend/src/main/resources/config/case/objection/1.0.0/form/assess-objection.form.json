@@ -1,0 +1,36 @@
+{
+    "display": "form",
+    "components": [
+        {
+            "key": "pv:decision",
+            "type": "select",
+            "input": true,
+            "label": "Beslissing",
+            "data": {
+                "values": [
+                    { "label": "Gegrond", "value": "gegrond" },
+                    { "label": "Ongegrond", "value": "ongegrond" },
+                    { "label": "Deels gegrond", "value": "deels_gegrond" }
+                ]
+            },
+            "validate": { "required": true }
+        },
+        {
+            "key": "pv:motivation",
+            "type": "textarea",
+            "input": true,
+            "label": "Motivatie",
+            "rows": 5,
+            "validate": { "required": true }
+        },
+        {
+            "key": "submit",
+            "type": "button",
+            "input": true,
+            "label": "Bevestigen",
+            "action": "submit",
+            "theme": "primary",
+            "disableOnInvalid": true
+        }
+    ]
+}

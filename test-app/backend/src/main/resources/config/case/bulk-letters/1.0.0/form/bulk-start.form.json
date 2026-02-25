@@ -1,0 +1,38 @@
+{
+    "display": "form",
+    "components": [
+        {
+            "key": "description",
+            "type": "textfield",
+            "input": true,
+            "label": "Beschrijving",
+            "validate": { "required": true }
+        },
+        {
+            "key": "pv:selectedTemplateId",
+            "type": "textfield",
+            "input": true,
+            "label": "Template ID",
+            "description": "Het Epistola template ID voor de brieven",
+            "validate": { "required": true }
+        },
+        {
+            "key": "pv:taxpayersJson",
+            "type": "textarea",
+            "input": true,
+            "label": "Belastingplichtigen (JSON)",
+            "description": "JSON array met objecten: [{\"name\": \"...\", \"bsn\": \"...\", \"address\": {\"street\": \"...\", \"houseNumber\": \"...\", \"postalCode\": \"...\", \"city\": \"...\"}, \"amount\": 1234.56}]",
+            "rows": 10,
+            "validate": { "required": true }
+        },
+        {
+            "key": "submit",
+            "type": "button",
+            "input": true,
+            "label": "Starten",
+            "action": "submit",
+            "theme": "primary",
+            "disableOnInvalid": true
+        }
+    ]
+}

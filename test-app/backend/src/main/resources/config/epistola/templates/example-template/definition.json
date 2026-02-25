@@ -1,0 +1,78 @@
+{
+  "slug": "example-template",
+  "name": "Example Template",
+  "version": "1.0.0",
+  "dataModel": {
+    "type": "object",
+    "properties": {
+      "firstName": {
+        "type": "string",
+        "description": "First name of the person"
+      }
+    },
+    "required": ["firstName"]
+  },
+  "dataExamples": [
+    {
+      "id": "example-1",
+      "name": "Standard Example",
+      "data": {
+        "firstName": "Jan"
+      }
+    }
+  ],
+  "templateModel": {
+    "modelVersion": 1,
+    "root": "n-root",
+    "themeRef": { "type": "inherit" },
+    "pageSettingsOverride": {
+      "format": "A4",
+      "orientation": "portrait",
+      "margins": { "top": 40, "right": 40, "bottom": 40, "left": 40 }
+    },
+    "nodes": {
+      "n-root": {
+        "id": "n-root",
+        "type": "container",
+        "slots": ["s-root-children"]
+      },
+      "n-greeting": {
+        "id": "n-greeting",
+        "type": "text",
+        "slots": [],
+        "styles": { "fontSize": "14pt" },
+        "props": {
+          "content": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Hallo " },
+                  { "type": "expression", "attrs": { "expression": "firstName" } },
+                  { "type": "text", "text": "," }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Dit is een voorbeeld document gegenereerd met Epistola." }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "slots": {
+      "s-root-children": {
+        "id": "s-root-children",
+        "nodeId": "n-root",
+        "name": "children",
+        "children": ["n-greeting"]
+      }
+    }
+  },
+  "variants": [],
+  "publishTo": ["production"]
+}

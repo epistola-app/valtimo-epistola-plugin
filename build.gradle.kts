@@ -1,23 +1,13 @@
 import com.github.gradle.node.npm.task.NpmTask
 
 plugins {
-    id("org.springframework.boot") apply false
-    id("io.spring.dependency-management") apply false
-    id("com.github.node-gradle.node")
+    alias(libs.plugins.spring.boot) apply false
+    alias(libs.plugins.spring.dependency.management) apply false
+    alias(libs.plugins.node.gradle)
 }
 
 group = "app.epistola"
 version = "1.0.0-SNAPSHOT"
-
-// Shared configuration for all subprojects
-val valtimoVersion = "13.4.1.RELEASE"
-val lombokVersion = "1.18.42"
-val testcontainersVersion = "1.20.4"
-
-// Make versions available to subprojects
-extra["valtimoVersion"] = valtimoVersion
-extra["lombokVersion"] = lombokVersion
-extra["testcontainersVersion"] = testcontainersVersion
 
 // Node.js configuration for frontend builds
 node {
@@ -32,6 +22,16 @@ node {
 subprojects {
     repositories {
         mavenCentral()
+        maven { url = uri("https://s01.oss.sonatype.org/content/repositories/releases/") }
+        maven { url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/") }
+        maven {
+            name = "sonatypeSnapshots"
+            url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+            mavenContent {
+                snapshotsOnly()
+            }
+        }
+        mavenLocal()
     }
 
     tasks.withType<JavaCompile> {
@@ -107,6 +107,6 @@ tasks.register("testAll") {
 
 tasks.register("publishAll") {
     description = "Publish all artifacts"
-    dependsOn(":backend:plugin:publish")
+    dependsOn(":backend:plugin:publishAndReleaseToMavenCentral")
     // npm publish is done separately from frontend/plugin directory
 }

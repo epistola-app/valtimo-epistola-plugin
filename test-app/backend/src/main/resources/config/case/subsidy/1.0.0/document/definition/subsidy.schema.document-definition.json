@@ -1,0 +1,52 @@
+{
+    "$id": "subsidy.schema",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Subsidie Zaakdossier",
+    "description": "Subsidieaanvraag met begunstigde en besluit",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "beneficiary": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                },
+                "address": {
+                    "type": "object",
+                    "properties": {
+                        "street": { "type": "string" },
+                        "houseNumber": { "type": "string" },
+                        "postalCode": { "type": "string", "pattern": "^[0-9]{4}[A-Z]{2}$" },
+                        "city": { "type": "string" }
+                    },
+                    "required": ["street", "houseNumber", "postalCode", "city"]
+                }
+            },
+            "required": ["name", "address"]
+        },
+        "subsidy": {
+            "type": "object",
+            "properties": {
+                "programName": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "number",
+                    "minimum": 0
+                },
+                "decision": {
+                    "type": "string",
+                    "enum": ["toegekend", "afgewezen"]
+                },
+                "conditions": {
+                    "type": "string"
+                }
+            },
+            "required": ["programName", "amount", "decision"]
+        }
+    },
+    "required": ["beneficiary", "subsidy"]
+}

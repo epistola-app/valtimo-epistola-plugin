@@ -1,0 +1,38 @@
+.data-mapping-tree {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.mapping-header {
+  margin-bottom: 0.75rem;
+
+  h5 {
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+  }
+
+  .helper-text {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-bottom: 0;
+  }
+}
+
+.field-tree-root {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+
+.no-fields {
+  padding: 1rem;
+  text-align: center;
+  color: #6c757d;
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+
+  p {
+    margin-bottom: 0;
+  }
+}

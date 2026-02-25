@@ -1,0 +1,115 @@
+[
+    {
+        "activityId": "startEvent",
+        "activityType": "bpmn:StartEvent:start",
+        "processLinkType": "form",
+        "formDefinitionName": "subsidy-start"
+    },
+    {
+        "activityId": "generate-doc1",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "generate-document",
+        "actionProperties": {
+            "templateId": "subsidiebesluit",
+            "outputFormat": "PDF",
+            "filename": "subsidiebesluit.pdf",
+            "resultProcessVariable": "requestId1",
+            "dataMapping": {
+                "beneficiary": {
+                    "name": "doc:/beneficiary/name",
+                    "address": {
+                        "street": "doc:/beneficiary/address/street",
+                        "houseNumber": "doc:/beneficiary/address/houseNumber",
+                        "postalCode": "doc:/beneficiary/address/postalCode",
+                        "city": "doc:/beneficiary/address/city"
+                    }
+                },
+                "subsidy": {
+                    "programName": "doc:/subsidy/programName",
+                    "amount": "doc:/subsidy/amount",
+                    "decision": "doc:/subsidy/decision",
+                    "conditions": "doc:/subsidy/conditions"
+                }
+            }
+        }
+    },
+    {
+        "activityId": "download-doc1",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "download-document",
+        "actionProperties": {
+            "documentIdVariable": "epistolaDocumentId",
+            "contentVariable": "doc1Content"
+        }
+    },
+    {
+        "activityId": "generate-doc2",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "generate-document",
+        "actionProperties": {
+            "templateId": "financieel-overzicht",
+            "outputFormat": "PDF",
+            "filename": "financieel-overzicht.pdf",
+            "resultProcessVariable": "requestId2",
+            "dataMapping": {
+                "beneficiary": {
+                    "name": "doc:/beneficiary/name"
+                },
+                "subsidy": {
+                    "programName": "doc:/subsidy/programName",
+                    "amount": "doc:/subsidy/amount"
+                }
+            }
+        }
+    },
+    {
+        "activityId": "download-doc2",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "download-document",
+        "actionProperties": {
+            "documentIdVariable": "epistolaDocumentId",
+            "contentVariable": "doc2Content"
+        }
+    },
+    {
+        "activityId": "generate-doc3",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "generate-document",
+        "actionProperties": {
+            "templateId": "voorwaarden-bijlage",
+            "outputFormat": "PDF",
+            "filename": "voorwaarden-bijlage.pdf",
+            "resultProcessVariable": "requestId3",
+            "dataMapping": {
+                "beneficiary": {
+                    "name": "doc:/beneficiary/name"
+                },
+                "subsidy": {
+                    "programName": "doc:/subsidy/programName",
+                    "conditions": "doc:/subsidy/conditions"
+                }
+            }
+        }
+    },
+    {
+        "activityId": "download-doc3",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "download-document",
+        "actionProperties": {
+            "documentIdVariable": "epistolaDocumentId",
+            "contentVariable": "doc3Content"
+        }
+    }
+]

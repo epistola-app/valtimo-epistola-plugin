@@ -83,3 +83,10 @@ out-tsc/
 # Coverage
 coverage/
 .nyc_output/
+
+# Playwright
+test-results/
+playwright-report/
+
+# Helm chart dependencies (downloaded via helm dependency build)
+charts/*/charts/*.tgz

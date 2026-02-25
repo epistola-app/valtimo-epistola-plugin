@@ -2,7 +2,7 @@
 // `ng build --prod` replaces `environment.ts` with `environment.prod.ts`.
 // The list of file replacements can be found in `angular.json`.
 import {NgxLoggerLevel} from 'ngx-logger';
-import {ROLE_ADMIN, ROLE_DEVELOPER, ROLE_USER, ValtimoConfig, UploadProvider, IncludeFunction} from '@valtimo/shared';
+import {IncludeFunction, ROLE_ADMIN, ROLE_DEVELOPER, ROLE_USER, UploadProvider, ValtimoConfig} from '@valtimo/shared';
 import {authenticationKeycloak} from './auth/keycloak-config';
 import {defaultDefinitionColumns} from './columns';
 import {DARK_MODE_LOGO_BASE_64, LOGO_BASE_64} from './logo';

@@ -1,5 +1,27 @@
 services:
-  postgres:
+  epistola-server:
+    profiles: ["server"]
+    image: ghcr.io/epistola-app/epistola-suite:0.17.0
+    container_name: epistola-server
+    environment:
+      SPRING_PROFILES_ACTIVE: demo
+      SPRING_DATASOURCE_URL: jdbc:postgresql://epistola-postgres:5432/epistola_suite
+      SPRING_DATASOURCE_USERNAME: epistola
+      SPRING_DATASOURCE_PASSWORD: epistola
+    ports:
+      - "4010:4000"
+    depends_on:
+      epistola-postgres:
+        condition: service_healthy
+
+  epistola-mock:
+    profiles: ["mock"]
+    image: ghcr.io/epistola-app/epistola-contract/mock-server:0.1.11
+    container_name: epistola-mock
+    ports:
+      - "4010:4010"
+
+  epistola-postgres:
     image: postgres:16-alpine
     container_name: epistola-postgres
     environment:
@@ -10,6 +32,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U epistola"]
       interval: 10s
@@ -22,9 +45,9 @@ services:
     command: start-dev --import-realm
     environment:
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak
+      KC_DB_URL: jdbc:postgresql://epistola-postgres:5432/keycloak
+      KC_DB_USERNAME: epistola
+      KC_DB_PASSWORD: epistola
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
     ports:
@@ -32,24 +55,8 @@ services:
     volumes:
       - ./keycloak:/opt/keycloak/data/import
     depends_on:
-      keycloak-postgres:
+      epistola-postgres:
         condition: service_healthy
-
-  keycloak-postgres:
-    image: postgres:16-alpine
-    container_name: epistola-keycloak-postgres
-    environment:
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak
-      POSTGRES_DB: keycloak
-    volumes:
-      - keycloak_postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U keycloak"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
 volumes:
   postgres_data:
-  keycloak_postgres_data:

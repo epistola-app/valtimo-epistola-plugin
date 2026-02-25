@@ -1,83 +1,106 @@
+import com.vanniktech.maven.publish.SonatypeHost
+
 plugins {
     `java-library`
-    id("maven-publish")
-    id("io.spring.dependency-management")
+    alias(libs.plugins.vanniktech.publish)
+    alias(libs.plugins.spring.dependency.management)
 }
 
-group = "app.epistola"
+group = "app.epistola.valtimo"
 version = rootProject.version
-
-val valtimoVersion: String by rootProject.extra
-val lombokVersion: String by rootProject.extra
-val testcontainersVersion: String by rootProject.extra
 
 dependencyManagement {
     imports {
-        mavenBom("com.ritense.valtimo:valtimo-dependency-versions:$valtimoVersion")
+        mavenBom("${libs.valtimo.bom.get()}")
+    }
+    // Override Valtimo BOM's testcontainers version (1.20.6) with 2.0.3 for Docker Desktop compatibility
+    dependencies {
+        dependencySet("org.testcontainers:${libs.versions.testcontainers.get()}") {
+            entry("testcontainers")
+            entry("testcontainers-postgresql")
+            entry("testcontainers-junit-jupiter")
+            entry("testcontainers-jdbc")
+            entry("testcontainers-database-commons")
+        }
     }
 }
 
 dependencies {
+    // Epistola client
+    api(libs.epistola.client)
+
     // Valtimo dependencies (compileOnly - provided by implementing application)
-    compileOnly("com.ritense.valtimo:core")
-    compileOnly("com.ritense.valtimo:contract")
-    compileOnly("com.ritense.valtimo:audit")
-    compileOnly("com.ritense.valtimo:outbox")
-    compileOnly("com.ritense.valtimo:plugin")
-    compileOnly("com.ritense.valtimo:value-resolver")
-    compileOnly("com.ritense.valtimo:process-link")
-    compileOnly("org.springframework.boot:spring-boot-starter-aop")
-    compileOnly("org.springframework.boot:spring-boot-starter-security")
+    compileOnly(libs.valtimo.core)
+    compileOnly(libs.valtimo.contract)
+    compileOnly(libs.valtimo.audit)
+    compileOnly(libs.valtimo.outbox)
+    compileOnly(libs.valtimo.plugin)
+    compileOnly(libs.valtimo.value.resolver)
+    compileOnly(libs.valtimo.process.link)
+    compileOnly(libs.spring.boot.starter.aop)
+    compileOnly(libs.spring.boot.starter.security)
 
     // Lombok
-    compileOnly("org.projectlombok:lombok:$lombokVersion")
-    annotationProcessor("org.projectlombok:lombok:$lombokVersion")
+    compileOnly(libs.lombok)
+    annotationProcessor(libs.lombok)
 
     // Test dependencies
-    testImplementation("com.ritense.valtimo:core")
-    testImplementation("com.ritense.valtimo:audit")
-    testImplementation("com.ritense.valtimo:contract")
-    testImplementation("com.ritense.valtimo:plugin")
-    testImplementation("com.ritense.valtimo:outbox")
-    testImplementation("com.ritense.valtimo:value-resolver")
-    testImplementation("com.ritense.valtimo:process-link")
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("com.ritense.valtimo:test-utils-common")
-    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation(libs.valtimo.core)
+    testImplementation(libs.valtimo.audit)
+    testImplementation(libs.valtimo.contract)
+    testImplementation(libs.valtimo.plugin)
+    testImplementation(libs.valtimo.outbox)
+    testImplementation(libs.valtimo.value.resolver)
+    testImplementation(libs.valtimo.process.link)
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.valtimo.test.utils.common)
+    testImplementation(libs.junit.jupiter)
 
     // Testcontainers
-    testImplementation(platform("org.testcontainers:testcontainers-bom:$testcontainersVersion"))
-    testImplementation("org.testcontainers:testcontainers")
-    testImplementation("org.testcontainers:postgresql")
-    testImplementation("org.testcontainers:junit-jupiter")
+    testImplementation(libs.testcontainers)
+    testImplementation(libs.testcontainers.postgresql)
+    testImplementation(libs.testcontainers.junit.jupiter)
 
     // Test Lombok
-    testCompileOnly("org.projectlombok:lombok:$lombokVersion")
-    testAnnotationProcessor("org.projectlombok:lombok:$lombokVersion")
+    testCompileOnly(libs.lombok)
+    testAnnotationProcessor(libs.lombok)
 }
 
-java {
-    withJavadocJar()
-    withSourcesJar()
+tasks.withType<JavaCompile> {
+    options.compilerArgs.add("-parameters")
 }
 
 tasks.test {
     // Don't fail if there are no tests yet
-//    failOnNoDiscoveredTests.set(false)
+    failOnNoDiscoveredTests.set(false)
 }
 
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-            groupId = project.group.toString()
-            artifactId = "epistola-plugin"
-            version = project.version.toString()
+mavenPublishing {
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, automaticRelease = true)
+    signAllPublications()
+    coordinates("app.epistola.valtimo", "epistola-plugin", version.toString())
 
-            pom {
-                name.set("Epistola Plugin")
-                description.set("Document generation plugin for Valtimo using Epistola")
+    pom {
+        name.set("Epistola Valtimo Plugin")
+        description.set("Document generation plugin for Valtimo using Epistola")
+        url.set("https://github.com/epistola-app/valtimo-epistola-plugin")
+        licenses {
+            license {
+                name.set("European Union Public Licence 1.2")
+                url.set("https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12")
             }
+        }
+        developers {
+            developer {
+                id.set("epistola")
+                name.set("Epistola")
+                url.set("https://epistola.app")
+            }
+        }
+        scm {
+            url.set("https://github.com/epistola-app/valtimo-epistola-plugin")
+            connection.set("scm:git:git://github.com/epistola-app/valtimo-epistola-plugin.git")
+            developerConnection.set("scm:git:ssh://github.com/epistola-app/valtimo-epistola-plugin.git")
         }
     }
 }

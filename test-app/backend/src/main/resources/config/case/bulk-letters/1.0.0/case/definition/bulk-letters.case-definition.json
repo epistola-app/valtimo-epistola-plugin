@@ -1,0 +1,7 @@
+{
+    "key": "bulk-letters",
+    "name": "Massale Correspondentie",
+    "versionTag": "1.0.0",
+    "canHaveAssignee": true,
+    "autoAssignTasks": true
+}

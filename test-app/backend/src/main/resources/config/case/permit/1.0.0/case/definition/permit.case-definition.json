@@ -1,0 +1,7 @@
+{
+    "key": "permit",
+    "name": "Vergunningsaanvraag",
+    "versionTag": "1.0.0",
+    "canHaveAssignee": true,
+    "autoAssignTasks": true
+}

@@ -10,24 +10,24 @@ plugins {
     war
     // Idea
     idea
-    id("org.jetbrains.gradle.plugin.idea-ext")
+    alias(libs.plugins.idea.ext)
 
     // Spring
-    id("org.springframework.boot")
-    id("io.spring.dependency-management")
+    alias(libs.plugins.spring.boot)
+    alias(libs.plugins.spring.dependency.management)
 
     // Kotlin
-    kotlin("jvm")
-    kotlin("plugin.spring")
-    kotlin("plugin.jpa")
-    kotlin("plugin.allopen")
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.spring)
+    alias(libs.plugins.kotlin.jpa)
+    alias(libs.plugins.kotlin.allopen)
 
     // Checkstyle
-    id("org.jlleitschuh.gradle.ktlint")
-    id("com.diffplug.spotless")
+    alias(libs.plugins.ktlint)
+    alias(libs.plugins.spotless)
 
     // Other
-    id("com.avast.gradle.docker-compose")
+    alias(libs.plugins.docker.compose)
 }
 
 java.sourceCompatibility = JavaVersion.VERSION_21
@@ -39,43 +39,48 @@ repositories {
     maven { url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/") }
 }
 
-val valtimoVersion: String by project
-val postgresqlDriverVersion: String by project
-val nettyResolverDnsNativeMacOsVersion: String by project
-val mockitoKotlinVersion: String by project
+configurations.runtimeClasspath {
+    // js-community is a POM-only artifact (no JAR) that ends up on the classpath via
+    // valtimo:core → graalvm:js → graalvm:js-community. Spring's classpath scanner
+    // fails when it tries to open the .pom as a JAR (ZipException).
+    exclude(group = "org.graalvm.js", module = "js-community")
+}
 
 dependencies {
-    implementation(platform("com.ritense.valtimo:valtimo-dependency-versions:$valtimoVersion"))
+    implementation(platform(libs.valtimo.bom))
 
-    implementation("com.ritense.valtimo:valtimo-dependencies")
+    implementation(libs.valtimo.dependencies)
 
     // Epistola plugin
     implementation(project(":backend:plugin"))
 
-    implementation("com.ritense.valtimo:local-document-generation")
-    implementation("com.ritense.valtimo:local-resource")
-    implementation("com.ritense.valtimo:local-mail")
-    implementation("com.ritense.valtimo:milestones")
-    implementation("com.ritense.valtimo:object-management")
-    implementation("com.ritense.valtimo:objecten-api-authentication")
-    implementation("com.ritense.valtimo:objecten-api")
-    implementation("com.ritense.valtimo:objecttypen-api")
-    implementation("com.ritense.valtimo:zaken-api")
+    implementation(libs.valtimo.local.document.generation)
+    implementation(libs.valtimo.local.resource)
+    implementation(libs.valtimo.local.mail)
+    implementation(libs.valtimo.milestones)
+    implementation(libs.valtimo.`object`.management)
+    implementation(libs.valtimo.objecten.api.authentication)
+    implementation(libs.valtimo.objecten.api)
+    implementation(libs.valtimo.objecttypen.api)
+    implementation(libs.valtimo.zaken.api)
+    implementation(libs.valtimo.documenten.api)
+    implementation(libs.valtimo.catalogi.api)
 
-    implementation("org.postgresql:postgresql:$postgresqlDriverVersion")
+    implementation(libs.postgresql)
 
     if (System.getProperty("os.arch") == "aarch64") {
-        runtimeOnly("io.netty:netty-resolver-dns-native-macos:$nettyResolverDnsNativeMacOsVersion:osx-aarch_64")
+        runtimeOnly(variantOf(libs.netty.resolver.dns.macos) { classifier("osx-aarch_64") })
     }
 
     // Kotlin logger
-    implementation("io.github.oshai:kotlin-logging")
+    implementation(libs.kotlin.logging)
 
     // Testing
-    testImplementation("com.ritense.valtimo:test-utils-common")
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.mockito:mockito-core")
-    testImplementation("org.mockito.kotlin:mockito-kotlin:$mockitoKotlinVersion")
+    testImplementation(libs.valtimo.test.utils.common)
+    testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.mockito.core)
+    testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.testcontainers.postgresql)
 }
 
 tasks.withType<KotlinCompile> {

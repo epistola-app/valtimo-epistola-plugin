@@ -1,0 +1,49 @@
+[
+    {
+        "activityId": "startEvent",
+        "activityType": "bpmn:StartEvent:start",
+        "processLinkType": "form",
+        "formDefinitionName": "bulk-start"
+    },
+    {
+        "activityId": "generate-letter",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "generate-document",
+        "actionProperties": {
+            "templateId": "belastingbrief",
+            "outputFormat": "PDF",
+            "filename": "belastingbrief.pdf",
+            "resultProcessVariable": "epistolaRequestId",
+            "dataMapping": {
+                "name": "pv:taxpayer.name",
+                "address": {
+                    "street": "pv:taxpayer.address.street",
+                    "houseNumber": "pv:taxpayer.address.houseNumber",
+                    "postalCode": "pv:taxpayer.address.postalCode",
+                    "city": "pv:taxpayer.address.city"
+                },
+                "bsn": "pv:taxpayer.bsn",
+                "taxAmount": "pv:taxpayer.taxAmount"
+            }
+        }
+    },
+    {
+        "activityId": "download-letter",
+        "activityType": "bpmn:ServiceTask:start",
+        "processLinkType": "plugin",
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "pluginActionDefinitionKey": "download-document",
+        "actionProperties": {
+            "documentIdVariable": "epistolaDocumentId",
+            "contentVariable": "letterContent"
+        }
+    },
+    {
+        "activityId": "bulk-result",
+        "activityType": "bpmn:UserTask:create",
+        "processLinkType": "form",
+        "formDefinitionName": "bulk-result"
+    }
+]

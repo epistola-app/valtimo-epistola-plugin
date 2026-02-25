@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "valtimo-demo.frontend.fullname" . }}
+  labels:
+    {{- include "valtimo-demo.frontend.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  ports:
+    - port: {{ .Values.frontend.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "valtimo-demo.frontend.selectorLabels" . | nindent 4 }}

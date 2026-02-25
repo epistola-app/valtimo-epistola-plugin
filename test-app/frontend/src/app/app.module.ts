@@ -19,13 +19,13 @@ import {
   WidgetModule
 } from '@valtimo/components';
 import {
-  DefaultTabs,
   CaseDetailTabAuditComponent,
   CaseDetailTabDocumentsComponent,
   CaseDetailTabNotesComponent,
   CaseDetailTabProgressComponent,
   CaseDetailTabSummaryComponent,
   CaseModule,
+  DefaultTabs,
 } from '@valtimo/case';
 import {ProcessModule} from '@valtimo/process';
 import {FormsModule, ReactiveFormsModule} from '@angular/forms';
@@ -57,15 +57,23 @@ import {TranslateLoader, TranslateModule} from '@ngx-translate/core';
 import {FormFlowManagementModule} from '@valtimo/form-flow-management';
 import {PluginManagementModule} from '@valtimo/plugin-management';
 import {
+  CatalogiApiPluginModule,
+  catalogiApiPluginSpecification,
+  DocumentenApiPluginModule,
+  documentenApiPluginSpecification,
   ObjectenApiPluginModule,
   objectenApiPluginSpecification,
   ObjectTokenAuthenticationPluginModule,
   objectTokenAuthenticationPluginSpecification,
   ObjecttypenApiPluginModule,
   objecttypenApiPluginSpecification,
+  OpenZaakPluginModule,
+  openZaakPluginSpecification,
+  ZakenApiPluginModule,
+  zakenApiPluginSpecification,
   PLUGINS_TOKEN,
 } from '@valtimo/plugin';
-import {EpistolaPluginModule, epistolaPluginSpecification} from '@epistola/valtimo-plugin';
+import {EpistolaPluginModule, epistolaPluginSpecification, registerEpistolaDownloadComponent} from '@epistola.app/valtimo-plugin';
 import {ObjectManagementModule} from '@valtimo/object-management';
 import {ObjectModule} from '@valtimo/object';
 import {AccessControlManagementModule} from '@valtimo/access-control-management';
@@ -129,6 +137,10 @@ export function tabsFactory() {
     ObjectenApiPluginModule,
     ObjecttypenApiPluginModule,
     ObjectTokenAuthenticationPluginModule,
+    OpenZaakPluginModule,
+    DocumentenApiPluginModule,
+    ZakenApiPluginModule,
+    CatalogiApiPluginModule,
     EpistolaPluginModule,
     ObjectModule,
     ObjectManagementModule,
@@ -156,6 +168,10 @@ export function tabsFactory() {
         objectenApiPluginSpecification,
         objecttypenApiPluginSpecification,
         objectTokenAuthenticationPluginSpecification,
+        openZaakPluginSpecification,
+        documentenApiPluginSpecification,
+        zakenApiPluginSpecification,
+        catalogiApiPluginSpecification,
         epistolaPluginSpecification
       ]
     },
@@ -169,5 +185,6 @@ export class AppModule {
     registerFormioUploadComponent(injector);
     registerFormioFileSelectorComponent(injector);
     registerFormioValueResolverSelectorComponent(injector);
+    registerEpistolaDownloadComponent(injector);
   }
 }

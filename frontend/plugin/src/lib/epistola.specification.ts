@@ -1,6 +1,14 @@
 import {PluginSpecification} from '@valtimo/plugin';
 import {EpistolaConfigurationComponent} from './components/epistola-configuration/epistola-configuration.component';
-import {GenerateDocumentConfigurationComponent} from './components/generate-document-configuration/generate-document-configuration.component';
+import {
+  GenerateDocumentConfigurationComponent
+} from './components/generate-document-configuration/generate-document-configuration.component';
+import {
+  CheckJobStatusConfigurationComponent
+} from './components/check-job-status-configuration/check-job-status-configuration.component';
+import {
+  DownloadDocumentConfigurationComponent
+} from './components/download-document-configuration/download-document-configuration.component';
 import {EPISTOLA_PLUGIN_LOGO_BASE64} from './assets';
 
 const epistolaPluginSpecification: PluginSpecification = {
@@ -16,6 +24,8 @@ const epistolaPluginSpecification: PluginSpecification = {
   // Map action keys to their configuration components
   functionConfigurationComponents: {
     'generate-document': GenerateDocumentConfigurationComponent,
+    'check-job-status': CheckJobStatusConfigurationComponent,
+    'download-document': DownloadDocumentConfigurationComponent,
   },
 
   // Translations
@@ -24,11 +34,35 @@ const epistolaPluginSpecification: PluginSpecification = {
       title: 'Epistola Document Suite',
       description: 'Documentgeneratie met Epistola',
       configurationTitle: 'Configuratienaam',
+      baseUrl: 'Base URL',
+      baseUrlTooltip: 'De basis URL van de Epistola API (bijv. https://api.epistola.app)',
+      apiKey: 'API Key',
+      apiKeyTooltip: 'De API sleutel voor authenticatie met Epistola',
       tenantId: 'Tenant ID',
-      tenantIdTooltip: 'De tenant ID waar de document templates zijn opgeslagen in Epistola',
+      tenantIdTooltip: 'De tenant slug in Epistola (3-63 tekens, alleen kleine letters, cijfers en koppeltekens, bijv. "mijn-tenant")',
+      defaultEnvironmentId: 'Standaard Omgeving',
+      defaultEnvironmentIdTooltip: 'De standaard omgeving voor documentgeneratie (3-30 tekens, alleen kleine letters, cijfers en koppeltekens, bijv. "productie")',
+      templateSyncEnabled: 'Template synchronisatie',
+      templateSyncEnabledTooltip: 'Synchroniseer template definities automatisch van het classpath naar Epistola bij het opstarten',
       'generate-document': 'Genereer Document',
       templateId: 'Template',
       templateIdTooltip: 'Selecteer het template dat gebruikt wordt voor documentgeneratie',
+      variantId: 'Variant',
+      variantIdTooltip: 'Selecteer de template variant',
+      variantSelectionMode: 'Variant selectie',
+      variantSelectionModeTooltip: 'Kies hoe de variant geselecteerd wordt',
+      selectByVariant: 'Selecteer variant',
+      selectByAttributes: 'Selecteer op kenmerken',
+      variantAttributes: 'Variant kenmerken',
+      variantAttributesTooltip: 'Kenmerken voor automatische variant selectie. Waarden kunnen expressies zijn (doc:, pv:, case:).',
+      attributeKey: 'Kenmerk',
+      attributeValue: 'Waarde',
+      addAttribute: 'Kenmerk toevoegen',
+      removeAttribute: 'Kenmerk verwijderen',
+      environmentId: 'Omgeving',
+      environmentIdTooltip: 'Selecteer de doelomgeving (optioneel)',
+      correlationId: 'Correlatie ID',
+      correlationIdTooltip: 'Een optioneel correlatie ID voor het traceren van dit verzoek',
       dataMapping: 'Data Mapping',
       dataMappingTooltip: 'Koppeling van template velden naar data bronnen (doc:, pv:, case:)',
       outputFormat: 'Uitvoerformaat',
@@ -48,17 +82,73 @@ const epistolaPluginSpecification: PluginSpecification = {
       noMappings: 'Nog geen mappings toegevoegd. Klik op "Mapping toevoegen" om te beginnen.',
       documentFields: 'Document velden',
       processVariables: 'Procesvariabelen',
-      caseProperties: 'Zaak eigenschappen'
+      caseProperties: 'Zaak eigenschappen',
+      sourceType: 'Brontype',
+      sourceTypeDocument: 'Document veld',
+      sourceTypeProcessVariable: 'Procesvariabele',
+      sourceTypeManual: 'Handmatig',
+      requiredFieldsMissing: 'Niet alle verplichte velden zijn gekoppeld',
+      requiredFieldsComplete: 'Alle verplichte velden zijn gekoppeld',
+      validationSummary: 'verplichte velden gekoppeld',
+      fieldRequired: 'Verplicht',
+      fieldOptional: 'Optioneel',
+      mapCollectionTo: 'Koppel collectie aan',
+      browseMode: 'Bladermodus',
+      pvMode: 'Procesvariabele modus',
+      pvPlaceholder: 'Naam procesvariabele',
+      expressionMode: 'Expressiemodus',
+      itemFieldMapping: 'Veldnamen per item koppelen',
+      itemFieldMappingTitle: 'Veldkoppeling per item:',
+      sourceFieldPlaceholder: 'Bronveldnaam',
+      noTemplateFields: 'Geen template velden beschikbaar',
+      // Check job status action
+      'check-job-status': 'Controleer Taakstatus',
+      requestIdVariable: 'Request ID Variabele',
+      requestIdVariableTooltip: 'Naam van de procesvariabele met het Epistola request ID',
+      statusVariable: 'Status Variabele',
+      statusVariableTooltip: 'Naam van de procesvariabele waarin de status wordt opgeslagen',
+      documentIdVariable: 'Document ID Variabele',
+      documentIdVariableTooltip: 'Naam van de procesvariabele waarin het document ID wordt opgeslagen (bij voltooiing)',
+      errorMessageVariable: 'Foutmelding Variabele',
+      errorMessageVariableTooltip: 'Naam van de procesvariabele waarin de foutmelding wordt opgeslagen (bij fout)',
+      // Download document action
+      'download-document': 'Download Document',
+      contentVariable: 'Inhoud Variabele',
+      contentVariableTooltip: 'Naam van de procesvariabele waarin de documentinhoud (Base64) wordt opgeslagen'
     },
     en: {
       title: 'Epistola Document Suite',
       description: 'Document generation using Epistola',
       configurationTitle: 'Configuration name',
+      baseUrl: 'Base URL',
+      baseUrlTooltip: 'The base URL of the Epistola API (e.g. https://api.epistola.app)',
+      apiKey: 'API Key',
+      apiKeyTooltip: 'The API key for authentication with Epistola',
       tenantId: 'Tenant ID',
-      tenantIdTooltip: 'The tenant ID where document templates are stored in Epistola',
+      tenantIdTooltip: 'The tenant slug in Epistola (3-63 chars, lowercase letters, digits and hyphens only, e.g. "my-tenant")',
+      defaultEnvironmentId: 'Default Environment',
+      defaultEnvironmentIdTooltip: 'The default environment for document generation (3-30 chars, lowercase letters, digits and hyphens only, e.g. "production")',
+      templateSyncEnabled: 'Template sync',
+      templateSyncEnabledTooltip: 'Automatically synchronize template definitions from classpath to Epistola on startup',
       'generate-document': 'Generate Document',
       templateId: 'Template',
       templateIdTooltip: 'Select the template to use for document generation',
+      variantId: 'Variant',
+      variantIdTooltip: 'Select the template variant',
+      variantSelectionMode: 'Variant selection',
+      variantSelectionModeTooltip: 'Choose how the variant is selected',
+      selectByVariant: 'Select variant',
+      selectByAttributes: 'Select by attributes',
+      variantAttributes: 'Variant attributes',
+      variantAttributesTooltip: 'Attributes for automatic variant selection. Values can be expressions (doc:, pv:, case:).',
+      attributeKey: 'Attribute',
+      attributeValue: 'Value',
+      addAttribute: 'Add attribute',
+      removeAttribute: 'Remove attribute',
+      environmentId: 'Environment',
+      environmentIdTooltip: 'Select the target environment (optional)',
+      correlationId: 'Correlation ID',
+      correlationIdTooltip: 'An optional correlation ID for tracking this request',
       dataMapping: 'Data Mapping',
       dataMappingTooltip: 'Mapping of template fields to data sources (doc:, pv:, case:)',
       outputFormat: 'Output Format',
@@ -78,7 +168,39 @@ const epistolaPluginSpecification: PluginSpecification = {
       noMappings: 'No mappings added yet. Click "Add mapping" to start.',
       documentFields: 'Document fields',
       processVariables: 'Process variables',
-      caseProperties: 'Case properties'
+      caseProperties: 'Case properties',
+      sourceType: 'Source type',
+      sourceTypeDocument: 'Document field',
+      sourceTypeProcessVariable: 'Process variable',
+      sourceTypeManual: 'Manual value',
+      requiredFieldsMissing: 'Not all required fields are mapped',
+      requiredFieldsComplete: 'All required fields are mapped',
+      validationSummary: 'required fields mapped',
+      fieldRequired: 'Required',
+      fieldOptional: 'Optional',
+      mapCollectionTo: 'Map collection to',
+      browseMode: 'Browse mode',
+      pvMode: 'Process variable mode',
+      pvPlaceholder: 'Process variable name',
+      expressionMode: 'Expression mode',
+      itemFieldMapping: 'Map field names per item',
+      itemFieldMappingTitle: 'Item field mapping:',
+      sourceFieldPlaceholder: 'Source field name',
+      noTemplateFields: 'No template fields available',
+      // Check job status action
+      'check-job-status': 'Check Job Status',
+      requestIdVariable: 'Request ID Variable',
+      requestIdVariableTooltip: 'Name of the process variable containing the Epistola request ID',
+      statusVariable: 'Status Variable',
+      statusVariableTooltip: 'Name of the process variable to store the status in',
+      documentIdVariable: 'Document ID Variable',
+      documentIdVariableTooltip: 'Name of the process variable to store the document ID in (when completed)',
+      errorMessageVariable: 'Error Message Variable',
+      errorMessageVariableTooltip: 'Name of the process variable to store the error message in (when failed)',
+      // Download document action
+      'download-document': 'Download Document',
+      contentVariable: 'Content Variable',
+      contentVariableTooltip: 'Name of the process variable to store the document content (Base64) in'
     }
   }
 };

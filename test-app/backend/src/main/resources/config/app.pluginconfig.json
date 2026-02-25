@@ -4,7 +4,11 @@
     "title": "Epistola Document Suite",
     "pluginDefinitionKey": "epistola",
     "properties": {
-      "tenantId": "tenantId"
+      "apiKey": "epk_demo_000000000000000000000000000000000000",
+      "tenantId": "demo-tenant",
+      "baseUrl": "${epistola.base-url}",
+      "defaultEnvironmentId": "production",
+      "templateSyncEnabled": true
     }
   }
 ]

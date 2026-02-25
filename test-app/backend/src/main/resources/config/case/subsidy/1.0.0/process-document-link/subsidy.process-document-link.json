@@ -1,0 +1,8 @@
+[
+    {
+        "processDefinitionKey": "subsidy-decision-package",
+        "canInitializeDocument": true,
+        "startableByUser": true,
+        "processIsVisibleInMenu": true
+    }
+]

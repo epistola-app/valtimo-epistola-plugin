@@ -1,0 +1,245 @@
+# -- Valtimo Epistola Demo Chart --
+# Deploys the Valtimo BPM demo app with Epistola plugin, Keycloak, and PostgreSQL.
+
+# =============================================================================
+# Backend (Valtimo Spring Boot application)
+# =============================================================================
+backend:
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/epistola-app/valtimo/demo-backend
+    pullPolicy: IfNotPresent
+    tag: ""  # defaults to Chart.appVersion
+    pullSecrets: []
+
+  springProfilesActive: "demo"
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  # Keycloak settings used by the backend for OAuth2
+  keycloak:
+    realm: valtimo
+    clientId: valtimo-console
+    backendClientId: valtimo-backend
+    backendClientSecret: "6ef6ca16-6b86-482a-a3d9-0561704c1db9"
+
+  # Valtimo-specific configuration
+  valtimo:
+    appHostname: "localhost:8080"
+    pluginEncryptionSecret: "0123456789abcdef0123456789abcdef"
+
+  # Operaton BPMN engine
+  operaton:
+    adminPassword: "admin"
+
+  # RabbitMQ (autoconfigure is excluded in application.yml, but vars are required)
+  rabbitmq:
+    host: "localhost"
+    port: "5672"
+    username: "guest"
+    password: "guest"
+
+  # Additional environment variables for the backend container
+  extraEnv: []
+  #  - name: SOME_VAR
+  #    value: "some-value"
+
+  livenessProbe:
+    httpGet:
+      path: /actuator/health/liveness
+      port: http
+    initialDelaySeconds: 60
+    periodSeconds: 15
+    failureThreshold: 5
+
+  readinessProbe:
+    httpGet:
+      path: /actuator/health/readiness
+      port: http
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+  resources: {}
+  #  requests:
+  #    cpu: 500m
+  #    memory: 1Gi
+  #  limits:
+  #    memory: 2Gi
+
+  nodeSelector: {}
+  tolerations: []
+
+# =============================================================================
+# Frontend (Valtimo Angular app served via nginx)
+# =============================================================================
+frontend:
+  replicaCount: 1
+
+  image:
+    repository: ghcr.io/epistola-app/valtimo/demo-frontend
+    pullPolicy: IfNotPresent
+    tag: ""  # defaults to Chart.appVersion
+    pullSecrets: []
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  # Environment variables injected via envsubst into config.template.js
+  env:
+    swaggerUri: "/swagger-ui.html"
+    mockApiUri: "/mock-api"
+    apiUri: "/api"
+    # keycloakUrl is auto-derived from keycloak subchart; override here if needed
+    keycloakUrl: ""
+    keycloakRealm: "valtimo"
+    keycloakClientId: "valtimo-console"
+    keycloakRedirectUri: "http://localhost:8080/*"
+    keycloakLogoutRedirectUri: "http://localhost:8080"
+    whitelistedDomain: "localhost"
+    openZaakCatalogusId: ""
+
+  # Additional environment variables for the frontend container
+  extraEnv: []
+
+  livenessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 10
+    periodSeconds: 15
+
+  readinessProbe:
+    httpGet:
+      path: /
+      port: http
+    initialDelaySeconds: 5
+    periodSeconds: 10
+
+  resources: {}
+  nodeSelector: {}
+  tolerations: []
+
+# =============================================================================
+# Keycloak realm import configuration
+# =============================================================================
+keycloakRealm:
+  # Redirect URIs for the valtimo-console client (parameterized for k8s)
+  redirectUris:
+    - "http://localhost:8080/*"
+    - "http://localhost:4200/*"
+  # Web origins for CORS
+  webOrigins:
+    - "http://localhost:8080"
+    - "http://localhost:4200"
+
+# =============================================================================
+# Ingress
+# =============================================================================
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  #  nginx.ingress.kubernetes.io/rewrite-target: /
+  hosts:
+    - host: valtimo-demo.local
+      paths:
+        - path: /
+          pathType: Prefix
+          service: frontend
+        - path: /auth
+          pathType: Prefix
+          service: keycloak
+  tls: []
+  #  - secretName: valtimo-demo-tls
+  #    hosts:
+  #      - valtimo-demo.local
+
+# =============================================================================
+# External services (used when subcharts are disabled)
+# =============================================================================
+externalKeycloak:
+  # Internal Keycloak URL (for backend-to-keycloak in-cluster communication)
+  url: ""
+  # External Keycloak URL (for browser access; falls back to url if empty)
+  frontendUrl: ""
+
+externalEpistola:
+  # URL of an external Epistola instance (must include the /api path suffix)
+  # Example: http://epistola.my-namespace.svc.cluster.local:8080/api
+  url: ""
+
+# =============================================================================
+# Subchart: Epistola
+# =============================================================================
+epistola:
+  enabled: true
+  # Override epistola values here, e.g.:
+  # service:
+  #   port: 8080
+  # database:
+  #   type: external
+  #   external:
+  #     host: my-epistola-db
+
+# =============================================================================
+# Subchart: PostgreSQL (Bitnami) for Valtimo
+# =============================================================================
+valtimoPostgresql:
+  auth:
+    username: epistola
+    password: epistola
+    database: epistola
+
+  primary:
+    persistence:
+      size: 2Gi
+
+# =============================================================================
+# Subchart: Keycloak (Bitnami)
+# =============================================================================
+keycloak:
+  enabled: true
+
+  auth:
+    adminUser: admin
+    adminPassword: admin
+
+  service:
+    ports:
+      http: 80
+
+  # Import the Valtimo realm on startup
+  keycloakConfigCli:
+    enabled: true
+    existingConfigmap: ""  # populated via tpl below
+
+  extraVolumes:
+    - name: realm-config
+      configMap:
+        name: '{{ printf "%s-keycloak-realm" (include "valtimo-demo.fullname" .) }}'
+
+  extraVolumeMounts:
+    - name: realm-config
+      mountPath: /opt/keycloak/data/import/valtimo-realm.json
+      subPath: valtimo-realm.json
+
+  extraEnvVars:
+    - name: KC_FEATURES
+      value: "import-export"
+
+  command:
+    - /opt/bitnami/keycloak/bin/kc.sh
+  args:
+    - start-dev
+    - --import-realm
+
+  postgresql:
+    enabled: true
+    auth:
+      username: keycloak
+      password: keycloak
+      database: keycloak

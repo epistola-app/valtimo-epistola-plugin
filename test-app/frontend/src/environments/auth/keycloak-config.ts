@@ -1,4 +1,10 @@
-import {KeycloakAuthGuardService, keycloakInitializer, KeycloakModule, KeycloakUserService, ValtimoKeycloakOptions} from '@valtimo/keycloak';
+import {
+  KeycloakAuthGuardService,
+  keycloakInitializer,
+  KeycloakModule,
+  KeycloakUserService,
+  ValtimoKeycloakOptions
+} from '@valtimo/keycloak';
 import {KeycloakConfig, KeycloakOnLoad} from 'keycloak-js';
 import {Injector} from '@angular/core';
 import {Auth, AuthProviders} from '@valtimo/shared';

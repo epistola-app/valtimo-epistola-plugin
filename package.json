@@ -6,11 +6,11 @@
   "license": "EUPL-1.2",
   "scripts": {
     "build": "pnpm build:plugin && pnpm build:test-app",
-    "build:plugin": "pnpm --filter @epistola/valtimo-plugin build",
+    "build:plugin": "pnpm --filter @epistola.app/valtimo-plugin build",
     "build:test-app": "pnpm --filter gzac-frontend-template build",
     "start": "pnpm --filter gzac-frontend-template start",
     "dev": "pnpm build:plugin && pnpm start",
-    "watch:plugin": "pnpm --filter @epistola/valtimo-plugin watch",
+    "watch:plugin": "pnpm --filter @epistola.app/valtimo-plugin watch",
     "test": "pnpm -r test",
     "clean": "rm -rf node_modules && pnpm -r exec rm -rf node_modules dist"
   },

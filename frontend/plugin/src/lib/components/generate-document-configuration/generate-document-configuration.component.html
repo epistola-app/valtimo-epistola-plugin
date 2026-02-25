@@ -5,7 +5,12 @@
       prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null,
       templateOptions: templateOptions$ | async,
       templatesLoading: templatesLoading$ | async,
-      templateFieldsLoading: templateFieldsLoading$ | async
+      variantOptions: variantOptions$ | async,
+      variantsLoading: variantsLoading$ | async,
+      environmentOptions: environmentOptions$ | async,
+      environmentsLoading: environmentsLoading$ | async,
+      templateFieldsLoading: templateFieldsLoading$ | async,
+      selectedTemplateId: selectedTemplateId$ | async
     } as obs"
 >
   <v-select
@@ -18,6 +23,93 @@
     [disabled]="obs.disabled || obs.templatesLoading"
     [required]="true"
     [loading]="obs.templatesLoading"
+  >
+  </v-select>
+
+  <!-- Variant selection mode toggle -->
+  <div class="variant-mode-toggle" *ngIf="obs.selectedTemplateId">
+    <label class="variant-mode-label">{{ 'variantSelectionMode' | pluginTranslate: pluginId | async }}</label>
+    <div class="variant-mode-buttons">
+      <button
+        type="button"
+        class="variant-mode-btn"
+        [class.active]="variantSelectionMode === 'explicit'"
+        (click)="onVariantSelectionModeChange('explicit')"
+        [disabled]="obs.disabled"
+      >{{ 'selectByVariant' | pluginTranslate: pluginId | async }}</button>
+      <button
+        type="button"
+        class="variant-mode-btn"
+        [class.active]="variantSelectionMode === 'attributes'"
+        (click)="onVariantSelectionModeChange('attributes')"
+        [disabled]="obs.disabled"
+      >{{ 'selectByAttributes' | pluginTranslate: pluginId | async }}</button>
+    </div>
+  </div>
+
+  <!-- Explicit variant selection (dropdown) -->
+  <v-select
+    *ngIf="variantSelectionMode === 'explicit'"
+    name="variantId"
+    [title]="'variantId' | pluginTranslate: pluginId | async"
+    [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [items]="obs.variantOptions"
+    [defaultSelectionId]="obs.prefill?.variantId"
+    [disabled]="obs.disabled || obs.variantsLoading || !obs.selectedTemplateId"
+    [required]="false"
+    [loading]="obs.variantsLoading"
+  >
+  </v-select>
+
+  <!-- Attribute-based variant selection -->
+  <div *ngIf="variantSelectionMode === 'attributes' && obs.selectedTemplateId" class="variant-attributes-section">
+    <label class="variant-attributes-label">{{ 'variantAttributes' | pluginTranslate: pluginId | async }}</label>
+    <div class="variant-attributes-list">
+      <div *ngFor="let entry of variantAttributeEntries; let i = index" class="variant-attribute-row">
+        <input
+          type="text"
+          class="variant-attribute-input"
+          [placeholder]="'attributeKey' | pluginTranslate: pluginId | async"
+          [(ngModel)]="entry.key"
+          (ngModelChange)="onAttributeEntryChange()"
+          [disabled]="obs.disabled"
+        />
+        <input
+          type="text"
+          class="variant-attribute-input"
+          [placeholder]="'attributeValue' | pluginTranslate: pluginId | async"
+          [(ngModel)]="entry.value"
+          (ngModelChange)="onAttributeEntryChange()"
+          [disabled]="obs.disabled"
+        />
+        <button
+          type="button"
+          class="variant-attribute-remove-btn"
+          (click)="removeAttributeEntry(i)"
+          [disabled]="obs.disabled"
+          title="{{ 'removeAttribute' | pluginTranslate: pluginId | async }}"
+        >&times;</button>
+      </div>
+    </div>
+    <button
+      type="button"
+      class="variant-attribute-add-btn"
+      (click)="addAttributeEntry()"
+      [disabled]="obs.disabled"
+    >+ {{ 'addAttribute' | pluginTranslate: pluginId | async }}</button>
+  </div>
+
+  <v-select
+    name="environmentId"
+    [title]="'environmentId' | pluginTranslate: pluginId | async"
+    [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [items]="obs.environmentOptions"
+    [defaultSelectionId]="obs.prefill?.environmentId"
+    [disabled]="obs.disabled || obs.environmentsLoading"
+    [required]="false"
+    [loading]="obs.environmentsLoading"
   >
   </v-select>
 
@@ -45,6 +137,17 @@
   </v-input>
 
   <v-input
+    name="correlationId"
+    [title]="'correlationId' | pluginTranslate: pluginId | async"
+    [tooltip]="'correlationIdTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="obs.prefill?.correlationId"
+    [disabled]="obs.disabled"
+    [required]="false"
+  >
+  </v-input>
+
+  <v-input
     name="resultProcessVariable"
     [title]="'resultProcessVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'resultProcessVariableTooltip' | pluginTranslate: pluginId | async"
@@ -56,11 +159,24 @@
   </v-input>
 </v-form>
 
-<epistola-data-mapping-builder
+<epistola-data-mapping-tree
   *ngIf="(selectedTemplateId$ | async)"
   [pluginId]="pluginId"
   [templateFields$]="templateFields$"
   [disabled$]="disabled$"
   [prefillMapping$]="prefillDataMapping$"
+  [caseDefinitionKey]="caseDefinitionKey"
+  [processVariables]="processVariables"
   (mappingChange)="onDataMappingChange($event)"
-></epistola-data-mapping-builder>
+  (requiredFieldsStatus)="onRequiredFieldsStatusChange($event)"
+></epistola-data-mapping-tree>
+
+<div class="validation-summary" *ngIf="(selectedTemplateId$ | async) && requiredFieldsStatus.total > 0">
+  <span *ngIf="requiredFieldsStatus.mapped === requiredFieldsStatus.total" class="validation-complete">
+    {{ 'requiredFieldsComplete' | pluginTranslate: pluginId | async }}
+  </span>
+  <span *ngIf="requiredFieldsStatus.mapped < requiredFieldsStatus.total" class="validation-incomplete">
+    {{ requiredFieldsStatus.mapped }} / {{ requiredFieldsStatus.total }}
+    {{ 'validationSummary' | pluginTranslate: pluginId | async }}
+  </span>
+</div>

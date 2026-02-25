@@ -1,0 +1,27 @@
+{
+  "slug": "test-valid",
+  "name": "Test Template",
+  "version": "1.0.0",
+  "dataModel": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string", "description": "Name" }
+    },
+    "required": ["name"]
+  },
+  "dataExamples": [
+    { "id": "ex-1", "name": "Example 1", "data": { "name": "Test" } }
+  ],
+  "templateModel": {
+    "modelVersion": 1,
+    "root": "n-root",
+    "nodes": {
+      "n-root": { "id": "n-root", "type": "container", "slots": ["s-root"] }
+    },
+    "slots": {
+      "s-root": { "id": "s-root", "nodeId": "n-root", "name": "children", "children": [] }
+    }
+  },
+  "variants": [],
+  "publishTo": ["production"]
+}

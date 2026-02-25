@@ -1,8 +1,20 @@
 {
-  "name": "@epistola/valtimo-plugin",
+  "name": "@epistola.app/valtimo-plugin",
   "version": "1.0.0",
   "description": "Epistola document generation plugin for Valtimo",
   "license": "EUPL-1.2",
+  "module": "dist/fesm2022/epistola.app-valtimo-plugin.mjs",
+  "typings": "dist/index.d.ts",
+  "exports": {
+    "./package.json": {
+      "default": "./package.json"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/fesm2022/epistola.app-valtimo-plugin.mjs"
+    }
+  },
+  "sideEffects": false,
   "scripts": {
     "build": "ng-packagr -p ng-package.json",
     "watch": "ng-packagr -p ng-package.json --watch",
