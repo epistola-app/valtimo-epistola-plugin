@@ -7,7 +7,7 @@ plugins {
 }
 
 group = "app.epistola"
-version = (findProperty("version") as String?) ?: "1.0.0-SNAPSHOT"
+version = (findProperty("version") as String?) ?: "0.1.0-SNAPSHOT"
 
 // Node.js configuration for frontend builds
 node {
