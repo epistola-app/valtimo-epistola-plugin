@@ -164,8 +164,6 @@ jobs:
         run: |
           npm version "${{ needs.version.outputs.version }}" --no-git-tag-version
           npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   docker-backend:
     name: Docker Backend

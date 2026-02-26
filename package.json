@@ -1,6 +1,6 @@
 {
   "name": "valtimo-epistola-plugin",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "private": true,
   "description": "Epistola document generation plugin for Valtimo - Monorepo",
   "license": "EUPL-1.2",
