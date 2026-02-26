@@ -160,7 +160,7 @@ jobs:
         run: pnpm --filter @epistola.app/valtimo-plugin build
 
       - name: Set version and publish
-        working-directory: dist/epistola-plugin
+        working-directory: frontend/plugin/dist
         run: |
           npm version "${{ needs.version.outputs.version }}" --no-git-tag-version
           npm publish --access public
