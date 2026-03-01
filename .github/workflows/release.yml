@@ -151,6 +151,10 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Upgrade npm for OIDC trusted publishing support
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -160,11 +164,9 @@ jobs:
 
       - name: Set version and publish
         working-directory: frontend/plugin/dist
-        env:
-          NODE_AUTH_TOKEN: ""
         run: |
           npm version "${{ needs.version.outputs.version }}" --no-git-tag-version
-          npm publish --access public
+          npm publish --provenance --access public
 
   docker-backend:
     name: Docker Backend
