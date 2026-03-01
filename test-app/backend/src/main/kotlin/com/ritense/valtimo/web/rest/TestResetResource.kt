@@ -21,7 +21,7 @@ import javax.sql.DataSource
 @RestController
 @RequestMapping("/api/v1/test")
 class TestResetResource(
-    private val dataSource: DataSource
+    private val dataSource: DataSource,
 ) {
     private val logger = KotlinLogging.logger {}
 
@@ -52,7 +52,7 @@ class TestResetResource(
         }
 
         return ResponseEntity.accepted().body(
-            mapOf("status" to "Database reset complete. Application will restart shortly.")
+            mapOf("status" to "Database reset complete. Application will restart shortly."),
         )
     }
 }
