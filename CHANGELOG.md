@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Database Reset Endpoint** (`POST /api/v1/test/reset`): Drops and recreates the public schema, then shuts down the JVM. Designed for Kubernetes-deployed demo environments where pods auto-restart with a clean database. Valtimo and Operaton recreate all tables on boot, and case definitions/BPMN processes are redeployed from config.
+
 - **Template Sync**: Automatic synchronization of template definitions from classpath to Epistola server on startup
   - `templateSyncEnabled` plugin property with frontend checkbox toggle
   - Classpath scanner for `config/epistola/templates/*/definition.json` files

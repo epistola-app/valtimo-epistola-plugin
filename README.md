@@ -74,6 +74,41 @@ pnpm start
 pnpm build
 ```
 
+## Demo Environment
+
+### Database Reset
+
+The test-app includes a database reset endpoint for demo/development environments. This is useful when the application is deployed on Kubernetes and you need to restore the database to a clean state.
+
+```
+POST /api/v1/test/reset
+```
+
+**Requires:** Authentication (any authenticated user via Valtimo's default security)
+
+**What it does:**
+
+1. Drops the `public` schema (`DROP SCHEMA public CASCADE`)
+2. Recreates the `public` schema with proper grants
+3. Returns `202 Accepted`
+4. Shuts down the JVM after a 1-second delay (so the HTTP response completes)
+
+**On Kubernetes**, the pod restarts automatically after `System.exit(0)`. Other replicas will fail on their next database call, causing liveness probes to fail and triggering restarts. On startup, Valtimo and Operaton recreate all tables, and case definitions, BPMN processes, and plugin configurations are redeployed from `config/`.
+
+**Example:**
+
+```bash
+# Get a token from Keycloak
+TOKEN=$(curl -s -X POST 'http://localhost:8081/realms/valtimo/protocol/openid-connect/token' \
+  -d 'grant_type=password&client_id=valtimo-console&username=admin&password=admin' \
+  | jq -r '.access_token')
+
+# Reset the database
+curl -X POST http://localhost:8080/api/v1/test/reset \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json"
+```
+
 ## License
 
 EUPL-1.2
