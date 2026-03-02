@@ -138,7 +138,7 @@ Keycloak internal URL (for backend-to-keycloak communication within the cluster)
 */}}
 {{- define "valtimo-demo.keycloak.internalUrl" -}}
 {{- if .Values.keycloak.enabled }}
-{{- printf "http://%s:%v" (include "valtimo-demo.keycloak.fullname" .) (.Values.keycloak.service.port | default 80) }}
+{{- printf "http://%s:%v/auth" (include "valtimo-demo.keycloak.fullname" .) (.Values.keycloak.service.port | default 80) }}
 {{- else }}
 {{- .Values.externalKeycloak.url }}
 {{- end }}
