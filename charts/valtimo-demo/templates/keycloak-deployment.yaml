@@ -96,7 +96,7 @@ spec:
             - name: KC_DB
               value: postgres
             - name: KC_DB_URL
-              value: "jdbc:postgresql://{{ include "valtimo-demo.keycloak.dbHost" . }}:{{ .Values.keycloak.database.port }}/{{ .Values.keycloak.database.name }}"
+              value: "jdbc:postgresql://{{ include "valtimo-demo.keycloak.dbHost" . }}:{{ .Values.keycloak.database.port }}/{{ .Values.keycloak.database.name }}?sslmode=require"
             - name: KC_DB_USERNAME
               valueFrom:
                 secretKeyRef:
