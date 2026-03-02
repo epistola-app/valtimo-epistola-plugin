@@ -5,6 +5,20 @@ metadata:
   labels:
     {{- include "valtimo-demo.frontend.labels" . | nindent 4 }}
 data:
+  config.js: |
+    (function(window) {
+      window['env'] = window['env'] || {};
+      window['env']['swaggerUri'] = '{{ .Values.frontend.env.swaggerUri }}';
+      window['env']['mockApiUri'] = '{{ .Values.frontend.env.mockApiUri }}';
+      window['env']['apiUri'] = '{{ .Values.frontend.env.apiUri }}';
+      window['env']['keycloakUrl'] = '{{ .Values.frontend.env.keycloakUrl | default (include "valtimo-demo.keycloak.externalUrl" .) }}';
+      window['env']['keycloakRealm'] = '{{ .Values.frontend.env.keycloakRealm }}';
+      window['env']['keycloakClientId'] = '{{ .Values.frontend.env.keycloakClientId }}';
+      window['env']['keycloakRedirectUri'] = '{{ .Values.frontend.env.keycloakRedirectUri }}';
+      window['env']['keycloakLogoutRedirectUri'] = '{{ .Values.frontend.env.keycloakLogoutRedirectUri }}';
+      window['env']['whiteListedDomain'] = '{{ .Values.frontend.env.whitelistedDomain }}';
+      window['env']['openZaakCatalogusId'] = '{{ .Values.frontend.env.openZaakCatalogusId }}';
+    })(this);
   default.conf: |
     server {
         listen       8080;

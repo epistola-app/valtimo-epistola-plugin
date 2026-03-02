@@ -35,39 +35,22 @@ spec:
             capabilities:
               drop:
                 - ALL
+          command: ["nginx", "-g", "daemon off;"]
           ports:
             - name: http
               containerPort: 8080
               protocol: TCP
+          {{- with .Values.frontend.extraEnv }}
           env:
-            {{- $keycloakExternalUrl := include "valtimo-demo.keycloak.externalUrl" . }}
-            - name: SWAGGER_URI
-              value: {{ .Values.frontend.env.swaggerUri | quote }}
-            - name: MOCK_API_URI
-              value: {{ .Values.frontend.env.mockApiUri | quote }}
-            - name: API_URI
-              value: {{ .Values.frontend.env.apiUri | quote }}
-            - name: KEYCLOAK_URL
-              value: {{ .Values.frontend.env.keycloakUrl | default $keycloakExternalUrl | quote }}
-            - name: KEYCLOAK_REALM
-              value: {{ .Values.frontend.env.keycloakRealm | quote }}
-            - name: KEYCLOAK_CLIENT_ID
-              value: {{ .Values.frontend.env.keycloakClientId | quote }}
-            - name: KEYCLOAK_REDIRECT_URI
-              value: {{ .Values.frontend.env.keycloakRedirectUri | quote }}
-            - name: KEYCLOAK_LOGOUT_REDIRECT_URI
-              value: {{ .Values.frontend.env.keycloakLogoutRedirectUri | quote }}
-            - name: WHITELISTED_DOMAIN
-              value: {{ .Values.frontend.env.whitelistedDomain | quote }}
-            - name: OPENZAAK_CATALOGUS_ID
-              value: {{ .Values.frontend.env.openZaakCatalogusId | quote }}
-            {{- with .Values.frontend.extraEnv }}
             {{- toYaml . | nindent 12 }}
-            {{- end }}
+          {{- end }}
           volumeMounts:
             - name: nginx-config
               mountPath: /etc/nginx/conf.d/default.conf
               subPath: default.conf
+            - name: nginx-config
+              mountPath: /usr/share/nginx/html/assets/config.js
+              subPath: config.js
             - name: tmp
               mountPath: /tmp
             - name: nginx-cache
