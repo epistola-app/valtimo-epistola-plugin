@@ -121,14 +121,14 @@ spec:
               mountPath: /tmp
           livenessProbe:
             httpGet:
-              path: /health/live
+              path: /auth/health/live
               port: management
             initialDelaySeconds: 60
             periodSeconds: 15
             failureThreshold: 5
           readinessProbe:
             httpGet:
-              path: /health/ready
+              path: /auth/health/ready
               port: management
             initialDelaySeconds: 30
             periodSeconds: 10
