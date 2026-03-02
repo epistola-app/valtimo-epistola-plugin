@@ -1,0 +1,13 @@
+{{- if and (eq .Values.database.type "cnpg") .Values.keycloak.enabled (not .Values.keycloak.postgresql.enabled) }}
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: {{ include "valtimo-demo.cnpg.clusterName" . }}-keycloak
+  labels:
+    {{- include "valtimo-demo.labels" . | nindent 4 }}
+spec:
+  name: keycloak
+  owner: {{ .Values.database.cnpg.owner }}
+  cluster:
+    name: {{ include "valtimo-demo.cnpg.clusterName" . }}
+{{- end }}

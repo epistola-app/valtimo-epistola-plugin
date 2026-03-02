@@ -11,6 +11,8 @@ spec:
       {{- include "valtimo-demo.backend.selectorLabels" . | nindent 6 }}
   template:
     metadata:
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/backend-secret.yaml") . | sha256sum }}
       labels:
         {{- include "valtimo-demo.backend.selectorLabels" . | nindent 8 }}
     spec:
@@ -24,7 +26,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: backend
-          image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag | default .Chart.AppVersion }}"
+          {{- $tag := include "valtimo-demo.imageTag" (dict "componentTag" .Values.backend.image.tag "global" .Values.global "appVersion" .Chart.AppVersion) }}
+          image: "{{ .Values.backend.image.repository }}:{{ $tag }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           securityContext:
             runAsUser: 1000
@@ -74,7 +77,8 @@ spec:
                   key: {{ .Values.database.external.secretKey }}
             {{- end }}
 
-            # RabbitMQ (disabled via autoconfigure exclude in application.yml, but env vars set for completeness)
+            {{- if .Values.backend.rabbitmq.enabled }}
+            # RabbitMQ
             - name: SPRING_RABBITMQ_HOST
               value: {{ .Values.backend.rabbitmq.host | quote }}
             - name: SPRING_RABBITMQ_PORT
@@ -83,6 +87,7 @@ spec:
               value: {{ .Values.backend.rabbitmq.username | quote }}
             - name: SPRING_RABBITMQ_PASSWORD
               value: {{ .Values.backend.rabbitmq.password | quote }}
+            {{- end }}
 
             # OAuth2 / Keycloak
             {{- $keycloakInternalUrl := include "valtimo-demo.keycloak.internalUrl" . }}
@@ -98,13 +103,19 @@ spec:
             - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTID
               value: {{ .Values.backend.keycloak.backendClientId | quote }}
             - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTSECRET
-              value: {{ .Values.backend.keycloak.backendClientSecret | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "valtimo-demo.backend.fullname" . }}
+                  key: keycloak-client-secret
 
             # Valtimo
             - name: VALTIMO_APP_HOSTNAME
               value: {{ .Values.backend.valtimo.appHostname | quote }}
             - name: VALTIMO_PLUGIN_ENCRYPTIONSECRET
-              value: {{ .Values.backend.valtimo.pluginEncryptionSecret | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "valtimo-demo.backend.fullname" . }}
+                  key: plugin-encryption-secret
 
             # Epistola
             - name: EPISTOLA_BASE_URL
@@ -112,7 +123,10 @@ spec:
 
             # Operaton BPMN engine
             - name: OPERATON_BPM_ADMINUSER_PASSWORD
-              value: {{ .Values.backend.operaton.adminPassword | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "valtimo-demo.backend.fullname" . }}
+                  key: operaton-admin-password
 
             {{- with .Values.backend.extraEnv }}
             {{- toYaml . | nindent 12 }}

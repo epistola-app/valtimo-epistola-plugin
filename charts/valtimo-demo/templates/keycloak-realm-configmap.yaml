@@ -70,8 +70,11 @@ data:
           "directAccessGrantsEnabled": true,
           "standardFlowEnabled": true,
           "implicitFlowEnabled": false,
-          "redirectUris": {{ .Values.keycloakRealm.redirectUris | toJson }},
-          "webOrigins": {{ .Values.keycloakRealm.webOrigins | toJson }},
+          {{- $baseUrl := include "valtimo-demo.appBaseUrl" . }}
+          {{- $defaultRedirectUris := list (printf "%s/*" $baseUrl) }}
+          {{- $defaultWebOrigins := list $baseUrl }}
+          "redirectUris": {{ .Values.keycloakRealm.redirectUris | default $defaultRedirectUris | toJson }},
+          "webOrigins": {{ .Values.keycloakRealm.webOrigins | default $defaultWebOrigins | toJson }},
           "defaultClientScopes": [
             "web-origins",
             "profile",

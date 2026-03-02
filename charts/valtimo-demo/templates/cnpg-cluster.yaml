@@ -8,18 +8,18 @@ metadata:
 spec:
   instances: {{ .Values.database.cnpg.instances }}
 
-  postgresql:
-    {{- with .Values.database.cnpg.parameters }}
-    parameters:
-      {{- toYaml . | nindent 6 }}
-    {{- end }}
-
-  imageName: ghcr.io/cloudnative-pg/postgresql:{{ .Values.database.cnpg.postgresVersion }}
-
   bootstrap:
     initdb:
       database: {{ .Values.database.cnpg.database }}
       owner: {{ .Values.database.cnpg.owner }}
+
+  {{- with .Values.database.cnpg.parameters }}
+  postgresql:
+    parameters:
+      {{- toYaml . | nindent 6 }}
+  {{- end }}
+
+  imageName: ghcr.io/cloudnative-pg/postgresql:{{ .Values.database.cnpg.postgresVersion }}
 
   storage:
     size: {{ .Values.database.cnpg.storage.size }}
