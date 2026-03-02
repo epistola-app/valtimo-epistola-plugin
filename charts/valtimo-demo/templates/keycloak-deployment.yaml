@@ -48,7 +48,7 @@ spec:
             - |
               mkdir -p /keycloak-data/import
               cp /realm-source/valtimo-realm.json /keycloak-data/import/
-              cp -a /opt/keycloak/lib/quarkus/. /keycloak-lib/
+              cp -r /opt/keycloak/lib/quarkus/. /keycloak-lib/
           securityContext:
             runAsUser: 1000
             allowPrivilegeEscalation: false
