@@ -14,9 +14,9 @@ data:
       window['env']['keycloakUrl'] = '{{ .Values.frontend.env.keycloakUrl | default (include "valtimo-demo.keycloak.externalUrl" .) }}';
       window['env']['keycloakRealm'] = '{{ .Values.frontend.env.keycloakRealm }}';
       window['env']['keycloakClientId'] = '{{ .Values.frontend.env.keycloakClientId }}';
-      window['env']['keycloakRedirectUri'] = '{{ .Values.frontend.env.keycloakRedirectUri }}';
-      window['env']['keycloakLogoutRedirectUri'] = '{{ .Values.frontend.env.keycloakLogoutRedirectUri }}';
-      window['env']['whiteListedDomain'] = '{{ .Values.frontend.env.whitelistedDomain }}';
+      window['env']['keycloakRedirectUri'] = '{{ include "valtimo-demo.keycloak.redirectUri" . }}';
+      window['env']['keycloakLogoutRedirectUri'] = '{{ include "valtimo-demo.keycloak.logoutRedirectUri" . }}';
+      window['env']['whiteListedDomain'] = '{{ include "valtimo-demo.whitelistedDomain" . }}';
       window['env']['openZaakCatalogusId'] = '{{ .Values.frontend.env.openZaakCatalogusId }}';
     })(this);
   default.conf: |

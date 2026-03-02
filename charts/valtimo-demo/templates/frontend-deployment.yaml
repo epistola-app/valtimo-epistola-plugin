@@ -26,7 +26,8 @@ spec:
           type: RuntimeDefault
       containers:
         - name: frontend
-          image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag | default .Chart.AppVersion }}"
+          {{- $tag := include "valtimo-demo.imageTag" (dict "componentTag" .Values.frontend.image.tag "global" .Values.global "appVersion" .Chart.AppVersion) }}
+          image: "{{ .Values.frontend.image.repository }}:{{ $tag }}"
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           securityContext:
             runAsUser: 1000

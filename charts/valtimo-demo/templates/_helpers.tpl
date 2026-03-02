@@ -100,13 +100,65 @@ Keycloak internal URL (for backend-to-keycloak communication within the cluster)
 
 {{/*
 Keycloak external URL (used by browser clients to reach Keycloak).
-Falls back to internal URL if not explicitly set.
+Priority: explicit frontendUrl > ingress-derived > internal URL.
 */}}
 {{- define "valtimo-demo.keycloak.externalUrl" -}}
 {{- if .Values.externalKeycloak.frontendUrl }}
 {{- .Values.externalKeycloak.frontendUrl }}
+{{- else if and .Values.keycloak.enabled .Values.ingress.enabled }}
+{{- $host := (index .Values.ingress.hosts 0).host }}
+{{- $scheme := ternary "https" "http" (not (empty .Values.ingress.tls)) }}
+{{- printf "%s://%s/auth" $scheme $host }}
 {{- else }}
 {{- include "valtimo-demo.keycloak.internalUrl" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Base URL for the application (scheme + host), derived from ingress or appHostname.
+*/}}
+{{- define "valtimo-demo.appBaseUrl" -}}
+{{- if .Values.ingress.enabled }}
+{{- $host := (index .Values.ingress.hosts 0).host }}
+{{- $scheme := ternary "https" "http" (not (empty .Values.ingress.tls)) }}
+{{- printf "%s://%s" $scheme $host }}
+{{- else }}
+{{- printf "http://%s" .Values.backend.valtimo.appHostname }}
+{{- end }}
+{{- end }}
+
+{{/*
+Keycloak redirect URI for the frontend OIDC client.
+*/}}
+{{- define "valtimo-demo.keycloak.redirectUri" -}}
+{{- if .Values.frontend.env.keycloakRedirectUri }}
+{{- .Values.frontend.env.keycloakRedirectUri }}
+{{- else }}
+{{- printf "%s/*" (include "valtimo-demo.appBaseUrl" .) }}
+{{- end }}
+{{- end }}
+
+{{/*
+Keycloak logout redirect URI for the frontend OIDC client.
+*/}}
+{{- define "valtimo-demo.keycloak.logoutRedirectUri" -}}
+{{- if .Values.frontend.env.keycloakLogoutRedirectUri }}
+{{- .Values.frontend.env.keycloakLogoutRedirectUri }}
+{{- else }}
+{{- include "valtimo-demo.appBaseUrl" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Whitelisted domain for Angular HTTP interceptor (hostname only).
+*/}}
+{{- define "valtimo-demo.whitelistedDomain" -}}
+{{- if .Values.frontend.env.whitelistedDomain }}
+{{- .Values.frontend.env.whitelistedDomain }}
+{{- else if .Values.ingress.enabled }}
+{{- (index .Values.ingress.hosts 0).host }}
+{{- else }}
+{{- "localhost" }}
 {{- end }}
 {{- end }}
 
@@ -136,6 +188,13 @@ For cnpgExisting: explicit secretName or "{clusterName}-app"
 {{- else }}
 {{- printf "%s-app" (include "valtimo-demo.cnpg.clusterName" .) }}
 {{- end }}
+{{- end }}
+
+{{/*
+Image tag: per-component tag > global.imageTag > Chart.appVersion.
+*/}}
+{{- define "valtimo-demo.imageTag" -}}
+{{- .componentTag | default .global.imageTag | default .appVersion }}
 {{- end }}
 
 {{/*

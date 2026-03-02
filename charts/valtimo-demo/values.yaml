@@ -2,6 +2,14 @@
 # Deploys the Valtimo BPM demo app with Epistola plugin, Keycloak, and PostgreSQL.
 
 # =============================================================================
+# Global settings
+# =============================================================================
+global:
+  # Image tag shared by backend and frontend. Per-component image.tag overrides this.
+  # Defaults to Chart.appVersion when empty.
+  imageTag: ""
+
+# =============================================================================
 # Backend (Valtimo Spring Boot application)
 # =============================================================================
 backend:
@@ -13,7 +21,7 @@ backend:
     tag: ""  # defaults to Chart.appVersion
     pullSecrets: []
 
-  springProfilesActive: "demo"
+  springProfilesActive: ""
 
   service:
     type: ClusterIP
@@ -35,8 +43,9 @@ backend:
   operaton:
     adminPassword: "admin"
 
-  # RabbitMQ (autoconfigure is excluded in application.yml, but vars are required)
+  # RabbitMQ (disabled by default; autoconfigure is excluded in application.yml)
   rabbitmq:
+    enabled: false
     host: "localhost"
     port: "5672"
     username: "guest"
@@ -97,9 +106,10 @@ frontend:
     keycloakUrl: ""
     keycloakRealm: "valtimo"
     keycloakClientId: "valtimo-console"
-    keycloakRedirectUri: "http://localhost:8080/*"
-    keycloakLogoutRedirectUri: "http://localhost:8080"
-    whitelistedDomain: "localhost"
+    # Auto-derived from ingress host or backend.valtimo.appHostname; override to set explicitly
+    keycloakRedirectUri: ""
+    keycloakLogoutRedirectUri: ""
+    whitelistedDomain: ""
     openZaakCatalogusId: ""
 
   # Additional environment variables for the frontend container
@@ -127,14 +137,12 @@ frontend:
 # Keycloak realm import configuration
 # =============================================================================
 keycloakRealm:
-  # Redirect URIs for the valtimo-console client (parameterized for k8s)
-  redirectUris:
-    - "http://localhost:8080/*"
-    - "http://localhost:4200/*"
-  # Web origins for CORS
-  webOrigins:
-    - "http://localhost:8080"
-    - "http://localhost:4200"
+  # Redirect URIs for the valtimo-console client.
+  # Auto-derived from ingress host or backend.valtimo.appHostname when empty.
+  redirectUris: []
+  # Web origins for CORS.
+  # Auto-derived from ingress host or backend.valtimo.appHostname when empty.
+  webOrigins: []
 
 # =============================================================================
 # Ingress
@@ -194,7 +202,7 @@ database:
 
   # Create a new CNPG Cluster (type: cnpg)
   cnpg:
-    name: ""              # defaults to "{fullname}-db"
+    name: valtimo-db
     instances: 1
     postgresVersion: 17
     database: valtimo
@@ -233,10 +241,10 @@ keycloak:
     ports:
       http: 80
 
-  # Import the Valtimo realm on startup
+  # Realm import is handled via --import-realm with a volume-mounted JSON file.
+  # keycloakConfigCli is disabled to avoid conflicts.
   keycloakConfigCli:
-    enabled: true
-    existingConfigmap: ""  # populated via tpl below
+    enabled: false
 
   extraVolumes:
     - name: realm-config
@@ -251,6 +259,8 @@ keycloak:
   extraEnvVars:
     - name: KC_FEATURES
       value: "import-export"
+    - name: KC_HTTP_RELATIVE_PATH
+      value: "/auth"
 
   command:
     - /opt/bitnami/keycloak/bin/kc.sh
@@ -259,10 +269,14 @@ keycloak:
     - --import-realm
 
   postgresql:
-    enabled: true
-    image:
-      tag: 17
-    auth:
-      username: keycloak
-      password: keycloak
-      database: keycloak
+    enabled: false
+
+  # Keycloak database is created via CNPG Database CRD in the shared cluster.
+  # If you change database.cnpg.name, update host and existingSecret to match.
+  externalDatabase:
+    host: valtimo-db-rw
+    port: 5432
+    database: keycloak
+    existingSecret: valtimo-db-app
+    existingSecretPasswordKey: password
+    existingSecretUserKey: username
