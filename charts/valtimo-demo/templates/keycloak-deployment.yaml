@@ -22,9 +22,15 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       initContainers:
-        - name: init-realm
-          image: busybox:1.37
-          command: ['sh', '-c', 'mkdir -p /keycloak-data/import && cp /realm-source/valtimo-realm.json /keycloak-data/import/']
+        - name: init-keycloak
+          image: "{{ .Values.keycloak.image.repository }}:{{ .Values.keycloak.image.tag }}"
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /keycloak-data/import
+              cp /realm-source/valtimo-realm.json /keycloak-data/import/
+              cp -a /opt/keycloak/lib/quarkus/. /keycloak-lib/
           securityContext:
             runAsUser: 1000
             allowPrivilegeEscalation: false
@@ -37,6 +43,8 @@ spec:
               mountPath: /realm-source
             - name: keycloak-data
               mountPath: /keycloak-data
+            - name: keycloak-lib
+              mountPath: /keycloak-lib
       containers:
         - name: keycloak
           image: "{{ .Values.keycloak.image.repository }}:{{ .Values.keycloak.image.tag }}"
@@ -84,6 +92,8 @@ spec:
               mountPath: /opt/keycloak/data
             - name: keycloak-conf
               mountPath: /opt/keycloak/conf
+            - name: keycloak-lib
+              mountPath: /opt/keycloak/lib/quarkus
             - name: tmp
               mountPath: /tmp
           livenessProbe:
@@ -110,6 +120,8 @@ spec:
         - name: keycloak-data
           emptyDir: {}
         - name: keycloak-conf
+          emptyDir: {}
+        - name: keycloak-lib
           emptyDir: {}
         - name: tmp
           emptyDir: {}
