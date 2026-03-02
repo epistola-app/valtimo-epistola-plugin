@@ -82,15 +82,17 @@ spec:
               containerPort: 8080
               protocol: TCP
           env:
-            - name: KEYCLOAK_ADMIN
+            - name: KC_BOOTSTRAP_ADMIN_USERNAME
               value: {{ .Values.keycloak.adminUser | quote }}
-            - name: KEYCLOAK_ADMIN_PASSWORD
+            - name: KC_BOOTSTRAP_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: {{ include "valtimo-demo.backend.fullname" . }}
                   key: keycloak-admin-password
             - name: KC_HTTP_RELATIVE_PATH
               value: "/auth"
+            - name: KC_HEALTH_ENABLED
+              value: "true"
             - name: KC_DB
               value: postgres
             - name: KC_DB_URL
