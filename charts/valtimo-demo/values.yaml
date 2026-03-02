@@ -228,55 +228,30 @@ database:
     secretKey: password
 
 # =============================================================================
-# Subchart: Keycloak (Bitnami)
+# Keycloak (standalone deployment — no subchart)
 # =============================================================================
 keycloak:
   enabled: true
 
-  auth:
-    adminUser: admin
-    adminPassword: admin
+  image:
+    repository: quay.io/keycloak/keycloak
+    tag: "26.1"
+    pullPolicy: IfNotPresent
+
+  adminUser: admin
+  adminPassword: admin
 
   service:
-    ports:
-      http: 80
+    type: ClusterIP
+    port: 80
 
-  # Realm import is handled via --import-realm with a volume-mounted JSON file.
-  # keycloakConfigCli is disabled to avoid conflicts.
-  keycloakConfigCli:
-    enabled: false
-
-  extraVolumes:
-    - name: realm-config
-      configMap:
-        name: '{{ printf "%s-keycloak-realm" .Release.Name }}'
-
-  extraVolumeMounts:
-    - name: realm-config
-      mountPath: /opt/keycloak/data/import/valtimo-realm.json
-      subPath: valtimo-realm.json
-
-  extraEnvVars:
-    - name: KC_FEATURES
-      value: "import-export"
-    - name: KC_HTTP_RELATIVE_PATH
-      value: "/auth"
-
-  command:
-    - /opt/bitnami/keycloak/bin/kc.sh
-  args:
-    - start-dev
-    - --import-realm
-
-  postgresql:
-    enabled: false
-
-  # Keycloak database is created via CNPG Database CRD in the shared cluster.
-  # If you change database.cnpg.name, update host and existingSecret to match.
-  externalDatabase:
-    host: valtimo-db-rw
+  # Database (uses CNPG shared cluster by default)
+  database:
+    host: ""      # auto-derived from CNPG cluster name when empty
     port: 5432
-    database: keycloak
-    existingSecret: valtimo-db-app
-    existingSecretPasswordKey: password
-    existingSecretUserKey: username
+    name: keycloak
+    existingSecret: ""  # auto-derived from CNPG secret name when empty
+
+  resources: {}
+  nodeSelector: {}
+  tolerations: []

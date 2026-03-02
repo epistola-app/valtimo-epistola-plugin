@@ -22,8 +22,3 @@ dependencies:
     version: ">=0.1.0"
     repository: "oci://ghcr.io/epistola-app/charts"
     condition: epistola.enabled
-
-  - name: keycloak
-    version: "~24"
-    repository: "oci://registry-1.docker.io/bitnamicharts"
-    condition: keycloak.enabled

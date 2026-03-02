@@ -38,9 +38,9 @@ spec:
                 port:
                   number: {{ $.Values.frontend.service.port }}
                 {{- else if eq .service "keycloak" }}
-                name: {{ printf "%s-keycloak" $.Release.Name }}
+                name: {{ include "valtimo-demo.keycloak.fullname" $ }}
                 port:
-                  number: {{ $.Values.keycloak.service.ports.http | default 80 }}
+                  number: {{ $.Values.keycloak.service.port }}
                 {{- else if eq .service "backend" }}
                 name: {{ include "valtimo-demo.backend.fullname" $ }}
                 port:

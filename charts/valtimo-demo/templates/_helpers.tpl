@@ -88,11 +88,57 @@ app.kubernetes.io/component: frontend
 {{- end }}
 
 {{/*
+Keycloak fully qualified name.
+*/}}
+{{- define "valtimo-demo.keycloak.fullname" -}}
+{{- printf "%s-keycloak" (include "valtimo-demo.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
+
+{{/*
+Keycloak labels
+*/}}
+{{- define "valtimo-demo.keycloak.labels" -}}
+{{ include "valtimo-demo.labels" . }}
+{{ include "valtimo-demo.keycloak.selectorLabels" . }}
+{{- end }}
+
+{{/*
+Keycloak selector labels
+*/}}
+{{- define "valtimo-demo.keycloak.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "valtimo-demo.name" . }}-keycloak
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: keycloak
+{{- end }}
+
+{{/*
+Keycloak database host — explicit override or CNPG cluster RW service.
+*/}}
+{{- define "valtimo-demo.keycloak.dbHost" -}}
+{{- if .Values.keycloak.database.host }}
+{{- .Values.keycloak.database.host }}
+{{- else }}
+{{- printf "%s-rw" (include "valtimo-demo.cnpg.clusterName" .) }}
+{{- end }}
+{{- end }}
+
+{{/*
+Keycloak database secret name — explicit override or CNPG auto-generated secret.
+*/}}
+{{- define "valtimo-demo.keycloak.dbSecretName" -}}
+{{- if .Values.keycloak.database.existingSecret }}
+{{- .Values.keycloak.database.existingSecret }}
+{{- else }}
+{{- include "valtimo-demo.cnpg.secretName" . }}
+{{- end }}
+{{- end }}
+
+{{/*
 Keycloak internal URL (for backend-to-keycloak communication within the cluster).
 */}}
 {{- define "valtimo-demo.keycloak.internalUrl" -}}
 {{- if .Values.keycloak.enabled }}
-{{- printf "http://%s-keycloak:%v" .Release.Name (.Values.keycloak.service.ports.http | default 80) }}
+{{- printf "http://%s:%v" (include "valtimo-demo.keycloak.fullname" .) (.Values.keycloak.service.port | default 80) }}
 {{- else }}
 {{- .Values.externalKeycloak.url }}
 {{- end }}

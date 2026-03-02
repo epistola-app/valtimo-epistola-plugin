@@ -30,10 +30,10 @@ Valtimo Epistola Demo has been deployed!
 {{- if .Values.keycloak.enabled }}
 
   Keycloak admin console:
-    kubectl port-forward svc/{{ .Release.Name }}-keycloak 8081:{{ .Values.keycloak.service.ports.http | default 80 }}
+    kubectl port-forward svc/{{ include "valtimo-demo.keycloak.fullname" . }} 8081:{{ .Values.keycloak.service.port }}
     URL:      http://localhost:8081
-    Username: {{ .Values.keycloak.auth.adminUser }}
-    Password: {{ .Values.keycloak.auth.adminPassword }}
+    Username: {{ .Values.keycloak.adminUser }}
+    Password: {{ .Values.keycloak.adminPassword }}
 {{- end }}
 
 === Components ===
@@ -48,7 +48,7 @@ Valtimo Epistola Demo has been deployed!
   PostgreSQL: {{ .Values.database.external.host }}:{{ .Values.database.external.port }}
 {{- end }}
 {{- if .Values.keycloak.enabled }}
-  Keycloak:   {{ .Release.Name }}-keycloak:{{ .Values.keycloak.service.ports.http | default 80 }}
+  Keycloak:   {{ include "valtimo-demo.keycloak.fullname" . }}:{{ .Values.keycloak.service.port }}
 {{- end }}
 {{- if .Values.epistola.enabled }}
   Epistola:   {{ .Release.Name }}-epistola

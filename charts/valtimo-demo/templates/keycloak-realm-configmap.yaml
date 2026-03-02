@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}-keycloak-realm
+  name: {{ include "valtimo-demo.keycloak.fullname" . }}-realm
   labels:
     {{- include "valtimo-demo.labels" . | nindent 4 }}
 data:

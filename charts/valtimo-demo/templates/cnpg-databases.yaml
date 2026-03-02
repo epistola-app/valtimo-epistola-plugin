@@ -1,4 +1,4 @@
-{{- if and (eq .Values.database.type "cnpg") .Values.keycloak.enabled (not .Values.keycloak.postgresql.enabled) }}
+{{- if and (eq .Values.database.type "cnpg") .Values.keycloak.enabled }}
 apiVersion: postgresql.cnpg.io/v1
 kind: Database
 metadata:

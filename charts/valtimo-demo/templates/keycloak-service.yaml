@@ -1,0 +1,17 @@
+{{- if .Values.keycloak.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "valtimo-demo.keycloak.fullname" . }}
+  labels:
+    {{- include "valtimo-demo.keycloak.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.keycloak.service.type }}
+  ports:
+    - port: {{ .Values.keycloak.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "valtimo-demo.keycloak.selectorLabels" . | nindent 4 }}
+{{- end }}
