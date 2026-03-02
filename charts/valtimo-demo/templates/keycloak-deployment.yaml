@@ -81,6 +81,9 @@ spec:
             - name: http
               containerPort: 8080
               protocol: TCP
+            - name: management
+              containerPort: 9000
+              protocol: TCP
           env:
             - name: KC_BOOTSTRAP_ADMIN_USERNAME
               value: {{ .Values.keycloak.adminUser | quote }}
@@ -118,15 +121,15 @@ spec:
               mountPath: /tmp
           livenessProbe:
             httpGet:
-              path: /auth/health/live
-              port: http
+              path: /health/live
+              port: management
             initialDelaySeconds: 60
             periodSeconds: 15
             failureThreshold: 5
           readinessProbe:
             httpGet:
-              path: /auth/health/ready
-              port: http
+              path: /health/ready
+              port: management
             initialDelaySeconds: 30
             periodSeconds: 10
           {{- with .Values.keycloak.resources }}
