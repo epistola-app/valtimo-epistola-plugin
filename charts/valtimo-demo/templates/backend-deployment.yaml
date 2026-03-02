@@ -24,6 +24,25 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: wait-for-db
+          image: busybox:1.37
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for database at {{ include "valtimo-demo.database.host" . }}:{{ include "valtimo-demo.database.port" . }}..."
+              until nc -z -w2 {{ include "valtimo-demo.database.host" . }} {{ include "valtimo-demo.database.port" . }}; do
+                sleep 2
+              done
+              echo "Database is ready."
+          securityContext:
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
       containers:
         - name: backend
           {{- $tag := include "valtimo-demo.imageTag" (dict "componentTag" .Values.backend.image.tag "global" .Values.global "appVersion" .Chart.AppVersion) }}

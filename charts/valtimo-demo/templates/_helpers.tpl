@@ -237,6 +237,30 @@ For cnpgExisting: explicit secretName or "{clusterName}-app"
 {{- end }}
 
 {{/*
+Database host for the Valtimo backend (CNPG RW service or external host).
+*/}}
+{{- define "valtimo-demo.database.host" -}}
+{{- if eq .Values.database.type "cnpg" }}
+{{- printf "%s-rw" (include "valtimo-demo.cnpg.clusterName" .) }}
+{{- else if eq .Values.database.type "cnpgExisting" }}
+{{- printf "%s-rw" .Values.database.cnpgExisting.clusterName }}
+{{- else }}
+{{- .Values.database.external.host }}
+{{- end }}
+{{- end }}
+
+{{/*
+Database port for the Valtimo backend.
+*/}}
+{{- define "valtimo-demo.database.port" -}}
+{{- if or (eq .Values.database.type "cnpg") (eq .Values.database.type "cnpgExisting") }}
+{{- 5432 }}
+{{- else }}
+{{- .Values.database.external.port }}
+{{- end }}
+{{- end }}
+
+{{/*
 Image tag: per-component tag > global.imageTag > Chart.appVersion.
 */}}
 {{- define "valtimo-demo.imageTag" -}}
