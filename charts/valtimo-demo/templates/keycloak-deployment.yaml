@@ -21,6 +21,22 @@ spec:
         runAsNonRoot: true
         seccompProfile:
           type: RuntimeDefault
+      initContainers:
+        - name: init-realm
+          image: busybox:1.37
+          command: ['sh', '-c', 'mkdir -p /keycloak-data/import && cp /realm-source/valtimo-realm.json /keycloak-data/import/']
+          securityContext:
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: realm-config
+              mountPath: /realm-source
+            - name: keycloak-data
+              mountPath: /keycloak-data
       containers:
         - name: keycloak
           image: "{{ .Values.keycloak.image.repository }}:{{ .Values.keycloak.image.tag }}"
@@ -31,7 +47,7 @@ spec:
           securityContext:
             runAsUser: 1000
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
+            readOnlyRootFilesystem: true
             capabilities:
               drop:
                 - ALL
@@ -66,9 +82,10 @@ spec:
                   name: {{ include "valtimo-demo.keycloak.dbSecretName" . }}
                   key: password
           volumeMounts:
-            - name: realm-config
-              mountPath: /opt/keycloak/data/import/valtimo-realm.json
-              subPath: valtimo-realm.json
+            - name: keycloak-data
+              mountPath: /opt/keycloak/data
+            - name: keycloak-conf
+              mountPath: /opt/keycloak/conf
             - name: tmp
               mountPath: /tmp
           livenessProbe:
@@ -92,6 +109,10 @@ spec:
         - name: realm-config
           configMap:
             name: {{ include "valtimo-demo.keycloak.fullname" . }}-realm
+        - name: keycloak-data
+          emptyDir: {}
+        - name: keycloak-conf
+          emptyDir: {}
         - name: tmp
           emptyDir: {}
       {{- with .Values.keycloak.nodeSelector }}
