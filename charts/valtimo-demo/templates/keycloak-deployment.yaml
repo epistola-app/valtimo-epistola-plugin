@@ -63,8 +63,6 @@ spec:
                 secretKeyRef:
                   name: {{ include "valtimo-demo.backend.fullname" . }}
                   key: keycloak-admin-password
-            - name: KC_FEATURES
-              value: "import-export"
             - name: KC_HTTP_RELATIVE_PATH
               value: "/auth"
             - name: KC_DB
