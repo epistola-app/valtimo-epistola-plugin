@@ -48,7 +48,15 @@ spec:
             - |
               mkdir -p /keycloak-data/import
               cp /realm-source/valtimo-realm.json /keycloak-data/import/
+              /opt/keycloak/bin/kc.sh build
               cp -r /opt/keycloak/lib/quarkus/. /keycloak-lib/
+          env:
+            - name: KC_DB
+              value: postgres
+            - name: KC_HEALTH_ENABLED
+              value: "true"
+            - name: KC_HTTP_RELATIVE_PATH
+              value: "/auth"
           securityContext:
             runAsUser: 1000
             allowPrivilegeEscalation: false
@@ -63,12 +71,17 @@ spec:
               mountPath: /keycloak-data
             - name: keycloak-lib
               mountPath: /keycloak-lib
+            - name: keycloak-conf
+              mountPath: /opt/keycloak/conf
+            - name: tmp
+              mountPath: /tmp
       containers:
         - name: keycloak
           image: "{{ .Values.keycloak.image.repository }}:{{ .Values.keycloak.image.tag }}"
           imagePullPolicy: {{ .Values.keycloak.image.pullPolicy }}
           args:
-            - start-dev
+            - start
+            - --optimized
             - --import-realm
           securityContext:
             runAsUser: 1000
