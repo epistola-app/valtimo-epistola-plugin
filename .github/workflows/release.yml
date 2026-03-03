@@ -39,6 +39,14 @@ jobs:
           # Manual override takes precedence
           if [ -n "${{ inputs.version }}" ]; then
             VERSION="${{ inputs.version }}"
+
+            # Safety: prevent 1.0.0+ releases
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            if [ "$MAJOR" -ge 1 ]; then
+              echo "::error::Version ${VERSION} would be >= 1.0.0. Remove this guard from the workflow when ready for 1.0."
+              exit 1
+            fi
+
             echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
             echo "major_minor=${VERSION%.*}" >> "$GITHUB_OUTPUT"
             echo "Using manual version override: ${VERSION}"
@@ -78,6 +86,14 @@ jobs:
 
           NEXT_PATCH=$((LATEST_PATCH + 1))
           VERSION="${MAJOR_MINOR}.${NEXT_PATCH}"
+
+          # Safety: prevent 1.0.0+ releases
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          if [ "$MAJOR" -ge 1 ]; then
+            echo "::error::Version ${VERSION} would be >= 1.0.0. Remove this guard from the workflow when ready for 1.0."
+            exit 1
+          fi
+
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Release version: ${VERSION} (previous highest patch: ${LATEST_PATCH})"
 

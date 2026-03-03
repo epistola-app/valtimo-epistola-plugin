@@ -97,15 +97,46 @@ jobs:
             fi
           fi
 
-      - name: Bump chart version and create tag
+      - name: Calculate chart version
         if: steps.chart-changes.outputs.changed == 'true'
         id: chart-tag
-        uses: mathieudutour/github-tag-action@v6.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          tag_prefix: "chart-"
-          default_bump: patch
-          fetch_all_tags: true
+        run: |
+          # Read major.minor from Chart.yaml (source of truth)
+          CHART_VERSION=$(grep '^version:' ${{ env.CHART_PATH }}/Chart.yaml | sed -E 's/version:\s*([0-9]+\.[0-9]+)\.[0-9]+/\1/')
+          if [ -z "$CHART_VERSION" ]; then
+            echo "::error::Could not read version from Chart.yaml"
+            exit 1
+          fi
+          echo "Chart.yaml major.minor: ${CHART_VERSION}"
+
+          # Find highest patch version among existing chart tags
+          LATEST_PATCH=-1
+          for tag in $(git tag -l "chart-${CHART_VERSION}.*"); do
+            PATCH=$(echo "$tag" | sed -E "s/chart-${CHART_VERSION}\.([0-9]+)/\1/")
+            if [ "$PATCH" -gt "$LATEST_PATCH" ] 2>/dev/null; then
+              LATEST_PATCH=$PATCH
+            fi
+          done
+
+          NEXT_PATCH=$((LATEST_PATCH + 1))
+          NEW_VERSION="${CHART_VERSION}.${NEXT_PATCH}"
+
+          # Safety: prevent 1.0.0+ releases
+          MAJOR=$(echo "$NEW_VERSION" | cut -d. -f1)
+          if [ "$MAJOR" -ge 1 ]; then
+            echo "::error::Chart version ${NEW_VERSION} would be >= 1.0.0. Update Chart.yaml major.minor manually when ready."
+            exit 1
+          fi
+
+          echo "new_version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "new_tag=chart-${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Chart version: ${NEW_VERSION} (previous highest patch: ${LATEST_PATCH})"
+
+      - name: Create chart version tag
+        if: steps.chart-changes.outputs.changed == 'true'
+        run: |
+          git tag "chart-${{ steps.chart-tag.outputs.new_version }}"
+          git push origin "chart-${{ steps.chart-tag.outputs.new_version }}"
 
       - name: Set up Helm
         if: steps.chart-changes.outputs.changed == 'true'
