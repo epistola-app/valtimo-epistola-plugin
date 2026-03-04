@@ -57,12 +57,8 @@ spec:
               value: postgres
             - name: KC_HEALTH_ENABLED
               value: "true"
-            - name: KC_HTTP_ENABLED
-              value: "true"
             - name: KC_HTTP_RELATIVE_PATH
               value: "/auth"
-            - name: KC_PROXY_HEADERS
-              value: "xforwarded"
           securityContext:
             runAsUser: 1000
             allowPrivilegeEscalation: false
@@ -115,6 +111,8 @@ spec:
               value: "true"
             - name: KC_HTTP_RELATIVE_PATH
               value: "/auth"
+            - name: KC_HOSTNAME_STRICT
+              value: "false"
             - name: KC_PROXY_HEADERS
               value: "xforwarded"
             - name: KC_HEALTH_ENABLED
