@@ -57,8 +57,12 @@ spec:
               value: postgres
             - name: KC_HEALTH_ENABLED
               value: "true"
+            - name: KC_HTTP_ENABLED
+              value: "true"
             - name: KC_HTTP_RELATIVE_PATH
               value: "/auth"
+            - name: KC_PROXY_HEADERS
+              value: "xforwarded"
           securityContext:
             runAsUser: 1000
             allowPrivilegeEscalation: false
@@ -107,8 +111,12 @@ spec:
                 secretKeyRef:
                   name: {{ include "valtimo-demo.backend.fullname" . }}
                   key: keycloak-admin-password
+            - name: KC_HTTP_ENABLED
+              value: "true"
             - name: KC_HTTP_RELATIVE_PATH
               value: "/auth"
+            - name: KC_PROXY_HEADERS
+              value: "xforwarded"
             - name: KC_HEALTH_ENABLED
               value: "true"
             - name: KC_DB
