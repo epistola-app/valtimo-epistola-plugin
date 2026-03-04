@@ -40,12 +40,14 @@ spec:
             capabilities:
               drop:
                 - ALL
+        # trivy:ignore:KSV-0014 kc.sh build writes JARs to /opt/keycloak/lib/ (main container stays read-only)
         - name: init-keycloak
           image: "{{ .Values.keycloak.image.repository }}:{{ .Values.keycloak.image.tag }}"
           command:
             - sh
             - -c
             - |
+              set -e
               mkdir -p /keycloak-data/import
               cp /realm-source/valtimo-realm.json /keycloak-data/import/
               /opt/keycloak/bin/kc.sh build
@@ -60,7 +62,7 @@ spec:
           securityContext:
             runAsUser: 1000
             allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
+            readOnlyRootFilesystem: false
             capabilities:
               drop:
                 - ALL
