@@ -113,7 +113,7 @@ spec:
             {{- $keycloakExternalUrl := include "valtimo-demo.keycloak.externalUrl" . }}
             {{- $keycloakRealm := .Values.backend.keycloak.realm }}
             - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI
-              value: "{{ $keycloakInternalUrl }}/realms/{{ $keycloakRealm }}/protocol/openid-connect/certs"
+              value: "{{ $keycloakExternalUrl }}/realms/{{ $keycloakRealm }}/protocol/openid-connect/certs"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKJWT_ISSUERURI
               value: "{{ $keycloakExternalUrl }}/realms/{{ $keycloakRealm }}"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKAPI_ISSUERURI
