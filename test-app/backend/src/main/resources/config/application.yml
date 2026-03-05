@@ -117,6 +117,12 @@ spring:
                         client-secret: ${SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTSECRET}
                         authorization-grant-type: client_credentials
 
+management:
+    endpoints:
+        web:
+            exposure:
+                include: health,prometheus
+
 server:
     port: 8080
     compression:
