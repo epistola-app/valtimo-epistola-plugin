@@ -13,6 +13,11 @@ spec:
     metadata:
       annotations:
         checksum/secret: {{ include (print $.Template.BasePath "/backend-secret.yaml") . | sha256sum }}
+        {{- if .Values.observability.prometheus.enabled }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ .Values.observability.prometheus.port | quote }}
+        prometheus.io/path: {{ .Values.observability.prometheus.path | quote }}
+        {{- end }}
       labels:
         {{- include "valtimo-demo.backend.selectorLabels" . | nindent 8 }}
     spec:
