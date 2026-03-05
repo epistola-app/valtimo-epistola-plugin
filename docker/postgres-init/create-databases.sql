@@ -5,3 +5,6 @@ GRANT ALL PRIVILEGES ON DATABASE epistola_suite TO epistola;
 
 CREATE DATABASE keycloak;
 GRANT ALL PRIVILEGES ON DATABASE keycloak TO epistola;
+
+CREATE DATABASE valtimo;
+GRANT ALL PRIVILEGES ON DATABASE valtimo TO epistola;
