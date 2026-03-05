@@ -185,7 +185,7 @@ Keycloak redirect URI for the frontend OIDC client.
 {{- if .Values.frontend.env.keycloakRedirectUri }}
 {{- .Values.frontend.env.keycloakRedirectUri }}
 {{- else }}
-{{- printf "%s/*" (include "valtimo-demo.appBaseUrl" .) }}
+{{- include "valtimo-demo.appBaseUrl" . }}
 {{- end }}
 {{- end }}
 
