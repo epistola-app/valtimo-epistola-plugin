@@ -82,8 +82,7 @@ class TemplateDefinitionScannerTest {
     }
 
     @Test
-    void scanTemplateDefinitions_defaultsEmptyCollectionsWhenMissing() {
-        // The test-valid template has explicit empty variants list
+    void scanTemplateDefinitions_parsesVariantsWithIsDefault() {
         List<TemplateDefinition> definitions = scanner.scanTemplateDefinitions();
 
         TemplateDefinition valid = definitions.stream()
@@ -92,6 +91,11 @@ class TemplateDefinitionScannerTest {
                 .orElseThrow();
 
         assertNotNull(valid.variants());
-        assertTrue(valid.variants().isEmpty());
+        assertEquals(1, valid.variants().size());
+
+        var variant = valid.variants().get(0);
+        assertEquals("default", variant.id());
+        assertTrue(variant.isDefault());
+        assertEquals("Standaard", variant.title());
     }
 }

@@ -583,6 +583,7 @@
   "variants": [
     {
       "id": "default",
+      "isDefault": true,
       "title": "Standaard",
       "attributes": {
         "language": "nl"

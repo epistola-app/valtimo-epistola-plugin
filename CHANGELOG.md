@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Template definitions now require explicit default variant**: All `definition.json` files must include at least one variant with `"isDefault": true`. The Epistola server no longer creates a synthetic default variant automatically.
+- Upgraded `epistola-client` from `0.1.11` to `0.1.13` (adds `isDefault` field to `ImportVariantDto`, makes `variants` required)
+
 ### Added
 
 - **Database Reset Endpoint** (`POST /api/v1/test/reset`): Drops and recreates the public schema, then shuts down the JVM. Designed for Kubernetes-deployed demo environments where pods auto-restart with a clean database. Valtimo and Operaton recreate all tables on boot, and case definitions/BPMN processes are redeployed from config.

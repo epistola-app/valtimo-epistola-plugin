@@ -40,10 +40,12 @@ public record TemplateDefinition(
     public record VariantDefinition(
             @JsonProperty("id") String id,
             @JsonProperty("title") String title,
+            @JsonProperty("isDefault") Boolean isDefault,
             @JsonProperty("attributes") Map<String, String> attributes,
             @JsonProperty("templateModel") JsonNode templateModel
     ) {
         public VariantDefinition {
+            if (isDefault == null) isDefault = false;
             if (attributes == null) attributes = Collections.emptyMap();
         }
     }

@@ -137,6 +137,7 @@ public class EpistolaTemplateSyncService {
                         v.id(),
                         v.title(),
                         v.attributes(),
+                        v.isDefault(),
                         v.templateModel() != null ? readAs(v.templateModel(), TemplateDocumentDto.class) : null
                 ))
                 .toList();
@@ -151,9 +152,9 @@ public class EpistolaTemplateSyncService {
                 def.name(),
                 def.version(),
                 templateModel,
+                variants,
                 dataModel,
                 dataExamples.isEmpty() ? null : dataExamples,
-                variants.isEmpty() ? null : variants,
                 def.publishTo().isEmpty() ? null : def.publishTo()
         );
     }
