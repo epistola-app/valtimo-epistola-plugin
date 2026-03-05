@@ -141,6 +141,7 @@ observability:
     enabled: false
     port: 8080
     path: /actuator/prometheus
+    basicAuth: false
 
 # =============================================================================
 # Keycloak realm import configuration

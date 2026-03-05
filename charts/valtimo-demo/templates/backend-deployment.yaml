@@ -17,6 +17,9 @@ spec:
         prometheus.io/scrape: "true"
         prometheus.io/port: {{ .Values.observability.prometheus.port | quote }}
         prometheus.io/path: {{ .Values.observability.prometheus.path | quote }}
+        {{- if .Values.observability.prometheus.basicAuth }}
+        prometheus.io/basic-auth: "true"
+        {{- end }}
         {{- end }}
       labels:
         {{- include "valtimo-demo.backend.selectorLabels" . | nindent 8 }}
