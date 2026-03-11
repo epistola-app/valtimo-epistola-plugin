@@ -202,6 +202,12 @@ epistola:
   #   type: external
   #   external:
   #     host: my-epistola-db
+  #
+  # For standalone mode, use values-standalone.yaml or set:
+  #   database:
+  #     type: cnpgExisting
+  #     cnpgExisting:
+  #       secretName: epistola-standalone-app
 
 # =============================================================================
 # Database (Valtimo PostgreSQL)
