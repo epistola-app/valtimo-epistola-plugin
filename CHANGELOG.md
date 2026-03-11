@@ -9,12 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Public demo access now requires self-registration and supports passkey (WebAuthn) login. Static demo users were removed and Keycloak bootstrap credentials are auto-generated per installation.
 - **Template definitions now require explicit default variant**: All `definition.json` files must include at least one variant with `"isDefault": true`. The Epistola server no longer creates a synthetic default variant automatically.
 - Upgraded `epistola-client` from `0.1.11` to `0.1.13` (adds `isDefault` field to `ImportVariantDto`, makes `variants` required)
 
 ### Added
 
+- **Public demo hardening**: Helm chart now exposes `publicUrls.*` and `keycloak.webAuthn.*` values, enables self-service Keycloak registration, provisions a `valtimo-users` group with `ROLE_USER`, auto-generates the Keycloak admin password, and imports WebAuthn-ready authentication flows so visitors can choose between passwords or passkeys.
 - **Database Reset Endpoint** (`POST /api/v1/test/reset`): Drops and recreates the public schema, then shuts down the JVM. Designed for Kubernetes-deployed demo environments where pods auto-restart with a clean database. Valtimo and Operaton recreate all tables on boot, and case definitions/BPMN processes are redeployed from config.
+- **Periodic Database Reset CronJob** (`database.standalone.reset`): Optional Kubernetes CronJob that drops and recreates selected databases on a schedule (default: every 6 hours), then rolling-restarts specified deployments. Hardcoded protection prevents resetting `keycloak`, `postgres`, `template0`, and `template1`. Disabled by default; enable via `database.standalone.reset.enabled=true` in standalone mode.
 
 - **Template Sync**: Automatic synchronization of template definitions from classpath to Epistola server on startup
   - `templateSyncEnabled` plugin property with frontend checkbox toggle

@@ -1,0 +1,132 @@
+{{- if and (eq .Values.database.type "standalone") .Values.database.standalone.reset.enabled }}
+{{- $fullName := include "valtimo-demo.fullname" . -}}
+{{- $dbName := printf "%s-standalone-db" $fullName -}}
+{{- $resetName := printf "%s-db-reset" $fullName -}}
+{{- $protectedDatabases := list "keycloak" "postgres" "template0" "template1" -}}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $resetName }}
+  labels:
+    {{- include "valtimo-demo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db-reset
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ $resetName }}
+  labels:
+    {{- include "valtimo-demo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db-reset
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ $resetName }}
+  labels:
+    {{- include "valtimo-demo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db-reset
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ $resetName }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $resetName }}
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $resetName }}
+  labels:
+    {{- include "valtimo-demo.labels" . | nindent 4 }}
+    app.kubernetes.io/component: db-reset
+spec:
+  schedule: {{ .Values.database.standalone.reset.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.database.standalone.reset.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.database.standalone.reset.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: {{ .Values.database.standalone.reset.activeDeadlineSeconds }}
+      template:
+        metadata:
+          labels:
+            {{- include "valtimo-demo.labels" . | nindent 12 }}
+            app.kubernetes.io/component: db-reset
+        spec:
+          serviceAccountName: {{ $resetName }}
+          restartPolicy: OnFailure
+          containers:
+            - name: db-reset
+              image: "{{ .Values.database.standalone.image.repository }}:{{ .Values.database.standalone.image.tag }}"
+              imagePullPolicy: {{ .Values.database.standalone.image.pullPolicy }}
+              env:
+                - name: PGHOST
+                  value: {{ $dbName }}
+                - name: PGPORT
+                  value: "5432"
+                - name: PGUSER
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $dbName }}
+                      key: username
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ $dbName }}
+                      key: password
+              command:
+                - sh
+                - -ec
+                - |
+                  echo "=== Phase 1: Reset databases ==="
+                  {{- range .Values.database.standalone.reset.databases }}
+                  {{- if has . $protectedDatabases }}
+                  {{- fail (printf "database.standalone.reset.databases contains protected database '%s' — refusing to render" .) }}
+                  {{- end }}
+
+                  DB={{ . | quote }}
+                  echo "Resetting database: $DB"
+                  psql -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $DB AND pid <> pg_backend_pid();" || true
+                  psql -d postgres -c "DROP DATABASE IF EXISTS $DB;"
+                  psql -d postgres -c "CREATE DATABASE $DB OWNER \"$PGUSER\";"
+                  echo "Database $DB reset complete."
+                  {{- end }}
+
+                  echo "=== Phase 2: Restart deployments ==="
+                  apk add --no-cache curl >/dev/null 2>&1
+
+                  APISERVER=https://kubernetes.default.svc
+                  SERVICEACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount
+                  TOKEN=$(cat ${SERVICEACCOUNT}/token)
+                  CACERT=${SERVICEACCOUNT}/ca.crt
+                  NAMESPACE=$(cat ${SERVICEACCOUNT}/namespace)
+                  NOW=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+                  {{- range .Values.database.standalone.reset.restartDeployments }}
+                  {{- $deployName := . }}
+                  {{- if eq . "backend" }}
+                  {{- $deployName = (include "valtimo-demo.backend.fullname" $) }}
+                  {{- else if eq . "epistola" }}
+                  {{- $deployName = (printf "%s-epistola" $.Release.Name) }}
+                  {{- end }}
+
+                  echo "Restarting deployment: {{ $deployName }}"
+                  curl --cacert ${CACERT} \
+                    -X PATCH \
+                    -H "Authorization: Bearer ${TOKEN}" \
+                    -H "Content-Type: application/strategic-merge-patch+json" \
+                    "${APISERVER}/apis/apps/v1/namespaces/${NAMESPACE}/deployments/{{ $deployName }}" \
+                    -d "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"kubectl.kubernetes.io/restartedAt\":\"${NOW}\"}}}}}" \
+                    -s -o /dev/null -w "  HTTP %{http_code}\n"
+                  {{- end }}
+
+                  echo "=== Database reset complete ==="
+{{- end }}

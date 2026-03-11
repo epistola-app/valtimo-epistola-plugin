@@ -10,6 +10,19 @@ global:
   imageTag: ""
 
 # =============================================================================
+# Public URLs (used for redirect URIs and browser access)
+# =============================================================================
+publicUrls:
+  # Fully-qualified frontend URL (e.g. https://valtimo.example.com). When empty,
+  # falls back to ingress host or http://<backend.valtimo.appHostname>.
+  frontend: ""
+  # Fully-qualified backend URL (used for documentation links). Optional.
+  backend: ""
+  # Fully-qualified Keycloak URL (e.g. https://auth.example.com/auth). When
+  # empty, falls back to ingress host or the in-cluster service URL.
+  keycloak: ""
+
+# =============================================================================
 # Backend (Valtimo Spring Boot application)
 # =============================================================================
 backend:
@@ -36,6 +49,8 @@ backend:
 
   # Valtimo-specific configuration
   valtimo:
+    # Hostname used by backend to construct absolute URLs when ingress/publicUrl
+    # is not provided.
     appHostname: "localhost:8080"
     pluginEncryptionSecret: "0123456789abcdef0123456789abcdef"
 
@@ -259,6 +274,24 @@ database:
     resources: {}
     nodeSelector: {}
     tolerations: []
+    # Periodic database reset (demo/dev only).
+    # Drops and recreates selected databases, then restarts deployments.
+    # The keycloak database is NEVER touched (hardcoded protection).
+    reset:
+      enabled: false
+      # Cron schedule (default: every 6 hours)
+      schedule: "0 */6 * * *"
+      # Databases to drop + recreate (keycloak is always protected)
+      databases:
+        - valtimo
+        - epistola
+      # Deployments to rolling-restart after reset
+      restartDeployments:
+        - backend
+        - epistola
+      successfulJobsHistoryLimit: 1
+      failedJobsHistoryLimit: 3
+      activeDeadlineSeconds: 300
 
 # =============================================================================
 # Keycloak (standalone deployment — no subchart)
@@ -272,7 +305,21 @@ keycloak:
     pullPolicy: IfNotPresent
 
   adminUser: admin
-  adminPassword: admin
+  # Leave empty to auto-generate a strong password stored in the
+  # backend secret. Override for deterministic credentials.
+  adminPassword: ""
+
+  webAuthn:
+    rpEntityName: "Valtimo Demo"
+    rpId: ""
+    passwordlessRpEntityName: "Valtimo Demo"
+    passwordlessRpId: ""
+    signatureAlgorithms:
+      - "ES256"
+      - "RS256"
+    passwordlessSignatureAlgorithms: []
+    userVerificationRequirement: "required"
+    passwordlessUserVerificationRequirement: "required"
 
   service:
     type: ClusterIP
