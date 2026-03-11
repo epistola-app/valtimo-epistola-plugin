@@ -207,7 +207,7 @@ epistola:
 # Database (Valtimo PostgreSQL)
 # =============================================================================
 database:
-  # Options: cnpg, cnpgExisting, external
+  # Options: cnpg, cnpgExisting, external, standalone
   type: "cnpg"
 
   # Create a new CNPG Cluster (type: cnpg)
@@ -236,6 +236,23 @@ database:
     username: valtimo
     existingSecret: ""    # required — secret containing password
     secretKey: password
+
+  # Standalone single-node PostgreSQL (type: standalone)
+  # Simple StatefulSet — no CNPG operator required. For demo/dev only.
+  standalone:
+    image:
+      repository: postgres
+      tag: "17-alpine"
+      pullPolicy: IfNotPresent
+    database: valtimo
+    username: valtimo
+    password: "changeme"
+    storage:
+      size: 2Gi
+      storageClass: ""
+    resources: {}
+    nodeSelector: {}
+    tolerations: []
 
 # =============================================================================
 # Keycloak (standalone deployment — no subchart)
