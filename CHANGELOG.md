@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Public demo access now requires self-registration and supports passkey (WebAuthn) login. Static demo users were removed and Keycloak bootstrap credentials are auto-generated per installation.
 - **Template definitions now require explicit default variant**: All `definition.json` files must include at least one variant with `"isDefault": true`. The Epistola server no longer creates a synthetic default variant automatically.
 - Upgraded `epistola-client` from `0.1.11` to `0.1.13` (adds `isDefault` field to `ImportVariantDto`, makes `variants` required)
+- Updated Epistola Suite docker image to `0.4.5` (server-side default variant resolution)
+
+### Fixed
+
+- Removed client-side default variant resolution workaround — Epistola server (`>= 0.4.x`) now resolves the default variant automatically when neither `variantId` nor `attributes` is provided
+- Added `epistola.base-url` to `application-dev.yml` to match docker-compose port mapping (`4010:4000`)
 
 ### Added
 

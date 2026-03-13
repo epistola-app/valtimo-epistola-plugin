@@ -149,6 +149,8 @@ public class EpistolaServiceImpl implements EpistolaService {
             GenerationApi generationApi = apiClientFactory.createGenerationApi(baseUrl, apiKey);
 
             // Build the request using the constructor (Kotlin data class - immutable)
+            // When neither variantId nor variantAttributes is set, Epistola server
+            // resolves the default variant automatically (since v0.4.x).
             GenerateDocumentRequest request = new GenerateDocumentRequest(
                     templateId,
                     data,

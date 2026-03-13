@@ -1,7 +1,7 @@
 services:
   epistola-server:
     profiles: ["server"]
-    image: ghcr.io/epistola-app/epistola-suite:0.17.0
+    image: ghcr.io/epistola-app/epistola-suite:0.4.5
     container_name: epistola-server
     environment:
       SPRING_PROFILES_ACTIVE: demo
