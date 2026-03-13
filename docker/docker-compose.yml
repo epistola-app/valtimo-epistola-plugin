@@ -101,5 +101,40 @@ services:
     depends_on:
       - valtimo-backend
 
+  # === Database reset: test the CronJob logic locally ===
+
+  db-reset:
+    profiles: ["reset"]
+    image: postgres:17-alpine
+    container_name: epistola-db-reset
+    environment:
+      PGHOST: epistola-postgres
+      PGPORT: "5432"
+      PGUSER: epistola
+      PGPASSWORD: epistola
+    entrypoint: ["sh", "-ec"]
+    command:
+      - |
+        PROTECTED="keycloak postgres template0 template1"
+        DATABASES="valtimo epistola epistola_suite"
+
+        echo "=== Resetting databases ==="
+        for DB in $$DATABASES; do
+          for P in $$PROTECTED; do
+            if [ "$$DB" = "$$P" ]; then
+              echo "REFUSING to reset protected database: $$DB"
+              exit 1
+            fi
+          done
+          echo "Resetting: $$DB"
+          psql -d postgres -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$$DB' AND pid <> pg_backend_pid();" || true
+          psql -d postgres -c "DROP DATABASE IF EXISTS $$DB;"
+          psql -d postgres -c "CREATE DATABASE $$DB OWNER \"$$PGUSER\";"
+        done
+        echo "=== Database reset complete ==="
+    depends_on:
+      epistola-postgres:
+        condition: service_healthy
+
 volumes:
   postgres_data:
