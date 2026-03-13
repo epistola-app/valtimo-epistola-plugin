@@ -154,7 +154,9 @@ Keycloak external URL (used by browser clients to reach Keycloak).
 Priority: explicit frontendUrl > ingress-derived > internal URL.
 */}}
 {{- define "valtimo-demo.keycloak.externalUrl" -}}
-{{- if .Values.externalKeycloak.frontendUrl }}
+{{- if .Values.publicUrls.keycloak }}
+{{- trimSuffix "/" .Values.publicUrls.keycloak }}
+{{- else if .Values.externalKeycloak.frontendUrl }}
 {{- .Values.externalKeycloak.frontendUrl }}
 {{- else if and .Values.keycloak.enabled .Values.ingress.enabled }}
 {{- $host := (index .Values.ingress.hosts 0).host }}
@@ -169,13 +171,32 @@ Priority: explicit frontendUrl > ingress-derived > internal URL.
 Base URL for the application (scheme + host), derived from ingress or appHostname.
 */}}
 {{- define "valtimo-demo.appBaseUrl" -}}
-{{- if .Values.ingress.enabled }}
+{{- if .Values.publicUrls.frontend }}
+{{- trimSuffix "/" .Values.publicUrls.frontend }}
+{{- else if .Values.ingress.enabled }}
 {{- $host := (index .Values.ingress.hosts 0).host }}
 {{- $scheme := ternary "https" "http" (not (empty .Values.ingress.tls)) }}
 {{- printf "%s://%s" $scheme $host }}
 {{- else }}
 {{- printf "http://%s" .Values.backend.valtimo.appHostname }}
 {{- end }}
+{{- end }}
+
+{{/*
+Return the hostname component of a URL string.
+*/}}
+{{- define "valtimo-demo.hostFromUrl" -}}
+{{- $url := .url -}}
+{{- if $url }}
+  {{- $parsed := urlParse $url -}}
+  {{- if $parsed.host -}}
+    {{- $parsed.host -}}
+  {{- else -}}
+    {{- $url -}}
+  {{- end -}}
+{{- else -}}
+  {{- "" -}}
+{{- end -}}
 {{- end }}
 
 {{/*
@@ -206,11 +227,66 @@ Whitelisted domain for Angular HTTP interceptor (hostname only).
 {{- define "valtimo-demo.whitelistedDomain" -}}
 {{- if .Values.frontend.env.whitelistedDomain }}
 {{- .Values.frontend.env.whitelistedDomain }}
+{{- else if .Values.publicUrls.frontend }}
+{{- include "valtimo-demo.hostFromUrl" (dict "url" .Values.publicUrls.frontend) }}
 {{- else if .Values.ingress.enabled }}
 {{- (index .Values.ingress.hosts 0).host }}
 {{- else }}
 {{- "localhost" }}
 {{- end }}
+{{- end }}
+
+{{/*
+ Valtimo application hostname used by backend for redirects.
+*/}}
+{{- define "valtimo-demo.valtimoAppHostname" -}}
+{{- if .Values.publicUrls.frontend }}
+{{- include "valtimo-demo.hostFromUrl" (dict "url" .Values.publicUrls.frontend) }}
+{{- else }}
+{{- .Values.backend.valtimo.appHostname }}
+{{- end }}
+{{- end }}
+
+{{/*
+ Keycloak hostname (without scheme) for KC_HOSTNAME.
+*/}}
+{{- define "valtimo-demo.keycloak.host" -}}
+{{- $external := include "valtimo-demo.keycloak.externalUrl" . -}}
+{{- if $external }}
+  {{- include "valtimo-demo.hostFromUrl" (dict "url" $external) -}}
+{{- else -}}
+  {{- "" -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Keycloak full external URL for KC_HOSTNAME v2 (includes scheme).
+Required when KC_HOSTNAME_BACKCHANNEL_DYNAMIC is true.
+*/}}
+{{- define "valtimo-demo.keycloak.hostnameUrl" -}}
+{{- $external := include "valtimo-demo.keycloak.externalUrl" . -}}
+{{- if $external }}
+  {{- trimSuffix "/auth" $external -}}
+{{- else -}}
+  {{- "" -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+  Bootstrap admin password for Keycloak. Resuses existing secret when present to
+  avoid regenerating credentials on every upgrade.
+*/}}
+{{- define "valtimo-demo.keycloak.adminPassword" -}}
+{{- $password := .Values.keycloak.adminPassword | default "" -}}
+{{- if and .Values.keycloak.enabled (eq $password "") -}}
+  {{- $existing := lookup "v1" "Secret" .Release.Namespace (include "valtimo-demo.backend.fullname" .) -}}
+  {{- if and $existing (index $existing.data "keycloak-admin-password") -}}
+    {{- $password = ((index $existing.data "keycloak-admin-password") | b64dec) -}}
+  {{- else -}}
+    {{- $password = randAlphaNum 32 -}}
+  {{- end -}}
+{{- end -}}
+{{- $password -}}
 {{- end }}
 
 {{/*

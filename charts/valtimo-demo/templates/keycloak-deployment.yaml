@@ -111,10 +111,20 @@ spec:
               value: "true"
             - name: KC_HTTP_RELATIVE_PATH
               value: "/auth"
+            {{- $kcHostnameUrl := include "valtimo-demo.keycloak.hostnameUrl" . }}
+            {{- if (ne $kcHostnameUrl "") }}
+            - name: KC_HOSTNAME
+              value: {{ $kcHostnameUrl | quote }}
+            - name: KC_HOSTNAME_BACKCHANNEL_DYNAMIC
+              value: "true"
+            {{- else }}
             - name: KC_HOSTNAME_STRICT
               value: "false"
+            {{- end }}
             - name: KC_PROXY_HEADERS
               value: "xforwarded"
+            - name: KC_FEATURES
+              value: "webauthn"
             - name: KC_HEALTH_ENABLED
               value: "true"
             - name: KC_DB

@@ -210,7 +210,23 @@ externalEpistola:
 # =============================================================================
 epistola:
   enabled: true
-  # Override epistola values here, e.g.:
+
+  # Keycloak configuration for Epistola (shared realm with Valtimo).
+  # Note: keycloak.issuerUri must be set to the external (browser-facing)
+  # Keycloak URL. The backchannel URL is derived automatically from the
+  # in-cluster Keycloak service.
+  #
+  # Example with ingress:
+  #   keycloak:
+  #     enabled: true
+  #     issuerUri: "https://auth.example.com/auth/realms/valtimo"
+  #     existingSecret: my-epistola-keycloak-secret
+  #     secretKey: client-secret
+  keycloak:
+    # Client secret used in the realm configmap (must match the secret in existingSecret)
+    clientSecret: "epistola-dev-secret"
+
+  # Override epistola subchart values here, e.g.:
   # service:
   #   port: 8080
   # database:
