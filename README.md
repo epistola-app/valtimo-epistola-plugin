@@ -74,6 +74,65 @@ pnpm start
 pnpm build
 ```
 
+## Local Development with Docker
+
+Start the full stack (PostgreSQL, Keycloak, and Epistola server):
+
+```bash
+docker compose -f docker/docker-compose.yml --profile server up -d
+```
+
+This starts:
+- **PostgreSQL** on `localhost:5432`
+- **Keycloak** on `localhost:8081` (shared `valtimo` realm)
+- **Epistola server** on `localhost:4010` (with SSO via Keycloak)
+
+### Keycloak authentication
+
+Both Valtimo and Epistola share the same Keycloak realm (`valtimo`). The
+Docker Compose setup handles the split-horizon problem (browsers reach
+Keycloak at `localhost:8081`, containers reach it at `keycloak:8080`) using:
+
+- **KC_HOSTNAME** = `http://localhost:8081` — ensures JWT `iss` claims are
+  consistent
+- **KC_HOSTNAME_BACKCHANNEL_DYNAMIC** = `true` — allows containers to reach
+  Keycloak on the internal hostname
+- **EPISTOLA_AUTH_OIDC_BACKCHANNELBASEURL** = `http://keycloak:8080` —
+  Epistola uses this for server-to-server OIDC calls (token, JWK, userinfo)
+
+Default users: `admin/admin` and `user/user`.
+
+### Running the test application
+
+Start the backend (connects to the Docker-managed PostgreSQL and Keycloak):
+
+```bash
+./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev'
+```
+
+Build and start the frontend:
+
+```bash
+cd frontend/plugin && pnpm build
+cd ../../test-app/frontend && pnpm start
+```
+
+Open `http://localhost:4200` (Valtimo) or `http://localhost:4010` (Epistola).
+
+### Using the mock server instead
+
+For quick tests without a real Epistola server:
+
+```bash
+docker compose -f docker/docker-compose.yml --profile mock up -d
+```
+
+## Kubernetes Deployment
+
+See [charts/valtimo-demo/README.md](charts/valtimo-demo/README.md) for Helm
+chart documentation including Keycloak SSO, standalone mode, and production
+deployment examples.
+
 ## Demo Environment
 
 ### Database Reset
@@ -108,6 +167,40 @@ curl -X POST http://localhost:8080/api/v1/test/reset \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json"
 ```
+
+### Public Demo Authentication
+
+Public internet demos now require each visitor to register their own Keycloak
+account. Registrations are open (email + password) and every new account is
+added to the `valtimo-users` group which grants the `ROLE_USER` realm role.
+After signing in, users can enroll a hardware/software passkey from their
+Keycloak account profile and subsequently log in with "Use passkey".
+
+- `publicUrls.*` Helm values describe the externally reachable URLs so redirect
+  URIs and Keycloak hostnames remain correct in any cluster/ingress setup.
+- A secure Keycloak admin password is generated automatically (unless
+  overridden) and stored in the backend secret. Retrieve it with:
+
+  ```bash
+  kubectl get secret <release>-valtimo-demo-backend \
+    -o jsonpath='{.data.keycloak-admin-password}' | base64 -d
+  ```
+
+- Configure the chart by setting the public URLs for frontend and Keycloak:
+
+  ```yaml
+  publicUrls:
+    frontend: https://valtimo.demo.example
+    keycloak: https://auth.demo.example/auth
+
+  keycloak:
+    webAuthn:
+      rpId: valtimo.demo.example
+      passwordlessRpId: auth.demo.example
+  ```
+
+  The RP IDs must match the effective domain served over TLS so browsers accept
+  passkey registration.
 
 ## License
 
