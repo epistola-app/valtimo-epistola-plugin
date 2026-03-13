@@ -4,15 +4,22 @@ services:
     image: ghcr.io/epistola-app/epistola-suite:0.4.5
     container_name: epistola-server
     environment:
-      SPRING_PROFILES_ACTIVE: demo
+      SPRING_PROFILES_ACTIVE: demo,keycloak
       SPRING_DATASOURCE_URL: jdbc:postgresql://epistola-postgres:5432/epistola_suite
       SPRING_DATASOURCE_USERNAME: epistola
       SPRING_DATASOURCE_PASSWORD: epistola
+      # Override issuer to point at the shared valtimo realm on port 8081
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUERURI: http://localhost:8081/realms/valtimo
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI: http://localhost:8081/realms/valtimo
+      # Backchannel: server-to-server calls use container-internal URL
+      EPISTOLA_AUTH_OIDC_BACKCHANNELBASEURL: http://keycloak:8080
     ports:
       - "4010:4000"
     depends_on:
       epistola-postgres:
         condition: service_healthy
+      keycloak:
+        condition: service_started
 
   epistola-mock:
     profiles: ["mock"]
@@ -50,6 +57,8 @@ services:
       KC_DB_PASSWORD: epistola
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: 8081
     ports:
       - "8081:8080"
     volumes:
