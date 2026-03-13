@@ -138,7 +138,7 @@ spec:
 
             # Valtimo
             - name: VALTIMO_APP_HOSTNAME
-              value: {{ .Values.backend.valtimo.appHostname | quote }}
+              value: {{ include "valtimo-demo.valtimoAppHostname" . | quote }}
             - name: VALTIMO_PLUGIN_ENCRYPTIONSECRET
               valueFrom:
                 secretKeyRef:
