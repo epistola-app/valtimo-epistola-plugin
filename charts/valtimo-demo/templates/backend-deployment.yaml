@@ -119,13 +119,14 @@ spec:
             # OAuth2 / Keycloak
             {{- $keycloakInternalUrl := include "valtimo-demo.keycloak.internalUrl" . }}
             {{- $keycloakExternalUrl := include "valtimo-demo.keycloak.externalUrl" . }}
+            {{- $keycloakIssuerBase := include "valtimo-demo.keycloak.hostnameUrl" . | default $keycloakExternalUrl }}
             {{- $keycloakRealm := .Values.backend.keycloak.realm }}
             - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI
-              value: "{{ $keycloakExternalUrl }}/realms/{{ $keycloakRealm }}/protocol/openid-connect/certs"
+              value: "{{ $keycloakInternalUrl }}/realms/{{ $keycloakRealm }}/protocol/openid-connect/certs"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKJWT_ISSUERURI
-              value: "{{ $keycloakExternalUrl }}/realms/{{ $keycloakRealm }}"
+              value: "{{ $keycloakIssuerBase }}/realms/{{ $keycloakRealm }}"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKAPI_ISSUERURI
-              value: "{{ $keycloakExternalUrl }}/realms/{{ $keycloakRealm }}"
+              value: "{{ $keycloakIssuerBase }}/realms/{{ $keycloakRealm }}"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKJWT_CLIENTID
               value: {{ .Values.backend.keycloak.clientId | quote }}
             - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTID
