@@ -60,7 +60,7 @@ spec:
             - name: KC_HTTP_RELATIVE_PATH
               value: "/auth"
             - name: KC_FEATURES
-              value: "webauthn"
+              value: "web-authn"
           securityContext:
             runAsUser: 1000
             allowPrivilegeEscalation: false
@@ -126,7 +126,7 @@ spec:
             - name: KC_PROXY_HEADERS
               value: "xforwarded"
             - name: KC_FEATURES
-              value: "webauthn"
+              value: "web-authn"
             - name: KC_HEALTH_ENABLED
               value: "true"
             - name: KC_DB
