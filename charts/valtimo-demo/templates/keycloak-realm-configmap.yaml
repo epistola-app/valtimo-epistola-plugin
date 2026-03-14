@@ -37,7 +37,6 @@ data:
       "webAuthnPolicyAcceptableAaguids": [],
       "webAuthnPolicyCreateTimeout": 0,
       "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
-      "webAuthnPolicyAcceptableDecoratedAuthTypes": [],
       "webAuthnPolicyPasswordlessRpEntityName": {{ .Values.keycloak.webAuthn.passwordlessRpEntityName | default .Values.keycloak.webAuthn.rpEntityName | quote }},
       "webAuthnPolicyPasswordlessRpId": {{ $passwordlessRpId | quote }},
       "webAuthnPolicyPasswordlessSignatureAlgorithms": {{ .Values.keycloak.webAuthn.passwordlessSignatureAlgorithms | default .Values.keycloak.webAuthn.signatureAlgorithms | toJson }},
@@ -48,7 +47,6 @@ data:
       "webAuthnPolicyPasswordlessAcceptableAaguids": [],
       "webAuthnPolicyPasswordlessCreateTimeout": 0,
       "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
-      "webAuthnPolicyPasswordlessAcceptableDecoratedAuthTypes": [],
       "roles": {
         "realm": [
           { "name": "ROLE_USER", "description": "User role" },
