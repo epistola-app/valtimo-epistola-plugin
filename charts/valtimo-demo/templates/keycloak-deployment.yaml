@@ -59,6 +59,8 @@ spec:
               value: "true"
             - name: KC_HTTP_RELATIVE_PATH
               value: "/auth"
+            - name: KC_FEATURES
+              value: "webauthn"
           securityContext:
             runAsUser: 1000
             allowPrivilegeEscalation: false
