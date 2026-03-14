@@ -326,6 +326,7 @@ keycloak:
   adminPassword: ""
 
   webAuthn:
+    enabled: false
     rpEntityName: "Valtimo Demo"
     rpId: ""
     passwordlessRpEntityName: "Valtimo Demo"

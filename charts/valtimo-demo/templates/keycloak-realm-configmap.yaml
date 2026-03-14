@@ -8,6 +8,7 @@ metadata:
 data:
   valtimo-realm.json: |
     {{- $realmName := .Values.backend.keycloak.realm }}
+    {{- $keycloakHost := include "valtimo-demo.keycloak.host" . }}
     {
       "realm": {{ $realmName | quote }},
       "enabled": true,
@@ -24,6 +25,30 @@ data:
       "defaultGroups": [
         "valtimo-users"
       ],
+      {{- if .Values.keycloak.webAuthn.enabled }}
+      {{- $webAuthnRpId := .Values.keycloak.webAuthn.rpId | default $keycloakHost }}
+      {{- $passwordlessRpId := .Values.keycloak.webAuthn.passwordlessRpId | default $keycloakHost }}
+      "webAuthnPolicyRpEntityName": {{ .Values.keycloak.webAuthn.rpEntityName | quote }},
+      "webAuthnPolicyRpId": {{ $webAuthnRpId | quote }},
+      "webAuthnPolicySignatureAlgorithms": {{ .Values.keycloak.webAuthn.signatureAlgorithms | toJson }},
+      "webAuthnPolicyAttestationConveyancePreference": "none",
+      "webAuthnPolicyAuthenticatorAttachment": "not specified",
+      "webAuthnPolicyRequireResidentKey": "not specified",
+      "webAuthnPolicyUserVerificationRequirement": {{ .Values.keycloak.webAuthn.userVerificationRequirement | default "required" | quote }},
+      "webAuthnPolicyAcceptableAaguids": [],
+      "webAuthnPolicyCreateTimeout": 0,
+      "webAuthnPolicyAvoidSameAuthenticatorRegister": false,
+      "webAuthnPolicyPasswordlessRpEntityName": {{ .Values.keycloak.webAuthn.passwordlessRpEntityName | default .Values.keycloak.webAuthn.rpEntityName | quote }},
+      "webAuthnPolicyPasswordlessRpId": {{ $passwordlessRpId | quote }},
+      "webAuthnPolicyPasswordlessSignatureAlgorithms": {{ .Values.keycloak.webAuthn.passwordlessSignatureAlgorithms | default .Values.keycloak.webAuthn.signatureAlgorithms | toJson }},
+      "webAuthnPolicyPasswordlessAttestationConveyancePreference": "none",
+      "webAuthnPolicyPasswordlessAuthenticatorAttachment": "not specified",
+      "webAuthnPolicyPasswordlessRequireResidentKey": "required",
+      "webAuthnPolicyPasswordlessUserVerificationRequirement": {{ .Values.keycloak.webAuthn.passwordlessUserVerificationRequirement | default "required" | quote }},
+      "webAuthnPolicyPasswordlessAcceptableAaguids": [],
+      "webAuthnPolicyPasswordlessCreateTimeout": 0,
+      "webAuthnPolicyPasswordlessAvoidSameAuthenticatorRegister": false,
+      {{- end }}
       "roles": {
         "realm": [
           { "name": "ROLE_USER", "description": "User role" },
@@ -108,6 +133,57 @@ data:
         }
         {{- end }}
       ],
+      {{- if .Values.keycloak.webAuthn.enabled }}
+      "requiredActions": [
+        {
+          "alias": "webauthn-register",
+          "name": "WebAuthn Register",
+          "providerId": "webauthn-register",
+          "enabled": true,
+          "defaultAction": false,
+          "priority": 60,
+          "config": {}
+        },
+        {
+          "alias": "webauthn-register-passwordless",
+          "name": "WebAuthn Passwordless Register",
+          "providerId": "webauthn-register-passwordless",
+          "enabled": true,
+          "defaultAction": false,
+          "priority": 65,
+          "config": {}
+        }
+      ],
+      "authenticationFlows": [
+        {
+          "alias": "browser-with-passkeys",
+          "description": "Browser login with password or passkeys",
+          "providerId": "basic-flow",
+          "topLevel": true,
+          "builtIn": false,
+          "authenticationExecutions": [
+            { "authenticator": "auth-cookie", "requirement": "ALTERNATIVE", "priority": 0, "authenticatorFlow": false, "userSetupAllowed": false },
+            { "authenticator": "auth-spnego", "requirement": "DISABLED", "priority": 1, "authenticatorFlow": false, "userSetupAllowed": false },
+            { "authenticator": "identity-provider-redirector", "requirement": "ALTERNATIVE", "priority": 2, "authenticatorFlow": false, "userSetupAllowed": false },
+            { "authenticator": "webauthn-authenticator", "requirement": "ALTERNATIVE", "priority": 3, "authenticatorFlow": false, "userSetupAllowed": false },
+            { "authenticator": "webauthn-passwordless-authenticator", "requirement": "ALTERNATIVE", "priority": 4, "authenticatorFlow": false, "userSetupAllowed": false },
+            { "authenticatorFlow": true, "flowAlias": "browser-forms", "requirement": "REQUIRED", "priority": 5, "userSetupAllowed": false }
+          ]
+        },
+        {
+          "alias": "browser-forms",
+          "description": "Username/password with optional OTP",
+          "providerId": "basic-flow",
+          "topLevel": false,
+          "builtIn": false,
+          "authenticationExecutions": [
+            { "authenticator": "username-password-form", "requirement": "REQUIRED", "priority": 0, "authenticatorFlow": false, "userSetupAllowed": false },
+            { "authenticator": "conditional-otp-form", "requirement": "CONDITIONAL", "priority": 1, "authenticatorFlow": false, "userSetupAllowed": false }
+          ]
+        }
+      ],
+      "browserFlow": "browser-with-passkeys",
+      {{- end }}
       "defaultDefaultClientScopes": [
         "role_list",
         "profile",

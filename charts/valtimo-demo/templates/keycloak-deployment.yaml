@@ -59,6 +59,10 @@ spec:
               value: "true"
             - name: KC_HTTP_RELATIVE_PATH
               value: "/auth"
+            {{- if .Values.keycloak.webAuthn.enabled }}
+            - name: KC_FEATURES
+              value: "web-authn"
+            {{- end }}
           securityContext:
             runAsUser: 1000
             allowPrivilegeEscalation: false
@@ -123,6 +127,10 @@ spec:
             {{- end }}
             - name: KC_PROXY_HEADERS
               value: "xforwarded"
+            {{- if .Values.keycloak.webAuthn.enabled }}
+            - name: KC_FEATURES
+              value: "web-authn"
+            {{- end }}
             - name: KC_HEALTH_ENABLED
               value: "true"
             - name: KC_DB
