@@ -260,16 +260,12 @@ Whitelisted domain for Angular HTTP interceptor (hostname only).
 {{- end }}
 
 {{/*
-Keycloak full external URL for KC_HOSTNAME v2 (includes scheme).
-Required when KC_HOSTNAME_BACKCHANNEL_DYNAMIC is true.
+Keycloak full external URL for KC_HOSTNAME v2 (includes scheme and relative path).
+The OIDC issuer is derived from this value, so it must include /auth to match
+the URLs that backend services expect.
 */}}
 {{- define "valtimo-demo.keycloak.hostnameUrl" -}}
-{{- $external := include "valtimo-demo.keycloak.externalUrl" . -}}
-{{- if $external }}
-  {{- trimSuffix "/auth" $external -}}
-{{- else -}}
-  {{- "" -}}
-{{- end -}}
+{{- include "valtimo-demo.keycloak.externalUrl" . -}}
 {{- end }}
 
 {{/*
