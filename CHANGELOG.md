@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed ktlint build failure from empty probe file and class name conflicts in test-app probe classes
+
 ### Changed
 
 - Public demo access now requires self-registration and supports passkey (WebAuthn) login. Static demo users were removed and Keycloak bootstrap credentials are auto-generated per installation.
