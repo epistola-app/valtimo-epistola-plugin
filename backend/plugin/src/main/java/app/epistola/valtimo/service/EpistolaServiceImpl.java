@@ -1,6 +1,7 @@
 package app.epistola.valtimo.service;
 
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
+import app.epistola.valtimo.domain.BatchGenerationItem;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
@@ -14,9 +15,11 @@ import app.epistola.client.api.EnvironmentsApi;
 import app.epistola.client.api.GenerationApi;
 import app.epistola.client.api.TemplatesApi;
 import app.epistola.client.api.VariantsApi;
+import app.epistola.client.model.BatchDownloadFormat;
 import app.epistola.client.model.DocumentGenerationItemDto;
 import app.epistola.client.model.EnvironmentDto;
 import app.epistola.client.model.EnvironmentListResponse;
+import app.epistola.client.model.GenerateBatchRequest;
 import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.GenerationJobResponse;
 import app.epistola.client.model.ImportTemplatesRequest;
@@ -223,6 +226,92 @@ public class EpistolaServiceImpl implements EpistolaService {
         } catch (Exception e) {
             log.error("Failed to download document for tenant {}, documentId {}: {}", tenantId, documentId, e.getMessage());
             throw new EpistolaApiException("Failed to download document", e);
+        }
+    }
+
+    @Override
+    public GenerationJobResult submitBatchGenerationJob(
+            String baseUrl,
+            String apiKey,
+            String tenantId,
+            List<BatchGenerationItem> items,
+            List<String> downloadFormats
+    ) {
+        log.info("Submitting batch generation request: tenantId={}, itemCount={}, downloadFormats={}",
+                tenantId, items.size(), downloadFormats);
+
+        try {
+            GenerationApi generationApi = apiClientFactory.createGenerationApi(baseUrl, apiKey);
+
+            List<app.epistola.client.model.BatchGenerationItem> batchItems = items.stream()
+                    .map(item -> new app.epistola.client.model.BatchGenerationItem(
+                            item.templateId(),
+                            item.data(),
+                            item.variantId(),
+                            null,  // attributes - not used in batch actions currently
+                            null,  // versionId
+                            item.environmentId(),
+                            item.filename(),
+                            item.correlationId()
+                    ))
+                    .toList();
+
+            List<BatchDownloadFormat> formats = downloadFormats != null
+                    ? downloadFormats.stream()
+                    .map(f -> BatchDownloadFormat.valueOf(f.toUpperCase()))
+                    .toList()
+                    : null;
+
+            GenerateBatchRequest request = new GenerateBatchRequest(batchItems, formats);
+            GenerationJobResponse response = generationApi.generateDocumentBatch(tenantId, request);
+
+            log.info("Batch generation request submitted: requestId={}, status={}",
+                    response.getRequestId(), response.getStatus());
+
+            return GenerationJobResult.builder()
+                    .requestId(response.getRequestId().toString())
+                    .status(response.getStatus().getValue())
+                    .build();
+        } catch (Exception e) {
+            log.error("Failed to submit batch generation request: {}", e.getMessage());
+            throw new EpistolaApiException("Failed to submit batch generation request", e);
+        }
+    }
+
+    @Override
+    public byte[] downloadBatchJob(
+            String baseUrl,
+            String apiKey,
+            String tenantId,
+            String requestId,
+            String format,
+            int part
+    ) {
+        log.info("Downloading batch job: tenantId={}, requestId={}, format={}, part={}",
+                tenantId, requestId, format, part);
+        try {
+            // Use RestClient directly (same pattern as downloadDocument) because the generated
+            // client returns java.io.File which requires an HttpMessageConverter that Spring
+            // doesn't provide out of the box.
+            byte[] content = apiClientFactory.createRestClient(baseUrl, apiKey)
+                    .get()
+                    .uri("/tenants/{tenantId}/generation/jobs/{requestId}/download?format={format}&part={part}",
+                            tenantId, requestId, format, part)
+                    .accept(org.springframework.http.MediaType.APPLICATION_OCTET_STREAM)
+                    .retrieve()
+                    .body(byte[].class);
+
+            if (content == null || content.length == 0) {
+                throw new EpistolaApiException("Downloaded batch output is empty: " + requestId);
+            }
+
+            log.info("Downloaded batch job {} format={} part={} ({} bytes)", requestId, format, part, content.length);
+            return content;
+        } catch (EpistolaApiException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to download batch job for tenant {}, requestId {}: {}", tenantId, requestId, e.getMessage());
+            throw new EpistolaApiException("Failed to download batch job", e);
         }
     }
 

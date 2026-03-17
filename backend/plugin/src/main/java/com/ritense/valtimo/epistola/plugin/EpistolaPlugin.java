@@ -1,6 +1,7 @@
 package com.ritense.valtimo.epistola.plugin;
 
 import app.epistola.client.model.VariantSelectionAttribute;
+import app.epistola.valtimo.domain.BatchGenerationItem;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
 import app.epistola.valtimo.domain.GenerationJobDetail;
@@ -362,6 +363,116 @@ public class EpistolaPlugin {
         execution.setVariable(contentVariable, base64Content);
 
         log.info("Document {} downloaded successfully ({} bytes)", documentId, content.length);
+    }
+
+    /**
+     * Submit a batch document generation request to Epistola.
+     * <p>
+     * This action submits multiple document generation requests as a single batch.
+     * A request ID is returned immediately and stored in the specified process variable.
+     * The batch supports download formats (ZIP, MERGED_PDF) for retrieving all documents
+     * as a single download once generation completes.
+     *
+     * @param execution             The process execution context
+     * @param items                 List of batch items, each containing templateId, data mapping, and optional variant/environment/filename
+     * @param downloadFormats       List of download formats to prepare (e.g. "ZIP", "MERGED_PDF")
+     * @param environmentId         The environment ID (optional, uses plugin default if not specified)
+     * @param resultProcessVariable The name of the process variable to store the request ID in
+     */
+    @PluginAction(
+            key = "generate-document-batch",
+            title = "Generate Document Batch",
+            description = "Submit a batch document generation request to Epistola. The request ID will be stored in the specified process variable.",
+            activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
+    )
+    @SuppressWarnings("unchecked")
+    public void generateDocumentBatch(
+            DelegateExecution execution,
+            @PluginActionProperty List<Map<String, Object>> items,
+            @PluginActionProperty List<String> downloadFormats,
+            @PluginActionProperty String environmentId,
+            @PluginActionProperty String resultProcessVariable
+    ) {
+        log.info("Starting batch document generation: itemCount={}, downloadFormats={}", items.size(), downloadFormats);
+
+        String effectiveEnvironmentId = (environmentId != null && !environmentId.isBlank())
+                ? environmentId
+                : defaultEnvironmentId;
+
+        List<BatchGenerationItem> batchItems = items.stream()
+                .map(item -> {
+                    String templateId = (String) item.get("templateId");
+                    String variantId = (String) item.get("variantId");
+                    String filename = (String) item.get("filename");
+                    String correlationId = (String) item.get("correlationId");
+                    Map<String, Object> dataMapping = item.get("dataMapping") instanceof Map<?, ?>
+                            ? (Map<String, Object>) item.get("dataMapping")
+                            : Map.of();
+
+                    Map<String, Object> resolvedData = resolveNestedMapping(execution, dataMapping);
+
+                    return new BatchGenerationItem(
+                            templateId,
+                            resolvedData,
+                            variantId,
+                            effectiveEnvironmentId,
+                            filename,
+                            correlationId
+                    );
+                })
+                .toList();
+
+        GenerationJobResult result = epistolaService.submitBatchGenerationJob(
+                baseUrl, apiKey, tenantId, batchItems, downloadFormats
+        );
+
+        execution.setVariable(resultProcessVariable, result.getRequestId());
+
+        log.info("Batch document generation request submitted: requestId={}, resultVar={}",
+                result.getRequestId(), resultProcessVariable);
+    }
+
+    /**
+     * Download an assembled batch output from Epistola.
+     * <p>
+     * This action downloads a completed batch output (ZIP or merged PDF) from Epistola.
+     * The batch must have completed generation and assembly before it can be downloaded.
+     *
+     * @param execution          The process execution context
+     * @param requestIdVariable  The name of the process variable containing the batch request ID
+     * @param format             The download format (ZIP or MERGED_PDF)
+     * @param part               The part number (1-based, defaults to 1)
+     * @param contentVariable    The name of the process variable to store the content (Base64 encoded)
+     */
+    @PluginAction(
+            key = "download-batch",
+            title = "Download Batch",
+            description = "Download an assembled batch output from Epistola. Stores the content as Base64 in the specified process variable.",
+            activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
+    )
+    public void downloadBatch(
+            DelegateExecution execution,
+            @PluginActionProperty String requestIdVariable,
+            @PluginActionProperty String format,
+            @PluginActionProperty Integer part,
+            @PluginActionProperty String contentVariable
+    ) {
+        String requestId = (String) execution.getVariable(requestIdVariable);
+        int effectivePart = (part != null) ? part : 1;
+
+        log.info("Downloading batch: requestId={}, format={}, part={}", requestId, format, effectivePart);
+
+        if (requestId == null || requestId.isBlank()) {
+            throw new IllegalArgumentException("Request ID variable '" + requestIdVariable + "' is null or empty");
+        }
+
+        byte[] content = epistolaService.downloadBatchJob(baseUrl, apiKey, tenantId, requestId, format, effectivePart);
+
+        String base64Content = java.util.Base64.getEncoder().encodeToString(content);
+        execution.setVariable(contentVariable, base64Content);
+
+        log.info("Batch {} downloaded successfully ({} bytes), format={}, part={}",
+                requestId, content.length, format, effectivePart);
     }
 
     /**
