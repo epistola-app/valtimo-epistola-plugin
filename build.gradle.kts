@@ -31,6 +31,14 @@ subprojects {
                 snapshotsOnly()
             }
         }
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/epistola-app/epistola-contract")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR") ?: providers.gradleProperty("gpr.user").getOrElse("")
+                password = System.getenv("GITHUB_TOKEN") ?: providers.gradleProperty("gpr.key").getOrElse("")
+            }
+        }
         mavenLocal()
     }
 
