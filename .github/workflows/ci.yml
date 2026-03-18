@@ -11,13 +11,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  version-guard:
-    name: Contract Version Guard
-    if: github.event_name == 'pull_request'
+  backend:
+    name: Backend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Check contract dependency version
+
+      - name: Check contract version
+        if: github.event_name == 'pull_request'
         run: |
           VERSION=$(grep 'epistola-client\s*=' gradle/libs.versions.toml | head -1 | sed 's/.*"\(.*\)"/\1/')
           echo "Contract version: $VERSION"
@@ -25,13 +26,6 @@ jobs:
             echo "::error::Contract version '$VERSION' is a snapshot/feature-stamped version. Update to a released version before merging."
             exit 1
           fi
-          echo "Contract version is a release version"
-
-  backend:
-    name: Backend
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
       - uses: actions/setup-java@v4
         with:
