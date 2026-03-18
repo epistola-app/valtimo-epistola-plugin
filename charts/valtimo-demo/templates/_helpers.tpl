@@ -308,8 +308,6 @@ For cnpgExisting: explicit secretName or "{clusterName}-app"
 {{- else }}
 {{- printf "%s-app" .Values.database.cnpgExisting.clusterName }}
 {{- end }}
-{{- else if eq .Values.database.type "standalone" }}
-{{- printf "%s-standalone-db" (include "valtimo-demo.fullname" .) }}
 {{- else }}
 {{- printf "%s-app" (include "valtimo-demo.cnpg.clusterName" .) }}
 {{- end }}
@@ -323,8 +321,6 @@ Database host for the Valtimo backend (CNPG RW service or external host).
 {{- printf "%s-rw" (include "valtimo-demo.cnpg.clusterName" .) }}
 {{- else if eq .Values.database.type "cnpgExisting" }}
 {{- printf "%s-rw" .Values.database.cnpgExisting.clusterName }}
-{{- else if eq .Values.database.type "standalone" }}
-{{- printf "%s-standalone-db" (include "valtimo-demo.fullname" .) }}
 {{- else }}
 {{- .Values.database.external.host }}
 {{- end }}
@@ -334,7 +330,7 @@ Database host for the Valtimo backend (CNPG RW service or external host).
 Database port for the Valtimo backend.
 */}}
 {{- define "valtimo-demo.database.port" -}}
-{{- if or (eq .Values.database.type "cnpg") (eq .Values.database.type "cnpgExisting") (eq .Values.database.type "standalone") }}
+{{- if or (eq .Values.database.type "cnpg") (eq .Values.database.type "cnpgExisting") }}
 {{- 5432 }}
 {{- else }}
 {{- .Values.database.external.port }}

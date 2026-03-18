@@ -46,8 +46,6 @@ Valtimo Epistola Demo has been deployed!
   PostgreSQL: {{ .Values.database.cnpgExisting.clusterName }} (existing CNPG Cluster)
 {{- else if eq .Values.database.type "external" }}
   PostgreSQL: {{ .Values.database.external.host }}:{{ .Values.database.external.port }}
-{{- else if eq .Values.database.type "standalone" }}
-  PostgreSQL: {{ include "valtimo-demo.fullname" . }}-standalone-db (standalone StatefulSet)
 {{- end }}
 {{- if .Values.keycloak.enabled }}
   Keycloak:   {{ include "valtimo-demo.keycloak.fullname" . }}:{{ .Values.keycloak.service.port }}

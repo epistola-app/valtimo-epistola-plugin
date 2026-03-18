@@ -76,7 +76,7 @@ spec:
               value: {{ .Values.backend.springProfilesActive | quote }}
 
             # Database
-            {{- if or (eq .Values.database.type "cnpg") (eq .Values.database.type "cnpgExisting") (eq .Values.database.type "standalone") }}
+            {{- if or (eq .Values.database.type "cnpg") (eq .Values.database.type "cnpgExisting") }}
             - name: SPRING_DATASOURCE_URL
               valueFrom:
                 secretKeyRef:

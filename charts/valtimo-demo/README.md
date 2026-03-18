@@ -11,7 +11,7 @@ shared demo environments.
 - **Epistola server** (contract/API implementation)
 - **Keycloak 26** with pre-configured realm, self-service registration, and
   WebAuthn-enabled authentication flows
-- **PostgreSQL** via CloudNativePG (or external DB/standalone Postgres)
+- **PostgreSQL** via CloudNativePG (or external DB)
 
 ## Prerequisites
 
@@ -52,7 +52,7 @@ kubectl get secret demo-valtimo-demo-backend \
 | `publicUrls.keycloak` | Fully-qualified Keycloak URL (include `/auth`). Used by frontend + backend and for `KC_HOSTNAME`. |
 | `keycloak.webAuthn.*` | WebAuthn relying party settings (entity names, RP IDs, signature algorithms, user verification). Both password-based and passwordless flows use these values. |
 | `backend.keycloak.backendClientSecret` | Secret shared with the Valtimo backend service account. Stored in `demo-valtimo-demo-backend` secret. |
-| `database.type` | Choose between `cnpg` (default), `cnpgExisting`, `external`, or `standalone`. |
+| `database.type` | Choose between `cnpg` (default), `cnpgExisting`, or `external`. |
 | `epistola.enabled` | Deploy bundled Epistola chart (`true`) or point to `externalEpistola.url`. |
 | `ingress.*` | Configure ingress hosts/tls or rely on an external gateway. When ingress is disabled you must provide `publicUrls.*`. |
 
@@ -98,20 +98,18 @@ kubectl create secret generic epistola-keycloak-secret \
   --from-literal=client-secret="your-secret-here"
 ```
 
-### Standalone mode (dev/demo)
+### External database mode
 
-For standalone PostgreSQL without the CNPG operator:
+For environments without the CNPG operator, deploy PostgreSQL separately and use
+`database.type: external`:
 
 ```bash
 helm install demo charts/valtimo-demo \
-  -f charts/valtimo-demo/values-standalone.yaml \
+  --set database.type=external \
+  --set database.external.host=postgresql \
+  --set database.external.existingSecret=postgresql \
   --set publicUrls.frontend="https://valtimo.example.com" \
-  --set publicUrls.keycloak="https://auth.example.com/auth" \
-  --set epistola.keycloak.enabled=true \
-  --set epistola.keycloak.issuerUri="https://auth.example.com/auth/realms/valtimo" \
-  --set epistola.keycloak.backchannelBaseUrl="http://demo-keycloak/auth" \
-  --set epistola.keycloak.existingSecret="epistola-keycloak-secret" \
-  --set epistola.config.profiles="demo,prod"
+  --set publicUrls.keycloak="https://auth.example.com/auth"
 ```
 
 ## Authentication & Demo Flow

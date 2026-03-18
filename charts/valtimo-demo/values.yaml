@@ -241,17 +241,18 @@ epistola:
   #   external:
   #     host: my-epistola-db
   #
-  # For standalone mode, use values-standalone.yaml or set:
+  # When using external database mode in the parent chart, configure
+  # Epistola to point to its own database secret:
   #   database:
   #     type: cnpgExisting
   #     cnpgExisting:
-  #       secretName: epistola-standalone-app
+  #       secretName: postgresql-epistola
 
 # =============================================================================
 # Database (Valtimo PostgreSQL)
 # =============================================================================
 database:
-  # Options: cnpg, cnpgExisting, external, standalone
+  # Options: cnpg, cnpgExisting, external
   type: "cnpg"
 
   # Create a new CNPG Cluster (type: cnpg)
@@ -281,40 +282,6 @@ database:
     existingSecret: ""    # required — secret containing password
     secretKey: password
 
-  # Standalone single-node PostgreSQL (type: standalone)
-  # Simple StatefulSet — no CNPG operator required. For demo/dev only.
-  standalone:
-    image:
-      repository: postgres
-      tag: "17-alpine"
-      pullPolicy: IfNotPresent
-    database: valtimo
-    username: valtimo
-    password: "changeme"
-    storage:
-      size: 2Gi
-      storageClass: ""
-    resources: {}
-    nodeSelector: {}
-    tolerations: []
-    # Periodic database reset (demo/dev only).
-    # Drops and recreates selected databases, then restarts deployments.
-    # The keycloak database is NEVER touched (hardcoded protection).
-    reset:
-      enabled: false
-      # Cron schedule (default: every 6 hours)
-      schedule: "0 */6 * * *"
-      # Databases to drop + recreate (keycloak is always protected)
-      databases:
-        - valtimo
-        - epistola
-      # Deployments to rolling-restart after reset
-      restartDeployments:
-        - backend
-        - epistola
-      successfulJobsHistoryLimit: 1
-      failedJobsHistoryLimit: 3
-      activeDeadlineSeconds: 300
 
 # =============================================================================
 # Keycloak (standalone deployment — no subchart)
