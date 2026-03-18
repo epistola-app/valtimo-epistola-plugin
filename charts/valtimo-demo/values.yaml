@@ -21,6 +21,9 @@ publicUrls:
   # Fully-qualified Keycloak URL (e.g. https://auth.example.com/auth). When
   # empty, falls back to ingress host or the in-cluster service URL.
   keycloak: ""
+  # Fully-qualified Epistola URL (e.g. https://epistola.example.com). When empty,
+  # falls back to the in-cluster service URL. Used for Keycloak redirect URIs.
+  epistola: ""
 
 # =============================================================================
 # Backend (Valtimo Spring Boot application)
