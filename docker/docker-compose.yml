@@ -13,6 +13,11 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI: http://localhost:8081/realms/valtimo
       # Backchannel: server-to-server calls use container-internal URL
       EPISTOLA_AUTH_OIDC_BACKCHANNELBASEURL: http://keycloak:8080
+      # Keycloak Admin API for tenant group provisioning
+      EPISTOLA_KEYCLOAK_ADMINURL: http://keycloak:8080
+      EPISTOLA_KEYCLOAK_REALM: valtimo
+      EPISTOLA_KEYCLOAK_CLIENTID: epistola-suite
+      EPISTOLA_KEYCLOAK_CLIENTSECRET: epistola-dev-secret
     ports:
       - "4010:4000"
     depends_on:

@@ -24,6 +24,40 @@
       }
     ]
   },
+  "groups": [
+    {
+      "name": "valtimo-users",
+      "path": "/valtimo-users",
+      "realmRoles": ["ROLE_USER", "ROLE_ADMIN"]
+    },
+    {
+      "name": "ep_demo-tenant_reader"
+    },
+    {
+      "name": "ep_demo-tenant_editor"
+    },
+    {
+      "name": "ep_demo-tenant_generator"
+    },
+    {
+      "name": "ep_demo-tenant_manager"
+    },
+    {
+      "name": "ep_tenant-manager"
+    },
+    {
+      "name": "ep_reader"
+    },
+    {
+      "name": "ep_editor"
+    },
+    {
+      "name": "ep_generator"
+    },
+    {
+      "name": "ep_manager"
+    }
+  ],
   "users": [
     {
       "username": "admin",
@@ -38,7 +72,19 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["ROLE_USER", "ROLE_ADMIN", "ROLE_DEVELOPER"]
+      "realmRoles": ["ROLE_USER", "ROLE_ADMIN", "ROLE_DEVELOPER"],
+      "groups": [
+        "valtimo-users",
+        "ep_demo-tenant_reader",
+        "ep_demo-tenant_editor",
+        "ep_demo-tenant_generator",
+        "ep_demo-tenant_manager",
+        "ep_tenant-manager",
+        "ep_reader",
+        "ep_editor",
+        "ep_generator",
+        "ep_manager"
+      ]
     },
     {
       "username": "user",
@@ -53,7 +99,13 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["ROLE_USER"]
+      "realmRoles": ["ROLE_USER"],
+      "groups": [
+        "valtimo-users",
+        "ep_demo-tenant_reader",
+        "ep_demo-tenant_editor",
+        "ep_demo-tenant_generator"
+      ]
     },
     {
       "username": "service-account-valtimo-backend",
@@ -66,6 +118,18 @@
           "manage-users",
           "view-clients",
           "view-realm"
+        ]
+      }
+    },
+    {
+      "username": "service-account-epistola-suite",
+      "enabled": true,
+      "serviceAccountClientId": "epistola-suite",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-users",
+          "query-users"
         ]
       }
     }
@@ -110,6 +174,7 @@
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
       "secret": "epistola-dev-secret",
+      "serviceAccountsEnabled": true,
       "redirectUris": [
         "http://localhost:4010/*"
       ],
@@ -129,6 +194,21 @@
         "roles",
         "email",
         "openid"
+      ],
+      "protocolMappers": [
+        {
+          "name": "group-membership-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "groups",
+            "userinfo.token.claim": "true"
+          }
+        }
       ]
     }
   ],
