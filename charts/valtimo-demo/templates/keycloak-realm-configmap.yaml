@@ -14,6 +14,7 @@ data:
       "enabled": true,
       "sslRequired": "none",
       "registrationAllowed": true,
+      "registrationEmailAsUsername": true,
       "loginWithEmailAllowed": true,
       "duplicateEmailsAllowed": false,
       "resetPasswordAllowed": true,
