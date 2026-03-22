@@ -100,7 +100,7 @@ Keycloak at `localhost:8081`, containers reach it at `keycloak:8080`) using:
 - **EPISTOLA_AUTH_OIDC_BACKCHANNELBASEURL** = `http://keycloak:8080` —
   Epistola uses this for server-to-server OIDC calls (token, JWK, userinfo)
 
-Default users: `admin/admin` and `user/user`.
+Default Valtimo users: `admin/admin` and `user/user`. Epistola demo users: `reader@demo/reader`, `editor@demo/editor`, `generator@demo/generator`, `manager@demo/manager`, `admin@demo/admin` (full access).
 
 ### Running the test application
 
