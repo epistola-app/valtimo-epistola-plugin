@@ -32,16 +32,16 @@
       "realmRoles": ["ROLE_USER", "ROLE_ADMIN"]
     },
     {
-      "name": "ep_demo-tenant_reader"
+      "name": "ep_demo_reader"
     },
     {
-      "name": "ep_demo-tenant_editor"
+      "name": "ep_demo_editor"
     },
     {
-      "name": "ep_demo-tenant_generator"
+      "name": "ep_demo_generator"
     },
     {
-      "name": "ep_demo-tenant_manager"
+      "name": "ep_demo_manager"
     },
     {
       "name": "ep_tenant-manager"
@@ -76,10 +76,10 @@
       "realmRoles": ["ROLE_USER", "ROLE_ADMIN", "ROLE_DEVELOPER"],
       "groups": [
         "valtimo-users",
-        "ep_demo-tenant_reader",
-        "ep_demo-tenant_editor",
-        "ep_demo-tenant_generator",
-        "ep_demo-tenant_manager",
+        "ep_demo_reader",
+        "ep_demo_editor",
+        "ep_demo_generator",
+        "ep_demo_manager",
         "ep_tenant-manager",
         "ep_reader",
         "ep_editor",
@@ -103,9 +103,88 @@
       "realmRoles": ["ROLE_USER"],
       "groups": [
         "valtimo-users",
-        "ep_demo-tenant_reader",
-        "ep_demo-tenant_editor",
-        "ep_demo-tenant_generator"
+        "ep_demo_reader"
+      ]
+    },
+    {
+      "username": "reader@demo",
+      "email": "reader@demo",
+      "enabled": true,
+      "firstName": "Reader",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "reader",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ROLE_USER"],
+      "groups": [
+        "valtimo-users",
+        "ep_demo_reader"
+      ]
+    },
+    {
+      "username": "editor@demo",
+      "email": "editor@demo",
+      "enabled": true,
+      "firstName": "Editor",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "editor",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ROLE_USER"],
+      "groups": [
+        "valtimo-users",
+        "ep_demo_reader",
+        "ep_demo_editor"
+      ]
+    },
+    {
+      "username": "generator@demo",
+      "email": "generator@demo",
+      "enabled": true,
+      "firstName": "Generator",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "generator",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ROLE_USER"],
+      "groups": [
+        "valtimo-users",
+        "ep_demo_reader",
+        "ep_demo_generator"
+      ]
+    },
+    {
+      "username": "manager@demo",
+      "email": "manager@demo",
+      "enabled": true,
+      "firstName": "Manager",
+      "lastName": "User",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "manager",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ROLE_USER"],
+      "groups": [
+        "valtimo-users",
+        "ep_demo_reader",
+        "ep_demo_editor",
+        "ep_demo_generator",
+        "ep_demo_manager"
       ]
     },
     {
