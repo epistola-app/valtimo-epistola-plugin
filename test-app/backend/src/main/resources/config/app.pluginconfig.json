@@ -5,7 +5,7 @@
     "pluginDefinitionKey": "epistola",
     "properties": {
       "apiKey": "epk_demo_000000000000000000000000000000000000",
-      "tenantId": "demo-tenant",
+      "tenantId": "demo",
       "baseUrl": "${epistola.base-url}",
       "defaultEnvironmentId": "production",
       "templateSyncEnabled": true

@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Fixed Epistola tenant ID in plugin config: `demo-tenant` → `demo` to match epistola-suite's DemoLoader
 - Removed client-side default variant resolution workaround — Epistola server (`>= 0.4.x`) now resolves the default variant automatically when neither `variantId` nor `attributes` is provided
 - Added `epistola.base-url` to `application-dev.yml` to match docker-compose port mapping (`4010:4000`)
 
