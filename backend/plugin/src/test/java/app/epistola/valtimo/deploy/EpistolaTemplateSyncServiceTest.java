@@ -399,5 +399,18 @@ class EpistolaTemplateSyncServiceTest {
         public byte[] downloadDocument(String baseUrl, String apiKey, String tenantId, String documentId) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public GenerationJobResult submitBatchGenerationJob(String baseUrl, String apiKey, String tenantId,
+                java.util.List<app.epistola.valtimo.domain.BatchGenerationItem> items,
+                java.util.List<String> downloadFormats) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public byte[] downloadBatchJob(String baseUrl, String apiKey, String tenantId,
+                String requestId, String format, int part) {
+            throw new UnsupportedOperationException();
+        }
     }
 }

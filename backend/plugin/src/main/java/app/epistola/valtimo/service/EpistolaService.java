@@ -8,6 +8,8 @@ import app.epistola.valtimo.domain.*;
 import java.util.List;
 import java.util.Map;
 
+
+
 /**
  * Service for interacting with Epistola document generation.
  * <p>
@@ -126,4 +128,42 @@ public interface EpistolaService {
      * @return The import response with per-template results
      */
     ImportTemplatesResponse importTemplates(String baseUrl, String apiKey, String tenantId, ImportTemplatesRequest request);
+
+    /**
+     * Submit a batch document generation job.
+     *
+     * @param baseUrl         The Epistola API base URL
+     * @param apiKey          The API key for authentication
+     * @param tenantId        The tenant ID in Epistola
+     * @param items           The batch generation items
+     * @param downloadFormats The formats for batch download (e.g. ZIP, MERGED_PDF)
+     * @return The generation job result containing the request ID
+     */
+    GenerationJobResult submitBatchGenerationJob(
+            String baseUrl,
+            String apiKey,
+            String tenantId,
+            List<BatchGenerationItem> items,
+            List<String> downloadFormats
+    );
+
+    /**
+     * Download an assembled batch job output.
+     *
+     * @param baseUrl   The Epistola API base URL
+     * @param apiKey    The API key for authentication
+     * @param tenantId  The tenant ID in Epistola
+     * @param requestId The batch request ID
+     * @param format    The download format (ZIP or MERGED_PDF)
+     * @param part      The part number (1-based)
+     * @return The batch output bytes
+     */
+    byte[] downloadBatchJob(
+            String baseUrl,
+            String apiKey,
+            String tenantId,
+            String requestId,
+            String format,
+            int part
+    );
 }
