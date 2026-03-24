@@ -18,9 +18,7 @@ spec:
         {{- include "valtimo-demo.keycloak.selectorLabels" . | nindent 8 }}
     spec:
       securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
+        {{- toYaml .Values.keycloak.podSecurityContext | nindent 8 }}
       initContainers:
         - name: wait-for-db
           image: busybox:1.37

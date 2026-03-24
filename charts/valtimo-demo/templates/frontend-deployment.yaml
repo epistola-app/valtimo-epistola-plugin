@@ -21,9 +21,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       securityContext:
-        runAsNonRoot: true
-        seccompProfile:
-          type: RuntimeDefault
+        {{- toYaml .Values.frontend.podSecurityContext | nindent 8 }}
       containers:
         - name: frontend
           {{- $tag := include "valtimo-demo.imageTag" (dict "componentTag" .Values.frontend.image.tag "global" .Values.global "appVersion" .Chart.AppVersion) }}
