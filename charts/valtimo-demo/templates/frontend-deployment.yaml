@@ -28,12 +28,7 @@ spec:
           image: "{{ .Values.frontend.image.repository }}:{{ $tag }}"
           imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
           securityContext:
-            runAsUser: 1000
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
+            {{- toYaml .Values.frontend.securityContext | nindent 12 }}
           command: ["nginx", "-g", "daemon off;"]
           ports:
             - name: http

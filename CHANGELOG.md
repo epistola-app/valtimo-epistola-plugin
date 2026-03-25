@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **valtimo-demo chart**: Made container-level `securityContext` configurable via values (`securityContext`, `initSecurityContext`, `initKeycloakSecurityContext`) instead of hardcoding `runAsUser: 1000`. This allows OpenShift deployments to null out `runAsUser` for restricted-v2 SCC compatibility. Chart version bumped to 0.2.0.
+
 ### Changed
 
 - Public demo access now requires self-registration and supports passkey (WebAuthn) login. Static demo users were removed and Keycloak bootstrap credentials are auto-generated per installation.

@@ -1,0 +1,6 @@
+dependencies:
+- name: epistola
+  repository: oci://ghcr.io/epistola-app/charts
+  version: 1.0.0
+digest: sha256:43604a3ef3461a3ebf8b1059d122d488714959a56854c338505b62427bf77ab9
+generated: "2026-03-25T13:13:40.59456149+01:00"

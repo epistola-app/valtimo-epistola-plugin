@@ -32,12 +32,7 @@ spec:
               done
               echo "Database is ready."
           securityContext:
-            runAsUser: 1000
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
+            {{- toYaml .Values.keycloak.initSecurityContext | nindent 12 }}
         # trivy:ignore:KSV-0014 kc.sh build writes JARs to /opt/keycloak/lib/ (main container stays read-only)
         - name: init-keycloak
           image: "{{ .Values.keycloak.image.repository }}:{{ .Values.keycloak.image.tag }}"
@@ -62,12 +57,7 @@ spec:
               value: "web-authn"
             {{- end }}
           securityContext:
-            runAsUser: 1000
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: false
-            capabilities:
-              drop:
-                - ALL
+            {{- toYaml .Values.keycloak.initKeycloakSecurityContext | nindent 12 }}
           volumeMounts:
             - name: realm-config
               mountPath: /realm-source
@@ -88,12 +78,7 @@ spec:
             - --optimized
             - --import-realm
           securityContext:
-            runAsUser: 1000
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
+            {{- toYaml .Values.keycloak.securityContext | nindent 12 }}
           ports:
             - name: http
               containerPort: 8080

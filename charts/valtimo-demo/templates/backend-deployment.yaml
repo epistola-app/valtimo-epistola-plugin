@@ -43,24 +43,14 @@ spec:
               done
               echo "Database is ready."
           securityContext:
-            runAsUser: 1000
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
+            {{- toYaml .Values.backend.initSecurityContext | nindent 12 }}
       containers:
         - name: backend
           {{- $tag := include "valtimo-demo.imageTag" (dict "componentTag" .Values.backend.image.tag "global" .Values.global "appVersion" .Chart.AppVersion) }}
           image: "{{ .Values.backend.image.repository }}:{{ $tag }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           securityContext:
-            runAsUser: 1000
-            allowPrivilegeEscalation: false
-            readOnlyRootFilesystem: true
-            capabilities:
-              drop:
-                - ALL
+            {{- toYaml .Values.backend.securityContext | nindent 12 }}
           ports:
             - name: http
               containerPort: 8080
