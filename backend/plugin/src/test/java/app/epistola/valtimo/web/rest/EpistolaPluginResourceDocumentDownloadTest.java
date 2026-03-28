@@ -35,8 +35,15 @@ class EpistolaPluginResourceDocumentDownloadTest {
         epistolaService = mock(EpistolaService.class);
         var processVariableDiscoveryService = mock(ProcessVariableDiscoveryService.class);
         var retryFormService = mock(RetryFormService.class);
+        var processLinkService = mock(com.ritense.processlink.service.ProcessLinkService.class);
+        var repositoryService = mock(com.ritense.valtimo.operaton.service.OperatonRepositoryService.class);
+        var runtimeService = mock(org.operaton.bpm.engine.RuntimeService.class);
+        var dataMappingResolverService = mock(app.epistola.valtimo.service.DataMappingResolverService.class);
+        var objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
         resource = new EpistolaPluginResource(pluginService, epistolaService,
-                processVariableDiscoveryService, retryFormService);
+                processVariableDiscoveryService, retryFormService,
+                processLinkService, repositoryService, runtimeService,
+                dataMappingResolverService, objectMapper);
     }
 
     @Test

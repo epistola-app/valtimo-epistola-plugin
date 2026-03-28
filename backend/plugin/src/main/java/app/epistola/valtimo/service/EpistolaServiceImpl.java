@@ -240,6 +240,45 @@ public class EpistolaServiceImpl implements EpistolaService {
         }
     }
 
+    @Override
+    public java.io.InputStream previewDocument(
+            String baseUrl, String apiKey, String tenantId,
+            String templateId, String variantId, String environmentId,
+            Map<String, Object> data
+    ) {
+        log.info("Previewing document for tenant: {}, template: {}", tenantId, templateId);
+        try {
+            var requestBody = new java.util.LinkedHashMap<String, Object>();
+            requestBody.put("templateId", templateId);
+            requestBody.put("data", data);
+            if (variantId != null) requestBody.put("variantId", variantId);
+            if (environmentId != null) requestBody.put("environmentId", environmentId);
+
+            // Stream the response directly — no buffering in memory
+            byte[] content = apiClientFactory.createRestClient(baseUrl, apiKey)
+                    .post()
+                    .uri("/tenants/{tenantId}/documents/preview", tenantId)
+                    .contentType(org.springframework.http.MediaType.parseMediaType("application/vnd.epistola.v1+json"))
+                    .accept(org.springframework.http.MediaType.APPLICATION_PDF,
+                            org.springframework.http.MediaType.parseMediaType("application/vnd.epistola.v1+json"))
+                    .body(requestBody)
+                    .retrieve()
+                    .body(byte[].class);
+
+            if (content == null || content.length == 0) {
+                throw new EpistolaApiException("Preview returned empty content");
+            }
+
+            log.info("Preview generated for tenant: {}, template: {}", tenantId, templateId);
+            return new java.io.ByteArrayInputStream(content);
+        } catch (EpistolaApiException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to preview document for tenant {}: {}", tenantId, e.getMessage());
+            throw new EpistolaApiException("Failed to preview document", e);
+        }
+    }
+
     // Mapping methods
 
     private TemplateInfo mapToTemplateInfo(TemplateSummaryDto dto) {

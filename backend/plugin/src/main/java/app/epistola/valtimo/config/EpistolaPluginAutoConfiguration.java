@@ -108,10 +108,17 @@ public class EpistolaPluginAutoConfiguration {
             PluginService pluginService,
             EpistolaService epistolaService,
             ProcessVariableDiscoveryService processVariableDiscoveryService,
-            RetryFormService retryFormService
+            RetryFormService retryFormService,
+            ProcessLinkService processLinkService,
+            com.ritense.valtimo.operaton.service.OperatonRepositoryService operatonRepositoryService,
+            RuntimeService runtimeService,
+            DataMappingResolverService dataMappingResolverService,
+            ObjectMapper objectMapper
     ) {
         return new EpistolaPluginResource(pluginService, epistolaService,
-                processVariableDiscoveryService, retryFormService);
+                processVariableDiscoveryService, retryFormService,
+                processLinkService, operatonRepositoryService, runtimeService,
+                dataMappingResolverService, objectMapper);
     }
 
     @Bean

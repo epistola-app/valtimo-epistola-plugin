@@ -126,4 +126,27 @@ public interface EpistolaService {
      * @return The import response with per-template results
      */
     ImportTemplatesResponse importTemplates(String baseUrl, String apiKey, String tenantId, ImportTemplatesRequest request);
+
+    /**
+     * Preview a document by rendering it without creating a generation job.
+     * Returns the rendered PDF bytes.
+     *
+     * @param baseUrl       The Epistola API base URL
+     * @param apiKey        The API key for authentication
+     * @param tenantId      The tenant ID in Epistola
+     * @param templateId    The template to preview
+     * @param variantId     The variant ID (optional)
+     * @param environmentId The environment ID (optional)
+     * @param data          The data to render with
+     * @return PDF bytes
+     */
+    java.io.InputStream previewDocument(
+            String baseUrl,
+            String apiKey,
+            String tenantId,
+            String templateId,
+            String variantId,
+            String environmentId,
+            Map<String, Object> data
+    );
 }

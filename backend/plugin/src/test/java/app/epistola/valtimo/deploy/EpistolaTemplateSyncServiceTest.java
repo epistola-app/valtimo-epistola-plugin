@@ -399,5 +399,11 @@ class EpistolaTemplateSyncServiceTest {
         public byte[] downloadDocument(String baseUrl, String apiKey, String tenantId, String documentId) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public java.io.InputStream previewDocument(String baseUrl, String apiKey, String tenantId,
+                String templateId, String variantId, String environmentId, Map<String, Object> data) {
+            throw new UnsupportedOperationException();
+        }
     }
 }
