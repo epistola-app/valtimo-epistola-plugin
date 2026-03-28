@@ -79,4 +79,22 @@ export class EpistolaPluginService {
       {dataMapping}
     );
   }
+
+  /**
+   * Get a dynamically generated Formio form for retrying a failed document generation.
+   */
+  getRetryForm(
+    processInstanceId: string,
+    documentId?: string,
+    sourceActivityId?: string
+  ): Observable<any> {
+    const params: Record<string, string> = {processInstanceId};
+    if (documentId) {
+      params['documentId'] = documentId;
+    }
+    if (sourceActivityId) {
+      params['sourceActivityId'] = sourceActivityId;
+    }
+    return this.http.get<any>(`${this.apiEndpoint}/retry-form`, {params});
+  }
 }

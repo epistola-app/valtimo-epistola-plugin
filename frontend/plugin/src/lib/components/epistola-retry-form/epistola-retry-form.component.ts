@@ -1,10 +1,9 @@
 import {Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges} from '@angular/core';
 import {CommonModule} from '@angular/common';
-import {HttpClient} from '@angular/common/http';
 import {FormioCustomComponent, FormIoStateService} from '@valtimo/components';
-import {ConfigService} from '@valtimo/shared';
 import {FormioModule} from '@formio/angular';
 import {Subscription} from 'rxjs';
+import {EpistolaPluginService} from '../../services';
 
 @Component({
   standalone: true,
@@ -52,15 +51,10 @@ export class EpistolaRetryFormComponent implements FormioCustomComponent<string>
     buttonSettings: {showCancel: false, showSubmit: false, showPrevious: false, showNext: false}
   };
 
-  private readonly apiEndpoint: string;
-
   constructor(
-    private readonly http: HttpClient,
-    private readonly configService: ConfigService,
+    private readonly epistolaPluginService: EpistolaPluginService,
     private readonly formIoStateService: FormIoStateService
-  ) {
-    this.apiEndpoint = `${this.configService.config.valtimoApi.endpointUri}v1/plugin/epistola`;
-  }
+  ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
     if (!this.loaded) {
@@ -90,15 +84,9 @@ export class EpistolaRetryFormComponent implements FormioCustomComponent<string>
       return;
     }
 
-    const params: Record<string, string> = {processInstanceId};
-    if (documentId) {
-      params['documentId'] = documentId;
-    }
-    if (this.sourceActivityId) {
-      params['sourceActivityId'] = this.sourceActivityId;
-    }
-
-    this.loadSubscription = this.http.get<any>(`${this.apiEndpoint}/retry-form`, {params}).subscribe({
+    this.loadSubscription = this.epistolaPluginService.getRetryForm(
+      processInstanceId, documentId ?? undefined, this.sourceActivityId
+    ).subscribe({
       next: (form) => {
         this.formDefinition = form;
         if (this.value) {
