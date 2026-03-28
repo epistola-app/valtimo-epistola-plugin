@@ -23,6 +23,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Upgraded Epistola Client** from 0.1.13 to 0.1.18
 - **Building blocks analysis** ([docs](docs/building-blocks-analysis.md)): Research on using Valtimo building blocks to encapsulate the generate-document + retry flow as a reusable call activity. Documents benefits, limitations (no custom config components, no global form selection in UI), and recommendations.
 
+### Improved
+
+- **Extracted RetryFormService**: Moved retry form orchestration logic out of EpistolaPluginResource into a dedicated service, reducing the controller from 9 to 4 dependencies.
+- **Centralised process variable constants**: Created `EpistolaProcessVariables` constants class, eliminating magic strings across plugin actions, REST endpoints, and services.
+- **Hardened EpistolaFormAutoDeployAspect**: Graceful handling of missing form resources (warns instead of crashing), regex validation at construction time, broader exception catching.
+- **Added API error handling in generateDocument**: Epistola API failures now set status/error process variables before re-throwing, enabling the retry flow to trigger.
+- **OnPush change detection**: Added `ChangeDetectionStrategy.OnPush` to all plugin frontend components for better performance.
+- **Extracted countRequiredMapped utility**: Deduplicated required-field counting logic shared between FieldTreeComponent and DataMappingTreeComponent.
+- **Moved HTTP logic to service**: EpistolaRetryFormComponent now uses EpistolaPluginService instead of injecting HttpClient directly.
+- **Loading error feedback**: Generate-document configuration form now shows inline error messages when templates, variants, environments, or template fields fail to load.
+
 ### Fixed
 
 - **valtimo-demo chart**: Made container-level `securityContext` configurable via values (`securityContext`, `initSecurityContext`, `initKeycloakSecurityContext`) instead of hardcoding `runAsUser: 1000`. This allows OpenShift deployments to null out `runAsUser` for restricted-v2 SCC compatibility. Chart version bumped to 0.2.0.
