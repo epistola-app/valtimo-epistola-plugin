@@ -281,19 +281,28 @@ public class EpistolaPlugin {
                 : null;
 
         // Submit the document generation request
-        GenerationJobResult result = epistolaService.submitGenerationJob(
-                baseUrl,
-                apiKey,
-                tenantId,
-                templateId,
-                hasVariantId ? variantId : null,
-                resolvedAttributes,
-                effectiveEnvironmentId,
-                resolvedData,
-                outputFormat,
-                resolvedFilename,
-                correlationId
-        );
+        GenerationJobResult result;
+        try {
+            result = epistolaService.submitGenerationJob(
+                    baseUrl,
+                    apiKey,
+                    tenantId,
+                    templateId,
+                    hasVariantId ? variantId : null,
+                    resolvedAttributes,
+                    effectiveEnvironmentId,
+                    resolvedData,
+                    outputFormat,
+                    resolvedFilename,
+                    correlationId
+            );
+        } catch (Exception e) {
+            // Store error details so the retry flow can trigger
+            execution.setVariable(EpistolaProcessVariables.STATUS, "FAILED");
+            execution.setVariable(EpistolaProcessVariables.ERROR_MESSAGE,
+                    "Document generation request failed: " + e.getMessage());
+            throw new RuntimeException("Failed to submit document generation request to Epistola", e);
+        }
 
         // Store the request ID in the user-configured process variable
         execution.setVariable(resultProcessVariable, result.getRequestId());
