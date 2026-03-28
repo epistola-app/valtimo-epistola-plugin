@@ -12,6 +12,7 @@ import app.epistola.valtimo.service.EpistolaServiceImpl;
 import app.epistola.valtimo.service.FormioFormGenerator;
 import app.epistola.valtimo.service.PollingCompletionEventConsumer;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
+import app.epistola.valtimo.service.RetryFormService;
 import app.epistola.valtimo.web.rest.EpistolaCallbackResource;
 import app.epistola.valtimo.web.rest.EpistolaPluginResource;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -85,11 +86,10 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(EpistolaPluginResource.class)
-    public EpistolaPluginResource epistolaPluginResource(
+    @ConditionalOnMissingBean(RetryFormService.class)
+    public RetryFormService retryFormService(
             PluginService pluginService,
             EpistolaService epistolaService,
-            ProcessVariableDiscoveryService processVariableDiscoveryService,
             RuntimeService runtimeService,
             TaskService taskService,
             ProcessLinkService processLinkService,
@@ -97,9 +97,21 @@ public class EpistolaPluginAutoConfiguration {
             FormioFormGenerator formioFormGenerator,
             ObjectMapper objectMapper
     ) {
+        return new RetryFormService(pluginService, epistolaService, runtimeService,
+                taskService, processLinkService, dataMappingResolverService,
+                formioFormGenerator, objectMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaPluginResource.class)
+    public EpistolaPluginResource epistolaPluginResource(
+            PluginService pluginService,
+            EpistolaService epistolaService,
+            ProcessVariableDiscoveryService processVariableDiscoveryService,
+            RetryFormService retryFormService
+    ) {
         return new EpistolaPluginResource(pluginService, epistolaService,
-                processVariableDiscoveryService, runtimeService, taskService, processLinkService,
-                dataMappingResolverService, formioFormGenerator, objectMapper);
+                processVariableDiscoveryService, retryFormService);
     }
 
     @Bean

@@ -1,16 +1,11 @@
 package app.epistola.valtimo.web.rest;
 
-import app.epistola.valtimo.service.DataMappingResolverService;
 import app.epistola.valtimo.service.EpistolaService;
-import app.epistola.valtimo.service.FormioFormGenerator;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import app.epistola.valtimo.service.RetryFormService;
 import com.ritense.plugin.domain.PluginConfiguration;
 import com.ritense.plugin.service.PluginService;
-import com.ritense.processlink.service.ProcessLinkService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
-import org.operaton.bpm.engine.RuntimeService;
-import org.operaton.bpm.engine.TaskService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ContentDisposition;
@@ -39,15 +34,9 @@ class EpistolaPluginResourceDocumentDownloadTest {
         pluginService = mock(PluginService.class);
         epistolaService = mock(EpistolaService.class);
         var processVariableDiscoveryService = mock(ProcessVariableDiscoveryService.class);
-        var runtimeService = mock(RuntimeService.class);
-        var taskService = mock(TaskService.class);
-        var processLinkService = mock(ProcessLinkService.class);
-        var dataMappingResolverService = mock(DataMappingResolverService.class);
-        var formioFormGenerator = mock(FormioFormGenerator.class);
-        var objectMapper = new ObjectMapper();
+        var retryFormService = mock(RetryFormService.class);
         resource = new EpistolaPluginResource(pluginService, epistolaService,
-                processVariableDiscoveryService, runtimeService, taskService, processLinkService,
-                dataMappingResolverService, formioFormGenerator, objectMapper);
+                processVariableDiscoveryService, retryFormService);
     }
 
     @Test
