@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Upgraded Valtimo** from 13.4.1 to 13.21.0 (backend + frontend)
 - **Upgraded Spring Boot** from 3.4.1 to 3.5.12
 - **Upgraded Epistola Client** from 0.1.13 to 0.1.18
+- **Building blocks analysis** ([docs](docs/building-blocks-analysis.md)): Research on using Valtimo building blocks to encapsulate the generate-document + retry flow as a reusable call activity. Documents benefits, limitations (no custom config components, no global form selection in UI), and recommendations.
 
 ### Fixed
 
