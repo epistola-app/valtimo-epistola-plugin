@@ -1,4 +1,4 @@
-import {Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {
@@ -22,6 +22,7 @@ export type VariantSelectionMode = 'explicit' | 'attributes';
   templateUrl: './generate-document-configuration.component.html',
   styleUrls: ['./generate-document-configuration.component.scss'],
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     FormsModule,
@@ -102,7 +103,8 @@ export class GenerateDocumentConfigurationComponent
 
   constructor(
     private readonly epistolaPluginService: EpistolaPluginService,
-    private readonly processLinkStateService: ProcessLinkStateService
+    private readonly processLinkStateService: ProcessLinkStateService,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -204,6 +206,7 @@ export class GenerateDocumentConfigurationComponent
         filter(([context]) => context === 'case')
       ).subscribe(([, params]) => {
         this.caseDefinitionKey = params.caseDefinitionKey;
+        this.cdr.markForCheck();
       });
     }
   }
@@ -231,6 +234,7 @@ export class GenerateDocumentConfigurationComponent
         if (config.dataMapping) {
           this.dataMapping$.next(config.dataMapping);
         }
+        this.cdr.markForCheck();
       });
     } else {
       this.prefillDataMapping$ = new BehaviorSubject({}).asObservable();
@@ -359,6 +363,7 @@ export class GenerateDocumentConfigurationComponent
         catchError(() => of([]))
       ).subscribe(variables => {
         this.processVariables = variables;
+        this.cdr.markForCheck();
       });
     }
   }

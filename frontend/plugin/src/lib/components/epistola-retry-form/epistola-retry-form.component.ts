@@ -1,4 +1,4 @@
-import {Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormioCustomComponent, FormIoStateService} from '@valtimo/components';
 import {FormioModule} from '@formio/angular';
@@ -9,6 +9,7 @@ import {EpistolaPluginService} from '../../services';
   standalone: true,
   imports: [CommonModule, FormioModule],
   selector: 'epistola-retry-form-component',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div *ngIf="loading" class="epistola-retry-loading">Loading form...</div>
     <div *ngIf="error" class="epistola-retry-error">{{ error }}</div>
@@ -53,7 +54,8 @@ export class EpistolaRetryFormComponent implements FormioCustomComponent<string>
 
   constructor(
     private readonly epistolaPluginService: EpistolaPluginService,
-    private readonly formIoStateService: FormIoStateService
+    private readonly formIoStateService: FormIoStateService,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -81,6 +83,7 @@ export class EpistolaRetryFormComponent implements FormioCustomComponent<string>
     if (!processInstanceId) {
       this.error = 'Could not determine process instance ID.';
       this.loading = false;
+      this.cdr.markForCheck();
       return;
     }
 
@@ -97,11 +100,13 @@ export class EpistolaRetryFormComponent implements FormioCustomComponent<string>
           }
         }
         this.loading = false;
+        this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Failed to load retry form', err);
         this.error = 'Failed to load the retry form. Please try again.';
         this.loading = false;
+        this.cdr.markForCheck();
       }
     });
   }

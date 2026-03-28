@@ -1,4 +1,4 @@
-import {Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
+import {ChangeDetectionStrategy, Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {PluginTranslatePipeModule} from '@valtimo/plugin';
 import {Observable, Subject} from 'rxjs';
@@ -15,6 +15,7 @@ import {FieldTreeComponent} from '../field-tree/field-tree.component';
   templateUrl: './data-mapping-tree.component.html',
   styleUrls: ['./data-mapping-tree.component.scss'],
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     PluginTranslatePipeModule,

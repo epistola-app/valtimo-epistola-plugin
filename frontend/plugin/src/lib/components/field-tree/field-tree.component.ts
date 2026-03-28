@@ -1,4 +1,4 @@
-import {Component, EventEmitter, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
+import {ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {PluginTranslatePipeModule} from '@valtimo/plugin';
@@ -24,6 +24,7 @@ export type InputMode = 'browse' | 'pv' | 'expression';
   templateUrl: './field-tree.component.html',
   styleUrls: ['./field-tree.component.scss'],
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     FormsModule,
