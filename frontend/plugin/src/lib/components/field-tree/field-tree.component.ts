@@ -1,9 +1,10 @@
-import {Component, EventEmitter, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
+import {ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {PluginTranslatePipeModule} from '@valtimo/plugin';
 import {InputModule, ValuePathSelectorComponent, ValuePathSelectorPrefix} from '@valtimo/components';
 import {TemplateField} from '../../models';
+import {countRequiredMapped} from '../../utils/template-field-utils';
 
 export type InputMode = 'browse' | 'pv' | 'expression';
 
@@ -24,6 +25,7 @@ export type InputMode = 'browse' | 'pv' | 'expression';
   templateUrl: './field-tree.component.html',
   styleUrls: ['./field-tree.component.scss'],
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     FormsModule,
@@ -223,7 +225,7 @@ export class FieldTreeComponent implements OnChanges {
 
   private updateCompleteness(): void {
     if (this.field?.fieldType === 'OBJECT' && this.field.children) {
-      const stats = this.countRequiredMapped(this.field.children, this.value || {});
+      const stats = countRequiredMapped(this.field.children, this.value || {});
       this.mappedCount = stats.mapped;
       this.totalRequired = stats.total;
     } else if (this.field?.fieldType === 'ARRAY') {
@@ -270,41 +272,6 @@ export class FieldTreeComponent implements OnChanges {
       this.totalRequired = this.field?.required ? 1 : 0;
       this.mappedCount = this.getSourceValue() ? (this.field?.required ? 1 : 0) : 0;
     }
-  }
-
-  private countRequiredMapped(
-    fields: TemplateField[],
-    mapping: Record<string, any>
-  ): {mapped: number; total: number} {
-    let mapped = 0;
-    let total = 0;
-    for (const field of fields) {
-      if (field.fieldType === 'SCALAR' && field.required) {
-        total++;
-        const val = mapping[field.name];
-        if (typeof val === 'string' && val.trim().length > 0) {
-          mapped++;
-        }
-      } else if (field.fieldType === 'ARRAY' && field.required) {
-        total++;
-        const val = mapping[field.name];
-        if (typeof val === 'string' && val.trim().length > 0) {
-          mapped++;
-        } else if (typeof val === 'object' && val !== null && '_source' in val) {
-          if (typeof val['_source'] === 'string' && val['_source'].trim().length > 0) {
-            mapped++;
-          }
-        }
-      } else if (field.fieldType === 'OBJECT' && field.children) {
-        const nested = (typeof mapping[field.name] === 'object' && mapping[field.name] !== null)
-          ? mapping[field.name]
-          : {};
-        const childStats = this.countRequiredMapped(field.children, nested);
-        mapped += childStats.mapped;
-        total += childStats.total;
-      }
-    }
-    return {mapped, total};
   }
 
   private detectInputMode(value: any): InputMode {

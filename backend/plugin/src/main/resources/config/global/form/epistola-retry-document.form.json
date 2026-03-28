@@ -1,0 +1,27 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "key": "pv:epistolaErrorMessage",
+      "type": "textfield",
+      "input": true,
+      "label": "Error",
+      "disabled": true
+    },
+    {
+      "type": "epistola-retry-form",
+      "key": "pv:epistolaEditedData",
+      "input": true,
+      "label": "Document Data"
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Retry Generation",
+      "action": "submit",
+      "theme": "primary",
+      "disableOnInvalid": true
+    }
+  ]
+}

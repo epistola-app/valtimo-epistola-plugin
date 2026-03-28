@@ -1,5 +1,6 @@
 package app.epistola.valtimo.service;
 
+import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
 import com.ritense.plugin.service.PluginService;
@@ -103,7 +104,7 @@ public class PollingCompletionEventConsumer implements EpistolaCompletionEventCo
 
     private List<Execution> findWaitingExecutions() {
         return runtimeService.createExecutionQuery()
-                .messageEventSubscriptionName(EpistolaMessageCorrelationService.MESSAGE_NAME)
+                .messageEventSubscriptionName(EpistolaProcessVariables.MESSAGE_NAME)
                 .list();
     }
 
@@ -117,13 +118,13 @@ public class PollingCompletionEventConsumer implements EpistolaCompletionEventCo
             try {
                 String executionId = execution.getId();
                 String jobPath = (String) runtimeService.getVariable(executionId,
-                        EpistolaMessageCorrelationService.VAR_JOB_PATH);
+                        EpistolaProcessVariables.JOB_PATH);
 
                 if (jobPath == null) {
                     log.warn("Execution {} (processInstance={}) is waiting for {} but has no {} variable. Skipping.",
                             executionId, execution.getProcessInstanceId(),
-                            EpistolaMessageCorrelationService.MESSAGE_NAME,
-                            EpistolaMessageCorrelationService.VAR_JOB_PATH);
+                            EpistolaProcessVariables.MESSAGE_NAME,
+                            EpistolaProcessVariables.JOB_PATH);
                     continue;
                 }
 
@@ -185,18 +186,18 @@ public class PollingCompletionEventConsumer implements EpistolaCompletionEventCo
 
                 if (TERMINAL_STATUSES.contains(detail.getStatus())) {
                     Map<String, Object> variables = new HashMap<>();
-                    variables.put(EpistolaMessageCorrelationService.VAR_STATUS, detail.getStatus().name());
-                    variables.put(EpistolaMessageCorrelationService.VAR_DOCUMENT_ID, detail.getDocumentId());
-                    variables.put(EpistolaMessageCorrelationService.VAR_ERROR_MESSAGE, detail.getErrorMessage());
+                    variables.put(EpistolaProcessVariables.STATUS, detail.getStatus().name());
+                    variables.put(EpistolaProcessVariables.DOCUMENT_ID, detail.getDocumentId());
+                    variables.put(EpistolaProcessVariables.ERROR_MESSAGE, detail.getErrorMessage());
 
                     runtimeService.messageEventReceived(
-                            EpistolaMessageCorrelationService.MESSAGE_NAME,
+                            EpistolaProcessVariables.MESSAGE_NAME,
                             job.executionId(),
                             variables
                     );
 
                     log.info("Delivered message {} to execution {} for requestId={} (status={})",
-                            EpistolaMessageCorrelationService.MESSAGE_NAME,
+                            EpistolaProcessVariables.MESSAGE_NAME,
                             job.executionId(), job.requestId(), detail.getStatus());
                 } else {
                     log.debug("Job {} still in progress (status={})", job.requestId(), detail.getStatus());

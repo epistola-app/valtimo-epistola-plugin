@@ -5,10 +5,13 @@
       prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null,
       templateOptions: templateOptions$ | async,
       templatesLoading: templatesLoading$ | async,
+      templatesError: templatesError$ | async,
       variantOptions: variantOptions$ | async,
       variantsLoading: variantsLoading$ | async,
+      variantsError: variantsError$ | async,
       environmentOptions: environmentOptions$ | async,
       environmentsLoading: environmentsLoading$ | async,
+      environmentsError: environmentsError$ | async,
       templateFieldsLoading: templateFieldsLoading$ | async,
       selectedTemplateId: selectedTemplateId$ | async
     } as obs"
@@ -25,6 +28,7 @@
     [loading]="obs.templatesLoading"
   >
   </v-select>
+  <div *ngIf="obs.templatesError" class="loading-error">{{ obs.templatesError }}</div>
 
   <!-- Variant selection mode toggle -->
   <div class="variant-mode-toggle" *ngIf="obs.selectedTemplateId">
@@ -61,6 +65,7 @@
     [loading]="obs.variantsLoading"
   >
   </v-select>
+  <div *ngIf="obs.variantsError" class="loading-error">{{ obs.variantsError }}</div>
 
   <!-- Attribute-based variant selection -->
   <div *ngIf="variantSelectionMode === 'attributes' && obs.selectedTemplateId" class="variant-attributes-section">
@@ -112,6 +117,7 @@
     [loading]="obs.environmentsLoading"
   >
   </v-select>
+  <div *ngIf="obs.environmentsError" class="loading-error">{{ obs.environmentsError }}</div>
 
   <v-select
     name="outputFormat"
@@ -158,6 +164,8 @@
   >
   </v-input>
 </v-form>
+
+<div *ngIf="templateFieldsError$ | async as templateFieldsError" class="loading-error">{{ templateFieldsError }}</div>
 
 <epistola-data-mapping-tree
   *ngIf="(selectedTemplateId$ | async)"

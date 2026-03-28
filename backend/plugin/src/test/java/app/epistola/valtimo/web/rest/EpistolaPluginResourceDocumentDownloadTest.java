@@ -2,6 +2,7 @@ package app.epistola.valtimo.web.rest;
 
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
+import app.epistola.valtimo.service.RetryFormService;
 import com.ritense.plugin.domain.PluginConfiguration;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
@@ -33,7 +34,9 @@ class EpistolaPluginResourceDocumentDownloadTest {
         pluginService = mock(PluginService.class);
         epistolaService = mock(EpistolaService.class);
         var processVariableDiscoveryService = mock(ProcessVariableDiscoveryService.class);
-        resource = new EpistolaPluginResource(pluginService, epistolaService, processVariableDiscoveryService);
+        var retryFormService = mock(RetryFormService.class);
+        resource = new EpistolaPluginResource(pluginService, epistolaService,
+                processVariableDiscoveryService, retryFormService);
     }
 
     @Test

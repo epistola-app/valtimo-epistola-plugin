@@ -6,9 +6,11 @@ import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
+import app.epistola.valtimo.service.RetryFormService;
 import app.epistola.valtimo.service.TemplateMappingValidator;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingRequest;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingResponse;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ritense.plugin.domain.PluginConfiguration;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valtimo.contract.annotation.SkipComponentScan;
@@ -44,6 +46,7 @@ public class EpistolaPluginResource {
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
     private final ProcessVariableDiscoveryService processVariableDiscoveryService;
+    private final RetryFormService retryFormService;
 
     /**
      * Get all available templates for a plugin configuration.
@@ -227,6 +230,32 @@ public class EpistolaPluginResource {
                 .build());
 
         return ResponseEntity.ok().headers(headers).body(content);
+    }
+
+    /**
+     * Get a dynamically generated Formio form for retrying a failed document generation.
+     *
+     * @param processInstanceId The process instance ID (used to find the process definition)
+     * @param documentId        The Valtimo document ID (used to resolve doc: expressions)
+     * @param sourceActivityId  The BPMN activity ID of the original generate-document service task (optional)
+     * @return A Formio form definition with prefilled values
+     */
+    @GetMapping("/retry-form")
+    public ResponseEntity<ObjectNode> getRetryForm(
+            @RequestParam("processInstanceId") String processInstanceId,
+            @RequestParam(value = "documentId", required = false) String documentId,
+            @RequestParam(value = "sourceActivityId", required = false) String sourceActivityId
+    ) {
+        try {
+            ObjectNode form = retryFormService.generateRetryForm(processInstanceId, documentId, sourceActivityId);
+            return ResponseEntity.ok(form);
+        } catch (RetryFormService.RetryFormException e) {
+            log.warn("Failed to generate retry form: {}", e.getMessage());
+            return switch (e.getReason()) {
+                case PROCESS_NOT_FOUND, LINK_NOT_FOUND -> ResponseEntity.notFound().build();
+                case AMBIGUOUS_ACTIVITY, MISSING_TEMPLATE, NO_DOCUMENT_ID -> ResponseEntity.badRequest().build();
+            };
+        }
     }
 
     /**

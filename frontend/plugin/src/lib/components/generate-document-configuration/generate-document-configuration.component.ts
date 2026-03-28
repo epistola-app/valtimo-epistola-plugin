@@ -1,4 +1,4 @@
-import {Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
+import {ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {
@@ -22,6 +22,7 @@ export type VariantSelectionMode = 'explicit' | 'attributes';
   templateUrl: './generate-document-configuration.component.html',
   styleUrls: ['./generate-document-configuration.component.scss'],
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     FormsModule,
@@ -51,18 +52,22 @@ export class GenerateDocumentConfigurationComponent
   // Template options loaded from API
   templateOptions$ = new BehaviorSubject<SelectItem[]>([]);
   templatesLoading$ = new BehaviorSubject<boolean>(false);
+  templatesError$ = new BehaviorSubject<string | null>(null);
 
   // Variant options loaded based on selected template
   variantOptions$ = new BehaviorSubject<SelectItem[]>([]);
   variantsLoading$ = new BehaviorSubject<boolean>(false);
+  variantsError$ = new BehaviorSubject<string | null>(null);
 
   // Environment options loaded from API
   environmentOptions$ = new BehaviorSubject<SelectItem[]>([]);
   environmentsLoading$ = new BehaviorSubject<boolean>(false);
+  environmentsError$ = new BehaviorSubject<string | null>(null);
 
   // Template fields for data mapping
   templateFields$ = new BehaviorSubject<TemplateField[]>([]);
   templateFieldsLoading$ = new BehaviorSubject<boolean>(false);
+  templateFieldsError$ = new BehaviorSubject<string | null>(null);
 
   // Current data mapping (nested structure mirroring template schema)
   dataMapping$ = new BehaviorSubject<Record<string, any>>({});
@@ -102,7 +107,8 @@ export class GenerateDocumentConfigurationComponent
 
   constructor(
     private readonly epistolaPluginService: EpistolaPluginService,
-    private readonly processLinkStateService: ProcessLinkStateService
+    private readonly processLinkStateService: ProcessLinkStateService,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -204,6 +210,7 @@ export class GenerateDocumentConfigurationComponent
         filter(([context]) => context === 'case')
       ).subscribe(([, params]) => {
         this.caseDefinitionKey = params.caseDefinitionKey;
+        this.cdr.markForCheck();
       });
     }
   }
@@ -231,6 +238,7 @@ export class GenerateDocumentConfigurationComponent
         if (config.dataMapping) {
           this.dataMapping$.next(config.dataMapping);
         }
+        this.cdr.markForCheck();
       });
     } else {
       this.prefillDataMapping$ = new BehaviorSubject({}).asObservable();
@@ -272,9 +280,13 @@ export class GenerateDocumentConfigurationComponent
       filter(id => !!id)
     ).subscribe(configurationId => {
       this.templatesLoading$.next(true);
+      this.templatesError$.next(null);
       this.epistolaPluginService.getTemplates(configurationId).pipe(
         takeUntil(this.destroy$),
-        catchError(() => of([]))
+        catchError(() => {
+          this.templatesError$.next('Failed to load templates');
+          return of([]);
+        })
       ).subscribe(templates => {
         const options: SelectItem[] = templates.map(t => ({
           id: t.id,
@@ -292,9 +304,13 @@ export class GenerateDocumentConfigurationComponent
       filter(id => !!id)
     ).subscribe(configurationId => {
       this.environmentsLoading$.next(true);
+      this.environmentsError$.next(null);
       this.epistolaPluginService.getEnvironments(configurationId).pipe(
         takeUntil(this.destroy$),
-        catchError(() => of([]))
+        catchError(() => {
+          this.environmentsError$.next('Failed to load environments');
+          return of([]);
+        })
       ).subscribe(environments => {
         const options: SelectItem[] = environments.map(e => ({
           id: e.id,
@@ -315,9 +331,13 @@ export class GenerateDocumentConfigurationComponent
       filter(([configId, templateId]) => !!configId && !!templateId)
     ).subscribe(([configurationId, templateId]) => {
       this.variantsLoading$.next(true);
+      this.variantsError$.next(null);
       this.epistolaPluginService.getVariants(configurationId, templateId).pipe(
         takeUntil(this.destroy$),
-        catchError(() => of([]))
+        catchError(() => {
+          this.variantsError$.next('Failed to load variants');
+          return of([]);
+        })
       ).subscribe(variants => {
         const options: SelectItem[] = variants.map(v => ({
           id: v.id,
@@ -338,9 +358,13 @@ export class GenerateDocumentConfigurationComponent
       filter(([configId, templateId]) => !!configId && !!templateId)
     ).subscribe(([configurationId, templateId]) => {
       this.templateFieldsLoading$.next(true);
+      this.templateFieldsError$.next(null);
       this.epistolaPluginService.getTemplateDetails(configurationId, templateId).pipe(
         takeUntil(this.destroy$),
-        catchError(() => of({fields: []} as any))
+        catchError(() => {
+          this.templateFieldsError$.next('Failed to load template fields');
+          return of({fields: []} as any);
+        })
       ).subscribe(details => {
         this.templateFields$.next(details.fields || []);
         this.templateFieldsLoading$.next(false);
@@ -359,6 +383,7 @@ export class GenerateDocumentConfigurationComponent
         catchError(() => of([]))
       ).subscribe(variables => {
         this.processVariables = variables;
+        this.cdr.markForCheck();
       });
     }
   }

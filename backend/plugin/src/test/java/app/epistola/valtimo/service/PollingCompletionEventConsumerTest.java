@@ -1,5 +1,6 @@
 package app.epistola.valtimo.service;
 
+import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
 import com.ritense.plugin.domain.PluginConfiguration;
@@ -43,7 +44,7 @@ class PollingCompletionEventConsumerTest {
 
         executionQuery = mock(ExecutionQuery.class);
         when(runtimeService.createExecutionQuery()).thenReturn(executionQuery);
-        when(executionQuery.messageEventSubscriptionName(EpistolaMessageCorrelationService.MESSAGE_NAME))
+        when(executionQuery.messageEventSubscriptionName(EpistolaProcessVariables.MESSAGE_NAME))
                 .thenReturn(executionQuery);
 
         // Start the consumer so poll() will actually execute
@@ -73,7 +74,7 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+        when(runtimeService.getVariable("exec-1", EpistolaProcessVariables.JOB_PATH))
                 .thenReturn("epistola:job:tenant-a/req-123");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
@@ -91,7 +92,7 @@ class PollingCompletionEventConsumerTest {
         consumer.poll();
 
         verify(runtimeService).messageEventReceived(
-                EpistolaMessageCorrelationService.MESSAGE_NAME,
+                EpistolaProcessVariables.MESSAGE_NAME,
                 "exec-1",
                 expectedVariables("COMPLETED", "doc-456", null)
         );
@@ -102,7 +103,7 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+        when(runtimeService.getVariable("exec-1", EpistolaProcessVariables.JOB_PATH))
                 .thenReturn("epistola:job:tenant-a/req-fail");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
@@ -120,7 +121,7 @@ class PollingCompletionEventConsumerTest {
         consumer.poll();
 
         verify(runtimeService).messageEventReceived(
-                EpistolaMessageCorrelationService.MESSAGE_NAME,
+                EpistolaProcessVariables.MESSAGE_NAME,
                 "exec-1",
                 expectedVariables("FAILED", null, "Template not found")
         );
@@ -131,7 +132,7 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+        when(runtimeService.getVariable("exec-1", EpistolaProcessVariables.JOB_PATH))
                 .thenReturn("epistola:job:tenant-a/req-pending");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
@@ -156,9 +157,9 @@ class PollingCompletionEventConsumerTest {
         Execution exec2 = mockExecution("exec-2", "proc-2");
         when(executionQuery.list()).thenReturn(List.of(exec1, exec2));
 
-        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+        when(runtimeService.getVariable("exec-1", EpistolaProcessVariables.JOB_PATH))
                 .thenReturn("epistola:job:tenant-a/req-1");
-        when(runtimeService.getVariable("exec-2", "epistolaJobPath"))
+        when(runtimeService.getVariable("exec-2", EpistolaProcessVariables.JOB_PATH))
                 .thenReturn("epistola:job:tenant-b/req-2");
 
         EpistolaPlugin pluginA = mockPlugin("https://a.epistola.app", "key-a", "tenant-a");
@@ -179,8 +180,8 @@ class PollingCompletionEventConsumerTest {
 
         consumer.poll();
 
-        verify(runtimeService).messageEventReceived(eq(EpistolaMessageCorrelationService.MESSAGE_NAME), eq("exec-1"), any());
-        verify(runtimeService).messageEventReceived(eq(EpistolaMessageCorrelationService.MESSAGE_NAME), eq("exec-2"), any());
+        verify(runtimeService).messageEventReceived(eq(EpistolaProcessVariables.MESSAGE_NAME), eq("exec-1"), any());
+        verify(runtimeService).messageEventReceived(eq(EpistolaProcessVariables.MESSAGE_NAME), eq("exec-2"), any());
     }
 
     @Test
@@ -188,7 +189,7 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariable("exec-1", "epistolaJobPath")).thenReturn(null);
+        when(runtimeService.getVariable("exec-1", EpistolaProcessVariables.JOB_PATH)).thenReturn(null);
 
         consumer.poll();
 
@@ -200,7 +201,7 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+        when(runtimeService.getVariable("exec-1", EpistolaProcessVariables.JOB_PATH))
                 .thenReturn("epistola:job:unknown-tenant/req-123");
 
         when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
@@ -217,9 +218,9 @@ class PollingCompletionEventConsumerTest {
         Execution exec2 = mockExecution("exec-2", "proc-2");
         when(executionQuery.list()).thenReturn(List.of(exec1, exec2));
 
-        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+        when(runtimeService.getVariable("exec-1", EpistolaProcessVariables.JOB_PATH))
                 .thenReturn("epistola:job:tenant-a/req-error");
-        when(runtimeService.getVariable("exec-2", "epistolaJobPath"))
+        when(runtimeService.getVariable("exec-2", EpistolaProcessVariables.JOB_PATH))
                 .thenReturn("epistola:job:tenant-a/req-ok");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
@@ -237,9 +238,9 @@ class PollingCompletionEventConsumerTest {
 
         // Should still deliver message for the second job despite the first one failing
         verify(runtimeService, never()).messageEventReceived(
-                eq(EpistolaMessageCorrelationService.MESSAGE_NAME), eq("exec-1"), any());
+                eq(EpistolaProcessVariables.MESSAGE_NAME), eq("exec-1"), any());
         verify(runtimeService).messageEventReceived(
-                eq(EpistolaMessageCorrelationService.MESSAGE_NAME), eq("exec-2"), any());
+                eq(EpistolaProcessVariables.MESSAGE_NAME), eq("exec-2"), any());
     }
 
     @Test
@@ -247,7 +248,7 @@ class PollingCompletionEventConsumerTest {
         Execution execution = mockExecution("exec-1", "proc-1");
         when(executionQuery.list()).thenReturn(List.of(execution));
 
-        when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+        when(runtimeService.getVariable("exec-1", EpistolaProcessVariables.JOB_PATH))
                 .thenReturn("epistola:job:tenant-a/req-cancel");
 
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key-1", "tenant-a");
@@ -264,7 +265,7 @@ class PollingCompletionEventConsumerTest {
         consumer.poll();
 
         verify(runtimeService).messageEventReceived(
-                EpistolaMessageCorrelationService.MESSAGE_NAME,
+                EpistolaProcessVariables.MESSAGE_NAME,
                 "exec-1",
                 expectedVariables("CANCELLED", null, null)
         );
@@ -289,9 +290,9 @@ class PollingCompletionEventConsumerTest {
 
     private Map<String, Object> expectedVariables(String status, String documentId, String errorMessage) {
         Map<String, Object> variables = new HashMap<>();
-        variables.put("epistolaStatus", status);
-        variables.put("epistolaDocumentId", documentId);
-        variables.put("epistolaErrorMessage", errorMessage);
+        variables.put(EpistolaProcessVariables.STATUS, status);
+        variables.put(EpistolaProcessVariables.DOCUMENT_ID, documentId);
+        variables.put(EpistolaProcessVariables.ERROR_MESSAGE, errorMessage);
         return variables;
     }
 }

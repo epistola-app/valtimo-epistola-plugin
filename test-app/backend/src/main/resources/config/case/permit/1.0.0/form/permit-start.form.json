@@ -11,6 +11,7 @@
                     "type": "textfield",
                     "input": true,
                     "label": "Voornaam",
+                    "defaultValue": "Jan",
                     "validate": { "required": true }
                 },
                 {
@@ -18,20 +19,23 @@
                     "type": "textfield",
                     "input": true,
                     "label": "Achternaam",
+                    "defaultValue": "de Vries",
                     "validate": { "required": true }
                 },
                 {
                     "key": "applicant.bsn",
                     "type": "textfield",
                     "input": true,
-                    "label": "BSN",
-                    "validate": { "required": true, "pattern": "^[0-9]{9}$" }
+                    "label": "BSN (leeg laten om fout te simuleren)",
+                    "defaultValue": "",
+                    "validate": { "required": false, "pattern": "^([0-9]{9})?$" }
                 },
                 {
                     "key": "applicant.address.street",
                     "type": "textfield",
                     "input": true,
                     "label": "Straat",
+                    "defaultValue": "Keizersgracht",
                     "validate": { "required": true }
                 },
                 {
@@ -39,6 +43,7 @@
                     "type": "textfield",
                     "input": true,
                     "label": "Huisnummer",
+                    "defaultValue": "42",
                     "validate": { "required": true }
                 },
                 {
@@ -46,6 +51,7 @@
                     "type": "textfield",
                     "input": true,
                     "label": "Postcode",
+                    "defaultValue": "1015AB",
                     "validate": { "required": true, "pattern": "^[0-9]{4}[A-Z]{2}$" }
                 },
                 {
@@ -53,6 +59,7 @@
                     "type": "textfield",
                     "input": true,
                     "label": "Woonplaats",
+                    "defaultValue": "Amsterdam",
                     "validate": { "required": true }
                 }
             ]
@@ -67,6 +74,7 @@
                     "type": "textfield",
                     "input": true,
                     "label": "Straat",
+                    "defaultValue": "Herengracht",
                     "validate": { "required": true }
                 },
                 {
@@ -74,6 +82,7 @@
                     "type": "textfield",
                     "input": true,
                     "label": "Huisnummer",
+                    "defaultValue": "100",
                     "validate": { "required": true }
                 },
                 {
@@ -81,6 +90,7 @@
                     "type": "textfield",
                     "input": true,
                     "label": "Postcode",
+                    "defaultValue": "1015BS",
                     "validate": { "required": true, "pattern": "^[0-9]{4}[A-Z]{2}$" }
                 },
                 {
@@ -88,13 +98,15 @@
                     "type": "textfield",
                     "input": true,
                     "label": "Woonplaats",
+                    "defaultValue": "Amsterdam",
                     "validate": { "required": true }
                 },
                 {
                     "key": "property.kadastraalNummer",
                     "type": "textfield",
                     "input": true,
-                    "label": "Kadastraal nummer"
+                    "label": "Kadastraal nummer",
+                    "defaultValue": "ASD01-A-1234"
                 }
             ]
         },
@@ -104,6 +116,13 @@
             "input": true,
             "label": "Activiteiten",
             "reorder": true,
+            "defaultValue": [
+                {
+                    "type": "Verbouwing",
+                    "description": "Aanbouw aan achterzijde woning",
+                    "estimatedCost": 45000
+                }
+            ],
             "components": [
                 {
                     "key": "type",
