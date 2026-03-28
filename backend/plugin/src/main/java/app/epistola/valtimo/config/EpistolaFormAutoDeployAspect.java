@@ -1,6 +1,5 @@
 package app.epistola.valtimo.config;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.ritense.form.autodeployment.FormDefinitionDeploymentService;
 import com.ritense.importer.ImportRequest;
 import com.ritense.valtimo.contract.case_.CaseDefinitionId;
@@ -13,6 +12,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * AOP aspect that auto-deploys the Epistola retry form for each case definition.
@@ -32,7 +33,9 @@ public class EpistolaFormAutoDeployAspect {
     private static final String FORM_RESOURCE = "config/global/form/epistola-retry-document.form.json";
 
     private final FormDefinitionDeploymentService deploymentService;
-    private final EpistolaProperties properties;
+    private final Pattern caseFilterPattern;
+    private final boolean deployAll;
+    private final boolean deployNone;
     private final Set<CaseDefinitionId> deployedCases = ConcurrentHashMap.newKeySet();
     private volatile String retryFormJson;
 
@@ -41,7 +44,26 @@ public class EpistolaFormAutoDeployAspect {
             EpistolaProperties properties
     ) {
         this.deploymentService = deploymentService;
-        this.properties = properties;
+
+        String filter = properties.getRetryForm().getCaseFilter();
+        if (filter == null || "all".equalsIgnoreCase(filter)) {
+            this.deployAll = true;
+            this.deployNone = false;
+            this.caseFilterPattern = null;
+        } else if ("none".equalsIgnoreCase(filter)) {
+            this.deployAll = false;
+            this.deployNone = true;
+            this.caseFilterPattern = null;
+        } else {
+            this.deployAll = false;
+            this.deployNone = false;
+            try {
+                this.caseFilterPattern = Pattern.compile(filter);
+            } catch (PatternSyntaxException e) {
+                throw new IllegalArgumentException(
+                        "Invalid regex for epistola.retry-form.case-filter: '" + filter + "'", e);
+            }
+        }
     }
 
     @After("execution(* com.ritense.form.service.FormDefinitionImporter.import(..)) && args(request)")
@@ -59,22 +81,20 @@ public class EpistolaFormAutoDeployAspect {
 
         try {
             String formJson = getRetryFormJson();
+            if (formJson == null) {
+                return; // resource missing, already logged at first load attempt
+            }
             deploymentService.deploy(RETRY_FORM_NAME, formJson, caseDefId, false);
             log.info("Auto-deployed {} form for case {}", RETRY_FORM_NAME, caseDefId);
-        } catch (JsonProcessingException e) {
+        } catch (Exception e) {
             log.error("Failed to auto-deploy {} form for case {}", RETRY_FORM_NAME, caseDefId, e);
         }
     }
 
     private boolean matchesCaseFilter(String caseKey) {
-        String filter = properties.getRetryForm().getCaseFilter();
-        if (filter == null || "all".equalsIgnoreCase(filter)) {
-            return true;
-        }
-        if ("none".equalsIgnoreCase(filter)) {
-            return false;
-        }
-        return caseKey.matches(filter);
+        if (deployAll) return true;
+        if (deployNone) return false;
+        return caseFilterPattern.matcher(caseKey).matches();
     }
 
     private String getRetryFormJson() {
@@ -83,9 +103,11 @@ public class EpistolaFormAutoDeployAspect {
                 retryFormJson = new ClassPathResource(FORM_RESOURCE)
                         .getContentAsString(StandardCharsets.UTF_8);
             } catch (IOException e) {
-                throw new IllegalStateException("Failed to load " + FORM_RESOURCE + " from classpath", e);
+                log.warn("Epistola retry form resource not found on classpath: {}. " +
+                        "Retry form auto-deployment is disabled.", FORM_RESOURCE);
+                retryFormJson = ""; // sentinel to avoid re-attempting
             }
         }
-        return retryFormJson;
+        return retryFormJson.isEmpty() ? null : retryFormJson;
     }
 }
