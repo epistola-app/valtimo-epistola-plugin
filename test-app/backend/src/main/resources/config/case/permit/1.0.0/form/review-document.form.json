@@ -22,6 +22,13 @@
             "label": "Tenant ID"
         },
         {
+            "type": "epistola-preview-button",
+            "key": "previewData",
+            "input": false,
+            "label": "Preview PDF",
+            "calculateValue": "value = { documentId: data['pv:epistolaDocumentId'], tenantId: data['pv:epistolaTenantId'] }"
+        },
+        {
             "type": "epistola-download",
             "key": "downloadData",
             "input": false,

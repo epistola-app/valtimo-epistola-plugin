@@ -73,7 +73,7 @@ import {
   zakenApiPluginSpecification,
   PLUGINS_TOKEN,
 } from '@valtimo/plugin';
-import {EpistolaPluginModule, epistolaPluginSpecification, registerEpistolaDownloadComponent, registerEpistolaRetryFormComponent} from '@epistola.app/valtimo-plugin';
+import {EpistolaPluginModule, epistolaPluginSpecification, registerEpistolaDownloadComponent, registerEpistolaRetryFormComponent, registerEpistolaPreviewButtonComponent} from '@epistola.app/valtimo-plugin';
 import {ObjectManagementModule} from '@valtimo/object-management';
 import {ObjectModule} from '@valtimo/object';
 import {AccessControlManagementModule} from '@valtimo/access-control-management';
@@ -187,5 +187,6 @@ export class AppModule {
     registerFormioValueResolverSelectorComponent(injector);
     registerEpistolaDownloadComponent(injector);
     registerEpistolaRetryFormComponent(injector);
+    registerEpistolaPreviewButtonComponent(injector);
   }
 }

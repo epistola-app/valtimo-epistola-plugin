@@ -103,15 +103,32 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(app.epistola.valtimo.service.PreviewService.class)
+    public app.epistola.valtimo.service.PreviewService previewService(
+            PluginService pluginService,
+            EpistolaService epistolaService,
+            ProcessLinkService processLinkService,
+            com.ritense.valtimo.operaton.service.OperatonRepositoryService operatonRepositoryService,
+            RuntimeService runtimeService,
+            DataMappingResolverService dataMappingResolverService,
+            ObjectMapper objectMapper
+    ) {
+        return new app.epistola.valtimo.service.PreviewService(pluginService, epistolaService,
+                processLinkService, operatonRepositoryService, runtimeService,
+                dataMappingResolverService, objectMapper);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(EpistolaPluginResource.class)
     public EpistolaPluginResource epistolaPluginResource(
             PluginService pluginService,
             EpistolaService epistolaService,
             ProcessVariableDiscoveryService processVariableDiscoveryService,
-            RetryFormService retryFormService
+            RetryFormService retryFormService,
+            app.epistola.valtimo.service.PreviewService previewService
     ) {
         return new EpistolaPluginResource(pluginService, epistolaService,
-                processVariableDiscoveryService, retryFormService);
+                processVariableDiscoveryService, retryFormService, previewService);
     }
 
     @Bean

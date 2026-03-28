@@ -5,9 +5,11 @@ import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.valtimo.service.EpistolaService;
+import app.epistola.valtimo.service.PreviewService;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.RetryFormService;
 import app.epistola.valtimo.service.TemplateMappingValidator;
+import app.epistola.valtimo.web.rest.dto.PreviewRequest;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingRequest;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingResponse;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -47,6 +50,7 @@ public class EpistolaPluginResource {
     private final EpistolaService epistolaService;
     private final ProcessVariableDiscoveryService processVariableDiscoveryService;
     private final RetryFormService retryFormService;
+    private final PreviewService previewService;
 
     /**
      * Get all available templates for a plugin configuration.
@@ -254,6 +258,47 @@ public class EpistolaPluginResource {
             return switch (e.getReason()) {
                 case PROCESS_NOT_FOUND, LINK_NOT_FOUND -> ResponseEntity.notFound().build();
                 case AMBIGUOUS_ACTIVITY, MISSING_TEMPLATE, NO_DOCUMENT_ID -> ResponseEntity.badRequest().build();
+            };
+        }
+    }
+
+    /**
+     * Preview a document by "dry-running" the generate-document process link.
+     * <p>
+     * Resolves the data mapping, merges with optional overrides, and calls Epistola's
+     * preview API to render a PDF without creating a generation job.
+     *
+     * @param request The preview request with document context and optional overrides
+     * @return Rendered PDF (inline) or error details
+     */
+    @PostMapping("/preview")
+    public ResponseEntity<?> previewDocument(@RequestBody PreviewRequest request) {
+        if (request.documentId() == null) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("error", "documentId is required"));
+        }
+
+        try {
+            java.io.InputStream pdfStream = previewService.generatePreview(request);
+
+            var resource = new org.springframework.core.io.InputStreamResource(pdfStream);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDisposition(ContentDisposition.inline()
+                    .filename("preview.pdf")
+                    .build());
+
+            return ResponseEntity.ok().headers(headers).body(resource);
+        } catch (PreviewService.PreviewException e) {
+            log.warn("Preview failed: {}", e.getMessage());
+            return switch (e.getReason()) {
+                case PROCESS_NOT_FOUND, LINK_NOT_FOUND -> ResponseEntity.notFound().build();
+                case AMBIGUOUS_ACTIVITY, MISSING_TEMPLATE, MISSING_CONTEXT ->
+                        ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+                case RENDER_FAILED ->
+                        ResponseEntity.status(502).body(Map.of(
+                                "error", "Preview could not be generated",
+                                "details", e.getMessage()));
             };
         }
     }

@@ -54,6 +54,8 @@ dependencies {
     testImplementation(libs.valtimo.outbox)
     testImplementation(libs.valtimo.value.resolver)
     testImplementation(libs.valtimo.process.link)
+    testImplementation(libs.valtimo.form)
+    testImplementation(libs.valtimo.importer)
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.valtimo.test.utils.common)
     testImplementation(libs.junit.jupiter)

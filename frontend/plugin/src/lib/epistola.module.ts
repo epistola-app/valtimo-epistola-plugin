@@ -17,6 +17,7 @@ import {DataMappingTreeComponent} from './components/data-mapping-tree/data-mapp
 import {FieldTreeComponent} from './components/field-tree/field-tree.component';
 import {EpistolaDownloadComponent} from './components/epistola-download/epistola-download.component';
 import {EpistolaRetryFormComponent} from './components/epistola-retry-form/epistola-retry-form.component';
+import {EpistolaPreviewButtonComponent} from './components/epistola-preview-button/epistola-preview-button.component';
 import {EpistolaPluginService} from './services';
 
 @NgModule({
@@ -34,7 +35,8 @@ import {EpistolaPluginService} from './services';
     DataMappingTreeComponent,
     FieldTreeComponent,
     EpistolaDownloadComponent,
-    EpistolaRetryFormComponent
+    EpistolaRetryFormComponent,
+    EpistolaPreviewButtonComponent
   ],
   exports: [
     EpistolaConfigurationComponent,
@@ -44,7 +46,8 @@ import {EpistolaPluginService} from './services';
     DataMappingTreeComponent,
     FieldTreeComponent,
     EpistolaDownloadComponent,
-    EpistolaRetryFormComponent
+    EpistolaRetryFormComponent,
+    EpistolaPreviewButtonComponent
   ],
   providers: [
     EpistolaPluginService

@@ -97,4 +97,24 @@ export class EpistolaPluginService {
     }
     return this.http.get<any>(`${this.apiEndpoint}/retry-form`, {params});
   }
+
+  /**
+   * Preview a document by dry-running the generate-document process link.
+   * Returns the resolved data as a mock preview (Phase 1).
+   */
+  previewDocument(
+    documentId: string,
+    processDefinitionKey: string,
+    sourceActivityId: string,
+    processInstanceId?: string,
+    overrides?: Record<string, any>
+  ): Observable<any> {
+    return this.http.post<any>(`${this.apiEndpoint}/preview`, {
+      documentId,
+      processDefinitionKey,
+      sourceActivityId,
+      processInstanceId: processInstanceId || null,
+      overrides: overrides || null
+    });
+  }
 }
