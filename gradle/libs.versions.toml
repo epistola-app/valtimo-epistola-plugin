@@ -1,7 +1,7 @@
 [versions]
 # Dependencies
-valtimo = "13.4.1.RELEASE"
-epistola-client = "0.1.13"
+valtimo = "13.21.0.RELEASE"
+epistola-client = "0.1.18"
 lombok = "1.18.42"
 testcontainers = "2.0.3"
 postgresql = "42.7.5"
@@ -9,7 +9,7 @@ netty-resolver-dns-macos = "4.2.0.Final"
 mockito-kotlin = "5.4.0"
 
 # Plugins
-spring-boot = "3.4.1"
+spring-boot = "3.5.12"
 spring-dependency-management = "1.1.7"
 kotlin = "2.0.21"
 node-gradle = "7.1.0"
@@ -34,6 +34,8 @@ valtimo-outbox = { module = "com.ritense.valtimo:outbox" }
 valtimo-plugin = { module = "com.ritense.valtimo:plugin" }
 valtimo-value-resolver = { module = "com.ritense.valtimo:value-resolver" }
 valtimo-process-link = { module = "com.ritense.valtimo:process-link" }
+valtimo-form = { module = "com.ritense.valtimo:form" }
+valtimo-importer = { module = "com.ritense.valtimo:importer" }
 valtimo-test-utils-common = { module = "com.ritense.valtimo:test-utils-common" }
 valtimo-local-document-generation = { module = "com.ritense.valtimo:local-document-generation" }
 valtimo-local-resource = { module = "com.ritense.valtimo:local-resource" }

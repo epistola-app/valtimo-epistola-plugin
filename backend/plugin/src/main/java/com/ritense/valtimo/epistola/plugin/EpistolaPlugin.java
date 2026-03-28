@@ -4,9 +4,12 @@ import app.epistola.client.model.VariantSelectionAttribute;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
 import app.epistola.valtimo.domain.GenerationJobDetail;
-import app.epistola.valtimo.service.DataMappingResolver;
+import app.epistola.valtimo.service.DataMappingResolverService;
 import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
+
 import app.epistola.valtimo.service.EpistolaService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.annotation.*;
 import com.ritense.plugin.domain.EventType;
 import com.ritense.processlink.domain.ActivityTypeWithEventName;
@@ -14,8 +17,6 @@ import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -37,12 +38,23 @@ public class EpistolaPlugin {
      */
     private static final Pattern SLUG_PATTERN = Pattern.compile("^[a-z][a-z0-9]*(-[a-z0-9]+)*$");
 
+    private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
+
     private final EpistolaService epistolaService;
     private final ValueResolverService valueResolverService;
+    private final ObjectMapper objectMapper;
+    private final DataMappingResolverService dataMappingResolverService;
 
-    public EpistolaPlugin(EpistolaService epistolaService, ValueResolverService valueResolverService) {
+    public EpistolaPlugin(
+            EpistolaService epistolaService,
+            ValueResolverService valueResolverService,
+            ObjectMapper objectMapper,
+            DataMappingResolverService dataMappingResolverService
+    ) {
         this.epistolaService = epistolaService;
         this.valueResolverService = valueResolverService;
+        this.objectMapper = objectMapper;
+        this.dataMappingResolverService = dataMappingResolverService;
     }
 
     /**
@@ -228,8 +240,32 @@ public class EpistolaPlugin {
             throw new IllegalArgumentException("Cannot specify both variantId and variantAttributes");
         }
 
-        // Resolve value expressions (doc:, pv:, etc.) recursively through the nested mapping
-        Map<String, Object> resolvedData = resolveNestedMapping(execution, dataMapping != null ? dataMapping : Map.of());
+        // Check if this is a retry with user-edited data from the fallback form.
+        String editedDataVariable = "epistolaEditedData";
+        Object rawEditedData = execution.getVariable(editedDataVariable);
+        String editedDataJson = rawEditedData instanceof String s ? s : null;
+        boolean isRetry = editedDataJson != null && !editedDataJson.isBlank();
+
+        log.info("generate-document retry check: variable='{}', exists={}, isRetry={}, type={}, value={}",
+                editedDataVariable, rawEditedData != null, isRetry,
+                rawEditedData != null ? rawEditedData.getClass().getSimpleName() : "null",
+                editedDataJson != null ? editedDataJson.substring(0, Math.min(200, editedDataJson.length())) : "null");
+
+        Map<String, Object> resolvedData;
+        if (isRetry) {
+            log.info("Retry detected: using edited data from '{}' process variable", editedDataVariable);
+            try {
+                resolvedData = objectMapper.readValue(editedDataJson, MAP_TYPE);
+            } catch (Exception e) {
+                throw new IllegalStateException(
+                        "Failed to parse '" + editedDataVariable + "' process variable as JSON", e);
+            }
+            // Clear the edited data so subsequent non-retry invocations resolve normally
+            execution.removeVariable(editedDataVariable);
+        } else {
+            // Resolve value expressions (doc:, pv:, etc.) recursively through the nested mapping
+            resolvedData = dataMappingResolverService.resolveMapping(execution, dataMapping != null ? dataMapping : Map.of());
+        }
 
         // Resolve the filename if it uses value resolvers
         String resolvedFilename = resolveValue(execution, filename);
@@ -362,96 +398,6 @@ public class EpistolaPlugin {
         execution.setVariable(contentVariable, base64Content);
 
         log.info("Document {} downloaded successfully ({} bytes)", documentId, content.length);
-    }
-
-    /**
-     * Recursively resolve value expressions in a nested data mapping.
-     * String values with prefixes (doc:, pv:, case:, etc.) are resolved via ValueResolverService.
-     * Nested maps are traversed recursively; other values are passed through as-is.
-     */
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> resolveNestedMapping(DelegateExecution execution, Map<String, Object> mapping) {
-        // First pass: collect all resolvable string values from the entire tree
-        List<String> valuesToResolve = new ArrayList<>();
-        collectResolvableValues(mapping, valuesToResolve);
-
-        // Batch-resolve all values at once for efficiency
-        Map<String, Object> resolvedValues = valuesToResolve.isEmpty()
-                ? Map.of()
-                : valueResolverService.resolveValues(
-                        execution.getProcessInstanceId(),
-                        execution,
-                        valuesToResolve
-                );
-
-        // Second pass: build resolved tree using the batch-resolved values
-        return applyResolvedValues(mapping, resolvedValues);
-    }
-
-    @SuppressWarnings("unchecked")
-    private void collectResolvableValues(Map<String, Object> mapping, List<String> valuesToResolve) {
-        for (Object value : mapping.values()) {
-            if (value instanceof String str && isResolvableValue(str)) {
-                valuesToResolve.add(str);
-            } else if (DataMappingResolver.isArrayFieldMapping(value)) {
-                // Per-item array mapping: only the _source expression is resolvable,
-                // other entries are plain field name strings (not value resolver expressions)
-                Map<String, Object> arrayMapping = (Map<String, Object>) value;
-                Object source = arrayMapping.get(DataMappingResolver.ARRAY_SOURCE_KEY);
-                if (source instanceof String str && isResolvableValue(str)) {
-                    valuesToResolve.add(str);
-                }
-            } else if (value instanceof Map<?, ?> nested) {
-                collectResolvableValues((Map<String, Object>) nested, valuesToResolve);
-            }
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> applyResolvedValues(Map<String, Object> mapping, Map<String, Object> resolvedValues) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        for (var entry : mapping.entrySet()) {
-            Object value = entry.getValue();
-            if (DataMappingResolver.isArrayFieldMapping(value)) {
-                result.put(entry.getKey(), resolveArrayFieldMapping((Map<String, Object>) value, resolvedValues));
-            } else if (value instanceof Map<?, ?> nested) {
-                result.put(entry.getKey(), applyResolvedValues((Map<String, Object>) nested, resolvedValues));
-            } else if (value instanceof String str && isResolvableValue(str)) {
-                result.put(entry.getKey(), resolvedValues.get(str));
-            } else {
-                result.put(entry.getKey(), value);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Resolve a per-item array field mapping.
-     * The _source expression is resolved to get the source list, then field name mappings
-     * are applied to each item via {@link DataMappingResolver#mapArrayItems}.
-     */
-    @SuppressWarnings("unchecked")
-    private Object resolveArrayFieldMapping(Map<String, Object> arrayMapping, Map<String, Object> resolvedValues) {
-        String sourceExpression = (String) arrayMapping.get(DataMappingResolver.ARRAY_SOURCE_KEY);
-        Object resolvedSource = (sourceExpression != null && isResolvableValue(sourceExpression))
-                ? resolvedValues.get(sourceExpression)
-                : sourceExpression;
-
-        // Extract field name mappings (all entries except _source)
-        Map<String, String> fieldMappings = new LinkedHashMap<>();
-        for (var entry : arrayMapping.entrySet()) {
-            if (!DataMappingResolver.ARRAY_SOURCE_KEY.equals(entry.getKey()) && entry.getValue() instanceof String str) {
-                fieldMappings.put(entry.getKey(), str);
-            }
-        }
-
-        if (resolvedSource instanceof List<?> sourceList) {
-            return DataMappingResolver.mapArrayItems(sourceList, fieldMappings);
-        }
-
-        // Source didn't resolve to a list — return as-is (may be null or unexpected type)
-        log.warn("Array field mapping _source did not resolve to a list: {}", resolvedSource);
-        return resolvedSource;
     }
 
     /**

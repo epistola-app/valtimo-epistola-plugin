@@ -10,7 +10,6 @@
                   exporter="Camunda Modeler" exporterVersion="5.23.0">
 
   <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
-  <bpmn:error id="Error_EpistolaDocumentError" name="EpistolaDocumentError" />
 
   <bpmn:process id="permit-confirmation" name="Vergunning Bevestigingsbrief" isExecutable="true">
     <bpmn:documentation>Generates a confirmation letter for a permit application, waits for completion, downloads, and presents for review.</bpmn:documentation>
@@ -20,18 +19,12 @@
       <bpmn:outgoing>Flow_to_generate</bpmn:outgoing>
     </bpmn:startEvent>
 
-    <!-- Generate confirmation letter -->
+    <!-- Generate confirmation letter (also handles retry when epistolaEditedData is present) -->
     <bpmn:serviceTask id="generate-confirmation" name="Genereer Bevestigingsbrief">
       <bpmn:incoming>Flow_to_generate</bpmn:incoming>
+      <bpmn:incoming>Flow_retry_to_generate</bpmn:incoming>
       <bpmn:outgoing>Flow_to_wait</bpmn:outgoing>
     </bpmn:serviceTask>
-
-    <!-- Error boundary on generation -->
-    <bpmn:boundaryEvent id="boundary-generate-error" name="Generatie fout" attachedToRef="generate-confirmation">
-      <bpmn:outgoing>Flow_generate_error</bpmn:outgoing>
-      <bpmn:errorEventDefinition id="ErrorDef_generate" errorRef="Error_EpistolaDocumentError"
-                                  camunda:errorCodeVariable="errorCode" camunda:errorMessageVariable="errorMessage" />
-    </bpmn:boundaryEvent>
 
     <!-- Wait for generation to complete -->
     <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wacht op generatie">
@@ -64,22 +57,31 @@
       <bpmn:incoming>Flow_to_end</bpmn:incoming>
     </bpmn:endEvent>
 
-    <bpmn:endEvent id="end-error" name="Fout">
-      <bpmn:incoming>Flow_generate_error</bpmn:incoming>
+    <!-- Retry: edit data and loop back to generate.
+         The epistolaSourceActivityId input parameter tells the retry form which generate-document
+         activity to look up. Optional for processes with a single generate-document activity
+         (auto-discovered), required when there are multiple. -->
+    <bpmn:userTask id="retry-edit-data" name="Corrigeer Documentgegevens">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="epistolaSourceActivityId">generate-confirmation</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_not_completed</bpmn:incoming>
-    </bpmn:endEvent>
+      <bpmn:outgoing>Flow_retry_to_generate</bpmn:outgoing>
+    </bpmn:userTask>
 
     <!-- Sequence flows -->
     <bpmn:sequenceFlow id="Flow_to_generate" sourceRef="startEvent" targetRef="generate-confirmation" />
     <bpmn:sequenceFlow id="Flow_to_wait" sourceRef="generate-confirmation" targetRef="wait-for-generation" />
-    <bpmn:sequenceFlow id="Flow_generate_error" sourceRef="boundary-generate-error" targetRef="end-error" />
     <bpmn:sequenceFlow id="Flow_to_check" sourceRef="wait-for-generation" targetRef="check-status" />
     <bpmn:sequenceFlow id="Flow_completed" name="Ja" sourceRef="check-status" targetRef="download-confirmation">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaStatus == 'COMPLETED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_not_completed" name="Nee" sourceRef="check-status" targetRef="end-error">
+    <bpmn:sequenceFlow id="Flow_not_completed" name="Nee" sourceRef="check-status" targetRef="retry-edit-data">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaStatus != 'COMPLETED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_retry_to_generate" sourceRef="retry-edit-data" targetRef="generate-confirmation" />
     <bpmn:sequenceFlow id="Flow_to_review" sourceRef="download-confirmation" targetRef="review-document" />
     <bpmn:sequenceFlow id="Flow_to_end" sourceRef="review-document" targetRef="end-success" />
 
@@ -120,18 +122,6 @@
           <dc:Bounds x="998" y="202" width="84" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="end-error_di" bpmnElement="end-error">
-        <dc:Bounds x="562" y="312" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="570" y="355" width="21" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="boundary-generate-error_di" bpmnElement="boundary-generate-error">
-        <dc:Bounds x="312" y="199" width="36" height="36" />
-        <bpmndi:BPMNLabel>
-          <dc:Bounds x="296" y="242" width="68" height="14" />
-        </bpmndi:BPMNLabel>
-      </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_to_generate_di" bpmnElement="Flow_to_generate">
         <di:waypoint x="215" y="177" />
         <di:waypoint x="280" y="177" />
@@ -139,11 +129,6 @@
       <bpmndi:BPMNEdge id="Flow_to_wait_di" bpmnElement="Flow_to_wait">
         <di:waypoint x="380" y="177" />
         <di:waypoint x="452" y="177" />
-      </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_generate_error_di" bpmnElement="Flow_generate_error">
-        <di:waypoint x="330" y="235" />
-        <di:waypoint x="330" y="330" />
-        <di:waypoint x="562" y="330" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_to_check_di" bpmnElement="Flow_to_check">
         <di:waypoint x="488" y="177" />
@@ -156,12 +141,21 @@
           <dc:Bounds x="637" y="159" width="12" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="retry-edit-data_di" bpmnElement="retry-edit-data">
+        <dc:Bounds x="430" y="290" width="100" height="80" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_not_completed_di" bpmnElement="Flow_not_completed">
         <di:waypoint x="580" y="202" />
-        <di:waypoint x="580" y="312" />
+        <di:waypoint x="580" y="330" />
+        <di:waypoint x="530" y="330" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="586" y="253" width="19" height="14" />
+          <dc:Bounds x="586" y="243" width="19" height="14" />
         </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_retry_to_generate_di" bpmnElement="Flow_retry_to_generate">
+        <di:waypoint x="430" y="330" />
+        <di:waypoint x="330" y="330" />
+        <di:waypoint x="330" y="217" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_to_review_di" bpmnElement="Flow_to_review">
         <di:waypoint x="780" y="177" />

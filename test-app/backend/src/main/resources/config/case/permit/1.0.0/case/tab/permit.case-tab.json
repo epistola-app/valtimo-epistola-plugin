@@ -6,6 +6,12 @@
         "contentKey": "progress"
     },
     {
+        "key": "tasks",
+        "name": "Taken",
+        "type": "standard",
+        "contentKey": "tasks"
+    },
+    {
         "key": "audit",
         "name": null,
         "type": "standard",

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Taken tab on vergunningsaanvraag case**: Added a "Taken" (tasks) tab to the permit case so users can see and interact with open tasks directly from the case view.
+- **User task fallback for failed document generation** ([docs](docs/user-task-fallback.md)): When a render fails, a user task shows a dynamically generated form with all template fields prefilled. The user edits and resubmits. The `generate-document` action automatically detects edited data — no separate retry action needed. Includes:
+  - `epistola-retry-form` custom Formio component
+  - `FormioFormGenerator` for template-to-Formio conversion
+  - `DataMappingResolverService` for REST-context value resolution
+  - `EpistolaFormAutoDeployAspect` for per-case form auto-deployment
+  - Auto-discovery of source generate-document activity
+  - `GET /api/v1/plugin/epistola/retry-form` endpoint
+  - Example retry loop in the permit-confirmation BPMN process
+- **Upgraded Valtimo** from 13.4.1 to 13.21.0 (backend + frontend)
+- **Upgraded Spring Boot** from 3.4.1 to 3.5.12
+- **Upgraded Epistola Client** from 0.1.13 to 0.1.18
+
 ### Fixed
 
 - **valtimo-demo chart**: Made container-level `securityContext` configurable via values (`securityContext`, `initSecurityContext`, `initKeycloakSecurityContext`) instead of hardcoding `runAsUser: 1000`. This allows OpenShift deployments to null out `runAsUser` for restricted-v2 SCC compatibility. Chart version bumped to 0.2.0.

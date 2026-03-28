@@ -37,6 +37,8 @@ dependencies {
     compileOnly(libs.valtimo.plugin)
     compileOnly(libs.valtimo.value.resolver)
     compileOnly(libs.valtimo.process.link)
+    compileOnly(libs.valtimo.form)
+    compileOnly(libs.valtimo.importer)
     compileOnly(libs.spring.boot.starter.aop)
     compileOnly(libs.spring.boot.starter.security)
 
@@ -55,6 +57,7 @@ dependencies {
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.valtimo.test.utils.common)
     testImplementation(libs.junit.jupiter)
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // Testcontainers
     testImplementation(libs.testcontainers)

@@ -21,7 +21,7 @@
                 },
                 "bsn": {
                     "type": "string",
-                    "pattern": "^[0-9]{9}$"
+                    "pattern": "^([0-9]{9})?$"
                 },
                 "address": {
                     "type": "object",
@@ -43,7 +43,7 @@
                     "required": ["street", "houseNumber", "postalCode", "city"]
                 }
             },
-            "required": ["firstName", "lastName", "bsn", "address"]
+            "required": ["firstName", "lastName", "address"]
         },
         "property": {
             "type": "object",

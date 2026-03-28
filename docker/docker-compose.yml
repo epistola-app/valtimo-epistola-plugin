@@ -1,41 +1,41 @@
 services:
-  epistola-server:
+  ved-epistola-server:
     profiles: ["server"]
-    image: ghcr.io/epistola-app/epistola-suite:0.6.0
-    container_name: epistola-server
+    image: ghcr.io/epistola-app/epistola-suite:0.6.1
+    container_name: ved-epistola-server
     environment:
       SPRING_PROFILES_ACTIVE: demo,keycloak
-      SPRING_DATASOURCE_URL: jdbc:postgresql://epistola-postgres:5432/epistola_suite
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ved-postgres:5432/epistola_suite
       SPRING_DATASOURCE_USERNAME: epistola
       SPRING_DATASOURCE_PASSWORD: epistola
       # Override issuer to point at the shared valtimo realm on port 8081
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUERURI: http://localhost:8081/realms/valtimo
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI: http://localhost:8081/realms/valtimo
       # Backchannel: server-to-server calls use container-internal URL
-      EPISTOLA_AUTH_OIDC_BACKCHANNELBASEURL: http://keycloak:8080
+      EPISTOLA_AUTH_OIDC_BACKCHANNELBASEURL: http://ved-keycloak:8080
       # Keycloak Admin API for tenant group provisioning
-      EPISTOLA_KEYCLOAK_ADMINURL: http://keycloak:8080
+      EPISTOLA_KEYCLOAK_ADMINURL: http://ved-keycloak:8080
       EPISTOLA_KEYCLOAK_REALM: valtimo
       EPISTOLA_KEYCLOAK_CLIENTID: epistola-suite
       EPISTOLA_KEYCLOAK_CLIENTSECRET: epistola-dev-secret
     ports:
       - "4010:4000"
     depends_on:
-      epistola-postgres:
+      ved-postgres:
         condition: service_healthy
-      keycloak:
+      ved-keycloak:
         condition: service_started
 
-  epistola-mock:
+  ved-epistola-mock:
     profiles: ["mock"]
-    image: ghcr.io/epistola-app/epistola-contract/mock-server:0.1.13
-    container_name: epistola-mock
+    image: ghcr.io/epistola-app/epistola-contract/mock-server:0.1.18
+    container_name: ved-epistola-mock
     ports:
       - "4010:4010"
 
-  epistola-postgres:
+  ved-postgres:
     image: postgres:16-alpine
-    container_name: epistola-postgres
+    container_name: ved-postgres
     environment:
       POSTGRES_USER: epistola
       POSTGRES_PASSWORD: epistola
@@ -43,21 +43,21 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./postgres-init:/docker-entrypoint-initdb.d
+      - ved_postgres_data:/var/lib/postgresql/data
+      - ./postgres-init:/docker-entrypoint-initdb.d:z
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U epistola"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  keycloak:
+  ved-keycloak:
     image: quay.io/keycloak/keycloak:26.1
-    container_name: epistola-keycloak
+    container_name: ved-keycloak
     command: start-dev --import-realm
     environment:
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://epistola-postgres:5432/keycloak
+      KC_DB_URL: jdbc:postgresql://ved-postgres:5432/keycloak
       KC_DB_USERNAME: epistola
       KC_DB_PASSWORD: epistola
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
@@ -67,26 +67,26 @@ services:
     ports:
       - "8081:8080"
     volumes:
-      - ./keycloak:/opt/keycloak/data/import
+      - ./keycloak:/opt/keycloak/data/import:z
     depends_on:
-      epistola-postgres:
+      ved-postgres:
         condition: service_healthy
 
   # === Containers profile: run actual container images to reproduce K8s behavior ===
 
-  valtimo-backend:
+  ved-valtimo-backend:
     profiles: ["containers"]
     image: ghcr.io/epistola-app/valtimo/demo-backend:0.1.1
     platform: linux/amd64
-    container_name: valtimo-backend
+    container_name: ved-valtimo-backend
     environment:
       SPRING_PROFILES_ACTIVE: "demo,dev"
-      SPRING_DATASOURCE_URL: jdbc:postgresql://epistola-postgres:5432/valtimo
+      SPRING_DATASOURCE_URL: jdbc:postgresql://ved-postgres:5432/valtimo
       SPRING_DATASOURCE_USERNAME: epistola
       SPRING_DATASOURCE_PASSWORD: epistola
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI: http://keycloak:8080/realms/valtimo/protocol/openid-connect/certs
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKJWT_ISSUERURI: http://keycloak:8080/realms/valtimo
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKAPI_ISSUERURI: http://keycloak:8080/realms/valtimo
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI: http://ved-keycloak:8080/realms/valtimo/protocol/openid-connect/certs
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKJWT_ISSUERURI: http://ved-keycloak:8080/realms/valtimo
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKAPI_ISSUERURI: http://ved-keycloak:8080/realms/valtimo
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKJWT_CLIENTID: valtimo-console
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTID: valtimo-backend
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTSECRET: 6ef6ca16-6b86-482a-a3d9-0561704c1db9
@@ -94,18 +94,18 @@ services:
       VALTIMO_PLUGIN_ENCRYPTIONSECRET: "0123456789abcdef0123456789abcdef"
       VALTIMO_SECURITY_WHITELIST_HOSTS_0_: "localhost:4200"
       OPERATON_BPM_ADMINUSER_PASSWORD: admin
-      EPISTOLA_BASE_URL: "http://epistola-server:4000/api"
+      EPISTOLA_BASE_URL: "http://ved-epistola-server:4000/api"
     depends_on:
-      epistola-postgres:
+      ved-postgres:
         condition: service_healthy
-      keycloak:
+      ved-keycloak:
         condition: service_started
 
-  valtimo-frontend:
+  ved-valtimo-frontend:
     profiles: ["containers"]
     image: ghcr.io/epistola-app/valtimo/demo-frontend:0.1.1
     platform: linux/amd64
-    container_name: valtimo-frontend
+    container_name: ved-valtimo-frontend
     command: ["nginx", "-g", "daemon off;"]
     ports:
       - "4200:8080"
@@ -113,16 +113,16 @@ services:
       - ./containers/config.js:/usr/share/nginx/html/assets/config.js:ro
       - ./containers/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
-      - valtimo-backend
+      - ved-valtimo-backend
 
   # === Database reset: test the CronJob logic locally ===
 
-  db-reset:
+  ved-db-reset:
     profiles: ["reset"]
     image: postgres:17-alpine
-    container_name: epistola-db-reset
+    container_name: ved-db-reset
     environment:
-      PGHOST: epistola-postgres
+      PGHOST: ved-postgres
       PGPORT: "5432"
       PGUSER: epistola
       PGPASSWORD: epistola
@@ -147,8 +147,8 @@ services:
         done
         echo "=== Database reset complete ==="
     depends_on:
-      epistola-postgres:
+      ved-postgres:
         condition: service_healthy
 
 volumes:
-  postgres_data:
+  ved_postgres_data:

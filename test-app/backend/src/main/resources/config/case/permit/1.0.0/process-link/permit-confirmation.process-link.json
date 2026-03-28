@@ -57,5 +57,11 @@
         "activityType": "bpmn:UserTask:create",
         "processLinkType": "form",
         "formDefinitionName": "review-document"
+    },
+    {
+        "activityId": "retry-edit-data",
+        "activityType": "bpmn:UserTask:create",
+        "processLinkType": "form",
+        "formDefinitionName": "epistola-retry-document"
     }
 ]

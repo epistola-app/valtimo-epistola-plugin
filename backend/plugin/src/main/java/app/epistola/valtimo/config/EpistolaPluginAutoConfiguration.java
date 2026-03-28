@@ -4,21 +4,25 @@ import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.deploy.EpistolaTemplateSyncService;
 import app.epistola.valtimo.deploy.EpistolaTemplateSyncTrigger;
 import app.epistola.valtimo.deploy.TemplateDefinitionScanner;
+import app.epistola.valtimo.service.DataMappingResolverService;
 import app.epistola.valtimo.service.EpistolaCompletionEventConsumer;
 import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
+import app.epistola.valtimo.service.FormioFormGenerator;
 import app.epistola.valtimo.service.PollingCompletionEventConsumer;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.web.rest.EpistolaCallbackResource;
 import app.epistola.valtimo.web.rest.EpistolaPluginResource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.service.PluginService;
+import com.ritense.processlink.service.ProcessLinkService;
 import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.HistoryService;
 import org.operaton.bpm.engine.RepositoryService;
 import org.operaton.bpm.engine.RuntimeService;
+import org.operaton.bpm.engine.TaskService;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -45,13 +49,30 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(DataMappingResolverService.class)
+    public DataMappingResolverService dataMappingResolverService(
+            ValueResolverService valueResolverService
+    ) {
+        return new DataMappingResolverService(valueResolverService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(FormioFormGenerator.class)
+    public FormioFormGenerator formioFormGenerator(ObjectMapper objectMapper) {
+        return new FormioFormGenerator(objectMapper);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(EpistolaPluginFactory.class)
     public EpistolaPluginFactory epistolaPluginFactory(
             PluginService pluginService,
             EpistolaService epistolaService,
-            ValueResolverService valueResolverService
+            ValueResolverService valueResolverService,
+            ObjectMapper objectMapper,
+            DataMappingResolverService dataMappingResolverService
     ) {
-        return new EpistolaPluginFactory(pluginService, epistolaService, valueResolverService);
+        return new EpistolaPluginFactory(pluginService, epistolaService, valueResolverService,
+                objectMapper, dataMappingResolverService);
     }
 
     @Bean
@@ -68,9 +89,17 @@ public class EpistolaPluginAutoConfiguration {
     public EpistolaPluginResource epistolaPluginResource(
             PluginService pluginService,
             EpistolaService epistolaService,
-            ProcessVariableDiscoveryService processVariableDiscoveryService
+            ProcessVariableDiscoveryService processVariableDiscoveryService,
+            RuntimeService runtimeService,
+            TaskService taskService,
+            ProcessLinkService processLinkService,
+            DataMappingResolverService dataMappingResolverService,
+            FormioFormGenerator formioFormGenerator,
+            ObjectMapper objectMapper
     ) {
-        return new EpistolaPluginResource(pluginService, epistolaService, processVariableDiscoveryService);
+        return new EpistolaPluginResource(pluginService, epistolaService,
+                processVariableDiscoveryService, runtimeService, taskService, processLinkService,
+                dataMappingResolverService, formioFormGenerator, objectMapper);
     }
 
     @Bean
@@ -133,5 +162,15 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaTemplateSyncService syncService
     ) {
         return new EpistolaTemplateSyncTrigger(pluginService, syncService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaFormAutoDeployAspect.class)
+    @ConditionalOnProperty(name = "epistola.retry-form.enabled", havingValue = "true", matchIfMissing = true)
+    public EpistolaFormAutoDeployAspect epistolaFormAutoDeployAspect(
+            com.ritense.form.autodeployment.FormDefinitionDeploymentService formDeploymentService,
+            EpistolaProperties properties
+    ) {
+        return new EpistolaFormAutoDeployAspect(formDeploymentService, properties);
     }
 }
