@@ -1,5 +1,6 @@
 package app.epistola.valtimo.web.rest;
 
+import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateInfo;
@@ -384,7 +385,7 @@ public class EpistolaPluginResource {
                 .active()
                 .list();
         for (Task task : tasks) {
-            Object value = taskService.getVariableLocal(task.getId(), "epistolaSourceActivityId");
+            Object value = taskService.getVariableLocal(task.getId(), EpistolaProcessVariables.SOURCE_ACTIVITY_ID);
             if (value instanceof String str && !str.isBlank()) {
                 log.debug("Found epistolaSourceActivityId='{}' from task '{}'", str, task.getId());
                 return str;

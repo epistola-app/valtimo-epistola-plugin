@@ -1,5 +1,6 @@
 package app.epistola.valtimo.service;
 
+import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -30,7 +31,7 @@ class EpistolaMessageCorrelationServiceTest {
         correlationBuilder = mock(MessageCorrelationBuilder.class);
         service = new EpistolaMessageCorrelationService(runtimeService);
 
-        when(runtimeService.createMessageCorrelation(EpistolaMessageCorrelationService.MESSAGE_NAME))
+        when(runtimeService.createMessageCorrelation(EpistolaProcessVariables.MESSAGE_NAME))
                 .thenReturn(correlationBuilder);
         when(correlationBuilder.processInstanceVariableEquals(any(), any()))
                 .thenReturn(correlationBuilder);

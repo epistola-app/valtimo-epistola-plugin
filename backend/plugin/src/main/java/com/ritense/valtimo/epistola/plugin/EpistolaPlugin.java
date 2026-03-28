@@ -1,6 +1,7 @@
 package com.ritense.valtimo.epistola.plugin;
 
 import app.epistola.client.model.VariantSelectionAttribute;
+import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
 import app.epistola.valtimo.domain.GenerationJobDetail;
@@ -241,27 +242,26 @@ public class EpistolaPlugin {
         }
 
         // Check if this is a retry with user-edited data from the fallback form.
-        String editedDataVariable = "epistolaEditedData";
-        Object rawEditedData = execution.getVariable(editedDataVariable);
+        Object rawEditedData = execution.getVariable(EpistolaProcessVariables.EDITED_DATA);
         String editedDataJson = rawEditedData instanceof String s ? s : null;
         boolean isRetry = editedDataJson != null && !editedDataJson.isBlank();
 
         log.info("generate-document retry check: variable='{}', exists={}, isRetry={}, type={}, value={}",
-                editedDataVariable, rawEditedData != null, isRetry,
+                EpistolaProcessVariables.EDITED_DATA, rawEditedData != null, isRetry,
                 rawEditedData != null ? rawEditedData.getClass().getSimpleName() : "null",
                 editedDataJson != null ? editedDataJson.substring(0, Math.min(200, editedDataJson.length())) : "null");
 
         Map<String, Object> resolvedData;
         if (isRetry) {
-            log.info("Retry detected: using edited data from '{}' process variable", editedDataVariable);
+            log.info("Retry detected: using edited data from '{}' process variable", EpistolaProcessVariables.EDITED_DATA);
             try {
                 resolvedData = objectMapper.readValue(editedDataJson, MAP_TYPE);
             } catch (Exception e) {
                 throw new IllegalStateException(
-                        "Failed to parse '" + editedDataVariable + "' process variable as JSON", e);
+                        "Failed to parse '" + EpistolaProcessVariables.EDITED_DATA + "' process variable as JSON", e);
             }
             // Clear the edited data so subsequent non-retry invocations resolve normally
-            execution.removeVariable(editedDataVariable);
+            execution.removeVariable(EpistolaProcessVariables.EDITED_DATA);
         } else {
             // Resolve value expressions (doc:, pv:, etc.) recursively through the nested mapping
             resolvedData = dataMappingResolverService.resolveMapping(execution, dataMapping != null ? dataMapping : Map.of());
@@ -300,13 +300,13 @@ public class EpistolaPlugin {
 
         // Store tenantId as a standalone process variable so it can be used in forms
         // (e.g. for building document download URLs without parsing the composite jobPath)
-        execution.setVariable("epistolaTenantId", tenantId);
+        execution.setVariable(EpistolaProcessVariables.TENANT_ID, tenantId);
 
         // Store a single composite job path that encodes both tenantId and requestId.
         // This avoids scoping issues where separate variables might not both be visible
         // to the polling consumer's execution.
         String jobPath = EpistolaMessageCorrelationService.buildJobPath(tenantId, result.getRequestId());
-        execution.setVariable(EpistolaMessageCorrelationService.VAR_JOB_PATH, jobPath);
+        execution.setVariable(EpistolaProcessVariables.JOB_PATH, jobPath);
 
         log.info("Document generation request submitted. jobPath={}, resultVar={}",
                 jobPath, resultProcessVariable);
