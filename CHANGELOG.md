@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Unit tests for FormioFormGenerator**: Tests for scalar/object/array field generation, default values, validation, humanizeLabel, description tooltips, and null/empty children edge cases.
+- **Unit tests for PreviewService**: Tests for `deepMerge` (flat merge, nested merge, array replacement, null override) and `generatePreview` error paths (missing context, process not found, link not found, ambiguous activity, render failure).
+- **Unit tests for RetryFormService**: Tests for explicit source activity, auto-discovery of single generate-document link, ambiguous/missing activity errors, process not found, missing templateId, no document ID, and source activity from task local variable.
+- **Unit tests for EpistolaFormAutoDeployAspect**: Tests for case filter modes (all, none, regex), deduplication per case, null case definition ID, and missing form resource handling.
+
 - **Taken tab on vergunningsaanvraag case**: Added a "Taken" (tasks) tab to the permit case so users can see and interact with open tasks directly from the case view.
 - **User task fallback for failed document generation** ([docs](docs/user-task-fallback.md)): When a render fails, a user task shows a dynamically generated form with all template fields prefilled. The user edits and resubmits. The `generate-document` action automatically detects edited data — no separate retry action needed. Includes:
   - `epistola-retry-form` custom Formio component
