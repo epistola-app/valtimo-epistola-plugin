@@ -16,3 +16,5 @@ export * from './lib/components/epistola-download/epistola-download.component';
 export * from './lib/components/epistola-download/epistola-download.formio';
 export * from './lib/components/epistola-retry-form/epistola-retry-form.component';
 export * from './lib/components/epistola-retry-form/epistola-retry-form.formio';
+export * from './lib/components/epistola-preview-button/epistola-preview-button.component';
+export * from './lib/components/epistola-preview-button/epistola-preview-button.formio';
