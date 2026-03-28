@@ -8,9 +8,6 @@ import {ConfigService} from '@valtimo/shared';
 export interface PreviewButtonData {
   documentId: string;
   tenantId: string;
-  processInstanceId?: string;
-  processDefinitionKey?: string;
-  sourceActivityId?: string;
 }
 
 @Component({
@@ -157,30 +154,19 @@ export class EpistolaPreviewButtonComponent implements FormioCustomComponent<Pre
     this.previewError = null;
     this.revokeBlobUrl();
 
-    this.http.post(`${this.apiEndpoint}/preview`, {
-      documentId: this.value.documentId,
-      processInstanceId: this.value.processInstanceId || null,
-      processDefinitionKey: this.value.processDefinitionKey || null,
-      sourceActivityId: this.value.sourceActivityId || null,
-    }, {responseType: 'blob'}).subscribe({
+    const {documentId, tenantId} = this.value;
+    const url = `${this.apiEndpoint}/documents/${encodeURIComponent(documentId)}/download`
+      + `?tenantId=${encodeURIComponent(tenantId)}`
+      + `&filename=preview.pdf`;
+
+    this.http.get(url, {responseType: 'blob'}).subscribe({
       next: (blob) => {
         this.currentBlobUrl = URL.createObjectURL(blob);
         this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.currentBlobUrl);
         this.previewLoading = false;
       },
-      error: (err) => {
-        if (err.error instanceof Blob) {
-          err.error.text().then((text: string) => {
-            try {
-              const body = JSON.parse(text);
-              this.previewError = body.details || body.error || 'Preview could not be generated';
-            } catch {
-              this.previewError = 'Preview could not be generated';
-            }
-          });
-        } else {
-          this.previewError = 'Preview could not be generated';
-        }
+      error: () => {
+        this.previewError = 'Could not load the document.';
         this.previewLoading = false;
       }
     });
