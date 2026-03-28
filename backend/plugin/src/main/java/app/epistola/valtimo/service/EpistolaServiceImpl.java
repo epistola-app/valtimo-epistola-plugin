@@ -254,7 +254,6 @@ public class EpistolaServiceImpl implements EpistolaService {
             if (variantId != null) requestBody.put("variantId", variantId);
             if (environmentId != null) requestBody.put("environmentId", environmentId);
 
-            // Stream the response directly — no buffering in memory
             byte[] content = apiClientFactory.createRestClient(baseUrl, apiKey)
                     .post()
                     .uri("/tenants/{tenantId}/documents/preview", tenantId)

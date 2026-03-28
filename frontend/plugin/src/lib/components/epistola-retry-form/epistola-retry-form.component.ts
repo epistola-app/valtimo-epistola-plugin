@@ -210,37 +210,33 @@ export class EpistolaRetryFormComponent implements FormioCustomComponent<string>
       processInstanceId,
       sourceActivityId: this.sourceActivityId || null,
       overrides: formData
-    }, {responseType: 'blob', observe: 'response'}).subscribe({
-      next: (response) => {
-        const contentType = response.headers.get('content-type') || '';
-        if (contentType.includes('application/pdf') && response.body) {
-          this.currentBlobUrl = URL.createObjectURL(response.body);
-          this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.currentBlobUrl);
-          this.previewError = null;
-        } else if (response.body) {
-          // Error response returned as JSON inside a blob
-          response.body.text().then(text => {
-            try {
-              const error = JSON.parse(text);
-              this.previewError = error.message || 'Preview could not be generated';
-              if (error.details) {
-                this.previewError += ': ' + error.details;
-              }
-            } catch {
-              this.previewError = 'Preview could not be generated';
-            }
-            this.previewUrl = null;
-            this.cdr.markForCheck();
-          });
-        }
+    }, {responseType: 'blob'}).subscribe({
+      next: (blob) => {
+        this.currentBlobUrl = URL.createObjectURL(blob);
+        this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.currentBlobUrl);
+        this.previewError = null;
         this.previewLoading = false;
         this.cdr.markForCheck();
       },
       error: (err) => {
-        console.error('Preview failed', err);
-        this.previewError = 'Preview generation failed.';
-        this.previewLoading = false;
-        this.cdr.markForCheck();
+        this.previewUrl = null;
+        // Try to extract error message from JSON response body
+        if (err.error instanceof Blob) {
+          err.error.text().then((text: string) => {
+            try {
+              const body = JSON.parse(text);
+              this.previewError = body.details || body.error || 'Preview could not be generated';
+            } catch {
+              this.previewError = 'Preview could not be generated';
+            }
+            this.previewLoading = false;
+            this.cdr.markForCheck();
+          });
+        } else {
+          this.previewError = err.error?.error || 'Preview could not be generated';
+          this.previewLoading = false;
+          this.cdr.markForCheck();
+        }
       }
     });
   }
