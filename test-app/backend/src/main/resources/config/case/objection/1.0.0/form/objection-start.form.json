@@ -77,7 +77,7 @@
                     "format": "yyyy-MM-dd",
                     "enableDate": true,
                     "enableTime": false,
-                    "defaultValue": "2026-02-15",
+                    "defaultValue": "2026-02-15T00:00:00Z",
                     "validate": { "required": true }
                 },
                 {
@@ -112,7 +112,7 @@
                     "format": "yyyy-MM-dd",
                     "enableDate": true,
                     "enableTime": false,
-                    "defaultValue": "2026-03-10",
+                    "defaultValue": "2026-03-10T00:00:00Z",
                     "validate": { "required": true }
                 }
             ]
