@@ -28,7 +28,7 @@
             "customClass": "",
             "suffix": "",
             "multiple": false,
-            "defaultValue": null,
+            "defaultValue": "Marie",
             "protected": false,
             "unique": false,
             "persistent": true,

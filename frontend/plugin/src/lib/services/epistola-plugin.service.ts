@@ -2,7 +2,7 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {ConfigService} from '@valtimo/shared';
 import {Observable} from 'rxjs';
-import {EnvironmentInfo, TemplateDetails, TemplateInfo, ValidationResult, VariantInfo} from '../models';
+import {EnvironmentInfo, PreviewSource, TemplateDetails, TemplateInfo, ValidationResult, VariantInfo} from '../models';
 
 /**
  * Service for interacting with Epistola plugin API endpoints.
@@ -96,6 +96,16 @@ export class EpistolaPluginService {
       params['sourceActivityId'] = sourceActivityId;
     }
     return this.http.get<any>(`${this.apiEndpoint}/retry-form`, {params});
+  }
+
+  /**
+   * Discover all previewable document sources for a given Valtimo document.
+   */
+  getPreviewSources(documentId: string): Observable<PreviewSource[]> {
+    return this.http.get<PreviewSource[]>(
+      `${this.apiEndpoint}/preview-sources`,
+      {params: {documentId}}
+    );
   }
 
   /**

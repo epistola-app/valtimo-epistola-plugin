@@ -263,6 +263,25 @@ public class EpistolaPluginResource {
     }
 
     /**
+     * Discover all previewable document sources for a given Valtimo document.
+     * Returns generate-document process links from running process instances.
+     *
+     * @param documentId The Valtimo document ID
+     * @return List of preview sources
+     */
+    @GetMapping("/preview-sources")
+    public ResponseEntity<?> getPreviewSources(@RequestParam("documentId") String documentId) {
+        try {
+            var sources = previewService.getPreviewSources(documentId);
+            return ResponseEntity.ok(sources);
+        } catch (Exception e) {
+            log.debug("Failed to discover preview sources: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(
+                    Map.of("error", "Failed to discover preview sources: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Preview a document by "dry-running" the generate-document process link.
      * <p>
      * Resolves the data mapping, merges with optional overrides, and calls Epistola's
@@ -290,13 +309,13 @@ public class EpistolaPluginResource {
 
             return ResponseEntity.ok().headers(headers).body(resource);
         } catch (PreviewService.PreviewException e) {
-            log.warn("Preview failed: {}", e.getMessage());
+            log.debug("Preview unavailable: {}", e.getMessage());
             return switch (e.getReason()) {
                 case PROCESS_NOT_FOUND, LINK_NOT_FOUND -> ResponseEntity.notFound().build();
                 case AMBIGUOUS_ACTIVITY, MISSING_TEMPLATE, MISSING_CONTEXT ->
                         ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
                 case RENDER_FAILED ->
-                        ResponseEntity.status(502).body(Map.of(
+                        ResponseEntity.unprocessableEntity().body(Map.of(
                                 "error", "Preview could not be generated",
                                 "details", e.getMessage()));
             };
