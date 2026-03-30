@@ -1,15 +1,13 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
-      - 'release/**'
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version override (e.g. 1.0.3). Leave empty for auto-increment.'
-        required: false
+        description: 'Version to release (e.g. 0.3.1). Required for re-runs.'
+        required: true
         type: string
 
 permissions:
@@ -17,85 +15,36 @@ permissions:
   packages: write
   id-token: write
 
+env:
+  VERSION: ""
+
 jobs:
   version:
-    name: Determine version
+    name: Resolve version
     runs-on: ubuntu-latest
-    if: >-
-      contains(github.event.head_commit.message, '[release]') ||
-      github.event_name == 'workflow_dispatch' ||
-      startsWith(github.ref, 'refs/heads/release/')
     outputs:
       version: ${{ steps.version.outputs.version }}
       major_minor: ${{ steps.version.outputs.major_minor }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Calculate version
+      - name: Extract version
         id: version
         run: |
-          # Manual override takes precedence
-          if [ -n "${{ inputs.version }}" ]; then
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG_NAME="${{ github.event.release.tag_name }}"
+            VERSION="${TAG_NAME#v}"
+          else
             VERSION="${{ inputs.version }}"
-
-            # Safety: prevent 1.0.0+ releases
-            MAJOR=$(echo "$VERSION" | cut -d. -f1)
-            if [ "$MAJOR" -ge 1 ]; then
-              echo "::error::Version ${VERSION} would be >= 1.0.0. Remove this guard from the workflow when ready for 1.0."
-              exit 1
-            fi
-
-            echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-            echo "major_minor=${VERSION%.*}" >> "$GITHUB_OUTPUT"
-            echo "Using manual version override: ${VERSION}"
-            exit 0
           fi
 
-          # Read major.minor from build.gradle.kts
-          PROJECT_VERSION=$(grep -E '^version\s*=' build.gradle.kts | head -1 | sed -E 's/.*"([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
-          if [ -z "$PROJECT_VERSION" ]; then
-            echo "::error::Could not read version from build.gradle.kts"
-            exit 1
-          fi
-          MAJOR_MINOR=$(echo "$PROJECT_VERSION" | sed -E 's/([0-9]+\.[0-9]+)\.[0-9]+/\1/')
-          echo "build.gradle.kts version: ${PROJECT_VERSION}, Major.Minor: ${MAJOR_MINOR}"
-
-          # For release/* branches, validate that branch version matches build.gradle.kts
-          BRANCH="${GITHUB_REF#refs/heads/}"
-          if [[ "$BRANCH" == release/* ]]; then
-            BRANCH_VERSION="${BRANCH#release/}"
-            if [ "$BRANCH_VERSION" != "$MAJOR_MINOR" ]; then
-              echo "::error::Branch version ${BRANCH_VERSION} does not match build.gradle.kts version ${MAJOR_MINOR}"
-              exit 1
-            fi
-            echo "Branch version ${BRANCH_VERSION} matches build.gradle.kts"
-          fi
-
-          echo "major_minor=${MAJOR_MINOR}" >> "$GITHUB_OUTPUT"
-
-          # Find highest patch version among existing tags for this major.minor
-          LATEST_PATCH=-1
-          for tag in $(git tag -l "v${MAJOR_MINOR}.*"); do
-            PATCH=$(echo "$tag" | sed -E "s/v${MAJOR_MINOR}\.([0-9]+)/\1/")
-            if [ "$PATCH" -gt "$LATEST_PATCH" ] 2>/dev/null; then
-              LATEST_PATCH=$PATCH
-            fi
-          done
-
-          NEXT_PATCH=$((LATEST_PATCH + 1))
-          VERSION="${MAJOR_MINOR}.${NEXT_PATCH}"
-
-          # Safety: prevent 1.0.0+ releases
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          if [ "$MAJOR" -ge 1 ]; then
-            echo "::error::Version ${VERSION} would be >= 1.0.0. Remove this guard from the workflow when ready for 1.0."
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not determine version"
             exit 1
           fi
 
+          MAJOR_MINOR="${VERSION%.*}"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Release version: ${VERSION} (previous highest patch: ${LATEST_PATCH})"
+          echo "major_minor=${MAJOR_MINOR}" >> "$GITHUB_OUTPUT"
+          echo "Release version: ${VERSION}"
 
   build:
     name: Build & Test
@@ -278,45 +227,45 @@ jobs:
       - name: Sign image
         run: cosign sign --yes "${{ env.IMAGE }}@${{ steps.build.outputs.digest }}"
 
-  github-release:
-    name: Create GitHub Release
+  update-release:
+    name: Update GitHub Release
     needs: [version, docker-backend, docker-frontend]
     runs-on: ubuntu-latest
+    if: github.event_name == 'release'
     steps:
-      - uses: actions/checkout@v4
+      - name: Update release body with install instructions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          gh release edit "v${VERSION}" \
+            --repo "${{ github.repository }}" \
+            --notes "$(cat <<EOF
+          ## v${VERSION}
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ needs.version.outputs.version }}
-          name: v${{ needs.version.outputs.version }}
-          body: |
-            ## v${{ needs.version.outputs.version }}
+          ### Maven (backend plugin)
+          \`\`\`xml
+          <dependency>
+              <groupId>app.epistola.valtimo</groupId>
+              <artifactId>epistola-plugin</artifactId>
+              <version>${VERSION}</version>
+          </dependency>
+          \`\`\`
 
-            ### Maven (backend plugin)
-            ```xml
-            <dependency>
-                <groupId>app.epistola.valtimo</groupId>
-                <artifactId>epistola-plugin</artifactId>
-                <version>${{ needs.version.outputs.version }}</version>
-            </dependency>
-            ```
+          ### Gradle (Kotlin DSL)
+          \`\`\`kotlin
+          implementation("app.epistola.valtimo:epistola-plugin:${VERSION}")
+          \`\`\`
 
-            ### Gradle (Kotlin DSL)
-            ```kotlin
-            implementation("app.epistola.valtimo:epistola-plugin:${{ needs.version.outputs.version }}")
-            ```
+          ### npm (frontend plugin)
+          \`\`\`bash
+          npm install @epistola.app/valtimo-plugin@${VERSION}
+          \`\`\`
 
-            ### npm (frontend plugin)
-            ```bash
-            npm install @epistola.app/valtimo-plugin@${{ needs.version.outputs.version }}
-            ```
-
-            ### Docker images
-            ```
-            ghcr.io/epistola-app/valtimo/demo-backend:${{ needs.version.outputs.version }}
-            ghcr.io/epistola-app/valtimo/demo-frontend:${{ needs.version.outputs.version }}
-            ```
-          draft: false
-          prerelease: false
-          generate_release_notes: true
+          ### Docker images
+          \`\`\`
+          ghcr.io/epistola-app/valtimo/demo-backend:${VERSION}
+          ghcr.io/epistola-app/valtimo/demo-frontend:${VERSION}
+          \`\`\`
+          EOF
+          )"

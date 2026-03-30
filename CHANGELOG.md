@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Release workflow**: Switched from `[release]` commit message trigger to GitHub Release-based trigger (`on: release: published`). Version is now explicitly set via the release tag instead of auto-calculated from `build.gradle.kts`. Failed releases can be re-triggered via `workflow_dispatch`.
+
+## [0.3.0] - 2026-03-30
+
 ### Added
 
 - **Unit tests for FormioFormGenerator**: Tests for scalar/object/array field generation, default values, validation, humanizeLabel, description tooltips, and null/empty children edge cases.
