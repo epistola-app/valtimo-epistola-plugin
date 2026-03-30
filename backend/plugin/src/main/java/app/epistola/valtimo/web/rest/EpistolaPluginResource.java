@@ -315,7 +315,7 @@ public class EpistolaPluginResource {
                 case AMBIGUOUS_ACTIVITY, MISSING_TEMPLATE, MISSING_CONTEXT ->
                         ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
                 case RENDER_FAILED ->
-                        ResponseEntity.status(502).body(Map.of(
+                        ResponseEntity.unprocessableEntity().body(Map.of(
                                 "error", "Preview could not be generated",
                                 "details", e.getMessage()));
             };
