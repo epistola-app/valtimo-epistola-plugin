@@ -41,7 +41,10 @@ import {Subscription} from 'rxjs';
         <div *ngIf="loading && !discovering" class="preview-loading">
           Generating preview...
         </div>
-        <div *ngIf="error && !loading && !discovering" class="preview-error">{{ error }}</div>
+        <div *ngIf="error && !loading && !discovering" class="preview-unavailable">
+          <i class="mdi mdi-information-outline"></i>
+          Preview is niet beschikbaar — niet alle gegevens zijn al ingevuld.
+        </div>
         <object
           *ngIf="previewUrl && !loading && !discovering"
           [data]="previewUrl"
@@ -118,9 +121,14 @@ import {Subscription} from 'rxjs';
       color: #6c757d;
       font-style: italic;
     }
-    .preview-error {
-      padding: 1rem;
-      color: #dc3545;
+    .preview-unavailable {
+      padding: 1.5rem;
+      text-align: center;
+      color: #6c757d;
+      font-style: italic;
+    }
+    .preview-unavailable i {
+      margin-right: 0.25rem;
     }
     .preview-pdf {
       width: 100%;
