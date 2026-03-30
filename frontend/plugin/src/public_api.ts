@@ -18,3 +18,5 @@ export * from './lib/components/epistola-retry-form/epistola-retry-form.componen
 export * from './lib/components/epistola-retry-form/epistola-retry-form.formio';
 export * from './lib/components/epistola-preview-button/epistola-preview-button.component';
 export * from './lib/components/epistola-preview-button/epistola-preview-button.formio';
+export * from './lib/components/epistola-document-preview/epistola-document-preview.component';
+export * from './lib/components/epistola-document-preview/epistola-document-preview.formio';

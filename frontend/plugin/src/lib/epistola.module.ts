@@ -18,6 +18,7 @@ import {FieldTreeComponent} from './components/field-tree/field-tree.component';
 import {EpistolaDownloadComponent} from './components/epistola-download/epistola-download.component';
 import {EpistolaRetryFormComponent} from './components/epistola-retry-form/epistola-retry-form.component';
 import {EpistolaPreviewButtonComponent} from './components/epistola-preview-button/epistola-preview-button.component';
+import {EpistolaDocumentPreviewComponent} from './components/epistola-document-preview/epistola-document-preview.component';
 import {EpistolaPluginService} from './services';
 
 @NgModule({
@@ -36,7 +37,8 @@ import {EpistolaPluginService} from './services';
     FieldTreeComponent,
     EpistolaDownloadComponent,
     EpistolaRetryFormComponent,
-    EpistolaPreviewButtonComponent
+    EpistolaPreviewButtonComponent,
+    EpistolaDocumentPreviewComponent
   ],
   exports: [
     EpistolaConfigurationComponent,
@@ -47,7 +49,8 @@ import {EpistolaPluginService} from './services';
     FieldTreeComponent,
     EpistolaDownloadComponent,
     EpistolaRetryFormComponent,
-    EpistolaPreviewButtonComponent
+    EpistolaPreviewButtonComponent,
+    EpistolaDocumentPreviewComponent
   ],
   providers: [
     EpistolaPluginService

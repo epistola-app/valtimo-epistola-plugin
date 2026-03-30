@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **`epistola-document-preview` Formio component**: Standalone inline preview panel that can be dropped into any user task form to show a live PDF preview of what a document will look like before the generate-document service task runs. Configurable via `sourceActivityId` (BPMN activity ID) and `label` field options. Uses the existing preview API to dry-run the process link without creating a generation job.
+
 ### Changed
 
 - **Release workflow**: Switched from `[release]` commit message trigger to GitHub Release-based trigger (`on: release: published`). Version is now explicitly set via the release tag instead of auto-calculated from `build.gradle.kts`. Failed releases can be re-triggered via `workflow_dispatch`.
