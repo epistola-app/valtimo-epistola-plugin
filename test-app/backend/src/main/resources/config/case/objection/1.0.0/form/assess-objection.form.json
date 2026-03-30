@@ -6,6 +6,7 @@
             "type": "select",
             "input": true,
             "label": "Beslissing",
+            "defaultValue": "gegrond",
             "data": {
                 "values": [
                     { "label": "Gegrond", "value": "gegrond" },
@@ -21,6 +22,7 @@
             "input": true,
             "label": "Motivatie",
             "rows": 5,
+            "defaultValue": "Na heroverweging is gebleken dat de dakkapel voldoet aan de geldende welstandscriteria. Het bezwaar wordt gegrond verklaard.",
             "validate": { "required": true }
         },
         {

@@ -7,6 +7,7 @@
             "input": true,
             "label": "Company Name",
             "tableView": true,
+            "defaultValue": "Acme B.V.",
             "validate": {
                 "required": true
             }
