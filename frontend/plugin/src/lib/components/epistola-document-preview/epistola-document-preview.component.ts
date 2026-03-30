@@ -1,6 +1,6 @@
 import {ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, OnDestroy, Output, SimpleChanges} from '@angular/core';
 import {CommonModule} from '@angular/common';
-import {HttpClient} from '@angular/common/http';
+import {HttpClient, HttpHeaders} from '@angular/common/http';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {FormioCustomComponent, FormIoStateService} from '@valtimo/components';
 import {ConfigService} from '@valtimo/shared';
@@ -243,7 +243,10 @@ export class EpistolaDocumentPreviewComponent implements FormioCustomComponent<n
       processInstanceId: source.processInstanceId,
       sourceActivityId: source.activityId,
       overrides: null
-    }, {responseType: 'blob'}).subscribe({
+    }, {
+      responseType: 'blob',
+      headers: new HttpHeaders().set('X-Skip-Interceptor', '422')
+    }).subscribe({
       next: (blob) => {
         this.currentBlobUrl = URL.createObjectURL(blob);
         this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.currentBlobUrl);
