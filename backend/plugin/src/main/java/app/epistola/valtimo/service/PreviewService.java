@@ -116,7 +116,7 @@ public class PreviewService {
                 try {
                     templateId = extractTemplateId(link);
                 } catch (PreviewException e) {
-                    log.warn("Skipping link without templateId: {}", link.getActivityId());
+                    log.debug("Skipping link without templateId: {}", link.getActivityId());
                     continue;
                 }
 

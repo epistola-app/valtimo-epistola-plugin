@@ -275,7 +275,7 @@ public class EpistolaPluginResource {
             var sources = previewService.getPreviewSources(documentId);
             return ResponseEntity.ok(sources);
         } catch (Exception e) {
-            log.warn("Failed to discover preview sources: {}", e.getMessage());
+            log.debug("Failed to discover preview sources: {}", e.getMessage());
             return ResponseEntity.badRequest().body(
                     Map.of("error", "Failed to discover preview sources: " + e.getMessage()));
         }
@@ -309,7 +309,7 @@ public class EpistolaPluginResource {
 
             return ResponseEntity.ok().headers(headers).body(resource);
         } catch (PreviewService.PreviewException e) {
-            log.warn("Preview failed: {}", e.getMessage());
+            log.debug("Preview unavailable: {}", e.getMessage());
             return switch (e.getReason()) {
                 case PROCESS_NOT_FOUND, LINK_NOT_FOUND -> ResponseEntity.notFound().build();
                 case AMBIGUOUS_ACTIVITY, MISSING_TEMPLATE, MISSING_CONTEXT ->

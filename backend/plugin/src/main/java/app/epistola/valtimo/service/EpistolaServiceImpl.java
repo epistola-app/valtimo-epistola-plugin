@@ -273,7 +273,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         } catch (EpistolaApiException e) {
             throw e;
         } catch (Exception e) {
-            log.error("Failed to preview document for tenant {}: {}", tenantId, e.getMessage());
+            log.debug("Failed to preview document for tenant {}: {}", tenantId, e.getMessage());
             throw new EpistolaApiException("Failed to preview document", e);
         }
     }
