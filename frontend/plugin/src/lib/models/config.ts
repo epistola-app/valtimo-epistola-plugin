@@ -51,3 +51,14 @@ export interface DownloadDocumentConfig {
   documentIdVariable: string;
   contentVariable: string;
 }
+
+/**
+ * A previewable document source discovered from running process instances.
+ */
+export interface PreviewSource {
+  processDefinitionKey: string;
+  activityId: string;
+  templateId: string;
+  templateName: string;
+  processInstanceId: string;
+}

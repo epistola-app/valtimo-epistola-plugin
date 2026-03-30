@@ -1,6 +1,7 @@
 package app.epistola.valtimo.service;
 
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
+import app.epistola.valtimo.web.rest.dto.PreviewSource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ritense.plugin.domain.PluginProcessLink;
@@ -14,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.RuntimeService;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +80,56 @@ public class PreviewService {
             throw new PreviewException(PreviewException.Reason.RENDER_FAILED,
                     "Preview rendering failed: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Discover all previewable document sources for a given Valtimo document.
+     * Finds all running process instances associated with the document, then checks each
+     * for generate-document process links.
+     *
+     * @param documentId The Valtimo document ID
+     * @return List of preview sources (may be empty if no generate-document links exist)
+     */
+    public List<PreviewSource> getPreviewSources(String documentId) {
+        // In Valtimo, the business key of a process instance is the document ID
+        var processInstances = runtimeService.createProcessInstanceQuery()
+                .processInstanceBusinessKey(documentId)
+                .active()
+                .list();
+
+        List<PreviewSource> sources = new ArrayList<>();
+        for (var processInstance : processInstances) {
+            String processInstanceId = processInstance.getProcessInstanceId();
+            String processDefinitionId = processInstance.getProcessDefinitionId();
+            // Extract process definition key from the full ID (format: "key:version:uuid")
+            String processDefinitionKey = processDefinitionId.split(":")[0];
+
+            // Find all generate-document links for this process definition
+            List<PluginProcessLink> generateLinks = processLinkService.getProcessLinks(processDefinitionId).stream()
+                    .filter(PluginProcessLink.class::isInstance)
+                    .map(PluginProcessLink.class::cast)
+                    .filter(link -> "generate-document".equals(link.getPluginActionDefinitionKey()))
+                    .toList();
+
+            for (var link : generateLinks) {
+                String templateId = null;
+                try {
+                    templateId = extractTemplateId(link);
+                } catch (PreviewException e) {
+                    log.warn("Skipping link without templateId: {}", link.getActivityId());
+                    continue;
+                }
+
+                sources.add(new PreviewSource(
+                        processDefinitionKey,
+                        link.getActivityId(),
+                        templateId,
+                        templateId, // Use templateId as display name; frontend can resolve the real name
+                        processInstanceId
+                ));
+            }
+        }
+        return sources;
     }
 
     private String resolveProcessDefinitionId(PreviewRequest request) {

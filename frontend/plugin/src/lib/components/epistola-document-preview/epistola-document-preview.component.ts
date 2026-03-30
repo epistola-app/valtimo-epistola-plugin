@@ -4,6 +4,9 @@ import {HttpClient} from '@angular/common/http';
 import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
 import {FormioCustomComponent, FormIoStateService} from '@valtimo/components';
 import {ConfigService} from '@valtimo/shared';
+import {PreviewSource} from '../../models';
+import {EpistolaPluginService} from '../../services';
+import {Subscription} from 'rxjs';
 
 @Component({
   standalone: true,
@@ -14,26 +17,41 @@ import {ConfigService} from '@valtimo/shared';
     <div class="epistola-preview-panel">
       <div class="preview-header">
         <span>{{ label || 'Document Preview' }}</span>
-        <button type="button" class="preview-refresh" [disabled]="loading" (click)="refresh()">
-          <i class="mdi mdi-refresh mr-1"></i>
-          {{ loading ? 'Generating...' : 'Refresh' }}
-        </button>
+        <div class="preview-controls">
+          <select
+            *ngIf="sources.length > 1"
+            class="preview-select"
+            [value]="selectedIndex"
+            (change)="onSourceChange($event)"
+          >
+            <option *ngFor="let source of sources; let i = index" [value]="i">
+              {{ source.templateName }} ({{ source.activityId }})
+            </option>
+          </select>
+          <button type="button" class="preview-refresh" [disabled]="loading || discovering" (click)="refresh()">
+            <i class="mdi mdi-refresh mr-1"></i>
+            {{ loading ? 'Generating...' : 'Refresh' }}
+          </button>
+        </div>
       </div>
       <div class="preview-body">
-        <div *ngIf="loading" class="preview-loading">
-          <i class="mdi mdi-loading mdi-spin"></i> Generating preview...
+        <div *ngIf="discovering" class="preview-loading">
+          Discovering documents...
         </div>
-        <div *ngIf="error && !loading" class="preview-error">{{ error }}</div>
+        <div *ngIf="loading && !discovering" class="preview-loading">
+          Generating preview...
+        </div>
+        <div *ngIf="error && !loading && !discovering" class="preview-error">{{ error }}</div>
         <object
-          *ngIf="previewUrl && !loading"
+          *ngIf="previewUrl && !loading && !discovering"
           [data]="previewUrl"
           type="application/pdf"
           class="preview-pdf"
         >
           PDF preview is not supported in this browser.
         </object>
-        <div *ngIf="!previewUrl && !loading && !error" class="preview-empty">
-          Click Refresh to generate a preview
+        <div *ngIf="!previewUrl && !loading && !discovering && !error && sources.length === 0" class="preview-empty">
+          No previewable documents found
         </div>
       </div>
     </div>
@@ -54,6 +72,21 @@ import {ConfigService} from '@valtimo/shared';
       border-bottom: 1px solid #dee2e6;
       font-weight: bold;
       color: #495057;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .preview-controls {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .preview-select {
+      border: 1px solid #ced4da;
+      border-radius: 4px;
+      padding: 0.25rem 0.5rem;
+      font-size: 0.8rem;
+      background: white;
+      max-width: 300px;
     }
     .preview-refresh {
       background: none;
@@ -65,6 +98,7 @@ import {ConfigService} from '@valtimo/shared';
       cursor: pointer;
       display: flex;
       align-items: center;
+      white-space: nowrap;
     }
     .preview-refresh:hover:not(:disabled) {
       background: #e9ecef;
@@ -107,16 +141,21 @@ export class EpistolaDocumentPreviewComponent implements FormioCustomComponent<n
 
   @Input() disabled = false;
   @Input() label = 'Document Preview';
-  @Input() sourceActivityId?: string;
 
+  sources: PreviewSource[] = [];
+  selectedIndex = 0;
+  discovering = false;
   loading = false;
   error: string | null = null;
   previewUrl: SafeResourceUrl | null = null;
-  private loaded = false;
+  private initialized = false;
   private currentBlobUrl: string | null = null;
+  private discoverSubscription?: Subscription;
+  private previewSubscription?: Subscription;
   private readonly apiEndpoint: string;
 
   constructor(
+    private readonly epistolaPluginService: EpistolaPluginService,
     private readonly http: HttpClient,
     private readonly sanitizer: DomSanitizer,
     private readonly configService: ConfigService,
@@ -127,39 +166,74 @@ export class EpistolaDocumentPreviewComponent implements FormioCustomComponent<n
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (!this.loaded) {
-      this.loaded = true;
-      this.loadPreview();
+    if (!this.initialized) {
+      this.initialized = true;
+      this.discoverSources();
     }
   }
 
   ngOnDestroy(): void {
+    this.discoverSubscription?.unsubscribe();
+    this.previewSubscription?.unsubscribe();
     this.revokeBlobUrl();
+  }
+
+  onSourceChange(event: Event): void {
+    this.selectedIndex = +(event.target as HTMLSelectElement).value;
+    this.loadPreview();
   }
 
   refresh(): void {
     this.loadPreview();
   }
 
-  private loadPreview(): void {
+  private discoverSources(): void {
     const documentId = this.formIoStateService.documentId;
-    const processInstanceId = this.formIoStateService.processInstanceId;
-
     if (!documentId) {
       this.error = 'Could not determine document ID from context.';
       this.cdr.markForCheck();
       return;
     }
 
+    this.discovering = true;
+    this.error = null;
+    this.cdr.markForCheck();
+
+    this.discoverSubscription = this.epistolaPluginService.getPreviewSources(documentId).subscribe({
+      next: (sources) => {
+        this.sources = sources;
+        this.discovering = false;
+        this.cdr.markForCheck();
+        if (sources.length > 0) {
+          this.selectedIndex = 0;
+          this.loadPreview();
+        }
+      },
+      error: (err) => {
+        this.error = err.error?.error || 'Failed to discover preview sources';
+        this.discovering = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private loadPreview(): void {
+    const source = this.sources[this.selectedIndex];
+    if (!source) return;
+
+    const documentId = this.formIoStateService.documentId;
+    if (!documentId) return;
+
     this.loading = true;
     this.error = null;
     this.cdr.markForCheck();
     this.revokeBlobUrl();
 
-    this.http.post(`${this.apiEndpoint}/preview`, {
+    this.previewSubscription?.unsubscribe();
+    this.previewSubscription = this.http.post(`${this.apiEndpoint}/preview`, {
       documentId,
-      processInstanceId: processInstanceId || null,
-      sourceActivityId: this.sourceActivityId || null,
+      processInstanceId: source.processInstanceId,
+      sourceActivityId: source.activityId,
       overrides: null
     }, {responseType: 'blob'}).subscribe({
       next: (blob) => {

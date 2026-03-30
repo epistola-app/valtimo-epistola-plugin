@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **`epistola-document-preview` Formio component**: Standalone inline preview panel that can be dropped into any user task form to show a live PDF preview of what a document will look like before the generate-document service task runs. Configurable via `sourceActivityId` (BPMN activity ID) and `label` field options. Uses the existing preview API to dry-run the process link without creating a generation job.
+- **`epistola-document-preview` Formio component**: Standalone inline preview panel that can be dropped into any user task form or case tab to show a live PDF preview of what a document will look like before the generate-document service task runs. Auto-discovers all generate-document process links from running process instances — shows a dropdown when multiple documents are available, auto-selects when there's only one. No configuration needed beyond an optional `label` field option.
+- **`GET /api/v1/plugin/epistola/preview-sources`**: New REST endpoint that discovers previewable document sources for a given Valtimo document by querying active process instances and their generate-document process links.
 
 ### Changed
 

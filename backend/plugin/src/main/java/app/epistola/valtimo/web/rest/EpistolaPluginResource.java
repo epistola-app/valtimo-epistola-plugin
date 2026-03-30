@@ -263,6 +263,25 @@ public class EpistolaPluginResource {
     }
 
     /**
+     * Discover all previewable document sources for a given Valtimo document.
+     * Returns generate-document process links from running process instances.
+     *
+     * @param documentId The Valtimo document ID
+     * @return List of preview sources
+     */
+    @GetMapping("/preview-sources")
+    public ResponseEntity<?> getPreviewSources(@RequestParam("documentId") String documentId) {
+        try {
+            var sources = previewService.getPreviewSources(documentId);
+            return ResponseEntity.ok(sources);
+        } catch (Exception e) {
+            log.warn("Failed to discover preview sources: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(
+                    Map.of("error", "Failed to discover preview sources: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Preview a document by "dry-running" the generate-document process link.
      * <p>
      * Resolves the data mapping, merges with optional overrides, and calls Epistola's
