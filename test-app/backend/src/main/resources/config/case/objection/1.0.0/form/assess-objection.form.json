@@ -24,6 +24,12 @@
             "validate": { "required": true }
         },
         {
+            "type": "epistola-document-preview",
+            "key": "preview",
+            "input": false,
+            "label": "Voorbeeld Besluitbrief"
+        },
+        {
             "key": "submit",
             "type": "button",
             "input": true,
