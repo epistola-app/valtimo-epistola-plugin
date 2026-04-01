@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-04-01
+
 ### Added
 
 - **Feature toggle**: Added `epistola.enabled` property (default: `true`) to enable/disable the entire plugin. Set `epistola.enabled=false` in `application.yml` to prevent all Epistola beans from being registered. **Note:** before disabling, remove any existing Epistola plugin configurations and process links — the frontend has no equivalent toggle, so stale configurations would show in the UI but fail on all API calls.
