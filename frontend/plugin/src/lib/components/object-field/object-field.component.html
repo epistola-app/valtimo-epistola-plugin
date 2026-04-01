@@ -1,0 +1,22 @@
+<div class="field-object">
+  <div class="field-object-header" (click)="toggleExpanded()" [class.field-required-unmapped]="totalRequired > 0 && mappedCount < totalRequired">
+    <span class="expand-icon">{{ expanded ? '▼' : '▶' }}</span>
+    <span class="field-name">{{ field.name }}</span>
+    <span class="field-meta">(object{{ field.required ? ', required' : '' }})</span>
+    <span class="completeness-badge" *ngIf="totalRequired > 0 && !expanded">
+      {{ mappedCount }}/{{ totalRequired }}
+    </span>
+  </div>
+  <div class="field-object-children" *ngIf="expanded">
+    <epistola-field-tree
+      *ngFor="let child of field.children"
+      [field]="child"
+      [value]="getChildValue(child.name)"
+      [pluginId]="pluginId"
+      [caseDefinitionKey]="caseDefinitionKey"
+      [processVariables]="processVariables"
+      [disabled]="disabled"
+      (valueChange)="onChildChange(child.name, $event)"
+    ></epistola-field-tree>
+  </div>
+</div>

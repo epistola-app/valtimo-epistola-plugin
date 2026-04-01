@@ -12,6 +12,12 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class EpistolaProperties {
 
+    /**
+     * Whether the Epistola plugin is enabled.
+     * When set to false, no Epistola beans are registered.
+     */
+    private boolean enabled = true;
+
     private final Poller poller = new Poller();
     private final RetryForm retryForm = new RetryForm();
 

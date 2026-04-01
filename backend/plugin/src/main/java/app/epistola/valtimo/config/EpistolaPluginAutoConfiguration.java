@@ -33,6 +33,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Slf4j
 @AutoConfiguration
+@ConditionalOnProperty(name = "epistola.enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(EpistolaProperties.class)
 @EnableScheduling
 public class EpistolaPluginAutoConfiguration {
