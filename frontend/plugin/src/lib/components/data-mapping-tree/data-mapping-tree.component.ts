@@ -1,8 +1,6 @@
-import {ChangeDetectionStrategy, Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
+import {ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {PluginTranslatePipeModule} from '@valtimo/plugin';
-import {Observable, Subject} from 'rxjs';
-import {takeUntil} from 'rxjs/operators';
 import {TemplateField} from '../../models';
 import {countRequiredMapped} from '../../utils/template-field-utils';
 import {FieldTreeComponent} from '../field-tree/field-tree.component';
@@ -23,50 +21,29 @@ import {FieldTreeComponent} from '../field-tree/field-tree.component';
     FieldTreeComponent
   ]
 })
-export class DataMappingTreeComponent implements OnInit, OnDestroy {
+export class DataMappingTreeComponent implements OnChanges {
   @Input() pluginId!: string;
-  @Input() templateFields$!: Observable<TemplateField[]>;
-  @Input() prefillMapping$!: Observable<Record<string, any>>;
-  @Input() disabled$!: Observable<boolean>;
+  @Input() templateFields: TemplateField[] = [];
+  @Input() prefillMapping: Record<string, any> = {};
+  @Input() disabled = false;
   @Input() caseDefinitionKey: string | null = null;
   @Input() processVariables: string[] = [];
 
   @Output() mappingChange = new EventEmitter<Record<string, any>>();
   @Output() requiredFieldsStatus = new EventEmitter<{mapped: number; total: number}>();
 
-  templateFields: TemplateField[] = [];
   mapping: Record<string, any> = {};
-  disabled = false;
 
-  private readonly destroy$ = new Subject<void>();
-
-  ngOnInit(): void {
-    this.templateFields$.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(fields => {
-      this.templateFields = fields;
-      this.emitRequiredFieldsStatus();
-    });
-
-    this.prefillMapping$.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(mapping => {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['prefillMapping']) {
+      const mapping = this.prefillMapping;
       if (mapping && Object.keys(mapping).length > 0) {
         this.mapping = {...mapping};
       }
+    }
+    if (changes['templateFields'] || changes['prefillMapping']) {
       this.emitRequiredFieldsStatus();
-    });
-
-    this.disabled$.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(disabled => {
-      this.disabled = disabled;
-    });
-  }
-
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
+    }
   }
 
   onFieldValueChange(fieldName: string, value: any): void {

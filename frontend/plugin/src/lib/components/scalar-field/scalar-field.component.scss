@@ -1,0 +1,30 @@
+.field-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.5rem 0;
+  border-left: 3px solid transparent;
+
+  &.field-required-unmapped {
+    border-left-color: #dc3545;
+    background-color: #fff5f5;
+    padding-left: 0.5rem;
+  }
+}
+
+.field-label {
+  flex: 0 0 200px;
+  min-width: 140px;
+  padding-top: 0.5rem;
+  word-break: break-word;
+
+  .field-name {
+    font-weight: 500;
+  }
+
+  .field-meta {
+    font-size: 0.8125rem;
+    color: #6c757d;
+    margin-left: 0.25rem;
+  }
+}

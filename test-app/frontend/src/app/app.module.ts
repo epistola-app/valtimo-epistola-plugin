@@ -73,7 +73,7 @@ import {
   zakenApiPluginSpecification,
   PLUGINS_TOKEN,
 } from '@valtimo/plugin';
-import {EpistolaPluginModule, epistolaPluginSpecification, registerEpistolaDownloadComponent, registerEpistolaRetryFormComponent, registerEpistolaPreviewButtonComponent, registerEpistolaDocumentPreviewComponent} from '@epistola.app/valtimo-plugin';
+import {EpistolaPluginModule, epistolaPluginSpecification} from '@epistola.app/valtimo-plugin';
 import {ObjectManagementModule} from '@valtimo/object-management';
 import {ObjectModule} from '@valtimo/object';
 import {AccessControlManagementModule} from '@valtimo/access-control-management';
@@ -141,7 +141,7 @@ export function tabsFactory() {
     DocumentenApiPluginModule,
     ZakenApiPluginModule,
     CatalogiApiPluginModule,
-    EpistolaPluginModule,
+    EpistolaPluginModule.forRoot(),
     ObjectModule,
     ObjectManagementModule,
     DisplayWidgetTypesModule,
@@ -185,9 +185,5 @@ export class AppModule {
     registerFormioUploadComponent(injector);
     registerFormioFileSelectorComponent(injector);
     registerFormioValueResolverSelectorComponent(injector);
-    registerEpistolaDownloadComponent(injector);
-    registerEpistolaRetryFormComponent(injector);
-    registerEpistolaPreviewButtonComponent(injector);
-    registerEpistolaDocumentPreviewComponent(injector);
   }
 }

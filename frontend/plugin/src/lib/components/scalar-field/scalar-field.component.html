@@ -1,0 +1,15 @@
+<div class="field-row" [class.field-required-unmapped]="field.required && !stringValue">
+  <div class="field-label">
+    <span class="field-name">{{ field.name }}</span>
+    <span class="field-meta">({{ field.type }}{{ field.required ? ', required' : '' }})</span>
+  </div>
+  <epistola-value-input
+    [name]="'field_' + field.path"
+    [value]="stringValue"
+    [pluginId]="pluginId"
+    [caseDefinitionKey]="caseDefinitionKey"
+    [processVariables]="processVariables"
+    [disabled]="disabled"
+    (valueChange)="onValueChange($event)"
+  ></epistola-value-input>
+</div>

@@ -65,6 +65,7 @@ docker/            # Docker compose for local dependencies
 - **Package name**: Epistola client uses `app.epistola.client` (not `io.epistola`)
 - **Plugin properties**: Backend `@PluginProperty` keys must match frontend field names exactly
 - **Translations**: Add both `nl` and `en` translations in `epistola.specification.ts`
+- **Feature toggle**: Set `epistola.enabled=false` to disable the backend entirely. This is backend-only — the frontend has no equivalent guard. Remove any existing plugin configurations and process links before disabling, otherwise the UI will show stale entries that fail on API calls.
 
 ## Testing
 

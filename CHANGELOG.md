@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Feature toggle**: Added `epistola.enabled` property (default: `true`) to enable/disable the entire plugin. Set `epistola.enabled=false` in `application.yml` to prevent all Epistola beans from being registered. **Note:** before disabling, remove any existing Epistola plugin configurations and process links — the frontend has no equivalent toggle, so stale configurations would show in the UI but fail on all API calls.
+- **`EpistolaPluginModule.forRoot()`**: New static method that auto-registers all Formio custom components via `ENVIRONMENT_INITIALIZER`, eliminating the need for manual `registerEpistola*Component()` calls in the consuming app's module constructor.
+
+### Fixed
+
+- **Stale data in select boxes**: Refactored template, variant, environment, and template fields loading to use `switchMap` instead of nested subscribes. Previously, changing a template selection could cause an old API response to overwrite the correct data if it arrived late.
+- **Process variable dropdown not appearing**: Added `ChangeDetectorRef.markForCheck()` to `DataMappingTreeComponent` and `FieldTreeComponent` so that asynchronously loaded data (template fields, process variables) properly triggers re-rendering under `OnPush` change detection.
+- **PV select not reflecting prefill value**: Replaced `[selected]` bindings on native `<option>` elements with `[(ngModel)]` on the `<select>` element for reliable two-way binding under `OnPush` change detection.
+- **Browse mode select boxes empty on prefill**: Saved data mappings using slash notation (e.g. `doc:/objector/address/street`) were not recognized by the ValuePathSelector configured with `notation="dots"`. Added `normalizeToDots()` to convert slash-notation paths to dot notation before passing them as `defaultValue`, so the dropdown correctly matches and selects the prefilled path.
+- **ValuePathSelector dropdown snap-back**: Binding a method call as `[defaultValue]` caused the setter to re-fire on every change detection cycle, snapping the dropdown back to manual mode. Fixed by caching the default value in `ngOnChanges` and binding to a property.
+
+### Changed
+
+- **Extracted `ValueInputComponent`**: The duplicated 3-mode input pattern (browse/pv/expression) used by both scalar fields and array source mapping is now a single reusable `<epistola-value-input>` component. Houses all browse-default caching, notation normalization, and PV dropdown logic.
+- **Split `FieldTreeComponent` into focused sub-components**: The 322-line monolith handling SCALAR, OBJECT, and ARRAY field types is now a thin dispatcher delegating to `ScalarFieldComponent`, `ObjectFieldComponent`, and `ArrayFieldComponent`.
+- **Consolidated `AsyncResource<T>` state pattern**: `GenerateDocumentConfigurationComponent` replaced 12 BehaviorSubjects (4 x {data, loading, error}) with 4 `AsyncResource<T>` subjects, reducing state management boilerplate.
+- **Simplified `DataMappingTreeComponent`**: Converted from Observable inputs (`templateFields$`, `disabled$`, `prefillMapping$`) with manual subscriptions to plain `@Input()` properties with `ngOnChanges`, removing the need for `ChangeDetectorRef`, `destroy$` subject, and subscription management.
+
 ## [0.3.1] - 2026-03-30
 
 ### Added

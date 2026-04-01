@@ -74,6 +74,21 @@ pnpm start
 pnpm build
 ```
 
+## Configuration
+
+### Feature Toggle
+
+The plugin can be disabled entirely by setting `epistola.enabled=false` in `application.yml`:
+
+```yaml
+epistola:
+  enabled: false
+```
+
+When disabled, no Epistola beans are registered (REST endpoints, plugin factory, poller, callback handler, etc.). The default is `true`.
+
+**Important:** This toggle is backend-only. Before disabling, remove any existing Epistola plugin configurations and process links from the Valtimo database. Otherwise, the frontend will still show stale entries that fail on all API calls since the backend endpoints no longer exist.
+
 ## Local Development with Docker
 
 Start the full stack (PostgreSQL, Keycloak, and Epistola server):

@@ -10,6 +10,9 @@ export * from './lib/components/epistola-configuration/epistola-configuration.co
 export * from './lib/components/generate-document-configuration/generate-document-configuration.component';
 export * from './lib/components/check-job-status-configuration/check-job-status-configuration.component';
 export * from './lib/components/download-document-configuration/download-document-configuration.component';
+export * from './lib/components/value-input/value-input.component';
+export * from './lib/components/scalar-field/scalar-field.component';
+export * from './lib/components/array-field/array-field.component';
 export * from './lib/components/field-tree/field-tree.component';
 export * from './lib/components/data-mapping-tree/data-mapping-tree.component';
 export * from './lib/components/epistola-download/epistola-download.component';

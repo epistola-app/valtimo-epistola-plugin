@@ -1,0 +1,55 @@
+<div class="value-input">
+  <div class="input-mode-group">
+    <button type="button" class="mode-btn" [class.mode-active]="inputMode === 'browse'" [disabled]="disabled" (click)="setInputMode('browse')" [title]="'browseMode' | pluginTranslate: pluginId | async">⊞</button>
+    <button type="button" class="mode-btn" [class.mode-active]="inputMode === 'pv'" [disabled]="disabled" (click)="setInputMode('pv')" [title]="'pvMode' | pluginTranslate: pluginId | async">pv</button>
+    <button type="button" class="mode-btn" [class.mode-active]="inputMode === 'expression'" [disabled]="disabled" (click)="setInputMode('expression')" [title]="'expressionMode' | pluginTranslate: pluginId | async">fx</button>
+  </div>
+
+  <!-- Browse mode: ValuePathSelector -->
+  <div class="input-control" *ngIf="inputMode === 'browse'">
+    <valtimo-value-path-selector
+      [name]="name"
+      [caseDefinitionKey]="caseDefinitionKey"
+      [prefixes]="[ValuePathSelectorPrefix.DOC, ValuePathSelectorPrefix.CASE]"
+      [notation]="'dots'"
+      [disabled]="disabled"
+      [defaultValue]="browseDefault"
+      [showCaseDefinitionSelector]="!caseDefinitionKey"
+      (valueChangeEvent)="onBrowseValueChange($event)"
+    ></valtimo-value-path-selector>
+  </div>
+
+  <!-- PV mode: dropdown (when available) or text fallback -->
+  <div class="input-control" *ngIf="inputMode === 'pv'">
+    <select
+      *ngIf="processVariables.length > 0; else pvFallback"
+      class="pv-select"
+      [disabled]="disabled"
+      [(ngModel)]="selectedPv"
+      (ngModelChange)="onPvChange($event)"
+    >
+      <option value="">{{ 'pvPlaceholder' | pluginTranslate: pluginId | async }}</option>
+      <option *ngFor="let pv of processVariables" [value]="pv">{{ pv }}</option>
+    </select>
+    <ng-template #pvFallback>
+      <v-input
+        [name]="'pvfb_' + name"
+        [defaultValue]="selectedPv"
+        [disabled]="disabled"
+        [placeholder]="'pvPlaceholder' | pluginTranslate: pluginId | async"
+        (valueChange)="onPvChange($event)"
+      ></v-input>
+    </ng-template>
+  </div>
+
+  <!-- Expression mode: text input -->
+  <div class="input-control" *ngIf="inputMode === 'expression'">
+    <v-input
+      [name]="'fx_' + name"
+      [defaultValue]="value"
+      [disabled]="disabled"
+      [placeholder]="placeholder"
+      (valueChange)="onExpressionValueChange($event)"
+    ></v-input>
+  </div>
+</div>

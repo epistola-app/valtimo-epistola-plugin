@@ -3,16 +3,10 @@
     *ngIf="{
       disabled: disabled$ | async,
       prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null,
-      templateOptions: templateOptions$ | async,
-      templatesLoading: templatesLoading$ | async,
-      templatesError: templatesError$ | async,
-      variantOptions: variantOptions$ | async,
-      variantsLoading: variantsLoading$ | async,
-      variantsError: variantsError$ | async,
-      environmentOptions: environmentOptions$ | async,
-      environmentsLoading: environmentsLoading$ | async,
-      environmentsError: environmentsError$ | async,
-      templateFieldsLoading: templateFieldsLoading$ | async,
+      templates: templates$ | async,
+      variants: variants$ | async,
+      environments: environments$ | async,
+      templateFields: templateFields$ | async,
       selectedTemplateId: selectedTemplateId$ | async
     } as obs"
 >
@@ -21,14 +15,14 @@
     [title]="'templateId' | pluginTranslate: pluginId | async"
     [tooltip]="'templateIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
-    [items]="obs.templateOptions"
+    [items]="obs.templates.data"
     [defaultSelectionId]="obs.prefill?.templateId"
-    [disabled]="obs.disabled || obs.templatesLoading"
+    [disabled]="obs.disabled || obs.templates.loading"
     [required]="true"
-    [loading]="obs.templatesLoading"
+    [loading]="obs.templates.loading"
   >
   </v-select>
-  <div *ngIf="obs.templatesError" class="loading-error">{{ obs.templatesError }}</div>
+  <div *ngIf="obs.templates.error" class="loading-error">{{ obs.templates.error }}</div>
 
   <!-- Variant selection mode toggle -->
   <div class="variant-mode-toggle" *ngIf="obs.selectedTemplateId">
@@ -58,14 +52,14 @@
     [title]="'variantId' | pluginTranslate: pluginId | async"
     [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
-    [items]="obs.variantOptions"
+    [items]="obs.variants.data"
     [defaultSelectionId]="obs.prefill?.variantId"
-    [disabled]="obs.disabled || obs.variantsLoading || !obs.selectedTemplateId"
+    [disabled]="obs.disabled || obs.variants.loading || !obs.selectedTemplateId"
     [required]="false"
-    [loading]="obs.variantsLoading"
+    [loading]="obs.variants.loading"
   >
   </v-select>
-  <div *ngIf="obs.variantsError" class="loading-error">{{ obs.variantsError }}</div>
+  <div *ngIf="obs.variants.error" class="loading-error">{{ obs.variants.error }}</div>
 
   <!-- Attribute-based variant selection -->
   <div *ngIf="variantSelectionMode === 'attributes' && obs.selectedTemplateId" class="variant-attributes-section">
@@ -110,14 +104,14 @@
     [title]="'environmentId' | pluginTranslate: pluginId | async"
     [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
-    [items]="obs.environmentOptions"
+    [items]="obs.environments.data"
     [defaultSelectionId]="obs.prefill?.environmentId"
-    [disabled]="obs.disabled || obs.environmentsLoading"
+    [disabled]="obs.disabled || obs.environments.loading"
     [required]="false"
-    [loading]="obs.environmentsLoading"
+    [loading]="obs.environments.loading"
   >
   </v-select>
-  <div *ngIf="obs.environmentsError" class="loading-error">{{ obs.environmentsError }}</div>
+  <div *ngIf="obs.environments.error" class="loading-error">{{ obs.environments.error }}</div>
 
   <v-select
     name="outputFormat"
@@ -165,14 +159,14 @@
   </v-input>
 </v-form>
 
-<div *ngIf="templateFieldsError$ | async as templateFieldsError" class="loading-error">{{ templateFieldsError }}</div>
+<div *ngIf="(templateFields$ | async)?.error as templateFieldsError" class="loading-error">{{ templateFieldsError }}</div>
 
 <epistola-data-mapping-tree
   *ngIf="(selectedTemplateId$ | async)"
   [pluginId]="pluginId"
-  [templateFields$]="templateFields$"
-  [disabled$]="disabled$"
-  [prefillMapping$]="prefillDataMapping$"
+  [templateFields]="(templateFields$ | async)?.data ?? []"
+  [disabled]="!!(disabled$ | async)"
+  [prefillMapping]="prefillDataMapping"
   [caseDefinitionKey]="caseDefinitionKey"
   [processVariables]="processVariables"
   (mappingChange)="onDataMappingChange($event)"

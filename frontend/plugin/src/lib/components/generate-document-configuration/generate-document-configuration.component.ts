@@ -10,8 +10,8 @@ import {FormModule, FormOutput, InputModule, SelectItem, SelectModule} from '@va
 import {CaseManagementParams, ManagementContext} from '@valtimo/shared';
 import {ProcessLinkStateService} from '@valtimo/process-link';
 import {BehaviorSubject, combineLatest, merge, Observable, of, Subject, Subscription} from 'rxjs';
-import {catchError, filter, map, take, takeUntil} from 'rxjs/operators';
-import {GenerateDocumentConfig, TemplateField, VariantInfo} from '../../models';
+import {catchError, filter, map, switchMap, take, takeUntil, tap} from 'rxjs/operators';
+import {AsyncResource, errorResource, GenerateDocumentConfig, initialResource, loadingResource, successResource, TemplateField} from '../../models';
 import {EpistolaPluginService} from '../../services';
 import {DataMappingTreeComponent} from '../data-mapping-tree/data-mapping-tree.component';
 
@@ -36,68 +36,37 @@ export type VariantSelectionMode = 'explicit' | 'attributes';
 export class GenerateDocumentConfigurationComponent
   implements FunctionConfigurationComponent, OnInit, OnDestroy
 {
-  // Required inputs from FunctionConfigurationComponent
   @Input() save$!: Observable<void>;
   @Input() disabled$!: Observable<boolean>;
   @Input() pluginId!: string;
   @Input() prefillConfiguration$!: Observable<GenerateDocumentConfig>;
-
-  // Optional inputs from FunctionConfigurationComponent
   @Input() selectedPluginConfigurationData$?: Observable<PluginConfigurationData>;
   @Input() context$?: Observable<[ManagementContext, CaseManagementParams]>;
 
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
   @Output() configuration: EventEmitter<GenerateDocumentConfig> = new EventEmitter<GenerateDocumentConfig>();
 
-  // Template options loaded from API
-  templateOptions$ = new BehaviorSubject<SelectItem[]>([]);
-  templatesLoading$ = new BehaviorSubject<boolean>(false);
-  templatesError$ = new BehaviorSubject<string | null>(null);
+  templates$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
+  variants$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
+  environments$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
+  templateFields$ = new BehaviorSubject<AsyncResource<TemplateField[]>>(initialResource([]));
 
-  // Variant options loaded based on selected template
-  variantOptions$ = new BehaviorSubject<SelectItem[]>([]);
-  variantsLoading$ = new BehaviorSubject<boolean>(false);
-  variantsError$ = new BehaviorSubject<string | null>(null);
-
-  // Environment options loaded from API
-  environmentOptions$ = new BehaviorSubject<SelectItem[]>([]);
-  environmentsLoading$ = new BehaviorSubject<boolean>(false);
-  environmentsError$ = new BehaviorSubject<string | null>(null);
-
-  // Template fields for data mapping
-  templateFields$ = new BehaviorSubject<TemplateField[]>([]);
-  templateFieldsLoading$ = new BehaviorSubject<boolean>(false);
-  templateFieldsError$ = new BehaviorSubject<string | null>(null);
-
-  // Current data mapping (nested structure mirroring template schema)
   dataMapping$ = new BehaviorSubject<Record<string, any>>({});
-
-  // Prefill data mapping observable for the tree
-  prefillDataMapping$!: Observable<Record<string, any>>;
 
   outputFormatOptions: SelectItem[] = [
     {id: 'PDF', text: 'PDF'},
     {id: 'HTML', text: 'HTML'}
   ];
 
-  // Show data mapping builder only when template is selected
   readonly selectedTemplateId$ = new BehaviorSubject<string>('');
   readonly selectedVariantId$ = new BehaviorSubject<string>('');
 
-  // Variant selection mode: 'explicit' (dropdown) or 'attributes' (key-value pairs)
   variantSelectionMode: VariantSelectionMode = 'explicit';
-
-  // Variant attributes for attribute-based selection
   variantAttributeEntries: {key: string; value: string}[] = [];
-
-  // Case definition key from context (for ValuePathSelector)
   caseDefinitionKey: string | null = null;
-
-  // Discovered process variables
   processVariables: string[] = [];
-
-  // Required fields status
   requiredFieldsStatus: {mapped: number; total: number} = {mapped: 0, total: 0};
+  prefillDataMapping: Record<string, any> = {};
 
   private readonly destroy$ = new Subject<void>();
   private saveSubscription!: Subscription;
@@ -113,7 +82,7 @@ export class GenerateDocumentConfigurationComponent
 
   ngOnInit(): void {
     this.initContext();
-    this.initPrefillDataMapping();
+    this.initPrefill();
     this.initPluginConfiguration();
     this.initTemplatesLoading();
     this.initEnvironmentsLoading();
@@ -132,13 +101,11 @@ export class GenerateDocumentConfigurationComponent
     const formValue = formOutput as unknown as Partial<GenerateDocumentConfig>;
     this.formValue$.next(formValue);
 
-    // Update selected template if changed (also clears variant selection)
     if (formValue.templateId && formValue.templateId !== this.selectedTemplateId$.getValue()) {
       this.selectedTemplateId$.next(formValue.templateId);
       this.selectedVariantId$.next('');
     }
 
-    // Update selected variant if changed
     if (formValue.variantId && formValue.variantId !== this.selectedVariantId$.getValue()) {
       this.selectedVariantId$.next(formValue.variantId);
     }
@@ -148,7 +115,6 @@ export class GenerateDocumentConfigurationComponent
 
   onDataMappingChange(mapping: Record<string, any>): void {
     this.dataMapping$.next(mapping);
-    // Re-validate when data mapping changes
     const currentFormValue = this.formValue$.getValue();
     if (currentFormValue) {
       this.handleValid(currentFormValue);
@@ -157,7 +123,6 @@ export class GenerateDocumentConfigurationComponent
 
   onRequiredFieldsStatusChange(status: {mapped: number; total: number}): void {
     this.requiredFieldsStatus = status;
-    // Re-validate when required fields status changes
     const currentFormValue = this.formValue$.getValue();
     if (currentFormValue) {
       this.handleValid(currentFormValue);
@@ -169,11 +134,7 @@ export class GenerateDocumentConfigurationComponent
     if (mode === 'attributes' && this.variantAttributeEntries.length === 0) {
       this.variantAttributeEntries = [{key: '', value: ''}];
     }
-    // Re-validate
-    const currentFormValue = this.formValue$.getValue();
-    if (currentFormValue) {
-      this.handleValid(currentFormValue);
-    }
+    this.revalidate();
   }
 
   addAttributeEntry(): void {
@@ -215,13 +176,8 @@ export class GenerateDocumentConfigurationComponent
     }
   }
 
-  private initPrefillDataMapping(): void {
+  private initPrefill(): void {
     if (this.prefillConfiguration$) {
-      this.prefillDataMapping$ = this.prefillConfiguration$.pipe(
-        map(config => config?.dataMapping || {})
-      );
-
-      // Also set initial selected template, variant mode, and variant
       this.prefillConfiguration$.pipe(
         takeUntil(this.destroy$),
         filter(config => !!config?.templateId)
@@ -236,19 +192,17 @@ export class GenerateDocumentConfigurationComponent
           this.selectedVariantId$.next(config.variantId);
         }
         if (config.dataMapping) {
+          this.prefillDataMapping = config.dataMapping;
           this.dataMapping$.next(config.dataMapping);
         }
         this.cdr.markForCheck();
       });
-    } else {
-      this.prefillDataMapping$ = new BehaviorSubject({}).asObservable();
     }
   }
 
   private initPluginConfiguration(): void {
     const sources: Observable<string>[] = [];
 
-    // Create mode: framework emits when user selects a plugin configuration
     if (this.selectedPluginConfigurationData$) {
       sources.push(
         this.selectedPluginConfigurationData$.pipe(
@@ -258,8 +212,6 @@ export class GenerateDocumentConfigurationComponent
       );
     }
 
-    // Edit mode: read pluginConfigurationId from the ProcessLink entity
-    // (selectedPluginConfigurationData$ does not emit in edit mode)
     sources.push(
       this.processLinkStateService.selectedProcessLink$.pipe(
         filter(processLink => !!processLink?.pluginConfigurationId),
@@ -277,48 +229,38 @@ export class GenerateDocumentConfigurationComponent
   private initTemplatesLoading(): void {
     this.pluginConfigurationId$.pipe(
       takeUntil(this.destroy$),
-      filter(id => !!id)
-    ).subscribe(configurationId => {
-      this.templatesLoading$.next(true);
-      this.templatesError$.next(null);
-      this.epistolaPluginService.getTemplates(configurationId).pipe(
-        takeUntil(this.destroy$),
-        catchError(() => {
-          this.templatesError$.next('Failed to load templates');
-          return of([]);
-        })
-      ).subscribe(templates => {
-        const options: SelectItem[] = templates.map(t => ({
-          id: t.id,
-          text: t.name
-        }));
-        this.templateOptions$.next(options);
-        this.templatesLoading$.next(false);
-      });
+      filter(id => !!id),
+      tap(() => this.templates$.next(loadingResource(this.templates$.getValue().data))),
+      switchMap(configurationId =>
+        this.epistolaPluginService.getTemplates(configurationId).pipe(
+          catchError(() => {
+            this.templates$.next(errorResource([], 'Failed to load templates'));
+            return of(null);
+          })
+        )
+      ),
+      filter(result => result !== null)
+    ).subscribe(templates => {
+      this.templates$.next(successResource(templates.map(t => ({id: t.id, text: t.name}))));
     });
   }
 
   private initEnvironmentsLoading(): void {
     this.pluginConfigurationId$.pipe(
       takeUntil(this.destroy$),
-      filter(id => !!id)
-    ).subscribe(configurationId => {
-      this.environmentsLoading$.next(true);
-      this.environmentsError$.next(null);
-      this.epistolaPluginService.getEnvironments(configurationId).pipe(
-        takeUntil(this.destroy$),
-        catchError(() => {
-          this.environmentsError$.next('Failed to load environments');
-          return of([]);
-        })
-      ).subscribe(environments => {
-        const options: SelectItem[] = environments.map(e => ({
-          id: e.id,
-          text: e.name
-        }));
-        this.environmentOptions$.next(options);
-        this.environmentsLoading$.next(false);
-      });
+      filter(id => !!id),
+      tap(() => this.environments$.next(loadingResource(this.environments$.getValue().data))),
+      switchMap(configurationId =>
+        this.epistolaPluginService.getEnvironments(configurationId).pipe(
+          catchError(() => {
+            this.environments$.next(errorResource([], 'Failed to load environments'));
+            return of(null);
+          })
+        )
+      ),
+      filter(result => result !== null)
+    ).subscribe(environments => {
+      this.environments$.next(successResource(environments.map(e => ({id: e.id, text: e.name}))));
     });
   }
 
@@ -328,24 +270,21 @@ export class GenerateDocumentConfigurationComponent
       this.selectedTemplateId$
     ]).pipe(
       takeUntil(this.destroy$),
-      filter(([configId, templateId]) => !!configId && !!templateId)
-    ).subscribe(([configurationId, templateId]) => {
-      this.variantsLoading$.next(true);
-      this.variantsError$.next(null);
-      this.epistolaPluginService.getVariants(configurationId, templateId).pipe(
-        takeUntil(this.destroy$),
-        catchError(() => {
-          this.variantsError$.next('Failed to load variants');
-          return of([]);
-        })
-      ).subscribe(variants => {
-        const options: SelectItem[] = variants.map(v => ({
-          id: v.id,
-          text: v.name + this.formatAttributes(v.attributes)
-        }));
-        this.variantOptions$.next(options);
-        this.variantsLoading$.next(false);
-      });
+      filter(([configId, templateId]) => !!configId && !!templateId),
+      tap(() => this.variants$.next(loadingResource(this.variants$.getValue().data))),
+      switchMap(([configurationId, templateId]) =>
+        this.epistolaPluginService.getVariants(configurationId, templateId).pipe(
+          catchError(() => {
+            this.variants$.next(errorResource([], 'Failed to load variants'));
+            return of(null);
+          })
+        )
+      ),
+      filter(result => result !== null)
+    ).subscribe(variants => {
+      this.variants$.next(successResource(
+        variants.map(v => ({id: v.id, text: v.name + this.formatAttributes(v.attributes)}))
+      ));
     });
   }
 
@@ -355,28 +294,26 @@ export class GenerateDocumentConfigurationComponent
       this.selectedTemplateId$
     ]).pipe(
       takeUntil(this.destroy$),
-      filter(([configId, templateId]) => !!configId && !!templateId)
-    ).subscribe(([configurationId, templateId]) => {
-      this.templateFieldsLoading$.next(true);
-      this.templateFieldsError$.next(null);
-      this.epistolaPluginService.getTemplateDetails(configurationId, templateId).pipe(
-        takeUntil(this.destroy$),
-        catchError(() => {
-          this.templateFieldsError$.next('Failed to load template fields');
-          return of({fields: []} as any);
-        })
-      ).subscribe(details => {
-        this.templateFields$.next(details.fields || []);
-        this.templateFieldsLoading$.next(false);
-      });
-
-      // Also load process variables if we have a case context
-      this.loadProcessVariables();
+      filter(([configId, templateId]) => !!configId && !!templateId),
+      tap(() => {
+        this.templateFields$.next(loadingResource(this.templateFields$.getValue().data));
+        this.loadProcessVariables();
+      }),
+      switchMap(([configurationId, templateId]) =>
+        this.epistolaPluginService.getTemplateDetails(configurationId, templateId).pipe(
+          catchError(() => {
+            this.templateFields$.next(errorResource([], 'Failed to load template fields'));
+            return of(null);
+          })
+        )
+      ),
+      filter(result => result !== null)
+    ).subscribe(details => {
+      this.templateFields$.next(successResource(details.fields || []));
     });
   }
 
   private loadProcessVariables(): void {
-    // Try to discover process variables (best-effort, may not always have context)
     if (this.caseDefinitionKey) {
       this.epistolaPluginService.getProcessVariables(this.caseDefinitionKey).pipe(
         takeUntil(this.destroy$),
@@ -396,14 +333,11 @@ export class GenerateDocumentConfigurationComponent
       formValue?.resultProcessVariable
     );
 
-    // Variant selection: if attribute mode is used, all entries must have both key and value filled.
-    // Neither variant nor attributes are required — omitting both uses the template's default variant.
     let variantValid = true;
     if (this.variantSelectionMode === 'attributes' && this.variantAttributeEntries.length > 0) {
       variantValid = this.variantAttributeEntries.every(e => !!e.key && !!e.value);
     }
 
-    // Check if all required template fields are mapped
     const requiredFieldsMapped = this.requiredFieldsStatus.total === 0 ||
       this.requiredFieldsStatus.mapped === this.requiredFieldsStatus.total;
 

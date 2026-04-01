@@ -1,0 +1,63 @@
+<div class="field-array">
+  <div class="field-array-header" (click)="toggleExpanded()" [class.field-required-unmapped]="field.required && !getSourceValue()">
+    <span class="expand-icon">{{ expanded ? '▼' : '▶' }}</span>
+    <span class="field-name">{{ field.name }}</span>
+    <span class="field-meta">(array{{ field.required ? ', required' : '' }})</span>
+    <span class="completeness-badge" *ngIf="totalRequired > 0 && !expanded">
+      {{ mappedCount }}/{{ totalRequired }}
+    </span>
+    <span class="mapped-indicator" *ngIf="totalRequired === 0 && getSourceValue() && !expanded">✓</span>
+  </div>
+  <div class="field-array-content" *ngIf="expanded">
+    <!-- Source collection input -->
+    <div class="field-row">
+      <div class="field-label">
+        <span class="field-name">{{ 'mapCollectionTo' | pluginTranslate: pluginId | async }}</span>
+      </div>
+      <epistola-value-input
+        [name]="'field_' + field.path"
+        [value]="getSourceValue()"
+        [pluginId]="pluginId"
+        [caseDefinitionKey]="caseDefinitionKey"
+        [processVariables]="processVariables"
+        [disabled]="disabled"
+        (valueChange)="onSourceValueChange($event)"
+      ></epistola-value-input>
+    </div>
+
+    <!-- Per-item field mapping toggle -->
+    <div class="array-per-field-toggle" *ngIf="hasArrayChildren()">
+      <label class="toggle-label">
+        <input
+          type="checkbox"
+          [checked]="arrayPerFieldMode"
+          [disabled]="disabled"
+          (change)="toggleArrayPerFieldMode()"
+        />
+        <span>{{ 'itemFieldMapping' | pluginTranslate: pluginId | async }}</span>
+      </label>
+    </div>
+
+    <!-- Per-item field mappings -->
+    <div class="array-item-fields" *ngIf="arrayPerFieldMode && hasArrayChildren()">
+      <div class="item-fields-header">
+        <span class="item-fields-title">{{ 'itemFieldMappingTitle' | pluginTranslate: pluginId | async }}</span>
+      </div>
+      <div class="item-field-row" *ngFor="let child of field.children">
+        <div class="item-field-label">
+          <span class="field-name">{{ child.name }}</span>
+          <span class="field-meta">({{ child.type }}{{ child.required ? ', required' : '' }})</span>
+        </div>
+        <div class="item-field-input">
+          <v-input
+            [name]="'itemField_' + child.path"
+            [defaultValue]="getItemFieldValue(child.name)"
+            [disabled]="disabled"
+            [placeholder]="'sourceFieldPlaceholder' | pluginTranslate: pluginId | async"
+            (valueChange)="onItemFieldChange(child.name, $event)"
+          ></v-input>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
