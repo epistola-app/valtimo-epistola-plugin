@@ -64,6 +64,7 @@ export class GenerateDocumentConfigurationComponent
   variantSelectionMode: VariantSelectionMode = 'explicit';
   variantAttributeEntries: {key: string; value: string; required: boolean}[] = [];
   availableAttributeKeys: string[] = [];
+  activeComboEntry: {key: string; value: string; required: boolean} | null = null;
   caseDefinitionKey: string | null = null;
   processVariables: string[] = [];
   requiredFieldsStatus: {mapped: number; total: number} = {mapped: 0, total: 0};
@@ -151,6 +152,23 @@ export class GenerateDocumentConfigurationComponent
 
   onAttributeEntryChange(): void {
     this.revalidate();
+  }
+
+  getFilteredKeys(currentInput: string): string[] {
+    const usedKeys = new Set(this.variantAttributeEntries.map(e => e.key));
+    return this.availableAttributeKeys.filter(key =>
+      !usedKeys.has(key) && (!currentInput || key.toLowerCase().includes(currentInput.toLowerCase()))
+    );
+  }
+
+  selectAttributeKey(entry: {key: string; value: string; required: boolean}, key: string): void {
+    entry.key = key;
+    this.activeComboEntry = null;
+    this.onAttributeEntryChange();
+  }
+
+  onComboBlur(): void {
+    setTimeout(() => this.activeComboEntry = null, 150);
   }
 
   private revalidate(): void {
