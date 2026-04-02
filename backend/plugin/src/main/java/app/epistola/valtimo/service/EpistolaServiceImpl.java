@@ -294,10 +294,34 @@ public class EpistolaServiceImpl implements EpistolaService {
             return new java.io.ByteArrayInputStream(content);
         } catch (EpistolaApiException e) {
             throw e;
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.debug("Preview API error for tenant {}: {} {}", tenantId, e.getStatusCode(), e.getResponseBodyAsString());
+            String detail = extractErrorMessage(e.getResponseBodyAsString());
+            throw new EpistolaApiException(detail != null ? detail : e.getMessage(), e);
         } catch (Exception e) {
             log.debug("Failed to preview document for tenant {}: {}", tenantId, e.getMessage());
-            throw new EpistolaApiException("Failed to preview document", e);
+            throw new EpistolaApiException("Failed to preview document: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Extract a human-readable error message from an Epistola API error response body.
+     * Tries to parse JSON and extract "message" or "error" fields.
+     */
+    private String extractErrorMessage(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) return null;
+        try {
+            var tree = new com.fasterxml.jackson.databind.ObjectMapper().readTree(responseBody);
+            if (tree.has("message") && !tree.get("message").isNull()) {
+                return tree.get("message").asText();
+            }
+            if (tree.has("error") && !tree.get("error").isNull()) {
+                return tree.get("error").asText();
+            }
+        } catch (Exception ignored) {
+            // Not JSON, return raw body
+        }
+        return responseBody.length() > 500 ? responseBody.substring(0, 500) : responseBody;
     }
 
     // Mapping methods
