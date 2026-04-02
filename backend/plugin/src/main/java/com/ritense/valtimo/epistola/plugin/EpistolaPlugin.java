@@ -433,14 +433,14 @@ public class EpistolaPlugin {
     /**
      * Internal representation of a variant attribute entry, supporting both old and new config formats.
      */
-    private record NormalizedAttribute(String key, String value, Boolean required) {}
+    record NormalizedAttribute(String key, String value, Boolean required) {}
 
     /**
      * Normalize variant attributes from either the old format (Map&lt;String, String&gt;)
      * or the new format (List of objects with key, value, required).
      */
     @SuppressWarnings("unchecked")
-    private List<NormalizedAttribute> normalizeVariantAttributes(Object raw) {
+    List<NormalizedAttribute> normalizeVariantAttributes(Object raw) {
         if (raw == null) {
             return List.of();
         }
