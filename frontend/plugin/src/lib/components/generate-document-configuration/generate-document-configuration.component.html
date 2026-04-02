@@ -66,23 +66,27 @@
     <label class="variant-attributes-label">{{ 'variantAttributes' | pluginTranslate: pluginId | async }}</label>
     <div class="variant-attributes-list">
       <div *ngFor="let entry of variantAttributeEntries; let i = index" class="variant-attribute-row">
-        <div class="combobox" [class.open]="entry === activeComboEntry">
+        <select
+          *ngIf="!entry._customKey"
+          class="variant-attribute-input"
+          [ngModel]="entry.key"
+          (ngModelChange)="onKeySelected(entry, $event)"
+          [disabled]="obs.disabled"
+        >
+          <option value="" disabled>{{ 'attributeKey' | pluginTranslate: pluginId | async }}</option>
+          <option *ngFor="let key of availableAttributeKeys" [value]="key">{{ key }}</option>
+          <option value="__custom__">{{ 'attributeKeyCustom' | pluginTranslate: pluginId | async }}</option>
+        </select>
+        <div *ngIf="entry._customKey" class="custom-key-input">
           <input
             type="text"
-            class="combobox-input"
+            class="variant-attribute-input"
             [placeholder]="'attributeKey' | pluginTranslate: pluginId | async"
             [(ngModel)]="entry.key"
             (ngModelChange)="onAttributeEntryChange()"
-            (focus)="activeComboEntry = entry"
-            (blur)="onComboBlur()"
             [disabled]="obs.disabled"
-            autocomplete="off"
           />
-          <span class="combobox-arrow">&#9662;</span>
-          <ul class="combobox-options" *ngIf="entry === activeComboEntry && getFilteredKeys(entry.key).length > 0">
-            <li *ngFor="let key of getFilteredKeys(entry.key)"
-                (mousedown)="selectAttributeKey(entry, key)">{{ key }}</li>
-          </ul>
+          <button type="button" class="custom-key-cancel" (click)="cancelCustomKey(entry)" [disabled]="obs.disabled">&times;</button>
         </div>
         <input
           type="text"

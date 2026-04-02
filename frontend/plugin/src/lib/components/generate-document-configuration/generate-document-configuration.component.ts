@@ -14,7 +14,6 @@ import {catchError, filter, map, switchMap, take, takeUntil, tap} from 'rxjs/ope
 import {AsyncResource, errorResource, GenerateDocumentConfig, initialResource, loadingResource, successResource, TemplateField} from '../../models';
 import {EpistolaPluginService} from '../../services';
 import {DataMappingTreeComponent} from '../data-mapping-tree/data-mapping-tree.component';
-import {filterAttributeKeys} from '../../utils/attribute-key-filter';
 
 export type VariantSelectionMode = 'explicit' | 'attributes';
 
@@ -63,9 +62,8 @@ export class GenerateDocumentConfigurationComponent
   readonly selectedVariantId$ = new BehaviorSubject<string>('');
 
   variantSelectionMode: VariantSelectionMode = 'explicit';
-  variantAttributeEntries: {key: string; value: string; required: boolean}[] = [];
+  variantAttributeEntries: {key: string; value: string; required: boolean; _customKey?: boolean}[] = [];
   availableAttributeKeys: string[] = [];
-  activeComboEntry: {key: string; value: string; required: boolean} | null = null;
   caseDefinitionKey: string | null = null;
   processVariables: string[] = [];
   requiredFieldsStatus: {mapped: number; total: number} = {mapped: 0, total: 0};
@@ -155,22 +153,20 @@ export class GenerateDocumentConfigurationComponent
     this.revalidate();
   }
 
-  getFilteredKeys(currentInput: string): string[] {
-    return filterAttributeKeys(
-      this.availableAttributeKeys,
-      this.variantAttributeEntries.map(e => e.key),
-      currentInput
-    );
-  }
-
-  selectAttributeKey(entry: {key: string; value: string; required: boolean}, key: string): void {
-    entry.key = key;
-    this.activeComboEntry = null;
+  onKeySelected(entry: {key: string; value: string; required: boolean; _customKey?: boolean}, value: string): void {
+    if (value === '__custom__') {
+      entry._customKey = true;
+      entry.key = '';
+    } else {
+      entry.key = value;
+    }
     this.onAttributeEntryChange();
   }
 
-  onComboBlur(): void {
-    setTimeout(() => this.activeComboEntry = null, 150);
+  cancelCustomKey(entry: {key: string; value: string; required: boolean; _customKey?: boolean}): void {
+    entry._customKey = false;
+    entry.key = '';
+    this.onAttributeEntryChange();
   }
 
   private revalidate(): void {
