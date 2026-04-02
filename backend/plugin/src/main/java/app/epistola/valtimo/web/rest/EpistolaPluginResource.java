@@ -1,5 +1,6 @@
 package app.epistola.valtimo.web.rest;
 
+import app.epistola.valtimo.domain.AttributeDefinition;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateInfo;
@@ -98,6 +99,29 @@ public class EpistolaPluginResource {
         );
 
         return ResponseEntity.ok(templateDetails);
+    }
+
+    /**
+     * Get all attribute definitions for a plugin configuration's tenant.
+     * These define the keys that can be used for variant selection.
+     *
+     * @param configurationId The plugin configuration ID
+     * @return List of attribute definitions
+     */
+    @GetMapping("/configurations/{configurationId}/attributes")
+    public ResponseEntity<List<AttributeDefinition>> getAttributes(
+            @PathVariable("configurationId") UUID configurationId
+    ) {
+        log.debug("Fetching attribute definitions for plugin configuration: {}", configurationId);
+
+        EpistolaPlugin plugin = pluginService.createInstance(configurationId);
+        List<AttributeDefinition> attributes = epistolaService.getAttributes(
+                plugin.getBaseUrl(),
+                plugin.getApiKey(),
+                plugin.getTenantId()
+        );
+
+        return ResponseEntity.ok(attributes);
     }
 
     /**

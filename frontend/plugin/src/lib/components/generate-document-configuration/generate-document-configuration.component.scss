@@ -113,6 +113,25 @@
   }
 }
 
+.variant-attribute-required-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: #374151;
+  white-space: nowrap;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .required-label {
+    user-select: none;
+  }
+}
+
 .variant-attribute-remove-btn {
   padding: 0.25rem 0.5rem;
   font-size: 1rem;

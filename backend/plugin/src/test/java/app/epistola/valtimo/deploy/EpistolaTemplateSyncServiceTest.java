@@ -373,6 +373,11 @@ class EpistolaTemplateSyncServiceTest {
         }
 
         @Override
+        public List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public List<EnvironmentInfo> getEnvironments(String baseUrl, String apiKey, String tenantId) {
             throw new UnsupportedOperationException();
         }

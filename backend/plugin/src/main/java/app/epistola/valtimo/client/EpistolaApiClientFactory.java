@@ -1,5 +1,6 @@
 package app.epistola.valtimo.client;
 
+import app.epistola.client.api.AttributesApi;
 import app.epistola.client.api.EnvironmentsApi;
 import app.epistola.client.api.GenerationApi;
 import app.epistola.client.api.TemplatesApi;
@@ -44,6 +45,17 @@ public class EpistolaApiClientFactory {
      */
     public TemplatesApi createTemplatesApi(String baseUrl, String apiKey) {
         return new TemplatesApi(createRestClient(baseUrl, apiKey));
+    }
+
+    /**
+     * Create an AttributesApi client for attribute definition operations.
+     *
+     * @param baseUrl The Epistola API base URL
+     * @param apiKey  The API key for authentication
+     * @return Configured AttributesApi client
+     */
+    public AttributesApi createAttributesApi(String baseUrl, String apiKey) {
+        return new AttributesApi(createRestClient(baseUrl, apiKey));
     }
 
     /**

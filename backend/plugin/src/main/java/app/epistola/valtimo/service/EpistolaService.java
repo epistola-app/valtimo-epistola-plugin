@@ -38,6 +38,17 @@ public interface EpistolaService {
     TemplateDetails getTemplateDetails(String baseUrl, String apiKey, String tenantId, String templateId);
 
     /**
+     * Get all attribute definitions for a tenant.
+     * These define the keys that can be used for variant selection.
+     *
+     * @param baseUrl  The Epistola API base URL
+     * @param apiKey   The API key for authentication
+     * @param tenantId The tenant ID in Epistola
+     * @return List of attribute definitions
+     */
+    List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId);
+
+    /**
      * Get all available environments for a tenant.
      *
      * @param baseUrl  The Epistola API base URL

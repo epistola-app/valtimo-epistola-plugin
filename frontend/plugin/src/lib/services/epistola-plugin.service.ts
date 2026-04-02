@@ -2,7 +2,7 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {ConfigService} from '@valtimo/shared';
 import {Observable} from 'rxjs';
-import {EnvironmentInfo, PreviewSource, TemplateDetails, TemplateInfo, ValidationResult, VariantInfo} from '../models';
+import {AttributeDefinition, EnvironmentInfo, PreviewSource, TemplateDetails, TemplateInfo, ValidationResult, VariantInfo} from '../models';
 
 /**
  * Service for interacting with Epistola plugin API endpoints.
@@ -35,6 +35,15 @@ export class EpistolaPluginService {
   getTemplateDetails(pluginConfigurationId: string, templateId: string): Observable<TemplateDetails> {
     return this.http.get<TemplateDetails>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}`
+    );
+  }
+
+  /**
+   * Get all attribute definitions for a plugin configuration's tenant.
+   */
+  getAttributes(pluginConfigurationId: string): Observable<AttributeDefinition[]> {
+    return this.http.get<AttributeDefinition[]>(
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/attributes`
     );
   }
 
