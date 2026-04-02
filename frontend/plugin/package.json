@@ -22,25 +22,28 @@
   "scripts": {
     "build": "ng-packagr -p ng-package.json",
     "watch": "ng-packagr -p ng-package.json --watch",
-    "test": "echo 'No tests configured yet'"
+    "test": "jest"
   },
   "peerDependencies": {
     "@angular/common": ">=17.0.0",
     "@angular/core": ">=17.0.0",
     "@angular/forms": ">=17.0.0",
-    "@valtimo/plugin": "^13.21.0",
     "@valtimo/components": "^13.21.0",
-    "@valtimo/shared": "^13.21.0",
-    "@valtimo/process-link": "^13.21.0"
+    "@valtimo/plugin": "^13.21.0",
+    "@valtimo/process-link": "^13.21.0",
+    "@valtimo/shared": "^13.21.0"
   },
   "dependencies": {
     "tslib": "^2.6.0"
   },
   "devDependencies": {
-    "ng-packagr": "^19.0.0",
+    "@types/jest": "^30.0.0",
     "@valtimo/components": "13.21.0",
     "@valtimo/plugin": "13.21.0",
+    "@valtimo/process-link": "13.21.0",
     "@valtimo/shared": "13.21.0",
-    "@valtimo/process-link": "13.21.0"
+    "jest": "^30.3.0",
+    "ng-packagr": "^19.0.0",
+    "ts-jest": "^29.4.9"
   }
 }

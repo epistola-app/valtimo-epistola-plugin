@@ -14,6 +14,7 @@ import {catchError, filter, map, switchMap, take, takeUntil, tap} from 'rxjs/ope
 import {AsyncResource, errorResource, GenerateDocumentConfig, initialResource, loadingResource, successResource, TemplateField} from '../../models';
 import {EpistolaPluginService} from '../../services';
 import {DataMappingTreeComponent} from '../data-mapping-tree/data-mapping-tree.component';
+import {filterAttributeKeys} from '../../utils/attribute-key-filter';
 
 export type VariantSelectionMode = 'explicit' | 'attributes';
 
@@ -155,9 +156,10 @@ export class GenerateDocumentConfigurationComponent
   }
 
   getFilteredKeys(currentInput: string): string[] {
-    const usedKeys = new Set(this.variantAttributeEntries.map(e => e.key));
-    return this.availableAttributeKeys.filter(key =>
-      !usedKeys.has(key) && (!currentInput || key.toLowerCase().includes(currentInput.toLowerCase()))
+    return filterAttributeKeys(
+      this.availableAttributeKeys,
+      this.variantAttributeEntries.map(e => e.key),
+      currentInput
     );
   }
 
