@@ -13,6 +13,17 @@ export interface EpistolaPluginConfig extends PluginConfigurationData {
 }
 
 /**
+ * A single variant attribute entry for attribute-based variant selection.
+ * When required is true, the variant MUST match this attribute.
+ * When required is false, it is a preference (preferred but not mandatory).
+ */
+export interface VariantAttributeEntry {
+  key: string;
+  value: string;
+  required: boolean;
+}
+
+/**
  * Action configuration for the generate-document action.
  * Contains all parameters needed to generate a document.
  *
@@ -23,7 +34,7 @@ export interface EpistolaPluginConfig extends PluginConfigurationData {
 export interface GenerateDocumentConfig {
   templateId: string;
   variantId?: string;
-  variantAttributes?: Record<string, string>;
+  variantAttributes?: VariantAttributeEntry[];
   environmentId?: string;
   dataMapping: Record<string, any>;
   outputFormat: 'PDF' | 'HTML';

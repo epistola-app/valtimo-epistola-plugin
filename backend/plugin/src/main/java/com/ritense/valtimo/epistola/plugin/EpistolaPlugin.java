@@ -222,7 +222,7 @@ public class EpistolaPlugin {
             DelegateExecution execution,
             @PluginActionProperty String templateId,
             @PluginActionProperty String variantId,
-            @PluginActionProperty Map<String, String> variantAttributes,
+            @PluginActionProperty Object variantAttributes,
             @PluginActionProperty String environmentId,
             @PluginActionProperty Map<String, Object> dataMapping,
             @PluginActionProperty FileFormat outputFormat,
@@ -233,10 +233,13 @@ public class EpistolaPlugin {
         log.info("Starting document generation: templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
                 templateId, variantId, variantAttributes, outputFormat, filename);
 
+        // Normalize variant attributes from either old (Map<String, String>) or new (List<Map>) format
+        List<NormalizedAttribute> normalizedAttributes = normalizeVariantAttributes(variantAttributes);
+
         // Validate: variantId and variantAttributes are mutually exclusive.
         // If neither is provided, the API will use the template's default variant.
         boolean hasVariantId = variantId != null && !variantId.isBlank();
-        boolean hasAttributes = variantAttributes != null && !variantAttributes.isEmpty();
+        boolean hasAttributes = !normalizedAttributes.isEmpty();
         if (hasVariantId && hasAttributes) {
             throw new IllegalArgumentException("Cannot specify both variantId and variantAttributes");
         }
@@ -277,7 +280,7 @@ public class EpistolaPlugin {
 
         // Build variant selection attributes if using attribute-based selection
         List<VariantSelectionAttribute> resolvedAttributes = hasAttributes
-                ? resolveVariantAttributes(execution, variantAttributes)
+                ? resolveVariantAttributes(execution, normalizedAttributes)
                 : null;
 
         // Submit the document generation request
@@ -428,14 +431,58 @@ public class EpistolaPlugin {
     }
 
     /**
+     * Internal representation of a variant attribute entry, supporting both old and new config formats.
+     */
+    record NormalizedAttribute(String key, String value, Boolean required) {}
+
+    /**
+     * Normalize variant attributes from either the old format (Map&lt;String, String&gt;)
+     * or the new format (List of objects with key, value, required).
+     */
+    @SuppressWarnings("unchecked")
+    List<NormalizedAttribute> normalizeVariantAttributes(Object raw) {
+        if (raw == null) {
+            return List.of();
+        }
+        if (raw instanceof List<?> list) {
+            // New format: List<{key, value, required}>
+            return list.stream()
+                    .filter(item -> item instanceof Map)
+                    .map(item -> {
+                        Map<String, Object> map = (Map<String, Object>) item;
+                        String key = map.get("key") != null ? String.valueOf(map.get("key")) : "";
+                        String value = map.get("value") != null ? String.valueOf(map.get("value")) : "";
+                        Boolean required = map.get("required") instanceof Boolean b ? b : null;
+                        return new NormalizedAttribute(key, value, required);
+                    })
+                    .filter(a -> !a.key().isEmpty() && !a.value().isEmpty())
+                    .toList();
+        }
+        if (raw instanceof Map<?, ?> map) {
+            // Old format: Map<String, String> — treat all as required (null = API default true)
+            return map.entrySet().stream()
+                    .map(entry -> new NormalizedAttribute(
+                            String.valueOf(entry.getKey()),
+                            String.valueOf(entry.getValue()),
+                            null
+                    ))
+                    .filter(a -> !a.key().isEmpty() && !a.value().isEmpty())
+                    .toList();
+        }
+        log.warn("Unexpected variantAttributes type: {}", raw.getClass().getName());
+        return List.of();
+    }
+
+    /**
      * Resolve variant attributes, resolving any value resolver expressions in the values.
      */
     private List<VariantSelectionAttribute> resolveVariantAttributes(
             DelegateExecution execution,
-            Map<String, String> attributes
+            List<NormalizedAttribute> attributes
     ) {
         // Collect resolvable attribute values
-        List<String> valuesToResolve = attributes.values().stream()
+        List<String> valuesToResolve = attributes.stream()
+                .map(NormalizedAttribute::value)
                 .filter(this::isResolvableValue)
                 .toList();
 
@@ -449,14 +496,12 @@ public class EpistolaPlugin {
                 );
 
         // Build VariantSelectionAttribute list with resolved values
-        return attributes.entrySet().stream()
-                .map(entry -> {
-                    String key = entry.getKey();
-                    String rawValue = entry.getValue();
-                    String resolvedValue = isResolvableValue(rawValue) && resolvedValues.containsKey(rawValue)
-                            ? String.valueOf(resolvedValues.get(rawValue))
-                            : rawValue;
-                    return new VariantSelectionAttribute(key, resolvedValue, null);
+        return attributes.stream()
+                .map(attr -> {
+                    String resolvedValue = isResolvableValue(attr.value()) && resolvedValues.containsKey(attr.value())
+                            ? String.valueOf(resolvedValues.get(attr.value()))
+                            : attr.value();
+                    return new VariantSelectionAttribute(attr.key(), resolvedValue, attr.required());
                 })
                 .toList();
     }

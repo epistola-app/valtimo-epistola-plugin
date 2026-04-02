@@ -77,8 +77,7 @@ public class PreviewService {
                     plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(),
                     templateId, variantId, environmentId, resolvedData);
         } catch (Exception e) {
-            throw new PreviewException(PreviewException.Reason.RENDER_FAILED,
-                    "Preview rendering failed: " + e.getMessage(), e);
+            throw new PreviewException(PreviewException.Reason.RENDER_FAILED, e.getMessage(), e);
         }
     }
 

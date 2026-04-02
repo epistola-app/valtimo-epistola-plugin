@@ -62,7 +62,8 @@ export class GenerateDocumentConfigurationComponent
   readonly selectedVariantId$ = new BehaviorSubject<string>('');
 
   variantSelectionMode: VariantSelectionMode = 'explicit';
-  variantAttributeEntries: {key: string; value: string}[] = [];
+  variantAttributeEntries: {key: string; value: string; required: boolean; _customKey?: boolean}[] = [];
+  availableAttributeKeys: string[] = [];
   caseDefinitionKey: string | null = null;
   processVariables: string[] = [];
   requiredFieldsStatus: {mapped: number; total: number} = {mapped: 0, total: 0};
@@ -86,6 +87,7 @@ export class GenerateDocumentConfigurationComponent
     this.initPluginConfiguration();
     this.initTemplatesLoading();
     this.initEnvironmentsLoading();
+    this.initAttributesLoading();
     this.initVariantsLoading();
     this.initTemplateFieldsLoading();
     this.openSaveSubscription();
@@ -132,13 +134,13 @@ export class GenerateDocumentConfigurationComponent
   onVariantSelectionModeChange(mode: VariantSelectionMode): void {
     this.variantSelectionMode = mode;
     if (mode === 'attributes' && this.variantAttributeEntries.length === 0) {
-      this.variantAttributeEntries = [{key: '', value: ''}];
+      this.variantAttributeEntries = [{key: '', value: '', required: true}];
     }
     this.revalidate();
   }
 
   addAttributeEntry(): void {
-    this.variantAttributeEntries = [...this.variantAttributeEntries, {key: '', value: ''}];
+    this.variantAttributeEntries = [...this.variantAttributeEntries, {key: '', value: '', required: true}];
     this.revalidate();
   }
 
@@ -149,6 +151,22 @@ export class GenerateDocumentConfigurationComponent
 
   onAttributeEntryChange(): void {
     this.revalidate();
+  }
+
+  onKeySelected(entry: {key: string; value: string; required: boolean; _customKey?: boolean}, value: string): void {
+    if (value === '__custom__') {
+      entry._customKey = true;
+      entry.key = '';
+    } else {
+      entry.key = value;
+    }
+    this.onAttributeEntryChange();
+  }
+
+  cancelCustomKey(entry: {key: string; value: string; required: boolean; _customKey?: boolean}): void {
+    entry._customKey = false;
+    entry.key = '';
+    this.onAttributeEntryChange();
   }
 
   private revalidate(): void {
@@ -183,10 +201,17 @@ export class GenerateDocumentConfigurationComponent
         filter(config => !!config?.templateId)
       ).subscribe(config => {
         this.selectedTemplateId$.next(config.templateId);
-        if (config.variantAttributes && Object.keys(config.variantAttributes).length > 0) {
+        if (config.variantAttributes && (Array.isArray(config.variantAttributes) ? config.variantAttributes.length > 0 : Object.keys(config.variantAttributes).length > 0)) {
           this.variantSelectionMode = 'attributes';
-          this.variantAttributeEntries = Object.entries(config.variantAttributes)
-            .map(([key, value]) => ({key, value}));
+          if (Array.isArray(config.variantAttributes)) {
+            // New format: VariantAttributeEntry[]
+            this.variantAttributeEntries = config.variantAttributes
+              .map(e => ({key: e.key, value: e.value, required: e.required !== false}));
+          } else {
+            // Old format: Record<string, string> — treat all as required
+            this.variantAttributeEntries = Object.entries(config.variantAttributes as any)
+              .map(([key, value]) => ({key, value: String(value), required: true}));
+          }
         } else if (config.variantId) {
           this.variantSelectionMode = 'explicit';
           this.selectedVariantId$.next(config.variantId);
@@ -261,6 +286,21 @@ export class GenerateDocumentConfigurationComponent
       filter(result => result !== null)
     ).subscribe(environments => {
       this.environments$.next(successResource(environments.map(e => ({id: e.id, text: e.name}))));
+    });
+  }
+
+  private initAttributesLoading(): void {
+    this.pluginConfigurationId$.pipe(
+      takeUntil(this.destroy$),
+      filter(id => !!id),
+      switchMap(configurationId =>
+        this.epistolaPluginService.getAttributes(configurationId).pipe(
+          catchError(() => of([]))
+        )
+      )
+    ).subscribe(attributes => {
+      this.availableAttributeKeys = attributes.map(a => a.key).sort();
+      this.cdr.markForCheck();
     });
   }
 
@@ -365,12 +405,9 @@ export class GenerateDocumentConfigurationComponent
             if (this.variantSelectionMode === 'explicit') {
               config.variantId = formValue.variantId!;
             } else {
-              config.variantAttributes = {};
-              for (const entry of this.variantAttributeEntries) {
-                if (entry.key && entry.value) {
-                  config.variantAttributes[entry.key] = entry.value;
-                }
-              }
+              config.variantAttributes = this.variantAttributeEntries
+                .filter(e => e.key && e.value)
+                .map(e => ({key: e.key, value: e.value, required: e.required}));
             }
 
             this.configuration.emit(config);

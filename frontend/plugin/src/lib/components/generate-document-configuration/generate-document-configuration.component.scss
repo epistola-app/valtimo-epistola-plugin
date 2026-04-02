@@ -113,6 +113,56 @@
   }
 }
 
+.custom-key-input {
+  display: flex;
+  flex: 1;
+  gap: 0.25rem;
+
+  .variant-attribute-input {
+    flex: 1;
+  }
+}
+
+.custom-key-cancel {
+  padding: 0.25rem 0.5rem;
+  font-size: 1rem;
+  line-height: 1;
+  background: none;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #6b7280;
+
+  &:hover:not([disabled]) {
+    color: #dc3545;
+    border-color: #dc3545;
+  }
+
+  &[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.variant-attribute-required-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  color: #374151;
+  white-space: nowrap;
+  cursor: pointer;
+
+  input[type="checkbox"] {
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .required-label {
+    user-select: none;
+  }
+}
+
 .variant-attribute-remove-btn {
   padding: 0.25rem 0.5rem;
   font-size: 1rem;

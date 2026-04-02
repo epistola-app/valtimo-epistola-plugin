@@ -66,14 +66,28 @@
     <label class="variant-attributes-label">{{ 'variantAttributes' | pluginTranslate: pluginId | async }}</label>
     <div class="variant-attributes-list">
       <div *ngFor="let entry of variantAttributeEntries; let i = index" class="variant-attribute-row">
-        <input
-          type="text"
+        <select
+          *ngIf="!entry._customKey"
           class="variant-attribute-input"
-          [placeholder]="'attributeKey' | pluginTranslate: pluginId | async"
-          [(ngModel)]="entry.key"
-          (ngModelChange)="onAttributeEntryChange()"
+          [ngModel]="entry.key"
+          (ngModelChange)="onKeySelected(entry, $event)"
           [disabled]="obs.disabled"
-        />
+        >
+          <option value="" disabled>{{ 'attributeKey' | pluginTranslate: pluginId | async }}</option>
+          <option *ngFor="let key of availableAttributeKeys" [value]="key">{{ key }}</option>
+          <option value="__custom__">{{ 'attributeKeyCustom' | pluginTranslate: pluginId | async }}</option>
+        </select>
+        <div *ngIf="entry._customKey" class="custom-key-input">
+          <input
+            type="text"
+            class="variant-attribute-input"
+            [placeholder]="'attributeKey' | pluginTranslate: pluginId | async"
+            [(ngModel)]="entry.key"
+            (ngModelChange)="onAttributeEntryChange()"
+            [disabled]="obs.disabled"
+          />
+          <button type="button" class="custom-key-cancel" (click)="cancelCustomKey(entry)" [disabled]="obs.disabled">&times;</button>
+        </div>
         <input
           type="text"
           class="variant-attribute-input"
@@ -82,6 +96,15 @@
           (ngModelChange)="onAttributeEntryChange()"
           [disabled]="obs.disabled"
         />
+        <label class="variant-attribute-required-toggle">
+          <input
+            type="checkbox"
+            [(ngModel)]="entry.required"
+            (ngModelChange)="onAttributeEntryChange()"
+            [disabled]="obs.disabled"
+          />
+          <span class="required-label">{{ (entry.required ? 'attributeRequired' : 'attributePreferred') | pluginTranslate: pluginId | async }}</span>
+        </label>
         <button
           type="button"
           class="variant-attribute-remove-btn"

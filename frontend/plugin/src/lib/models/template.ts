@@ -68,3 +68,11 @@ export interface VariantInfo {
   name: string;
   attributes: Record<string, string>;
 }
+
+/**
+ * An attribute definition for variant selection within a tenant.
+ */
+export interface AttributeDefinition {
+  key: string;
+  description?: string;
+}

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Attribute key dropdown**: Variant attribute keys are now suggested via a dropdown populated from the tenant's attribute definitions (fetched from the new `GET /attributes` endpoint), while still allowing free-text entry.
+- **Required/Preferred toggle**: Each variant attribute entry now has a checkbox to mark it as "Required" (variant must match) or "Preferred" (preferred but not mandatory), matching the Epistola API's `VariantSelectionAttribute.required` field.
+- **Attributes REST endpoint**: `GET /configurations/{id}/attributes` returns the attribute definitions for the plugin's tenant, used to populate the key dropdown.
+
+### Changed
+
+- **`GenerateDocumentConfig.variantAttributes` format**: Changed from `Record<string, string>` to `VariantAttributeEntry[]` (array of `{key, value, required}`). Existing configurations using the old format are automatically converted at both frontend prefill and backend execution time — no migration needed.
+
 ## [0.3.2] - 2026-04-01
 
 ### Added

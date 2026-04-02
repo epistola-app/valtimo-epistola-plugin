@@ -1,6 +1,7 @@
 package app.epistola.valtimo.service;
 
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
+import app.epistola.valtimo.domain.AttributeDefinition;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
@@ -10,6 +11,7 @@ import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
+import app.epistola.client.api.AttributesApi;
 import app.epistola.client.api.EnvironmentsApi;
 import app.epistola.client.api.GenerationApi;
 import app.epistola.client.api.TemplatesApi;
@@ -84,6 +86,26 @@ public class EpistolaServiceImpl implements EpistolaService {
         } catch (Exception e) {
             log.error("Failed to fetch template details for tenant {}, template {}: {}", tenantId, templateId, e.getMessage());
             throw new EpistolaApiException("Failed to fetch template details", e);
+        }
+    }
+
+    @Override
+    public List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId) {
+        log.info("Fetching attribute definitions for tenant: {}", tenantId);
+        try {
+            AttributesApi attributesApi = apiClientFactory.createAttributesApi(baseUrl, apiKey);
+            var response = attributesApi.listAttributes(tenantId);
+
+            if (response == null || response.getItems() == null) {
+                return Collections.emptyList();
+            }
+
+            return response.getItems().stream()
+                    .map(dto -> new AttributeDefinition(dto.getKey(), dto.getDescription()))
+                    .toList();
+        } catch (Exception e) {
+            log.error("Failed to fetch attribute definitions for tenant {}: {}", tenantId, e.getMessage());
+            throw new EpistolaApiException("Failed to fetch attribute definitions", e);
         }
     }
 
@@ -272,10 +294,34 @@ public class EpistolaServiceImpl implements EpistolaService {
             return new java.io.ByteArrayInputStream(content);
         } catch (EpistolaApiException e) {
             throw e;
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.debug("Preview API error for tenant {}: {} {}", tenantId, e.getStatusCode(), e.getResponseBodyAsString());
+            String detail = extractErrorMessage(e.getResponseBodyAsString());
+            throw new EpistolaApiException(detail != null ? detail : e.getMessage(), e);
         } catch (Exception e) {
             log.debug("Failed to preview document for tenant {}: {}", tenantId, e.getMessage());
-            throw new EpistolaApiException("Failed to preview document", e);
+            throw new EpistolaApiException("Failed to preview document: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Extract a human-readable error message from an Epistola API error response body.
+     * Tries to parse JSON and extract "message" or "error" fields.
+     */
+    private String extractErrorMessage(String responseBody) {
+        if (responseBody == null || responseBody.isBlank()) return null;
+        try {
+            var tree = new com.fasterxml.jackson.databind.ObjectMapper().readTree(responseBody);
+            if (tree.has("message") && !tree.get("message").isNull()) {
+                return tree.get("message").asText();
+            }
+            if (tree.has("error") && !tree.get("error").isNull()) {
+                return tree.get("error").asText();
+            }
+        } catch (Exception ignored) {
+            // Not JSON, return raw body
+        }
+        return responseBody.length() > 500 ? responseBody.substring(0, 500) : responseBody;
     }
 
     // Mapping methods
