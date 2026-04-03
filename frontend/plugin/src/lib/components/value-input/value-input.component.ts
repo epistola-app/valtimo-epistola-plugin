@@ -3,6 +3,7 @@ import {CommonModule} from '@angular/common';
 import {FormsModule} from '@angular/forms';
 import {PluginTranslatePipeModule} from '@valtimo/plugin';
 import {InputModule, ValuePathSelectorComponent, ValuePathSelectorPrefix} from '@valtimo/components';
+import {ExpressionFunctionInfo} from '../../models';
 
 export type InputMode = 'browse' | 'pv' | 'expression';
 
@@ -32,6 +33,7 @@ export class ValueInputComponent implements OnChanges {
   @Input() processVariables: string[] = [];
   @Input() disabled = false;
   @Input() placeholder = 'e.g. pv:variableName or doc:path.to.field';
+  @Input() expressionFunctions: ExpressionFunctionInfo[] = [];
 
   @Output() valueChange = new EventEmitter<string>();
 
@@ -40,6 +42,7 @@ export class ValueInputComponent implements OnChanges {
   inputMode: InputMode = 'browse';
   selectedPv = '';
   browseDefault = '';
+  showFunctions = false;
 
   constructor(private readonly cdr: ChangeDetectorRef) {}
 
@@ -71,10 +74,24 @@ export class ValueInputComponent implements OnChanges {
     this.valueChange.emit(newValue);
   }
 
+  insertFunction(fn: ExpressionFunctionInfo): void {
+    const value = `expr:${fn.name}()`;
+    this.valueChange.emit(value);
+    this.showFunctions = false;
+  }
+
+  formatSignature(fn: ExpressionFunctionInfo): string {
+    return fn.overloads.map(o => {
+      const args = o.arguments.map(a => `${a.name}: ${a.type}`).join(', ');
+      return `${fn.name}(${args}) \u2192 ${o.returnType}`;
+    }).join('\n');
+  }
+
   private detectInputMode(value: string): InputMode {
     if (!value) return 'browse';
     if (value.startsWith('doc:') || value.startsWith('case:')) return 'browse';
     if (value.startsWith('pv:')) return 'pv';
+    if (value.startsWith('expr:')) return 'expression';
     if (value.length > 0) return 'expression';
     return 'browse';
   }

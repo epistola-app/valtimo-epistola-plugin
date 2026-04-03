@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy, Component, EventEmitter, Input, Output} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {PluginTranslatePipeModule} from '@valtimo/plugin';
-import {TemplateField} from '../../models';
+import {ExpressionFunctionInfo, TemplateField} from '../../models';
 import {ValueInputComponent} from '../value-input/value-input.component';
 
 @Component({
@@ -19,6 +19,7 @@ export class ScalarFieldComponent {
   @Input() caseDefinitionKey: string | null = null;
   @Input() processVariables: string[] = [];
   @Input() disabled = false;
+  @Input() expressionFunctions: ExpressionFunctionInfo[] = [];
 
   @Output() valueChange = new EventEmitter<any>();
 
