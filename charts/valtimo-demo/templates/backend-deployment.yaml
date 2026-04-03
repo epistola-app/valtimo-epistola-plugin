@@ -12,7 +12,9 @@ spec:
   template:
     metadata:
       annotations:
+        {{- if not .Values.backend.existingSecret }}
         checksum/secret: {{ include (print $.Template.BasePath "/backend-secret.yaml") . | sha256sum }}
+        {{- end }}
         {{- if .Values.observability.prometheus.enabled }}
         prometheus.io/scrape: "true"
         prometheus.io/port: {{ .Values.observability.prometheus.port | quote }}
@@ -121,7 +123,7 @@ spec:
             - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTSECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "valtimo-demo.backend.fullname" . }}
+                  name: {{ include "valtimo-demo.backend.secretName" . }}
                   key: keycloak-client-secret
 
             # Valtimo
@@ -130,7 +132,7 @@ spec:
             - name: VALTIMO_PLUGIN_ENCRYPTIONSECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "valtimo-demo.backend.fullname" . }}
+                  name: {{ include "valtimo-demo.backend.secretName" . }}
                   key: plugin-encryption-secret
 
             # Epistola
@@ -141,7 +143,7 @@ spec:
             - name: OPERATON_BPM_ADMINUSER_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "valtimo-demo.backend.fullname" . }}
+                  name: {{ include "valtimo-demo.backend.secretName" . }}
                   key: operaton-admin-password
 
             {{- with .Values.backend.extraEnv }}

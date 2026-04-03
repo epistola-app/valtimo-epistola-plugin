@@ -29,6 +29,12 @@ publicUrls:
 # Backend (Valtimo Spring Boot application)
 # =============================================================================
 backend:
+  # Name of an existing Secret containing backend credentials. When set, the
+  # chart will NOT create its own Secret. The existing Secret must contain these
+  # keys: keycloak-client-secret, plugin-encryption-secret, operaton-admin-password,
+  # and (if keycloak.enabled) keycloak-admin-password.
+  existingSecret: ""
+
   replicaCount: 1
 
   image:

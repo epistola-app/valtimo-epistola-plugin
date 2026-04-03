@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Helm: `backend.existingSecret` support**: The valtimo-demo chart now supports referencing a pre-existing Kubernetes Secret (e.g., managed by SealedSecrets) via `backend.existingSecret`. When set, the chart skips creating its own Secret and all deployments reference the named secret instead.
+
 ## [0.3.3] - 2026-04-02
 
 ### Added

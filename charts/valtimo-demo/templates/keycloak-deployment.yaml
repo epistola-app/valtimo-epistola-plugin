@@ -92,7 +92,7 @@ spec:
             - name: KC_BOOTSTRAP_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "valtimo-demo.backend.fullname" . }}
+                  name: {{ include "valtimo-demo.backend.secretName" . }}
                   key: keycloak-admin-password
             - name: KC_HTTP_ENABLED
               value: "true"

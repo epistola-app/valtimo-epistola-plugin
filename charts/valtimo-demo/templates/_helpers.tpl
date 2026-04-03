@@ -29,6 +29,17 @@ Backend fully qualified name.
 {{- end }}
 
 {{/*
+Backend secret name — uses existingSecret when set, otherwise the chart-managed secret.
+*/}}
+{{- define "valtimo-demo.backend.secretName" -}}
+{{- if .Values.backend.existingSecret }}
+{{- .Values.backend.existingSecret }}
+{{- else }}
+{{- include "valtimo-demo.backend.fullname" . }}
+{{- end }}
+{{- end }}
+
+{{/*
 Frontend fully qualified name.
 */}}
 {{- define "valtimo-demo.frontend.fullname" -}}
@@ -273,6 +284,10 @@ the URLs that backend services expect.
   avoid regenerating credentials on every upgrade.
 */}}
 {{- define "valtimo-demo.keycloak.adminPassword" -}}
+{{- if .Values.backend.existingSecret -}}
+{{- /* Password is managed externally via existingSecret */ -}}
+{{- "" -}}
+{{- else -}}
 {{- $password := .Values.keycloak.adminPassword | default "" -}}
 {{- if and .Values.keycloak.enabled (eq $password "") -}}
   {{- $existing := lookup "v1" "Secret" .Release.Namespace (include "valtimo-demo.backend.fullname" .) -}}
@@ -283,6 +298,7 @@ the URLs that backend services expect.
   {{- end -}}
 {{- end -}}
 {{- $password -}}
+{{- end -}}
 {{- end }}
 
 {{/*

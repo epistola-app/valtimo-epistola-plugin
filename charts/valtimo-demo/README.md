@@ -51,6 +51,7 @@ kubectl get secret demo-valtimo-demo-backend \
 | `publicUrls.frontend` | Fully-qualified URL for the Angular app. Derives redirect URIs, whitelisted origins, and `VALTIMO_APP_HOSTNAME`. |
 | `publicUrls.keycloak` | Fully-qualified Keycloak URL (include `/auth`). Used by frontend + backend and for `KC_HOSTNAME`. |
 | `keycloak.webAuthn.*` | WebAuthn relying party settings (entity names, RP IDs, signature algorithms, user verification). Both password-based and passwordless flows use these values. |
+| `backend.existingSecret` | Name of a pre-existing Secret to use instead of the chart-managed one. See [Secrets Management](#secrets-management). |
 | `backend.keycloak.backendClientSecret` | Secret shared with the Valtimo backend service account. Stored in `demo-valtimo-demo-backend` secret. |
 | `database.type` | Choose between `cnpg` (default), `cnpgExisting`, or `external`. |
 | `epistola.enabled` | Deploy bundled Epistola chart (`true`) or point to `externalEpistola.url`. |
@@ -111,6 +112,62 @@ helm install demo charts/valtimo-demo \
   --set publicUrls.frontend="https://valtimo.example.com" \
   --set publicUrls.keycloak="https://auth.example.com/auth"
 ```
+
+## Secrets Management
+
+By default, the chart creates a Kubernetes `Secret` named `<release>-valtimo-demo-backend`
+containing the credentials listed below. For production or GitOps workflows you typically
+want to manage secrets externally (e.g., via [Sealed Secrets](https://sealed-secrets.netlify.app/)
+or an ESO `SecretStore`).
+
+### Using an existing secret
+
+Set `backend.existingSecret` to the name of a pre-existing Secret. The chart will
+skip creating its own Secret and all deployments will reference the provided one instead.
+
+```yaml
+backend:
+  existingSecret: "my-valtimo-sealed-secret"
+```
+
+The existing Secret must contain **all** of the following keys:
+
+| Key | Description |
+| --- | --- |
+| `keycloak-client-secret` | Valtimo backend service-account secret for Keycloak |
+| `plugin-encryption-secret` | AES key used by Valtimo to encrypt plugin properties |
+| `operaton-admin-password` | Operaton BPMN engine admin password |
+| `keycloak-admin-password` | Keycloak bootstrap admin password (required when `keycloak.enabled`) |
+
+#### Example: Sealed Secrets
+
+Create a SealedSecret that decrypts into the expected Secret:
+
+```yaml
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: my-valtimo-sealed-secret
+spec:
+  encryptedData:
+    keycloak-client-secret: AgBy3i...
+    plugin-encryption-secret: AgCx8j...
+    operaton-admin-password: AgDz2k...
+    keycloak-admin-password: AgEw1l...
+```
+
+Then reference it in your values:
+
+```bash
+helm install demo charts/valtimo-demo \
+  --set backend.existingSecret=my-valtimo-sealed-secret \
+  --set publicUrls.frontend="https://valtimo.example.com" \
+  --set publicUrls.keycloak="https://auth.example.com/auth"
+```
+
+> When `existingSecret` is set, the `checksum/secret` pod annotation is omitted since
+> the chart does not manage the secret contents. If you need rolling restarts on secret
+> changes, use a tool like [Reloader](https://github.com/stakater/Reloader).
 
 ## Authentication & Demo Flow
 
