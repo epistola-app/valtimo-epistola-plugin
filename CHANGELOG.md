@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Helm: consolidated secrets management**: All secret values are now grouped under a top-level `secrets:` block in `values.yaml`. The `secrets.existingSecret` value allows referencing a pre-existing Kubernetes Secret (e.g., managed by SealedSecrets) instead of the chart-managed one. Client secrets are no longer embedded in the Keycloak realm ConfigMap — they are injected at runtime via an init container.
+- **Helm chart release workflow**: Chart releases are now triggered by creating a GitHub Release with a `chart-X.Y.Z` tag, matching the app release pattern. Auto-release on push to main has been removed. Use `/release-chart` or `gh release create chart-X.Y.Z` to cut a chart release.
 
 ### Removed
 

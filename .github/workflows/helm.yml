@@ -1,21 +1,18 @@
 name: Helm Chart
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'charts/**'
   pull_request:
     branches: [main]
     paths:
       - 'charts/**'
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
-      force_release:
-        description: 'Force release even without chart changes'
-        required: false
-        default: false
-        type: boolean
+      version:
+        description: 'Chart version to release (e.g. 0.3.0). Required for manual runs.'
+        required: true
+        type: string
 
 env:
   REGISTRY: ghcr.io
@@ -26,6 +23,7 @@ jobs:
   lint:
     name: Lint Helm Chart
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,11 +48,42 @@ jobs:
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
 
+  version:
+    name: Resolve version
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            TAG_NAME="${{ github.event.release.tag_name }}"
+            # Only process chart-* tags
+            if [[ "$TAG_NAME" != chart-* ]]; then
+              echo "::notice::Skipping non-chart release tag: ${TAG_NAME}"
+              echo "version=" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            VERSION="${TAG_NAME#chart-}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+
+          if [ -z "$VERSION" ]; then
+            echo "::error::Could not determine version"
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Chart version: ${VERSION}"
+
   release:
     name: Release Helm Chart
     runs-on: ubuntu-latest
-    needs: lint
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
+    needs: version
+    if: needs.version.outputs.version != ''
     permissions:
       contents: write
       packages: write
@@ -64,93 +93,17 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Check for chart changes
-        id: chart-changes
-        run: |
-          # Check if force release is requested
-          if [ "${{ inputs.force_release }}" == "true" ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Force release requested via workflow_dispatch"
-            exit 0
-          fi
-
-          # Get the previous chart tag or use initial commit
-          PREV_CHART_TAG=$(git tag -l "chart-*" --sort=-v:refname | head -n 1)
-          if [ -z "$PREV_CHART_TAG" ]; then
-            # No previous chart tag, check if charts/ directory exists
-            if [ -d "charts/" ]; then
-              echo "changed=true" >> $GITHUB_OUTPUT
-              echo "No previous chart tag found, will create initial release"
-            else
-              echo "changed=false" >> $GITHUB_OUTPUT
-              echo "No charts directory found"
-            fi
-          else
-            # Count commits affecting charts/ since last chart tag
-            CHART_COMMITS=$(git log --oneline ${PREV_CHART_TAG}..HEAD -- charts/ | wc -l | tr -d ' ')
-            if [ "$CHART_COMMITS" -gt 0 ]; then
-              echo "changed=true" >> $GITHUB_OUTPUT
-              echo "Chart changes detected: $CHART_COMMITS commits since $PREV_CHART_TAG"
-            else
-              echo "changed=false" >> $GITHUB_OUTPUT
-              echo "No chart changes detected since $PREV_CHART_TAG"
-            fi
-          fi
-
-      - name: Calculate chart version
-        if: steps.chart-changes.outputs.changed == 'true'
-        id: chart-tag
-        run: |
-          # Read major.minor from Chart.yaml (source of truth)
-          CHART_VERSION=$(grep '^version:' ${{ env.CHART_PATH }}/Chart.yaml | sed -E 's/version:\s*([0-9]+\.[0-9]+)\.[0-9]+/\1/')
-          if [ -z "$CHART_VERSION" ]; then
-            echo "::error::Could not read version from Chart.yaml"
-            exit 1
-          fi
-          echo "Chart.yaml major.minor: ${CHART_VERSION}"
-
-          # Find highest patch version among existing chart tags
-          LATEST_PATCH=-1
-          for tag in $(git tag -l "chart-${CHART_VERSION}.*"); do
-            PATCH=$(echo "$tag" | sed -E "s/chart-${CHART_VERSION}\.([0-9]+)/\1/")
-            if [ "$PATCH" -gt "$LATEST_PATCH" ] 2>/dev/null; then
-              LATEST_PATCH=$PATCH
-            fi
-          done
-
-          NEXT_PATCH=$((LATEST_PATCH + 1))
-          NEW_VERSION="${CHART_VERSION}.${NEXT_PATCH}"
-
-          # Safety: prevent 1.0.0+ releases
-          MAJOR=$(echo "$NEW_VERSION" | cut -d. -f1)
-          if [ "$MAJOR" -ge 1 ]; then
-            echo "::error::Chart version ${NEW_VERSION} would be >= 1.0.0. Update Chart.yaml major.minor manually when ready."
-            exit 1
-          fi
-
-          echo "new_version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "new_tag=chart-${NEW_VERSION}" >> "$GITHUB_OUTPUT"
-          echo "Chart version: ${NEW_VERSION} (previous highest patch: ${LATEST_PATCH})"
-
-      - name: Create chart version tag
-        if: steps.chart-changes.outputs.changed == 'true'
-        run: |
-          git tag "chart-${{ steps.chart-tag.outputs.new_version }}"
-          git push origin "chart-${{ steps.chart-tag.outputs.new_version }}"
-
       - name: Set up Helm
-        if: steps.chart-changes.outputs.changed == 'true'
         uses: azure/setup-helm@v4
         with:
           version: 'v3.14.0'
 
       - name: Update Chart.yaml version
-        if: steps.chart-changes.outputs.changed == 'true'
         run: |
-          NEW_VERSION="${{ steps.chart-tag.outputs.new_version }}"
-          sed -i "s/^version:.*/version: ${NEW_VERSION}/" ${{ env.CHART_PATH }}/Chart.yaml
+          VERSION="${{ needs.version.outputs.version }}"
+          sed -i "s/^version:.*/version: ${VERSION}/" ${{ env.CHART_PATH }}/Chart.yaml
 
-          # Sync appVersion with latest app tag
+          # Sync appVersion with latest app release tag
           APP_VERSION=$(git tag -l "v*" --sort=-v:refname | head -n 1 | sed 's/^v//')
           if [ -n "$APP_VERSION" ]; then
             sed -i "s/^appVersion:.*/appVersion: \"${APP_VERSION}\"/" ${{ env.CHART_PATH }}/Chart.yaml
@@ -160,48 +113,54 @@ jobs:
           cat ${{ env.CHART_PATH }}/Chart.yaml
 
       - name: Build chart dependencies
-        if: steps.chart-changes.outputs.changed == 'true'
         run: helm dependency build ${{ env.CHART_PATH }}
 
       - name: Lint Helm chart
-        if: steps.chart-changes.outputs.changed == 'true'
         run: helm lint ${{ env.CHART_PATH }}
 
       - name: Log in to Container Registry
-        if: steps.chart-changes.outputs.changed == 'true'
         run: |
           echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u ${{ github.actor }} --password-stdin
 
       - name: Package Helm chart
-        if: steps.chart-changes.outputs.changed == 'true'
         run: |
           mkdir -p .helm-packages
           helm package ${{ env.CHART_PATH }} --destination .helm-packages
 
       - name: Push Helm chart to OCI registry
-        if: steps.chart-changes.outputs.changed == 'true'
         run: |
-          helm push .helm-packages/${{ env.CHART_NAME }}-${{ steps.chart-tag.outputs.new_version }}.tgz oci://ghcr.io/epistola-app/charts
+          helm push .helm-packages/${{ env.CHART_NAME }}-${{ needs.version.outputs.version }}.tgz oci://ghcr.io/epistola-app/charts
 
-      - name: Create Helm Chart Release
-        if: steps.chart-changes.outputs.changed == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.chart-tag.outputs.new_tag }}
-          name: Helm Chart ${{ steps.chart-tag.outputs.new_version }}
-          body: |
-            ## Helm Chart Release ${{ steps.chart-tag.outputs.new_version }}
-
-            ### Installation
-            ```bash
-            helm install valtimo-demo oci://ghcr.io/epistola-app/charts/${{ env.CHART_NAME }} --version ${{ steps.chart-tag.outputs.new_version }}
-            ```
-
-            ### Upgrade
-            ```bash
-            helm upgrade valtimo-demo oci://ghcr.io/epistola-app/charts/${{ env.CHART_NAME }} --version ${{ steps.chart-tag.outputs.new_version }}
-            ```
-          files: |
-            .helm-packages/${{ env.CHART_NAME }}-${{ steps.chart-tag.outputs.new_version }}.tgz
+      - name: Update GitHub Release
+        if: github.event_name == 'release'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          gh release edit "chart-${VERSION}" \
+            --repo "${{ github.repository }}" \
+            --notes "$(cat <<EOF
+          ## Helm Chart ${VERSION}
+
+          ### Installation
+          \`\`\`bash
+          helm install valtimo-demo oci://ghcr.io/epistola-app/charts/${{ env.CHART_NAME }} --version ${VERSION}
+          \`\`\`
+
+          ### Upgrade
+          \`\`\`bash
+          helm upgrade valtimo-demo oci://ghcr.io/epistola-app/charts/${{ env.CHART_NAME }} --version ${VERSION}
+          \`\`\`
+          EOF
+          )"
+
+      - name: Upload chart package to release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          gh release upload "chart-${VERSION}" \
+            ".helm-packages/${{ env.CHART_NAME }}-${VERSION}.tgz" \
+            --repo "${{ github.repository }}" \
+            --clobber
