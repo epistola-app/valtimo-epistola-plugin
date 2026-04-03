@@ -17,23 +17,18 @@ Valtimo Epistola Demo has been deployed!
 
 {{- end }}
 
-=== Default Credentials ===
+=== Credentials ===
 
-  Valtimo admin:
-    Username: admin
-    Password: admin
-
-  Valtimo user:
-    Username: user
-    Password: user
+  Users can self-register via the Keycloak login page.
 
 {{- if .Values.keycloak.enabled }}
 
   Keycloak admin console:
     kubectl port-forward svc/{{ include "valtimo-demo.keycloak.fullname" . }} 8081:{{ .Values.keycloak.service.port }}
-    URL:      http://localhost:8081
+    URL:      http://localhost:8081/auth
     Username: {{ .Values.keycloak.adminUser }}
-    Password: {{ .Values.keycloak.adminPassword }}
+    Password: kubectl get secret {{ include "valtimo-demo.backend.secretName" . }} \
+                -o jsonpath='{.data.keycloak-admin-password}' | base64 -d
 {{- end }}
 
 === Components ===

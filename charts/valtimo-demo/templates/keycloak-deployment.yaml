@@ -42,10 +42,23 @@ spec:
             - |
               set -e
               mkdir -p /keycloak-data/import
-              cp /realm-source/valtimo-realm.json /keycloak-data/import/
+              # Copy realm template and inject secrets from environment variables
+              sed -e "s|__BACKEND_CLIENT_SECRET__|${BACKEND_CLIENT_SECRET}|g" \
+                  -e "s|__EPISTOLA_CLIENT_SECRET__|${EPISTOLA_CLIENT_SECRET}|g" \
+                  /realm-source/valtimo-realm.json > /keycloak-data/import/valtimo-realm.json
               /opt/keycloak/bin/kc.sh build
               cp -r /opt/keycloak/lib/quarkus/. /keycloak-lib/
           env:
+            - name: BACKEND_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "valtimo-demo.backend.secretName" . }}
+                  key: keycloak-client-secret
+            - name: EPISTOLA_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "valtimo-demo.backend.secretName" . }}
+                  key: epistola-client-secret
             - name: KC_DB
               value: postgres
             - name: KC_HEALTH_ENABLED

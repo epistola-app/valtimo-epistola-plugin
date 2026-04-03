@@ -51,8 +51,7 @@ kubectl get secret demo-valtimo-demo-backend \
 | `publicUrls.frontend` | Fully-qualified URL for the Angular app. Derives redirect URIs, whitelisted origins, and `VALTIMO_APP_HOSTNAME`. |
 | `publicUrls.keycloak` | Fully-qualified Keycloak URL (include `/auth`). Used by frontend + backend and for `KC_HOSTNAME`. |
 | `keycloak.webAuthn.*` | WebAuthn relying party settings (entity names, RP IDs, signature algorithms, user verification). Both password-based and passwordless flows use these values. |
-| `backend.existingSecret` | Name of a pre-existing Secret to use instead of the chart-managed one. See [Secrets Management](#secrets-management). |
-| `backend.keycloak.backendClientSecret` | Secret shared with the Valtimo backend service account. Stored in `demo-valtimo-demo-backend` secret. |
+| `secrets.existingSecret` | Name of a pre-existing Secret to use instead of the chart-managed one. See [Secrets Management](#secrets-management). |
 | `database.type` | Choose between `cnpg` (default), `cnpgExisting`, or `external`. |
 | `epistola.enabled` | Deploy bundled Epistola chart (`true`) or point to `externalEpistola.url`. |
 | `ingress.*` | Configure ingress hosts/tls or rely on an external gateway. When ingress is disabled you must provide `publicUrls.*`. |
@@ -115,18 +114,33 @@ helm install demo charts/valtimo-demo \
 
 ## Secrets Management
 
-By default, the chart creates a Kubernetes `Secret` named `<release>-valtimo-demo-backend`
-containing the credentials listed below. For production or GitOps workflows you typically
-want to manage secrets externally (e.g., via [Sealed Secrets](https://sealed-secrets.netlify.app/)
-or an ESO `SecretStore`).
+All sensitive values are consolidated under the `secrets:` block in `values.yaml`
+and stored in a single Kubernetes `Secret` named `<release>-valtimo-demo-backend`.
+Client secrets for the Keycloak realm are injected at runtime via an init container
+— the realm ConfigMap never contains actual secrets.
+
+### Chart-managed secret (default)
+
+When no `secrets.existingSecret` is set, the chart creates the Secret from the
+`secrets.*` values:
+
+```yaml
+secrets:
+  keycloakClientSecret: "change-me"
+  pluginEncryptionSecret: "0123456789abcdef0123456789abcdef"
+  operatonAdminPassword: "admin"
+  keycloakAdminPassword: ""          # auto-generated when empty
+  epistolaClientSecret: "change-me"
+```
 
 ### Using an existing secret
 
-Set `backend.existingSecret` to the name of a pre-existing Secret. The chart will
-skip creating its own Secret and all deployments will reference the provided one instead.
+Set `secrets.existingSecret` to the name of a pre-existing Secret. The chart will
+skip creating its own Secret and all deployments will reference the provided one
+instead.
 
 ```yaml
-backend:
+secrets:
   existingSecret: "my-valtimo-sealed-secret"
 ```
 
@@ -138,6 +152,7 @@ The existing Secret must contain **all** of the following keys:
 | `plugin-encryption-secret` | AES key used by Valtimo to encrypt plugin properties |
 | `operaton-admin-password` | Operaton BPMN engine admin password |
 | `keycloak-admin-password` | Keycloak bootstrap admin password (required when `keycloak.enabled`) |
+| `epistola-client-secret` | Epistola OAuth2 client secret (required when Epistola is enabled) |
 
 #### Example: Sealed Secrets
 
@@ -154,13 +169,14 @@ spec:
     plugin-encryption-secret: AgCx8j...
     operaton-admin-password: AgDz2k...
     keycloak-admin-password: AgEw1l...
+    epistola-client-secret: AgFv3m...
 ```
 
 Then reference it in your values:
 
 ```bash
 helm install demo charts/valtimo-demo \
-  --set backend.existingSecret=my-valtimo-sealed-secret \
+  --set secrets.existingSecret=my-valtimo-sealed-secret \
   --set publicUrls.frontend="https://valtimo.example.com" \
   --set publicUrls.keycloak="https://auth.example.com/auth"
 ```

@@ -12,7 +12,7 @@ spec:
   template:
     metadata:
       annotations:
-        {{- if not .Values.backend.existingSecret }}
+        {{- if not .Values.secrets.existingSecret }}
         checksum/secret: {{ include (print $.Template.BasePath "/backend-secret.yaml") . | sha256sum }}
         {{- end }}
         {{- if .Values.observability.prometheus.enabled }}
@@ -92,18 +92,6 @@ spec:
                 secretKeyRef:
                   name: {{ required "database.external.existingSecret is required" .Values.database.external.existingSecret }}
                   key: {{ .Values.database.external.secretKey }}
-            {{- end }}
-
-            {{- if .Values.backend.rabbitmq.enabled }}
-            # RabbitMQ
-            - name: SPRING_RABBITMQ_HOST
-              value: {{ .Values.backend.rabbitmq.host | quote }}
-            - name: SPRING_RABBITMQ_PORT
-              value: {{ .Values.backend.rabbitmq.port | quote }}
-            - name: SPRING_RABBITMQ_USERNAME
-              value: {{ .Values.backend.rabbitmq.username | quote }}
-            - name: SPRING_RABBITMQ_PASSWORD
-              value: {{ .Values.backend.rabbitmq.password | quote }}
             {{- end }}
 
             # OAuth2 / Keycloak

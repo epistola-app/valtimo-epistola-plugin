@@ -7,9 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Changed
 
-- **Helm: `backend.existingSecret` support**: The valtimo-demo chart now supports referencing a pre-existing Kubernetes Secret (e.g., managed by SealedSecrets) via `backend.existingSecret`. When set, the chart skips creating its own Secret and all deployments reference the named secret instead.
+- **Helm: consolidated secrets management**: All secret values are now grouped under a top-level `secrets:` block in `values.yaml`. The `secrets.existingSecret` value allows referencing a pre-existing Kubernetes Secret (e.g., managed by SealedSecrets) instead of the chart-managed one. Client secrets are no longer embedded in the Keycloak realm ConfigMap — they are injected at runtime via an init container.
+
+### Removed
+
+- **Helm: RabbitMQ support removed** from the valtimo-demo chart. Use `backend.extraEnv` if needed.
+
+### Breaking Changes
+
+- `backend.existingSecret` moved to `secrets.existingSecret`
+- `backend.keycloak.backendClientSecret` moved to `secrets.keycloakClientSecret`
+- `backend.valtimo.pluginEncryptionSecret` moved to `secrets.pluginEncryptionSecret`
+- `backend.operaton.adminPassword` moved to `secrets.operatonAdminPassword`
+- `keycloak.adminPassword` moved to `secrets.keycloakAdminPassword`
+- `epistola.keycloak.clientSecret` and `externalEpistola.clientSecret` merged into `secrets.epistolaClientSecret`
+- `backend.rabbitmq.*` removed entirely
 
 ## [0.3.3] - 2026-04-02
 
