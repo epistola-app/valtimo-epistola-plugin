@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {PluginTranslatePipeModule} from '@valtimo/plugin';
-import {TemplateField} from '../../models';
+import {ExpressionFunctionInfo, TemplateField} from '../../models';
 import {countRequiredMapped} from '../../utils/template-field-utils';
 import {FieldTreeComponent} from '../field-tree/field-tree.component';
 
@@ -28,6 +28,7 @@ export class DataMappingTreeComponent implements OnChanges {
   @Input() disabled = false;
   @Input() caseDefinitionKey: string | null = null;
   @Input() processVariables: string[] = [];
+  @Input() expressionFunctions: ExpressionFunctionInfo[] = [];
 
   @Output() mappingChange = new EventEmitter<Record<string, any>>();
   @Output() requiredFieldsStatus = new EventEmitter<{mapped: number; total: number}>();

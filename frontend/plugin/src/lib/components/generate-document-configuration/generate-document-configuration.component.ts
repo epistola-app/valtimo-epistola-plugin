@@ -11,7 +11,7 @@ import {CaseManagementParams, ManagementContext} from '@valtimo/shared';
 import {ProcessLinkStateService} from '@valtimo/process-link';
 import {BehaviorSubject, combineLatest, merge, Observable, of, Subject, Subscription} from 'rxjs';
 import {catchError, filter, map, switchMap, take, takeUntil, tap} from 'rxjs/operators';
-import {AsyncResource, errorResource, GenerateDocumentConfig, initialResource, loadingResource, successResource, TemplateField} from '../../models';
+import {AsyncResource, errorResource, ExpressionFunctionInfo, GenerateDocumentConfig, initialResource, loadingResource, successResource, TemplateField} from '../../models';
 import {EpistolaPluginService} from '../../services';
 import {DataMappingTreeComponent} from '../data-mapping-tree/data-mapping-tree.component';
 
@@ -66,6 +66,7 @@ export class GenerateDocumentConfigurationComponent
   availableAttributeKeys: string[] = [];
   caseDefinitionKey: string | null = null;
   processVariables: string[] = [];
+  expressionFunctions: ExpressionFunctionInfo[] = [];
   requiredFieldsStatus: {mapped: number; total: number} = {mapped: 0, total: 0};
   prefillDataMapping: Record<string, any> = {};
 
@@ -90,6 +91,7 @@ export class GenerateDocumentConfigurationComponent
     this.initAttributesLoading();
     this.initVariantsLoading();
     this.initTemplateFieldsLoading();
+    this.loadExpressionFunctions();
     this.openSaveSubscription();
   }
 
@@ -350,6 +352,16 @@ export class GenerateDocumentConfigurationComponent
       filter(result => result !== null)
     ).subscribe(details => {
       this.templateFields$.next(successResource(details.fields || []));
+    });
+  }
+
+  private loadExpressionFunctions(): void {
+    this.epistolaPluginService.getExpressionFunctions().pipe(
+      takeUntil(this.destroy$),
+      catchError(() => of([]))
+    ).subscribe(functions => {
+      this.expressionFunctions = functions;
+      this.cdr.markForCheck();
     });
   }
 

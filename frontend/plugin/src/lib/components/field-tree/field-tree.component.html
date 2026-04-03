@@ -7,6 +7,7 @@
       [caseDefinitionKey]="caseDefinitionKey"
       [processVariables]="processVariables"
       [disabled]="disabled"
+      [expressionFunctions]="expressionFunctions"
       (valueChange)="valueChange.emit($event)"
     ></epistola-scalar-field>
   }
@@ -29,6 +30,7 @@
           [caseDefinitionKey]="caseDefinitionKey"
           [processVariables]="processVariables"
           [disabled]="disabled"
+          [expressionFunctions]="expressionFunctions"
           (valueChange)="onChildChange(child.name, $event)"
         ></epistola-field-tree>
       </div>
@@ -42,6 +44,7 @@
       [caseDefinitionKey]="caseDefinitionKey"
       [processVariables]="processVariables"
       [disabled]="disabled"
+      [expressionFunctions]="expressionFunctions"
       (valueChange)="valueChange.emit($event)"
     ></epistola-array-field>
   }

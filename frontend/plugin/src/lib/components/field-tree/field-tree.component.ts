@@ -1,7 +1,7 @@
 import {ChangeDetectionStrategy, Component, EventEmitter, forwardRef, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {PluginTranslatePipeModule} from '@valtimo/plugin';
-import {TemplateField} from '../../models';
+import {ExpressionFunctionInfo, TemplateField} from '../../models';
 import {countRequiredMapped} from '../../utils/template-field-utils';
 import {ScalarFieldComponent} from '../scalar-field/scalar-field.component';
 import {ArrayFieldComponent} from '../array-field/array-field.component';
@@ -27,6 +27,7 @@ export class FieldTreeComponent implements OnChanges {
   @Input() caseDefinitionKey: string | null = null;
   @Input() processVariables: string[] = [];
   @Input() disabled = false;
+  @Input() expressionFunctions: ExpressionFunctionInfo[] = [];
 
   @Output() valueChange = new EventEmitter<any>();
 

@@ -42,8 +42,8 @@
     </ng-template>
   </div>
 
-  <!-- Expression mode: text input -->
-  <div class="input-control" *ngIf="inputMode === 'expression'">
+  <!-- Expression mode: text input with function browser -->
+  <div class="input-control expression-control" *ngIf="inputMode === 'expression'">
     <v-input
       [name]="'fx_' + name"
       [defaultValue]="value"
@@ -51,5 +51,21 @@
       [placeholder]="placeholder"
       (valueChange)="onExpressionValueChange($event)"
     ></v-input>
+    <div class="expression-functions" *ngIf="expressionFunctions.length > 0">
+      <button type="button" class="functions-toggle" (click)="showFunctions = !showFunctions" [disabled]="disabled">
+        {{ 'availableFunctions' | pluginTranslate: pluginId | async }} ({{ expressionFunctions.length }})
+      </button>
+      <div class="functions-list" *ngIf="showFunctions">
+        <div *ngFor="let fn of expressionFunctions" class="function-item" (click)="insertFunction(fn)">
+          <div class="function-header">
+            <code class="function-name">{{ fn.name }}</code>
+            <span class="function-description">{{ fn.description }}</span>
+          </div>
+          <div class="function-overloads">
+            <code *ngFor="let overload of fn.overloads" class="function-signature">{{ fn.name }}(<span *ngFor="let arg of overload.arguments; let last = last">{{ arg.name }}: {{ arg.type }}<span *ngIf="!last">, </span></span>) &rarr; {{ overload.returnType }}</code>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>

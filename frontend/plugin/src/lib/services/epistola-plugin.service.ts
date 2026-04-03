@@ -2,7 +2,7 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {ConfigService} from '@valtimo/shared';
 import {Observable} from 'rxjs';
-import {AttributeDefinition, EnvironmentInfo, PreviewSource, TemplateDetails, TemplateInfo, ValidationResult, VariantInfo} from '../models';
+import {AttributeDefinition, EnvironmentInfo, ExpressionFunctionInfo, PreviewSource, TemplateDetails, TemplateInfo, ValidationResult, VariantInfo} from '../models';
 
 /**
  * Service for interacting with Epistola plugin API endpoints.
@@ -105,6 +105,15 @@ export class EpistolaPluginService {
       params['sourceActivityId'] = sourceActivityId;
     }
     return this.http.get<any>(`${this.apiEndpoint}/retry-form`, {params});
+  }
+
+  /**
+   * List all available expression functions for expr: data mapping values.
+   */
+  getExpressionFunctions(): Observable<ExpressionFunctionInfo[]> {
+    return this.http.get<ExpressionFunctionInfo[]>(
+      `${this.apiEndpoint}/expression-functions`
+    );
   }
 
   /**

@@ -4,6 +4,11 @@ import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.deploy.EpistolaTemplateSyncService;
 import app.epistola.valtimo.deploy.EpistolaTemplateSyncTrigger;
 import app.epistola.valtimo.deploy.TemplateDefinitionScanner;
+import app.epistola.valtimo.expression.EpistolaExpressionFunction;
+import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
+import app.epistola.valtimo.expression.ExpressionResolver;
+import app.epistola.valtimo.expression.functions.FormatDateFunction;
+import app.epistola.valtimo.expression.functions.StringFunctions;
 import app.epistola.valtimo.service.DataMappingResolverService;
 import app.epistola.valtimo.service.EpistolaCompletionEventConsumer;
 import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
@@ -31,6 +36,8 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
+import java.util.List;
+
 @Slf4j
 @AutoConfiguration
 @ConditionalOnProperty(name = "epistola.enabled", havingValue = "true", matchIfMissing = true)
@@ -51,11 +58,38 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(ExpressionFunctionRegistry.class)
+    public ExpressionFunctionRegistry expressionFunctionRegistry(
+            List<EpistolaExpressionFunction> functions
+    ) {
+        return new ExpressionFunctionRegistry(functions);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(ExpressionResolver.class)
+    public ExpressionResolver expressionResolver(ExpressionFunctionRegistry registry) {
+        return new ExpressionResolver(registry);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(FormatDateFunction.class)
+    public FormatDateFunction formatDateFunction() {
+        return new FormatDateFunction();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(StringFunctions.class)
+    public StringFunctions stringFunctions() {
+        return new StringFunctions();
+    }
+
+    @Bean
     @ConditionalOnMissingBean(DataMappingResolverService.class)
     public DataMappingResolverService dataMappingResolverService(
-            ValueResolverService valueResolverService
+            ValueResolverService valueResolverService,
+            ExpressionResolver expressionResolver
     ) {
-        return new DataMappingResolverService(valueResolverService);
+        return new DataMappingResolverService(valueResolverService, expressionResolver);
     }
 
     @Bean
@@ -126,10 +160,12 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaService epistolaService,
             ProcessVariableDiscoveryService processVariableDiscoveryService,
             RetryFormService retryFormService,
-            app.epistola.valtimo.service.PreviewService previewService
+            app.epistola.valtimo.service.PreviewService previewService,
+            ExpressionFunctionRegistry expressionFunctionRegistry
     ) {
         return new EpistolaPluginResource(pluginService, epistolaService,
-                processVariableDiscoveryService, retryFormService, previewService);
+                processVariableDiscoveryService, retryFormService, previewService,
+                expressionFunctionRegistry);
     }
 
     @Bean

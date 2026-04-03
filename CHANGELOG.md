@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Expression function support in data mappings**: New `expr:` prefix enables calling registered Spring beans from data mapping values. Expression functions use typed `execute(ExpressionContext, ...)` methods with overload support, discovered via reflection. A `SimpleEvaluationContext` ensures only whitelisted beans are callable (no arbitrary reflection or type access).
+  - `EpistolaExpressionFunction` marker interface for registering custom functions
+  - `ExpressionFunctionRegistry` for bean discovery and overload matching
+  - `ExpressionResolver` for parsing `expr:functionName(args)` syntax with SpEL argument evaluation
+  - Built-in `formatDate` and `str` sample functions
+  - `GET /api/v1/plugin/epistola/expression-functions` REST endpoint listing available functions with typed signatures
+  - Frontend function browser in expression (fx) mode showing available functions, overloads, and argument types
+
 ### Changed
 
 - **Helm: consolidated secrets management**: All secret values are now grouped under a top-level `secrets:` block in `values.yaml`. The `secrets.existingSecret` value allows referencing a pre-existing Kubernetes Secret (e.g., managed by SealedSecrets) instead of the chart-managed one. Client secrets are no longer embedded in the Keycloak realm ConfigMap — they are injected at runtime via an init container.

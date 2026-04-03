@@ -1,5 +1,6 @@
 package app.epistola.valtimo.web.rest;
 
+import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.RetryFormService;
@@ -36,8 +37,10 @@ class EpistolaPluginResourceDocumentDownloadTest {
         var processVariableDiscoveryService = mock(ProcessVariableDiscoveryService.class);
         var retryFormService = mock(RetryFormService.class);
         var previewService = mock(app.epistola.valtimo.service.PreviewService.class);
+        var expressionFunctionRegistry = new ExpressionFunctionRegistry(List.of());
         resource = new EpistolaPluginResource(pluginService, epistolaService,
-                processVariableDiscoveryService, retryFormService, previewService);
+                processVariableDiscoveryService, retryFormService, previewService,
+                expressionFunctionRegistry);
     }
 
     @Test

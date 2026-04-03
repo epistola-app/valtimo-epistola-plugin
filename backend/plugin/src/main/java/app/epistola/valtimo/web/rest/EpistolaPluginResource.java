@@ -5,6 +5,8 @@ import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
+import app.epistola.valtimo.expression.ExpressionFunctionInfo;
+import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.PreviewService;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
@@ -52,6 +54,7 @@ public class EpistolaPluginResource {
     private final ProcessVariableDiscoveryService processVariableDiscoveryService;
     private final RetryFormService retryFormService;
     private final PreviewService previewService;
+    private final ExpressionFunctionRegistry expressionFunctionRegistry;
 
     /**
      * Get all available templates for a plugin configuration.
@@ -223,6 +226,16 @@ public class EpistolaPluginResource {
 
         List<String> variables = processVariableDiscoveryService.discoverVariables(processDefinitionKey);
         return ResponseEntity.ok(variables);
+    }
+
+    /**
+     * List all available expression functions that can be used in {@code expr:} data mapping values.
+     *
+     * @return List of expression functions with their overload signatures
+     */
+    @GetMapping("/expression-functions")
+    public ResponseEntity<List<ExpressionFunctionInfo>> getExpressionFunctions() {
+        return ResponseEntity.ok(expressionFunctionRegistry.listFunctions());
     }
 
     /**
