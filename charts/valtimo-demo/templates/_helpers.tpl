@@ -326,15 +326,6 @@ the URLs that backend services expect.
 {{- end }}
 
 {{/*
-  Returns true if a credential uses an external secret (secretRef or existingSecret).
-*/}}
-{{- define "valtimo-demo.isExternalSecret" -}}
-{{- if or .credential.secretRef.name .root.Values.secrets.existingSecret -}}
-true
-{{- end -}}
-{{- end }}
-
-{{/*
   Auto-generate values for credentials stored in the chart-managed Secret.
 */}}
 {{- define "valtimo-demo.keycloakClientSecret.value" -}}
