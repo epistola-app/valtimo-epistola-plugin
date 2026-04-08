@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] - 2026-04-08
 
 ### Added
 
@@ -13,26 +13,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Helm: per-credential secret references**: Each secret now supports `secretRef` to reference an existing K8s Secret directly, enabling secret reuse across apps. Use `secrets.<name>.secretRef.name` and `secrets.<name>.secretRef.key` to point to any Secret. Credentials without a `secretRef` are auto-generated into the chart-managed Secret when `value` is empty. Legacy `existingSecret` (single Secret for all credentials) is still supported.
-- **Helm: default Spring profile changed** from `"demo,dev"` to `""` (empty). Neither `demo` nor `dev` profiles are defined in the application; they were no-ops. Set `backend.springProfilesActive` explicitly if your deployment needs a specific profile.
-- **Case definitions: removed `versionTag`** from all 5 demo case definitions. The `versionTag` field triggered Valtimo's draft gate, which required `dev`/`test`/`inttest` profiles. Removing it allows case definitions to load in any environment without needing the `dev` profile.
-- **Helm: consolidated secrets management**: All secret values are now grouped under a top-level `secrets:` block in `values.yaml`. The `secrets.existingSecret` value allows referencing a pre-existing Kubernetes Secret (e.g., managed by SealedSecrets) instead of the chart-managed one. Client secrets are no longer embedded in the Keycloak realm ConfigMap — they are injected at runtime via an init container.
-- **Helm chart release workflow**: Chart releases are now triggered by creating a GitHub Release with a `chart-X.Y.Z` tag, matching the app release pattern. Auto-release on push to main has been removed. Use `/release-chart` or `gh release create chart-X.Y.Z` to cut a chart release.
+- **Case definitions: removed `versionTag`** from all 5 demo case definitions. The `versionTag` field triggered Valtimo's draft gate, which required `dev`/`test`/`inttest` profiles. Removing it allows case definitions to load in any environment.
 
-### Removed
+### Helm Chart (0.3.0)
 
-- **Helm: RabbitMQ support removed** from the valtimo-demo chart. Use `backend.extraEnv` if needed.
-- **Helm: removed `externalEpistola.clientSecret`** value path. This was never wired into any template. Use `secrets.epistolaClientSecret` or `secrets.existingSecret` instead.
+#### Changed
 
-### Breaking Changes
+- **Per-credential secret references**: Each secret now supports `secretRef` to reference an existing K8s Secret directly, enabling secret reuse across apps (e.g. the same Keycloak client secret used by both valtimo-demo and epistola). Credentials without a `secretRef` are auto-generated when `value` is empty. Legacy `existingSecret` is still supported.
+- **Auto-generate secrets**: All secret values are auto-generated with random values when left empty, removing hardcoded defaults from `values.yaml`. Generated secrets are persisted across Helm upgrades.
+- **Default Spring profile** changed from `"demo,dev"` to `""` (empty). Neither profile was defined in the application.
+- **Consolidated secrets management**: All secret values grouped under `secrets:` block. Client secrets injected into Keycloak realm at runtime via init container.
+- **Chart release workflow**: Triggered by `chart-X.Y.Z` GitHub Release tag.
 
-- `backend.existingSecret` moved to `secrets.existingSecret`
-- `backend.keycloak.backendClientSecret` moved to `secrets.keycloakClientSecret`
-- `backend.valtimo.pluginEncryptionSecret` moved to `secrets.pluginEncryptionSecret`
-- `backend.operaton.adminPassword` moved to `secrets.operatonAdminPassword`
-- `keycloak.adminPassword` moved to `secrets.keycloakAdminPassword`
-- `epistola.keycloak.clientSecret` and `externalEpistola.clientSecret` merged into `secrets.epistolaClientSecret`
-- `backend.rabbitmq.*` removed entirely
+#### Removed
+
+- **RabbitMQ support** from the valtimo-demo chart. Use `backend.extraEnv` if needed.
+- **`externalEpistola.clientSecret`** value path (was never wired into any template).
+
+#### Breaking Changes
+
+- `secrets.*` values changed from flat strings to objects with `value` and `secretRef` fields. Migration: `secrets.keycloakClientSecret: "val"` → `secrets.keycloakClientSecret.value: "val"`
+- `backend.existingSecret` → `secrets.existingSecret`
+- `backend.keycloak.backendClientSecret` → `secrets.keycloakClientSecret`
+- `backend.valtimo.pluginEncryptionSecret` → `secrets.pluginEncryptionSecret`
+- `backend.operaton.adminPassword` → `secrets.operatonAdminPassword`
+- `keycloak.adminPassword` → `secrets.keycloakAdminPassword`
+- `epistola.keycloak.clientSecret` / `externalEpistola.clientSecret` → `secrets.epistolaClientSecret`
+- `backend.rabbitmq.*` removed
+- `backend.springProfilesActive` default changed from `"demo,dev"` to `""`
 
 ## [0.3.3] - 2026-04-02
 
