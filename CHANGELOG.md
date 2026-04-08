@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **CI: npm publish** — Upgraded npm to `^11.5.1` (minimum version for OIDC trusted publishing) with `ignore_scripts` to avoid `promise-retry` MODULE_NOT_FOUND error during self-upgrade on newer GitHub Actions runners.
+- **CI: upgraded Node.js from 22 to 24** across all workflows. Node 24 ships with npm 11 which is required for OIDC trusted publishing. This removes the need for the broken `npm install -g npm@latest` self-upgrade step.
 
 ## [0.4.1] - 2026-04-08 [BROKEN]
 
