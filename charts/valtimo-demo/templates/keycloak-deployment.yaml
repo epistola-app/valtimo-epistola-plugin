@@ -52,13 +52,13 @@ spec:
             - name: BACKEND_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "valtimo-demo.backend.secretName" . }}
-                  key: keycloak-client-secret
+                  name: {{ include "valtimo-demo.secretName" (dict "root" . "credential" .Values.secrets.keycloakClientSecret) }}
+                  key: {{ include "valtimo-demo.secretKey" (dict "root" . "credential" .Values.secrets.keycloakClientSecret "chartKey" "keycloak-client-secret") }}
             - name: EPISTOLA_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "valtimo-demo.backend.secretName" . }}
-                  key: epistola-client-secret
+                  name: {{ include "valtimo-demo.secretName" (dict "root" . "credential" .Values.secrets.epistolaClientSecret) }}
+                  key: {{ include "valtimo-demo.secretKey" (dict "root" . "credential" .Values.secrets.epistolaClientSecret "chartKey" "epistola-client-secret") }}
             - name: KC_DB
               value: postgres
             - name: KC_HEALTH_ENABLED
@@ -105,8 +105,8 @@ spec:
             - name: KC_BOOTSTRAP_ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "valtimo-demo.backend.secretName" . }}
-                  key: keycloak-admin-password
+                  name: {{ include "valtimo-demo.secretName" (dict "root" . "credential" .Values.secrets.keycloakAdminPassword) }}
+                  key: {{ include "valtimo-demo.secretKey" (dict "root" . "credential" .Values.secrets.keycloakAdminPassword "chartKey" "keycloak-admin-password") }}
             - name: KC_HTTP_ENABLED
               value: "true"
             - name: KC_HTTP_RELATIVE_PATH

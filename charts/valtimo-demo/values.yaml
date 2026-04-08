@@ -29,23 +29,47 @@ publicUrls:
 # Secrets
 # =============================================================================
 secrets:
-  # Name of an existing Secret containing all application credentials. When set,
-  # the chart will NOT create its own Secret and ignores all values below.
-  # The existing Secret must contain these keys:
-  #   - keycloak-client-secret      (Valtimo backend service-account secret)
-  #   - plugin-encryption-secret    (AES key for Valtimo plugin property encryption)
-  #   - operaton-admin-password     (Operaton BPMN engine admin password)
-  #   - keycloak-admin-password     (required when keycloak.enabled)
-  #   - epistola-client-secret      (required when epistola.enabled or externalEpistola is used)
+  # Each credential supports two modes:
+  #   value:     Plain text value. Auto-generated when empty. Stored in the chart-managed Secret.
+  #   secretRef: Reference an existing K8s Secret. Takes precedence over value.
+  #
+  # When secretRef.name is set for a credential, that credential is read directly
+  # from the referenced Secret and is NOT included in the chart-managed Secret.
+  # This allows sharing secrets across apps (e.g. a Keycloak client secret used
+  # by both valtimo-demo and epistola).
+  #
+  # Legacy: set existingSecret to reference a single Secret for ALL credentials.
   existingSecret: ""
 
-  # Values below are only used when existingSecret is empty.
-  # All secrets are auto-generated when left empty and persisted across upgrades.
-  keycloakClientSecret: ""
-  pluginEncryptionSecret: ""
-  operatonAdminPassword: ""
-  keycloakAdminPassword: ""
-  epistolaClientSecret: ""
+  keycloakClientSecret:
+    value: ""                # auto-generated (40 chars) when empty
+    secretRef:
+      name: ""
+      key: "client-secret"
+
+  pluginEncryptionSecret:
+    value: ""                # auto-generated (32 chars) when empty
+    secretRef:
+      name: ""
+      key: "plugin-encryption-secret"
+
+  operatonAdminPassword:
+    value: ""                # auto-generated (24 chars) when empty
+    secretRef:
+      name: ""
+      key: "password"
+
+  keycloakAdminPassword:
+    value: ""                # auto-generated (32 chars) when empty
+    secretRef:
+      name: ""
+      key: "keycloak-admin-password"
+
+  epistolaClientSecret:
+    value: ""                # auto-generated (40 chars) when empty
+    secretRef:
+      name: ""
+      key: "client-secret"
 
 # =============================================================================
 # Backend (Valtimo Spring Boot application)
