@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **CI: npm publish** — Removed broken `npm install -g npm@latest` step that fails on newer GitHub Actions runners (Node 22.22.2 / npm 10.9.7). The bundled npm 10.x already supports OIDC trusted publishing.
+- **CI: npm publish** — Pinned npm upgrade to `npm@11.2` with `ignore_scripts` to avoid `promise-retry` MODULE_NOT_FOUND error on newer GitHub Actions runners. The bundled npm 10.9.7 doesn't support OIDC provenance publishing correctly, so the upgrade to npm 11 is still needed.
 
 ## [0.4.0] - 2026-04-08
 
