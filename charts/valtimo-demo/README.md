@@ -121,16 +121,26 @@ Client secrets for the Keycloak realm are injected at runtime via an init contai
 
 ### Chart-managed secret (default)
 
-When no `secrets.existingSecret` is set, the chart creates the Secret from the
-`secrets.*` values:
+When no `secrets.existingSecret` is set, the chart creates the Secret and
+auto-generates random values for any `secrets.*` field left empty. Generated
+values are persisted across Helm upgrades by looking up the existing Secret.
 
 ```yaml
 secrets:
-  keycloakClientSecret: "change-me"
-  pluginEncryptionSecret: "0123456789abcdef0123456789abcdef"
-  operatonAdminPassword: "admin"
-  keycloakAdminPassword: ""          # auto-generated when empty
-  epistolaClientSecret: "change-me"
+  keycloakClientSecret: ""           # auto-generated (40 chars)
+  pluginEncryptionSecret: ""         # auto-generated (32 chars)
+  operatonAdminPassword: ""          # auto-generated (24 chars)
+  keycloakAdminPassword: ""          # auto-generated (32 chars)
+  epistolaClientSecret: ""           # auto-generated (40 chars)
+```
+
+You can override any individual value if needed (e.g., to match a secret
+already configured in Keycloak):
+
+```yaml
+secrets:
+  keycloakClientSecret: "my-known-secret"
+  # remaining values are still auto-generated
 ```
 
 ### Using an existing secret

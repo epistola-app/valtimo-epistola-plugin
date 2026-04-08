@@ -280,25 +280,60 @@ the URLs that backend services expect.
 {{- end }}
 
 {{/*
-  Bootstrap admin password for Keycloak. Resuses existing secret when present to
-  avoid regenerating credentials on every upgrade.
+  Resolve or auto-generate a secret value. Reuses the existing secret when present
+  to avoid regenerating credentials on every upgrade.
+  Usage: include "valtimo-demo.resolveSecret" (dict "root" . "value" .Values.secrets.foo "key" "secret-key" "length" 32)
 */}}
-{{- define "valtimo-demo.keycloak.adminPassword" -}}
-{{- if .Values.secrets.existingSecret -}}
-{{- /* Password is managed externally via existingSecret */ -}}
+{{- define "valtimo-demo.resolveSecret" -}}
+{{- if .root.Values.secrets.existingSecret -}}
 {{- "" -}}
 {{- else -}}
-{{- $password := .Values.secrets.keycloakAdminPassword | default "" -}}
-{{- if and .Values.keycloak.enabled (eq $password "") -}}
-  {{- $existing := lookup "v1" "Secret" .Release.Namespace (include "valtimo-demo.backend.fullname" .) -}}
-  {{- if and $existing (index $existing.data "keycloak-admin-password") -}}
-    {{- $password = ((index $existing.data "keycloak-admin-password") | b64dec) -}}
+{{- $result := .value | default "" -}}
+{{- if eq $result "" -}}
+  {{- $existing := lookup "v1" "Secret" .root.Release.Namespace (include "valtimo-demo.backend.fullname" .root) -}}
+  {{- if and $existing (index $existing.data .key) -}}
+    {{- $result = ((index $existing.data .key) | b64dec) -}}
   {{- else -}}
-    {{- $password = randAlphaNum 32 -}}
+    {{- $result = randAlphaNum (.length | default 32) -}}
   {{- end -}}
 {{- end -}}
-{{- $password -}}
+{{- $result -}}
 {{- end -}}
+{{- end }}
+
+{{/*
+  Bootstrap admin password for Keycloak.
+*/}}
+{{- define "valtimo-demo.keycloak.adminPassword" -}}
+{{- include "valtimo-demo.resolveSecret" (dict "root" . "value" .Values.secrets.keycloakAdminPassword "key" "keycloak-admin-password" "length" 32) -}}
+{{- end }}
+
+{{/*
+  Keycloak client secret for the backend service account.
+*/}}
+{{- define "valtimo-demo.keycloakClientSecret" -}}
+{{- include "valtimo-demo.resolveSecret" (dict "root" . "value" .Values.secrets.keycloakClientSecret "key" "keycloak-client-secret" "length" 40) -}}
+{{- end }}
+
+{{/*
+  Plugin encryption secret (AES-256 key, 32 hex chars).
+*/}}
+{{- define "valtimo-demo.pluginEncryptionSecret" -}}
+{{- include "valtimo-demo.resolveSecret" (dict "root" . "value" .Values.secrets.pluginEncryptionSecret "key" "plugin-encryption-secret" "length" 32) -}}
+{{- end }}
+
+{{/*
+  Operaton BPMN engine admin password.
+*/}}
+{{- define "valtimo-demo.operatonAdminPassword" -}}
+{{- include "valtimo-demo.resolveSecret" (dict "root" . "value" .Values.secrets.operatonAdminPassword "key" "operaton-admin-password" "length" 24) -}}
+{{- end }}
+
+{{/*
+  Epistola OAuth2 client secret.
+*/}}
+{{- define "valtimo-demo.epistolaClientSecret" -}}
+{{- include "valtimo-demo.resolveSecret" (dict "root" . "value" .Values.secrets.epistolaClientSecret "key" "epistola-client-secret" "length" 40) -}}
 {{- end }}
 
 {{/*

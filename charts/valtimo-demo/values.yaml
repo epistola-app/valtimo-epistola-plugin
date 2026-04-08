@@ -40,11 +40,12 @@ secrets:
   existingSecret: ""
 
   # Values below are only used when existingSecret is empty.
-  keycloakClientSecret: "6ef6ca16-6b86-482a-a3d9-0561704c1db9"
-  pluginEncryptionSecret: "0123456789abcdef0123456789abcdef"
-  operatonAdminPassword: "admin"
-  keycloakAdminPassword: ""  # auto-generated when empty
-  epistolaClientSecret: "epistola-dev-secret"
+  # All secrets are auto-generated when left empty and persisted across upgrades.
+  keycloakClientSecret: ""
+  pluginEncryptionSecret: ""
+  operatonAdminPassword: ""
+  keycloakAdminPassword: ""
+  epistolaClientSecret: ""
 
 # =============================================================================
 # Backend (Valtimo Spring Boot application)
@@ -58,7 +59,7 @@ backend:
     tag: ""  # defaults to Chart.appVersion
     pullSecrets: []
 
-  springProfilesActive: "demo,dev"
+  springProfilesActive: ""
 
   service:
     type: ClusterIP
@@ -250,6 +251,8 @@ externalEpistola:
   url: ""
   # Browser-facing URL for Keycloak redirect URIs (used when epistola subchart is disabled)
   publicUrl: ""
+  # Note: the Epistola client secret is managed via secrets.epistolaClientSecret
+  # or secrets.existingSecret (key: epistola-client-secret), NOT here.
 
 # =============================================================================
 # Subchart: Epistola
