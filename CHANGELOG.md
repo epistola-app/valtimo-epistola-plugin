@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-04-08
+
+### Fixed
+
+- **CI: npm publish** — Removed broken `npm install -g npm@latest` step that fails on newer GitHub Actions runners (Node 22.22.2 / npm 10.9.7). The bundled npm 10.x already supports OIDC trusted publishing.
+
 ## [0.4.0] - 2026-04-08
 
 ### Added
