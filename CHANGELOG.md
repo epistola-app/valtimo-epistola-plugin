@@ -7,11 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.4.1] - 2026-04-08
+## [0.4.2] - 2026-04-08
 
 ### Fixed
 
 - **CI: npm publish** — Pinned npm upgrade to `npm@11.2` with `ignore_scripts` to avoid `promise-retry` MODULE_NOT_FOUND error on newer GitHub Actions runners. The bundled npm 10.9.7 doesn't support OIDC provenance publishing correctly, so the upgrade to npm 11 is still needed.
+
+## [0.4.1] - 2026-04-08 [BROKEN]
+
+_Release pipeline failed — npm and Docker frontend artifacts not published. Use v0.4.2 instead._
 
 ## [0.4.0] - 2026-04-08
 
