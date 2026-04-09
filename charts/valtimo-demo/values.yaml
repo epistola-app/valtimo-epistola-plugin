@@ -83,7 +83,7 @@ backend:
     tag: ""  # defaults to Chart.appVersion
     pullSecrets: []
 
-  springProfilesActive: ""
+  springProfilesActive: "dev"
 
   service:
     type: ClusterIP

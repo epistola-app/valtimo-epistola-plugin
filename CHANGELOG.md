@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.5] - 2026-04-09
+
+### Fixed
+
+- **Restored `versionTag` in case definitions** — Valtimo requires `versionTag` to be present (NPE on startup without it). The `dev` profile is needed to allow draft case definitions.
+- **Default Spring profile** changed back to `"dev"`. The `dev` profile enables draft case definition support which is required for auto-deployed case definitions with `versionTag`.
+
+### Helm Chart (0.3.2)
+
+- Default `springProfilesActive` changed from `""` to `"dev"`.
+
 ## [0.4.2] - 2026-04-08
 
 ### Fixed
