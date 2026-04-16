@@ -395,13 +395,18 @@ export class GenerateDocumentConfigurationComponent
         this.selectedVariantId$.next(config.variantId);
       }
 
-      // Apply dataMapping prefill — templateFields are guaranteed loaded at this point
+      // Apply dataMapping prefill — templateFields are guaranteed loaded at this point.
+      // Use setTimeout to ensure the tree component exists in the DOM (after *ngIf resolves)
+      // before setting the prefill, so ngOnChanges fires correctly on the child.
       if (config.dataMapping) {
-        this.prefillDataMapping = config.dataMapping;
         this.dataMapping$.next(config.dataMapping);
+        setTimeout(() => {
+          this.prefillDataMapping = {...config.dataMapping};
+          this.cdr.detectChanges();
+        });
+      } else {
+        this.cdr.detectChanges();
       }
-
-      this.cdr.markForCheck();
     });
   }
 
