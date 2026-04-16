@@ -76,7 +76,7 @@ cd ../../test-app/frontend && pnpm install && pnpm start
 | Service | Epistola stack | Plugin stack |
 |---------|---------------|-------------|
 | PostgreSQL | 4001 | 5432 |
-| Keycloak | 8080 | 8081 |
+| Keycloak | 4002 | 8081 |
 | App | 4000 (Gradle) | 8080 (Valtimo backend) |
 | Frontend | — | 4200 |
 | Epistola container | — | 4010 (`--profile server`) |
