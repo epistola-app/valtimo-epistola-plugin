@@ -182,6 +182,7 @@ public interface EpistolaService {
             String baseUrl,
             String apiKey,
             String tenantId,
+            String catalogId,
             String templateId,
             String variantId,
             String environmentId,

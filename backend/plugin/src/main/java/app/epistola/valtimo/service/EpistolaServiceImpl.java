@@ -317,12 +317,13 @@ public class EpistolaServiceImpl implements EpistolaService {
     @Override
     public java.io.InputStream previewDocument(
             String baseUrl, String apiKey, String tenantId,
-            String templateId, String variantId, String environmentId,
+            String catalogId, String templateId, String variantId, String environmentId,
             Map<String, Object> data
     ) {
-        log.info("Previewing document for tenant: {}, template: {}", tenantId, templateId);
+        log.info("Previewing document for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
         try {
             var requestBody = new java.util.LinkedHashMap<String, Object>();
+            requestBody.put("catalogId", catalogId);
             requestBody.put("templateId", templateId);
             requestBody.put("data", data);
             if (variantId != null) requestBody.put("variantId", variantId);

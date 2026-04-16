@@ -49,6 +49,7 @@ public class PreviewService {
         String processDefinitionId = resolveProcessDefinitionId(request);
         PluginProcessLink processLink = resolveProcessLink(processDefinitionId, request.sourceActivityId());
 
+        String catalogId = extractCatalogId(processLink);
         String templateId = extractTemplateId(processLink);
         Map<String, Object> dataMapping = extractDataMapping(processLink);
 
@@ -75,7 +76,7 @@ public class PreviewService {
         try {
             return epistolaService.previewDocument(
                     plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(),
-                    templateId, variantId, environmentId, resolvedData);
+                    catalogId, templateId, variantId, environmentId, resolvedData);
         } catch (Exception e) {
             throw new PreviewException(PreviewException.Reason.RENDER_FAILED, e.getMessage(), e);
         }
@@ -182,6 +183,15 @@ public class PreviewService {
         }
 
         return generateLinks.get(0);
+    }
+
+    private String extractCatalogId(PluginProcessLink link) {
+        ObjectNode actionProps = link.getActionProperties();
+        if (!actionProps.has("catalogId") || actionProps.get("catalogId").isNull()) {
+            throw new PreviewException(PreviewException.Reason.MISSING_CONTEXT,
+                    "No catalogId in process link for activity '" + link.getActivityId() + "'");
+        }
+        return actionProps.get("catalogId").asText();
     }
 
     private String extractTemplateId(PluginProcessLink link) {
