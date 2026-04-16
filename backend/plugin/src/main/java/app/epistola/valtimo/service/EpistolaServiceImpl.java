@@ -272,20 +272,6 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
-    public ImportTemplatesResponse importTemplates(String baseUrl, String apiKey, String tenantId, String catalogId, ImportTemplatesRequest request) {
-        log.info("Importing {} templates for tenant: {}, catalog: {}", request.getTemplates().size(), tenantId, catalogId);
-        try {
-            TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
-            ImportTemplatesResponse response = templatesApi.importTemplates(tenantId, catalogId, request);
-            log.info("Template import completed for tenant: {}, catalog: {}", tenantId, catalogId);
-            return response;
-        } catch (Exception e) {
-            log.error("Failed to import templates for tenant {}: {}", tenantId, e.getMessage());
-            throw new EpistolaApiException("Failed to import templates", e);
-        }
-    }
-
-    @Override
     public ImportCatalogResult importCatalog(String baseUrl, String apiKey, String tenantId, byte[] zipBytes, String catalogType) {
         log.info("Importing catalog ZIP ({} bytes) for tenant: {}, type: {}", zipBytes.length, tenantId, catalogType);
         try {
