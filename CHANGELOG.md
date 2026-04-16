@@ -10,16 +10,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Catalog selector in generate-document configuration** — Users now pick a catalog first, then see templates from that catalog. Added `CatalogInfo` domain record, `getCatalogs()` service method, `GET /configurations/{configurationId}/catalogs` REST endpoint, `createCatalogsApi()` factory method, and frontend catalog dropdown with cascading template loading.
+- **Catalog sync on startup** — Plugin scans classpath `config/epistola/catalogs/*/catalog.json`, builds ZIP in memory, and POSTs to Epistola's catalog import endpoint on startup. Replaces the old per-template sync.
 
 ### Changed
 
 - **Refactored generate-document configuration reactive state** — Replaced 6 independent `init*Loading()` methods with a single cascading reactive chain in `initCascade()`. Prefill values now seed the cascade (catalog → templates → variants/fields) instead of running as a separate subscription with timing issues. Added `distinctUntilChanged()` to prevent duplicate loads. Template fields are guaranteed loaded before data mapping prefill is applied.
-- **BREAKING: Added `catalogId` to all catalog-scoped API calls** for Epistola contract 0.2.0 compatibility. Affected methods: `getTemplates`, `getTemplateDetails`, `getAttributes`, `getVariants`, `submitGenerationJob`, `importTemplates`.
-- Added `catalogId` as an action property on the `generate-document` plugin action.
-- Added `defaultCatalogId` as an optional plugin property, used as fallback for catalog-scoped operations.
+- **BREAKING: Added `catalogId` to all catalog-scoped API calls** for Epistola contract 0.2.0 compatibility. Affected methods: `getTemplates`, `getTemplateDetails`, `getAttributes`, `getVariants`, `submitGenerationJob`, `previewDocument`.
+- Added `catalogId` as a required action property on the `generate-document` plugin action.
 - Added `catalogId` and `catalogName` fields to `TemplateInfo` domain record.
 - REST endpoints for templates, attributes, variants, and validate-mapping now require a `catalogId` query parameter.
-- Template sync service (`syncTemplates`) now requires `catalogId` parameter.
+- Removed `defaultEnvironmentId` from test plugin config — catalog-imported templates use latest published version fallback.
+
+### Removed
+
+- Template import (`importTemplates`) — superseded by catalog import.
+- Unused `ImportTemplatesRequest`/`ImportTemplatesResponse` imports.
 
 ## [0.4.5] - 2026-04-09
 
