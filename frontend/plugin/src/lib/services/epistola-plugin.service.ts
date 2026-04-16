@@ -44,19 +44,17 @@ export class EpistolaPluginService {
   /**
    * Get template details including its fields.
    */
-  getTemplateDetails(pluginConfigurationId: string, templateId: string, catalogId?: string): Observable<TemplateDetails> {
-    const params: Record<string, string> = {};
-    if (catalogId) params['catalogId'] = catalogId;
+  getTemplateDetails(pluginConfigurationId: string, templateId: string, catalogId: string): Observable<TemplateDetails> {
     return this.http.get<TemplateDetails>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}`,
-      {params}
+      {params: {catalogId}}
     );
   }
 
   /**
    * Get all attribute definitions for a plugin configuration's tenant and catalog.
    */
-  getAttributes(pluginConfigurationId: string, catalogId?: string): Observable<AttributeDefinition[]> {
+  getAttributes(pluginConfigurationId: string, catalogId: string): Observable<AttributeDefinition[]> {
     const params: Record<string, string> = {};
     if (catalogId) params['catalogId'] = catalogId;
     return this.http.get<AttributeDefinition[]>(
@@ -77,7 +75,7 @@ export class EpistolaPluginService {
   /**
    * Get all variants for a specific template.
    */
-  getVariants(pluginConfigurationId: string, templateId: string, catalogId?: string): Observable<VariantInfo[]> {
+  getVariants(pluginConfigurationId: string, templateId: string, catalogId: string): Observable<VariantInfo[]> {
     const params: Record<string, string> = {};
     if (catalogId) params['catalogId'] = catalogId;
     return this.http.get<VariantInfo[]>(
