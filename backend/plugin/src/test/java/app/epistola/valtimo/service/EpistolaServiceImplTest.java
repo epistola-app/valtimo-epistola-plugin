@@ -47,6 +47,7 @@ class EpistolaServiceImplTest {
 
     private static final String API_KEY = "test-api-key";
     private static final String TENANT_ID = "test-tenant";
+    private static final String CATALOG_ID = "default";
 
     @BeforeAll
     static void setUp() {
@@ -57,7 +58,7 @@ class EpistolaServiceImplTest {
 
     @Test
     void getTemplates_returnsTemplateList() {
-        List<TemplateInfo> templates = service.getTemplates(baseUrl, API_KEY, TENANT_ID);
+        List<TemplateInfo> templates = service.getTemplates(baseUrl, API_KEY, TENANT_ID, CATALOG_ID);
 
         assertNotNull(templates);
         assertFalse(templates.isEmpty());
@@ -70,11 +71,11 @@ class EpistolaServiceImplTest {
     @Test
     void getTemplateDetails_returnsTemplateWithSchema() {
         // First get templates to find a valid ID
-        List<TemplateInfo> templates = service.getTemplates(baseUrl, API_KEY, TENANT_ID);
+        List<TemplateInfo> templates = service.getTemplates(baseUrl, API_KEY, TENANT_ID, CATALOG_ID);
         assertFalse(templates.isEmpty());
         String templateId = templates.get(0).id();
 
-        TemplateDetails details = service.getTemplateDetails(baseUrl, API_KEY, TENANT_ID, templateId);
+        TemplateDetails details = service.getTemplateDetails(baseUrl, API_KEY, TENANT_ID, CATALOG_ID, templateId);
 
         assertNotNull(details);
         assertEquals(templateId, details.id());
@@ -97,11 +98,11 @@ class EpistolaServiceImplTest {
     @Test
     void getVariants_returnsVariantList() {
         // First get templates to find a valid ID
-        List<TemplateInfo> templates = service.getTemplates(baseUrl, API_KEY, TENANT_ID);
+        List<TemplateInfo> templates = service.getTemplates(baseUrl, API_KEY, TENANT_ID, CATALOG_ID);
         assertFalse(templates.isEmpty());
         String templateId = templates.get(0).id();
 
-        List<VariantInfo> variants = service.getVariants(baseUrl, API_KEY, TENANT_ID, templateId);
+        List<VariantInfo> variants = service.getVariants(baseUrl, API_KEY, TENANT_ID, CATALOG_ID, templateId);
 
         assertNotNull(variants);
         assertFalse(variants.isEmpty());
@@ -114,11 +115,11 @@ class EpistolaServiceImplTest {
     @Test
     void generateDocument_submitsRequestAndReturnsRequestId() {
         // First get templates/variants to use valid IDs
-        List<TemplateInfo> templates = service.getTemplates(baseUrl, API_KEY, TENANT_ID);
+        List<TemplateInfo> templates = service.getTemplates(baseUrl, API_KEY, TENANT_ID, CATALOG_ID);
         assertFalse(templates.isEmpty());
         String templateId = templates.get(0).id();
 
-        List<VariantInfo> variants = service.getVariants(baseUrl, API_KEY, TENANT_ID, templateId);
+        List<VariantInfo> variants = service.getVariants(baseUrl, API_KEY, TENANT_ID, CATALOG_ID, templateId);
         assertFalse(variants.isEmpty());
         String variantId = variants.get(0).id();
 
@@ -126,6 +127,7 @@ class EpistolaServiceImplTest {
                 baseUrl,
                 API_KEY,
                 TENANT_ID,
+                CATALOG_ID,
                 templateId,
                 variantId,
                 null,  // no variant attributes when using explicit variantId

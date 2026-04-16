@@ -106,6 +106,18 @@ public class EpistolaPlugin {
     private String defaultEnvironmentId;
 
     /**
+     * The default catalog slug for template operations. Can be overridden per action.
+     * Example: "default", "my-catalog"
+     */
+    @PluginProperty(
+            key = "defaultCatalogId",
+            title = "Default Catalog",
+            secret = false,
+            required = false
+    )
+    private String defaultCatalogId;
+
+    /**
      * Whether to enable automatic template synchronization from classpath to Epistola.
      * When enabled, template definitions from config/epistola/templates/ are synced on startup.
      */
@@ -131,6 +143,10 @@ public class EpistolaPlugin {
 
     public String getDefaultEnvironmentId() {
         return defaultEnvironmentId;
+    }
+
+    public String getDefaultCatalogId() {
+        return defaultCatalogId;
     }
 
     public Boolean getTemplateSyncEnabled() {
@@ -163,6 +179,10 @@ public class EpistolaPlugin {
 
         if (defaultEnvironmentId != null && !defaultEnvironmentId.isBlank()) {
             validateSlug("defaultEnvironmentId", defaultEnvironmentId, 3, 30);
+        }
+
+        if (defaultCatalogId != null && !defaultCatalogId.isBlank()) {
+            validateSlug("defaultCatalogId", defaultCatalogId, 3, 63);
         }
     }
 
@@ -200,6 +220,7 @@ public class EpistolaPlugin {
      * variantId and variantAttributes are mutually exclusive.
      *
      * @param execution             The process execution context
+     * @param catalogId             The ID of the catalog containing the template
      * @param templateId            The ID of the template to use for document generation
      * @param variantId             The ID of the template variant (optional — omit to use default or attribute selection)
      * @param variantAttributes     Key-value attributes for automatic variant selection (optional).
@@ -220,6 +241,7 @@ public class EpistolaPlugin {
     )
     public void generateDocument(
             DelegateExecution execution,
+            @PluginActionProperty String catalogId,
             @PluginActionProperty String templateId,
             @PluginActionProperty String variantId,
             @PluginActionProperty Object variantAttributes,
@@ -230,8 +252,8 @@ public class EpistolaPlugin {
             @PluginActionProperty String correlationId,
             @PluginActionProperty String resultProcessVariable
     ) {
-        log.info("Starting document generation: templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
-                templateId, variantId, variantAttributes, outputFormat, filename);
+        log.info("Starting document generation: catalogId={}, templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
+                catalogId, templateId, variantId, variantAttributes, outputFormat, filename);
 
         // Normalize variant attributes from either old (Map<String, String>) or new (List<Map>) format
         List<NormalizedAttribute> normalizedAttributes = normalizeVariantAttributes(variantAttributes);
@@ -290,6 +312,7 @@ public class EpistolaPlugin {
                     baseUrl,
                     apiKey,
                     tenantId,
+                    catalogId,
                     templateId,
                     hasVariantId ? variantId : null,
                     resolvedAttributes,

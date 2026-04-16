@@ -55,6 +55,7 @@ public class RetryFormService {
         PluginProcessLink originalLink = resolveSourceProcessLink(
                 processDefinitionId, processInstanceId, sourceActivityId);
 
+        String catalogId = extractCatalogId(originalLink);
         String templateId = extractTemplateId(originalLink);
         Map<String, Object> dataMapping = extractDataMapping(originalLink);
 
@@ -64,8 +65,9 @@ public class RetryFormService {
 
         EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
                 originalLink.getPluginConfigurationId());
+        String effectiveCatalogId = catalogId != null ? catalogId : plugin.getDefaultCatalogId();
         TemplateDetails template = epistolaService.getTemplateDetails(
-                plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(), templateId);
+                plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(), effectiveCatalogId, templateId);
 
         ObjectNode form = formioFormGenerator.generateForm(template.fields(), resolvedData);
 
@@ -121,6 +123,14 @@ public class RetryFormService {
 
         log.debug("Auto-discovered generate-document activity: {}", generateLinks.get(0).getActivityId());
         return generateLinks.get(0);
+    }
+
+    private String extractCatalogId(PluginProcessLink link) {
+        ObjectNode actionProps = link.getActionProperties();
+        if (actionProps.has("catalogId") && !actionProps.get("catalogId").isNull()) {
+            return actionProps.get("catalogId").asText();
+        }
+        return null;
     }
 
     private String extractTemplateId(PluginProcessLink link) {

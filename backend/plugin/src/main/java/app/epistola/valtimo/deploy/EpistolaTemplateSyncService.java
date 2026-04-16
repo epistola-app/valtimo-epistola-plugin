@@ -55,9 +55,10 @@ public class EpistolaTemplateSyncService {
      * @param baseUrl   The Epistola API base URL
      * @param apiKey    The API key for authentication
      * @param tenantId  The tenant ID in Epistola
+     * @param catalogId The catalog ID in Epistola
      * @return Sync result summary
      */
-    public SyncResult syncTemplates(String configId, String baseUrl, String apiKey, String tenantId) {
+    public SyncResult syncTemplates(String configId, String baseUrl, String apiKey, String tenantId, String catalogId) {
         List<TemplateDefinition> allDefinitions = scanner.scanTemplateDefinitions();
 
         if (allDefinitions.isEmpty()) {
@@ -90,7 +91,7 @@ public class EpistolaTemplateSyncService {
         ImportTemplatesRequest request = new ImportTemplatesRequest(importDtos);
 
         // Call import API
-        ImportTemplatesResponse response = epistolaService.importTemplates(baseUrl, apiKey, tenantId, request);
+        ImportTemplatesResponse response = epistolaService.importTemplates(baseUrl, apiKey, tenantId, catalogId, request);
 
         // Track deployed versions for successful imports
         Map<String, String> updatedVersions = new HashMap<>(previousVersions);

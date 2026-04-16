@@ -26,6 +26,7 @@ class EpistolaTemplateSyncServiceTest {
     private static final String BASE_URL = "http://localhost:4010/api";
     private static final String API_KEY = "test-key";
     private static final String TENANT_ID = "test-tenant";
+    private static final String CATALOG_ID = "default";
 
     private ObjectMapper objectMapper;
     private CapturingEpistolaService capturingService;
@@ -102,7 +103,7 @@ class EpistolaTemplateSyncServiceTest {
         void syncTemplates_returnsZeroCounts() {
             syncService = createSyncService(List.of());
             EpistolaTemplateSyncService.SyncResult result =
-                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
+                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_ID);
 
             assertEquals(0, result.totalTemplates());
             assertEquals(0, result.successCount());
@@ -128,7 +129,7 @@ class EpistolaTemplateSyncServiceTest {
             ));
 
             EpistolaTemplateSyncService.SyncResult result =
-                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
+                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_ID);
 
             assertEquals(2, result.totalTemplates());
             assertEquals(2, result.successCount());
@@ -147,7 +148,7 @@ class EpistolaTemplateSyncServiceTest {
                     new ImportTemplateResultDto("test", ImportTemplateResultDto.Status.CREATED, "1.0.0", List.of(), null)
             ));
 
-            syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
+            syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_ID);
 
             assertEquals(BASE_URL, capturingService.lastBaseUrl);
             assertEquals(API_KEY, capturingService.lastApiKey);
@@ -167,14 +168,14 @@ class EpistolaTemplateSyncServiceTest {
             capturingService.importResponse = new ImportTemplatesResponse(List.of(
                     new ImportTemplateResultDto("template-a", ImportTemplateResultDto.Status.CREATED, "1.0.0", List.of("production"), null)
             ));
-            syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
+            syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_ID);
 
             // Reset capture
             capturingService.lastImportRequest = null;
 
             // Second sync — same version, should skip
             EpistolaTemplateSyncService.SyncResult result =
-                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
+                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_ID);
 
             assertEquals(1, result.totalTemplates());
             assertEquals(0, result.successCount());
@@ -201,7 +202,7 @@ class EpistolaTemplateSyncServiceTest {
                     new ImportTemplateResultDto("template-a", ImportTemplateResultDto.Status.CREATED, "1.0.0", List.of(), null),
                     new ImportTemplateResultDto("template-b", ImportTemplateResultDto.Status.CREATED, "1.0.0", List.of(), null)
             ));
-            syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
+            syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_ID);
 
             // Now bump only template-a to 2.0.0
             TemplateDefinition defAv2 = createDefinition("template-a", "2.0.0");
@@ -213,7 +214,7 @@ class EpistolaTemplateSyncServiceTest {
             ));
 
             EpistolaTemplateSyncService.SyncResult result =
-                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
+                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_ID);
 
             // Only template-a should be sent
             assertNotNull(capturingService.lastImportRequest);
@@ -232,13 +233,13 @@ class EpistolaTemplateSyncServiceTest {
                     new ImportTemplateResultDto("template-a", ImportTemplateResultDto.Status.CREATED, "1.0.0", List.of(), null)
             ));
             EpistolaTemplateSyncService.SyncResult result1 =
-                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
+                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_ID);
             assertEquals(1, result1.successCount());
 
             // Same version again — should be skipped
             capturingService.lastImportRequest = null;
             EpistolaTemplateSyncService.SyncResult result2 =
-                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
+                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_ID);
             assertEquals(0, result2.successCount());
             assertNull(capturingService.lastImportRequest);
         }
@@ -260,7 +261,7 @@ class EpistolaTemplateSyncServiceTest {
             ));
 
             EpistolaTemplateSyncService.SyncResult result =
-                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
+                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_ID);
 
             assertEquals(2, result.totalTemplates());
             assertEquals(1, result.successCount());
@@ -274,7 +275,7 @@ class EpistolaTemplateSyncServiceTest {
             ));
 
             EpistolaTemplateSyncService.SyncResult retryResult =
-                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
+                    syncService.syncTemplates(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_ID);
 
             assertNotNull(capturingService.lastImportRequest);
             assertEquals(1, capturingService.lastImportRequest.getTemplates().size());
@@ -296,12 +297,12 @@ class EpistolaTemplateSyncServiceTest {
             ));
 
             // Sync for config-1
-            syncService.syncTemplates("config-1", BASE_URL, API_KEY, TENANT_ID);
+            syncService.syncTemplates("config-1", BASE_URL, API_KEY, TENANT_ID, CATALOG_ID);
 
             // Sync for config-2 — should still send (different config, no deployed versions)
             capturingService.lastImportRequest = null;
             EpistolaTemplateSyncService.SyncResult result =
-                    syncService.syncTemplates("config-2", BASE_URL, API_KEY, TENANT_ID);
+                    syncService.syncTemplates("config-2", BASE_URL, API_KEY, TENANT_ID, CATALOG_ID);
 
             assertNotNull(capturingService.lastImportRequest, "Should import for different config ID");
             assertEquals(1, result.successCount());
@@ -354,7 +355,7 @@ class EpistolaTemplateSyncServiceTest {
         ImportTemplatesResponse importResponse;
 
         @Override
-        public ImportTemplatesResponse importTemplates(String baseUrl, String apiKey, String tenantId, ImportTemplatesRequest request) {
+        public ImportTemplatesResponse importTemplates(String baseUrl, String apiKey, String tenantId, String catalogId, ImportTemplatesRequest request) {
             this.lastBaseUrl = baseUrl;
             this.lastApiKey = apiKey;
             this.lastTenantId = tenantId;
@@ -363,17 +364,17 @@ class EpistolaTemplateSyncServiceTest {
         }
 
         @Override
-        public List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId) {
+        public List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId, String catalogId) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public TemplateDetails getTemplateDetails(String baseUrl, String apiKey, String tenantId, String templateId) {
+        public TemplateDetails getTemplateDetails(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId) {
+        public List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId, String catalogId) {
             throw new UnsupportedOperationException();
         }
 
@@ -383,13 +384,13 @@ class EpistolaTemplateSyncServiceTest {
         }
 
         @Override
-        public List<VariantInfo> getVariants(String baseUrl, String apiKey, String tenantId, String templateId) {
+        public List<VariantInfo> getVariants(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId) {
             throw new UnsupportedOperationException();
         }
 
         @Override
         public GenerationJobResult submitGenerationJob(String baseUrl, String apiKey, String tenantId,
-                String templateId, String variantId, List<VariantSelectionAttribute> variantAttributes,
+                String catalogId, String templateId, String variantId, List<VariantSelectionAttribute> variantAttributes,
                 String environmentId, Map<String, Object> data, FileFormat format,
                 String filename, String correlationId) {
             throw new UnsupportedOperationException();

@@ -52,7 +52,8 @@ public class EpistolaTemplateSyncTrigger {
                             config.getId().toString(),
                             plugin.getBaseUrl(),
                             plugin.getApiKey(),
-                            plugin.getTenantId()
+                            plugin.getTenantId(),
+                            plugin.getDefaultCatalogId()
                     );
 
                     if (result.totalTemplates() == 0) {

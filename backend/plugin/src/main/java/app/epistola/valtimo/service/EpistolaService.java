@@ -17,14 +17,15 @@ import java.util.Map;
 public interface EpistolaService {
 
     /**
-     * Get all available templates for a tenant.
+     * Get all available templates for a tenant and catalog.
      *
-     * @param baseUrl  The Epistola API base URL
-     * @param apiKey   The API key for authentication
-     * @param tenantId The tenant ID in Epistola
+     * @param baseUrl   The Epistola API base URL
+     * @param apiKey    The API key for authentication
+     * @param tenantId  The tenant ID in Epistola
+     * @param catalogId The catalog ID in Epistola
      * @return List of available templates
      */
-    List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId);
+    List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId, String catalogId);
 
     /**
      * Get template details including its fields.
@@ -32,21 +33,23 @@ public interface EpistolaService {
      * @param baseUrl    The Epistola API base URL
      * @param apiKey     The API key for authentication
      * @param tenantId   The tenant ID in Epistola
+     * @param catalogId  The catalog ID in Epistola
      * @param templateId The ID of the template
      * @return Template details with fields
      */
-    TemplateDetails getTemplateDetails(String baseUrl, String apiKey, String tenantId, String templateId);
+    TemplateDetails getTemplateDetails(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId);
 
     /**
-     * Get all attribute definitions for a tenant.
+     * Get all attribute definitions for a tenant and catalog.
      * These define the keys that can be used for variant selection.
      *
-     * @param baseUrl  The Epistola API base URL
-     * @param apiKey   The API key for authentication
-     * @param tenantId The tenant ID in Epistola
+     * @param baseUrl   The Epistola API base URL
+     * @param apiKey    The API key for authentication
+     * @param tenantId  The tenant ID in Epistola
+     * @param catalogId The catalog ID in Epistola
      * @return List of attribute definitions
      */
-    List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId);
+    List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId, String catalogId);
 
     /**
      * Get all available environments for a tenant.
@@ -64,10 +67,11 @@ public interface EpistolaService {
      * @param baseUrl    The Epistola API base URL
      * @param apiKey     The API key for authentication
      * @param tenantId   The tenant ID in Epistola
+     * @param catalogId  The catalog ID in Epistola
      * @param templateId The ID of the template
      * @return List of variants for the template
      */
-    List<VariantInfo> getVariants(String baseUrl, String apiKey, String tenantId, String templateId);
+    List<VariantInfo> getVariants(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId);
 
     /**
      * Generate a document using a template.
@@ -80,6 +84,7 @@ public interface EpistolaService {
      * @param baseUrl            The Epistola API base URL
      * @param apiKey             The API key for authentication
      * @param tenantId           The tenant ID in Epistola
+     * @param catalogId          The catalog ID in Epistola
      * @param templateId         The ID of the template to use
      * @param variantId          The ID of the variant to use (nullable when using attribute selection)
      * @param variantAttributes  Attributes for automatic variant selection (nullable when using explicit variantId)
@@ -94,6 +99,7 @@ public interface EpistolaService {
             String baseUrl,
             String apiKey,
             String tenantId,
+            String catalogId,
             String templateId,
             String variantId,
             List<VariantSelectionAttribute> variantAttributes,
@@ -130,13 +136,14 @@ public interface EpistolaService {
      * Import templates into Epistola using bulk import.
      * Creates or updates templates, their variants, and optionally publishes to environments.
      *
-     * @param baseUrl  The Epistola API base URL
-     * @param apiKey   The API key for authentication
-     * @param tenantId The tenant ID in Epistola
-     * @param request  The import request containing template definitions
+     * @param baseUrl   The Epistola API base URL
+     * @param apiKey    The API key for authentication
+     * @param tenantId  The tenant ID in Epistola
+     * @param catalogId The catalog ID in Epistola
+     * @param request   The import request containing template definitions
      * @return The import response with per-template results
      */
-    ImportTemplatesResponse importTemplates(String baseUrl, String apiKey, String tenantId, ImportTemplatesRequest request);
+    ImportTemplatesResponse importTemplates(String baseUrl, String apiKey, String tenantId, String catalogId, ImportTemplatesRequest request);
 
     /**
      * Preview a document by rendering it without creating a generation job.

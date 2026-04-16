@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **BREAKING: Added `catalogId` to all catalog-scoped API calls** for Epistola contract 0.2.0 compatibility. Affected methods: `getTemplates`, `getTemplateDetails`, `getAttributes`, `getVariants`, `submitGenerationJob`, `importTemplates`.
+- Added `catalogId` as an action property on the `generate-document` plugin action.
+- Added `defaultCatalogId` as an optional plugin property, used as fallback for catalog-scoped operations.
+- Added `catalogId` and `catalogName` fields to `TemplateInfo` domain record.
+- REST endpoints for templates, attributes, variants, and validate-mapping now require a `catalogId` query parameter.
+- Template sync service (`syncTemplates`) now requires `catalogId` parameter.
+
 ## [0.4.5] - 2026-04-09
 
 ### Fixed
