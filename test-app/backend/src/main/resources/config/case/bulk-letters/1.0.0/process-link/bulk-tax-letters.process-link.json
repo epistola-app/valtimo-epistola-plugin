@@ -26,7 +26,8 @@
                 },
                 "bsn": "pv:taxpayer.bsn",
                 "taxAmount": "pv:taxpayer.taxAmount"
-            }
+            },
+            "catalogId": "municipality-demo"
         }
     },
     {

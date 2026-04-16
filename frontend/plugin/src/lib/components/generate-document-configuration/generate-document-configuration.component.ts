@@ -208,11 +208,14 @@ export class GenerateDocumentConfigurationComponent
 
   private initPrefill(): void {
     if (this.prefillConfiguration$) {
-      this.prefillConfiguration$.pipe(
+      // Wait for catalogs to load before applying prefill, so v-select can match defaultSelectionId
+      combineLatest([
+        this.prefillConfiguration$.pipe(filter(config => !!config?.templateId)),
+        this.catalogs$.pipe(filter(c => !c.loading && c.data.length > 0))
+      ]).pipe(
         takeUntil(this.destroy$),
-        filter(config => !!config?.templateId)
-      ).subscribe(config => {
-        // Set catalog and template selections separately
+        take(1)
+      ).subscribe(([config]) => {
         if (config.catalogId) {
           this.selectedCatalogId$.next(config.catalogId);
         }

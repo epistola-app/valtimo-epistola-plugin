@@ -32,7 +32,8 @@
                     "decision": "doc:/subsidy/decision",
                     "conditions": "doc:/subsidy/conditions"
                 }
-            }
+            },
+            "catalogId": "municipality-demo"
         }
     },
     {
@@ -65,7 +66,8 @@
                     "programName": "doc:/subsidy/programName",
                     "amount": "doc:/subsidy/amount"
                 }
-            }
+            },
+            "catalogId": "municipality-demo"
         }
     },
     {
@@ -98,7 +100,8 @@
                     "programName": "doc:/subsidy/programName",
                     "conditions": "doc:/subsidy/conditions"
                 }
-            }
+            },
+            "catalogId": "municipality-demo"
         }
     },
     {
