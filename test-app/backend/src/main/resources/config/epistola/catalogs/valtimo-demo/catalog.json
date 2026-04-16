@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 2,
+  "catalog": {
+    "slug": "valtimo-demo",
+    "name": "Valtimo Demo Catalog",
+    "description": "Demo templates for Valtimo document generation"
+  },
+  "publisher": {
+    "name": "Epistola"
+  },
+  "release": {
+    "version": "1.0",
+    "releasedAt": "2026-04-16T00:00:00Z"
+  },
+  "resources": [
+    {
+      "type": "template",
+      "slug": "belastingbrief",
+      "name": "Belastingaanslag Gemeentelijke Heffingen",
+      "detailUrl": "./resources/template/belastingbrief.json"
+    },
+    {
+      "type": "template",
+      "slug": "besluit-bezwaar-deels-gegrond",
+      "name": "Besluit op bezwaar - Deels gegrond",
+      "detailUrl": "./resources/template/besluit-bezwaar-deels-gegrond.json"
+    },
+    {
+      "type": "template",
+      "slug": "besluit-bezwaar-gegrond",
+      "name": "Besluit op bezwaar - Gegrond",
+      "detailUrl": "./resources/template/besluit-bezwaar-gegrond.json"
+    },
+    {
+      "type": "template",
+      "slug": "besluit-bezwaar-ongegrond",
+      "name": "Besluit op bezwaar - Ongegrond",
+      "detailUrl": "./resources/template/besluit-bezwaar-ongegrond.json"
+    },
+    {
+      "type": "template",
+      "slug": "bevestigingsbrief-vergunning",
+      "name": "Bevestigingsbrief Omgevingsvergunning",
+      "detailUrl": "./resources/template/bevestigingsbrief-vergunning.json"
+    },
+    {
+      "type": "template",
+      "slug": "example-template",
+      "name": "Example Template",
+      "detailUrl": "./resources/template/example-template.json"
+    },
+    {
+      "type": "template",
+      "slug": "financieel-overzicht",
+      "name": "Financieel Overzicht Subsidie",
+      "detailUrl": "./resources/template/financieel-overzicht.json"
+    },
+    {
+      "type": "template",
+      "slug": "ontvangstbevestiging-bezwaar",
+      "name": "Ontvangstbevestiging bezwaarschrift",
+      "detailUrl": "./resources/template/ontvangstbevestiging-bezwaar.json"
+    },
+    {
+      "type": "template",
+      "slug": "subsidiebesluit",
+      "name": "Subsidiebesluit",
+      "detailUrl": "./resources/template/subsidiebesluit.json"
+    },
+    {
+      "type": "template",
+      "slug": "voorwaarden-bijlage",
+      "name": "Voorwaarden Bijlage",
+      "detailUrl": "./resources/template/voorwaarden-bijlage.json"
+    }
+  ]
+}
