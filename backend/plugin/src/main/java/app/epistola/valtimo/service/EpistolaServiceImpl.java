@@ -22,8 +22,6 @@ import app.epistola.client.model.EnvironmentDto;
 import app.epistola.client.model.EnvironmentListResponse;
 import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.GenerationJobResponse;
-import app.epistola.client.model.ImportTemplatesRequest;
-import app.epistola.client.model.ImportTemplatesResponse;
 import app.epistola.client.model.VariantSelectionAttribute;
 import app.epistola.client.model.TemplateDto;
 import app.epistola.client.model.TemplateListResponse;
