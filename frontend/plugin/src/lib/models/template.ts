@@ -5,6 +5,8 @@ export interface TemplateInfo {
   id: string;
   name: string;
   description?: string;
+  catalogId?: string;
+  catalogName?: string;
 }
 
 /**

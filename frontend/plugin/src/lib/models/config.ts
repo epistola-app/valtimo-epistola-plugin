@@ -32,6 +32,7 @@ export interface VariantAttributeEntry {
  * - By attributes: set variantAttributes with key-value pairs (values can be value resolver expressions)
  */
 export interface GenerateDocumentConfig {
+  catalogId: string;
   templateId: string;
   variantId?: string;
   variantAttributes?: VariantAttributeEntry[];

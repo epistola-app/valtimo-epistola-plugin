@@ -16,7 +16,7 @@
     [tooltip]="'templateIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
     [items]="obs.templates.data"
-    [defaultSelectionId]="obs.prefill?.templateId"
+    [defaultSelectionId]="obs.prefill?.catalogId ? obs.prefill.catalogId + '/' + obs.prefill.templateId : null"
     [disabled]="obs.disabled || obs.templates.loading"
     [required]="true"
     [loading]="obs.templates.loading"

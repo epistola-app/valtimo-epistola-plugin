@@ -58,8 +58,16 @@ export class GenerateDocumentConfigurationComponent
     {id: 'HTML', text: 'HTML'}
   ];
 
+  /** Composite ID: "catalogId/templateId" */
   readonly selectedTemplateId$ = new BehaviorSubject<string>('');
   readonly selectedVariantId$ = new BehaviorSubject<string>('');
+
+  /** Split composite "catalogId/templateId" into parts */
+  private parseCompositeTemplateId(composite: string): { catalogId: string; templateId: string } {
+    const slashIdx = composite.indexOf('/');
+    if (slashIdx <= 0) throw new Error(`Invalid composite template ID: ${composite} (expected "catalogId/templateId")`);
+    return { catalogId: composite.substring(0, slashIdx), templateId: composite.substring(slashIdx + 1) };
+  }
 
   variantSelectionMode: VariantSelectionMode = 'explicit';
   variantAttributeEntries: {key: string; value: string; required: boolean; _customKey?: boolean}[] = [];
@@ -100,9 +108,10 @@ export class GenerateDocumentConfigurationComponent
   }
 
   formValueChange(formOutput: FormOutput): void {
-    const formValue = formOutput as unknown as Partial<GenerateDocumentConfig>;
+    const formValue = formOutput as unknown as Partial<GenerateDocumentConfig & { templateId: string }>;
     this.formValue$.next(formValue);
 
+    // templateId from v-select is composite "catalogId/templateId"
     if (formValue.templateId && formValue.templateId !== this.selectedTemplateId$.getValue()) {
       this.selectedTemplateId$.next(formValue.templateId);
       this.selectedVariantId$.next('');
@@ -200,7 +209,9 @@ export class GenerateDocumentConfigurationComponent
         takeUntil(this.destroy$),
         filter(config => !!config?.templateId)
       ).subscribe(config => {
-        this.selectedTemplateId$.next(config.templateId);
+        // Reconstruct composite ID for the template selector
+        const compositeId = `${config.catalogId}/${config.templateId}`;
+        this.selectedTemplateId$.next(compositeId);
         if (config.variantAttributes && (Array.isArray(config.variantAttributes) ? config.variantAttributes.length > 0 : Object.keys(config.variantAttributes).length > 0)) {
           this.variantSelectionMode = 'attributes';
           if (Array.isArray(config.variantAttributes)) {
@@ -266,7 +277,14 @@ export class GenerateDocumentConfigurationComponent
       ),
       filter(result => result !== null)
     ).subscribe(templates => {
-      this.templates$.next(successResource(templates.map(t => ({id: t.id, text: t.name}))));
+      // Group templates by catalog — use composite ID "catalogId/templateId" to capture both
+      const items = templates.map(t => ({
+        id: `${t.catalogId}/${t.id}`,
+        text: templates.some(other => other.catalogId !== t.catalogId)
+          ? `[${t.catalogName ?? t.catalogId}] ${t.name}`
+          : t.name,
+      }));
+      this.templates$.next(successResource(items));
     });
   }
 
@@ -312,14 +330,15 @@ export class GenerateDocumentConfigurationComponent
       takeUntil(this.destroy$),
       filter(([configId, templateId]) => !!configId && !!templateId),
       tap(() => this.variants$.next(loadingResource(this.variants$.getValue().data))),
-      switchMap(([configurationId, templateId]) =>
-        this.epistolaPluginService.getVariants(configurationId, templateId).pipe(
+      switchMap(([configurationId, compositeId]) => {
+        const { catalogId, templateId } = this.parseCompositeTemplateId(compositeId);
+        return this.epistolaPluginService.getVariants(configurationId, templateId, catalogId).pipe(
           catchError(() => {
             this.variants$.next(errorResource([], 'Failed to load variants'));
             return of(null);
           })
-        )
-      ),
+        );
+      }),
       filter(result => result !== null)
     ).subscribe(variants => {
       this.variants$.next(successResource(
@@ -339,14 +358,15 @@ export class GenerateDocumentConfigurationComponent
         this.templateFields$.next(loadingResource(this.templateFields$.getValue().data));
         this.loadProcessVariables();
       }),
-      switchMap(([configurationId, templateId]) =>
-        this.epistolaPluginService.getTemplateDetails(configurationId, templateId).pipe(
+      switchMap(([configurationId, compositeId]) => {
+        const { catalogId, templateId } = this.parseCompositeTemplateId(compositeId);
+        return this.epistolaPluginService.getTemplateDetails(configurationId, templateId, catalogId).pipe(
           catchError(() => {
             this.templateFields$.next(errorResource([], 'Failed to load template fields'));
             return of(null);
           })
-        )
-      ),
+        );
+      }),
       filter(result => result !== null)
     ).subscribe(details => {
       this.templateFields$.next(successResource(details.fields || []));
@@ -392,8 +412,14 @@ export class GenerateDocumentConfigurationComponent
         .pipe(take(1))
         .subscribe(([formValue, valid, dataMapping]) => {
           if (valid && formValue) {
+            // templateId from form is composite "catalogId/templateId"
+            const compositeTemplateId = formValue.templateId!;
+            const slashIdx = compositeTemplateId.indexOf('/');
+            const { catalogId, templateId } = this.parseCompositeTemplateId(compositeTemplateId);
+
             const config: GenerateDocumentConfig = {
-              templateId: formValue.templateId!,
+              catalogId,
+              templateId,
               environmentId: formValue.environmentId || undefined,
               dataMapping: dataMapping,
               outputFormat: formValue.outputFormat as 'PDF' | 'HTML',
