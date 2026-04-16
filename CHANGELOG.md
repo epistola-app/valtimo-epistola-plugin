@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Refactored generate-document configuration reactive state** — Replaced 6 independent `init*Loading()` methods with a single cascading reactive chain in `initCascade()`. Prefill values now seed the cascade (catalog → templates → variants/fields) instead of running as a separate subscription with timing issues. Added `distinctUntilChanged()` to prevent duplicate loads. Template fields are guaranteed loaded before data mapping prefill is applied.
 - **BREAKING: Added `catalogId` to all catalog-scoped API calls** for Epistola contract 0.2.0 compatibility. Affected methods: `getTemplates`, `getTemplateDetails`, `getAttributes`, `getVariants`, `submitGenerationJob`, `importTemplates`.
 - Added `catalogId` as an action property on the `generate-document` plugin action.
 - Added `defaultCatalogId` as an optional plugin property, used as fallback for catalog-scoped operations.
