@@ -187,6 +187,15 @@ public class EpistolaCatalogSyncService {
     }
 
     private void addToZip(ZipOutputStream zos, String entryName, Resource resource) throws IOException {
+        // Skip directories — file-based resources can be checked directly,
+        // classpath resources that are directories throw on getInputStream()
+        try {
+            if (resource.isFile() && resource.getFile().isDirectory()) {
+                return;
+            }
+        } catch (IOException ignored) {
+            // Not a file-based resource (e.g., JAR entry) — proceed
+        }
         zos.putNextEntry(new ZipEntry(entryName));
         try (InputStream is = resource.getInputStream()) {
             is.transferTo(zos);

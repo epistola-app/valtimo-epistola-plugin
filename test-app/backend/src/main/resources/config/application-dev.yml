@@ -42,7 +42,7 @@ valtimo:
     encryption-secret: "0123456789abcdef0123456789abcdef"
 
 epistola:
-  base-url: ${EPISTOLA_BASE_URL:http://localhost:4010/api}
+  base-url: ${EPISTOLA_BASE_URL:http://localhost:4000/api}
 
 operaton:
   bpm:
