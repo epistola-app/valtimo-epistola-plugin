@@ -265,6 +265,51 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
+    public ImportCatalogResult importCatalog(String baseUrl, String apiKey, String tenantId, byte[] zipBytes, String catalogType) {
+        log.info("Importing catalog ZIP ({} bytes) for tenant: {}, type: {}", zipBytes.length, tenantId, catalogType);
+        try {
+            org.springframework.core.io.ByteArrayResource zipResource = new org.springframework.core.io.ByteArrayResource(zipBytes) {
+                @Override
+                public String getFilename() {
+                    return "catalog.zip";
+                }
+            };
+
+            org.springframework.util.LinkedMultiValueMap<String, Object> body = new org.springframework.util.LinkedMultiValueMap<>();
+            body.add("file", zipResource);
+            if (catalogType != null && !catalogType.isBlank()) {
+                body.add("catalogType", catalogType);
+            }
+
+            String responseJson = apiClientFactory.createRestClient(baseUrl, apiKey)
+                    .post()
+                    .uri("/api/tenants/{tenantId}/catalogs/import", tenantId)
+                    .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA)
+                    .body(body)
+                    .retrieve()
+                    .body(String.class);
+
+            // Parse the response to extract import result fields
+            com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(responseJson);
+
+            String catalogKey = root.has("catalogKey") ? root.get("catalogKey").asText(null) : null;
+            String catalogName = root.has("catalogName") ? root.get("catalogName").asText(null) : null;
+            int installed = root.has("installed") ? root.get("installed").asInt(0) : 0;
+            int updated = root.has("updated") ? root.get("updated").asInt(0) : 0;
+            int failed = root.has("failed") ? root.get("failed").asInt(0) : 0;
+            int total = root.has("total") ? root.get("total").asInt(0) : 0;
+
+            log.info("Catalog import completed for tenant: {}, key={}, installed={}, updated={}, failed={}, total={}",
+                    tenantId, catalogKey, installed, updated, failed, total);
+
+            return new ImportCatalogResult(catalogKey, catalogName, installed, updated, failed, total);
+        } catch (Exception e) {
+            log.error("Failed to import catalog for tenant {}: {}", tenantId, e.getMessage());
+            throw new EpistolaApiException("Failed to import catalog", e);
+        }
+    }
+
+    @Override
     public java.io.InputStream previewDocument(
             String baseUrl, String apiKey, String tenantId,
             String templateId, String variantId, String environmentId,

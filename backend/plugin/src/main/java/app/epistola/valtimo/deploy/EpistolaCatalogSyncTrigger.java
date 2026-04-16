@@ -10,26 +10,26 @@ import org.springframework.context.event.EventListener;
 import java.util.List;
 
 /**
- * Triggers template synchronization on application startup.
+ * Triggers catalog synchronization on application startup.
  * <p>
  * Scans all Epistola plugin configurations where {@code templateSyncEnabled = true},
- * and for each configuration, synchronizes template definitions from classpath
+ * and for each configuration, synchronizes catalog resources from classpath
  * to the Epistola server.
  */
 @Slf4j
-public class EpistolaTemplateSyncTrigger {
+public class EpistolaCatalogSyncTrigger {
 
     private final PluginService pluginService;
-    private final EpistolaTemplateSyncService syncService;
+    private final EpistolaCatalogSyncService syncService;
 
-    public EpistolaTemplateSyncTrigger(PluginService pluginService, EpistolaTemplateSyncService syncService) {
+    public EpistolaCatalogSyncTrigger(PluginService pluginService, EpistolaCatalogSyncService syncService) {
         this.pluginService = pluginService;
         this.syncService = syncService;
     }
 
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        log.info("Application ready — checking for Epistola template sync configurations");
+        log.info("Application ready — checking for Epistola catalog sync configurations");
 
         try {
             @SuppressWarnings("unchecked")
@@ -41,37 +41,37 @@ public class EpistolaTemplateSyncTrigger {
                     EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(config);
 
                     if (!plugin.isTemplateSyncEnabled()) {
-                        log.debug("Template sync disabled for plugin configuration '{}'", config.getTitle());
+                        log.debug("Catalog sync disabled for plugin configuration '{}'", config.getTitle());
                         continue;
                     }
 
-                    log.info("Starting template sync for plugin configuration '{}' (tenant={})",
+                    log.info("Starting catalog sync for plugin configuration '{}' (tenant={})",
                             config.getTitle(), plugin.getTenantId());
 
-                    EpistolaTemplateSyncService.SyncResult result = syncService.syncTemplates(
+                    EpistolaCatalogSyncService.SyncResult result = syncService.syncCatalogs(
                             config.getId().toString(),
                             plugin.getBaseUrl(),
                             plugin.getApiKey(),
                             plugin.getTenantId(),
-                            plugin.getDefaultCatalogId()
+                            "full"
                     );
 
-                    if (result.totalTemplates() == 0) {
-                        log.info("No template definitions found on classpath for '{}'", config.getTitle());
+                    if (result.totalCatalogs() == 0) {
+                        log.info("No catalogs found on classpath for '{}'", config.getTitle());
                     } else if (result.isFullySuccessful()) {
-                        log.info("Template sync completed for '{}': {}/{} templates synced successfully",
-                                config.getTitle(), result.successCount(), result.totalTemplates());
+                        log.info("Catalog sync completed for '{}': {}/{} catalogs synced successfully",
+                                config.getTitle(), result.successCount(), result.totalCatalogs());
                     } else {
-                        log.warn("Template sync partially failed for '{}': {} succeeded, {} failed (out of {} total)",
-                                config.getTitle(), result.successCount(), result.failCount(), result.totalTemplates());
+                        log.warn("Catalog sync partially failed for '{}': {} succeeded, {} failed (out of {} total)",
+                                config.getTitle(), result.successCount(), result.failCount(), result.totalCatalogs());
                     }
                 } catch (Exception e) {
-                    log.error("Template sync failed for plugin configuration '{}': {}",
+                    log.error("Catalog sync failed for plugin configuration '{}': {}",
                             config.getTitle(), e.getMessage(), e);
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to load Epistola plugin configurations for template sync: {}", e.getMessage(), e);
+            log.error("Failed to load Epistola plugin configurations for catalog sync: {}", e.getMessage(), e);
         }
     }
 }

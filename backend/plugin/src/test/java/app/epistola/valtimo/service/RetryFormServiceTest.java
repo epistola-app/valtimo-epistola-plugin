@@ -312,6 +312,7 @@ class RetryFormServiceTest {
         lenient().when(link.getPluginActionDefinitionKey()).thenReturn("generate-document");
 
         ObjectNode actionProps = objectMapper.createObjectNode();
+        actionProps.put("catalogId", CATALOG_ID);
         if (templateId != null) {
             actionProps.put("templateId", templateId);
         }
@@ -336,7 +337,6 @@ class RetryFormServiceTest {
         lenient().when(plugin.getBaseUrl()).thenReturn(BASE_URL);
         lenient().when(plugin.getApiKey()).thenReturn(API_KEY);
         lenient().when(plugin.getTenantId()).thenReturn(TENANT_ID);
-        lenient().when(plugin.getDefaultCatalogId()).thenReturn(CATALOG_ID);
         lenient().when(pluginService.createInstance(link.getPluginConfigurationId())).thenReturn(plugin);
     }
 

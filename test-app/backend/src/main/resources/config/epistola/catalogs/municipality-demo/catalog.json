@@ -1,9 +1,9 @@
 {
   "schemaVersion": 2,
   "catalog": {
-    "slug": "valtimo-demo",
-    "name": "Valtimo Demo Catalog",
-    "description": "Demo templates for Valtimo document generation"
+    "slug": "municipality-demo",
+    "name": "Municipality Demo Catalog",
+    "description": "Demo templates for municipal document generation with Valtimo"
   },
   "publisher": {
     "name": "Epistola"

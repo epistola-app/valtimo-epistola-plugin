@@ -65,7 +65,7 @@ public class RetryFormService {
 
         EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
                 originalLink.getPluginConfigurationId());
-        String effectiveCatalogId = catalogId != null ? catalogId : plugin.getDefaultCatalogId();
+        String effectiveCatalogId = catalogId;
         TemplateDetails template = epistolaService.getTemplateDetails(
                 plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(), effectiveCatalogId, templateId);
 

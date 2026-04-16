@@ -106,18 +106,6 @@ public class EpistolaPlugin {
     private String defaultEnvironmentId;
 
     /**
-     * The default catalog slug for template operations. Can be overridden per action.
-     * Example: "default", "my-catalog"
-     */
-    @PluginProperty(
-            key = "defaultCatalogId",
-            title = "Default Catalog",
-            secret = false,
-            required = false
-    )
-    private String defaultCatalogId;
-
-    /**
      * Whether to enable automatic template synchronization from classpath to Epistola.
      * When enabled, template definitions from config/epistola/templates/ are synced on startup.
      */
@@ -143,10 +131,6 @@ public class EpistolaPlugin {
 
     public String getDefaultEnvironmentId() {
         return defaultEnvironmentId;
-    }
-
-    public String getDefaultCatalogId() {
-        return defaultCatalogId;
     }
 
     public Boolean getTemplateSyncEnabled() {
@@ -181,9 +165,6 @@ public class EpistolaPlugin {
             validateSlug("defaultEnvironmentId", defaultEnvironmentId, 3, 30);
         }
 
-        if (defaultCatalogId != null && !defaultCatalogId.isBlank()) {
-            validateSlug("defaultCatalogId", defaultCatalogId, 3, 63);
-        }
     }
 
     private void validateSlug(String propertyName, String value, int minLength, int maxLength) {

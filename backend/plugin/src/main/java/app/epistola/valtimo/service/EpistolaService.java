@@ -146,6 +146,31 @@ public interface EpistolaService {
     ImportTemplatesResponse importTemplates(String baseUrl, String apiKey, String tenantId, String catalogId, ImportTemplatesRequest request);
 
     /**
+     * Import a catalog ZIP archive into Epistola.
+     * Posts a multipart form with the ZIP file to the catalog import endpoint.
+     *
+     * @param baseUrl     The Epistola API base URL
+     * @param apiKey      The API key for authentication
+     * @param tenantId    The tenant ID in Epistola
+     * @param zipBytes    The catalog ZIP archive bytes
+     * @param catalogType The type of catalog import (e.g. "full", "templates-only")
+     * @return The import result with counts of installed/updated/failed resources
+     */
+    ImportCatalogResult importCatalog(String baseUrl, String apiKey, String tenantId, byte[] zipBytes, String catalogType);
+
+    /**
+     * Result of a catalog import operation.
+     */
+    record ImportCatalogResult(
+            String catalogKey,
+            String catalogName,
+            int installed,
+            int updated,
+            int failed,
+            int total
+    ) {}
+
+    /**
      * Preview a document by rendering it without creating a generation job.
      * Returns the rendered PDF bytes.
      *
