@@ -17,7 +17,7 @@ logging:
 
 spring:
     profiles:
-        active: ${SPRING_PROFILES_ACTIVE}
+        active: ${SPRING_PROFILES_ACTIVE:demo}
     application:
         name: valtimo-backend
     jackson:

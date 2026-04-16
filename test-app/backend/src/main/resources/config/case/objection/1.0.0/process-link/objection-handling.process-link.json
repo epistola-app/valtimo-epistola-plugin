@@ -36,7 +36,8 @@
                     "grounds": "doc:/objection/grounds",
                     "receivedDate": "doc:/objection/receivedDate"
                 }
-            }
+            },
+            "catalogId": "municipality-demo"
         }
     },
     {
@@ -85,7 +86,8 @@
                 },
                 "decision": "pv:decision",
                 "motivation": "pv:motivation"
-            }
+            },
+            "catalogId": "municipality-demo"
         }
     },
     {
@@ -117,7 +119,8 @@
                 },
                 "decision": "pv:decision",
                 "motivation": "pv:motivation"
-            }
+            },
+            "catalogId": "municipality-demo"
         }
     },
     {
@@ -149,7 +152,8 @@
                 },
                 "decision": "pv:decision",
                 "motivation": "pv:motivation"
-            }
+            },
+            "catalogId": "municipality-demo"
         }
     },
     {

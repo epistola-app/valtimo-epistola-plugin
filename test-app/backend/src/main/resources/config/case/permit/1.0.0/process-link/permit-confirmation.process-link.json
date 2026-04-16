@@ -38,7 +38,8 @@
                     "kadastraalNummer": "doc:/property/kadastraalNummer"
                 },
                 "activities": "doc:/activities"
-            }
+            },
+            "catalogId": "municipality-demo"
         }
     },
     {

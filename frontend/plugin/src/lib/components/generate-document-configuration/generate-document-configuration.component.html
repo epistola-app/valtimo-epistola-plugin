@@ -3,13 +3,29 @@
     *ngIf="{
       disabled: disabled$ | async,
       prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null,
+      catalogs: catalogs$ | async,
       templates: templates$ | async,
       variants: variants$ | async,
       environments: environments$ | async,
       templateFields: templateFields$ | async,
+      selectedCatalogId: selectedCatalogId$ | async,
       selectedTemplateId: selectedTemplateId$ | async
     } as obs"
 >
+  <v-select
+    name="catalogId"
+    [title]="'catalogId' | pluginTranslate: pluginId | async"
+    [tooltip]="'catalogIdTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [items]="obs.catalogs.data"
+    [defaultSelectionId]="obs.prefill?.catalogId"
+    [disabled]="obs.disabled || obs.catalogs.loading"
+    [required]="true"
+    [loading]="obs.catalogs.loading"
+  >
+  </v-select>
+  <div *ngIf="obs.catalogs.error" class="loading-error">{{ obs.catalogs.error }}</div>
+
   <v-select
     name="templateId"
     [title]="'templateId' | pluginTranslate: pluginId | async"
@@ -17,7 +33,7 @@
     [margin]="true"
     [items]="obs.templates.data"
     [defaultSelectionId]="obs.prefill?.templateId"
-    [disabled]="obs.disabled || obs.templates.loading"
+    [disabled]="obs.disabled || obs.templates.loading || !obs.selectedCatalogId"
     [required]="true"
     [loading]="obs.templates.loading"
   >

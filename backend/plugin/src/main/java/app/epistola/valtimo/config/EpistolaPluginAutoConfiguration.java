@@ -1,9 +1,9 @@
 package app.epistola.valtimo.config;
 
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
-import app.epistola.valtimo.deploy.EpistolaTemplateSyncService;
-import app.epistola.valtimo.deploy.EpistolaTemplateSyncTrigger;
-import app.epistola.valtimo.deploy.TemplateDefinitionScanner;
+import app.epistola.valtimo.deploy.CatalogScanner;
+import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
+import app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger;
 import app.epistola.valtimo.service.DataMappingResolverService;
 import app.epistola.valtimo.service.EpistolaCompletionEventConsumer;
 import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
@@ -170,28 +170,27 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(TemplateDefinitionScanner.class)
-    public TemplateDefinitionScanner templateDefinitionScanner(ObjectMapper objectMapper) {
-        return new TemplateDefinitionScanner(objectMapper);
+    @ConditionalOnMissingBean(CatalogScanner.class)
+    public CatalogScanner catalogScanner(ObjectMapper objectMapper) {
+        return new CatalogScanner(objectMapper);
     }
 
     @Bean
-    @ConditionalOnMissingBean(EpistolaTemplateSyncService.class)
-    public EpistolaTemplateSyncService epistolaTemplateSyncService(
-            TemplateDefinitionScanner scanner,
-            EpistolaService epistolaService,
-            ObjectMapper objectMapper
+    @ConditionalOnMissingBean(EpistolaCatalogSyncService.class)
+    public EpistolaCatalogSyncService epistolaCatalogSyncService(
+            CatalogScanner scanner,
+            EpistolaService epistolaService
     ) {
-        return new EpistolaTemplateSyncService(scanner, epistolaService, objectMapper);
+        return new EpistolaCatalogSyncService(scanner, epistolaService);
     }
 
     @Bean
-    @ConditionalOnMissingBean(EpistolaTemplateSyncTrigger.class)
-    public EpistolaTemplateSyncTrigger epistolaTemplateSyncTrigger(
+    @ConditionalOnMissingBean(EpistolaCatalogSyncTrigger.class)
+    public EpistolaCatalogSyncTrigger epistolaCatalogSyncTrigger(
             PluginService pluginService,
-            EpistolaTemplateSyncService syncService
+            EpistolaCatalogSyncService syncService
     ) {
-        return new EpistolaTemplateSyncTrigger(pluginService, syncService);
+        return new EpistolaCatalogSyncTrigger(pluginService, syncService);
     }
 
     @Bean

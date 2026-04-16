@@ -18,7 +18,8 @@
             "resultProcessVariable": "epistolaRequestId",
             "dataMapping": {
                 "firstName": "doc:/firstName"
-            }
+            },
+            "catalogId": "municipality-demo"
         }
     }
 ]

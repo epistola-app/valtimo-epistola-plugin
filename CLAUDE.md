@@ -19,28 +19,67 @@ The frontend plugin must be built BEFORE the test-app frontend:
    ./gradlew :test-app:backend:bootRun
    ```
 
-## Local Development with Docker
+## Development Scenarios
 
-Start infrastructure only (PostgreSQL + Keycloak):
+### Scenario 1: Full local stack (both from source)
+
+Best for cross-repo development when changing both Epistola and the plugin.
+
 ```bash
-docker compose -f docker/docker-compose.yml up -d
+# Epistola infrastructure (Postgres 4001, Keycloak 8080)
+cd repos/epistola-suite/apps/epistola/docker && docker compose up -d
+
+# Epistola app (port 4000)
+cd repos/epistola-suite
+pnpm install && pnpm build
+./gradlew :apps:epistola:bootRun --args='--spring.profiles.active=demo,localauth'
+
+# Plugin infrastructure (Postgres 5432, Keycloak 8081)
+cd repos/valtimo-epistola-plugin/docker && docker compose up -d
+
+# Valtimo backend (port 8080, connects to Epistola on 4000)
+cd repos/valtimo-epistola-plugin && ./gradlew :test-app:backend:bootRun
+
+# Valtimo frontend (port 4200)
+cd repos/valtimo-epistola-plugin/frontend/plugin && pnpm build
+cd ../../test-app/frontend && pnpm install && pnpm start
 ```
 
-Start with real Epistola server (recommended for E2E testing):
+### Scenario 2: Epistola only
+
+For working on Epistola without the plugin.
+
 ```bash
-docker compose -f docker/docker-compose.yml --profile server up -d
+cd repos/epistola-suite/apps/epistola/docker && docker compose up -d
+./gradlew :apps:epistola:bootRun --args='--spring.profiles.active=demo,localauth'
 ```
 
-Start with mock server (for CI or quick tests):
+### Scenario 3: Plugin + Epistola container
+
+For plugin development without building Epistola from source.
+
 ```bash
-docker compose -f docker/docker-compose.yml --profile mock up -d
+# Start infra + Epistola container (port 4010)
+cd repos/valtimo-epistola-plugin/docker
+docker compose --profile server up -d
+
+# Valtimo backend (port 8080, connects to Epistola on 4010)
+./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev'
+
+# Valtimo frontend
+cd frontend/plugin && pnpm build
+cd ../../test-app/frontend && pnpm install && pnpm start
 ```
 
-Services:
-- PostgreSQL: localhost:5432
-- Keycloak: localhost:8081
-- Epistola Server: localhost:4010 (real, `demo` profile seeds test data — use `--profile server`)
-- Epistola Mock Server: localhost:4010 (use `--profile mock`)
+### Infrastructure ports
+
+| Service | Epistola stack | Plugin stack |
+|---------|---------------|-------------|
+| PostgreSQL | 4001 | 5432 |
+| Keycloak | 4002 | 8081 |
+| App | 4000 (Gradle) | 8080 (Valtimo backend) |
+| Frontend | — | 4200 |
+| Epistola container | — | 4010 (`--profile server`) |
 
 ## Project Structure
 

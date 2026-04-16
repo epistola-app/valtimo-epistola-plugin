@@ -57,6 +57,7 @@ class RetryFormServiceTest {
     private static final String BASE_URL = "https://api.epistola.app";
     private static final String API_KEY = "secret-key";
     private static final String TENANT_ID = "tenant-1";
+    private static final String CATALOG_ID = "default";
 
     @BeforeEach
     void setUp() {
@@ -87,7 +88,7 @@ class RetryFormServiceTest {
             TemplateDetails templateDetails = new TemplateDetails(TEMPLATE_ID, "Invoice",
                     List.of(new TemplateField("name", "name", "string",
                             TemplateField.FieldType.SCALAR, true, null, List.of())));
-            when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, TEMPLATE_ID))
+            when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID))
                     .thenReturn(templateDetails);
 
             Map<String, Object> resolvedData = Map.of("name", "John Doe");
@@ -124,7 +125,7 @@ class RetryFormServiceTest {
             mockPluginInstance(link);
 
             TemplateDetails templateDetails = new TemplateDetails(TEMPLATE_ID, "Invoice", List.of());
-            when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, TEMPLATE_ID))
+            when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID))
                     .thenReturn(templateDetails);
             when(dataMappingResolverService.resolveMapping(eq(BUSINESS_KEY), anyMap()))
                     .thenReturn(Map.of());
@@ -270,7 +271,7 @@ class RetryFormServiceTest {
             mockPluginInstance(link);
 
             TemplateDetails templateDetails = new TemplateDetails(TEMPLATE_ID, "Invoice", List.of());
-            when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, TEMPLATE_ID))
+            when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID))
                     .thenReturn(templateDetails);
             when(dataMappingResolverService.resolveMapping(eq(BUSINESS_KEY), anyMap()))
                     .thenReturn(Map.of());
@@ -311,6 +312,7 @@ class RetryFormServiceTest {
         lenient().when(link.getPluginActionDefinitionKey()).thenReturn("generate-document");
 
         ObjectNode actionProps = objectMapper.createObjectNode();
+        actionProps.put("catalogId", CATALOG_ID);
         if (templateId != null) {
             actionProps.put("templateId", templateId);
         }

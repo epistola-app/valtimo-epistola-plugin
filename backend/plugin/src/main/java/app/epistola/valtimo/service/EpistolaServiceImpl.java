@@ -2,6 +2,7 @@ package app.epistola.valtimo.service;
 
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.domain.AttributeDefinition;
+import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
@@ -21,8 +22,6 @@ import app.epistola.client.model.EnvironmentDto;
 import app.epistola.client.model.EnvironmentListResponse;
 import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.GenerationJobResponse;
-import app.epistola.client.model.ImportTemplatesRequest;
-import app.epistola.client.model.ImportTemplatesResponse;
 import app.epistola.client.model.VariantSelectionAttribute;
 import app.epistola.client.model.TemplateDto;
 import app.epistola.client.model.TemplateListResponse;
@@ -50,18 +49,38 @@ public class EpistolaServiceImpl implements EpistolaService {
     private final EpistolaApiClientFactory apiClientFactory;
 
     @Override
-    public List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId) {
-        log.info("Fetching templates for tenant: {}", tenantId);
+    public List<CatalogInfo> getCatalogs(String baseUrl, String apiKey, String tenantId) {
+        log.info("Fetching catalogs for tenant: {}", tenantId);
         try {
-            TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
-            TemplateListResponse response = templatesApi.listTemplates(tenantId, null);
+            var response = apiClientFactory.createCatalogsApi(baseUrl, apiKey)
+                    .listCatalogs(tenantId);
 
             if (response == null || response.getItems() == null) {
                 return Collections.emptyList();
             }
 
             return response.getItems().stream()
-                    .map(this::mapToTemplateInfo)
+                    .map(dto -> new CatalogInfo(dto.getId(), dto.getName(), dto.getType().getValue()))
+                    .toList();
+        } catch (Exception e) {
+            log.error("Failed to fetch catalogs for tenant {}: {}", tenantId, e.getMessage());
+            throw new EpistolaApiException("Failed to fetch catalogs", e);
+        }
+    }
+
+    @Override
+    public List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId, String catalogId) {
+        log.info("Fetching templates for tenant: {}, catalog: {}", tenantId, catalogId);
+        try {
+            TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
+            TemplateListResponse response = templatesApi.listTemplates(tenantId, catalogId, null);
+
+            if (response == null || response.getItems() == null) {
+                return Collections.emptyList();
+            }
+
+            return response.getItems().stream()
+                    .map(dto -> mapToTemplateInfo(dto, catalogId))
                     .toList();
         } catch (Exception e) {
             log.error("Failed to fetch templates for tenant {}: {}", tenantId, e.getMessage());
@@ -70,11 +89,11 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
-    public TemplateDetails getTemplateDetails(String baseUrl, String apiKey, String tenantId, String templateId) {
-        log.info("Fetching template details for tenant: {}, template: {}", tenantId, templateId);
+    public TemplateDetails getTemplateDetails(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId) {
+        log.info("Fetching template details for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
         try {
             TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
-            TemplateDto response = templatesApi.getTemplate(tenantId, templateId);
+            TemplateDto response = templatesApi.getTemplate(tenantId, catalogId, templateId);
 
             if (response == null) {
                 throw new EpistolaApiException("Template not found: " + templateId);
@@ -90,11 +109,11 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
-    public List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId) {
-        log.info("Fetching attribute definitions for tenant: {}", tenantId);
+    public List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId, String catalogId) {
+        log.info("Fetching attribute definitions for tenant: {}, catalog: {}", tenantId, catalogId);
         try {
             AttributesApi attributesApi = apiClientFactory.createAttributesApi(baseUrl, apiKey);
-            var response = attributesApi.listAttributes(tenantId);
+            var response = attributesApi.listAttributes(tenantId, catalogId);
 
             if (response == null || response.getItems() == null) {
                 return Collections.emptyList();
@@ -130,11 +149,11 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
-    public List<VariantInfo> getVariants(String baseUrl, String apiKey, String tenantId, String templateId) {
-        log.info("Fetching variants for tenant: {}, template: {}", tenantId, templateId);
+    public List<VariantInfo> getVariants(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId) {
+        log.info("Fetching variants for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
         try {
             VariantsApi variantsApi = apiClientFactory.createVariantsApi(baseUrl, apiKey);
-            VariantListResponse response = variantsApi.listVariants(tenantId, templateId);
+            VariantListResponse response = variantsApi.listVariants(tenantId, catalogId, templateId);
 
             if (response == null || response.getItems() == null) {
                 return Collections.emptyList();
@@ -154,6 +173,7 @@ public class EpistolaServiceImpl implements EpistolaService {
             String baseUrl,
             String apiKey,
             String tenantId,
+            String catalogId,
             String templateId,
             String variantId,
             List<VariantSelectionAttribute> variantAttributes,
@@ -174,6 +194,7 @@ public class EpistolaServiceImpl implements EpistolaService {
             // When neither variantId nor variantAttributes is set, Epistola server
             // resolves the default variant automatically (since v0.4.x).
             GenerateDocumentRequest request = new GenerateDocumentRequest(
+                    catalogId,
                     templateId,
                     data,
                     variantId,          // nullable - omit when using attribute-based selection
@@ -249,28 +270,60 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
-    public ImportTemplatesResponse importTemplates(String baseUrl, String apiKey, String tenantId, ImportTemplatesRequest request) {
-        log.info("Importing {} templates for tenant: {}", request.getTemplates().size(), tenantId);
+    public ImportCatalogResult importCatalog(String baseUrl, String apiKey, String tenantId, byte[] zipBytes, String catalogType) {
+        log.info("Importing catalog ZIP ({} bytes) for tenant: {}, type: {}", zipBytes.length, tenantId, catalogType);
         try {
-            TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
-            ImportTemplatesResponse response = templatesApi.importTemplates(tenantId, request);
-            log.info("Template import completed for tenant: {}", tenantId);
-            return response;
+            org.springframework.core.io.ByteArrayResource zipResource = new org.springframework.core.io.ByteArrayResource(zipBytes) {
+                @Override
+                public String getFilename() {
+                    return "catalog.zip";
+                }
+            };
+
+            org.springframework.util.LinkedMultiValueMap<String, Object> body = new org.springframework.util.LinkedMultiValueMap<>();
+            body.add("file", zipResource);
+            if (catalogType != null && !catalogType.isBlank()) {
+                body.add("catalogType", catalogType);
+            }
+
+            String responseJson = apiClientFactory.createRestClient(baseUrl, apiKey)
+                    .post()
+                    .uri("/tenants/{tenantId}/catalogs/import", tenantId)
+                    .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA)
+                    .body(body)
+                    .retrieve()
+                    .body(String.class);
+
+            // Parse the response to extract import result fields
+            com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(responseJson);
+
+            String catalogKey = root.has("catalogKey") ? root.get("catalogKey").asText(null) : null;
+            String catalogName = root.has("catalogName") ? root.get("catalogName").asText(null) : null;
+            int installed = root.has("installed") ? root.get("installed").asInt(0) : 0;
+            int updated = root.has("updated") ? root.get("updated").asInt(0) : 0;
+            int failed = root.has("failed") ? root.get("failed").asInt(0) : 0;
+            int total = root.has("total") ? root.get("total").asInt(0) : 0;
+
+            log.info("Catalog import completed for tenant: {}, key={}, installed={}, updated={}, failed={}, total={}",
+                    tenantId, catalogKey, installed, updated, failed, total);
+
+            return new ImportCatalogResult(catalogKey, catalogName, installed, updated, failed, total);
         } catch (Exception e) {
-            log.error("Failed to import templates for tenant {}: {}", tenantId, e.getMessage());
-            throw new EpistolaApiException("Failed to import templates", e);
+            log.error("Failed to import catalog for tenant {}: {}", tenantId, e.getMessage());
+            throw new EpistolaApiException("Failed to import catalog", e);
         }
     }
 
     @Override
     public java.io.InputStream previewDocument(
             String baseUrl, String apiKey, String tenantId,
-            String templateId, String variantId, String environmentId,
+            String catalogId, String templateId, String variantId, String environmentId,
             Map<String, Object> data
     ) {
-        log.info("Previewing document for tenant: {}, template: {}", tenantId, templateId);
+        log.info("Previewing document for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
         try {
             var requestBody = new java.util.LinkedHashMap<String, Object>();
+            requestBody.put("catalogId", catalogId);
             requestBody.put("templateId", templateId);
             requestBody.put("data", data);
             if (variantId != null) requestBody.put("variantId", variantId);
@@ -326,11 +379,13 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     // Mapping methods
 
-    private TemplateInfo mapToTemplateInfo(TemplateSummaryDto dto) {
+    private TemplateInfo mapToTemplateInfo(TemplateSummaryDto dto, String catalogId) {
         return new TemplateInfo(
                 dto.getId(),
                 dto.getName(),
-                null  // description is not available in TemplateSummaryDto
+                null,      // description is not available in TemplateSummaryDto
+                catalogId,
+                null       // catalogName is not available in TemplateSummaryDto
         );
     }
 
