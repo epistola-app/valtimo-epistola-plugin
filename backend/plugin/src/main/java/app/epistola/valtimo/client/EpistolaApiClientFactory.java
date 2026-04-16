@@ -1,6 +1,7 @@
 package app.epistola.valtimo.client;
 
 import app.epistola.client.api.AttributesApi;
+import app.epistola.client.api.CatalogsApi;
 import app.epistola.client.api.EnvironmentsApi;
 import app.epistola.client.api.GenerationApi;
 import app.epistola.client.api.TemplatesApi;
@@ -34,6 +35,17 @@ public class EpistolaApiClientFactory {
      */
     public GenerationApi createGenerationApi(String baseUrl, String apiKey) {
         return new GenerationApi(createRestClient(baseUrl, apiKey));
+    }
+
+    /**
+     * Create a CatalogsApi client for catalog operations.
+     *
+     * @param baseUrl The Epistola API base URL
+     * @param apiKey  The API key for authentication
+     * @return Configured CatalogsApi client
+     */
+    public CatalogsApi createCatalogsApi(String baseUrl, String apiKey) {
+        return new CatalogsApi(createRestClient(baseUrl, apiKey));
     }
 
     /**

@@ -2,7 +2,7 @@ import {Injectable} from '@angular/core';
 import {HttpClient} from '@angular/common/http';
 import {ConfigService} from '@valtimo/shared';
 import {Observable} from 'rxjs';
-import {AttributeDefinition, EnvironmentInfo, PreviewSource, TemplateDetails, TemplateInfo, ValidationResult, VariantInfo} from '../models';
+import {AttributeDefinition, CatalogInfo, EnvironmentInfo, PreviewSource, TemplateDetails, TemplateInfo, ValidationResult, VariantInfo} from '../models';
 
 /**
  * Service for interacting with Epistola plugin API endpoints.
@@ -21,11 +21,23 @@ export class EpistolaPluginService {
   }
 
   /**
-   * Get all available templates for a plugin configuration.
+   * Get all available catalogs for a plugin configuration.
    */
-  getTemplates(pluginConfigurationId: string): Observable<TemplateInfo[]> {
+  getCatalogs(pluginConfigurationId: string): Observable<CatalogInfo[]> {
+    return this.http.get<CatalogInfo[]>(
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/catalogs`
+    );
+  }
+
+  /**
+   * Get all available templates for a plugin configuration and catalog.
+   */
+  getTemplates(pluginConfigurationId: string, catalogId?: string): Observable<TemplateInfo[]> {
+    const params: Record<string, string> = {};
+    if (catalogId) params['catalogId'] = catalogId;
     return this.http.get<TemplateInfo[]>(
-      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates`
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates`,
+      {params}
     );
   }
 
@@ -42,11 +54,14 @@ export class EpistolaPluginService {
   }
 
   /**
-   * Get all attribute definitions for a plugin configuration's tenant.
+   * Get all attribute definitions for a plugin configuration's tenant and catalog.
    */
-  getAttributes(pluginConfigurationId: string): Observable<AttributeDefinition[]> {
+  getAttributes(pluginConfigurationId: string, catalogId?: string): Observable<AttributeDefinition[]> {
+    const params: Record<string, string> = {};
+    if (catalogId) params['catalogId'] = catalogId;
     return this.http.get<AttributeDefinition[]>(
-      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/attributes`
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/attributes`,
+      {params}
     );
   }
 

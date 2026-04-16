@@ -17,6 +17,16 @@ import java.util.Map;
 public interface EpistolaService {
 
     /**
+     * Get all available catalogs for a tenant.
+     *
+     * @param baseUrl  The Epistola API base URL
+     * @param apiKey   The API key for authentication
+     * @param tenantId The tenant ID in Epistola
+     * @return List of available catalogs
+     */
+    List<CatalogInfo> getCatalogs(String baseUrl, String apiKey, String tenantId);
+
+    /**
      * Get all available templates for a tenant and catalog.
      *
      * @param baseUrl   The Epistola API base URL

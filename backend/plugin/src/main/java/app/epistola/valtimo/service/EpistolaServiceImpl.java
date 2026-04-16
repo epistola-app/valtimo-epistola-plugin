@@ -2,6 +2,7 @@ package app.epistola.valtimo.service;
 
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.domain.AttributeDefinition;
+import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
@@ -48,6 +49,26 @@ import java.util.UUID;
 public class EpistolaServiceImpl implements EpistolaService {
 
     private final EpistolaApiClientFactory apiClientFactory;
+
+    @Override
+    public List<CatalogInfo> getCatalogs(String baseUrl, String apiKey, String tenantId) {
+        log.info("Fetching catalogs for tenant: {}", tenantId);
+        try {
+            var response = apiClientFactory.createCatalogsApi(baseUrl, apiKey)
+                    .listCatalogs(tenantId);
+
+            if (response == null || response.getItems() == null) {
+                return Collections.emptyList();
+            }
+
+            return response.getItems().stream()
+                    .map(dto -> new CatalogInfo(dto.getId(), dto.getName(), dto.getType().getValue()))
+                    .toList();
+        } catch (Exception e) {
+            log.error("Failed to fetch catalogs for tenant {}: {}", tenantId, e.getMessage());
+            throw new EpistolaApiException("Failed to fetch catalogs", e);
+        }
+    }
 
     @Override
     public List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId, String catalogId) {

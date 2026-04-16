@@ -78,3 +78,12 @@ export interface AttributeDefinition {
   key: string;
   description?: string;
 }
+
+/**
+ * Information about an Epistola catalog.
+ */
+export interface CatalogInfo {
+  id: string;
+  name: string;
+  type: string;
+}

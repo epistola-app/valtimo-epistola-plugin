@@ -1,6 +1,7 @@
 package app.epistola.valtimo.web.rest;
 
 import app.epistola.valtimo.domain.AttributeDefinition;
+import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateInfo;
@@ -52,6 +53,28 @@ public class EpistolaPluginResource {
     private final ProcessVariableDiscoveryService processVariableDiscoveryService;
     private final RetryFormService retryFormService;
     private final PreviewService previewService;
+
+    /**
+     * Get all available catalogs for a plugin configuration.
+     *
+     * @param configurationId The plugin configuration ID
+     * @return List of available catalogs
+     */
+    @GetMapping("/configurations/{configurationId}/catalogs")
+    public ResponseEntity<List<CatalogInfo>> getCatalogs(
+            @PathVariable("configurationId") UUID configurationId
+    ) {
+        log.debug("Fetching catalogs for plugin configuration: {}", configurationId);
+
+        EpistolaPlugin plugin = pluginService.createInstance(configurationId);
+        List<CatalogInfo> catalogs = epistolaService.getCatalogs(
+                plugin.getBaseUrl(),
+                plugin.getApiKey(),
+                plugin.getTenantId()
+        );
+
+        return ResponseEntity.ok(catalogs);
+    }
 
     /**
      * Get all available templates for a plugin configuration.
