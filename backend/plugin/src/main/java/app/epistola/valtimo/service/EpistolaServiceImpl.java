@@ -283,7 +283,7 @@ public class EpistolaServiceImpl implements EpistolaService {
 
             String responseJson = apiClientFactory.createRestClient(baseUrl, apiKey)
                     .post()
-                    .uri("/api/tenants/{tenantId}/catalogs/import", tenantId)
+                    .uri("/tenants/{tenantId}/catalogs/import", tenantId)
                     .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA)
                     .body(body)
                     .retrieve()
