@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "catalog": { "slug": "test-catalog", "name": "Test Catalog" },
+  "publisher": { "name": "Test" },
+  "release": { "version": "1.0" },
+  "resources": [
+    { "type": "template", "slug": "test-template", "name": "Test", "detailUrl": "./resources/template/test-template.json" }
+  ]
+}
