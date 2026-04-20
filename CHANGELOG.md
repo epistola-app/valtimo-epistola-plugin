@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Bump all demo case definitions from 1.0.0 to 2.0.0 so Valtimo redeploys process links with the new `catalogId` property on existing installations
+
 ## [0.5.0] - 2026-04-20
 
 ### Added
