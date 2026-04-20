@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-20
+
 ### Added
 
 - **Catalog selector in generate-document configuration** — Users now pick a catalog first, then see templates from that catalog. Added `CatalogInfo` domain record, `getCatalogs()` service method, `GET /configurations/{configurationId}/catalogs` REST endpoint, `createCatalogsApi()` factory method, and frontend catalog dropdown with cascading template loading.
