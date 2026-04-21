@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.1] - 2026-04-20
-
 ### Fixed
 
-- Bump all demo case definitions from 1.0.0 to 2.0.0 so Valtimo redeploys process links with the new `catalogId` property on existing installations
+- Enable content hash output hashing (`outputHashing: "all"`) in Angular build to prevent browser cache issues across deployments
+- Add cache-control headers to nginx config — `no-cache` for `index.html`, `immutable` with 1-year expiry for hashed assets
+- Apply same cache-control headers to Helm chart nginx ConfigMap
+- Update Helm chart `appVersion` from 0.4.0 to 0.5.1
+
+### Reverted
+
+- Revert case definition version bump to 2.0.0 — the issue was browser cache, not process link deployment
 
 ## [0.5.0] - 2026-04-20
 

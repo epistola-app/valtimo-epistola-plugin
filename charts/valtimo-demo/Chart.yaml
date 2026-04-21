@@ -3,7 +3,7 @@ name: valtimo-demo
 description: Demo deployment of Valtimo BPM with the Epistola document generation plugin
 type: application
 version: 0.3.2
-appVersion: "0.4.0"
+appVersion: "0.5.1"
 maintainers:
   - name: epistola-app
     url: https://github.com/epistola-app

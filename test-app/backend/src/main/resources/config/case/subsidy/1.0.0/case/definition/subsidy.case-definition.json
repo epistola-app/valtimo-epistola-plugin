@@ -1,7 +1,7 @@
 {
     "key": "subsidy",
     "name": "Subsidie Zaakdossier",
-    "versionTag": "2.0.0",
+    "versionTag": "1.0.0",
     "canHaveAssignee": true,
     "autoAssignTasks": true
 }

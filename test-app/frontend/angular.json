@@ -93,6 +93,7 @@
               "object-refs",
               "heatmap.js-fixed"
             ],
+            "outputHashing": "all",
             "vendorChunk": true,
             "extractLicenses": false,
             "buildOptimizer": false,
