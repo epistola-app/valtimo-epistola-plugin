@@ -7,12 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.2] - 2026-04-21
+
 ### Fixed
 
 - Enable content hash output hashing (`outputHashing: "all"`) in Angular build to prevent browser cache issues across deployments
 - Add cache-control headers to nginx config — `no-cache` for `index.html`, `immutable` with 1-year expiry for hashed assets
 - Apply same cache-control headers to Helm chart nginx ConfigMap
-- Update Helm chart `appVersion` from 0.4.0 to 0.5.1
+- Update Helm chart `appVersion` from 0.4.0 to 0.5.2
 
 ### Reverted
 
