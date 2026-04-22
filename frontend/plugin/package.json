@@ -28,9 +28,11 @@
     "@angular/common": ">=17.0.0",
     "@angular/core": ">=17.0.0",
     "@angular/forms": ">=17.0.0",
+    "@angular/router": ">=17.0.0",
     "@valtimo/components": "^13.21.0",
     "@valtimo/plugin": "^13.21.0",
     "@valtimo/process-link": "^13.21.0",
+    "@valtimo/security": "^13.21.0",
     "@valtimo/shared": "^13.21.0"
   },
   "dependencies": {

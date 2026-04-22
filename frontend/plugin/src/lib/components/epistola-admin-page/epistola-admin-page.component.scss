@@ -1,0 +1,151 @@
+.epistola-admin {
+  padding: 1.5rem;
+
+  .version-badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.2em 0.6em;
+    border-radius: 4px;
+    background-color: #e8e8e8;
+    color: #525252;
+  }
+
+  .badge {
+    font-size: 0.85em;
+    padding: 0.35em 0.65em;
+  }
+
+  code {
+    font-size: 0.9em;
+    color: #525252;
+  }
+
+  table {
+    th {
+      font-weight: 600;
+      white-space: nowrap;
+    }
+  }
+
+  // Status dot (reused across cards and detail view)
+  .status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    flex-shrink: 0;
+    background-color: #adb5bd;
+
+    &--ok {
+      background-color: #198754;
+    }
+
+    &--error {
+      background-color: #dc3545;
+    }
+  }
+
+  // Card grid
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+  }
+
+  .config-card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 1.25rem;
+    cursor: pointer;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
+    background: #fff;
+
+    &:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    &--ok {
+      border-left: 4px solid #198754;
+    }
+
+    &--warning {
+      border-left: 4px solid #ffc107;
+    }
+
+    &--error {
+      border-left: 4px solid #dc3545;
+    }
+
+    &__header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    &__title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: #161616;
+    }
+
+    &__body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    &__field {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    &__label {
+      font-size: 0.875rem;
+      color: #6c757d;
+    }
+
+    &__value {
+      font-size: 0.875rem;
+      color: #161616;
+    }
+
+    &__footer {
+      margin-top: 1rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #f0f0f0;
+      text-align: right;
+    }
+
+    &__latency {
+      font-size: 0.8rem;
+      color: #adb5bd;
+    }
+  }
+
+  // Usage links
+  .usage-link {
+    color: #0f62fe;
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  // Detail view
+  .detail-info-table {
+    max-width: 500px;
+
+    th {
+      width: 140px;
+    }
+  }
+
+  .detail-summary {
+    padding: 1rem 0;
+    border-bottom: 1px solid #dee2e6;
+  }
+}

@@ -22,7 +22,9 @@ import {EpistolaDownloadComponent} from './components/epistola-download/epistola
 import {EpistolaRetryFormComponent} from './components/epistola-retry-form/epistola-retry-form.component';
 import {EpistolaPreviewButtonComponent} from './components/epistola-preview-button/epistola-preview-button.component';
 import {EpistolaDocumentPreviewComponent} from './components/epistola-document-preview/epistola-document-preview.component';
-import {EpistolaPluginService} from './services';
+import {EpistolaAdminPageComponent} from './components/epistola-admin-page/epistola-admin-page.component';
+import {EpistolaPluginService, EpistolaAdminService, EpistolaMenuService} from './services';
+import {EpistolaAdminRoutingModule} from './epistola-admin-routing.module';
 import {registerEpistolaDownloadComponent} from './components/epistola-download/epistola-download.formio';
 import {registerEpistolaRetryFormComponent} from './components/epistola-retry-form/epistola-retry-form.formio';
 import {registerEpistolaPreviewButtonComponent} from './components/epistola-preview-button/epistola-preview-button.formio';
@@ -36,6 +38,7 @@ import {registerEpistolaDocumentPreviewComponent} from './components/epistola-do
     FormModule,
     InputModule,
     SelectModule,
+    EpistolaAdminRoutingModule,
     EpistolaConfigurationComponent,
     GenerateDocumentConfigurationComponent,
     CheckJobStatusConfigurationComponent,
@@ -48,7 +51,8 @@ import {registerEpistolaDocumentPreviewComponent} from './components/epistola-do
     EpistolaDownloadComponent,
     EpistolaRetryFormComponent,
     EpistolaPreviewButtonComponent,
-    EpistolaDocumentPreviewComponent
+    EpistolaDocumentPreviewComponent,
+    EpistolaAdminPageComponent
   ],
   exports: [
     EpistolaConfigurationComponent,
@@ -63,10 +67,12 @@ import {registerEpistolaDocumentPreviewComponent} from './components/epistola-do
     EpistolaDownloadComponent,
     EpistolaRetryFormComponent,
     EpistolaPreviewButtonComponent,
-    EpistolaDocumentPreviewComponent
+    EpistolaDocumentPreviewComponent,
+    EpistolaAdminPageComponent
   ],
   providers: [
-    EpistolaPluginService
+    EpistolaPluginService,
+    EpistolaAdminService
   ]
 })
 export class EpistolaPluginModule {
@@ -74,6 +80,7 @@ export class EpistolaPluginModule {
     return {
       ngModule: EpistolaPluginModule,
       providers: [
+        EpistolaMenuService,
         {
           provide: ENVIRONMENT_INITIALIZER,
           multi: true,
@@ -83,6 +90,8 @@ export class EpistolaPluginModule {
             registerEpistolaRetryFormComponent(injector);
             registerEpistolaPreviewButtonComponent(injector);
             registerEpistolaDocumentPreviewComponent(injector);
+            // Eagerly create EpistolaMenuService to trigger menu registration
+            inject(EpistolaMenuService);
           }
         }
       ]

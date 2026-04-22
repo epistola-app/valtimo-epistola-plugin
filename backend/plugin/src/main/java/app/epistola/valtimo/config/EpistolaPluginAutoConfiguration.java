@@ -5,6 +5,7 @@ import app.epistola.valtimo.deploy.CatalogScanner;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger;
 import app.epistola.valtimo.service.DataMappingResolverService;
+import app.epistola.valtimo.service.EpistolaAdminService;
 import app.epistola.valtimo.service.EpistolaCompletionEventConsumer;
 import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.EpistolaService;
@@ -13,10 +14,12 @@ import app.epistola.valtimo.service.FormioFormGenerator;
 import app.epistola.valtimo.service.PollingCompletionEventConsumer;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.RetryFormService;
+import app.epistola.valtimo.web.rest.EpistolaAdminResource;
 import app.epistola.valtimo.web.rest.EpistolaCallbackResource;
 import app.epistola.valtimo.web.rest.EpistolaPluginResource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.service.PluginService;
+import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
 import com.ritense.processlink.service.ProcessLinkService;
 import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
@@ -130,6 +133,27 @@ public class EpistolaPluginAutoConfiguration {
     ) {
         return new EpistolaPluginResource(pluginService, epistolaService,
                 processVariableDiscoveryService, retryFormService, previewService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaAdminService.class)
+    public EpistolaAdminService epistolaAdminService(
+            PluginService pluginService,
+            EpistolaService epistolaService,
+            ProcessLinkService processLinkService,
+            RepositoryService repositoryService,
+            ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService
+    ) {
+        return new EpistolaAdminService(pluginService, epistolaService, processLinkService,
+                repositoryService, processDefinitionCaseDefinitionService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaAdminResource.class)
+    public EpistolaAdminResource epistolaAdminResource(
+            EpistolaAdminService adminService
+    ) {
+        return new EpistolaAdminResource(adminService);
     }
 
     @Bean
