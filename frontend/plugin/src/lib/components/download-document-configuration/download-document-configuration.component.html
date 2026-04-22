@@ -1,9 +1,9 @@
 <v-form
-    (valueChange)="formValueChange($event)"
-    *ngIf="{
-      disabled: safeDisabled$ | async,
-      prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null
-    } as obs"
+  (valueChange)="formValueChange($event)"
+  *ngIf="{
+    disabled: safeDisabled$ | async,
+    prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null,
+  } as obs"
 >
   <v-input
     name="documentIdVariable"

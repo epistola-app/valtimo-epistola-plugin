@@ -1,12 +1,18 @@
 <div class="field-array">
-  <div class="field-array-header" (click)="toggleExpanded()" [class.field-required-unmapped]="field.required && !getSourceValue()">
+  <div
+    class="field-array-header"
+    (click)="toggleExpanded()"
+    [class.field-required-unmapped]="field.required && !getSourceValue()"
+  >
     <span class="expand-icon">{{ expanded ? '▼' : '▶' }}</span>
     <span class="field-name">{{ field.name }}</span>
     <span class="field-meta">(array{{ field.required ? ', required' : '' }})</span>
     <span class="completeness-badge" *ngIf="totalRequired > 0 && !expanded">
       {{ mappedCount }}/{{ totalRequired }}
     </span>
-    <span class="mapped-indicator" *ngIf="totalRequired === 0 && getSourceValue() && !expanded">✓</span>
+    <span class="mapped-indicator" *ngIf="totalRequired === 0 && getSourceValue() && !expanded"
+      >✓</span
+    >
   </div>
   <div class="field-array-content" *ngIf="expanded">
     <!-- Source collection input -->
@@ -41,7 +47,9 @@
     <!-- Per-item field mappings -->
     <div class="array-item-fields" *ngIf="arrayPerFieldMode && hasArrayChildren()">
       <div class="item-fields-header">
-        <span class="item-fields-title">{{ 'itemFieldMappingTitle' | pluginTranslate: pluginId | async }}</span>
+        <span class="item-fields-title">{{
+          'itemFieldMappingTitle' | pluginTranslate: pluginId | async
+        }}</span>
       </div>
       <div class="item-field-row" *ngFor="let child of field.children">
         <div class="item-field-label">

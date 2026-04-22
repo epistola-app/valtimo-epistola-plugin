@@ -1,8 +1,8 @@
-import {ChangeDetectionStrategy, Component, EventEmitter, Input, Output} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {PluginTranslatePipeModule} from '@valtimo/plugin';
-import {TemplateField} from '../../models';
-import {ValueInputComponent} from '../value-input/value-input.component';
+import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { PluginTranslatePipeModule } from '@valtimo/plugin';
+import { TemplateField } from '../../models';
+import { ValueInputComponent } from '../value-input/value-input.component';
 
 @Component({
   selector: 'epistola-scalar-field',
@@ -10,7 +10,7 @@ import {ValueInputComponent} from '../value-input/value-input.component';
   styleUrls: ['./scalar-field.component.scss'],
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, PluginTranslatePipeModule, ValueInputComponent]
+  imports: [CommonModule, PluginTranslatePipeModule, ValueInputComponent],
 })
 export class ScalarFieldComponent {
   @Input() field!: TemplateField;

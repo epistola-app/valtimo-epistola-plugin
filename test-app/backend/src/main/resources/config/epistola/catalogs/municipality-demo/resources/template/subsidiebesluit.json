@@ -36,18 +36,10 @@
                   "description": "Plaatsnaam"
                 }
               },
-              "required": [
-                "street",
-                "houseNumber",
-                "postalCode",
-                "city"
-              ]
+              "required": ["street", "houseNumber", "postalCode", "city"]
             }
           },
-          "required": [
-            "name",
-            "address"
-          ]
+          "required": ["name", "address"]
         },
         "subsidy": {
           "type": "object",
@@ -64,10 +56,7 @@
             },
             "decision": {
               "type": "string",
-              "enum": [
-                "toegekend",
-                "afgewezen"
-              ],
+              "enum": ["toegekend", "afgewezen"],
               "description": "Beslissing op de aanvraag"
             },
             "conditions": {
@@ -75,17 +64,10 @@
               "description": "Voorwaarden verbonden aan de subsidie (optioneel)"
             }
           },
-          "required": [
-            "programName",
-            "amount",
-            "decision"
-          ]
+          "required": ["programName", "amount", "decision"]
         }
       },
-      "required": [
-        "beneficiary",
-        "subsidy"
-      ]
+      "required": ["beneficiary", "subsidy"]
     },
     "dataExamples": [
       {
@@ -173,16 +155,12 @@
         "n-root": {
           "id": "n-root",
           "type": "root",
-          "slots": [
-            "s-root-children"
-          ]
+          "slots": ["s-root-children"]
         },
         "n-header": {
           "id": "n-header",
           "type": "container",
-          "slots": [
-            "s-header-children"
-          ],
+          "slots": ["s-header-children"],
           "styles": {
             "marginBottom": "24px",
             "paddingBottom": "16px",
@@ -434,9 +412,7 @@
         "n-decision-granted": {
           "id": "n-decision-granted",
           "type": "conditional",
-          "slots": [
-            "s-decision-granted-children"
-          ],
+          "slots": ["s-decision-granted-children"],
           "props": {
             "condition": {
               "raw": "subsidy.decision = 'toegekend'",
@@ -513,9 +489,7 @@
         "n-decision-rejected": {
           "id": "n-decision-rejected",
           "type": "conditional",
-          "slots": [
-            "s-decision-rejected-children"
-          ],
+          "slots": ["s-decision-rejected-children"],
           "props": {
             "condition": {
               "raw": "subsidy.decision = 'afgewezen'",
@@ -592,9 +566,7 @@
         "n-conditions-section": {
           "id": "n-conditions-section",
           "type": "conditional",
-          "slots": [
-            "s-conditions-children"
-          ],
+          "slots": ["s-conditions-children"],
           "props": {
             "condition": {
               "raw": "$exists(subsidy.conditions)",
@@ -770,35 +742,25 @@
           "id": "s-header-children",
           "nodeId": "n-header",
           "name": "children",
-          "children": [
-            "n-municipality",
-            "n-department"
-          ]
+          "children": ["n-municipality", "n-department"]
         },
         "s-decision-granted-children": {
           "id": "s-decision-granted-children",
           "nodeId": "n-decision-granted",
           "name": "children",
-          "children": [
-            "n-granted-text"
-          ]
+          "children": ["n-granted-text"]
         },
         "s-decision-rejected-children": {
           "id": "s-decision-rejected-children",
           "nodeId": "n-decision-rejected",
           "name": "children",
-          "children": [
-            "n-rejected-text"
-          ]
+          "children": ["n-rejected-text"]
         },
         "s-conditions-children": {
           "id": "s-conditions-children",
           "nodeId": "n-conditions-section",
           "name": "children",
-          "children": [
-            "n-conditions-header",
-            "n-conditions-text"
-          ]
+          "children": ["n-conditions-header", "n-conditions-text"]
         }
       }
     },

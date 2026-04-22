@@ -1,10 +1,19 @@
-import {ChangeDetectionStrategy, Component, EventEmitter, forwardRef, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {PluginTranslatePipeModule} from '@valtimo/plugin';
-import {TemplateField} from '../../models';
-import {countRequiredMapped} from '../../utils/template-field-utils';
-import {ScalarFieldComponent} from '../scalar-field/scalar-field.component';
-import {ArrayFieldComponent} from '../array-field/array-field.component';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  forwardRef,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { PluginTranslatePipeModule } from '@valtimo/plugin';
+import { TemplateField } from '../../models';
+import { countRequiredMapped } from '../../utils/template-field-utils';
+import { ScalarFieldComponent } from '../scalar-field/scalar-field.component';
+import { ArrayFieldComponent } from '../array-field/array-field.component';
 
 /**
  * Recursive field tree component.
@@ -18,7 +27,13 @@ import {ArrayFieldComponent} from '../array-field/array-field.component';
   styleUrls: ['./field-tree.component.scss'],
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, PluginTranslatePipeModule, ScalarFieldComponent, ArrayFieldComponent, forwardRef(() => FieldTreeComponent)]
+  imports: [
+    CommonModule,
+    PluginTranslatePipeModule,
+    ScalarFieldComponent,
+    ArrayFieldComponent,
+    forwardRef(() => FieldTreeComponent),
+  ],
 })
 export class FieldTreeComponent implements OnChanges {
   @Input() field!: TemplateField;
@@ -53,7 +68,7 @@ export class FieldTreeComponent implements OnChanges {
   }
 
   onChildChange(childName: string, childValue: any): void {
-    const current = (typeof this.value === 'object' && this.value !== null) ? {...this.value} : {};
+    const current = typeof this.value === 'object' && this.value !== null ? { ...this.value } : {};
     if (childValue === undefined || childValue === null || childValue === '') {
       delete current[childName];
     } else {

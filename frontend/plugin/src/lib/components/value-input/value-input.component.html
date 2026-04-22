@@ -1,8 +1,35 @@
 <div class="value-input">
   <div class="input-mode-group">
-    <button type="button" class="mode-btn" [class.mode-active]="inputMode === 'browse'" [disabled]="disabled" (click)="setInputMode('browse')" [title]="'browseMode' | pluginTranslate: pluginId | async">⊞</button>
-    <button type="button" class="mode-btn" [class.mode-active]="inputMode === 'pv'" [disabled]="disabled" (click)="setInputMode('pv')" [title]="'pvMode' | pluginTranslate: pluginId | async">pv</button>
-    <button type="button" class="mode-btn" [class.mode-active]="inputMode === 'expression'" [disabled]="disabled" (click)="setInputMode('expression')" [title]="'expressionMode' | pluginTranslate: pluginId | async">fx</button>
+    <button
+      type="button"
+      class="mode-btn"
+      [class.mode-active]="inputMode === 'browse'"
+      [disabled]="disabled"
+      (click)="setInputMode('browse')"
+      [title]="'browseMode' | pluginTranslate: pluginId | async"
+    >
+      ⊞
+    </button>
+    <button
+      type="button"
+      class="mode-btn"
+      [class.mode-active]="inputMode === 'pv'"
+      [disabled]="disabled"
+      (click)="setInputMode('pv')"
+      [title]="'pvMode' | pluginTranslate: pluginId | async"
+    >
+      pv
+    </button>
+    <button
+      type="button"
+      class="mode-btn"
+      [class.mode-active]="inputMode === 'expression'"
+      [disabled]="disabled"
+      (click)="setInputMode('expression')"
+      [title]="'expressionMode' | pluginTranslate: pluginId | async"
+    >
+      fx
+    </button>
   </div>
 
   <!-- Browse mode: ValuePathSelector -->

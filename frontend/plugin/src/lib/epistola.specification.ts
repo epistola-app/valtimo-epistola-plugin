@@ -1,15 +1,9 @@
-import {PluginSpecification} from '@valtimo/plugin';
-import {EpistolaConfigurationComponent} from './components/epistola-configuration/epistola-configuration.component';
-import {
-  GenerateDocumentConfigurationComponent
-} from './components/generate-document-configuration/generate-document-configuration.component';
-import {
-  CheckJobStatusConfigurationComponent
-} from './components/check-job-status-configuration/check-job-status-configuration.component';
-import {
-  DownloadDocumentConfigurationComponent
-} from './components/download-document-configuration/download-document-configuration.component';
-import {EPISTOLA_PLUGIN_LOGO_BASE64} from './assets';
+import { PluginSpecification } from '@valtimo/plugin';
+import { EpistolaConfigurationComponent } from './components/epistola-configuration/epistola-configuration.component';
+import { GenerateDocumentConfigurationComponent } from './components/generate-document-configuration/generate-document-configuration.component';
+import { CheckJobStatusConfigurationComponent } from './components/check-job-status-configuration/check-job-status-configuration.component';
+import { DownloadDocumentConfigurationComponent } from './components/download-document-configuration/download-document-configuration.component';
+import { EPISTOLA_PLUGIN_LOGO_BASE64 } from './assets';
 
 const epistolaPluginSpecification: PluginSpecification = {
   // Must match backend @Plugin(key = "epistola")
@@ -39,11 +33,14 @@ const epistolaPluginSpecification: PluginSpecification = {
       apiKey: 'API Key',
       apiKeyTooltip: 'De API sleutel voor authenticatie met Epistola',
       tenantId: 'Tenant ID',
-      tenantIdTooltip: 'De tenant slug in Epistola (3-63 tekens, alleen kleine letters, cijfers en koppeltekens, bijv. "mijn-tenant")',
+      tenantIdTooltip:
+        'De tenant slug in Epistola (3-63 tekens, alleen kleine letters, cijfers en koppeltekens, bijv. "mijn-tenant")',
       defaultEnvironmentId: 'Standaard Omgeving',
-      defaultEnvironmentIdTooltip: 'De standaard omgeving voor documentgeneratie (3-30 tekens, alleen kleine letters, cijfers en koppeltekens, bijv. "productie")',
+      defaultEnvironmentIdTooltip:
+        'De standaard omgeving voor documentgeneratie (3-30 tekens, alleen kleine letters, cijfers en koppeltekens, bijv. "productie")',
       templateSyncEnabled: 'Template synchronisatie',
-      templateSyncEnabledTooltip: 'Synchroniseer template definities automatisch van het classpath naar Epistola bij het opstarten',
+      templateSyncEnabledTooltip:
+        'Synchroniseer template definities automatisch van het classpath naar Epistola bij het opstarten',
       'generate-document': 'Genereer Document',
       catalogId: 'Catalogus',
       catalogIdTooltip: 'Selecteer de catalogus waaruit een template gekozen wordt',
@@ -56,7 +53,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       selectByVariant: 'Selecteer variant',
       selectByAttributes: 'Selecteer op kenmerken',
       variantAttributes: 'Variant kenmerken',
-      variantAttributesTooltip: 'Kenmerken voor automatische variant selectie. Waarden kunnen expressies zijn (doc:, pv:, case:).',
+      variantAttributesTooltip:
+        'Kenmerken voor automatische variant selectie. Waarden kunnen expressies zijn (doc:, pv:, case:).',
       attributeKey: 'Kenmerk',
       attributeKeyCustom: 'Aangepast...',
       attributeValue: 'Waarde',
@@ -75,7 +73,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       filename: 'Bestandsnaam',
       filenameTooltip: 'De bestandsnaam voor het gegenereerde document',
       resultProcessVariable: 'Resultaat Procesvariabele',
-      resultProcessVariableTooltip: 'De naam van de procesvariabele waarin het request ID wordt opgeslagen',
+      resultProcessVariableTooltip:
+        'De naam van de procesvariabele waarin het request ID wordt opgeslagen',
       pdf: 'PDF',
       html: 'HTML',
       // Data mapping builder translations
@@ -113,13 +112,16 @@ const epistolaPluginSpecification: PluginSpecification = {
       statusVariable: 'Status Variabele',
       statusVariableTooltip: 'Naam van de procesvariabele waarin de status wordt opgeslagen',
       documentIdVariable: 'Document ID Variabele',
-      documentIdVariableTooltip: 'Naam van de procesvariabele waarin het document ID wordt opgeslagen (bij voltooiing)',
+      documentIdVariableTooltip:
+        'Naam van de procesvariabele waarin het document ID wordt opgeslagen (bij voltooiing)',
       errorMessageVariable: 'Foutmelding Variabele',
-      errorMessageVariableTooltip: 'Naam van de procesvariabele waarin de foutmelding wordt opgeslagen (bij fout)',
+      errorMessageVariableTooltip:
+        'Naam van de procesvariabele waarin de foutmelding wordt opgeslagen (bij fout)',
       // Download document action
       'download-document': 'Download Document',
       contentVariable: 'Inhoud Variabele',
-      contentVariableTooltip: 'Naam van de procesvariabele waarin de documentinhoud (Base64) wordt opgeslagen',
+      contentVariableTooltip:
+        'Naam van de procesvariabele waarin de documentinhoud (Base64) wordt opgeslagen',
       // Admin page
       epistolaAdminOverview: 'Overzicht',
       epistolaAdminRefresh: 'Vernieuwen',
@@ -138,7 +140,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminProcess: 'Proces',
       epistolaAdminActivity: 'Activiteit',
       epistolaAdminAction: 'Actie',
-      epistolaAdminServerVersion: 'Server versie'
+      epistolaAdminServerVersion: 'Server versie',
     },
     en: {
       title: 'Epistola Document Suite',
@@ -149,11 +151,14 @@ const epistolaPluginSpecification: PluginSpecification = {
       apiKey: 'API Key',
       apiKeyTooltip: 'The API key for authentication with Epistola',
       tenantId: 'Tenant ID',
-      tenantIdTooltip: 'The tenant slug in Epistola (3-63 chars, lowercase letters, digits and hyphens only, e.g. "my-tenant")',
+      tenantIdTooltip:
+        'The tenant slug in Epistola (3-63 chars, lowercase letters, digits and hyphens only, e.g. "my-tenant")',
       defaultEnvironmentId: 'Default Environment',
-      defaultEnvironmentIdTooltip: 'The default environment for document generation (3-30 chars, lowercase letters, digits and hyphens only, e.g. "production")',
+      defaultEnvironmentIdTooltip:
+        'The default environment for document generation (3-30 chars, lowercase letters, digits and hyphens only, e.g. "production")',
       templateSyncEnabled: 'Template sync',
-      templateSyncEnabledTooltip: 'Automatically synchronize template definitions from classpath to Epistola on startup',
+      templateSyncEnabledTooltip:
+        'Automatically synchronize template definitions from classpath to Epistola on startup',
       'generate-document': 'Generate Document',
       catalogId: 'Catalog',
       catalogIdTooltip: 'Select the catalog to choose a template from',
@@ -166,7 +171,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       selectByVariant: 'Select variant',
       selectByAttributes: 'Select by attributes',
       variantAttributes: 'Variant attributes',
-      variantAttributesTooltip: 'Attributes for automatic variant selection. Values can be expressions (doc:, pv:, case:).',
+      variantAttributesTooltip:
+        'Attributes for automatic variant selection. Values can be expressions (doc:, pv:, case:).',
       attributeKey: 'Attribute',
       attributeKeyCustom: 'Custom...',
       attributeValue: 'Value',
@@ -223,13 +229,16 @@ const epistolaPluginSpecification: PluginSpecification = {
       statusVariable: 'Status Variable',
       statusVariableTooltip: 'Name of the process variable to store the status in',
       documentIdVariable: 'Document ID Variable',
-      documentIdVariableTooltip: 'Name of the process variable to store the document ID in (when completed)',
+      documentIdVariableTooltip:
+        'Name of the process variable to store the document ID in (when completed)',
       errorMessageVariable: 'Error Message Variable',
-      errorMessageVariableTooltip: 'Name of the process variable to store the error message in (when failed)',
+      errorMessageVariableTooltip:
+        'Name of the process variable to store the error message in (when failed)',
       // Download document action
       'download-document': 'Download Document',
       contentVariable: 'Content Variable',
-      contentVariableTooltip: 'Name of the process variable to store the document content (Base64) in',
+      contentVariableTooltip:
+        'Name of the process variable to store the document content (Base64) in',
       // Admin page
       epistolaAdminOverview: 'Overview',
       epistolaAdminRefresh: 'Refresh',
@@ -248,9 +257,9 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminProcess: 'Process',
       epistolaAdminActivity: 'Activity',
       epistolaAdminAction: 'Action',
-      epistolaAdminServerVersion: 'Server version'
-    }
-  }
+      epistolaAdminServerVersion: 'Server version',
+    },
+  },
 };
 
-export {epistolaPluginSpecification};
+export { epistolaPluginSpecification };

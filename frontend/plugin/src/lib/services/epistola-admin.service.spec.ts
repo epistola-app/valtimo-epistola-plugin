@@ -6,8 +6,8 @@
  * the service by directly instantiating it with mock dependencies (bypassing
  * the decorator). This validates the URL construction and method delegation.
  */
-import {of, throwError} from 'rxjs';
-import type {ConnectionStatus, PluginUsageEntry, VersionInfo} from '../models';
+import { of, throwError } from 'rxjs';
+import type { ConnectionStatus, PluginUsageEntry, VersionInfo } from '../models';
 
 describe('EpistolaAdminService', () => {
   let service: any;

@@ -1,6 +1,6 @@
-import {Injector} from '@angular/core';
-import {FormioCustomComponentInfo, registerCustomFormioComponent} from '@valtimo/components';
-import {EpistolaPreviewButtonComponent} from './epistola-preview-button.component';
+import { Injector } from '@angular/core';
+import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
+import { EpistolaPreviewButtonComponent } from './epistola-preview-button.component';
 
 export const EPISTOLA_PREVIEW_BUTTON_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-preview-button',
@@ -14,6 +14,10 @@ export const EPISTOLA_PREVIEW_BUTTON_OPTIONS: FormioCustomComponentInfo = {
 
 export function registerEpistolaPreviewButtonComponent(injector: Injector): void {
   if (!customElements.get(EPISTOLA_PREVIEW_BUTTON_OPTIONS.selector)) {
-    registerCustomFormioComponent(EPISTOLA_PREVIEW_BUTTON_OPTIONS, EpistolaPreviewButtonComponent, injector);
+    registerCustomFormioComponent(
+      EPISTOLA_PREVIEW_BUTTON_OPTIONS,
+      EpistolaPreviewButtonComponent,
+      injector,
+    );
   }
 }

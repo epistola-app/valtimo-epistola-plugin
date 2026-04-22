@@ -1,6 +1,6 @@
-import {Injector} from '@angular/core';
-import {FormioCustomComponentInfo, registerCustomFormioComponent} from '@valtimo/components';
-import {EpistolaDownloadComponent} from './epistola-download.component';
+import { Injector } from '@angular/core';
+import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
+import { EpistolaDownloadComponent } from './epistola-download.component';
 
 export const EPISTOLA_DOWNLOAD_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-download',

@@ -3,18 +3,19 @@
 This document describes four demo scenarios that showcase the Epistola plugin integration with GZAC/Valtimo. Each scenario is a standalone case type targeting a distinct integration pattern.
 
 **Related documentation:**
+
 - [Data Mapping](data-mapping.md) — how case/process data flows into Epistola templates
 - [Async Document Generation](async.md) — the centralized polling and message correlation architecture
 - [Data Collection Strategies](data-collection-strategies.md) — strategies for assembling template input data
 
 ## Overview
 
-| # | Case type | Key pattern | Plugin actions used |
-|---|-----------|-------------|---------------------|
-| 1 | [Vergunningsaanvraag](#1-vergunningsaanvraag-permit-application) | Rich data mapping, user review | generate, wait, download |
-| 2 | [Bezwaarprocedure](#2-bezwaarprocedure-objection-handling) | Multiple templates, conditional logic | generate (x2), wait (x2), download (x2) |
-| 3 | [Massale correspondentie](#3-massale-correspondentie-bulk-document-generation) | Bulk generation (1000 docs) | generate (xN), wait (xN), download (xN) |
-| 4 | [Subsidie zaakdossier](#4-subsidie-zaakdossier-case-file-with-openzaak-archival) | Parallel generation, OpenZaak archival | generate (x3), wait, download (x3) + Documenten/Zaken API |
+| #   | Case type                                                                        | Key pattern                            | Plugin actions used                                       |
+| --- | -------------------------------------------------------------------------------- | -------------------------------------- | --------------------------------------------------------- |
+| 1   | [Vergunningsaanvraag](#1-vergunningsaanvraag-permit-application)                 | Rich data mapping, user review         | generate, wait, download                                  |
+| 2   | [Bezwaarprocedure](#2-bezwaarprocedure-objection-handling)                       | Multiple templates, conditional logic  | generate (x2), wait (x2), download (x2)                   |
+| 3   | [Massale correspondentie](#3-massale-correspondentie-bulk-document-generation)   | Bulk generation (1000 docs)            | generate (xN), wait (xN), download (xN)                   |
+| 4   | [Subsidie zaakdossier](#4-subsidie-zaakdossier-case-file-with-openzaak-archival) | Parallel generation, OpenZaak archival | generate (x3), wait, download (x3) + Documenten/Zaken API |
 
 ---
 
@@ -103,17 +104,17 @@ End Event
       "type": "object",
       "required": ["firstName", "lastName", "bsn", "address"],
       "properties": {
-        "firstName":  { "type": "string", "minLength": 1, "maxLength": 100 },
-        "lastName":   { "type": "string", "minLength": 1, "maxLength": 100 },
-        "bsn":        { "type": "string", "pattern": "^[0-9]{9}$" },
+        "firstName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "lastName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "bsn": { "type": "string", "pattern": "^[0-9]{9}$" },
         "address": {
           "type": "object",
           "required": ["street", "houseNumber", "postalCode", "city"],
           "properties": {
-            "street":      { "type": "string" },
+            "street": { "type": "string" },
             "houseNumber": { "type": "string" },
-            "postalCode":  { "type": "string", "pattern": "^[0-9]{4}[A-Z]{2}$" },
-            "city":        { "type": "string" }
+            "postalCode": { "type": "string", "pattern": "^[0-9]{4}[A-Z]{2}$" },
+            "city": { "type": "string" }
           }
         }
       }
@@ -126,10 +127,10 @@ End Event
           "type": "object",
           "required": ["street", "houseNumber", "postalCode", "city"],
           "properties": {
-            "street":      { "type": "string" },
+            "street": { "type": "string" },
             "houseNumber": { "type": "string" },
-            "postalCode":  { "type": "string" },
-            "city":        { "type": "string" }
+            "postalCode": { "type": "string" },
+            "city": { "type": "string" }
           }
         },
         "kadastraalNummer": { "type": "string" }
@@ -142,8 +143,8 @@ End Event
         "type": "object",
         "required": ["type", "description", "estimatedCost"],
         "properties": {
-          "type":          { "type": "string" },
-          "description":   { "type": "string" },
+          "type": { "type": "string" },
+          "description": { "type": "string" },
           "estimatedCost": { "type": "number", "minimum": 0 }
         }
       }
@@ -154,15 +155,15 @@ End Event
 
 ### What this demonstrates
 
-| Capability | How it's shown |
-|------------|---------------|
-| Nested object mapping | `doc:applicant.address.street` resolves through 2 levels |
+| Capability             | How it's shown                                                        |
+| ---------------------- | --------------------------------------------------------------------- |
+| Nested object mapping  | `doc:applicant.address.street` resolves through 2 levels              |
 | Array per-item mapping | `activities` uses `_source` + field rename (`estimatedCost` → `cost`) |
-| Environment override | Action-level `environmentId` overrides the plugin default |
-| Variant selection | Specific variant chosen for the formal letter style |
-| Async completion | Message Catch Event waits for centralized poller to correlate |
-| Download + review | `download-document` stores Base64 in pv, user task renders download |
-| Error handling | Boundary error events on both generate and receive tasks |
+| Environment override   | Action-level `environmentId` overrides the plugin default             |
+| Variant selection      | Specific variant chosen for the formal letter style                   |
+| Async completion       | Message Catch Event waits for centralized poller to correlate         |
+| Download + review      | `download-document` stores Base64 in pv, user task renders download   |
+| Error handling         | Boundary error events on both generate and receive tasks              |
 
 ---
 
@@ -257,15 +258,15 @@ End Event
       "required": ["firstName", "lastName", "address"],
       "properties": {
         "firstName": { "type": "string" },
-        "lastName":  { "type": "string" },
+        "lastName": { "type": "string" },
         "address": {
           "type": "object",
           "required": ["street", "houseNumber", "postalCode", "city"],
           "properties": {
-            "street":      { "type": "string" },
+            "street": { "type": "string" },
             "houseNumber": { "type": "string" },
-            "postalCode":  { "type": "string" },
-            "city":        { "type": "string" }
+            "postalCode": { "type": "string" },
+            "city": { "type": "string" }
           }
         }
       }
@@ -275,15 +276,15 @@ End Event
       "required": ["reference", "date", "subject"],
       "properties": {
         "reference": { "type": "string" },
-        "date":      { "type": "string", "format": "date" },
-        "subject":   { "type": "string" }
+        "date": { "type": "string", "format": "date" },
+        "subject": { "type": "string" }
       }
     },
     "objection": {
       "type": "object",
       "required": ["grounds", "receivedDate"],
       "properties": {
-        "grounds":      { "type": "string" },
+        "grounds": { "type": "string" },
         "receivedDate": { "type": "string", "format": "date" }
       }
     }
@@ -293,14 +294,14 @@ End Event
 
 ### What this demonstrates
 
-| Capability | How it's shown |
-|------------|---------------|
-| Multiple templates | Acknowledgment letter and decision letter use different templates |
-| Conditional logic | Exclusive gateway selects template based on case worker's decision |
-| Sequential generation | Acknowledgment must complete before human review, decision generated after |
-| Human-in-the-loop | Case worker's ruling drives which template is used |
-| Documents tab | Both generated PDFs stored as case resources, visible in Valtimo's Documents tab |
-| Reusable pattern | Same generate → wait → download → store cycle used twice in one process |
+| Capability            | How it's shown                                                                   |
+| --------------------- | -------------------------------------------------------------------------------- |
+| Multiple templates    | Acknowledgment letter and decision letter use different templates                |
+| Conditional logic     | Exclusive gateway selects template based on case worker's decision               |
+| Sequential generation | Acknowledgment must complete before human review, decision generated after       |
+| Human-in-the-loop     | Case worker's ruling drives which template is used                               |
+| Documents tab         | Both generated PDFs stored as case resources, visible in Valtimo's Documents tab |
+| Reusable pattern      | Same generate → wait → download → store cycle used twice in one process          |
 
 ---
 
@@ -381,14 +382,14 @@ The `pv:taxpayers` process variable is a JSON array provided at start:
     "address": { "street": "Kerkstraat 1", "postalCode": "1234AB", "city": "Amsterdam" },
     "propertyId": "AMS-2024-001",
     "assessedValue": 350000,
-    "taxAmount": 1250.00
+    "taxAmount": 1250.0
   },
   {
     "name": "A. Bakker",
     "address": { "street": "Dorpsweg 42", "postalCode": "5678CD", "city": "Rotterdam" },
     "propertyId": "RTD-2024-002",
     "assessedValue": 280000,
-    "taxAmount": 980.00
+    "taxAmount": 980.0
   }
 ]
 ```
@@ -400,6 +401,7 @@ The `pv:taxpayers` process variable is a JSON array provided at start:
 **Centralized poller efficiency**: The poller queries all executions waiting on `"EpistolaDocumentGenerated"` in a single database query, extracts tenant and request ID from the composite `epistolaJobPath` variable, groups by tenant, and checks job status in batches. With 1000 concurrent waiting instances, this is one scheduled task making N API calls — not 1000 timer loops in the engine. See [async.md](async.md) for details.
 
 **Throttling options**: For very large batches, consider:
+
 - **Sequential multi-instance** instead of parallel (set `isSequential="true"`) to limit concurrent API load
 - **Camunda `completionCondition`** to stop early (e.g., if failure rate exceeds threshold)
 - **Poller interval tuning** via `epistola.poller.interval` — shorter interval for faster batch completion
@@ -408,14 +410,14 @@ The `pv:taxpayers` process variable is a JSON array provided at start:
 
 ### What this demonstrates
 
-| Capability | How it's shown |
-|------------|---------------|
-| Multi-instance subprocess | Camunda `collection` variable iterates over taxpayer array |
-| Scale | Works with 10, 100, or 1000 items — same pattern |
-| Per-instance data mapping | Each iteration maps from `pv:taxpayer.*` (element variable) |
-| Error resilience | Boundary error per instance; failure counter; batch continues |
-| Centralized poller at load | Many concurrent waiting processes, single poller handles all |
-| Completion summary | User task shows success/failure breakdown |
+| Capability                 | How it's shown                                                |
+| -------------------------- | ------------------------------------------------------------- |
+| Multi-instance subprocess  | Camunda `collection` variable iterates over taxpayer array    |
+| Scale                      | Works with 10, 100, or 1000 items — same pattern              |
+| Per-instance data mapping  | Each iteration maps from `pv:taxpayer.*` (element variable)   |
+| Error resilience           | Boundary error per instance; failure counter; batch continues |
+| Centralized poller at load | Many concurrent waiting processes, single poller handles all  |
+| Completion summary         | User task shows success/failure breakdown                     |
 
 ---
 
@@ -533,6 +535,7 @@ import {
 **Docker services**: OpenZaak instance with its dependencies (PostgreSQL, Redis, OpenNotificaties). Either add to the existing `docker/docker-compose.yml` or use the GZAC docker-compose with `--profile zgw`.
 
 **Plugin configurations** (add to `app.pluginconfig.json`):
+
 - OpenZaak: client ID + secret for authentication
 - Documenten API: base URL + informatieobjecttype URL
 - Zaken API: base URL + zaaktype URL
@@ -540,15 +543,15 @@ import {
 
 ### What this demonstrates
 
-| Capability | How it's shown |
-|------------|---------------|
-| Parallel generation | 3 documents generated simultaneously via parallel gateway |
-| Parallel join | All 3 must complete before archival begins |
-| Documenten API archival | Each PDF stored as Enkelvoudig Informatieobject |
-| Zaak linking | Each document linked to the zaak as ZaakInformatieobject |
-| Multi-plugin orchestration | Epistola + OpenZaak + Zaken API in one process |
-| Documents tab | Archived documents visible via zaak-informatieobject link |
-| Complete lifecycle | generate → wait → download → archive → link |
+| Capability                 | How it's shown                                            |
+| -------------------------- | --------------------------------------------------------- |
+| Parallel generation        | 3 documents generated simultaneously via parallel gateway |
+| Parallel join              | All 3 must complete before archival begins                |
+| Documenten API archival    | Each PDF stored as Enkelvoudig Informatieobject           |
+| Zaak linking               | Each document linked to the zaak as ZaakInformatieobject  |
+| Multi-plugin orchestration | Epistola + OpenZaak + Zaken API in one process            |
+| Documents tab              | Archived documents visible via zaak-informatieobject link |
+| Complete lifecycle         | generate → wait → download → archive → link               |
 
 ---
 
@@ -556,13 +559,13 @@ import {
 
 These use cases should be implemented incrementally, each building on patterns established by the previous:
 
-| Phase | Use case | Prerequisites |
-|-------|----------|---------------|
-| 0 | (infrastructure) | Frontend config components for `check-job-status` and `download-document` actions |
-| 1 | Vergunningsaanvraag | Establishes: case definition, BPMN with message catch, data mapping, download + user task |
-| 2 | Bezwaarprocedure | Adds: multi-template, conditional gateway, documents tab storage |
-| 3 | Massale correspondentie | Adds: multi-instance subprocess, error counters, bulk poller load |
-| 4 | Subsidie zaakdossier | Adds: parallel gateway, OpenZaak infrastructure, multi-plugin orchestration |
+| Phase | Use case                | Prerequisites                                                                             |
+| ----- | ----------------------- | ----------------------------------------------------------------------------------------- |
+| 0     | (infrastructure)        | Frontend config components for `check-job-status` and `download-document` actions         |
+| 1     | Vergunningsaanvraag     | Establishes: case definition, BPMN with message catch, data mapping, download + user task |
+| 2     | Bezwaarprocedure        | Adds: multi-template, conditional gateway, documents tab storage                          |
+| 3     | Massale correspondentie | Adds: multi-instance subprocess, error counters, bulk poller load                         |
+| 4     | Subsidie zaakdossier    | Adds: parallel gateway, OpenZaak infrastructure, multi-plugin orchestration               |
 
 ## Test-App File Structure
 

@@ -1,8 +1,21 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {FormsModule} from '@angular/forms';
-import {PluginTranslatePipeModule} from '@valtimo/plugin';
-import {InputModule, ValuePathSelectorComponent, ValuePathSelectorPrefix} from '@valtimo/components';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { PluginTranslatePipeModule } from '@valtimo/plugin';
+import {
+  InputModule,
+  ValuePathSelectorComponent,
+  ValuePathSelectorPrefix,
+} from '@valtimo/components';
 
 export type InputMode = 'browse' | 'pv' | 'expression';
 
@@ -21,8 +34,8 @@ export type InputMode = 'browse' | 'pv' | 'expression';
     FormsModule,
     PluginTranslatePipeModule,
     InputModule,
-    ValuePathSelectorComponent
-  ]
+    ValuePathSelectorComponent,
+  ],
 })
 export class ValueInputComponent implements OnChanges {
   @Input() name = '';
@@ -88,7 +101,10 @@ export function normalizeToDots(value: string): string {
   const prefix = value.substring(0, colonIndex);
   const path = value.substring(colonIndex + 1);
   if (!path.includes('/')) return value;
-  const normalized = path.split('/').filter(p => p.length > 0).join('.');
+  const normalized = path
+    .split('/')
+    .filter((p) => p.length > 0)
+    .join('.');
   return `${prefix}:${normalized}`;
 }
 

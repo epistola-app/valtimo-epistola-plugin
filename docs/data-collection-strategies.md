@@ -312,15 +312,15 @@ However, this concentrates a lot of logic in a single action. Debugging a failed
 
 ## Comparison
 
-| Aspect | BPMN Orchestration | Custom Value Resolvers | Document Enrichment | Data Collection Action |
-|--------|-------------------|----------------------|---------------------|----------------------|
-| BPMN complexity | High (many tasks) | Low (one task) | Medium (enrich + generate) | Low (collect + generate) |
-| Implementation effort | Low (existing plugins) | High (resolver per source) | Medium (enrichment logic) | High (multi-source action) |
-| Debuggability | Excellent (visible flow) | Poor (implicit calls) | Good (data in document) | Medium (single action) |
-| Reusability | Low (per-process) | High (any mapping) | High (data in document) | Medium (per-action config) |
-| Batch suitability | Poor | Medium (needs extensions) | Good (decouple enrich/generate) | Good (if batch-designed) |
-| Data freshness | Excellent (fetched at runtime) | Excellent (fetched at runtime) | Risk of staleness | Excellent (fetched at runtime) |
-| Valtimo coupling | Low | High | Low | Medium |
+| Aspect                | BPMN Orchestration             | Custom Value Resolvers         | Document Enrichment             | Data Collection Action         |
+| --------------------- | ------------------------------ | ------------------------------ | ------------------------------- | ------------------------------ |
+| BPMN complexity       | High (many tasks)              | Low (one task)                 | Medium (enrich + generate)      | Low (collect + generate)       |
+| Implementation effort | Low (existing plugins)         | High (resolver per source)     | Medium (enrichment logic)       | High (multi-source action)     |
+| Debuggability         | Excellent (visible flow)       | Poor (implicit calls)          | Good (data in document)         | Medium (single action)         |
+| Reusability           | Low (per-process)              | High (any mapping)             | High (data in document)         | Medium (per-action config)     |
+| Batch suitability     | Poor                           | Medium (needs extensions)      | Good (decouple enrich/generate) | Good (if batch-designed)       |
+| Data freshness        | Excellent (fetched at runtime) | Excellent (fetched at runtime) | Risk of staleness               | Excellent (fetched at runtime) |
+| Valtimo coupling      | Low                            | High                           | Low                             | Medium                         |
 
 ## Combining Strategies
 

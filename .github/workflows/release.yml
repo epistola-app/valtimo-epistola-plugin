@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g. 0.3.1). Required for re-runs.'
+        description: "Version to release (e.g. 0.3.1). Required for re-runs."
         required: true
         type: string
 

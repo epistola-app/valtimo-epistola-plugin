@@ -1,9 +1,9 @@
-import {Component, OnInit} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {ActivatedRoute, Router, RouterModule} from '@angular/router';
-import {PluginTranslatePipeModule} from '@valtimo/plugin';
-import {EpistolaAdminService} from '../../services/epistola-admin.service';
-import {ConnectionStatus, PluginUsageEntry, VersionInfo} from '../../models';
+import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { PluginTranslatePipeModule } from '@valtimo/plugin';
+import { EpistolaAdminService } from '../../services/epistola-admin.service';
+import { ConnectionStatus, PluginUsageEntry, VersionInfo } from '../../models';
 
 /**
  * Combined view model for a single plugin configuration card.
@@ -26,7 +26,7 @@ interface ConfigurationCard {
   templateUrl: './epistola-admin-page.component.html',
   styleUrls: ['./epistola-admin-page.component.scss'],
   standalone: true,
-  imports: [CommonModule, RouterModule, PluginTranslatePipeModule]
+  imports: [CommonModule, RouterModule, PluginTranslatePipeModule],
 })
 export class EpistolaAdminPageComponent implements OnInit {
   cards: ConfigurationCard[] = [];
@@ -43,7 +43,7 @@ export class EpistolaAdminPageComponent implements OnInit {
   constructor(
     private readonly adminService: EpistolaAdminService,
     private readonly route: ActivatedRoute,
-    private readonly router: Router
+    private readonly router: Router,
   ) {}
 
   ngOnInit(): void {
@@ -70,9 +70,9 @@ export class EpistolaAdminPageComponent implements OnInit {
   private updateUrl(configurationId: string | null): void {
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: {configurationId: configurationId ?? null},
+      queryParams: { configurationId: configurationId ?? null },
       queryParamsHandling: 'merge',
-      replaceUrl: true
+      replaceUrl: true,
     });
   }
 
@@ -82,7 +82,7 @@ export class EpistolaAdminPageComponent implements OnInit {
     this.usageLoaded = false;
 
     this.adminService.getConnectionStatus().subscribe({
-      next: statuses => {
+      next: (statuses) => {
         this.connectionStatuses = statuses;
         this.connectionLoaded = true;
         this.tryBuildCards();
@@ -91,11 +91,11 @@ export class EpistolaAdminPageComponent implements OnInit {
         this.connectionStatuses = [];
         this.connectionLoaded = true;
         this.tryBuildCards();
-      }
+      },
     });
 
     this.adminService.getPluginUsage().subscribe({
-      next: entries => {
+      next: (entries) => {
         this.usageEntries = entries;
         this.usageLoaded = true;
         this.tryBuildCards();
@@ -104,7 +104,7 @@ export class EpistolaAdminPageComponent implements OnInit {
         this.usageEntries = [];
         this.usageLoaded = true;
         this.tryBuildCards();
-      }
+      },
     });
   }
 
@@ -113,13 +113,9 @@ export class EpistolaAdminPageComponent implements OnInit {
       return;
     }
 
-    this.cards = this.connectionStatuses.map(status => {
-      const entries = this.usageEntries.filter(
-        e => e.configurationId === status.configurationId
-      );
-      const problemCount = entries.reduce(
-        (sum, e) => sum + e.problems.length, 0
-      );
+    this.cards = this.connectionStatuses.map((status) => {
+      const entries = this.usageEntries.filter((e) => e.configurationId === status.configurationId);
+      const problemCount = entries.reduce((sum, e) => sum + e.problems.length, 0);
 
       return {
         configurationId: status.configurationId,
@@ -131,13 +127,13 @@ export class EpistolaAdminPageComponent implements OnInit {
         serverVersion: status.serverVersion,
         usageCount: entries.length,
         problemCount,
-        usageEntries: entries
+        usageEntries: entries,
       };
     });
 
     // Restore deep link selection
     if (this.deepLinkConfigId) {
-      const match = this.cards.find(c => c.configurationId === this.deepLinkConfigId);
+      const match = this.cards.find((c) => c.configurationId === this.deepLinkConfigId);
       if (match) {
         this.selectedCard = match;
       }
@@ -149,9 +145,9 @@ export class EpistolaAdminPageComponent implements OnInit {
 
   private loadPluginVersion(): void {
     this.adminService.getVersions().subscribe({
-      next: info => {
+      next: (info) => {
         this.pluginVersion = info.pluginVersion;
-      }
+      },
     });
   }
 }

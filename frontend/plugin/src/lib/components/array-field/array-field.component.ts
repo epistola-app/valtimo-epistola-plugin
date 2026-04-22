@@ -1,9 +1,17 @@
-import {ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {PluginTranslatePipeModule} from '@valtimo/plugin';
-import {InputModule} from '@valtimo/components';
-import {TemplateField} from '../../models';
-import {ValueInputComponent, normalizeToDots} from '../value-input/value-input.component';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { PluginTranslatePipeModule } from '@valtimo/plugin';
+import { InputModule } from '@valtimo/components';
+import { TemplateField } from '../../models';
+import { ValueInputComponent, normalizeToDots } from '../value-input/value-input.component';
 
 @Component({
   selector: 'epistola-array-field',
@@ -11,7 +19,7 @@ import {ValueInputComponent, normalizeToDots} from '../value-input/value-input.c
   styleUrls: ['./array-field.component.scss'],
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CommonModule, PluginTranslatePipeModule, InputModule, ValueInputComponent]
+  imports: [CommonModule, PluginTranslatePipeModule, InputModule, ValueInputComponent],
 })
 export class ArrayFieldComponent implements OnChanges {
   @Input() field!: TemplateField;
@@ -35,7 +43,12 @@ export class ArrayFieldComponent implements OnChanges {
         this.expanded = true;
       }
       // Detect per-field mode from value shape
-      if (changes['value'] && typeof this.value === 'object' && this.value !== null && '_source' in this.value) {
+      if (
+        changes['value'] &&
+        typeof this.value === 'object' &&
+        this.value !== null &&
+        '_source' in this.value
+      ) {
         this.arrayPerFieldMode = true;
       }
     }
@@ -57,7 +70,8 @@ export class ArrayFieldComponent implements OnChanges {
 
   onSourceValueChange(newValue: string): void {
     if (this.arrayPerFieldMode) {
-      const current = (typeof this.value === 'object' && this.value !== null) ? {...this.value} : {};
+      const current =
+        typeof this.value === 'object' && this.value !== null ? { ...this.value } : {};
       current['_source'] = newValue || '';
       this.valueChange.emit(current);
     } else {
@@ -70,7 +84,7 @@ export class ArrayFieldComponent implements OnChanges {
 
     if (this.arrayPerFieldMode) {
       const currentSource = this.getSourceValue();
-      this.valueChange.emit({_source: currentSource});
+      this.valueChange.emit({ _source: currentSource });
     } else {
       const source = this.getSourceValue();
       this.valueChange.emit(source || undefined);
@@ -78,7 +92,8 @@ export class ArrayFieldComponent implements OnChanges {
   }
 
   onItemFieldChange(childName: string, sourceFieldName: string): void {
-    const current = (typeof this.value === 'object' && this.value !== null) ? {...this.value} : {_source: ''};
+    const current =
+      typeof this.value === 'object' && this.value !== null ? { ...this.value } : { _source: '' };
     if (sourceFieldName && sourceFieldName.trim().length > 0) {
       current[childName] = sourceFieldName;
     } else {

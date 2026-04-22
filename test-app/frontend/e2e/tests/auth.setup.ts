@@ -20,7 +20,9 @@ setup('authenticate via Keycloak', async ({ page }) => {
   await page.waitForURL('http://localhost:4200/**');
 
   // Verify the app loaded by checking for a known Valtimo element
-  await expect(page.locator('valtimo-left-sidebar, .left-sidebar, nav')).toBeVisible({ timeout: 15_000 });
+  await expect(page.locator('valtimo-left-sidebar, .left-sidebar, nav')).toBeVisible({
+    timeout: 15_000,
+  });
 
   // Save auth state
   await page.context().storageState({ path: AUTH_FILE });

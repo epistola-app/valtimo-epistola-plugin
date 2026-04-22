@@ -29,12 +29,7 @@
               "type": "string"
             }
           },
-          "required": [
-            "street",
-            "houseNumber",
-            "postalCode",
-            "city"
-          ]
+          "required": ["street", "houseNumber", "postalCode", "city"]
         },
         "bsn": {
           "type": "string",
@@ -47,12 +42,7 @@
           "minimum": 0
         }
       },
-      "required": [
-        "name",
-        "address",
-        "bsn",
-        "taxAmount"
-      ]
+      "required": ["name", "address", "bsn", "taxAmount"]
     },
     "dataExamples": [
       {
@@ -110,16 +100,12 @@
         "n-root": {
           "id": "n-root",
           "type": "root",
-          "slots": [
-            "s-root-children"
-          ]
+          "slots": ["s-root-children"]
         },
         "n-header": {
           "id": "n-header",
           "type": "container",
-          "slots": [
-            "s-header-children"
-          ],
+          "slots": ["s-header-children"],
           "styles": {
             "marginBottom": "20px",
             "paddingBottom": "15px",
@@ -129,15 +115,9 @@
         "n-header-columns": {
           "id": "n-header-columns",
           "type": "columns",
-          "slots": [
-            "s-header-col-0",
-            "s-header-col-1"
-          ],
+          "slots": ["s-header-col-0", "s-header-col-1"],
           "props": {
-            "columnSizes": [
-              2,
-              1
-            ],
+            "columnSizes": [2, 1],
             "gap": 20
           }
         },
@@ -419,9 +399,7 @@
         "n-amount-box": {
           "id": "n-amount-box",
           "type": "container",
-          "slots": [
-            "s-amount-box-children"
-          ],
+          "slots": ["s-amount-box-children"],
           "styles": {
             "padding": "20px",
             "backgroundColor": "#f0f4f8",
@@ -619,9 +597,7 @@
         "n-footer": {
           "id": "n-footer",
           "type": "container",
-          "slots": [
-            "s-footer-children"
-          ],
+          "slots": ["s-footer-children"],
           "styles": {
             "marginTop": "40px",
             "paddingTop": "15px",
@@ -688,43 +664,31 @@
           "id": "s-header-children",
           "nodeId": "n-header",
           "name": "children",
-          "children": [
-            "n-header-columns"
-          ]
+          "children": ["n-header-columns"]
         },
         "s-header-col-0": {
           "id": "s-header-col-0",
           "nodeId": "n-header-columns",
           "name": "column-0",
-          "children": [
-            "n-municipality",
-            "n-department"
-          ]
+          "children": ["n-municipality", "n-department"]
         },
         "s-header-col-1": {
           "id": "s-header-col-1",
           "nodeId": "n-header-columns",
           "name": "column-1",
-          "children": [
-            "n-header-date"
-          ]
+          "children": ["n-header-date"]
         },
         "s-amount-box-children": {
           "id": "s-amount-box-children",
           "nodeId": "n-amount-box",
           "name": "children",
-          "children": [
-            "n-amount-label",
-            "n-amount-value"
-          ]
+          "children": ["n-amount-label", "n-amount-value"]
         },
         "s-footer-children": {
           "id": "s-footer-children",
           "nodeId": "n-footer",
           "name": "children",
-          "children": [
-            "n-footer-text"
-          ]
+          "children": ["n-footer-text"]
         }
       }
     },

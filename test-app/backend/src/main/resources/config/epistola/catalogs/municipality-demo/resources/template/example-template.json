@@ -12,9 +12,7 @@
           "description": "First name of the person"
         }
       },
-      "required": [
-        "firstName"
-      ]
+      "required": ["firstName"]
     },
     "dataExamples": [
       {
@@ -44,9 +42,7 @@
         "n-root": {
           "id": "n-root",
           "type": "container",
-          "slots": [
-            "s-root-children"
-          ]
+          "slots": ["s-root-children"]
         },
         "n-greeting": {
           "id": "n-greeting",
@@ -97,9 +93,7 @@
           "id": "s-root-children",
           "nodeId": "n-root",
           "name": "children",
-          "children": [
-            "n-greeting"
-          ]
+          "children": ["n-greeting"]
         }
       }
     },

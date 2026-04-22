@@ -1,9 +1,17 @@
-import {ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {PluginTranslatePipeModule} from '@valtimo/plugin';
-import {TemplateField} from '../../models';
-import {countRequiredMapped} from '../../utils/template-field-utils';
-import {FieldTreeComponent} from '../field-tree/field-tree.component';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { PluginTranslatePipeModule } from '@valtimo/plugin';
+import { TemplateField } from '../../models';
+import { countRequiredMapped } from '../../utils/template-field-utils';
+import { FieldTreeComponent } from '../field-tree/field-tree.component';
 
 /**
  * Top-level wrapper that hosts FieldTreeComponent instances for each top-level template field.
@@ -15,11 +23,7 @@ import {FieldTreeComponent} from '../field-tree/field-tree.component';
   styleUrls: ['./data-mapping-tree.component.scss'],
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    CommonModule,
-    PluginTranslatePipeModule,
-    FieldTreeComponent
-  ]
+  imports: [CommonModule, PluginTranslatePipeModule, FieldTreeComponent],
 })
 export class DataMappingTreeComponent implements OnChanges {
   @Input() pluginId!: string;
@@ -30,7 +34,7 @@ export class DataMappingTreeComponent implements OnChanges {
   @Input() processVariables: string[] = [];
 
   @Output() mappingChange = new EventEmitter<Record<string, any>>();
-  @Output() requiredFieldsStatus = new EventEmitter<{mapped: number; total: number}>();
+  @Output() requiredFieldsStatus = new EventEmitter<{ mapped: number; total: number }>();
 
   mapping: Record<string, any> = {};
 
@@ -38,7 +42,7 @@ export class DataMappingTreeComponent implements OnChanges {
     if (changes['prefillMapping']) {
       const mapping = this.prefillMapping;
       if (mapping && Object.keys(mapping).length > 0) {
-        this.mapping = {...mapping};
+        this.mapping = { ...mapping };
       }
     }
     if (changes['templateFields'] || changes['prefillMapping']) {
@@ -48,10 +52,10 @@ export class DataMappingTreeComponent implements OnChanges {
 
   onFieldValueChange(fieldName: string, value: any): void {
     if (value === undefined || value === null || value === '') {
-      const {[fieldName]: _, ...rest} = this.mapping;
+      const { [fieldName]: _, ...rest } = this.mapping;
       this.mapping = rest;
     } else {
-      this.mapping = {...this.mapping, [fieldName]: value};
+      this.mapping = { ...this.mapping, [fieldName]: value };
     }
     this.mappingChange.emit(this.mapping);
     this.emitRequiredFieldsStatus();

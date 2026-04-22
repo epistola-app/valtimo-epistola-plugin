@@ -1,16 +1,16 @@
 <v-form
-    (valueChange)="formValueChange($event)"
-    *ngIf="{
-      disabled: disabled$ | async,
-      prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null,
-      catalogs: catalogs$ | async,
-      templates: templates$ | async,
-      variants: variants$ | async,
-      environments: environments$ | async,
-      templateFields: templateFields$ | async,
-      selectedCatalogId: selectedCatalogId$ | async,
-      selectedTemplateId: selectedTemplateId$ | async
-    } as obs"
+  (valueChange)="formValueChange($event)"
+  *ngIf="{
+    disabled: disabled$ | async,
+    prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null,
+    catalogs: catalogs$ | async,
+    templates: templates$ | async,
+    variants: variants$ | async,
+    environments: environments$ | async,
+    templateFields: templateFields$ | async,
+    selectedCatalogId: selectedCatalogId$ | async,
+    selectedTemplateId: selectedTemplateId$ | async,
+  } as obs"
 >
   <v-select
     name="catalogId"
@@ -42,7 +42,9 @@
 
   <!-- Variant selection mode toggle -->
   <div class="variant-mode-toggle" *ngIf="obs.selectedTemplateId">
-    <label class="variant-mode-label">{{ 'variantSelectionMode' | pluginTranslate: pluginId | async }}</label>
+    <label class="variant-mode-label">{{
+      'variantSelectionMode' | pluginTranslate: pluginId | async
+    }}</label>
     <div class="variant-mode-buttons">
       <button
         type="button"
@@ -50,14 +52,18 @@
         [class.active]="variantSelectionMode === 'explicit'"
         (click)="onVariantSelectionModeChange('explicit')"
         [disabled]="obs.disabled"
-      >{{ 'selectByVariant' | pluginTranslate: pluginId | async }}</button>
+      >
+        {{ 'selectByVariant' | pluginTranslate: pluginId | async }}
+      </button>
       <button
         type="button"
         class="variant-mode-btn"
         [class.active]="variantSelectionMode === 'attributes'"
         (click)="onVariantSelectionModeChange('attributes')"
         [disabled]="obs.disabled"
-      >{{ 'selectByAttributes' | pluginTranslate: pluginId | async }}</button>
+      >
+        {{ 'selectByAttributes' | pluginTranslate: pluginId | async }}
+      </button>
     </div>
   </div>
 
@@ -78,10 +84,18 @@
   <div *ngIf="obs.variants.error" class="loading-error">{{ obs.variants.error }}</div>
 
   <!-- Attribute-based variant selection -->
-  <div *ngIf="variantSelectionMode === 'attributes' && obs.selectedTemplateId" class="variant-attributes-section">
-    <label class="variant-attributes-label">{{ 'variantAttributes' | pluginTranslate: pluginId | async }}</label>
+  <div
+    *ngIf="variantSelectionMode === 'attributes' && obs.selectedTemplateId"
+    class="variant-attributes-section"
+  >
+    <label class="variant-attributes-label">{{
+      'variantAttributes' | pluginTranslate: pluginId | async
+    }}</label>
     <div class="variant-attributes-list">
-      <div *ngFor="let entry of variantAttributeEntries; let i = index" class="variant-attribute-row">
+      <div
+        *ngFor="let entry of variantAttributeEntries; let i = index"
+        class="variant-attribute-row"
+      >
         <select
           *ngIf="!entry._customKey"
           class="variant-attribute-input"
@@ -89,9 +103,13 @@
           (ngModelChange)="onKeySelected(entry, $event)"
           [disabled]="obs.disabled"
         >
-          <option value="" disabled>{{ 'attributeKey' | pluginTranslate: pluginId | async }}</option>
+          <option value="" disabled>
+            {{ 'attributeKey' | pluginTranslate: pluginId | async }}
+          </option>
           <option *ngFor="let key of availableAttributeKeys" [value]="key">{{ key }}</option>
-          <option value="__custom__">{{ 'attributeKeyCustom' | pluginTranslate: pluginId | async }}</option>
+          <option value="__custom__">
+            {{ 'attributeKeyCustom' | pluginTranslate: pluginId | async }}
+          </option>
         </select>
         <div *ngIf="entry._customKey" class="custom-key-input">
           <input
@@ -102,7 +120,14 @@
             (ngModelChange)="onAttributeEntryChange()"
             [disabled]="obs.disabled"
           />
-          <button type="button" class="custom-key-cancel" (click)="cancelCustomKey(entry)" [disabled]="obs.disabled">&times;</button>
+          <button
+            type="button"
+            class="custom-key-cancel"
+            (click)="cancelCustomKey(entry)"
+            [disabled]="obs.disabled"
+          >
+            &times;
+          </button>
         </div>
         <input
           type="text"
@@ -119,7 +144,11 @@
             (ngModelChange)="onAttributeEntryChange()"
             [disabled]="obs.disabled"
           />
-          <span class="required-label">{{ (entry.required ? 'attributeRequired' : 'attributePreferred') | pluginTranslate: pluginId | async }}</span>
+          <span class="required-label">{{
+            (entry.required ? 'attributeRequired' : 'attributePreferred')
+              | pluginTranslate: pluginId
+              | async
+          }}</span>
         </label>
         <button
           type="button"
@@ -127,7 +156,9 @@
           (click)="removeAttributeEntry(i)"
           [disabled]="obs.disabled"
           title="{{ 'removeAttribute' | pluginTranslate: pluginId | async }}"
-        >&times;</button>
+        >
+          &times;
+        </button>
       </div>
     </div>
     <button
@@ -135,7 +166,9 @@
       class="variant-attribute-add-btn"
       (click)="addAttributeEntry()"
       [disabled]="obs.disabled"
-    >+ {{ 'addAttribute' | pluginTranslate: pluginId | async }}</button>
+    >
+      + {{ 'addAttribute' | pluginTranslate: pluginId | async }}
+    </button>
   </div>
 
   <v-select
@@ -198,10 +231,12 @@
   </v-input>
 </v-form>
 
-<div *ngIf="(templateFields$ | async)?.error as templateFieldsError" class="loading-error">{{ templateFieldsError }}</div>
+<div *ngIf="(templateFields$ | async)?.error as templateFieldsError" class="loading-error">
+  {{ templateFieldsError }}
+</div>
 
 <epistola-data-mapping-tree
-  *ngIf="(selectedTemplateId$ | async)"
+  *ngIf="selectedTemplateId$ | async"
   [pluginId]="pluginId"
   [templateFields]="(templateFields$ | async)?.data ?? []"
   [disabled]="!!(disabled$ | async)"
@@ -212,11 +247,20 @@
   (requiredFieldsStatus)="onRequiredFieldsStatusChange($event)"
 ></epistola-data-mapping-tree>
 
-<div class="validation-summary" *ngIf="(selectedTemplateId$ | async) && requiredFieldsStatus.total > 0">
-  <span *ngIf="requiredFieldsStatus.mapped === requiredFieldsStatus.total" class="validation-complete">
+<div
+  class="validation-summary"
+  *ngIf="(selectedTemplateId$ | async) && requiredFieldsStatus.total > 0"
+>
+  <span
+    *ngIf="requiredFieldsStatus.mapped === requiredFieldsStatus.total"
+    class="validation-complete"
+  >
     {{ 'requiredFieldsComplete' | pluginTranslate: pluginId | async }}
   </span>
-  <span *ngIf="requiredFieldsStatus.mapped < requiredFieldsStatus.total" class="validation-incomplete">
+  <span
+    *ngIf="requiredFieldsStatus.mapped < requiredFieldsStatus.total"
+    class="validation-incomplete"
+  >
     {{ requiredFieldsStatus.mapped }} / {{ requiredFieldsStatus.total }}
     {{ 'validationSummary' | pluginTranslate: pluginId | async }}
   </span>

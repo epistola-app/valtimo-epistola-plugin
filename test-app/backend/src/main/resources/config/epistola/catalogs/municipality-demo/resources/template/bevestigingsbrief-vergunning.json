@@ -42,20 +42,10 @@
                   "type": "string"
                 }
               },
-              "required": [
-                "street",
-                "houseNumber",
-                "postalCode",
-                "city"
-              ]
+              "required": ["street", "houseNumber", "postalCode", "city"]
             }
           },
-          "required": [
-            "firstName",
-            "lastName",
-            "bsn",
-            "address"
-          ]
+          "required": ["firstName", "lastName", "bsn", "address"]
         },
         "property": {
           "type": "object",
@@ -79,21 +69,14 @@
                   "type": "string"
                 }
               },
-              "required": [
-                "street",
-                "houseNumber",
-                "postalCode",
-                "city"
-              ]
+              "required": ["street", "houseNumber", "postalCode", "city"]
             },
             "kadastraalNummer": {
               "type": "string",
               "description": "Kadastraal nummer (optioneel)"
             }
           },
-          "required": [
-            "address"
-          ]
+          "required": ["address"]
         },
         "activities": {
           "type": "array",
@@ -115,19 +98,12 @@
                 "minimum": 0
               }
             },
-            "required": [
-              "type",
-              "description"
-            ]
+            "required": ["type", "description"]
           },
           "minItems": 1
         }
       },
-      "required": [
-        "applicant",
-        "property",
-        "activities"
-      ]
+      "required": ["applicant", "property", "activities"]
     },
     "dataExamples": [
       {
@@ -224,16 +200,12 @@
         "n-root": {
           "id": "n-root",
           "type": "root",
-          "slots": [
-            "s-root-children"
-          ]
+          "slots": ["s-root-children"]
         },
         "n-header": {
           "id": "n-header",
           "type": "container",
-          "slots": [
-            "s-header-children"
-          ],
+          "slots": ["s-header-children"],
           "styles": {
             "marginBottom": "20px",
             "paddingBottom": "15px",
@@ -243,15 +215,9 @@
         "n-header-columns": {
           "id": "n-header-columns",
           "type": "columns",
-          "slots": [
-            "s-header-col-0",
-            "s-header-col-1"
-          ],
+          "slots": ["s-header-col-0", "s-header-col-1"],
           "props": {
-            "columnSizes": [
-              2,
-              1
-            ],
+            "columnSizes": [2, 1],
             "gap": 20
           }
         },
@@ -593,9 +559,7 @@
         "n-kadastraal-conditional": {
           "id": "n-kadastraal-conditional",
           "type": "conditional",
-          "slots": [
-            "s-kadastraal-cond-children"
-          ],
+          "slots": ["s-kadastraal-cond-children"],
           "props": {
             "condition": {
               "raw": "$exists(property.kadastraalNummer)",
@@ -666,20 +630,12 @@
         "n-activities-table-header": {
           "id": "n-activities-table-header",
           "type": "table",
-          "slots": [
-            "s-ath-cell-0-0",
-            "s-ath-cell-0-1",
-            "s-ath-cell-0-2"
-          ],
+          "slots": ["s-ath-cell-0-0", "s-ath-cell-0-1", "s-ath-cell-0-2"],
           "styles": {
             "marginBottom": "0px"
           },
           "props": {
-            "columnWidths": [
-              20,
-              55,
-              25
-            ],
+            "columnWidths": [20, 55, 25],
             "borderStyle": "all",
             "rows": [
               {
@@ -776,9 +732,7 @@
         "n-activities-loop": {
           "id": "n-activities-loop",
           "type": "loop",
-          "slots": [
-            "s-activities-loop-children"
-          ],
+          "slots": ["s-activities-loop-children"],
           "props": {
             "expression": {
               "raw": "activities"
@@ -790,17 +744,9 @@
         "n-activity-row-table": {
           "id": "n-activity-row-table",
           "type": "table",
-          "slots": [
-            "s-art-cell-0-0",
-            "s-art-cell-0-1",
-            "s-art-cell-0-2"
-          ],
+          "slots": ["s-art-cell-0-0", "s-art-cell-0-1", "s-art-cell-0-2"],
           "props": {
-            "columnWidths": [
-              20,
-              55,
-              25
-            ],
+            "columnWidths": [20, 55, 25],
             "borderStyle": "horizontal",
             "rows": [
               {
@@ -1014,9 +960,7 @@
         "n-footer": {
           "id": "n-footer",
           "type": "container",
-          "slots": [
-            "s-footer-children"
-          ],
+          "slots": ["s-footer-children"],
           "styles": {
             "marginTop": "40px",
             "paddingTop": "15px",
@@ -1085,98 +1029,73 @@
           "id": "s-header-children",
           "nodeId": "n-header",
           "name": "children",
-          "children": [
-            "n-header-columns"
-          ]
+          "children": ["n-header-columns"]
         },
         "s-header-col-0": {
           "id": "s-header-col-0",
           "nodeId": "n-header-columns",
           "name": "column-0",
-          "children": [
-            "n-municipality",
-            "n-department"
-          ]
+          "children": ["n-municipality", "n-department"]
         },
         "s-header-col-1": {
           "id": "s-header-col-1",
           "nodeId": "n-header-columns",
           "name": "column-1",
-          "children": [
-            "n-header-date"
-          ]
+          "children": ["n-header-date"]
         },
         "s-kadastraal-cond-children": {
           "id": "s-kadastraal-cond-children",
           "nodeId": "n-kadastraal-conditional",
           "name": "children",
-          "children": [
-            "n-kadastraal-text"
-          ]
+          "children": ["n-kadastraal-text"]
         },
         "s-ath-cell-0-0": {
           "id": "s-ath-cell-0-0",
           "nodeId": "n-activities-table-header",
           "name": "cell-0-0",
-          "children": [
-            "n-ath-type"
-          ]
+          "children": ["n-ath-type"]
         },
         "s-ath-cell-0-1": {
           "id": "s-ath-cell-0-1",
           "nodeId": "n-activities-table-header",
           "name": "cell-0-1",
-          "children": [
-            "n-ath-description"
-          ]
+          "children": ["n-ath-description"]
         },
         "s-ath-cell-0-2": {
           "id": "s-ath-cell-0-2",
           "nodeId": "n-activities-table-header",
           "name": "cell-0-2",
-          "children": [
-            "n-ath-cost"
-          ]
+          "children": ["n-ath-cost"]
         },
         "s-activities-loop-children": {
           "id": "s-activities-loop-children",
           "nodeId": "n-activities-loop",
           "name": "children",
-          "children": [
-            "n-activity-row-table"
-          ]
+          "children": ["n-activity-row-table"]
         },
         "s-art-cell-0-0": {
           "id": "s-art-cell-0-0",
           "nodeId": "n-activity-row-table",
           "name": "cell-0-0",
-          "children": [
-            "n-activity-type-text"
-          ]
+          "children": ["n-activity-type-text"]
         },
         "s-art-cell-0-1": {
           "id": "s-art-cell-0-1",
           "nodeId": "n-activity-row-table",
           "name": "cell-0-1",
-          "children": [
-            "n-activity-desc-text"
-          ]
+          "children": ["n-activity-desc-text"]
         },
         "s-art-cell-0-2": {
           "id": "s-art-cell-0-2",
           "nodeId": "n-activity-row-table",
           "name": "cell-0-2",
-          "children": [
-            "n-activity-cost-text"
-          ]
+          "children": ["n-activity-cost-text"]
         },
         "s-footer-children": {
           "id": "s-footer-children",
           "nodeId": "n-footer",
           "name": "children",
-          "children": [
-            "n-footer-text"
-          ]
+          "children": ["n-footer-text"]
         }
       }
     },

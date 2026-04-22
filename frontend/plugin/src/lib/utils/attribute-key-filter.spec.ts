@@ -1,4 +1,4 @@
-import {filterAttributeKeys} from './attribute-key-filter';
+import { filterAttributeKeys } from './attribute-key-filter';
 
 describe('filterAttributeKeys', () => {
   const available = ['language', 'brand', 'region'];

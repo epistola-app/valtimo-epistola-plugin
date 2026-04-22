@@ -16,9 +16,7 @@
               "description": "Naam van de aanvrager"
             }
           },
-          "required": [
-            "name"
-          ]
+          "required": ["name"]
         },
         "subsidy": {
           "type": "object",
@@ -34,16 +32,10 @@
               "minimum": 0
             }
           },
-          "required": [
-            "programName",
-            "amount"
-          ]
+          "required": ["programName", "amount"]
         }
       },
-      "required": [
-        "beneficiary",
-        "subsidy"
-      ]
+      "required": ["beneficiary", "subsidy"]
     },
     "dataExamples": [
       {
@@ -97,16 +89,12 @@
         "n-root": {
           "id": "n-root",
           "type": "root",
-          "slots": [
-            "s-root-children"
-          ]
+          "slots": ["s-root-children"]
         },
         "n-header": {
           "id": "n-header",
           "type": "container",
-          "slots": [
-            "s-header-children"
-          ],
+          "slots": ["s-header-children"],
           "styles": {
             "marginBottom": "24px",
             "paddingBottom": "16px",
@@ -226,9 +214,7 @@
         "n-summary-box": {
           "id": "n-summary-box",
           "type": "container",
-          "slots": [
-            "s-summary-children"
-          ],
+          "slots": ["s-summary-children"],
           "styles": {
             "padding": "20px",
             "backgroundColor": "#f0f4f8",
@@ -267,15 +253,9 @@
         "n-summary-columns": {
           "id": "n-summary-columns",
           "type": "columns",
-          "slots": [
-            "s-summary-col-0",
-            "s-summary-col-1"
-          ],
+          "slots": ["s-summary-col-0", "s-summary-col-1"],
           "props": {
-            "columnSizes": [
-              1,
-              1
-            ],
+            "columnSizes": [1, 1],
             "gap": 20
           }
         },
@@ -358,9 +338,7 @@
         "n-financial-details": {
           "id": "n-financial-details",
           "type": "container",
-          "slots": [
-            "s-financial-children"
-          ],
+          "slots": ["s-financial-children"],
           "styles": {
             "marginBottom": "24px"
           }
@@ -397,20 +375,12 @@
         "n-amount-table": {
           "id": "n-amount-table",
           "type": "table",
-          "slots": [
-            "s-amt-cell-0-0",
-            "s-amt-cell-0-1",
-            "s-amt-cell-1-0",
-            "s-amt-cell-1-1"
-          ],
+          "slots": ["s-amt-cell-0-0", "s-amt-cell-0-1", "s-amt-cell-1-0", "s-amt-cell-1-1"],
           "styles": {
             "marginBottom": "16px"
           },
           "props": {
-            "columnWidths": [
-              60,
-              40
-            ],
+            "columnWidths": [60, 40],
             "borderStyle": "horizontal",
             "rows": [
               {
@@ -542,9 +512,7 @@
         "n-total-box": {
           "id": "n-total-box",
           "type": "container",
-          "slots": [
-            "s-total-children"
-          ],
+          "slots": ["s-total-children"],
           "styles": {
             "padding": "16px",
             "backgroundColor": "#154273",
@@ -555,15 +523,9 @@
         "n-total-columns": {
           "id": "n-total-columns",
           "type": "columns",
-          "slots": [
-            "s-total-col-0",
-            "s-total-col-1"
-          ],
+          "slots": ["s-total-col-0", "s-total-col-1"],
           "props": {
-            "columnSizes": [
-              1,
-              1
-            ],
+            "columnSizes": [1, 1],
             "gap": 20
           }
         },
@@ -675,100 +637,73 @@
           "id": "s-header-children",
           "nodeId": "n-header",
           "name": "children",
-          "children": [
-            "n-municipality",
-            "n-department"
-          ]
+          "children": ["n-municipality", "n-department"]
         },
         "s-summary-children": {
           "id": "s-summary-children",
           "nodeId": "n-summary-box",
           "name": "children",
-          "children": [
-            "n-summary-label",
-            "n-summary-columns"
-          ]
+          "children": ["n-summary-label", "n-summary-columns"]
         },
         "s-summary-col-0": {
           "id": "s-summary-col-0",
           "nodeId": "n-summary-columns",
           "name": "column-0",
-          "children": [
-            "n-beneficiary-info"
-          ]
+          "children": ["n-beneficiary-info"]
         },
         "s-summary-col-1": {
           "id": "s-summary-col-1",
           "nodeId": "n-summary-columns",
           "name": "column-1",
-          "children": [
-            "n-program-info"
-          ]
+          "children": ["n-program-info"]
         },
         "s-financial-children": {
           "id": "s-financial-children",
           "nodeId": "n-financial-details",
           "name": "children",
-          "children": [
-            "n-financial-header",
-            "n-amount-table"
-          ]
+          "children": ["n-financial-header", "n-amount-table"]
         },
         "s-amt-cell-0-0": {
           "id": "s-amt-cell-0-0",
           "nodeId": "n-amount-table",
           "name": "cell-0-0",
-          "children": [
-            "n-col-header-desc"
-          ]
+          "children": ["n-col-header-desc"]
         },
         "s-amt-cell-0-1": {
           "id": "s-amt-cell-0-1",
           "nodeId": "n-amount-table",
           "name": "cell-0-1",
-          "children": [
-            "n-col-header-amount"
-          ]
+          "children": ["n-col-header-amount"]
         },
         "s-amt-cell-1-0": {
           "id": "s-amt-cell-1-0",
           "nodeId": "n-amount-table",
           "name": "cell-1-0",
-          "children": [
-            "n-row-subsidy-desc"
-          ]
+          "children": ["n-row-subsidy-desc"]
         },
         "s-amt-cell-1-1": {
           "id": "s-amt-cell-1-1",
           "nodeId": "n-amount-table",
           "name": "cell-1-1",
-          "children": [
-            "n-row-subsidy-amount"
-          ]
+          "children": ["n-row-subsidy-amount"]
         },
         "s-total-children": {
           "id": "s-total-children",
           "nodeId": "n-total-box",
           "name": "children",
-          "children": [
-            "n-total-columns"
-          ]
+          "children": ["n-total-columns"]
         },
         "s-total-col-0": {
           "id": "s-total-col-0",
           "nodeId": "n-total-columns",
           "name": "column-0",
-          "children": [
-            "n-total-label"
-          ]
+          "children": ["n-total-label"]
         },
         "s-total-col-1": {
           "id": "s-total-col-1",
           "nodeId": "n-total-columns",
           "name": "column-1",
-          "children": [
-            "n-total-amount"
-          ]
+          "children": ["n-total-amount"]
         }
       }
     },

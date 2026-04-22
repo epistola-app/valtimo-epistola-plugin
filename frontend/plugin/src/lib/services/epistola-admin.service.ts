@@ -1,8 +1,8 @@
-import {Injectable} from '@angular/core';
-import {HttpClient} from '@angular/common/http';
-import {ConfigService} from '@valtimo/shared';
-import {Observable} from 'rxjs';
-import {ConnectionStatus, PluginUsageEntry, VersionInfo} from '../models';
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { ConfigService } from '@valtimo/shared';
+import { Observable } from 'rxjs';
+import { ConnectionStatus, PluginUsageEntry, VersionInfo } from '../models';
 
 /**
  * Service for Epistola plugin administrative operations.
@@ -14,7 +14,7 @@ export class EpistolaAdminService {
 
   constructor(
     private readonly http: HttpClient,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
   ) {
     this.apiEndpoint = `${this.configService.config.valtimoApi.endpointUri}v1/plugin/epistola/admin`;
   }

@@ -47,6 +47,7 @@ gh release create chart-X.Y.Z --target main --title "Helm Chart X.Y.Z" --notes "
 ```
 
 This triggers the Helm Chart workflow in GitHub Actions which handles:
+
 - Writing the version into Chart.yaml
 - Syncing appVersion with the latest app release tag
 - Linting, packaging, and pushing to `oci://ghcr.io/epistola-app/charts/valtimo-demo`
@@ -55,6 +56,7 @@ This triggers the Helm Chart workflow in GitHub Actions which handles:
 ### 5. Post-release summary
 
 Display:
+
 - Chart version released (and previous version for context)
 - OCI registry: `oci://ghcr.io/epistola-app/charts/valtimo-demo:X.Y.Z`
 - Install command: `helm install valtimo-demo oci://ghcr.io/epistola-app/charts/valtimo-demo --version X.Y.Z`

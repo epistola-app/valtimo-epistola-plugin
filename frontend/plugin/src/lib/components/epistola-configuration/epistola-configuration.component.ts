@@ -1,17 +1,17 @@
-import {Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {PluginConfigurationComponent, PluginTranslatePipeModule} from '@valtimo/plugin';
-import {FormModule, FormOutput, InputModule} from '@valtimo/components';
-import {BehaviorSubject, combineLatest, Observable, Subscription, take} from 'rxjs';
-import {delay, startWith} from 'rxjs/operators';
-import {EpistolaPluginConfig} from '../../models';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { PluginConfigurationComponent, PluginTranslatePipeModule } from '@valtimo/plugin';
+import { FormModule, FormOutput, InputModule } from '@valtimo/components';
+import { BehaviorSubject, combineLatest, Observable, Subscription, take } from 'rxjs';
+import { delay, startWith } from 'rxjs/operators';
+import { EpistolaPluginConfig } from '../../models';
 
 @Component({
   selector: 'epistola-configuration',
   templateUrl: './epistola-configuration.component.html',
   styleUrls: ['./epistola-configuration.component.scss'],
   standalone: true,
-  imports: [CommonModule, PluginTranslatePipeModule, FormModule, InputModule]
+  imports: [CommonModule, PluginTranslatePipeModule, FormModule, InputModule],
 })
 export class EpistolaConfigurationComponent
   implements PluginConfigurationComponent, OnInit, OnDestroy
@@ -22,7 +22,8 @@ export class EpistolaConfigurationComponent
   @Input() prefillConfiguration$!: Observable<EpistolaPluginConfig>;
 
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
-  @Output() configuration: EventEmitter<EpistolaPluginConfig> = new EventEmitter<EpistolaPluginConfig>();
+  @Output() configuration: EventEmitter<EpistolaPluginConfig> =
+    new EventEmitter<EpistolaPluginConfig>();
 
   /** Epistola slug pattern: lowercase alphanumeric with hyphens, no leading/trailing hyphens. */
   private static readonly SLUG_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
@@ -37,10 +38,7 @@ export class EpistolaConfigurationComponent
     // Wrap disabled$ with startWith and delay to prevent NG0100 ExpressionChangedAfterItHasBeenCheckedError
     // The disabled$ observable from Valtimo's plugin framework can emit value changes after Angular's
     // change detection cycle completes, causing the error.
-    this.safeDisabled$ = this.disabled$.pipe(
-      startWith(true),
-      delay(0)
-    );
+    this.safeDisabled$ = this.disabled$.pipe(startWith(true), delay(0));
     this.openSaveSubscription();
   }
 
@@ -75,7 +73,11 @@ export class EpistolaConfigurationComponent
     );
   }
 
-  private isValidOptionalSlug(value: string | undefined, minLength: number, maxLength: number): boolean {
+  private isValidOptionalSlug(
+    value: string | undefined,
+    minLength: number,
+    maxLength: number,
+  ): boolean {
     if (!value) {
       return true;
     }

@@ -4,7 +4,12 @@
     "type": "template",
     "slug": "test-template",
     "name": "Test Template",
-    "templateModel": { "modelVersion": 1, "root": "r1", "nodes": { "r1": { "id": "r1", "type": "root", "slots": [] } }, "slots": {} },
+    "templateModel": {
+      "modelVersion": 1,
+      "root": "r1",
+      "nodes": { "r1": { "id": "r1", "type": "root", "slots": [] } },
+      "slots": {}
+    },
     "variants": [{ "id": "default", "title": "Default", "isDefault": true }]
   }
 }

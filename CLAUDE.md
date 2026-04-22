@@ -5,11 +5,13 @@
 The frontend plugin must be built BEFORE the test-app frontend:
 
 1. **Build plugin library** (outputs to `frontend/plugin/dist/`):
+
    ```bash
    cd frontend/plugin && pnpm build
    ```
 
 2. **Start test-app frontend** (references plugin via pnpm `workspace:*`):
+
    ```bash
    cd test-app/frontend && pnpm start
    ```
@@ -73,13 +75,13 @@ cd ../../test-app/frontend && pnpm install && pnpm start
 
 ### Infrastructure ports
 
-| Service | Epistola stack | Plugin stack |
-|---------|---------------|-------------|
-| PostgreSQL | 4001 | 5432 |
-| Keycloak | 4002 | 8081 |
-| App | 4000 (Gradle) | 8080 (Valtimo backend) |
-| Frontend | — | 4200 |
-| Epistola container | — | 4010 (`--profile server`) |
+| Service            | Epistola stack | Plugin stack              |
+| ------------------ | -------------- | ------------------------- |
+| PostgreSQL         | 4001           | 5432                      |
+| Keycloak           | 4002           | 8081                      |
+| App                | 4000 (Gradle)  | 8080 (Valtimo backend)    |
+| Frontend           | —              | 4200                      |
+| Epistola container | —              | 4010 (`--profile server`) |
 
 ## Project Structure
 
@@ -109,11 +111,13 @@ docker/            # Docker compose for local dependencies
 ## Testing
 
 Run backend tests:
+
 ```bash
 ./gradlew :backend:plugin:test
 ```
 
 Build frontend:
+
 ```bash
 cd frontend/plugin && pnpm build
 ```
@@ -121,6 +125,7 @@ cd frontend/plugin && pnpm build
 ## Current State
 
 ### Backend
+
 - **Full Epistola API integration** via `app.epistola.contract:client-spring3-restclient` (OpenAPI-generated client)
 - **3 plugin actions**: `generate-document`, `check-job-status`, `download-document`
 - **Async completion**: Both polling (`PollingCompletionEventConsumer`, configurable interval) and webhook callback (`EpistolaCallbackResource`)
@@ -134,12 +139,14 @@ cd frontend/plugin && pnpm build
 - **Configuration**: Spring Boot auto-configuration with feature toggles (`epistola.enabled`, `epistola.poller.enabled`, `epistola.retry-form.enabled`)
 
 ### Frontend
+
 - **23 Angular 19 components** including action configurators, data mapping builder, Formio components, and admin page
 - **4 services**: Plugin API client, Admin API client, Menu service, Template field utilities
 - **Full bilingual translations** (NL/EN) in `epistola.specification.ts`
 - **Formio integration**: Custom components for download, retry form, preview button, and document preview
 
 ### Plugin Properties
+
 - `baseUrl` (required) — Epistola API base URL
 - `apiKey` (required, secret) — API authentication key
 - `tenantId` (required) — Epistola tenant slug (3-63 chars, lowercase with hyphens)
@@ -148,13 +155,13 @@ cd frontend/plugin && pnpm build
 
 ## Design Decisions
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| API Scope | Generation + Read-only Templates/Environments/Variants | Plugin is for document generation, not template authoring |
-| Authentication | API key in plugin config | Simple, stateless, matches typical service integrations |
-| Async Pattern | Message correlation + polling fallback | Supports both patterns for flexibility |
-| Environment/Variant | Plugin default + action override | Sensible defaults with per-action flexibility |
-| Composite Job Path | `epistola:job:{tenantId}/{requestId}` single variable | Avoids scoping issues, enables correlation and polling |
+| Decision            | Choice                                                 | Rationale                                                 |
+| ------------------- | ------------------------------------------------------ | --------------------------------------------------------- |
+| API Scope           | Generation + Read-only Templates/Environments/Variants | Plugin is for document generation, not template authoring |
+| Authentication      | API key in plugin config                               | Simple, stateless, matches typical service integrations   |
+| Async Pattern       | Message correlation + polling fallback                 | Supports both patterns for flexibility                    |
+| Environment/Variant | Plugin default + action override                       | Sensible defaults with per-action flexibility             |
+| Composite Job Path  | `epistola:job:{tenantId}/{requestId}` single variable  | Avoids scoping issues, enables correlation and polling    |
 
 ---
 
@@ -167,6 +174,7 @@ cd frontend/plugin && pnpm build
 ## Test Coverage
 
 ### What's tested
+
 - `EpistolaServiceImpl` — Integration test using Epistola contract mock server (Testcontainers + Prism)
 - `DataMappingResolver` — Dot-notation flattening and nested structure building
 - `TemplateMappingValidator` — Required field validation
@@ -184,6 +192,7 @@ cd frontend/plugin && pnpm build
 - **5 Playwright E2E suites**: Plugin configuration, generate-document, check-job-status, download-document
 
 ### Gaps (tracked as future work)
+
 - `EpistolaPlugin` action methods (`generateDocument`, `checkJobStatus`, `downloadDocument`) — no unit tests for the orchestration logic
 - `EpistolaCallbackResource` — no tests for webhook handling
 - `EpistolaPluginResource` — only document download endpoint tested, other endpoints untested at controller level

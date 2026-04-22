@@ -9,10 +9,12 @@ Outstanding work to complete the Epistola Valtimo Plugin API integration.
 **Current workaround**: `EpistolaServiceImpl` passes `""` (empty string) when `variantId` is null. This passes the Kotlin constructor but fails the mock server's OpenAPI validation (`minLength: 3`, pattern `^[a-z][a-z0-9]*(-[a-z0-9]+)*$`).
 
 **Fix options**:
+
 1. **Update the Epistola OpenAPI spec** to make `variantId` nullable/optional, then regenerate the client library. This is the proper fix.
 2. **Use reflection** to bypass the non-null check — fragile, not recommended.
 
 **How to implement option 1**:
+
 - In the `epistola-contract` repo, update `openapi.yaml`: change `variantId` from `required` to optional and make it nullable
 - Regenerate the Kotlin client: run the OpenAPI generator
 - Publish a new version of `client-spring3-restclient`

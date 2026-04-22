@@ -1,4 +1,4 @@
-import {PluginConfigurationData} from '@valtimo/plugin';
+import { PluginConfigurationData } from '@valtimo/plugin';
 
 /**
  * Plugin-level configuration for Epistola.

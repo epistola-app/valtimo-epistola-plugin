@@ -4,6 +4,11 @@
   "publisher": { "name": "Test" },
   "release": { "version": "1.0" },
   "resources": [
-    { "type": "template", "slug": "test-template", "name": "Test", "detailUrl": "./resources/template/test-template.json" }
+    {
+      "type": "template",
+      "slug": "test-template",
+      "name": "Test",
+      "detailUrl": "./resources/template/test-template.json"
+    }
   ]
 }

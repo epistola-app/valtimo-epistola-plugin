@@ -16,9 +16,7 @@
               "description": "Naam van de aanvrager"
             }
           },
-          "required": [
-            "name"
-          ]
+          "required": ["name"]
         },
         "subsidy": {
           "type": "object",
@@ -33,16 +31,10 @@
               "description": "Voorwaarden verbonden aan de subsidie"
             }
           },
-          "required": [
-            "programName",
-            "conditions"
-          ]
+          "required": ["programName", "conditions"]
         }
       },
-      "required": [
-        "beneficiary",
-        "subsidy"
-      ]
+      "required": ["beneficiary", "subsidy"]
     },
     "dataExamples": [
       {
@@ -96,16 +88,12 @@
         "n-root": {
           "id": "n-root",
           "type": "root",
-          "slots": [
-            "s-root-children"
-          ]
+          "slots": ["s-root-children"]
         },
         "n-header": {
           "id": "n-header",
           "type": "container",
-          "slots": [
-            "s-header-children"
-          ],
+          "slots": ["s-header-children"],
           "styles": {
             "marginBottom": "24px",
             "paddingBottom": "16px",
@@ -322,9 +310,7 @@
         "n-specific-conditions-box": {
           "id": "n-specific-conditions-box",
           "type": "container",
-          "slots": [
-            "s-specific-conditions-children"
-          ],
+          "slots": ["s-specific-conditions-children"],
           "styles": {
             "padding": "16px",
             "backgroundColor": "#f0f4f8",
@@ -539,9 +525,7 @@
         "n-footer-separator": {
           "id": "n-footer-separator",
           "type": "container",
-          "slots": [
-            "s-footer-children"
-          ],
+          "slots": ["s-footer-children"],
           "styles": {
             "marginTop": "32px",
             "paddingTop": "12px",
@@ -620,26 +604,19 @@
           "id": "s-header-children",
           "nodeId": "n-header",
           "name": "children",
-          "children": [
-            "n-municipality",
-            "n-department"
-          ]
+          "children": ["n-municipality", "n-department"]
         },
         "s-specific-conditions-children": {
           "id": "s-specific-conditions-children",
           "nodeId": "n-specific-conditions-box",
           "name": "children",
-          "children": [
-            "n-specific-conditions-text"
-          ]
+          "children": ["n-specific-conditions-text"]
         },
         "s-footer-children": {
           "id": "s-footer-children",
           "nodeId": "n-footer-separator",
           "name": "children",
-          "children": [
-            "n-footer-text"
-          ]
+          "children": ["n-footer-text"]
         }
       }
     },

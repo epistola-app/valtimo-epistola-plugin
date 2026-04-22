@@ -38,19 +38,10 @@
                   "description": "Woonplaats"
                 }
               },
-              "required": [
-                "street",
-                "houseNumber",
-                "postalCode",
-                "city"
-              ]
+              "required": ["street", "houseNumber", "postalCode", "city"]
             }
           },
-          "required": [
-            "firstName",
-            "lastName",
-            "address"
-          ]
+          "required": ["firstName", "lastName", "address"]
         },
         "originalDecision": {
           "type": "object",
@@ -69,11 +60,7 @@
               "description": "Onderwerp van het oorspronkelijke besluit"
             }
           },
-          "required": [
-            "reference",
-            "date",
-            "subject"
-          ]
+          "required": ["reference", "date", "subject"]
         },
         "decision": {
           "type": "string",
@@ -84,12 +71,7 @@
           "description": "De motivering van de beslissing"
         }
       },
-      "required": [
-        "objector",
-        "originalDecision",
-        "decision",
-        "motivation"
-      ]
+      "required": ["objector", "originalDecision", "decision", "motivation"]
     },
     "dataExamples": [
       {
@@ -135,9 +117,7 @@
         "n-root": {
           "id": "n-root",
           "type": "container",
-          "slots": [
-            "s-root-children"
-          ],
+          "slots": ["s-root-children"],
           "styles": {},
           "props": {}
         },

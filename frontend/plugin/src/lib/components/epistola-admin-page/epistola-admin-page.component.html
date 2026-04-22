@@ -1,5 +1,4 @@
 <div class="epistola-admin">
-
   <!-- Overview: card grid (no configuration selected) -->
   <ng-container *ngIf="!selectedCard">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -21,44 +20,63 @@
     </div>
 
     <div *ngIf="!loading && cards.length > 0" class="card-grid">
-      <div *ngFor="let card of cards"
-           class="config-card"
-           [class.config-card--ok]="card.reachable && card.problemCount === 0"
-           [class.config-card--warning]="card.reachable && card.problemCount > 0"
-           [class.config-card--error]="!card.reachable"
-           (click)="selectConfiguration(card)">
-
+      <div
+        *ngFor="let card of cards"
+        class="config-card"
+        [class.config-card--ok]="card.reachable && card.problemCount === 0"
+        [class.config-card--warning]="card.reachable && card.problemCount > 0"
+        [class.config-card--error]="!card.reachable"
+        (click)="selectConfiguration(card)"
+      >
         <div class="config-card__header">
-          <span class="status-dot"
-                [class.status-dot--ok]="card.reachable"
-                [class.status-dot--error]="!card.reachable">
+          <span
+            class="status-dot"
+            [class.status-dot--ok]="card.reachable"
+            [class.status-dot--error]="!card.reachable"
+          >
           </span>
           <h5 class="config-card__title">{{ card.configurationTitle }}</h5>
         </div>
 
         <div class="config-card__body">
           <div class="config-card__field">
-            <span class="config-card__label">{{ 'epistolaAdminTenantId' | pluginTranslate: 'epistola' | async }}</span>
+            <span class="config-card__label">{{
+              'epistolaAdminTenantId' | pluginTranslate: 'epistola' | async
+            }}</span>
             <code class="config-card__value">{{ card.tenantId }}</code>
           </div>
           <div class="config-card__field">
-            <span class="config-card__label">{{ 'epistolaAdminStatus' | pluginTranslate: 'epistola' | async }}</span>
-            <span class="badge" [class.bg-success]="card.reachable" [class.bg-danger]="!card.reachable">
-              {{ card.reachable
+            <span class="config-card__label">{{
+              'epistolaAdminStatus' | pluginTranslate: 'epistola' | async
+            }}</span>
+            <span
+              class="badge"
+              [class.bg-success]="card.reachable"
+              [class.bg-danger]="!card.reachable"
+            >
+              {{
+                card.reachable
                   ? ('epistolaAdminConnected' | pluginTranslate: 'epistola' | async)
-                  : ('epistolaAdminUnreachable' | pluginTranslate: 'epistola' | async) }}
+                  : ('epistolaAdminUnreachable' | pluginTranslate: 'epistola' | async)
+              }}
             </span>
           </div>
           <div *ngIf="card.serverVersion" class="config-card__field">
-            <span class="config-card__label">{{ 'epistolaAdminServerVersion' | pluginTranslate: 'epistola' | async }}</span>
+            <span class="config-card__label">{{
+              'epistolaAdminServerVersion' | pluginTranslate: 'epistola' | async
+            }}</span>
             <span class="config-card__value">{{ card.serverVersion }}</span>
           </div>
           <div class="config-card__field">
-            <span class="config-card__label">{{ 'epistolaAdminPluginActions' | pluginTranslate: 'epistola' | async }}</span>
+            <span class="config-card__label">{{
+              'epistolaAdminPluginActions' | pluginTranslate: 'epistola' | async
+            }}</span>
             <span class="config-card__value">{{ card.usageCount }}</span>
           </div>
           <div *ngIf="card.problemCount > 0" class="config-card__field">
-            <span class="config-card__label">{{ 'epistolaAdminProblems' | pluginTranslate: 'epistola' | async }}</span>
+            <span class="config-card__label">{{
+              'epistolaAdminProblems' | pluginTranslate: 'epistola' | async
+            }}</span>
             <span class="badge bg-warning text-dark">{{ card.problemCount }}</span>
           </div>
         </div>
@@ -80,9 +98,11 @@
 
     <div class="detail-summary mb-4">
       <h4>
-        <span class="status-dot me-2"
-              [class.status-dot--ok]="selectedCard.reachable"
-              [class.status-dot--error]="!selectedCard.reachable">
+        <span
+          class="status-dot me-2"
+          [class.status-dot--ok]="selectedCard.reachable"
+          [class.status-dot--error]="!selectedCard.reachable"
+        >
         </span>
         {{ selectedCard.configurationTitle }}
       </h4>
@@ -91,15 +111,23 @@
         <tbody>
           <tr>
             <th>{{ 'epistolaAdminTenantId' | pluginTranslate: 'epistola' | async }}</th>
-            <td><code>{{ selectedCard.tenantId }}</code></td>
+            <td>
+              <code>{{ selectedCard.tenantId }}</code>
+            </td>
           </tr>
           <tr>
             <th>{{ 'epistolaAdminStatus' | pluginTranslate: 'epistola' | async }}</th>
             <td>
-              <span class="badge" [class.bg-success]="selectedCard.reachable" [class.bg-danger]="!selectedCard.reachable">
-                {{ selectedCard.reachable
+              <span
+                class="badge"
+                [class.bg-success]="selectedCard.reachable"
+                [class.bg-danger]="!selectedCard.reachable"
+              >
+                {{
+                  selectedCard.reachable
                     ? ('epistolaAdminConnected' | pluginTranslate: 'epistola' | async)
-                    : ('epistolaAdminUnreachable' | pluginTranslate: 'epistola' | async) }}
+                    : ('epistolaAdminUnreachable' | pluginTranslate: 'epistola' | async)
+                }}
               </span>
               <span class="text-muted ms-2">{{ selectedCard.latencyMs }} ms</span>
             </td>
@@ -134,13 +162,25 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let entry of selectedCard.usageEntries"
-            [class.table-warning]="entry.problems.length > 0">
+        <tr
+          *ngFor="let entry of selectedCard.usageEntries"
+          [class.table-warning]="entry.problems.length > 0"
+        >
           <td>{{ entry.caseDefinitionKey || '-' }}</td>
           <td>
-            <a *ngIf="entry.caseDefinitionKey && entry.caseDefinitionVersionTag"
-               [routerLink]="['/case-management', 'case', entry.caseDefinitionKey, 'version', entry.caseDefinitionVersionTag, 'processes', entry.processDefinitionKey]"
-               class="usage-link">
+            <a
+              *ngIf="entry.caseDefinitionKey && entry.caseDefinitionVersionTag"
+              [routerLink]="[
+                '/case-management',
+                'case',
+                entry.caseDefinitionKey,
+                'version',
+                entry.caseDefinitionVersionTag,
+                'processes',
+                entry.processDefinitionKey,
+              ]"
+              class="usage-link"
+            >
               {{ entry.processDefinitionName }}
             </a>
             <span *ngIf="!entry.caseDefinitionKey || !entry.caseDefinitionVersionTag">
@@ -148,10 +188,15 @@
             </span>
           </td>
           <td>{{ entry.activityName }}</td>
-          <td><code>{{ entry.actionKey }}</code></td>
+          <td>
+            <code>{{ entry.actionKey }}</code>
+          </td>
           <td>
             <span *ngIf="entry.problems.length === 0" class="badge bg-success">OK</span>
-            <span *ngFor="let problem of entry.problems" class="badge bg-warning text-dark d-block mb-1">
+            <span
+              *ngFor="let problem of entry.problems"
+              class="badge bg-warning text-dark d-block mb-1"
+            >
               {{ problem }}
             </span>
           </td>

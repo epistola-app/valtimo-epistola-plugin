@@ -131,12 +131,12 @@ However, the **frontend form selection UI only shows case-scoped forms**. Admins
 
 ## Comparison
 
-| Approach | Config UX | Deployment | Process Reuse | Valtimo Changes Needed |
-|---|---|---|---|---|
-| **Current (AOP)** | Custom form (template dropdown, tree) | AOP per-case deploy | Must copy BPMN pattern | None |
-| **Building block** | Generic mapping table | Auto from classpath | Single call activity | None (but UX degrades) |
-| **Building block + custom config** | Custom form (same as today) | Auto from classpath | Single call activity | Add BB custom config extension |
-| **Global form in UI** | Custom form (same as today) | Single global deploy | Must copy BPMN pattern | Show global forms in dropdown |
+| Approach                           | Config UX                             | Deployment           | Process Reuse          | Valtimo Changes Needed         |
+| ---------------------------------- | ------------------------------------- | -------------------- | ---------------------- | ------------------------------ |
+| **Current (AOP)**                  | Custom form (template dropdown, tree) | AOP per-case deploy  | Must copy BPMN pattern | None                           |
+| **Building block**                 | Generic mapping table                 | Auto from classpath  | Single call activity   | None (but UX degrades)         |
+| **Building block + custom config** | Custom form (same as today)           | Auto from classpath  | Single call activity   | Add BB custom config extension |
+| **Global form in UI**              | Custom form (same as today)           | Single global deploy | Must copy BPMN pattern | Show global forms in dropdown  |
 
 ## Recommendations
 

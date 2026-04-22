@@ -6,7 +6,7 @@
 
   // Hide the ValuePathSelector's internal dropdown/manual toggle — our ⊞/pv/fx
   // mode buttons already cover mode switching, so the internal toggle is redundant.
-  ::ng-deep [data-test-id="valuePathSelectorToggle"] {
+  ::ng-deep [data-test-id='valuePathSelectorToggle'] {
     display: none !important;
   }
 }
