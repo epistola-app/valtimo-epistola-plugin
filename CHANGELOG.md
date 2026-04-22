@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **oxfmt and oxlint** — Added code formatting (oxfmt) and linting (oxlint) with configuration matching epistola-suite. Managed via mise and npm devDependencies. CI pipeline updated with `lint:check` and `format:check` steps.
 - **Project governance files** — CODE_OF_CONDUCT.md (Contributor Covenant v2.1), CONTRIBUTING.md (development workflow, commit conventions, testing requirements), SECURITY.md (vulnerability reporting policy), PR template, CODEOWNERS, issue templates (bug report, feature request, documentation), labels.yml, and root .editorconfig
 - **Updated CLAUDE.md** — Replaced outdated "Current State" (which claimed mock implementations) and "Implementation Phases" (all completed) with accurate documentation of the actual implementation, known limitations, and test coverage gaps
 - **Epistola admin page** (`/epistola`) — Dedicated admin page under the Admin > Other menu with a card-based overview per plugin configuration showing connection status, tenant ID, server version, usage count, and problem count. Click a card to drill into its details showing case definition, process links, actions, and issues with clickable links to the process link configuration page. Plugin version shown as badge. Deep linking via `?configurationId=<uuid>`. Self-registers route and menu item via `forRoot()` — no host app configuration needed.

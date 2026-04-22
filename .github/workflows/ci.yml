@@ -69,6 +69,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Lint
+        run: pnpm lint:check
+
+      - name: Check format
+        run: pnpm format:check
+
       - name: Build plugin
         run: pnpm --filter @epistola.app/valtimo-plugin build
 
