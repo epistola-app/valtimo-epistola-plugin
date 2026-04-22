@@ -120,10 +120,31 @@ cd frontend/plugin && pnpm build
 
 ## Current State
 
-- **Mock implementation** in `EpistolaServiceImpl.java` with hardcoded templates
-- **Single action**: `generate-document` (submits request, returns mock UUID)
-- **Dependency declared** but not used: `app.epistola.contract:client-spring3-restclient`
-- **Missing**: API connectivity, callback handling, environment/variant support
+### Backend
+- **Full Epistola API integration** via `app.epistola.contract:client-spring3-restclient` (OpenAPI-generated client)
+- **3 plugin actions**: `generate-document`, `check-job-status`, `download-document`
+- **Async completion**: Both polling (`PollingCompletionEventConsumer`, configurable interval) and webhook callback (`EpistolaCallbackResource`)
+- **Catalog sync**: Automatic import of classpath-based catalogs on startup (`EpistolaCatalogSyncService`)
+- **Retry flow**: Dynamic Formio form generation for failed document retries (`RetryFormService`)
+- **Document preview**: Preview without creating generation jobs (`PreviewService`)
+- **Admin page**: Health checks, plugin usage overview, version info (`EpistolaAdminResource`)
+- **Variant selection**: 3 modes — default, explicit variantId, or attribute-based automatic selection
+- **Value resolution**: Supports `doc:`, `pv:`, `case:`, `template:` prefixes in data mappings
+- **Security**: Callback endpoint public (webhooks), admin endpoints require `ROLE_ADMIN`, all other endpoints authenticated
+- **Configuration**: Spring Boot auto-configuration with feature toggles (`epistola.enabled`, `epistola.poller.enabled`, `epistola.retry-form.enabled`)
+
+### Frontend
+- **23 Angular 19 components** including action configurators, data mapping builder, Formio components, and admin page
+- **4 services**: Plugin API client, Admin API client, Menu service, Template field utilities
+- **Full bilingual translations** (NL/EN) in `epistola.specification.ts`
+- **Formio integration**: Custom components for download, retry form, preview button, and document preview
+
+### Plugin Properties
+- `baseUrl` (required) — Epistola API base URL
+- `apiKey` (required, secret) — API authentication key
+- `tenantId` (required) — Epistola tenant slug (3-63 chars, lowercase with hyphens)
+- `defaultEnvironmentId` (optional) — Default environment for generation
+- `templateSyncEnabled` (optional) — Enable classpath template sync on startup
 
 ## Design Decisions
 
@@ -133,178 +154,37 @@ cd frontend/plugin && pnpm build
 | Authentication | API key in plugin config | Simple, stateless, matches typical service integrations |
 | Async Pattern | Message correlation + polling fallback | Supports both patterns for flexibility |
 | Environment/Variant | Plugin default + action override | Sensible defaults with per-action flexibility |
+| Composite Job Path | `epistola:job:{tenantId}/{requestId}` single variable | Avoids scoping issues, enables correlation and polling |
 
 ---
 
-## Implementation Phases
+## Known Limitations
 
-### Phase 1: Backend API Client Integration
+- **Callback signature verification**: The callback endpoint (`EpistolaCallbackResource`) accepts but does not verify the `X-Epistola-Signature` header. Blocked: Epistola does not yet support HMAC signing.
+- **Server version endpoint**: `EpistolaAdminService.getVersions()` returns the plugin version only. Blocked: Epistola does not yet expose a version/health API endpoint.
+- **Plugin logo**: Uses a placeholder logo (`epistola-logo.ts`). Should be replaced with the actual Epistola logo.
 
-**Goal**: Replace mock implementation with real API calls
+## Test Coverage
 
-1. **Create `EpistolaClientConfiguration.java`**
-   - Configure RestClient beans for Epistola APIs
-   - Add API key authentication interceptor
-   - Wire GenerationApi, TemplatesApi, EnvironmentsApi, VariantsApi beans
+### What's tested
+- `EpistolaServiceImpl` — Integration test using Epistola contract mock server (Testcontainers + Prism)
+- `DataMappingResolver` — Dot-notation flattening and nested structure building
+- `TemplateMappingValidator` — Required field validation
+- `FormioFormGenerator` — Form schema generation from template fields
+- `PollingCompletionEventConsumer` — Scheduled polling logic
+- `EpistolaMessageCorrelationService` — BPMN message correlation
+- `PreviewService` — Document preview functionality
+- `RetryFormService` — Dynamic retry form generation
+- `EpistolaAdminService` — Health checks and usage overview
+- `EpistolaFormAutoDeployAspect` — Form auto-deployment aspect
+- `CatalogScanner` — Classpath catalog discovery
+- `EpistolaCatalogSyncService` — Catalog import with version tracking
+- `NormalizeVariantAttributes` — Old vs new format normalization
+- `EpistolaPluginResource` (document download only)
+- **5 Playwright E2E suites**: Plugin configuration, generate-document, check-job-status, download-document
 
-2. **Update `EpistolaPlugin.java`** - Add plugin properties:
-   ```java
-   @PluginProperty(key = "baseUrl", required = true)
-   private String baseUrl;
-
-   @PluginProperty(key = "apiKey", secret = true, required = true)
-   private String apiKey;
-
-   @PluginProperty(key = "defaultEnvironmentId")
-   private String defaultEnvironmentId;
-   ```
-
-3. **Update `EpistolaServiceImpl.java`** - Replace mock with real API calls:
-   - Inject Epistola API clients
-   - Map Epistola DTOs to plugin domain objects
-   - Handle API errors appropriately
-
-4. **Add domain models**:
-   - `EnvironmentInfo` - id, name
-   - `VariantInfo` - id, templateId, tags
-   - `GenerationJobStatus` - enum (PENDING, IN_PROGRESS, COMPLETED, FAILED, CANCELLED)
-
-**Files to modify/create**:
-- `backend/plugin/src/main/java/app/epistola/valtimo/config/EpistolaClientConfiguration.java` (new)
-- `backend/plugin/src/main/java/app/epistola/valtimo/service/EpistolaServiceImpl.java`
-- `backend/plugin/src/main/java/com/ritense/valtimo/epistola/plugin/EpistolaPlugin.java`
-- `backend/plugin/src/main/java/app/epistola/valtimo/domain/*.java` (new models)
-
----
-
-### Phase 2: Enhanced Generate Document Action
-
-**Goal**: Support environment and variant selection
-
-1. **Update `generate-document` action** - Add parameters:
-   - `variantId` (optional) - specific variant to use
-   - `environmentId` (optional) - uses plugin default if not specified
-   - `correlationId` (optional) - for tracking across systems
-
-2. **Update `EpistolaService` interface** - Add new method signature with extended parameters
-
-3. **Update frontend** - Add to generate-document configuration:
-   - Environment dropdown
-   - Variant dropdown (loaded based on selected template)
-   - Optional correlationId field
-
-**Files to modify**:
-- `backend/plugin/src/main/java/com/ritense/valtimo/epistola/plugin/EpistolaPlugin.java`
-- `backend/plugin/src/main/java/app/epistola/valtimo/service/EpistolaService.java`
-- `frontend/plugin/src/lib/components/generate-document-configuration/`
-
----
-
-### Phase 3: New Plugin Actions
-
-**Goal**: Add job status and document download capabilities
-
-1. **`check-job-status` action**:
-   - Input: process variable containing request ID
-   - Output: status, documentId (if completed), errorMessage (if failed)
-   - Use case: Polling pattern for async completion
-
-2. **`download-document` action**:
-   - Input: process variable containing document ID
-   - Output: PDF bytes stored in case file or temp location
-   - Integration with Valtimo document storage
-
-3. **Frontend configuration components** for each new action
-
-**Files to create**:
-- `backend/plugin/src/main/java/app/epistola/valtimo/domain/GenerationJobDetail.java`
-- `frontend/plugin/src/lib/components/check-job-status-configuration/`
-- `frontend/plugin/src/lib/components/download-document-configuration/`
-
----
-
-### Phase 4: Callback Webhook Support
-
-**Goal**: Enable message correlation for async completion
-
-1. **Create `EpistolaCallbackResource.java`**:
-   - Endpoint: `POST /api/v1/plugin/epistola/callback/generation-complete`
-   - Correlates BPMN message `EpistolaDocumentGenerated`
-   - Sets variables: documentId, status
-
-2. **Update security configuration** - Allow unauthenticated access with signature validation
-
-3. **Document BPMN pattern** with example process
-
-**Files to create/modify**:
-- `backend/plugin/src/main/java/app/epistola/valtimo/web/rest/EpistolaCallbackResource.java` (new)
-- `backend/plugin/src/main/java/app/epistola/valtimo/config/EpistolaHttpSecurityConfigurer.java`
-
----
-
-### Phase 5: REST Endpoints for Frontend
-
-**Goal**: Expose environment and variant data
-
-1. **Extend `EpistolaPluginResource.java`**:
-   - `GET /configurations/{id}/environments` - List environments
-   - `GET /configurations/{id}/templates/{templateId}/variants` - List variants
-
-2. **Update `EpistolaPluginService`** (frontend) - Add API methods
-
-**Files to modify**:
-- `backend/plugin/src/main/java/app/epistola/valtimo/web/rest/EpistolaPluginResource.java`
-- `frontend/plugin/src/lib/services/epistola-plugin.service.ts`
-
----
-
-### Phase 6: Testing
-
-**Goal**: Integration tests with WireMock
-
-1. **Add WireMock dependency** for HTTP-level testing
-2. **Create `EpistolaServiceIntegrationTest`** - Test all API operations
-3. **Create `EpistolaPluginTest`** - Test plugin actions in BPMN context
-
-Approach: Functional input/output testing, avoid mocking internal components
-
-**Files to create**:
-- `backend/plugin/src/test/java/app/epistola/valtimo/service/EpistolaServiceIntegrationTest.java`
-- `backend/plugin/src/test/java/com/ritense/valtimo/epistola/plugin/EpistolaPluginTest.java`
-
----
-
-### Phase 7: Documentation
-
-1. **Update README.md** - Installation, configuration, usage examples
-2. **Create CHANGELOG.md** - Track all changes
-3. **Add BPMN examples** - Message correlation pattern
-
----
-
-## Verification Plan
-
-1. **Unit verification**: Run `./gradlew :backend:plugin:test`
-2. **Integration verification**:
-   - Start test-app with `./gradlew :test-app:backend:bootRun`
-   - Configure plugin with real Epistola instance
-   - Create process with generate-document action
-   - Verify document generation works end-to-end
-3. **Frontend verification**:
-   - Build frontend: `cd frontend && pnpm build`
-   - Start test-app frontend and verify UI components
-
----
-
-## Commit Strategy
-
-1. `feat: add Epistola client configuration with authentication`
-2. `feat: replace mock EpistolaService with real API implementation`
-3. `feat: add environment and variant support to generate-document action`
-4. `feat: add check-job-status plugin action`
-5. `feat: add download-document plugin action`
-6. `feat: add callback endpoint for async generation completion`
-7. `feat: add environments and variants REST endpoints`
-8. `feat(frontend): add environment and variant selection to action config`
-9. `test: add integration tests for Epistola service`
-10. `docs: add usage documentation and CHANGELOG`
+### Gaps (tracked as future work)
+- `EpistolaPlugin` action methods (`generateDocument`, `checkJobStatus`, `downloadDocument`) — no unit tests for the orchestration logic
+- `EpistolaCallbackResource` — no tests for webhook handling
+- `EpistolaPluginResource` — only document download endpoint tested, other endpoints untested at controller level
+- Frontend `.spec.ts` unit tests — minimal coverage (E2E tests cover the main flows)
