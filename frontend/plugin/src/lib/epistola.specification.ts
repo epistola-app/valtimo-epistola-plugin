@@ -119,7 +119,26 @@ const epistolaPluginSpecification: PluginSpecification = {
       // Download document action
       'download-document': 'Download Document',
       contentVariable: 'Inhoud Variabele',
-      contentVariableTooltip: 'Naam van de procesvariabele waarin de documentinhoud (Base64) wordt opgeslagen'
+      contentVariableTooltip: 'Naam van de procesvariabele waarin de documentinhoud (Base64) wordt opgeslagen',
+      // Admin page
+      epistolaAdminOverview: 'Overzicht',
+      epistolaAdminRefresh: 'Vernieuwen',
+      epistolaAdminLoading: 'Laden...',
+      epistolaAdminNoConfigurations: 'Geen Epistola plugin configuraties gevonden.',
+      epistolaAdminTenantId: 'Tenant ID',
+      epistolaAdminStatus: 'Status',
+      epistolaAdminConnected: 'Verbonden',
+      epistolaAdminUnreachable: 'Onbereikbaar',
+      epistolaAdminError: 'Fout',
+      epistolaAdminPluginActions: 'Plugin acties',
+      epistolaAdminProblems: 'Problemen',
+      epistolaAdminBackToOverview: 'Terug naar overzicht',
+      epistolaAdminNoUsageForConfig: 'Geen procesacties geconfigureerd voor deze verbinding.',
+      epistolaAdminCase: 'Zaak',
+      epistolaAdminProcess: 'Proces',
+      epistolaAdminActivity: 'Activiteit',
+      epistolaAdminAction: 'Actie',
+      epistolaAdminServerVersion: 'Server versie'
     },
     en: {
       title: 'Epistola Document Suite',
@@ -210,7 +229,26 @@ const epistolaPluginSpecification: PluginSpecification = {
       // Download document action
       'download-document': 'Download Document',
       contentVariable: 'Content Variable',
-      contentVariableTooltip: 'Name of the process variable to store the document content (Base64) in'
+      contentVariableTooltip: 'Name of the process variable to store the document content (Base64) in',
+      // Admin page
+      epistolaAdminOverview: 'Overview',
+      epistolaAdminRefresh: 'Refresh',
+      epistolaAdminLoading: 'Loading...',
+      epistolaAdminNoConfigurations: 'No Epistola plugin configurations found.',
+      epistolaAdminTenantId: 'Tenant ID',
+      epistolaAdminStatus: 'Status',
+      epistolaAdminConnected: 'Connected',
+      epistolaAdminUnreachable: 'Unreachable',
+      epistolaAdminError: 'Error',
+      epistolaAdminPluginActions: 'Plugin actions',
+      epistolaAdminProblems: 'Problems',
+      epistolaAdminBackToOverview: 'Back to overview',
+      epistolaAdminNoUsageForConfig: 'No process actions configured for this connection.',
+      epistolaAdminCase: 'Case',
+      epistolaAdminProcess: 'Process',
+      epistolaAdminActivity: 'Activity',
+      epistolaAdminAction: 'Action',
+      epistolaAdminServerVersion: 'Server version'
     }
   }
 };

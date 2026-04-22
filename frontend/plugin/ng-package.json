@@ -8,8 +8,11 @@
     "@angular/common",
     "@angular/core",
     "@angular/forms",
+    "@angular/router",
     "@valtimo/plugin",
     "@valtimo/components",
+    "@valtimo/security",
+    "@valtimo/shared",
     "@ngx-translate/core",
     "rxjs",
     "tslib"

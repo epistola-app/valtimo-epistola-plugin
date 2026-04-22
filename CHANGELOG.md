@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Epistola admin page** (`/epistola`) — Dedicated admin page under the Admin > Other menu with a card-based overview per plugin configuration showing connection status, tenant ID, server version, usage count, and problem count. Click a card to drill into its details showing case definition, process links, actions, and issues with clickable links to the process link configuration page. Plugin version shown as badge. Deep linking via `?configurationId=<uuid>`. Self-registers route and menu item via `forRoot()` — no host app configuration needed.
+- **Admin REST endpoints** — `GET /api/v1/plugin/epistola/admin/health` (connection check), `/versions` (plugin version), `/usage` (process link overview with problem detection). Requires `ROLE_ADMIN`.
+- **NL and EN translations** for all admin page labels
+
 ## [0.5.2] - 2026-04-21
 
 ### Fixed
