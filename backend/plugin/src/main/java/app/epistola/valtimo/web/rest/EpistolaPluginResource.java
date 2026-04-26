@@ -8,11 +8,14 @@ import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.valtimo.expression.ExpressionFunctionInfo;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
+import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.PreviewService;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.RetryFormService;
 import app.epistola.valtimo.service.VariableSuggestionService;
+import app.epistola.valtimo.web.rest.dto.EvaluationRequest;
+import app.epistola.valtimo.web.rest.dto.EvaluationResult;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingRequest;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingResponse;
@@ -57,6 +60,8 @@ public class EpistolaPluginResource {
     private final PreviewService previewService;
     private final ExpressionFunctionRegistry expressionFunctionRegistry;
     private final VariableSuggestionService variableSuggestionService;
+    private final JsonataMappingService jsonataMappingService;
+    private final com.ritense.valueresolver.ValueResolverService valueResolverService;
 
     /**
      * Get all available catalogs for a plugin configuration.
@@ -266,6 +271,32 @@ public class EpistolaPluginResource {
     ) {
         log.debug("Fetching variable suggestions for case={}, process={}", caseDefinitionKey, processDefinitionKey);
         return ResponseEntity.ok(variableSuggestionService.getSuggestions(caseDefinitionKey, processDefinitionKey));
+    }
+
+    /**
+     * Evaluate a JSONata data mapping expression against a real document.
+     * Returns the resolved JSON output that would be sent to Epistola.
+     */
+    @PostMapping("/evaluate-mapping")
+    @SuppressWarnings("unchecked")
+    public ResponseEntity<EvaluationResult> evaluateMapping(@RequestBody EvaluationRequest request) {
+        log.debug("Evaluating mapping expression against document {}", request.documentId());
+        try {
+            Map<String, Object> docData = Map.of();
+            if (request.documentId() != null && !request.documentId().isBlank()) {
+                Map<String, Object> resolved = valueResolverService.resolveValues(
+                        request.documentId(), List.of("doc:/"));
+                Object docRoot = resolved.get("doc:/");
+                if (docRoot instanceof Map<?, ?> map) {
+                    docData = (Map<String, Object>) map;
+                }
+            }
+            Map<String, Object> result = jsonataMappingService.evaluate(
+                    request.expression(), docData, Map.of(), Map.of());
+            return ResponseEntity.ok(EvaluationResult.success(result));
+        } catch (Exception e) {
+            return ResponseEntity.ok(EvaluationResult.failure(e.getMessage()));
+        }
     }
 
     /**

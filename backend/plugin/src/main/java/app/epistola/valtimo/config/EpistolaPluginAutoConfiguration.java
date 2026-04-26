@@ -176,11 +176,14 @@ public class EpistolaPluginAutoConfiguration {
             RetryFormService retryFormService,
             app.epistola.valtimo.service.PreviewService previewService,
             ExpressionFunctionRegistry expressionFunctionRegistry,
-            VariableSuggestionService variableSuggestionService
+            VariableSuggestionService variableSuggestionService,
+            JsonataMappingService jsonataMappingService,
+            ValueResolverService valueResolverService
     ) {
         return new EpistolaPluginResource(pluginService, epistolaService,
                 processVariableDiscoveryService, retryFormService, previewService,
-                expressionFunctionRegistry, variableSuggestionService);
+                expressionFunctionRegistry, variableSuggestionService,
+                jsonataMappingService, valueResolverService);
     }
 
     @Bean
