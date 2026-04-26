@@ -110,15 +110,16 @@ docker/            # Docker compose for local dependencies
 
 ## Testing
 
-Run backend tests:
+**All tests must pass before pushing.** Run both backend and frontend tests:
 
 ```bash
+# Backend tests
 ./gradlew :backend:plugin:test
-```
 
-Build frontend:
+# Frontend tests (Jest unit tests)
+cd frontend/plugin && pnpm test
 
-```bash
+# Frontend build (must also succeed)
 cd frontend/plugin && pnpm build
 ```
 

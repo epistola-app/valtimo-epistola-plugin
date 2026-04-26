@@ -7,7 +7,7 @@
  * the decorator). This validates the URL construction and method delegation.
  */
 import { of, throwError } from 'rxjs';
-import type { ConnectionStatus, PluginUsageEntry, VersionInfo } from '../models';
+import type { ConnectionStatus, PendingJob, PluginUsageEntry, VersionInfo } from '../models';
 
 describe('EpistolaAdminService', () => {
   let service: any;
@@ -33,6 +33,9 @@ describe('EpistolaAdminService', () => {
       getConnectionStatus: () => httpClient.get(`${API_BASE}/health`),
       getVersions: () => httpClient.get(`${API_BASE}/versions`),
       getPluginUsage: () => httpClient.get(`${API_BASE}/usage`),
+      getPendingJobs: () => httpClient.get(`${API_BASE}/pending`),
+      exportProcessLink: (id: string) =>
+        httpClient.get(`${API_BASE}/export/${encodeURIComponent(id)}`, { responseType: 'blob' }),
     };
   });
 
@@ -87,6 +90,7 @@ describe('EpistolaAdminService', () => {
     it('should call GET /usage and return entries', (done) => {
       const mockUsage: PluginUsageEntry[] = [
         {
+          processLinkId: 'link-1',
           processDefinitionKey: 'my-process',
           processDefinitionName: 'My Process',
           activityId: 'Activity_1',
@@ -109,6 +113,7 @@ describe('EpistolaAdminService', () => {
     it('should return entries with problems', (done) => {
       const mockUsage: PluginUsageEntry[] = [
         {
+          processLinkId: 'link-2',
           processDefinitionKey: 'my-process',
           processDefinitionName: 'My Process',
           activityId: 'Activity_1',
@@ -124,6 +129,55 @@ describe('EpistolaAdminService', () => {
       service.getPluginUsage().subscribe((result: PluginUsageEntry[]) => {
         expect(result[0].problems).toHaveLength(2);
         expect(result[0].problems).toContain('No template configured');
+        done();
+      });
+    });
+  });
+
+  describe('getPendingJobs', () => {
+    it('should call GET /pending and return jobs', (done) => {
+      const mockJobs: PendingJob[] = [
+        {
+          executionId: 'exec-1',
+          processInstanceId: 'pi-1',
+          processDefinitionKey: 'my-process',
+          processDefinitionName: 'My Process',
+          activityId: 'waitForDocument',
+          activityName: 'Wait for document',
+          tenantId: 'test-tenant',
+          requestId: 'req-123',
+          configurationTitle: 'Test Config',
+        },
+      ];
+      httpClient.get.mockReturnValue(of(mockJobs));
+
+      service.getPendingJobs().subscribe((result: PendingJob[]) => {
+        expect(result).toEqual(mockJobs);
+        expect(httpClient.get).toHaveBeenCalledWith(`${API_BASE}/pending`);
+        done();
+      });
+    });
+
+    it('should return empty array when no pending jobs', (done) => {
+      httpClient.get.mockReturnValue(of([]));
+
+      service.getPendingJobs().subscribe((result: PendingJob[]) => {
+        expect(result).toHaveLength(0);
+        done();
+      });
+    });
+  });
+
+  describe('exportProcessLink', () => {
+    it('should call GET /export/{id} with blob responseType', (done) => {
+      const mockResponse = 'blob-data';
+      httpClient.get.mockReturnValue(of(mockResponse));
+
+      service.exportProcessLink('link-uuid-1').subscribe((result: unknown) => {
+        expect(result).toBe(mockResponse);
+        expect(httpClient.get).toHaveBeenCalledWith(`${API_BASE}/export/link-uuid-1`, {
+          responseType: 'blob',
+        });
         done();
       });
     });
