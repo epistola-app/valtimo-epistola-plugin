@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { EpistolaAdminService } from '../../services/epistola-admin.service';
-import { ConnectionStatus, PluginUsageEntry } from '../../models';
+import { ConnectionStatus, PendingJob, PluginUsageEntry } from '../../models';
 
 /**
  * Combined view model for a single plugin configuration card.
@@ -31,6 +31,7 @@ interface ConfigurationCard {
 export class EpistolaAdminPageComponent implements OnInit {
   cards: ConfigurationCard[] = [];
   selectedCard: ConfigurationCard | null = null;
+  pendingJobs: PendingJob[] = [];
   loading = false;
   pluginVersion: string | null = null;
 
@@ -118,6 +119,11 @@ export class EpistolaAdminPageComponent implements OnInit {
         this.usageLoaded = true;
         this.tryBuildCards();
       },
+    });
+
+    this.adminService.getPendingJobs().subscribe({
+      next: (jobs) => (this.pendingJobs = jobs),
+      error: () => (this.pendingJobs = []),
     });
   }
 

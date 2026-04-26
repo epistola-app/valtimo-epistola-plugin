@@ -2,6 +2,7 @@ package app.epistola.valtimo.service;
 
 import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
+import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
 import app.epistola.valtimo.web.rest.dto.ProcessLinkExport;
 import app.epistola.valtimo.web.rest.dto.VersionInfo;
@@ -20,8 +21,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.operaton.bpm.engine.RepositoryService;
+import org.operaton.bpm.engine.RuntimeService;
 import org.operaton.bpm.engine.repository.ProcessDefinition;
 import org.operaton.bpm.engine.repository.ProcessDefinitionQuery;
+import org.operaton.bpm.engine.runtime.Execution;
+import org.operaton.bpm.engine.runtime.ExecutionQuery;
 import org.operaton.bpm.model.bpmn.BpmnModelInstance;
 import org.operaton.bpm.model.bpmn.instance.FlowElement;
 
@@ -50,6 +54,7 @@ class EpistolaAdminServiceTest {
     private EpistolaService epistolaService;
     private ProcessLinkService processLinkService;
     private RepositoryService repositoryService;
+    private RuntimeService runtimeService;
     private ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
     private EpistolaAdminService adminService;
 
@@ -59,10 +64,11 @@ class EpistolaAdminServiceTest {
         epistolaService = mock(EpistolaService.class);
         processLinkService = mock(ProcessLinkService.class);
         repositoryService = mock(RepositoryService.class);
+        runtimeService = mock(RuntimeService.class);
         processDefinitionCaseDefinitionService = mock(ProcessDefinitionCaseDefinitionService.class);
         adminService = new EpistolaAdminService(
                 pluginService, epistolaService, processLinkService, repositoryService,
-                processDefinitionCaseDefinitionService);
+                runtimeService, processDefinitionCaseDefinitionService);
     }
 
     @Nested
@@ -381,6 +387,86 @@ class EpistolaAdminServiceTest {
             assertThatThrownBy(() -> adminService.exportProcessLink(linkId))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("not an Epistola action");
+        }
+    }
+
+    @Nested
+    class GetPendingJobs {
+
+        @Test
+        void shouldReturnEmptyWhenNoWaitingExecutions() {
+            ExecutionQuery query = mock(ExecutionQuery.class);
+            when(runtimeService.createExecutionQuery()).thenReturn(query);
+            when(query.messageEventSubscriptionName("EpistolaDocumentGenerated")).thenReturn(query);
+            when(query.list()).thenReturn(Collections.emptyList());
+
+            List<PendingJob> jobs = adminService.getPendingJobs();
+
+            assertThat(jobs).isEmpty();
+        }
+
+        @Test
+        void shouldReturnPendingJobWithResolvedNames() {
+            Execution execution = mockExecution("exec-1", "pi-1", "my-process");
+
+            ExecutionQuery query = mock(ExecutionQuery.class);
+            when(runtimeService.createExecutionQuery()).thenReturn(query);
+            when(query.messageEventSubscriptionName("EpistolaDocumentGenerated")).thenReturn(query);
+            when(query.list()).thenReturn(List.of(execution));
+
+            when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+                    .thenReturn("epistola:job:test-tenant/req-123");
+            when(runtimeService.getActiveActivityIds("exec-1"))
+                    .thenReturn(List.of("waitForDocument"));
+
+            ProcessDefinition processDef = mockProcessDefinition("my-process", "My Process");
+            ProcessDefinitionQuery pdQuery = mock(ProcessDefinitionQuery.class);
+            when(repositoryService.createProcessDefinitionQuery()).thenReturn(pdQuery);
+            when(pdQuery.processDefinitionKey("my-process")).thenReturn(pdQuery);
+            when(pdQuery.latestVersion()).thenReturn(pdQuery);
+            when(pdQuery.singleResult()).thenReturn(processDef);
+
+            mockBpmnModel("my-process:1:abc123", "waitForDocument", "Wait for document");
+            mockSinglePluginConfiguration();
+
+            List<PendingJob> jobs = adminService.getPendingJobs();
+
+            assertThat(jobs).hasSize(1);
+            PendingJob job = jobs.get(0);
+            assertThat(job.executionId()).isEqualTo("exec-1");
+            assertThat(job.processInstanceId()).isEqualTo("pi-1");
+            assertThat(job.processDefinitionKey()).isEqualTo("my-process");
+            assertThat(job.processDefinitionName()).isEqualTo("My Process");
+            assertThat(job.activityId()).isEqualTo("waitForDocument");
+            assertThat(job.activityName()).isEqualTo("Wait for document");
+            assertThat(job.tenantId()).isEqualTo("test-tenant");
+            assertThat(job.requestId()).isEqualTo("req-123");
+            assertThat(job.configurationTitle()).isEqualTo(CONFIG_TITLE);
+        }
+
+        @Test
+        void shouldSkipExecutionsWithoutJobPath() {
+            Execution execution = mockExecution("exec-1", "pi-1", "my-process");
+
+            ExecutionQuery query = mock(ExecutionQuery.class);
+            when(runtimeService.createExecutionQuery()).thenReturn(query);
+            when(query.messageEventSubscriptionName("EpistolaDocumentGenerated")).thenReturn(query);
+            when(query.list()).thenReturn(List.of(execution));
+
+            when(runtimeService.getVariable("exec-1", "epistolaJobPath")).thenReturn(null);
+
+            List<PendingJob> jobs = adminService.getPendingJobs();
+
+            assertThat(jobs).isEmpty();
+        }
+
+        private Execution mockExecution(String executionId, String processInstanceId,
+                                        String processDefinitionKey) {
+            Execution execution = mock(Execution.class);
+            lenient().when(execution.getId()).thenReturn(executionId);
+            lenient().when(execution.getProcessInstanceId()).thenReturn(processInstanceId);
+            lenient().when(execution.getProcessDefinitionKey()).thenReturn(processDefinitionKey);
+            return execution;
         }
     }
 

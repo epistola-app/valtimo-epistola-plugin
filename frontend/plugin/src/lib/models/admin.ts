@@ -22,6 +22,21 @@ export interface VersionInfo {
 /**
  * Describes a single usage of an Epistola plugin action within a process definition.
  */
+/**
+ * A process instance currently waiting for an Epistola document generation result.
+ */
+export interface PendingJob {
+  executionId: string;
+  processInstanceId: string;
+  processDefinitionKey: string;
+  processDefinitionName: string;
+  activityId: string;
+  activityName: string;
+  tenantId: string;
+  requestId: string;
+  configurationTitle: string;
+}
+
 export interface PluginUsageEntry {
   processLinkId: string;
   caseDefinitionKey?: string;
