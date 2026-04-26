@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -365,6 +366,21 @@ class EpistolaAdminServiceTest {
             assertThat(export.actionProperties().get("catalogId").asText()).isEqualTo("cat-1");
             assertThat(export.actionProperties().get("templateId").asText()).isEqualTo("tmpl-1");
             assertThat(export.actionProperties().get("outputFormat").asText()).isEqualTo("PDF");
+        }
+
+        @Test
+        void shouldRejectNonEpistolaProcessLink() {
+            UUID linkId = UUID.randomUUID();
+            ObjectNode actionProps = objectMapper.createObjectNode();
+
+            PluginProcessLink link = mockProcessLink("Activity_1", "some-other-action", actionProps);
+            lenient().when(link.getId()).thenReturn(linkId);
+
+            when(processLinkService.getProcessLink(linkId, PluginProcessLink.class)).thenReturn(link);
+
+            assertThatThrownBy(() -> adminService.exportProcessLink(linkId))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("not an Epistola action");
         }
     }
 

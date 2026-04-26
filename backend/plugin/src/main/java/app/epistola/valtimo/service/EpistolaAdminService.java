@@ -148,6 +148,10 @@ public class EpistolaAdminService {
      */
     public ProcessLinkExport exportProcessLink(UUID processLinkId) {
         PluginProcessLink link = processLinkService.getProcessLink(processLinkId, PluginProcessLink.class);
+        if (!EPISTOLA_ACTION_KEYS.contains(link.getPluginActionDefinitionKey())) {
+            throw new IllegalArgumentException(
+                    "Process link " + processLinkId + " is not an Epistola action");
+        }
         return new ProcessLinkExport(
                 link.getActivityId(),
                 link.getActivityType().getValue(),
