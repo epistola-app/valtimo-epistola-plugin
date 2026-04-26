@@ -1,4 +1,4 @@
-package app.epistola.valtimo.service;
+package app.epistola.valtimo.mapping;
 
 import app.epistola.valtimo.expression.ExpressionContext;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
