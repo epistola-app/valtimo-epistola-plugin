@@ -3,16 +3,22 @@ package app.epistola.valtimo.web.rest;
 import app.epistola.valtimo.service.EpistolaAdminService;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
+import app.epistola.valtimo.web.rest.dto.ProcessLinkExport;
 import app.epistola.valtimo.web.rest.dto.VersionInfo;
 import com.ritense.valtimo.contract.annotation.SkipComponentScan;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * REST controller for Epistola plugin administrative operations.
@@ -52,5 +58,20 @@ public class EpistolaAdminResource {
     public ResponseEntity<List<PluginUsageEntry>> getPluginUsage() {
         log.debug("Fetching Epistola plugin usage overview");
         return ResponseEntity.ok(adminService.getPluginUsage());
+    }
+
+    /**
+     * Export a single process link in Valtimo's .process-link.json auto-deploy format.
+     */
+    @GetMapping("/export/{processLinkId}")
+    public ResponseEntity<ProcessLinkExport> exportProcessLink(@PathVariable UUID processLinkId) {
+        log.debug("Exporting process link {}", processLinkId);
+        ProcessLinkExport export = adminService.exportProcessLink(processLinkId);
+        String filename = export.activityId() + ".process-link.json";
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment().filename(filename).build().toString())
+                .body(export);
     }
 }

@@ -2,6 +2,7 @@ package app.epistola.valtimo.service;
 
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
+import app.epistola.valtimo.web.rest.dto.ProcessLinkExport;
 import app.epistola.valtimo.web.rest.dto.VersionInfo;
 import com.ritense.plugin.domain.PluginConfiguration;
 import com.ritense.plugin.domain.PluginConfigurationId;
@@ -22,6 +23,7 @@ import org.operaton.bpm.model.bpmn.instance.FlowElement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Service providing administrative information about the Epistola plugin:
@@ -123,6 +125,7 @@ public class EpistolaAdminService {
                 List<String> problems = detectProblems(link);
 
                 entries.add(new PluginUsageEntry(
+                        link.getId().toString(),
                         caseInfo != null ? caseInfo.key() : null,
                         caseInfo != null ? caseInfo.versionTag() : null,
                         processDef.getKey(),
@@ -138,6 +141,21 @@ public class EpistolaAdminService {
         }
 
         return entries;
+    }
+
+    /**
+     * Export a single process link in Valtimo's .process-link.json auto-deploy format.
+     */
+    public ProcessLinkExport exportProcessLink(UUID processLinkId) {
+        PluginProcessLink link = processLinkService.getProcessLink(processLinkId, PluginProcessLink.class);
+        return new ProcessLinkExport(
+                link.getActivityId(),
+                link.getActivityType().getValue(),
+                link.getProcessLinkType(),
+                link.getPluginConfigurationId() != null ? link.getPluginConfigurationId().toString() : null,
+                link.getPluginActionDefinitionKey(),
+                link.getActionProperties()
+        );
     }
 
     private record CaseInfo(String key, String versionTag) {}

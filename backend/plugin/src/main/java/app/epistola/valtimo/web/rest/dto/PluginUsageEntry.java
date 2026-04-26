@@ -6,6 +6,7 @@ import java.util.List;
  * Describes a single usage of an Epistola plugin action within a process definition.
  */
 public record PluginUsageEntry(
+        String processLinkId,
         String caseDefinitionKey,
         String caseDefinitionVersionTag,
         String processDefinitionKey,

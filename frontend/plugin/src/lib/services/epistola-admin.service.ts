@@ -39,4 +39,13 @@ export class EpistolaAdminService {
   getPluginUsage(): Observable<PluginUsageEntry[]> {
     return this.http.get<PluginUsageEntry[]>(`${this.apiEndpoint}/usage`);
   }
+
+  /**
+   * Export a single process link as a .process-link.json file.
+   */
+  exportProcessLink(processLinkId: string): Observable<Blob> {
+    return this.http.get(`${this.apiEndpoint}/export/${encodeURIComponent(processLinkId)}`, {
+      responseType: 'blob',
+    });
+  }
 }
