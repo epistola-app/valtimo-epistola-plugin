@@ -38,9 +38,10 @@ class EpistolaPluginResourceDocumentDownloadTest {
         var retryFormService = mock(RetryFormService.class);
         var previewService = mock(app.epistola.valtimo.service.PreviewService.class);
         var expressionFunctionRegistry = new ExpressionFunctionRegistry(List.of());
+        var variableSuggestionService = mock(app.epistola.valtimo.service.VariableSuggestionService.class);
         resource = new EpistolaPluginResource(pluginService, epistolaService,
                 processVariableDiscoveryService, retryFormService, previewService,
-                expressionFunctionRegistry);
+                expressionFunctionRegistry, variableSuggestionService);
     }
 
     @Test

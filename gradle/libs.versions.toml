@@ -36,6 +36,7 @@ valtimo-plugin = { module = "com.ritense.valtimo:plugin" }
 valtimo-value-resolver = { module = "com.ritense.valtimo:value-resolver" }
 valtimo-process-link = { module = "com.ritense.valtimo:process-link" }
 valtimo-form = { module = "com.ritense.valtimo:form" }
+valtimo-case = { module = "com.ritense.valtimo:case" }
 valtimo-process-document = { module = "com.ritense.valtimo:process-document" }
 valtimo-importer = { module = "com.ritense.valtimo:importer" }
 valtimo-test-utils-common = { module = "com.ritense.valtimo:test-utils-common" }

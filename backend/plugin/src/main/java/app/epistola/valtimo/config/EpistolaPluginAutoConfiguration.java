@@ -12,6 +12,7 @@ import app.epistola.valtimo.expression.functions.StringFunctions;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaAdminService;
 import app.epistola.valtimo.service.EpistolaCompletionEventConsumer;
+import app.epistola.valtimo.service.VariableSuggestionService;
 import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
@@ -158,6 +159,15 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(VariableSuggestionService.class)
+    public VariableSuggestionService variableSuggestionService(
+            com.ritense.document.service.DocumentDefinitionService documentDefinitionService,
+            ProcessVariableDiscoveryService processVariableDiscoveryService
+    ) {
+        return new VariableSuggestionService(documentDefinitionService, processVariableDiscoveryService);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(EpistolaPluginResource.class)
     public EpistolaPluginResource epistolaPluginResource(
             PluginService pluginService,
@@ -165,11 +175,12 @@ public class EpistolaPluginAutoConfiguration {
             ProcessVariableDiscoveryService processVariableDiscoveryService,
             RetryFormService retryFormService,
             app.epistola.valtimo.service.PreviewService previewService,
-            ExpressionFunctionRegistry expressionFunctionRegistry
+            ExpressionFunctionRegistry expressionFunctionRegistry,
+            VariableSuggestionService variableSuggestionService
     ) {
         return new EpistolaPluginResource(pluginService, epistolaService,
                 processVariableDiscoveryService, retryFormService, previewService,
-                expressionFunctionRegistry);
+                expressionFunctionRegistry, variableSuggestionService);
     }
 
     @Bean

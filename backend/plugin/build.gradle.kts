@@ -40,6 +40,7 @@ dependencies {
     compileOnly(libs.valtimo.plugin)
     compileOnly(libs.valtimo.value.resolver)
     compileOnly(libs.valtimo.process.link)
+    compileOnly(libs.valtimo.case)
     compileOnly(libs.valtimo.process.document)
     compileOnly(libs.valtimo.form)
     compileOnly(libs.valtimo.importer)

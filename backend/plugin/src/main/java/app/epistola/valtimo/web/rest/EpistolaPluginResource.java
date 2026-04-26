@@ -12,6 +12,7 @@ import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.PreviewService;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.RetryFormService;
+import app.epistola.valtimo.service.VariableSuggestionService;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingRequest;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingResponse;
@@ -55,6 +56,7 @@ public class EpistolaPluginResource {
     private final RetryFormService retryFormService;
     private final PreviewService previewService;
     private final ExpressionFunctionRegistry expressionFunctionRegistry;
+    private final VariableSuggestionService variableSuggestionService;
 
     /**
      * Get all available catalogs for a plugin configuration.
@@ -250,7 +252,24 @@ public class EpistolaPluginResource {
     }
 
     /**
-     * List all available expression functions that can be used in {@code expr:} data mapping values.
+     * Get all available variable suggestions for autocompletion in JSONata expressions.
+     * Returns document fields (from JSON Schema) and process variables grouped by source.
+     *
+     * @param caseDefinitionKey    The case definition key (for document schema)
+     * @param processDefinitionKey The process definition key (for process variables)
+     * @return Variable paths grouped by source ($doc, $pv)
+     */
+    @GetMapping("/variable-suggestions")
+    public ResponseEntity<VariableSuggestionService.VariableSuggestions> getVariableSuggestions(
+            @RequestParam(value = "caseDefinitionKey", required = false) String caseDefinitionKey,
+            @RequestParam(value = "processDefinitionKey", required = false) String processDefinitionKey
+    ) {
+        log.debug("Fetching variable suggestions for case={}, process={}", caseDefinitionKey, processDefinitionKey);
+        return ResponseEntity.ok(variableSuggestionService.getSuggestions(caseDefinitionKey, processDefinitionKey));
+    }
+
+    /**
+     * List all available expression functions that can be used in JSONata expressions.
      *
      * @return List of expression functions with their overload signatures
      */
