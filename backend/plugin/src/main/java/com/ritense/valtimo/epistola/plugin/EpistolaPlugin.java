@@ -5,7 +5,7 @@ import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
 import app.epistola.valtimo.domain.GenerationJobDetail;
-import app.epistola.valtimo.service.DataMappingResolverService;
+import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
 
 import app.epistola.valtimo.service.EpistolaService;
@@ -18,6 +18,7 @@ import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -44,18 +45,18 @@ public class EpistolaPlugin {
     private final EpistolaService epistolaService;
     private final ValueResolverService valueResolverService;
     private final ObjectMapper objectMapper;
-    private final DataMappingResolverService dataMappingResolverService;
+    private final JsonataMappingService jsonataMappingService;
 
     public EpistolaPlugin(
             EpistolaService epistolaService,
             ValueResolverService valueResolverService,
             ObjectMapper objectMapper,
-            DataMappingResolverService dataMappingResolverService
+            JsonataMappingService jsonataMappingService
     ) {
         this.epistolaService = epistolaService;
         this.valueResolverService = valueResolverService;
         this.objectMapper = objectMapper;
-        this.dataMappingResolverService = dataMappingResolverService;
+        this.jsonataMappingService = jsonataMappingService;
     }
 
     /**
@@ -207,8 +208,8 @@ public class EpistolaPlugin {
      * @param variantAttributes     Key-value attributes for automatic variant selection (optional).
      *                              Values can use value resolver expressions (doc:, pv:, case:).
      * @param environmentId         The environment ID (optional, uses plugin default if not specified)
-     * @param dataMapping           Key-value mapping of template fields to data sources.
-     *                              Values can use prefixes: doc: (case data), pv: (process variable)
+     * @param dataMapping           JSONata expression that produces the template data payload.
+     *                              Has access to $doc (document data), $pv (process variables), $case (case data).
      * @param outputFormat          The desired output format (PDF or HTML)
      * @param filename              The filename for the generated document (can use value resolvers)
      * @param correlationId         Optional correlation ID for tracking across systems
@@ -227,7 +228,7 @@ public class EpistolaPlugin {
             @PluginActionProperty String variantId,
             @PluginActionProperty Object variantAttributes,
             @PluginActionProperty String environmentId,
-            @PluginActionProperty Map<String, Object> dataMapping,
+            @PluginActionProperty String dataMapping,
             @PluginActionProperty FileFormat outputFormat,
             @PluginActionProperty String filename,
             @PluginActionProperty String correlationId,
@@ -269,8 +270,11 @@ public class EpistolaPlugin {
             // Clear the edited data so subsequent non-retry invocations resolve normally
             execution.removeVariable(EpistolaProcessVariables.EDITED_DATA);
         } else {
-            // Resolve value expressions (doc:, pv:, etc.) recursively through the nested mapping
-            resolvedData = dataMappingResolverService.resolveMapping(execution, dataMapping != null ? dataMapping : Map.of());
+            // Evaluate JSONata expression to produce the template data
+            Map<String, Object> docData = resolveDocumentData(execution);
+            Map<String, Object> pvData = new LinkedHashMap<>(execution.getVariables());
+            resolvedData = jsonataMappingService.evaluate(
+                    dataMapping != null ? dataMapping : "", docData, pvData, Map.of());
         }
 
         // Resolve the filename if it uses value resolvers
@@ -414,6 +418,29 @@ public class EpistolaPlugin {
         execution.setVariable(contentVariable, base64Content);
 
         log.info("Document {} downloaded successfully ({} bytes)", documentId, content.length);
+    }
+
+    /**
+     * Resolve the full document content as a Map for JSONata binding.
+     * Uses ValueResolverService to resolve "doc:/" (the document root).
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> resolveDocumentData(DelegateExecution execution) {
+        try {
+            Map<String, Object> resolved = valueResolverService.resolveValues(
+                    execution.getProcessInstanceId(),
+                    execution,
+                    List.of("doc:/")
+            );
+            Object docRoot = resolved.get("doc:/");
+            if (docRoot instanceof Map<?, ?> map) {
+                return (Map<String, Object>) map;
+            }
+            return Map.of();
+        } catch (Exception e) {
+            log.warn("Failed to resolve document data: {}", e.getMessage());
+            return Map.of();
+        }
     }
 
     /**

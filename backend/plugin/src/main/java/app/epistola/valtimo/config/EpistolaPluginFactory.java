@@ -1,6 +1,6 @@
 package app.epistola.valtimo.config;
 
-import app.epistola.valtimo.service.DataMappingResolverService;
+import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.PluginFactory;
@@ -14,14 +14,14 @@ public class EpistolaPluginFactory extends PluginFactory<EpistolaPlugin> {
     private final EpistolaService epistolaService;
     private final ValueResolverService valueResolverService;
     private final ObjectMapper objectMapper;
-    private final DataMappingResolverService dataMappingResolverService;
+    private final JsonataMappingService dataMappingResolverService;
 
     public EpistolaPluginFactory(
             @NotNull PluginService pluginService,
             @NotNull EpistolaService epistolaService,
             @NotNull ValueResolverService valueResolverService,
             @NotNull ObjectMapper objectMapper,
-            @NotNull DataMappingResolverService dataMappingResolverService
+            @NotNull JsonataMappingService dataMappingResolverService
     ) {
         super(pluginService);
         this.epistolaService = epistolaService;

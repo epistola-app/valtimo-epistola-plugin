@@ -9,7 +9,7 @@ import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.expression.ExpressionResolver;
 import app.epistola.valtimo.expression.functions.FormatDateFunction;
 import app.epistola.valtimo.expression.functions.StringFunctions;
-import app.epistola.valtimo.service.DataMappingResolverService;
+import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaAdminService;
 import app.epistola.valtimo.service.EpistolaCompletionEventConsumer;
 import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
@@ -87,12 +87,11 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(DataMappingResolverService.class)
-    public DataMappingResolverService dataMappingResolverService(
-            ValueResolverService valueResolverService,
-            ExpressionResolver expressionResolver
+    @ConditionalOnMissingBean(JsonataMappingService.class)
+    public JsonataMappingService jsonataMappingService(
+            ExpressionFunctionRegistry expressionFunctionRegistry
     ) {
-        return new DataMappingResolverService(valueResolverService, expressionResolver);
+        return new JsonataMappingService(expressionFunctionRegistry);
     }
 
     @Bean
@@ -108,10 +107,10 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaService epistolaService,
             ValueResolverService valueResolverService,
             ObjectMapper objectMapper,
-            DataMappingResolverService dataMappingResolverService
+            JsonataMappingService jsonataMappingService
     ) {
         return new EpistolaPluginFactory(pluginService, epistolaService, valueResolverService,
-                objectMapper, dataMappingResolverService);
+                objectMapper, jsonataMappingService);
     }
 
     @Bean
@@ -131,12 +130,13 @@ public class EpistolaPluginAutoConfiguration {
             RuntimeService runtimeService,
             TaskService taskService,
             ProcessLinkService processLinkService,
-            DataMappingResolverService dataMappingResolverService,
+            JsonataMappingService jsonataMappingService,
+            ValueResolverService valueResolverService,
             FormioFormGenerator formioFormGenerator,
             ObjectMapper objectMapper
     ) {
         return new RetryFormService(pluginService, epistolaService, runtimeService,
-                taskService, processLinkService, dataMappingResolverService,
+                taskService, processLinkService, jsonataMappingService, valueResolverService,
                 formioFormGenerator, objectMapper);
     }
 
@@ -148,12 +148,13 @@ public class EpistolaPluginAutoConfiguration {
             ProcessLinkService processLinkService,
             com.ritense.valtimo.operaton.service.OperatonRepositoryService operatonRepositoryService,
             RuntimeService runtimeService,
-            DataMappingResolverService dataMappingResolverService,
+            JsonataMappingService jsonataMappingService,
+            ValueResolverService valueResolverService,
             ObjectMapper objectMapper
     ) {
         return new app.epistola.valtimo.service.PreviewService(pluginService, epistolaService,
                 processLinkService, operatonRepositoryService, runtimeService,
-                dataMappingResolverService, objectMapper);
+                jsonataMappingService, valueResolverService, objectMapper);
     }
 
     @Bean

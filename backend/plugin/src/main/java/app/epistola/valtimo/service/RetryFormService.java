@@ -2,12 +2,14 @@ package app.epistola.valtimo.service;
 
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.TemplateDetails;
+import app.epistola.valtimo.mapping.JsonataMappingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ritense.plugin.domain.PluginProcessLink;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processlink.domain.ProcessLink;
 import com.ritense.processlink.service.ProcessLinkService;
+import com.ritense.valueresolver.ValueResolverService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,7 +37,8 @@ public class RetryFormService {
     private final RuntimeService runtimeService;
     private final TaskService taskService;
     private final ProcessLinkService processLinkService;
-    private final DataMappingResolverService dataMappingResolverService;
+    private final JsonataMappingService jsonataMappingService;
+    private final ValueResolverService valueResolverService;
     private final FormioFormGenerator formioFormGenerator;
     private final ObjectMapper objectMapper;
 
@@ -57,11 +60,12 @@ public class RetryFormService {
 
         String catalogId = extractCatalogId(originalLink);
         String templateId = extractTemplateId(originalLink);
-        Map<String, Object> dataMapping = extractDataMapping(originalLink);
+        String dataMapping = extractDataMapping(originalLink);
 
         String effectiveDocumentId = resolveDocumentId(documentId, processInstance);
-        Map<String, Object> resolvedData = dataMappingResolverService.resolveMapping(
-                effectiveDocumentId, dataMapping);
+        Map<String, Object> docData = resolveDocumentData(effectiveDocumentId);
+        Map<String, Object> resolvedData = jsonataMappingService.evaluate(
+                dataMapping, docData, Map.of(), Map.of());
 
         EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
                 originalLink.getPluginConfigurationId());
@@ -143,12 +147,11 @@ public class RetryFormService {
         return actionProps.get("templateId").asText();
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> extractDataMapping(PluginProcessLink link) {
+    private String extractDataMapping(PluginProcessLink link) {
         ObjectNode actionProps = link.getActionProperties();
         return actionProps.has("dataMapping")
-                ? objectMapper.convertValue(actionProps.get("dataMapping"), Map.class)
-                : Map.of();
+                ? actionProps.get("dataMapping").asText("")
+                : "";
     }
 
     private String resolveDocumentId(String documentId, ProcessInstance processInstance) {
@@ -216,6 +219,18 @@ public class RetryFormService {
 
         public Reason getReason() {
             return reason;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> resolveDocumentData(String documentId) {
+        try {
+            Map<String, Object> resolved = valueResolverService.resolveValues(documentId, List.of("doc:/"));
+            Object docRoot = resolved.get("doc:/");
+            return docRoot instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
+        } catch (Exception e) {
+            log.warn("Failed to resolve document data for {}: {}", documentId, e.getMessage());
+            return Map.of();
         }
     }
 }

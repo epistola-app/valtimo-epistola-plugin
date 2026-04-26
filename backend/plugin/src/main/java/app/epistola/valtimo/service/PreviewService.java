@@ -1,5 +1,6 @@
 package app.epistola.valtimo.service;
 
+import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
 import app.epistola.valtimo.web.rest.dto.PreviewSource;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -8,6 +9,7 @@ import com.ritense.plugin.domain.PluginProcessLink;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processlink.domain.ProcessLink;
 import com.ritense.processlink.service.ProcessLinkService;
+import com.ritense.valueresolver.ValueResolverService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import com.ritense.valtimo.operaton.service.OperatonRepositoryService;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +37,8 @@ public class PreviewService {
     private final ProcessLinkService processLinkService;
     private final OperatonRepositoryService repositoryService;
     private final RuntimeService runtimeService;
-    private final DataMappingResolverService dataMappingResolverService;
+    private final JsonataMappingService jsonataMappingService;
+    private final ValueResolverService valueResolverService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -51,11 +54,12 @@ public class PreviewService {
 
         String catalogId = extractCatalogId(processLink);
         String templateId = extractTemplateId(processLink);
-        Map<String, Object> dataMapping = extractDataMapping(processLink);
+        String dataMapping = extractDataMapping(processLink);
 
         // Resolve data mapping against the document
-        Map<String, Object> resolvedData = dataMappingResolverService.resolveMapping(
-                request.documentId(), dataMapping);
+        Map<String, Object> docData = resolveDocumentData(request.documentId());
+        Map<String, Object> resolvedData = jsonataMappingService.evaluate(
+                dataMapping, docData, Map.of(), Map.of());
 
         // Deep-merge with overrides (overrides win)
         if (request.overrides() != null && !request.overrides().isEmpty()) {
@@ -203,12 +207,23 @@ public class PreviewService {
         return actionProps.get("templateId").asText();
     }
 
-    @SuppressWarnings("unchecked")
-    private Map<String, Object> extractDataMapping(PluginProcessLink link) {
+    private String extractDataMapping(PluginProcessLink link) {
         ObjectNode actionProps = link.getActionProperties();
         return actionProps.has("dataMapping")
-                ? objectMapper.convertValue(actionProps.get("dataMapping"), Map.class)
-                : Map.of();
+                ? actionProps.get("dataMapping").asText("")
+                : "";
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> resolveDocumentData(String documentId) {
+        try {
+            Map<String, Object> resolved = valueResolverService.resolveValues(documentId, List.of("doc:/"));
+            Object docRoot = resolved.get("doc:/");
+            return docRoot instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
+        } catch (Exception e) {
+            log.warn("Failed to resolve document data for {}: {}", documentId, e.getMessage());
+            return Map.of();
+        }
     }
 
     private PluginProcessLink findPluginProcessLink(String processDefinitionId, String activityId) {

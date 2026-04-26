@@ -1,5 +1,6 @@
 package app.epistola.valtimo.service;
 
+import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateField;
@@ -8,6 +9,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ritense.plugin.domain.PluginProcessLink;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processlink.service.ProcessLinkService;
+import com.ritense.valueresolver.ValueResolverService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -29,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -42,7 +45,8 @@ class RetryFormServiceTest {
     @Mock private RuntimeService runtimeService;
     @Mock private TaskService taskService;
     @Mock private ProcessLinkService processLinkService;
-    @Mock private DataMappingResolverService dataMappingResolverService;
+    @Mock private JsonataMappingService jsonataMappingService;
+    @Mock private ValueResolverService valueResolverService;
     @Mock private FormioFormGenerator formioFormGenerator;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -67,7 +71,8 @@ class RetryFormServiceTest {
                 runtimeService,
                 taskService,
                 processLinkService,
-                dataMappingResolverService,
+                jsonataMappingService,
+                valueResolverService,
                 formioFormGenerator,
                 objectMapper
         );
@@ -92,7 +97,7 @@ class RetryFormServiceTest {
                     .thenReturn(templateDetails);
 
             Map<String, Object> resolvedData = Map.of("name", "John Doe");
-            when(dataMappingResolverService.resolveMapping(eq(BUSINESS_KEY), anyMap()))
+            when(jsonataMappingService.evaluate(anyString(), anyMap(), anyMap(), anyMap()))
                     .thenReturn(resolvedData);
 
             ObjectNode expectedForm = objectMapper.createObjectNode();
@@ -127,7 +132,7 @@ class RetryFormServiceTest {
             TemplateDetails templateDetails = new TemplateDetails(TEMPLATE_ID, "Invoice", List.of());
             when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID))
                     .thenReturn(templateDetails);
-            when(dataMappingResolverService.resolveMapping(eq(BUSINESS_KEY), anyMap()))
+            when(jsonataMappingService.evaluate(anyString(), anyMap(), anyMap(), anyMap()))
                     .thenReturn(Map.of());
 
             ObjectNode expectedForm = objectMapper.createObjectNode();
@@ -273,7 +278,7 @@ class RetryFormServiceTest {
             TemplateDetails templateDetails = new TemplateDetails(TEMPLATE_ID, "Invoice", List.of());
             when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID))
                     .thenReturn(templateDetails);
-            when(dataMappingResolverService.resolveMapping(eq(BUSINESS_KEY), anyMap()))
+            when(jsonataMappingService.evaluate(anyString(), anyMap(), anyMap(), anyMap()))
                     .thenReturn(Map.of());
 
             ObjectNode expectedForm = objectMapper.createObjectNode();

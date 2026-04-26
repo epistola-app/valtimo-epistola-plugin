@@ -1,5 +1,6 @@
 package app.epistola.valtimo.service;
 
+import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.PreviewService.PreviewException;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ritense.plugin.domain.PluginProcessLink;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processlink.service.ProcessLinkService;
+import com.ritense.valueresolver.ValueResolverService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import com.ritense.valtimo.operaton.service.OperatonRepositoryService;
 import org.junit.jupiter.api.Nested;
@@ -26,6 +28,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -50,7 +53,10 @@ class PreviewServiceTest {
     private RuntimeService runtimeService;
 
     @Mock
-    private DataMappingResolverService dataMappingResolverService;
+    private JsonataMappingService jsonataMappingService;
+
+    @Mock
+    private ValueResolverService valueResolverService;
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
@@ -233,7 +239,7 @@ class PreviewServiceTest {
                     .thenReturn(List.of(processLink));
 
             // Data mapping resolution
-            when(dataMappingResolverService.resolveMapping(eq("doc-123"), any()))
+            when(jsonataMappingService.evaluate(anyString(), anyMap(), anyMap(), anyMap()))
                     .thenReturn(new LinkedHashMap<>());
 
             // Plugin instance
