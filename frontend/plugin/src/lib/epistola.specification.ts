@@ -80,6 +80,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       // Data mapping builder translations
       dataMappingTitle: 'Data Mapping',
       dataMappingDescription: 'Koppel template velden aan Valtimo data bronnen',
+      jsonataDescription:
+        'JSONata expressie die de template data genereert. Gebruik $doc, $pv en $case voor toegang tot document-, procesvariabelen- en zaakdata.',
       templateField: 'Template veld',
       dataSource: 'Data bron',
       addMapping: 'Mapping toevoegen',
@@ -203,6 +205,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       // Data mapping builder translations
       dataMappingTitle: 'Data Mapping',
       dataMappingDescription: 'Map template fields to Valtimo data sources',
+      jsonataDescription:
+        'JSONata expression that generates the template data. Use $doc, $pv and $case to access document, process variable and case data.',
       templateField: 'Template field',
       dataSource: 'Data source',
       addMapping: 'Add mapping',

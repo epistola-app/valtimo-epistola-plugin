@@ -235,34 +235,9 @@
   {{ templateFieldsError }}
 </div>
 
-<epistola-data-mapping-tree
+<epistola-jsonata-editor
   *ngIf="selectedTemplateId$ | async"
-  [pluginId]="pluginId"
-  [templateFields]="(templateFields$ | async)?.data ?? []"
+  [expression]="dataMapping$ | async"
   [disabled]="!!(disabled$ | async)"
-  [prefillMapping]="prefillDataMapping"
-  [caseDefinitionKey]="caseDefinitionKey"
-  [processVariables]="processVariables"
-  [expressionFunctions]="expressionFunctions"
-  (mappingChange)="onDataMappingChange($event)"
-  (requiredFieldsStatus)="onRequiredFieldsStatusChange($event)"
-></epistola-data-mapping-tree>
-
-<div
-  class="validation-summary"
-  *ngIf="(selectedTemplateId$ | async) && requiredFieldsStatus.total > 0"
->
-  <span
-    *ngIf="requiredFieldsStatus.mapped === requiredFieldsStatus.total"
-    class="validation-complete"
-  >
-    {{ 'requiredFieldsComplete' | pluginTranslate: pluginId | async }}
-  </span>
-  <span
-    *ngIf="requiredFieldsStatus.mapped < requiredFieldsStatus.total"
-    class="validation-incomplete"
-  >
-    {{ requiredFieldsStatus.mapped }} / {{ requiredFieldsStatus.total }}
-    {{ 'validationSummary' | pluginTranslate: pluginId | async }}
-  </span>
-</div>
+  (expressionChange)="onDataMappingChange($event)"
+></epistola-jsonata-editor>

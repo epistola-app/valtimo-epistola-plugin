@@ -34,6 +34,7 @@
     "@valtimo/process-link": "13.21.0",
     "@valtimo/shared": "13.21.0",
     "jest": "^30.3.0",
+    "jsonata": "^2.1.0",
     "ng-packagr": "^19.0.0",
     "ts-jest": "^29.4.9"
   },

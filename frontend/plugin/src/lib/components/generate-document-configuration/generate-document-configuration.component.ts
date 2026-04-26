@@ -41,7 +41,7 @@ import {
   TemplateField,
 } from '../../models';
 import { EpistolaPluginService } from '../../services';
-import { DataMappingTreeComponent } from '../data-mapping-tree/data-mapping-tree.component';
+import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
 
 export type VariantSelectionMode = 'explicit' | 'attributes';
 
@@ -58,7 +58,7 @@ export type VariantSelectionMode = 'explicit' | 'attributes';
     FormModule,
     InputModule,
     SelectModule,
-    DataMappingTreeComponent,
+    JsonataEditorComponent,
   ],
 })
 export class GenerateDocumentConfigurationComponent
@@ -81,7 +81,7 @@ export class GenerateDocumentConfigurationComponent
   environments$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   templateFields$ = new BehaviorSubject<AsyncResource<TemplateField[]>>(initialResource([]));
 
-  dataMapping$ = new BehaviorSubject<Record<string, any>>({});
+  dataMapping$ = new BehaviorSubject<string>('');
 
   outputFormatOptions: SelectItem[] = [
     { id: 'PDF', text: 'PDF' },
@@ -164,8 +164,8 @@ export class GenerateDocumentConfigurationComponent
     this.handleValid(formValue);
   }
 
-  onDataMappingChange(mapping: Record<string, any>): void {
-    this.dataMapping$.next(mapping);
+  onDataMappingChange(expression: string): void {
+    this.dataMapping$.next(expression);
     const currentFormValue = this.formValue$.getValue();
     if (currentFormValue) {
       this.handleValid(currentFormValue);
@@ -472,15 +472,10 @@ export class GenerateDocumentConfigurationComponent
           this.selectedVariantId$.next(config.variantId);
         }
 
-        // Apply dataMapping prefill — templateFields are guaranteed loaded at this point.
-        // Use setTimeout to ensure the tree component exists in the DOM (after *ngIf resolves)
-        // before setting the prefill, so ngOnChanges fires correctly on the child.
+        // Apply dataMapping prefill (JSONata expression string)
         if (config.dataMapping) {
-          this.dataMapping$.next(config.dataMapping);
-          setTimeout(() => {
-            this.prefillDataMapping = { ...config.dataMapping };
-            this.cdr.detectChanges();
-          });
+          const expr = typeof config.dataMapping === 'string' ? config.dataMapping : '';
+          this.dataMapping$.next(expr);
         } else {
           this.cdr.detectChanges();
         }
