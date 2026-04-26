@@ -42,6 +42,7 @@ import {
 } from '../../models';
 import { EpistolaPluginService } from '../../services';
 import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
+import { MappingBuilderComponent } from '../mapping-builder/mapping-builder.component';
 
 export type VariantSelectionMode = 'explicit' | 'attributes';
 
@@ -59,6 +60,7 @@ export type VariantSelectionMode = 'explicit' | 'attributes';
     InputModule,
     SelectModule,
     JsonataEditorComponent,
+    MappingBuilderComponent,
   ],
 })
 export class GenerateDocumentConfigurationComponent
@@ -82,6 +84,7 @@ export class GenerateDocumentConfigurationComponent
   templateFields$ = new BehaviorSubject<AsyncResource<TemplateField[]>>(initialResource([]));
 
   dataMapping$ = new BehaviorSubject<string>('');
+  mappingMode: 'simple' | 'advanced' = 'simple';
 
   outputFormatOptions: SelectItem[] = [
     { id: 'PDF', text: 'PDF' },

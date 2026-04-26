@@ -235,9 +235,36 @@
   {{ templateFieldsError }}
 </div>
 
-<epistola-jsonata-editor
-  *ngIf="selectedTemplateId$ | async"
-  [expression]="dataMapping$ | async"
-  [disabled]="!!(disabled$ | async)"
-  (expressionChange)="onDataMappingChange($event)"
-></epistola-jsonata-editor>
+<div *ngIf="selectedTemplateId$ | async" class="mapping-section">
+  <div class="mapping-mode-toggle">
+    <button
+      class="mapping-mode-toggle__btn"
+      [class.mapping-mode-toggle__btn--active]="mappingMode === 'simple'"
+      (click)="mappingMode = 'simple'"
+    >
+      {{ 'mappingModeSimple' | pluginTranslate: pluginId | async }}
+    </button>
+    <button
+      class="mapping-mode-toggle__btn"
+      [class.mapping-mode-toggle__btn--active]="mappingMode === 'advanced'"
+      (click)="mappingMode = 'advanced'"
+    >
+      {{ 'mappingModeAdvanced' | pluginTranslate: pluginId | async }}
+    </button>
+  </div>
+
+  <epistola-mapping-builder
+    *ngIf="mappingMode === 'simple'"
+    [expression]="dataMapping$ | async"
+    [templateFields]="(templateFields$ | async)?.data ?? []"
+    [disabled]="!!(disabled$ | async)"
+    (expressionChange)="onDataMappingChange($event)"
+  ></epistola-mapping-builder>
+
+  <epistola-jsonata-editor
+    *ngIf="mappingMode === 'advanced'"
+    [expression]="dataMapping$ | async"
+    [disabled]="!!(disabled$ | async)"
+    (expressionChange)="onDataMappingChange($event)"
+  ></epistola-jsonata-editor>
+</div>

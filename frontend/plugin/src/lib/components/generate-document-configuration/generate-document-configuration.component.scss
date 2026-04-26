@@ -206,3 +206,36 @@
     cursor: not-allowed;
   }
 }
+
+.mapping-section {
+  margin-top: 1rem;
+}
+
+.mapping-mode-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 12px;
+
+  &__btn {
+    padding: 6px 16px;
+    border: 1px solid #e0e0e0;
+    background: #fff;
+    font-size: 0.85em;
+    cursor: pointer;
+
+    &:first-child {
+      border-radius: 4px 0 0 4px;
+    }
+
+    &:last-child {
+      border-radius: 0 4px 4px 0;
+      border-left: none;
+    }
+
+    &--active {
+      background: #0f62fe;
+      color: #fff;
+      border-color: #0f62fe;
+    }
+  }
+}
