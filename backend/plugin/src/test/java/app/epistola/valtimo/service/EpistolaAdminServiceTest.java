@@ -3,6 +3,7 @@ package app.epistola.valtimo.service;
 import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
+import app.epistola.valtimo.web.rest.dto.ProcessLinkExport;
 import app.epistola.valtimo.web.rest.dto.VersionInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -11,6 +12,7 @@ import com.ritense.plugin.domain.PluginConfigurationId;
 import com.ritense.plugin.domain.PluginProcessLink;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
+import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import com.ritense.processlink.domain.ProcessLink;
 import com.ritense.processlink.service.ProcessLinkService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
@@ -25,8 +27,10 @@ import org.operaton.bpm.model.bpmn.instance.FlowElement;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -190,6 +194,7 @@ class EpistolaAdminServiceTest {
 
             assertThat(entries).hasSize(1);
             PluginUsageEntry entry = entries.get(0);
+            assertThat(entry.processLinkId()).isNotNull();
             assertThat(entry.processDefinitionKey()).isEqualTo("my-process");
             assertThat(entry.processDefinitionName()).isEqualTo("My Process");
             assertThat(entry.activityName()).isEqualTo("Generate Letter");
@@ -336,6 +341,49 @@ class EpistolaAdminServiceTest {
         }
     }
 
+    @Nested
+    class ExportProcessLink {
+
+        @Test
+        void shouldExportProcessLinkInAutoDeployFormat() {
+            UUID linkId = UUID.randomUUID();
+            ObjectNode actionProps = createActionProps("cat-1", "tmpl-1");
+            actionProps.put("outputFormat", "PDF");
+            actionProps.put("filename", "test.pdf");
+
+            PluginProcessLink link = mockProcessLink("Activity_1", "generate-document", actionProps);
+            lenient().when(link.getId()).thenReturn(linkId);
+
+            when(processLinkService.getProcessLink(linkId, PluginProcessLink.class)).thenReturn(link);
+
+            ProcessLinkExport export = adminService.exportProcessLink(linkId);
+
+            assertThat(export.activityId()).isEqualTo("Activity_1");
+            assertThat(export.activityType()).isEqualTo("bpmn:ServiceTask:start");
+            assertThat(export.processLinkType()).isEqualTo("plugin");
+            assertThat(export.pluginConfigurationId()).isEqualTo("config-id-mock");
+            assertThat(export.pluginActionDefinitionKey()).isEqualTo("generate-document");
+            assertThat(export.actionProperties().get("catalogId").asText()).isEqualTo("cat-1");
+            assertThat(export.actionProperties().get("templateId").asText()).isEqualTo("tmpl-1");
+            assertThat(export.actionProperties().get("outputFormat").asText()).isEqualTo("PDF");
+        }
+
+        @Test
+        void shouldRejectNonEpistolaProcessLink() {
+            UUID linkId = UUID.randomUUID();
+            ObjectNode actionProps = objectMapper.createObjectNode();
+
+            PluginProcessLink link = mockProcessLink("Activity_1", "some-other-action", actionProps);
+            lenient().when(link.getId()).thenReturn(linkId);
+
+            when(processLinkService.getProcessLink(linkId, PluginProcessLink.class)).thenReturn(link);
+
+            assertThatThrownBy(() -> adminService.exportProcessLink(linkId))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("not an Epistola action");
+        }
+    }
+
     // --- Helpers ---
 
     private void mockSinglePluginConfiguration() {
@@ -382,10 +430,13 @@ class EpistolaAdminServiceTest {
     private PluginProcessLink mockProcessLink(String activityId, String actionKey, ObjectNode actionProps) {
         PluginProcessLink link = mock(PluginProcessLink.class);
         PluginConfigurationId configId = mock(PluginConfigurationId.class);
+        lenient().when(link.getId()).thenReturn(UUID.randomUUID());
         lenient().when(link.getActivityId()).thenReturn(activityId);
         lenient().when(link.getPluginActionDefinitionKey()).thenReturn(actionKey);
         lenient().when(link.getActionProperties()).thenReturn(actionProps);
         lenient().when(link.getPluginConfigurationId()).thenReturn(configId);
+        lenient().when(link.getActivityType()).thenReturn(ActivityTypeWithEventName.SERVICE_TASK_START);
+        lenient().when(link.getProcessLinkType()).thenReturn("plugin");
         lenient().when(configId.toString()).thenReturn("config-id-mock");
         return link;
     }

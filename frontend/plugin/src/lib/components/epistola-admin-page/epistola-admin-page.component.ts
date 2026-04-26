@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { EpistolaAdminService } from '../../services/epistola-admin.service';
-import { ConnectionStatus, PluginUsageEntry, VersionInfo } from '../../models';
+import { ConnectionStatus, PluginUsageEntry } from '../../models';
 
 /**
  * Combined view model for a single plugin configuration card.
@@ -65,6 +65,19 @@ export class EpistolaAdminPageComponent implements OnInit {
   refresh(): void {
     this.selectedCard = null;
     this.loadData();
+  }
+
+  exportProcessLink(entry: PluginUsageEntry): void {
+    this.adminService.exportProcessLink(entry.processLinkId).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = url;
+        anchor.download = `${entry.activityId}.process-link.json`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+      },
+    });
   }
 
   private updateUrl(configurationId: string | null): void {

@@ -159,6 +159,7 @@
           <th>{{ 'epistolaAdminActivity' | pluginTranslate: 'epistola' | async }}</th>
           <th>{{ 'epistolaAdminAction' | pluginTranslate: 'epistola' | async }}</th>
           <th>{{ 'epistolaAdminProblems' | pluginTranslate: 'epistola' | async }}</th>
+          <th></th>
         </tr>
       </thead>
       <tbody>
@@ -199,6 +200,15 @@
             >
               {{ problem }}
             </span>
+          </td>
+          <td>
+            <button
+              class="btn btn-sm btn-outline-secondary"
+              (click)="exportProcessLink(entry)"
+              [title]="'epistolaAdminExport' | pluginTranslate: 'epistola' | async"
+            >
+              &#x2913;
+            </button>
           </td>
         </tr>
       </tbody>

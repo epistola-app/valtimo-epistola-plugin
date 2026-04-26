@@ -23,6 +23,7 @@ export interface VersionInfo {
  * Describes a single usage of an Epistola plugin action within a process definition.
  */
 export interface PluginUsageEntry {
+  processLinkId: string;
   caseDefinitionKey?: string;
   caseDefinitionVersionTag?: string;
   processDefinitionKey: string;
