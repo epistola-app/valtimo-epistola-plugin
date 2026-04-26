@@ -29,6 +29,9 @@ dependencies {
     // Epistola client
     api(libs.epistola.client)
 
+    // JSONata (JSON transformation language)
+    api(libs.jsonata)
+
     // Valtimo dependencies (compileOnly - provided by implementing application)
     compileOnly(libs.valtimo.core)
     compileOnly(libs.valtimo.contract)

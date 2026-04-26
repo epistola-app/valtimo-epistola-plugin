@@ -3,6 +3,7 @@
 valtimo = "13.21.0.RELEASE"
 epistola-client = "0.2.1"
 lombok = "1.18.42"
+jsonata = "0.9.9"
 testcontainers = "2.0.3"
 postgresql = "42.7.5"
 netty-resolver-dns-macos = "4.2.0.Final"
@@ -49,6 +50,9 @@ valtimo-objecttypen-api = { module = "com.ritense.valtimo:objecttypen-api" }
 valtimo-zaken-api = { module = "com.ritense.valtimo:zaken-api" }
 valtimo-documenten-api = { module = "com.ritense.valtimo:documenten-api" }
 valtimo-catalogi-api = { module = "com.ritense.valtimo:catalogi-api" }
+
+# JSONata
+jsonata = { module = "com.dashjoin:jsonata", version.ref = "jsonata" }
 
 # Lombok
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
