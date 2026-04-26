@@ -12,7 +12,6 @@ import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.PreviewService;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.RetryFormService;
-import app.epistola.valtimo.service.TemplateMappingValidator;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingRequest;
 import app.epistola.valtimo.web.rest.dto.ValidateMappingResponse;
@@ -229,24 +228,8 @@ public class EpistolaPluginResource {
         log.debug("Validating mapping for plugin configuration: {}, catalog: {}, template: {}",
                 configurationId, catalogId, templateId);
 
-        EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        TemplateDetails templateDetails = epistolaService.getTemplateDetails(
-                plugin.getBaseUrl(),
-                plugin.getApiKey(),
-                plugin.getTenantId(),
-                catalogId,
-                templateId
-        );
-
-        List<String> missingFields = TemplateMappingValidator.findMissingRequiredFields(
-                templateDetails.fields(),
-                request.dataMapping()
-        );
-
-        return ResponseEntity.ok(new ValidateMappingResponse(
-                missingFields.isEmpty(),
-                missingFields
-        ));
+        // TODO: implement JSONata-aware validation (parse expression, check output keys against template fields)
+        return ResponseEntity.ok(new ValidateMappingResponse(true, List.of()));
     }
 
     /**
