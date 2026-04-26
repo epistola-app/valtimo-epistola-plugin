@@ -2,7 +2,8 @@ import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
-import * as jsonata from 'jsonata';
+import * as _jsonata from 'jsonata';
+const jsonata = (_jsonata as any).default || _jsonata;
 
 @Component({
   selector: 'epistola-jsonata-editor',
