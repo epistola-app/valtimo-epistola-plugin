@@ -15,13 +15,17 @@ import {
   imports: [CommonModule, FormsModule, PluginTranslatePipeModule],
   template: `
     <div class="mapping-builder">
-      <div *ngIf="fields.length === 0" class="mapping-builder__empty">
+      <div
+        *ngIf="fields.length === 0 && (!templateFields || templateFields.length === 0)"
+        class="mapping-builder__empty"
+      >
         {{ 'noTemplateFields' | pluginTranslate: 'epistola' | async }}
       </div>
 
       <div *ngFor="let field of fields; let i = index" class="mapping-builder__row">
         <div class="mapping-builder__name">
           <span class="mapping-builder__field-name">{{ field.name }}</span>
+          <span *ngIf="isRequired(field.name)" class="mapping-builder__required">*</span>
           <span *ngIf="field.children" class="mapping-builder__type">(object)</span>
         </div>
 
@@ -125,6 +129,10 @@ import {
         font-weight: 500;
         font-size: 0.9em;
       }
+      .mapping-builder__required {
+        color: #da1e28;
+        margin-left: 2px;
+      }
       .mapping-builder__type {
         color: #8d8d8d;
         font-size: 0.8em;
@@ -189,8 +197,7 @@ export class MappingBuilderComponent implements OnChanges {
       return; // Don't re-parse when we emit changes ourselves
     }
     if (changes['expression'] || changes['templateFields']) {
-      this.fields = parseJsonataToBuilder(this.expression);
-      this.ensureTemplateFields();
+      this.rebuildFields();
     }
     if (changes['suggestions']) {
       this.buildSuggestionList();
@@ -209,6 +216,10 @@ export class MappingBuilderComponent implements OnChanges {
       this.fields[parentIndex] = { ...parent };
       this.emit();
     }
+  }
+
+  isRequired(fieldName: string): boolean {
+    return this.templateFields?.find((tf) => tf.name === fieldName)?.required ?? false;
   }
 
   toggleFieldMode(index: number): void {
@@ -252,24 +263,41 @@ export class MappingBuilderComponent implements OnChanges {
     this.allSuggestions = [...docSuggestions, ...pvSuggestions];
   }
 
-  private ensureTemplateFields(): void {
+  /**
+   * Rebuild fields using template fields as the source of truth.
+   * Expression values fill in where available; unmapped fields show empty.
+   */
+  private rebuildFields(): void {
+    const parsed = parseJsonataToBuilder(this.expression);
+    const parsedByName = new Map(parsed.map((f) => [f.name, f]));
+
     if (!this.templateFields || this.templateFields.length === 0) {
+      // No template fields yet — use whatever we parsed
+      this.fields = parsed;
       return;
     }
 
-    const existingNames = new Set(this.fields.map((f) => f.name));
-    for (const tf of this.templateFields) {
-      if (!existingNames.has(tf.name)) {
-        if (tf.fieldType === 'OBJECT' && tf.children?.length) {
-          this.fields.push({
-            name: tf.name,
-            mode: 'ref',
-            value: '',
-            children: tf.children.map((c) => ({ name: c.name, mode: 'ref' as const, value: '' })),
-          });
-        } else {
-          this.fields.push({ name: tf.name, mode: 'ref', value: '' });
-        }
+    // Template fields drive the structure
+    this.fields = this.templateFields.map((tf) => {
+      const existing = parsedByName.get(tf.name);
+      if (existing) {
+        return existing;
+      }
+      if (tf.fieldType === 'OBJECT' && tf.children?.length) {
+        return {
+          name: tf.name,
+          mode: 'ref' as const,
+          value: '',
+          children: tf.children.map((c) => ({ name: c.name, mode: 'ref' as const, value: '' })),
+        };
+      }
+      return { name: tf.name, mode: 'ref' as const, value: '' };
+    });
+
+    // Include extra fields from expression not in the template schema
+    for (const p of parsed) {
+      if (!this.templateFields.find((tf) => tf.name === p.name)) {
+        this.fields.push(p);
       }
     }
   }
