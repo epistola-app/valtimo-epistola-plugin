@@ -2,8 +2,10 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
+import { TabsModule } from 'carbon-components-angular/tabs';
+import { TagModule } from 'carbon-components-angular/tag';
 import { EpistolaAdminService } from '../../services/epistola-admin.service';
-import { ConnectionStatus, PluginUsageEntry } from '../../models';
+import { ConnectionStatus, PendingJob, PluginUsageEntry } from '../../models';
 
 /**
  * Combined view model for a single plugin configuration card.
@@ -19,6 +21,7 @@ interface ConfigurationCard {
   usageCount: number;
   problemCount: number;
   usageEntries: PluginUsageEntry[];
+  pendingJobs: PendingJob[];
 }
 
 @Component({
@@ -26,18 +29,21 @@ interface ConfigurationCard {
   templateUrl: './epistola-admin-page.component.html',
   styleUrls: ['./epistola-admin-page.component.scss'],
   standalone: true,
-  imports: [CommonModule, RouterModule, PluginTranslatePipeModule],
+  imports: [CommonModule, RouterModule, PluginTranslatePipeModule, TabsModule, TagModule],
 })
 export class EpistolaAdminPageComponent implements OnInit {
   cards: ConfigurationCard[] = [];
   selectedCard: ConfigurationCard | null = null;
+  activeTab: 'actions' | 'pending' = 'actions';
   loading = false;
   pluginVersion: string | null = null;
 
   private connectionStatuses: ConnectionStatus[] = [];
   private usageEntries: PluginUsageEntry[] = [];
+  private pendingJobs: PendingJob[] = [];
   private connectionLoaded = false;
   private usageLoaded = false;
+  private pendingLoaded = false;
   private deepLinkConfigId: string | null = null;
 
   constructor(
@@ -48,18 +54,29 @@ export class EpistolaAdminPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.deepLinkConfigId = this.route.snapshot.queryParamMap.get('configurationId');
+    const tab = this.route.snapshot.queryParamMap.get('tab');
+    if (tab === 'pending' || tab === 'actions') {
+      this.activeTab = tab;
+    }
     this.loadData();
     this.loadPluginVersion();
   }
 
   selectConfiguration(card: ConfigurationCard): void {
     this.selectedCard = card;
-    this.updateUrl(card.configurationId);
+    this.activeTab = 'actions';
+    this.updateUrl(card.configurationId, this.activeTab);
   }
 
   backToOverview(): void {
     this.selectedCard = null;
-    this.updateUrl(null);
+    this.activeTab = 'actions';
+    this.updateUrl(null, null);
+  }
+
+  setActiveTab(tab: 'actions' | 'pending'): void {
+    this.activeTab = tab;
+    this.updateUrl(this.selectedCard?.configurationId ?? null, tab);
   }
 
   refresh(): void {
@@ -80,11 +97,13 @@ export class EpistolaAdminPageComponent implements OnInit {
     });
   }
 
-  private updateUrl(configurationId: string | null): void {
+  private updateUrl(configurationId: string | null, tab: string | null): void {
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { configurationId: configurationId ?? null },
-      queryParamsHandling: 'merge',
+      queryParams: {
+        configurationId: configurationId ?? null,
+        tab: tab ?? null,
+      },
       replaceUrl: true,
     });
   }
@@ -93,6 +112,7 @@ export class EpistolaAdminPageComponent implements OnInit {
     this.loading = true;
     this.connectionLoaded = false;
     this.usageLoaded = false;
+    this.pendingLoaded = false;
 
     this.adminService.getConnectionStatus().subscribe({
       next: (statuses) => {
@@ -119,15 +139,29 @@ export class EpistolaAdminPageComponent implements OnInit {
         this.tryBuildCards();
       },
     });
+
+    this.adminService.getPendingJobs().subscribe({
+      next: (jobs) => {
+        this.pendingJobs = jobs;
+        this.pendingLoaded = true;
+        this.tryBuildCards();
+      },
+      error: () => {
+        this.pendingJobs = [];
+        this.pendingLoaded = true;
+        this.tryBuildCards();
+      },
+    });
   }
 
   private tryBuildCards(): void {
-    if (!this.connectionLoaded || !this.usageLoaded) {
+    if (!this.connectionLoaded || !this.usageLoaded || !this.pendingLoaded) {
       return;
     }
 
     this.cards = this.connectionStatuses.map((status) => {
       const entries = this.usageEntries.filter((e) => e.configurationId === status.configurationId);
+      const jobs = this.pendingJobs.filter((j) => j.tenantId === status.tenantId);
       const problemCount = entries.reduce((sum, e) => sum + e.problems.length, 0);
 
       return {
@@ -141,6 +175,7 @@ export class EpistolaAdminPageComponent implements OnInit {
         usageCount: entries.length,
         problemCount,
         usageEntries: entries,
+        pendingJobs: jobs,
       };
     });
 

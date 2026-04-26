@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ConfigService } from '@valtimo/shared';
 import { Observable } from 'rxjs';
-import { ConnectionStatus, PluginUsageEntry, VersionInfo } from '../models';
+import { ConnectionStatus, PendingJob, PluginUsageEntry, VersionInfo } from '../models';
 
 /**
  * Service for Epistola plugin administrative operations.
@@ -38,6 +38,13 @@ export class EpistolaAdminService {
    */
   getPluginUsage(): Observable<PluginUsageEntry[]> {
     return this.http.get<PluginUsageEntry[]>(`${this.apiEndpoint}/usage`);
+  }
+
+  /**
+   * Get all process instances currently waiting for an Epistola document generation result.
+   */
+  getPendingJobs(): Observable<PendingJob[]> {
+    return this.http.get<PendingJob[]>(`${this.apiEndpoint}/pending`);
   }
 
   /**

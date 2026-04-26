@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Pending jobs overview** — Admin page now shows all process instances currently waiting for an Epistola document generation result. Displays configuration, process, activity, and request ID per waiting job. New backend endpoint `GET /api/v1/plugin/epistola/admin/pending`.
 - **Process link export** — Download button on each process link row in the admin page that exports the full configuration as a `.process-link.json` file matching Valtimo's auto-deploy format. New backend endpoint `GET /api/v1/plugin/epistola/admin/export/{processLinkId}`.
 - **oxfmt and oxlint** — Added code formatting (oxfmt) and linting (oxlint) with configuration matching epistola-suite. Managed via mise and npm devDependencies. CI pipeline updated with `lint:check` and `format:check` steps.
 - **Project governance files** — CODE_OF_CONDUCT.md (Contributor Covenant v2.1), CONTRIBUTING.md (development workflow, commit conventions, testing requirements), SECURITY.md (vulnerability reporting policy), PR template, CODEOWNERS, issue templates (bug report, feature request, documentation), labels.yml, and root .editorconfig

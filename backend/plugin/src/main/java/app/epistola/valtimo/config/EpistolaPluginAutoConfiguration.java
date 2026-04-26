@@ -142,10 +142,11 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaService epistolaService,
             ProcessLinkService processLinkService,
             RepositoryService repositoryService,
+            RuntimeService runtimeService,
             ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService
     ) {
         return new EpistolaAdminService(pluginService, epistolaService, processLinkService,
-                repositoryService, processDefinitionCaseDefinitionService);
+                repositoryService, runtimeService, processDefinitionCaseDefinitionService);
     }
 
     @Bean

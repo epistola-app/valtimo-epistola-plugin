@@ -49,17 +49,13 @@
             <span class="config-card__label">{{
               'epistolaAdminStatus' | pluginTranslate: 'epistola' | async
             }}</span>
-            <span
-              class="badge"
-              [class.bg-success]="card.reachable"
-              [class.bg-danger]="!card.reachable"
-            >
+            <cds-tag size="sm" [type]="card.reachable ? 'green' : 'red'">
               {{
                 card.reachable
                   ? ('epistolaAdminConnected' | pluginTranslate: 'epistola' | async)
                   : ('epistolaAdminUnreachable' | pluginTranslate: 'epistola' | async)
               }}
-            </span>
+            </cds-tag>
           </div>
           <div *ngIf="card.serverVersion" class="config-card__field">
             <span class="config-card__label">{{
@@ -73,11 +69,17 @@
             }}</span>
             <span class="config-card__value">{{ card.usageCount }}</span>
           </div>
+          <div *ngIf="card.pendingJobs.length > 0" class="config-card__field">
+            <span class="config-card__label">{{
+              'epistolaAdminPendingJobs' | pluginTranslate: 'epistola' | async
+            }}</span>
+            <cds-tag size="sm" type="blue">{{ card.pendingJobs.length }}</cds-tag>
+          </div>
           <div *ngIf="card.problemCount > 0" class="config-card__field">
             <span class="config-card__label">{{
               'epistolaAdminProblems' | pluginTranslate: 'epistola' | async
             }}</span>
-            <span class="badge bg-warning text-dark">{{ card.problemCount }}</span>
+            <cds-tag size="sm" type="red">{{ card.problemCount }}</cds-tag>
           </div>
         </div>
 
@@ -118,17 +120,13 @@
           <tr>
             <th>{{ 'epistolaAdminStatus' | pluginTranslate: 'epistola' | async }}</th>
             <td>
-              <span
-                class="badge"
-                [class.bg-success]="selectedCard.reachable"
-                [class.bg-danger]="!selectedCard.reachable"
-              >
+              <cds-tag size="sm" [type]="selectedCard.reachable ? 'green' : 'red'">
                 {{
                   selectedCard.reachable
                     ? ('epistolaAdminConnected' | pluginTranslate: 'epistola' | async)
                     : ('epistolaAdminUnreachable' | pluginTranslate: 'epistola' | async)
                 }}
-              </span>
+              </cds-tag>
               <span class="text-muted ms-2">{{ selectedCard.latencyMs }} ms</span>
             </td>
           </tr>
@@ -144,74 +142,127 @@
       </table>
     </div>
 
-    <!-- Plugin actions for this configuration -->
-    <h5 class="mb-3">{{ 'epistolaAdminPluginActions' | pluginTranslate: 'epistola' | async }}</h5>
+    <!-- Tabs -->
+    <ng-template #actionsHeading>
+      {{ 'epistolaAdminPluginActions' | pluginTranslate: 'epistola' | async }}
+      <cds-tag size="sm" type="gray" class="ms-1">{{ selectedCard.usageEntries.length }}</cds-tag>
+    </ng-template>
 
-    <div *ngIf="selectedCard.usageEntries.length === 0" class="text-muted mb-3">
-      {{ 'epistolaAdminNoUsageForConfig' | pluginTranslate: 'epistola' | async }}
-    </div>
+    <ng-template #pendingHeading>
+      {{ 'epistolaAdminPendingJobs' | pluginTranslate: 'epistola' | async }}
+      <cds-tag
+        size="sm"
+        [type]="selectedCard.pendingJobs.length > 0 ? 'blue' : 'gray'"
+        class="ms-1"
+      >
+        {{ selectedCard.pendingJobs.length }}
+      </cds-tag>
+    </ng-template>
 
-    <table *ngIf="selectedCard.usageEntries.length > 0" class="table table-striped">
-      <thead>
-        <tr>
-          <th>{{ 'epistolaAdminCase' | pluginTranslate: 'epistola' | async }}</th>
-          <th>{{ 'epistolaAdminProcess' | pluginTranslate: 'epistola' | async }}</th>
-          <th>{{ 'epistolaAdminActivity' | pluginTranslate: 'epistola' | async }}</th>
-          <th>{{ 'epistolaAdminAction' | pluginTranslate: 'epistola' | async }}</th>
-          <th>{{ 'epistolaAdminProblems' | pluginTranslate: 'epistola' | async }}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          *ngFor="let entry of selectedCard.usageEntries"
-          [class.table-warning]="entry.problems.length > 0"
-        >
-          <td>{{ entry.caseDefinitionKey || '-' }}</td>
-          <td>
-            <a
-              *ngIf="entry.caseDefinitionKey && entry.caseDefinitionVersionTag"
-              [routerLink]="[
-                '/case-management',
-                'case',
-                entry.caseDefinitionKey,
-                'version',
-                entry.caseDefinitionVersionTag,
-                'processes',
-                entry.processDefinitionKey,
-              ]"
-              class="usage-link"
+    <cds-tabs [cacheActive]="true" type="contained">
+      <cds-tab
+        [heading]="actionsHeading"
+        [active]="activeTab === 'actions'"
+        (selected)="setActiveTab('actions')"
+      >
+        <div *ngIf="selectedCard.usageEntries.length === 0" class="text-muted mt-3 mb-3">
+          {{ 'epistolaAdminNoUsageForConfig' | pluginTranslate: 'epistola' | async }}
+        </div>
+
+        <table *ngIf="selectedCard.usageEntries.length > 0" class="table table-striped mt-3">
+          <thead>
+            <tr>
+              <th>{{ 'epistolaAdminCase' | pluginTranslate: 'epistola' | async }}</th>
+              <th>{{ 'epistolaAdminProcess' | pluginTranslate: 'epistola' | async }}</th>
+              <th>{{ 'epistolaAdminActivity' | pluginTranslate: 'epistola' | async }}</th>
+              <th>{{ 'epistolaAdminAction' | pluginTranslate: 'epistola' | async }}</th>
+              <th>{{ 'epistolaAdminProblems' | pluginTranslate: 'epistola' | async }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let entry of selectedCard.usageEntries"
+              [class.table-warning]="entry.problems.length > 0"
             >
-              {{ entry.processDefinitionName }}
-            </a>
-            <span *ngIf="!entry.caseDefinitionKey || !entry.caseDefinitionVersionTag">
-              {{ entry.processDefinitionName }}
-            </span>
-          </td>
-          <td>{{ entry.activityName }}</td>
-          <td>
-            <code>{{ entry.actionKey }}</code>
-          </td>
-          <td>
-            <span *ngIf="entry.problems.length === 0" class="badge bg-success">OK</span>
-            <span
-              *ngFor="let problem of entry.problems"
-              class="badge bg-warning text-dark d-block mb-1"
-            >
-              {{ problem }}
-            </span>
-          </td>
-          <td>
-            <button
-              class="btn btn-sm btn-outline-secondary"
-              (click)="exportProcessLink(entry)"
-              [title]="'epistolaAdminExport' | pluginTranslate: 'epistola' | async"
-            >
-              &#x2913;
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+              <td>{{ entry.caseDefinitionKey || '-' }}</td>
+              <td>
+                <a
+                  *ngIf="entry.caseDefinitionKey && entry.caseDefinitionVersionTag"
+                  [routerLink]="[
+                    '/case-management',
+                    'case',
+                    entry.caseDefinitionKey,
+                    'version',
+                    entry.caseDefinitionVersionTag,
+                    'processes',
+                    entry.processDefinitionKey,
+                  ]"
+                  class="usage-link"
+                >
+                  {{ entry.processDefinitionName }}
+                </a>
+                <span *ngIf="!entry.caseDefinitionKey || !entry.caseDefinitionVersionTag">
+                  {{ entry.processDefinitionName }}
+                </span>
+              </td>
+              <td>{{ entry.activityName }}</td>
+              <td>
+                <code>{{ entry.actionKey }}</code>
+              </td>
+              <td>
+                <cds-tag *ngIf="entry.problems.length === 0" size="sm" type="green">OK</cds-tag>
+                <cds-tag
+                  *ngFor="let problem of entry.problems"
+                  size="sm"
+                  type="red"
+                  class="d-block mb-1"
+                >
+                  {{ problem }}
+                </cds-tag>
+              </td>
+              <td>
+                <button
+                  class="btn btn-sm btn-outline-secondary"
+                  (click)="exportProcessLink(entry)"
+                  [title]="'epistolaAdminExport' | pluginTranslate: 'epistola' | async"
+                >
+                  &#x2913;
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </cds-tab>
+
+      <cds-tab
+        [heading]="pendingHeading"
+        [active]="activeTab === 'pending'"
+        (selected)="setActiveTab('pending')"
+      >
+        <div *ngIf="selectedCard.pendingJobs.length === 0" class="text-muted mt-3 mb-3">
+          {{ 'epistolaAdminNoPendingJobs' | pluginTranslate: 'epistola' | async }}
+        </div>
+
+        <table *ngIf="selectedCard.pendingJobs.length > 0" class="table table-striped mt-3">
+          <thead>
+            <tr>
+              <th>{{ 'epistolaAdminProcess' | pluginTranslate: 'epistola' | async }}</th>
+              <th>{{ 'epistolaAdminActivity' | pluginTranslate: 'epistola' | async }}</th>
+              <th>{{ 'epistolaAdminRequestId' | pluginTranslate: 'epistola' | async }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let job of selectedCard.pendingJobs">
+              <td>{{ job.processDefinitionName }}</td>
+              <td>{{ job.activityName }}</td>
+              <td>
+                <code>{{ job.requestId }}</code>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </cds-tab>
+    </cds-tabs>
   </ng-container>
 </div>

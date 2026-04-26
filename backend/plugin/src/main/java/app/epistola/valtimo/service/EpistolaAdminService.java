@@ -1,6 +1,8 @@
 package app.epistola.valtimo.service;
 
+import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
+import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
 import app.epistola.valtimo.web.rest.dto.ProcessLinkExport;
 import app.epistola.valtimo.web.rest.dto.VersionInfo;
@@ -16,12 +18,16 @@ import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.RepositoryService;
+import org.operaton.bpm.engine.RuntimeService;
 import org.operaton.bpm.engine.repository.ProcessDefinition;
+import org.operaton.bpm.engine.runtime.Execution;
 import org.operaton.bpm.model.bpmn.BpmnModelInstance;
 import org.operaton.bpm.model.bpmn.instance.FlowElement;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -41,6 +47,7 @@ public class EpistolaAdminService {
     private final EpistolaService epistolaService;
     private final ProcessLinkService processLinkService;
     private final RepositoryService repositoryService;
+    private final RuntimeService runtimeService;
     private final ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
 
     /**
@@ -162,6 +169,80 @@ public class EpistolaAdminService {
         );
     }
 
+    /**
+     * Find all process instances currently waiting for an Epistola document generation result.
+     */
+    public List<PendingJob> getPendingJobs() {
+        List<Execution> waitingExecutions = runtimeService.createExecutionQuery()
+                .messageEventSubscriptionName(EpistolaProcessVariables.MESSAGE_NAME)
+                .list();
+
+        if (waitingExecutions.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, String> configTitlesByTenant = buildTenantConfigTitleMap();
+        List<PendingJob> jobs = new ArrayList<>();
+
+        for (Execution execution : waitingExecutions) {
+            try {
+                String jobPath = (String) runtimeService.getVariable(
+                        execution.getId(), EpistolaProcessVariables.JOB_PATH);
+
+                if (jobPath == null) {
+                    log.debug("Execution {} has no {} variable, skipping",
+                            execution.getId(), EpistolaProcessVariables.JOB_PATH);
+                    continue;
+                }
+
+                String[] parts = EpistolaMessageCorrelationService.parseJobPath(jobPath);
+                String tenantId = parts[0];
+                String requestId = parts[1];
+
+                // Resolve activity ID from active activities on this execution
+                List<String> activeActivities = runtimeService.getActiveActivityIds(execution.getId());
+                String activityId = activeActivities.isEmpty() ? null : activeActivities.get(0);
+
+                // Resolve process definition from process instance
+                String processDefinitionKey = execution.getProcessDefinitionKey();
+                ProcessDefinition processDef = resolveProcessDefinition(processDefinitionKey);
+                String processDefName = processDef != null
+                        ? (processDef.getName() != null ? processDef.getName() : processDef.getKey())
+                        : processDefinitionKey;
+                String activityName = activityId != null && processDef != null
+                        ? resolveActivityName(processDef.getId(), activityId)
+                        : activityId;
+
+                String configTitle = configTitlesByTenant.getOrDefault(tenantId, tenantId);
+
+                jobs.add(new PendingJob(
+                        execution.getId(),
+                        execution.getProcessInstanceId(),
+                        processDefinitionKey,
+                        processDefName,
+                        activityId,
+                        activityName,
+                        tenantId,
+                        requestId,
+                        configTitle
+                ));
+            } catch (Exception e) {
+                log.warn("Failed to read pending job for execution {}: {}",
+                        execution.getId(), e.getMessage());
+            }
+        }
+
+        return jobs;
+    }
+
+    private Map<String, String> buildTenantConfigTitleMap() {
+        Map<String, String> result = new HashMap<>();
+        for (PluginConfigEntry entry : loadPluginConfigurations()) {
+            result.put(entry.plugin().getTenantId(), entry.config().getTitle());
+        }
+        return result;
+    }
+
     private record CaseInfo(String key, String versionTag) {}
 
     private CaseInfo resolveCaseDefinition(String processDefinitionId) {
@@ -177,6 +258,18 @@ public class EpistolaAdminService {
             }
         } catch (Exception e) {
             log.debug("Could not resolve case definition for process '{}': {}", processDefinitionId, e.getMessage());
+        }
+        return null;
+    }
+
+    private ProcessDefinition resolveProcessDefinition(String processDefinitionKey) {
+        try {
+            return repositoryService.createProcessDefinitionQuery()
+                    .processDefinitionKey(processDefinitionKey)
+                    .latestVersion()
+                    .singleResult();
+        } catch (Exception e) {
+            log.debug("Could not resolve process definition for key '{}': {}", processDefinitionKey, e.getMessage());
         }
         return null;
     }

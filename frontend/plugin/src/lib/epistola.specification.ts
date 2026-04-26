@@ -142,6 +142,10 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminAction: 'Actie',
       epistolaAdminServerVersion: 'Server versie',
       epistolaAdminExport: 'Exporteren',
+      epistolaAdminPendingJobs: 'Wachtende taken',
+      epistolaAdminNoPendingJobs: 'Geen wachtende taken voor deze verbinding.',
+      epistolaAdminConfiguration: 'Configuratie',
+      epistolaAdminRequestId: 'Request ID',
     },
     en: {
       title: 'Epistola Document Suite',
@@ -260,6 +264,10 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminAction: 'Action',
       epistolaAdminServerVersion: 'Server version',
       epistolaAdminExport: 'Export',
+      epistolaAdminPendingJobs: 'Pending jobs',
+      epistolaAdminNoPendingJobs: 'No pending jobs for this connection.',
+      epistolaAdminConfiguration: 'Configuration',
+      epistolaAdminRequestId: 'Request ID',
     },
   },
 };

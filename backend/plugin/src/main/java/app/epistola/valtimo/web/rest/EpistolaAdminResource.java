@@ -2,6 +2,7 @@ package app.epistola.valtimo.web.rest;
 
 import app.epistola.valtimo.service.EpistolaAdminService;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
+import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
 import app.epistola.valtimo.web.rest.dto.ProcessLinkExport;
 import app.epistola.valtimo.web.rest.dto.VersionInfo;
@@ -58,6 +59,15 @@ public class EpistolaAdminResource {
     public ResponseEntity<List<PluginUsageEntry>> getPluginUsage() {
         log.debug("Fetching Epistola plugin usage overview");
         return ResponseEntity.ok(adminService.getPluginUsage());
+    }
+
+    /**
+     * Get all process instances currently waiting for an Epistola document generation result.
+     */
+    @GetMapping("/pending")
+    public ResponseEntity<List<PendingJob>> getPendingJobs() {
+        log.debug("Fetching pending Epistola jobs");
+        return ResponseEntity.ok(adminService.getPendingJobs());
     }
 
     /**
