@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
-import { TemplateField } from '../../models';
+import { TemplateField, VariableSuggestions } from '../../models';
 import {
   BuilderField,
   builderToJsonata,
@@ -34,7 +34,11 @@ import {
             (ngModelChange)="onFieldValueChange(i, $event)"
             [disabled]="disabled"
             placeholder="doc:path.to.field"
+            [attr.list]="'suggestions-' + i"
           />
+          <datalist *ngIf="field.mode === 'ref'" [id]="'suggestions-' + i">
+            <option *ngFor="let s of allSuggestions" [value]="s"></option>
+          </datalist>
           <input
             *ngIf="field.mode === 'raw'"
             type="text"
@@ -72,7 +76,11 @@ import {
                 (ngModelChange)="onChildValueChange(i, j, $event)"
                 [disabled]="disabled"
                 placeholder="doc:path.to.field"
+                [attr.list]="'suggestions-' + i + '-' + j"
               />
+              <datalist *ngIf="child.mode === 'ref'" [id]="'suggestions-' + i + '-' + j">
+                <option *ngFor="let s of allSuggestions" [value]="s"></option>
+              </datalist>
               <input
                 *ngIf="child.mode === 'raw'"
                 type="text"
@@ -169,10 +177,12 @@ import {
 export class MappingBuilderComponent implements OnChanges {
   @Input() expression: string = '';
   @Input() templateFields: TemplateField[] = [];
+  @Input() suggestions: VariableSuggestions | null = null;
   @Input() disabled: boolean = false;
   @Output() expressionChange = new EventEmitter<string>();
 
   fields: BuilderField[] = [];
+  allSuggestions: string[] = [];
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['expression'] && !changes['expression'].firstChange) {
@@ -181,6 +191,9 @@ export class MappingBuilderComponent implements OnChanges {
     if (changes['expression'] || changes['templateFields']) {
       this.fields = parseJsonataToBuilder(this.expression);
       this.ensureTemplateFields();
+    }
+    if (changes['suggestions']) {
+      this.buildSuggestionList();
     }
   }
 
@@ -229,6 +242,16 @@ export class MappingBuilderComponent implements OnChanges {
    * Ensure all template fields have a corresponding builder field.
    * Adds missing fields with empty values.
    */
+  private buildSuggestionList(): void {
+    if (!this.suggestions) {
+      this.allSuggestions = [];
+      return;
+    }
+    const docSuggestions = (this.suggestions.doc || []).map((p) => `doc:${p}`);
+    const pvSuggestions = (this.suggestions.pv || []).map((p) => `pv:${p}`);
+    this.allSuggestions = [...docSuggestions, ...pvSuggestions];
+  }
+
   private ensureTemplateFields(): void {
     if (!this.templateFields || this.templateFields.length === 0) {
       return;

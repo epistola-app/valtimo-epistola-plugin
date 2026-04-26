@@ -11,6 +11,7 @@ import {
   TemplateDetails,
   TemplateInfo,
   ValidationResult,
+  VariableSuggestions,
   VariantInfo,
 } from '../models';
 
@@ -111,6 +112,21 @@ export class EpistolaPluginService {
   getProcessVariables(processDefinitionKey: string): Observable<string[]> {
     return this.http.get<string[]>(`${this.apiEndpoint}/process-variables`, {
       params: { processDefinitionKey },
+    });
+  }
+
+  /**
+   * Get variable suggestions for JSONata autocompletion.
+   */
+  getVariableSuggestions(
+    caseDefinitionKey?: string,
+    processDefinitionKey?: string,
+  ): Observable<VariableSuggestions> {
+    const params: Record<string, string> = {};
+    if (caseDefinitionKey) params['caseDefinitionKey'] = caseDefinitionKey;
+    if (processDefinitionKey) params['processDefinitionKey'] = processDefinitionKey;
+    return this.http.get<VariableSuggestions>(`${this.apiEndpoint}/variable-suggestions`, {
+      params,
     });
   }
 

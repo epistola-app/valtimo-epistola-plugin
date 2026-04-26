@@ -74,3 +74,8 @@ export interface PreviewSource {
   templateName: string;
   processInstanceId: string;
 }
+
+export interface VariableSuggestions {
+  doc: string[];
+  pv: string[];
+}

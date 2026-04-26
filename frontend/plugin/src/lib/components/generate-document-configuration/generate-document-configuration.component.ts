@@ -39,6 +39,7 @@ import {
   loadingResource,
   successResource,
   TemplateField,
+  VariableSuggestions,
 } from '../../models';
 import { EpistolaPluginService } from '../../services';
 import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
@@ -107,6 +108,7 @@ export class GenerateDocumentConfigurationComponent
   caseDefinitionKey: string | null = null;
   processVariables: string[] = [];
   expressionFunctions: ExpressionFunctionInfo[] = [];
+  variableSuggestions: VariableSuggestions | null = null;
   requiredFieldsStatus: { mapped: number; total: number } = { mapped: 0, total: 0 };
   prefillDataMapping: Record<string, any> = {};
 
@@ -428,6 +430,7 @@ export class GenerateDocumentConfigurationComponent
         tap(() => {
           this.templateFields$.next(loadingResource(this.templateFields$.getValue().data));
           this.loadProcessVariables();
+          this.loadVariableSuggestions();
         }),
         switchMap(([configurationId, catalogId, templateId]) =>
           this.epistolaPluginService
@@ -511,6 +514,22 @@ export class GenerateDocumentConfigurationComponent
           this.cdr.markForCheck();
         });
     }
+  }
+
+  private loadVariableSuggestions(): void {
+    this.epistolaPluginService
+      .getVariableSuggestions(
+        this.caseDefinitionKey ?? undefined,
+        this.caseDefinitionKey ?? undefined,
+      )
+      .pipe(
+        takeUntil(this.destroy$),
+        catchError(() => of({ doc: [], pv: [] })),
+      )
+      .subscribe((suggestions) => {
+        this.variableSuggestions = suggestions;
+        this.cdr.markForCheck();
+      });
   }
 
   private handleValid(formValue: Partial<GenerateDocumentConfig & { catalogId: string }>): void {

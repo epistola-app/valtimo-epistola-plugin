@@ -257,6 +257,7 @@
     *ngIf="mappingMode === 'simple'"
     [expression]="dataMapping$ | async"
     [templateFields]="(templateFields$ | async)?.data ?? []"
+    [suggestions]="variableSuggestions"
     [disabled]="!!(disabled$ | async)"
     (expressionChange)="onDataMappingChange($event)"
   ></epistola-mapping-builder>
