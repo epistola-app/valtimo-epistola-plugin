@@ -16,17 +16,7 @@
       "outputFormat": "PDF",
       "filename": "belastingbrief.pdf",
       "resultProcessVariable": "epistolaRequestId",
-      "dataMapping": {
-        "name": "pv:taxpayer.name",
-        "address": {
-          "street": "pv:taxpayer.address.street",
-          "houseNumber": "pv:taxpayer.address.houseNumber",
-          "postalCode": "pv:taxpayer.address.postalCode",
-          "city": "pv:taxpayer.address.city"
-        },
-        "bsn": "pv:taxpayer.bsn",
-        "taxAmount": "pv:taxpayer.taxAmount"
-      },
+      "dataMapping": "{\n  \"name\": $pv.taxpayer.name,\n  \"address\": {\n    \"street\": $pv.taxpayer.address.street,\n    \"houseNumber\": $pv.taxpayer.address.houseNumber,\n    \"postalCode\": $pv.taxpayer.address.postalCode,\n    \"city\": $pv.taxpayer.address.city\n  },\n  \"bsn\": $pv.taxpayer.bsn,\n  \"taxAmount\": $pv.taxpayer.taxAmount\n}",
       "catalogId": "municipality-demo"
     }
   },

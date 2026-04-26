@@ -16,23 +16,7 @@
       "outputFormat": "PDF",
       "filename": "subsidiebesluit.pdf",
       "resultProcessVariable": "requestId1",
-      "dataMapping": {
-        "beneficiary": {
-          "name": "doc:/beneficiary/name",
-          "address": {
-            "street": "doc:/beneficiary/address/street",
-            "houseNumber": "doc:/beneficiary/address/houseNumber",
-            "postalCode": "doc:/beneficiary/address/postalCode",
-            "city": "doc:/beneficiary/address/city"
-          }
-        },
-        "subsidy": {
-          "programName": "doc:/subsidy/programName",
-          "amount": "doc:/subsidy/amount",
-          "decision": "doc:/subsidy/decision",
-          "conditions": "doc:/subsidy/conditions"
-        }
-      },
+      "dataMapping": "{\n  \"beneficiary\": {\n    \"name\": $doc.beneficiary.name,\n    \"address\": {\n      \"street\": $doc.beneficiary.address.street,\n      \"houseNumber\": $doc.beneficiary.address.houseNumber,\n      \"postalCode\": $doc.beneficiary.address.postalCode,\n      \"city\": $doc.beneficiary.address.city\n    }\n  },\n  \"subsidy\": {\n    \"programName\": $doc.subsidy.programName,\n    \"amount\": $doc.subsidy.amount,\n    \"decision\": $doc.subsidy.decision,\n    \"conditions\": $doc.subsidy.conditions\n  }\n}",
       "catalogId": "municipality-demo"
     }
   },
@@ -58,15 +42,7 @@
       "outputFormat": "PDF",
       "filename": "financieel-overzicht.pdf",
       "resultProcessVariable": "requestId2",
-      "dataMapping": {
-        "beneficiary": {
-          "name": "doc:/beneficiary/name"
-        },
-        "subsidy": {
-          "programName": "doc:/subsidy/programName",
-          "amount": "doc:/subsidy/amount"
-        }
-      },
+      "dataMapping": "{\n  \"beneficiary\": {\n    \"name\": $doc.beneficiary.name\n  },\n  \"subsidy\": {\n    \"programName\": $doc.subsidy.programName,\n    \"amount\": $doc.subsidy.amount\n  }\n}",
       "catalogId": "municipality-demo"
     }
   },
@@ -92,15 +68,7 @@
       "outputFormat": "PDF",
       "filename": "voorwaarden-bijlage.pdf",
       "resultProcessVariable": "requestId3",
-      "dataMapping": {
-        "beneficiary": {
-          "name": "doc:/beneficiary/name"
-        },
-        "subsidy": {
-          "programName": "doc:/subsidy/programName",
-          "conditions": "doc:/subsidy/conditions"
-        }
-      },
+      "dataMapping": "{\n  \"beneficiary\": {\n    \"name\": $doc.beneficiary.name\n  },\n  \"subsidy\": {\n    \"programName\": $doc.subsidy.programName,\n    \"conditions\": $doc.subsidy.conditions\n  }\n}",
       "catalogId": "municipality-demo"
     }
   },

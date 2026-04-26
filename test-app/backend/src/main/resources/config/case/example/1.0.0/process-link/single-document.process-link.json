@@ -16,9 +16,7 @@
       "outputFormat": "PDF",
       "filename": "example-document.pdf",
       "resultProcessVariable": "epistolaRequestId",
-      "dataMapping": {
-        "firstName": "doc:/firstName"
-      },
+      "dataMapping": "{\n  \"firstName\": $doc.firstName\n}",
       "catalogId": "municipality-demo"
     }
   }
