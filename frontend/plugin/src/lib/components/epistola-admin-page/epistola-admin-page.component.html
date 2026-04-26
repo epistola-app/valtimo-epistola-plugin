@@ -256,7 +256,9 @@
             <tr *ngFor="let job of selectedCard.pendingJobs">
               <td>{{ job.processDefinitionName }}</td>
               <td>{{ job.activityName }}</td>
-              <td><code>{{ job.requestId }}</code></td>
+              <td>
+                <code>{{ job.requestId }}</code>
+              </td>
             </tr>
           </tbody>
         </table>

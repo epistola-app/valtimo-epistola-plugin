@@ -110,7 +110,7 @@ docker/            # Docker compose for local dependencies
 
 ## Testing
 
-**All tests must pass before pushing.** Run both backend and frontend tests:
+**All tests and checks must pass before pushing:**
 
 ```bash
 # Backend tests
@@ -121,6 +121,10 @@ cd frontend/plugin && pnpm test
 
 # Frontend build (must also succeed)
 cd frontend/plugin && pnpm build
+
+# Formatting (run from project root)
+pnpm format         # auto-fix
+pnpm format:check   # check only (used in CI)
 ```
 
 ## Current State
