@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
+import { TabsModule } from 'carbon-components-angular/tabs';
+import { TagModule } from 'carbon-components-angular/tag';
 import { EpistolaAdminService } from '../../services/epistola-admin.service';
 import { ConnectionStatus, PendingJob, PluginUsageEntry } from '../../models';
 
@@ -27,7 +29,7 @@ interface ConfigurationCard {
   templateUrl: './epistola-admin-page.component.html',
   styleUrls: ['./epistola-admin-page.component.scss'],
   standalone: true,
-  imports: [CommonModule, RouterModule, PluginTranslatePipeModule],
+  imports: [CommonModule, RouterModule, PluginTranslatePipeModule, TabsModule, TagModule],
 })
 export class EpistolaAdminPageComponent implements OnInit {
   cards: ConfigurationCard[] = [];
