@@ -19,32 +19,6 @@
       {{ 'epistolaAdminNoConfigurations' | pluginTranslate: 'epistola' | async }}
     </div>
 
-    <!-- Pending jobs -->
-    <div *ngIf="!loading && pendingJobs.length > 0" class="mb-4">
-      <h5 class="mb-3">
-        {{ 'epistolaAdminPendingJobs' | pluginTranslate: 'epistola' | async }}
-        <span class="badge bg-info ms-2">{{ pendingJobs.length }}</span>
-      </h5>
-      <table class="table table-striped table-sm">
-        <thead>
-          <tr>
-            <th>{{ 'epistolaAdminConfiguration' | pluginTranslate: 'epistola' | async }}</th>
-            <th>{{ 'epistolaAdminProcess' | pluginTranslate: 'epistola' | async }}</th>
-            <th>{{ 'epistolaAdminActivity' | pluginTranslate: 'epistola' | async }}</th>
-            <th>{{ 'epistolaAdminRequestId' | pluginTranslate: 'epistola' | async }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let job of pendingJobs">
-            <td>{{ job.configurationTitle }}</td>
-            <td>{{ job.processDefinitionName }}</td>
-            <td>{{ job.activityName }}</td>
-            <td><code>{{ job.requestId }}</code></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
     <div *ngIf="!loading && cards.length > 0" class="card-grid">
       <div
         *ngFor="let card of cards"
@@ -98,6 +72,12 @@
               'epistolaAdminPluginActions' | pluginTranslate: 'epistola' | async
             }}</span>
             <span class="config-card__value">{{ card.usageCount }}</span>
+          </div>
+          <div *ngIf="card.pendingJobs.length > 0" class="config-card__field">
+            <span class="config-card__label">{{
+              'epistolaAdminPendingJobs' | pluginTranslate: 'epistola' | async
+            }}</span>
+            <span class="badge bg-info">{{ card.pendingJobs.length }}</span>
           </div>
           <div *ngIf="card.problemCount > 0" class="config-card__field">
             <span class="config-card__label">{{
@@ -236,6 +216,35 @@
               &#x2913;
             </button>
           </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Pending jobs for this configuration -->
+    <h5 class="mb-3 mt-4">
+      {{ 'epistolaAdminPendingJobs' | pluginTranslate: 'epistola' | async }}
+      <span *ngIf="selectedCard.pendingJobs.length > 0" class="badge bg-info ms-2">{{
+        selectedCard.pendingJobs.length
+      }}</span>
+    </h5>
+
+    <div *ngIf="selectedCard.pendingJobs.length === 0" class="text-muted mb-3">
+      {{ 'epistolaAdminNoPendingJobs' | pluginTranslate: 'epistola' | async }}
+    </div>
+
+    <table *ngIf="selectedCard.pendingJobs.length > 0" class="table table-striped">
+      <thead>
+        <tr>
+          <th>{{ 'epistolaAdminProcess' | pluginTranslate: 'epistola' | async }}</th>
+          <th>{{ 'epistolaAdminActivity' | pluginTranslate: 'epistola' | async }}</th>
+          <th>{{ 'epistolaAdminRequestId' | pluginTranslate: 'epistola' | async }}</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let job of selectedCard.pendingJobs">
+          <td>{{ job.processDefinitionName }}</td>
+          <td>{{ job.activityName }}</td>
+          <td><code>{{ job.requestId }}</code></td>
         </tr>
       </tbody>
     </table>

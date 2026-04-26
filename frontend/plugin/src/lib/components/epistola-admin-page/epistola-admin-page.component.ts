@@ -19,6 +19,7 @@ interface ConfigurationCard {
   usageCount: number;
   problemCount: number;
   usageEntries: PluginUsageEntry[];
+  pendingJobs: PendingJob[];
 }
 
 @Component({
@@ -31,14 +32,15 @@ interface ConfigurationCard {
 export class EpistolaAdminPageComponent implements OnInit {
   cards: ConfigurationCard[] = [];
   selectedCard: ConfigurationCard | null = null;
-  pendingJobs: PendingJob[] = [];
   loading = false;
   pluginVersion: string | null = null;
 
   private connectionStatuses: ConnectionStatus[] = [];
   private usageEntries: PluginUsageEntry[] = [];
+  private pendingJobs: PendingJob[] = [];
   private connectionLoaded = false;
   private usageLoaded = false;
+  private pendingLoaded = false;
   private deepLinkConfigId: string | null = null;
 
   constructor(
@@ -94,6 +96,7 @@ export class EpistolaAdminPageComponent implements OnInit {
     this.loading = true;
     this.connectionLoaded = false;
     this.usageLoaded = false;
+    this.pendingLoaded = false;
 
     this.adminService.getConnectionStatus().subscribe({
       next: (statuses) => {
@@ -122,18 +125,27 @@ export class EpistolaAdminPageComponent implements OnInit {
     });
 
     this.adminService.getPendingJobs().subscribe({
-      next: (jobs) => (this.pendingJobs = jobs),
-      error: () => (this.pendingJobs = []),
+      next: (jobs) => {
+        this.pendingJobs = jobs;
+        this.pendingLoaded = true;
+        this.tryBuildCards();
+      },
+      error: () => {
+        this.pendingJobs = [];
+        this.pendingLoaded = true;
+        this.tryBuildCards();
+      },
     });
   }
 
   private tryBuildCards(): void {
-    if (!this.connectionLoaded || !this.usageLoaded) {
+    if (!this.connectionLoaded || !this.usageLoaded || !this.pendingLoaded) {
       return;
     }
 
     this.cards = this.connectionStatuses.map((status) => {
       const entries = this.usageEntries.filter((e) => e.configurationId === status.configurationId);
+      const jobs = this.pendingJobs.filter((j) => j.tenantId === status.tenantId);
       const problemCount = entries.reduce((sum, e) => sum + e.problems.length, 0);
 
       return {
@@ -147,6 +159,7 @@ export class EpistolaAdminPageComponent implements OnInit {
         usageCount: entries.length,
         problemCount,
         usageEntries: entries,
+        pendingJobs: jobs,
       };
     });
 
