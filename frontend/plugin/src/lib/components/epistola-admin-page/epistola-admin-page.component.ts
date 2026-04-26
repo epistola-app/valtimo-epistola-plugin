@@ -32,6 +32,7 @@ interface ConfigurationCard {
 export class EpistolaAdminPageComponent implements OnInit {
   cards: ConfigurationCard[] = [];
   selectedCard: ConfigurationCard | null = null;
+  activeTab: 'actions' | 'pending' = 'actions';
   loading = false;
   pluginVersion: string | null = null;
 
@@ -51,18 +52,29 @@ export class EpistolaAdminPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.deepLinkConfigId = this.route.snapshot.queryParamMap.get('configurationId');
+    const tab = this.route.snapshot.queryParamMap.get('tab');
+    if (tab === 'pending' || tab === 'actions') {
+      this.activeTab = tab;
+    }
     this.loadData();
     this.loadPluginVersion();
   }
 
   selectConfiguration(card: ConfigurationCard): void {
     this.selectedCard = card;
-    this.updateUrl(card.configurationId);
+    this.activeTab = 'actions';
+    this.updateUrl(card.configurationId, this.activeTab);
   }
 
   backToOverview(): void {
     this.selectedCard = null;
-    this.updateUrl(null);
+    this.activeTab = 'actions';
+    this.updateUrl(null, null);
+  }
+
+  setActiveTab(tab: 'actions' | 'pending'): void {
+    this.activeTab = tab;
+    this.updateUrl(this.selectedCard?.configurationId ?? null, tab);
   }
 
   refresh(): void {
@@ -83,11 +95,13 @@ export class EpistolaAdminPageComponent implements OnInit {
     });
   }
 
-  private updateUrl(configurationId: string | null): void {
+  private updateUrl(configurationId: string | null, tab: string | null): void {
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { configurationId: configurationId ?? null },
-      queryParamsHandling: 'merge',
+      queryParams: {
+        configurationId: configurationId ?? null,
+        tab: tab ?? null,
+      },
       replaceUrl: true,
     });
   }
