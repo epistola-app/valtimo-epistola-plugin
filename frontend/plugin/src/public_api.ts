@@ -6,6 +6,8 @@ export * from './lib/models';
 export * from './lib/services';
 export * from './lib/epistola.module';
 export * from './lib/epistola.specification';
+export * from './lib/epistola-admin-routing.module';
+export * from './lib/components/epistola-admin-page/epistola-admin-page.component';
 export * from './lib/components/epistola-configuration/epistola-configuration.component';
 export * from './lib/components/generate-document-configuration/generate-document-configuration.component';
 export * from './lib/components/check-job-status-configuration/check-job-status-configuration.component';

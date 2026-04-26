@@ -1,15 +1,16 @@
 package app.epistola.valtimo.config;
 
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
-import app.epistola.valtimo.deploy.EpistolaTemplateSyncService;
-import app.epistola.valtimo.deploy.EpistolaTemplateSyncTrigger;
-import app.epistola.valtimo.deploy.TemplateDefinitionScanner;
+import app.epistola.valtimo.deploy.CatalogScanner;
+import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
+import app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.expression.ExpressionResolver;
 import app.epistola.valtimo.expression.functions.FormatDateFunction;
 import app.epistola.valtimo.expression.functions.StringFunctions;
 import app.epistola.valtimo.service.DataMappingResolverService;
+import app.epistola.valtimo.service.EpistolaAdminService;
 import app.epistola.valtimo.service.EpistolaCompletionEventConsumer;
 import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.EpistolaService;
@@ -18,10 +19,12 @@ import app.epistola.valtimo.service.FormioFormGenerator;
 import app.epistola.valtimo.service.PollingCompletionEventConsumer;
 import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.RetryFormService;
+import app.epistola.valtimo.web.rest.EpistolaAdminResource;
 import app.epistola.valtimo.web.rest.EpistolaCallbackResource;
 import app.epistola.valtimo.web.rest.EpistolaPluginResource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.service.PluginService;
+import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
 import com.ritense.processlink.service.ProcessLinkService;
 import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
@@ -169,6 +172,28 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(EpistolaAdminService.class)
+    public EpistolaAdminService epistolaAdminService(
+            PluginService pluginService,
+            EpistolaService epistolaService,
+            ProcessLinkService processLinkService,
+            RepositoryService repositoryService,
+            RuntimeService runtimeService,
+            ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService
+    ) {
+        return new EpistolaAdminService(pluginService, epistolaService, processLinkService,
+                repositoryService, runtimeService, processDefinitionCaseDefinitionService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaAdminResource.class)
+    public EpistolaAdminResource epistolaAdminResource(
+            EpistolaAdminService adminService
+    ) {
+        return new EpistolaAdminResource(adminService);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(EpistolaMessageCorrelationService.class)
     public EpistolaMessageCorrelationService epistolaMessageCorrelationService(
             RuntimeService runtimeService
@@ -206,28 +231,27 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(TemplateDefinitionScanner.class)
-    public TemplateDefinitionScanner templateDefinitionScanner(ObjectMapper objectMapper) {
-        return new TemplateDefinitionScanner(objectMapper);
+    @ConditionalOnMissingBean(CatalogScanner.class)
+    public CatalogScanner catalogScanner(ObjectMapper objectMapper) {
+        return new CatalogScanner(objectMapper);
     }
 
     @Bean
-    @ConditionalOnMissingBean(EpistolaTemplateSyncService.class)
-    public EpistolaTemplateSyncService epistolaTemplateSyncService(
-            TemplateDefinitionScanner scanner,
-            EpistolaService epistolaService,
-            ObjectMapper objectMapper
+    @ConditionalOnMissingBean(EpistolaCatalogSyncService.class)
+    public EpistolaCatalogSyncService epistolaCatalogSyncService(
+            CatalogScanner scanner,
+            EpistolaService epistolaService
     ) {
-        return new EpistolaTemplateSyncService(scanner, epistolaService, objectMapper);
+        return new EpistolaCatalogSyncService(scanner, epistolaService);
     }
 
     @Bean
-    @ConditionalOnMissingBean(EpistolaTemplateSyncTrigger.class)
-    public EpistolaTemplateSyncTrigger epistolaTemplateSyncTrigger(
+    @ConditionalOnMissingBean(EpistolaCatalogSyncTrigger.class)
+    public EpistolaCatalogSyncTrigger epistolaCatalogSyncTrigger(
             PluginService pluginService,
-            EpistolaTemplateSyncService syncService
+            EpistolaCatalogSyncService syncService
     ) {
-        return new EpistolaTemplateSyncTrigger(pluginService, syncService);
+        return new EpistolaCatalogSyncTrigger(pluginService, syncService);
     }
 
     @Bean

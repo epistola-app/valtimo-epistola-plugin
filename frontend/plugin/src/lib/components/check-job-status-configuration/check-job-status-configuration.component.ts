@@ -1,17 +1,17 @@
-import {Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {FunctionConfigurationComponent, PluginTranslatePipeModule} from '@valtimo/plugin';
-import {FormModule, FormOutput, InputModule} from '@valtimo/components';
-import {BehaviorSubject, combineLatest, Observable, Subscription, take} from 'rxjs';
-import {delay, startWith} from 'rxjs/operators';
-import {CheckJobStatusConfig} from '../../models';
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FunctionConfigurationComponent, PluginTranslatePipeModule } from '@valtimo/plugin';
+import { FormModule, FormOutput, InputModule } from '@valtimo/components';
+import { BehaviorSubject, combineLatest, Observable, Subscription, take } from 'rxjs';
+import { delay, startWith } from 'rxjs/operators';
+import { CheckJobStatusConfig } from '../../models';
 
 @Component({
   selector: 'epistola-check-job-status-configuration',
   templateUrl: './check-job-status-configuration.component.html',
   styleUrls: ['./check-job-status-configuration.component.scss'],
   standalone: true,
-  imports: [CommonModule, PluginTranslatePipeModule, FormModule, InputModule]
+  imports: [CommonModule, PluginTranslatePipeModule, FormModule, InputModule],
 })
 export class CheckJobStatusConfigurationComponent
   implements FunctionConfigurationComponent, OnInit, OnDestroy
@@ -22,7 +22,8 @@ export class CheckJobStatusConfigurationComponent
   @Input() prefillConfiguration$!: Observable<CheckJobStatusConfig>;
 
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
-  @Output() configuration: EventEmitter<CheckJobStatusConfig> = new EventEmitter<CheckJobStatusConfig>();
+  @Output() configuration: EventEmitter<CheckJobStatusConfig> =
+    new EventEmitter<CheckJobStatusConfig>();
 
   private saveSubscription!: Subscription;
   private readonly formValue$ = new BehaviorSubject<CheckJobStatusConfig | null>(null);
@@ -31,10 +32,7 @@ export class CheckJobStatusConfigurationComponent
   safeDisabled$!: Observable<boolean>;
 
   ngOnInit(): void {
-    this.safeDisabled$ = this.disabled$.pipe(
-      startWith(true),
-      delay(0)
-    );
+    this.safeDisabled$ = this.disabled$.pipe(startWith(true), delay(0));
     this.openSaveSubscription();
   }
 
@@ -49,10 +47,7 @@ export class CheckJobStatusConfigurationComponent
   }
 
   private handleValid(formValue: CheckJobStatusConfig): void {
-    const valid = !!(
-      formValue?.requestIdVariable &&
-      formValue?.statusVariable
-    );
+    const valid = !!(formValue?.requestIdVariable && formValue?.statusVariable);
     this.valid$.next(valid);
     this.valid.emit(valid);
   }

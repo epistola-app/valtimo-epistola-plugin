@@ -30,18 +30,19 @@ The process simply waits for a message. It doesn't know or care how that message
 
 ### Process Variables
 
-| Variable | Set By | Description |
-|----------|--------|-------------|
-| `epistolaJobPath` | `generate-document` action | Composite job identifier: `epistola:job:{tenantId}/{requestId}` |
-| `epistolaStatus` | Correlation service | Job status: `COMPLETED`, `FAILED`, or `CANCELLED` |
-| `epistolaDocumentId` | Correlation service | Document ID when completed (null otherwise) |
-| `epistolaErrorMessage` | Correlation service | Error message when failed (null otherwise) |
+| Variable               | Set By                     | Description                                                     |
+| ---------------------- | -------------------------- | --------------------------------------------------------------- |
+| `epistolaJobPath`      | `generate-document` action | Composite job identifier: `epistola:job:{tenantId}/{requestId}` |
+| `epistolaStatus`       | Correlation service        | Job status: `COMPLETED`, `FAILED`, or `CANCELLED`               |
+| `epistolaDocumentId`   | Correlation service        | Document ID when completed (null otherwise)                     |
+| `epistolaErrorMessage` | Correlation service        | Error message when failed (null otherwise)                      |
 
 The `generate-document` action also stores the raw request ID in a user-configured process variable (e.g., `epistolaRequestId`) via the `resultProcessVariable` parameter.
 
 ### Message Catch Event Configuration
 
 In your BPMN model, add a Message Intermediate Catch Event with:
+
 - **Message Name**: `EpistolaDocumentGenerated`
 
 No additional configuration is needed. The `epistolaJobPath` variable is set automatically by the `generate-document` action.
@@ -103,6 +104,7 @@ This centralizes polling into one scheduled task instead of N timer loops in the
 The poller needs to know which Epistola instance to query for each waiting process. The `generate-document` action stores a single composite `epistolaJobPath` variable (format: `epistola:job:{tenantId}/{requestId}`) that encodes both the tenant and request ID atomically.
 
 The polling flow:
+
 1. Query all waiting executions
 2. Read `epistolaJobPath` from each execution, parse into `tenantId` + `requestId`
 3. Load all Epistola plugin configurations (via `PluginService`)
@@ -116,8 +118,8 @@ This supports multiple Epistola plugin configurations in the same Valtimo instan
 ```yaml
 epistola:
   poller:
-    enabled: true       # Set to false to disable polling (default: true)
-    interval: 30000     # Milliseconds between poll cycles (default: 30000)
+    enabled: true # Set to false to disable polling (default: true)
+    interval: 30000 # Milliseconds between poll cycles (default: 30000)
 ```
 
 The poller is enabled by default. Disable it when using webhooks or a future event API for completion notifications.

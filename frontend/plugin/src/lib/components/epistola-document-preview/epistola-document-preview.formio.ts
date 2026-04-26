@@ -1,6 +1,6 @@
-import {Injector} from '@angular/core';
-import {FormioCustomComponentInfo, registerCustomFormioComponent} from '@valtimo/components';
-import {EpistolaDocumentPreviewComponent} from './epistola-document-preview.component';
+import { Injector } from '@angular/core';
+import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
+import { EpistolaDocumentPreviewComponent } from './epistola-document-preview.component';
 
 export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-document-preview',
@@ -14,6 +14,10 @@ export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
 
 export function registerEpistolaDocumentPreviewComponent(injector: Injector): void {
   if (!customElements.get(EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.selector)) {
-    registerCustomFormioComponent(EPISTOLA_DOCUMENT_PREVIEW_OPTIONS, EpistolaDocumentPreviewComponent, injector);
+    registerCustomFormioComponent(
+      EPISTOLA_DOCUMENT_PREVIEW_OPTIONS,
+      EpistolaDocumentPreviewComponent,
+      injector,
+    );
   }
 }

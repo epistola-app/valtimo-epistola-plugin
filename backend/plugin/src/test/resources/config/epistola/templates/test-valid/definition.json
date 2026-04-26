@@ -9,9 +9,7 @@
     },
     "required": ["name"]
   },
-  "dataExamples": [
-    { "id": "ex-1", "name": "Example 1", "data": { "name": "Test" } }
-  ],
+  "dataExamples": [{ "id": "ex-1", "name": "Example 1", "data": { "name": "Test" } }],
   "templateModel": {
     "modelVersion": 1,
     "root": "n-root",

@@ -101,10 +101,7 @@
         }
       ],
       "realmRoles": ["ROLE_USER"],
-      "groups": [
-        "valtimo-users",
-        "ep_demo_reader"
-      ]
+      "groups": ["valtimo-users", "ep_demo_reader"]
     },
     {
       "username": "reader@demo",
@@ -120,10 +117,7 @@
         }
       ],
       "realmRoles": ["ROLE_USER"],
-      "groups": [
-        "valtimo-users",
-        "ep_demo_reader"
-      ]
+      "groups": ["valtimo-users", "ep_demo_reader"]
     },
     {
       "username": "editor@demo",
@@ -139,11 +133,7 @@
         }
       ],
       "realmRoles": ["ROLE_USER"],
-      "groups": [
-        "valtimo-users",
-        "ep_demo_reader",
-        "ep_demo_editor"
-      ]
+      "groups": ["valtimo-users", "ep_demo_reader", "ep_demo_editor"]
     },
     {
       "username": "generator@demo",
@@ -159,11 +149,7 @@
         }
       ],
       "realmRoles": ["ROLE_USER"],
-      "groups": [
-        "valtimo-users",
-        "ep_demo_reader",
-        "ep_demo_generator"
-      ]
+      "groups": ["valtimo-users", "ep_demo_reader", "ep_demo_generator"]
     },
     {
       "username": "manager@demo",
@@ -206,11 +192,7 @@
       "enabled": true,
       "serviceAccountClientId": "epistola-suite",
       "clientRoles": {
-        "realm-management": [
-          "manage-users",
-          "view-users",
-          "query-users"
-        ]
+        "realm-management": ["manage-users", "view-users", "query-users"]
       }
     }
   ],
@@ -223,20 +205,9 @@
       "directAccessGrantsEnabled": true,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
-      "redirectUris": [
-        "http://localhost:4200/*",
-        "http://localhost:8080/*"
-      ],
-      "webOrigins": [
-        "http://localhost:4200",
-        "http://localhost:8080"
-      ],
-      "defaultClientScopes": [
-        "web-origins",
-        "profile",
-        "roles",
-        "email"
-      ]
+      "redirectUris": ["http://localhost:4200/*", "http://localhost:8080/*"],
+      "webOrigins": ["http://localhost:4200", "http://localhost:8080"],
+      "defaultClientScopes": ["web-origins", "profile", "roles", "email"]
     },
     {
       "clientId": "valtimo-backend",
@@ -255,12 +226,8 @@
       "clientAuthenticatorType": "client-secret",
       "secret": "epistola-dev-secret",
       "serviceAccountsEnabled": true,
-      "redirectUris": [
-        "http://localhost:4010/*"
-      ],
-      "webOrigins": [
-        "http://localhost:4010"
-      ],
+      "redirectUris": ["http://localhost:4010/*"],
+      "webOrigins": ["http://localhost:4010"],
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": false,
       "publicClient": false,
@@ -268,13 +235,7 @@
       "attributes": {
         "post.logout.redirect.uris": "http://localhost:4010/*"
       },
-      "defaultClientScopes": [
-        "web-origins",
-        "profile",
-        "roles",
-        "email",
-        "openid"
-      ],
+      "defaultClientScopes": ["web-origins", "profile", "roles", "email", "openid"],
       "protocolMappers": [
         {
           "name": "group-membership-mapper",
@@ -292,11 +253,5 @@
       ]
     }
   ],
-  "defaultDefaultClientScopes": [
-    "role_list",
-    "profile",
-    "email",
-    "roles",
-    "web-origins"
-  ]
+  "defaultDefaultClientScopes": ["role_list", "profile", "email", "roles", "web-origins"]
 }

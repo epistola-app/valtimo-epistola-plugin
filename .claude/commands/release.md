@@ -61,6 +61,7 @@ This triggers the Release workflow in GitHub Actions which handles building, tes
 ### 6. Post-release summary
 
 Display:
+
 - Version released (and previous version for context)
 - Artifacts that will be published:
   - Maven Central: `app.epistola.valtimo:epistola-plugin:X.Y.Z`

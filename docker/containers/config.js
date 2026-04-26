@@ -1,4 +1,4 @@
-(function(window) {
+(function (window) {
   window['env'] = window['env'] || {};
   window['env']['swaggerUri'] = '/swagger-ui.html';
   window['env']['mockApiUri'] = '/mock-api';

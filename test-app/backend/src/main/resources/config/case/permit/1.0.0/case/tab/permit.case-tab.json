@@ -1,32 +1,32 @@
 [
-    {
-        "key": "progress",
-        "name": null,
-        "type": "standard",
-        "contentKey": "progress"
-    },
-    {
-        "key": "tasks",
-        "name": "Taken",
-        "type": "standard",
-        "contentKey": "tasks"
-    },
-    {
-        "key": "audit",
-        "name": null,
-        "type": "standard",
-        "contentKey": "audit"
-    },
-    {
-        "key": "documents",
-        "name": null,
-        "type": "standard",
-        "contentKey": "documents"
-    },
-    {
-        "key": "notes",
-        "name": null,
-        "type": "standard",
-        "contentKey": "notes"
-    }
+  {
+    "key": "progress",
+    "name": null,
+    "type": "standard",
+    "contentKey": "progress"
+  },
+  {
+    "key": "tasks",
+    "name": "Taken",
+    "type": "standard",
+    "contentKey": "tasks"
+  },
+  {
+    "key": "audit",
+    "name": null,
+    "type": "standard",
+    "contentKey": "audit"
+  },
+  {
+    "key": "documents",
+    "name": null,
+    "type": "standard",
+    "contentKey": "documents"
+  },
+  {
+    "key": "notes",
+    "name": null,
+    "type": "standard",
+    "contentKey": "notes"
+  }
 ]

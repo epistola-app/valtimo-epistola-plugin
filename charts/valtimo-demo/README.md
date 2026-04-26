@@ -114,63 +114,73 @@ helm install demo charts/valtimo-demo \
 
 ## Secrets Management
 
-All sensitive values are consolidated under the `secrets:` block in `values.yaml`
-and stored in a single Kubernetes `Secret` named `<release>-valtimo-demo-backend`.
-Client secrets for the Keycloak realm are injected at runtime via an init container
-— the realm ConfigMap never contains actual secrets.
+Each credential supports three modes: **auto-generated** (default), **explicit
+value**, or **secretRef** (reference an existing K8s Secret). This allows sharing
+secrets across apps — e.g., the same Keycloak client secret used by both
+valtimo-demo and epistola.
 
-### Chart-managed secret (default)
+### Auto-generated (default)
 
-When no `secrets.existingSecret` is set, the chart creates the Secret from the
-`secrets.*` values:
+Leave `value` empty — the chart generates a random value and stores it in the
+chart-managed Secret. Values persist across upgrades.
 
 ```yaml
 secrets:
-  keycloakClientSecret: "change-me"
-  pluginEncryptionSecret: "0123456789abcdef0123456789abcdef"
-  operatonAdminPassword: "admin"
-  keycloakAdminPassword: ""          # auto-generated when empty
-  epistolaClientSecret: "change-me"
+  keycloakClientSecret:
+    value: ""              # auto-generated (40 chars)
+  pluginEncryptionSecret:
+    value: ""              # auto-generated (32 chars)
+  operatonAdminPassword:
+    value: ""              # auto-generated (24 chars)
 ```
 
-### Using an existing secret
+### Explicit value
 
-Set `secrets.existingSecret` to the name of a pre-existing Secret. The chart will
-skip creating its own Secret and all deployments will reference the provided one
-instead.
+Set `value` to a known string:
+
+```yaml
+secrets:
+  operatonAdminPassword:
+    value: "admin"
+```
+
+### Per-credential secret reference (recommended for production)
+
+Point each credential to its own K8s Secret. Enables sharing secrets across
+charts without duplication:
+
+```yaml
+secrets:
+  keycloakClientSecret:
+    secretRef:
+      name: keycloak-valtimo-backend    # Secret name
+      key: client-secret                # key within that Secret
+  operatonAdminPassword:
+    secretRef:
+      name: operaton-admin
+      key: password
+  epistolaClientSecret:
+    secretRef:
+      name: epistola-keycloak-client    # same Secret used by epistola chart
+      key: client-secret
+  # pluginEncryptionSecret left empty → auto-generated into chart Secret
+```
+
+When `secretRef.name` is set for a credential, it is read directly from that
+Secret and excluded from the chart-managed Secret.
+
+### Legacy: single existing secret
+
+Set `secrets.existingSecret` to reference one Secret for all credentials:
 
 ```yaml
 secrets:
   existingSecret: "my-valtimo-sealed-secret"
 ```
 
-The existing Secret must contain **all** of the following keys:
-
-| Key | Description |
-| --- | --- |
-| `keycloak-client-secret` | Valtimo backend service-account secret for Keycloak |
-| `plugin-encryption-secret` | AES key used by Valtimo to encrypt plugin properties |
-| `operaton-admin-password` | Operaton BPMN engine admin password |
-| `keycloak-admin-password` | Keycloak bootstrap admin password (required when `keycloak.enabled`) |
-| `epistola-client-secret` | Epistola OAuth2 client secret (required when Epistola is enabled) |
-
-#### Example: Sealed Secrets
-
-Create a SealedSecret that decrypts into the expected Secret:
-
-```yaml
-apiVersion: bitnami.com/v1alpha1
-kind: SealedSecret
-metadata:
-  name: my-valtimo-sealed-secret
-spec:
-  encryptedData:
-    keycloak-client-secret: AgBy3i...
-    plugin-encryption-secret: AgCx8j...
-    operaton-admin-password: AgDz2k...
-    keycloak-admin-password: AgEw1l...
-    epistola-client-secret: AgFv3m...
-```
+The Secret must contain keys: `keycloak-client-secret`, `plugin-encryption-secret`,
+`operaton-admin-password`, `keycloak-admin-password` (when Keycloak enabled),
+`epistola-client-secret` (when Epistola enabled).
 
 Then reference it in your values:
 

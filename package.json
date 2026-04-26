@@ -12,23 +12,30 @@
     "dev": "pnpm build:plugin && pnpm start",
     "watch:plugin": "pnpm --filter @epistola.app/valtimo-plugin watch",
     "test": "pnpm -r test",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "lint": "oxlint --fix",
+    "lint:check": "oxlint",
     "clean": "rm -rf node_modules && pnpm -r exec rm -rf node_modules dist"
   },
   "devDependencies": {
-    "@angular/compiler-cli": "^19.0.0",
-    "@angular/compiler": "^19.0.0",
-    "@angular/core": "^19.0.0",
     "@angular/common": "^19.0.0",
+    "@angular/compiler": "^19.0.0",
+    "@angular/compiler-cli": "^19.0.0",
+    "@angular/core": "^19.0.0",
     "@angular/forms": "^19.0.0",
-    "@valtimo/plugin": "13.21.0",
     "@valtimo/components": "13.21.0",
+    "@valtimo/plugin": "13.21.0",
     "@valtimo/shared": "13.21.0",
-    "typescript": "~5.8.0",
+    "oxfmt": "^0.46.0",
+    "oxlint": "^1.61.0",
+    "oxlint-tsgolint": "^0.18.0",
     "rxjs": "^7.8.0",
+    "typescript": "~5.8.0",
     "zone.js": "^0.15.0"
   },
-  "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": ">=18"
-  }
+  },
+  "packageManager": "pnpm@9.15.0"
 }

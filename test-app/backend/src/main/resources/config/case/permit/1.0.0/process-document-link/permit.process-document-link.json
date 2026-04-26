@@ -1,8 +1,8 @@
 [
-    {
-        "processDefinitionKey": "permit-confirmation",
-        "canInitializeDocument": true,
-        "startableByUser": true,
-        "processIsVisibleInMenu": true
-    }
+  {
+    "processDefinitionKey": "permit-confirmation",
+    "canInitializeDocument": true,
+    "startableByUser": true,
+    "processIsVisibleInMenu": true
+  }
 ]

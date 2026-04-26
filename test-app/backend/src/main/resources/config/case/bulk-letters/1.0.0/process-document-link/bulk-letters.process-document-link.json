@@ -1,8 +1,8 @@
 [
-    {
-        "processDefinitionKey": "bulk-tax-letters",
-        "canInitializeDocument": true,
-        "startableByUser": true,
-        "processIsVisibleInMenu": true
-    }
+  {
+    "processDefinitionKey": "bulk-tax-letters",
+    "canInitializeDocument": true,
+    "startableByUser": true,
+    "processIsVisibleInMenu": true
+  }
 ]

@@ -19,7 +19,13 @@ const MOCK_TEMPLATE_DETAILS = {
   id: 'tpl-1',
   name: 'Invoice Template',
   fields: [
-    { name: 'customerName', path: 'customerName', type: 'string', fieldType: 'SCALAR', required: true },
+    {
+      name: 'customerName',
+      path: 'customerName',
+      type: 'string',
+      fieldType: 'SCALAR',
+      required: true,
+    },
     { name: 'amount', path: 'amount', type: 'number', fieldType: 'SCALAR', required: true },
     { name: 'notes', path: 'notes', type: 'string', fieldType: 'SCALAR', required: false },
   ],
@@ -31,24 +37,23 @@ const MOCK_TEMPLATE_DETAILS = {
  */
 async function mockEpistolaApis(page: Page) {
   await page.route('**/api/v1/plugin/epistola/configurations/*/templates', (route) =>
-    route.fulfill({ json: MOCK_TEMPLATES })
+    route.fulfill({ json: MOCK_TEMPLATES }),
   );
   await page.route('**/api/v1/plugin/epistola/configurations/*/templates/*/variants', (route) =>
-    route.fulfill({ json: MOCK_VARIANTS })
+    route.fulfill({ json: MOCK_VARIANTS }),
   );
   await page.route('**/api/v1/plugin/epistola/configurations/*/environments', (route) =>
-    route.fulfill({ json: MOCK_ENVIRONMENTS })
+    route.fulfill({ json: MOCK_ENVIRONMENTS }),
   );
   await page.route('**/api/v1/plugin/epistola/configurations/*/templates/tpl-1', (route) =>
-    route.fulfill({ json: MOCK_TEMPLATE_DETAILS })
+    route.fulfill({ json: MOCK_TEMPLATE_DETAILS }),
   );
   await page.route('**/api/v1/plugin/epistola/process-variables**', (route) =>
-    route.fulfill({ json: ['orderId', 'customerEmail', 'totalAmount'] })
+    route.fulfill({ json: ['orderId', 'customerEmail', 'totalAmount'] }),
   );
 }
 
 test.describe('Generate Document Action Configuration', () => {
-
   test('should render all form fields', async ({ page }) => {
     await mockEpistolaApis(page);
 
@@ -75,7 +80,7 @@ test.describe('Generate Document Action Configuration', () => {
 
     // Verify that our mocked endpoints respond correctly
     const templatesResponse = await page.request.get(
-      'http://localhost:4200/api/v1/plugin/epistola/configurations/test-config/templates'
+      'http://localhost:4200/api/v1/plugin/epistola/configurations/test-config/templates',
     );
     expect(templatesResponse.ok()).toBeTruthy();
     const templates = await templatesResponse.json();
@@ -83,14 +88,14 @@ test.describe('Generate Document Action Configuration', () => {
     expect(templates[0].name).toBe('Invoice Template');
 
     const environmentsResponse = await page.request.get(
-      'http://localhost:4200/api/v1/plugin/epistola/configurations/test-config/environments'
+      'http://localhost:4200/api/v1/plugin/epistola/configurations/test-config/environments',
     );
     expect(environmentsResponse.ok()).toBeTruthy();
     const environments = await environmentsResponse.json();
     expect(environments).toHaveLength(2);
 
     const variantsResponse = await page.request.get(
-      'http://localhost:4200/api/v1/plugin/epistola/configurations/test-config/templates/tpl-1/variants'
+      'http://localhost:4200/api/v1/plugin/epistola/configurations/test-config/templates/tpl-1/variants',
     );
     expect(variantsResponse.ok()).toBeTruthy();
     const variants = await variantsResponse.json();

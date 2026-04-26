@@ -1,4 +1,4 @@
-import {PluginConfigurationData} from '@valtimo/plugin';
+import { PluginConfigurationData } from '@valtimo/plugin';
 
 /**
  * Plugin-level configuration for Epistola.
@@ -32,6 +32,7 @@ export interface VariantAttributeEntry {
  * - By attributes: set variantAttributes with key-value pairs (values can be value resolver expressions)
  */
 export interface GenerateDocumentConfig {
+  catalogId: string;
   templateId: string;
   variantId?: string;
   variantAttributes?: VariantAttributeEntry[];

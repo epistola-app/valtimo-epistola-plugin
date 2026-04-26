@@ -93,6 +93,7 @@
               "object-refs",
               "heatmap.js-fixed"
             ],
+            "outputHashing": "all",
             "vendorChunk": true,
             "extractLicenses": false,
             "buildOptimizer": false,
@@ -121,14 +122,9 @@
             "polyfills": "src/polyfills.ts",
             "tsConfig": "src/tsconfig.spec.json",
             "karmaConfig": "src/karma.conf.js",
-            "styles": [
-              "src/styles.scss"
-            ],
+            "styles": ["src/styles.scss"],
             "scripts": [],
-            "assets": [
-              "src/favicon.ico",
-              "src/assets"
-            ]
+            "assets": ["src/favicon.ico", "src/assets"]
           }
         }
       }

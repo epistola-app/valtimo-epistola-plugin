@@ -1,9 +1,22 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {FormsModule} from '@angular/forms';
-import {PluginTranslatePipeModule} from '@valtimo/plugin';
-import {InputModule, ValuePathSelectorComponent, ValuePathSelectorPrefix} from '@valtimo/components';
-import {ExpressionFunctionInfo} from '../../models';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { PluginTranslatePipeModule } from '@valtimo/plugin';
+import {
+  InputModule,
+  ValuePathSelectorComponent,
+  ValuePathSelectorPrefix,
+} from '@valtimo/components';
+import { ExpressionFunctionInfo } from '../../models';
 
 export type InputMode = 'browse' | 'pv' | 'expression';
 
@@ -22,8 +35,8 @@ export type InputMode = 'browse' | 'pv' | 'expression';
     FormsModule,
     PluginTranslatePipeModule,
     InputModule,
-    ValuePathSelectorComponent
-  ]
+    ValuePathSelectorComponent,
+  ],
 })
 export class ValueInputComponent implements OnChanges {
   @Input() name = '';
@@ -81,10 +94,12 @@ export class ValueInputComponent implements OnChanges {
   }
 
   formatSignature(fn: ExpressionFunctionInfo): string {
-    return fn.overloads.map(o => {
-      const args = o.arguments.map(a => `${a.name}: ${a.type}`).join(', ');
-      return `${fn.name}(${args}) \u2192 ${o.returnType}`;
-    }).join('\n');
+    return fn.overloads
+      .map((o) => {
+        const args = o.arguments.map((a) => `${a.name}: ${a.type}`).join(', ');
+        return `${fn.name}(${args}) \u2192 ${o.returnType}`;
+      })
+      .join('\n');
   }
 
   private detectInputMode(value: string): InputMode {
@@ -105,7 +120,10 @@ export function normalizeToDots(value: string): string {
   const prefix = value.substring(0, colonIndex);
   const path = value.substring(colonIndex + 1);
   if (!path.includes('/')) return value;
-  const normalized = path.split('/').filter(p => p.length > 0).join('.');
+  const normalized = path
+    .split('/')
+    .filter((p) => p.length > 0)
+    .join('.');
   return `${prefix}:${normalized}`;
 }
 

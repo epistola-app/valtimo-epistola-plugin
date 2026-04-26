@@ -1,19 +1,47 @@
-import {ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, Input, OnDestroy, OnInit, Output} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {FormsModule} from '@angular/forms';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  OnDestroy,
+  OnInit,
+  Output,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import {
   FunctionConfigurationComponent,
   PluginConfigurationData,
-  PluginTranslatePipeModule
+  PluginTranslatePipeModule,
 } from '@valtimo/plugin';
-import {FormModule, FormOutput, InputModule, SelectItem, SelectModule} from '@valtimo/components';
-import {CaseManagementParams, ManagementContext} from '@valtimo/shared';
-import {ProcessLinkStateService} from '@valtimo/process-link';
-import {BehaviorSubject, combineLatest, merge, Observable, of, Subject, Subscription} from 'rxjs';
-import {catchError, filter, map, switchMap, take, takeUntil, tap} from 'rxjs/operators';
-import {AsyncResource, errorResource, ExpressionFunctionInfo, GenerateDocumentConfig, initialResource, loadingResource, successResource, TemplateField} from '../../models';
-import {EpistolaPluginService} from '../../services';
-import {DataMappingTreeComponent} from '../data-mapping-tree/data-mapping-tree.component';
+import { FormModule, FormOutput, InputModule, SelectItem, SelectModule } from '@valtimo/components';
+import { CaseManagementParams, ManagementContext } from '@valtimo/shared';
+import { ProcessLinkStateService } from '@valtimo/process-link';
+import { BehaviorSubject, combineLatest, merge, Observable, of, Subject, Subscription } from 'rxjs';
+import {
+  catchError,
+  distinctUntilChanged,
+  filter,
+  map,
+  shareReplay,
+  switchMap,
+  take,
+  takeUntil,
+  tap,
+} from 'rxjs/operators';
+import {
+  AsyncResource,
+  errorResource,
+  ExpressionFunctionInfo,
+  GenerateDocumentConfig,
+  initialResource,
+  loadingResource,
+  successResource,
+  TemplateField,
+} from '../../models';
+import { EpistolaPluginService } from '../../services';
+import { DataMappingTreeComponent } from '../data-mapping-tree/data-mapping-tree.component';
 
 export type VariantSelectionMode = 'explicit' | 'attributes';
 
@@ -30,8 +58,8 @@ export type VariantSelectionMode = 'explicit' | 'attributes';
     FormModule,
     InputModule,
     SelectModule,
-    DataMappingTreeComponent
-  ]
+    DataMappingTreeComponent,
+  ],
 })
 export class GenerateDocumentConfigurationComponent
   implements FunctionConfigurationComponent, OnInit, OnDestroy
@@ -44,8 +72,10 @@ export class GenerateDocumentConfigurationComponent
   @Input() context$?: Observable<[ManagementContext, CaseManagementParams]>;
 
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
-  @Output() configuration: EventEmitter<GenerateDocumentConfig> = new EventEmitter<GenerateDocumentConfig>();
+  @Output() configuration: EventEmitter<GenerateDocumentConfig> =
+    new EventEmitter<GenerateDocumentConfig>();
 
+  catalogs$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   templates$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   variants$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   environments$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
@@ -54,20 +84,27 @@ export class GenerateDocumentConfigurationComponent
   dataMapping$ = new BehaviorSubject<Record<string, any>>({});
 
   outputFormatOptions: SelectItem[] = [
-    {id: 'PDF', text: 'PDF'},
-    {id: 'HTML', text: 'HTML'}
+    { id: 'PDF', text: 'PDF' },
+    { id: 'HTML', text: 'HTML' },
   ];
 
+  readonly selectedCatalogId$ = new BehaviorSubject<string>('');
+  /** Composite ID: "catalogId/templateId" */
   readonly selectedTemplateId$ = new BehaviorSubject<string>('');
   readonly selectedVariantId$ = new BehaviorSubject<string>('');
 
   variantSelectionMode: VariantSelectionMode = 'explicit';
-  variantAttributeEntries: {key: string; value: string; required: boolean; _customKey?: boolean}[] = [];
+  variantAttributeEntries: {
+    key: string;
+    value: string;
+    required: boolean;
+    _customKey?: boolean;
+  }[] = [];
   availableAttributeKeys: string[] = [];
   caseDefinitionKey: string | null = null;
   processVariables: string[] = [];
   expressionFunctions: ExpressionFunctionInfo[] = [];
-  requiredFieldsStatus: {mapped: number; total: number} = {mapped: 0, total: 0};
+  requiredFieldsStatus: { mapped: number; total: number } = { mapped: 0, total: 0 };
   prefillDataMapping: Record<string, any> = {};
 
   private readonly destroy$ = new Subject<void>();
@@ -76,21 +113,21 @@ export class GenerateDocumentConfigurationComponent
   private readonly valid$ = new BehaviorSubject<boolean>(false);
   private pluginConfigurationId$ = new BehaviorSubject<string>('');
 
+  /** Resolves once with the prefill config (or empty config if none). */
+  private prefill$!: Observable<GenerateDocumentConfig | null>;
+
   constructor(
     private readonly epistolaPluginService: EpistolaPluginService,
     private readonly processLinkStateService: ProcessLinkStateService,
-    private readonly cdr: ChangeDetectorRef
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
+    this.prefill$ = this.resolvePrefill$();
+
     this.initContext();
-    this.initPrefill();
     this.initPluginConfiguration();
-    this.initTemplatesLoading();
-    this.initEnvironmentsLoading();
-    this.initAttributesLoading();
-    this.initVariantsLoading();
-    this.initTemplateFieldsLoading();
+    this.initCascade();
     this.loadExpressionFunctions();
     this.openSaveSubscription();
   }
@@ -102,9 +139,19 @@ export class GenerateDocumentConfigurationComponent
   }
 
   formValueChange(formOutput: FormOutput): void {
-    const formValue = formOutput as unknown as Partial<GenerateDocumentConfig>;
+    const formValue = formOutput as unknown as Partial<
+      GenerateDocumentConfig & { catalogId: string; templateId: string }
+    >;
     this.formValue$.next(formValue);
 
+    // When catalog changes, reset template and variant selection
+    if (formValue.catalogId && formValue.catalogId !== this.selectedCatalogId$.getValue()) {
+      this.selectedCatalogId$.next(formValue.catalogId);
+      this.selectedTemplateId$.next('');
+      this.selectedVariantId$.next('');
+    }
+
+    // templateId from v-select is the template ID within the selected catalog
     if (formValue.templateId && formValue.templateId !== this.selectedTemplateId$.getValue()) {
       this.selectedTemplateId$.next(formValue.templateId);
       this.selectedVariantId$.next('');
@@ -125,7 +172,7 @@ export class GenerateDocumentConfigurationComponent
     }
   }
 
-  onRequiredFieldsStatusChange(status: {mapped: number; total: number}): void {
+  onRequiredFieldsStatusChange(status: { mapped: number; total: number }): void {
     this.requiredFieldsStatus = status;
     const currentFormValue = this.formValue$.getValue();
     if (currentFormValue) {
@@ -136,13 +183,16 @@ export class GenerateDocumentConfigurationComponent
   onVariantSelectionModeChange(mode: VariantSelectionMode): void {
     this.variantSelectionMode = mode;
     if (mode === 'attributes' && this.variantAttributeEntries.length === 0) {
-      this.variantAttributeEntries = [{key: '', value: '', required: true}];
+      this.variantAttributeEntries = [{ key: '', value: '', required: true }];
     }
     this.revalidate();
   }
 
   addAttributeEntry(): void {
-    this.variantAttributeEntries = [...this.variantAttributeEntries, {key: '', value: '', required: true}];
+    this.variantAttributeEntries = [
+      ...this.variantAttributeEntries,
+      { key: '', value: '', required: true },
+    ];
     this.revalidate();
   }
 
@@ -155,7 +205,10 @@ export class GenerateDocumentConfigurationComponent
     this.revalidate();
   }
 
-  onKeySelected(entry: {key: string; value: string; required: boolean; _customKey?: boolean}, value: string): void {
+  onKeySelected(
+    entry: { key: string; value: string; required: boolean; _customKey?: boolean },
+    value: string,
+  ): void {
     if (value === '__custom__') {
       entry._customKey = true;
       entry.key = '';
@@ -165,7 +218,12 @@ export class GenerateDocumentConfigurationComponent
     this.onAttributeEntryChange();
   }
 
-  cancelCustomKey(entry: {key: string; value: string; required: boolean; _customKey?: boolean}): void {
+  cancelCustomKey(entry: {
+    key: string;
+    value: string;
+    required: boolean;
+    _customKey?: boolean;
+  }): void {
     entry._customKey = false;
     entry.key = '';
     this.onAttributeEntryChange();
@@ -184,46 +242,29 @@ export class GenerateDocumentConfigurationComponent
     return ` (${entries.map(([k, v]) => `${k}=${v}`).join(', ')})`;
   }
 
-  private initContext(): void {
-    if (this.context$) {
-      this.context$.pipe(
-        takeUntil(this.destroy$),
-        filter(([context]) => context === 'case')
-      ).subscribe(([, params]) => {
-        this.caseDefinitionKey = params.caseDefinitionKey;
-        this.cdr.markForCheck();
-      });
+  /**
+   * Creates a shared observable that resolves once with the prefill config
+   * (or null if no prefill is provided). This is used to seed the cascade
+   * with initial selection values before any loading starts.
+   */
+  private resolvePrefill$(): Observable<GenerateDocumentConfig | null> {
+    if (!this.prefillConfiguration$) {
+      return of(null).pipe(shareReplay(1));
     }
+    return this.prefillConfiguration$.pipe(take(1), shareReplay(1));
   }
 
-  private initPrefill(): void {
-    if (this.prefillConfiguration$) {
-      this.prefillConfiguration$.pipe(
-        takeUntil(this.destroy$),
-        filter(config => !!config?.templateId)
-      ).subscribe(config => {
-        this.selectedTemplateId$.next(config.templateId);
-        if (config.variantAttributes && (Array.isArray(config.variantAttributes) ? config.variantAttributes.length > 0 : Object.keys(config.variantAttributes).length > 0)) {
-          this.variantSelectionMode = 'attributes';
-          if (Array.isArray(config.variantAttributes)) {
-            // New format: VariantAttributeEntry[]
-            this.variantAttributeEntries = config.variantAttributes
-              .map(e => ({key: e.key, value: e.value, required: e.required !== false}));
-          } else {
-            // Old format: Record<string, string> — treat all as required
-            this.variantAttributeEntries = Object.entries(config.variantAttributes as any)
-              .map(([key, value]) => ({key, value: String(value), required: true}));
-          }
-        } else if (config.variantId) {
-          this.variantSelectionMode = 'explicit';
-          this.selectedVariantId$.next(config.variantId);
-        }
-        if (config.dataMapping) {
-          this.prefillDataMapping = config.dataMapping;
-          this.dataMapping$.next(config.dataMapping);
-        }
-        this.cdr.markForCheck();
-      });
+  private initContext(): void {
+    if (this.context$) {
+      this.context$
+        .pipe(
+          takeUntil(this.destroy$),
+          filter(([context]) => context === 'case'),
+        )
+        .subscribe(([, params]) => {
+          this.caseDefinitionKey = params.caseDefinitionKey;
+          this.cdr.markForCheck();
+        });
     }
   }
 
@@ -233,152 +274,250 @@ export class GenerateDocumentConfigurationComponent
     if (this.selectedPluginConfigurationData$) {
       sources.push(
         this.selectedPluginConfigurationData$.pipe(
-          filter(config => !!config?.configurationId),
-          map(config => config.configurationId)
-        )
+          filter((config) => !!config?.configurationId),
+          map((config) => config.configurationId),
+        ),
       );
     }
 
     sources.push(
       this.processLinkStateService.selectedProcessLink$.pipe(
-        filter(processLink => !!processLink?.pluginConfigurationId),
-        map(processLink => processLink.pluginConfigurationId!)
-      )
+        filter((processLink) => !!processLink?.pluginConfigurationId),
+        map((processLink) => processLink.pluginConfigurationId!),
+      ),
     );
 
-    merge(...sources).pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(configurationId => {
-      this.pluginConfigurationId$.next(configurationId);
-    });
+    merge(...sources)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((configurationId) => {
+        this.pluginConfigurationId$.next(configurationId);
+      });
   }
 
-  private initTemplatesLoading(): void {
-    this.pluginConfigurationId$.pipe(
-      takeUntil(this.destroy$),
-      filter(id => !!id),
-      tap(() => this.templates$.next(loadingResource(this.templates$.getValue().data))),
-      switchMap(configurationId =>
-        this.epistolaPluginService.getTemplates(configurationId).pipe(
-          catchError(() => {
-            this.templates$.next(errorResource([], 'Failed to load templates'));
-            return of(null);
-          })
-        )
-      ),
-      filter(result => result !== null)
-    ).subscribe(templates => {
-      this.templates$.next(successResource(templates.map(t => ({id: t.id, text: t.name}))));
-    });
-  }
+  /**
+   * Sets up the entire reactive cascade:
+   *
+   *   pluginConfigurationId$ → catalogs (+ environments independently)
+   *   prefill + catalogs loaded → seed selectedCatalogId$
+   *   selectedCatalogId$ → templates (+ attributes)
+   *   prefill + templates loaded → seed selectedTemplateId$
+   *   selectedTemplateId$ → variants + templateFields
+   *   prefill + templateFields loaded → seed dataMapping
+   */
+  private initCascade(): void {
+    const configId$ = this.pluginConfigurationId$.pipe(
+      filter((id) => !!id),
+      distinctUntilChanged(),
+    );
 
-  private initEnvironmentsLoading(): void {
-    this.pluginConfigurationId$.pipe(
-      takeUntil(this.destroy$),
-      filter(id => !!id),
-      tap(() => this.environments$.next(loadingResource(this.environments$.getValue().data))),
-      switchMap(configurationId =>
-        this.epistolaPluginService.getEnvironments(configurationId).pipe(
-          catchError(() => {
-            this.environments$.next(errorResource([], 'Failed to load environments'));
-            return of(null);
-          })
-        )
-      ),
-      filter(result => result !== null)
-    ).subscribe(environments => {
-      this.environments$.next(successResource(environments.map(e => ({id: e.id, text: e.name}))));
-    });
-  }
-
-  private initAttributesLoading(): void {
-    this.pluginConfigurationId$.pipe(
-      takeUntil(this.destroy$),
-      filter(id => !!id),
-      switchMap(configurationId =>
-        this.epistolaPluginService.getAttributes(configurationId).pipe(
-          catchError(() => of([]))
-        )
+    // ── Catalogs: load when pluginConfigurationId changes ──
+    configId$
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(() => this.catalogs$.next(loadingResource(this.catalogs$.getValue().data))),
+        switchMap((configurationId) =>
+          this.epistolaPluginService.getCatalogs(configurationId).pipe(
+            map((catalogs) => successResource(catalogs.map((c) => ({ id: c.id, text: c.name })))),
+            catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load catalogs'))),
+          ),
+        ),
       )
-    ).subscribe(attributes => {
-      this.availableAttributeKeys = attributes.map(a => a.key).sort();
-      this.cdr.markForCheck();
-    });
-  }
+      .subscribe((resource) => this.catalogs$.next(resource));
 
-  private initVariantsLoading(): void {
-    combineLatest([
-      this.pluginConfigurationId$,
-      this.selectedTemplateId$
-    ]).pipe(
-      takeUntil(this.destroy$),
-      filter(([configId, templateId]) => !!configId && !!templateId),
-      tap(() => this.variants$.next(loadingResource(this.variants$.getValue().data))),
-      switchMap(([configurationId, templateId]) =>
-        this.epistolaPluginService.getVariants(configurationId, templateId).pipe(
-          catchError(() => {
-            this.variants$.next(errorResource([], 'Failed to load variants'));
-            return of(null);
-          })
-        )
-      ),
-      filter(result => result !== null)
-    ).subscribe(variants => {
-      this.variants$.next(successResource(
-        variants.map(v => ({id: v.id, text: v.name + this.formatAttributes(v.attributes)}))
-      ));
-    });
-  }
+    // ── Environments: load when pluginConfigurationId changes (independent) ──
+    configId$
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(() => this.environments$.next(loadingResource(this.environments$.getValue().data))),
+        switchMap((configurationId) =>
+          this.epistolaPluginService.getEnvironments(configurationId).pipe(
+            map((envs) => successResource(envs.map((e) => ({ id: e.id, text: e.name })))),
+            catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load environments'))),
+          ),
+        ),
+      )
+      .subscribe((resource) => this.environments$.next(resource));
 
-  private initTemplateFieldsLoading(): void {
+    // ── Seed selectedCatalogId$ from prefill once catalogs are loaded ──
     combineLatest([
-      this.pluginConfigurationId$,
-      this.selectedTemplateId$
-    ]).pipe(
-      takeUntil(this.destroy$),
-      filter(([configId, templateId]) => !!configId && !!templateId),
-      tap(() => {
-        this.templateFields$.next(loadingResource(this.templateFields$.getValue().data));
-        this.loadProcessVariables();
-      }),
-      switchMap(([configurationId, templateId]) =>
-        this.epistolaPluginService.getTemplateDetails(configurationId, templateId).pipe(
-          catchError(() => {
-            this.templateFields$.next(errorResource([], 'Failed to load template fields'));
-            return of(null);
-          })
-        )
-      ),
-      filter(result => result !== null)
-    ).subscribe(details => {
-      this.templateFields$.next(successResource(details.fields || []));
-    });
+      this.prefill$.pipe(filter((config) => !!config?.catalogId)),
+      this.catalogs$.pipe(filter((c) => !c.loading && c.data.length > 0)),
+    ])
+      .pipe(takeUntil(this.destroy$), take(1))
+      .subscribe(([config]) => {
+        this.selectedCatalogId$.next(config!.catalogId);
+      });
+
+    // ── Templates: load when catalogId changes ──
+    const catalogId$ = this.selectedCatalogId$.pipe(
+      filter((id) => !!id),
+      distinctUntilChanged(),
+    );
+
+    combineLatest([configId$, catalogId$])
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(() => this.templates$.next(loadingResource(this.templates$.getValue().data))),
+        switchMap(([configurationId, catalogId]) =>
+          this.epistolaPluginService.getTemplates(configurationId, catalogId).pipe(
+            map((templates) => successResource(templates.map((t) => ({ id: t.id, text: t.name })))),
+            catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load templates'))),
+          ),
+        ),
+      )
+      .subscribe((resource) => this.templates$.next(resource));
+
+    // ── Attributes: load when catalogId changes ──
+    combineLatest([configId$, catalogId$])
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap(([configurationId, catalogId]) =>
+          this.epistolaPluginService
+            .getAttributes(configurationId, catalogId)
+            .pipe(catchError(() => of([]))),
+        ),
+      )
+      .subscribe((attributes) => {
+        this.availableAttributeKeys = attributes.map((a) => a.key).sort();
+        this.cdr.markForCheck();
+      });
+
+    // ── Seed selectedTemplateId$ from prefill once templates are loaded ──
+    combineLatest([
+      this.prefill$.pipe(filter((config) => !!config?.templateId)),
+      this.templates$.pipe(filter((t) => !t.loading && t.data.length > 0)),
+    ])
+      .pipe(takeUntil(this.destroy$), take(1))
+      .subscribe(([config]) => {
+        this.selectedTemplateId$.next(config!.templateId);
+      });
+
+    // ── Variants: load when templateId changes ──
+    const templateId$ = this.selectedTemplateId$.pipe(
+      filter((id) => !!id),
+      distinctUntilChanged(),
+    );
+
+    combineLatest([configId$, catalogId$, templateId$])
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(() => this.variants$.next(loadingResource(this.variants$.getValue().data))),
+        switchMap(([configurationId, catalogId, templateId]) =>
+          this.epistolaPluginService.getVariants(configurationId, templateId, catalogId).pipe(
+            map((variants) =>
+              successResource(
+                variants.map((v) => ({
+                  id: v.id,
+                  text: v.name + this.formatAttributes(v.attributes),
+                })),
+              ),
+            ),
+            catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load variants'))),
+          ),
+        ),
+      )
+      .subscribe((resource) => this.variants$.next(resource));
+
+    // ── Template fields: load when templateId changes ──
+    combineLatest([configId$, catalogId$, templateId$])
+      .pipe(
+        takeUntil(this.destroy$),
+        tap(() => {
+          this.templateFields$.next(loadingResource(this.templateFields$.getValue().data));
+          this.loadProcessVariables();
+        }),
+        switchMap(([configurationId, catalogId, templateId]) =>
+          this.epistolaPluginService
+            .getTemplateDetails(configurationId, templateId, catalogId)
+            .pipe(
+              map((details) => successResource(details.fields || [])),
+              catchError(() =>
+                of(errorResource<TemplateField[]>([], 'Failed to load template fields')),
+              ),
+            ),
+        ),
+      )
+      .subscribe((resource) => this.templateFields$.next(resource));
+
+    // ── Seed variant + dataMapping from prefill once templateFields are loaded ──
+    combineLatest([
+      this.prefill$.pipe(filter((config) => !!config?.templateId)),
+      this.templateFields$.pipe(filter((tf) => !tf.loading && tf.data.length > 0)),
+    ])
+      .pipe(takeUntil(this.destroy$), take(1))
+      .subscribe(([config]) => {
+        if (!config) return;
+
+        // Apply variant prefill
+        if (
+          config.variantAttributes &&
+          (Array.isArray(config.variantAttributes)
+            ? config.variantAttributes.length > 0
+            : Object.keys(config.variantAttributes).length > 0)
+        ) {
+          this.variantSelectionMode = 'attributes';
+          if (Array.isArray(config.variantAttributes)) {
+            this.variantAttributeEntries = config.variantAttributes.map((e) => ({
+              key: e.key,
+              value: e.value,
+              required: e.required !== false,
+            }));
+          } else {
+            this.variantAttributeEntries = Object.entries(config.variantAttributes as any).map(
+              ([key, value]) => ({ key, value: String(value), required: true }),
+            );
+          }
+        } else if (config.variantId) {
+          this.variantSelectionMode = 'explicit';
+          this.selectedVariantId$.next(config.variantId);
+        }
+
+        // Apply dataMapping prefill — templateFields are guaranteed loaded at this point.
+        // Use setTimeout to ensure the tree component exists in the DOM (after *ngIf resolves)
+        // before setting the prefill, so ngOnChanges fires correctly on the child.
+        if (config.dataMapping) {
+          this.dataMapping$.next(config.dataMapping);
+          setTimeout(() => {
+            this.prefillDataMapping = { ...config.dataMapping };
+            this.cdr.detectChanges();
+          });
+        } else {
+          this.cdr.detectChanges();
+        }
+      });
   }
 
   private loadExpressionFunctions(): void {
-    this.epistolaPluginService.getExpressionFunctions().pipe(
-      takeUntil(this.destroy$),
-      catchError(() => of([]))
-    ).subscribe(functions => {
-      this.expressionFunctions = functions;
-      this.cdr.markForCheck();
-    });
+    this.epistolaPluginService
+      .getExpressionFunctions()
+      .pipe(
+        takeUntil(this.destroy$),
+        catchError(() => of([])),
+      )
+      .subscribe((functions) => {
+        this.expressionFunctions = functions;
+        this.cdr.markForCheck();
+      });
   }
 
   private loadProcessVariables(): void {
     if (this.caseDefinitionKey) {
-      this.epistolaPluginService.getProcessVariables(this.caseDefinitionKey).pipe(
-        takeUntil(this.destroy$),
-        catchError(() => of([]))
-      ).subscribe(variables => {
-        this.processVariables = variables;
-        this.cdr.markForCheck();
-      });
+      this.epistolaPluginService
+        .getProcessVariables(this.caseDefinitionKey)
+        .pipe(
+          takeUntil(this.destroy$),
+          catchError(() => of([])),
+        )
+        .subscribe((variables) => {
+          this.processVariables = variables;
+          this.cdr.markForCheck();
+        });
     }
   }
 
-  private handleValid(formValue: Partial<GenerateDocumentConfig>): void {
+  private handleValid(formValue: Partial<GenerateDocumentConfig & { catalogId: string }>): void {
     const baseComplete = !!(
+      this.selectedCatalogId$.getValue() &&
       formValue?.templateId &&
       formValue?.outputFormat &&
       formValue?.filename &&
@@ -387,10 +526,11 @@ export class GenerateDocumentConfigurationComponent
 
     let variantValid = true;
     if (this.variantSelectionMode === 'attributes' && this.variantAttributeEntries.length > 0) {
-      variantValid = this.variantAttributeEntries.every(e => !!e.key && !!e.value);
+      variantValid = this.variantAttributeEntries.every((e) => !!e.key && !!e.value);
     }
 
-    const requiredFieldsMapped = this.requiredFieldsStatus.total === 0 ||
+    const requiredFieldsMapped =
+      this.requiredFieldsStatus.total === 0 ||
       this.requiredFieldsStatus.mapped === this.requiredFieldsStatus.total;
 
     const valid = baseComplete && variantValid && requiredFieldsMapped;
@@ -404,22 +544,26 @@ export class GenerateDocumentConfigurationComponent
         .pipe(take(1))
         .subscribe(([formValue, valid, dataMapping]) => {
           if (valid && formValue) {
+            const catalogId = this.selectedCatalogId$.getValue();
+            const templateId = formValue.templateId!;
+
             const config: GenerateDocumentConfig = {
-              templateId: formValue.templateId!,
+              catalogId,
+              templateId,
               environmentId: formValue.environmentId || undefined,
               dataMapping: dataMapping,
               outputFormat: formValue.outputFormat as 'PDF' | 'HTML',
               filename: formValue.filename!,
               correlationId: formValue.correlationId || undefined,
-              resultProcessVariable: formValue.resultProcessVariable!
+              resultProcessVariable: formValue.resultProcessVariable!,
             };
 
             if (this.variantSelectionMode === 'explicit') {
               config.variantId = formValue.variantId!;
             } else {
               config.variantAttributes = this.variantAttributeEntries
-                .filter(e => e.key && e.value)
-                .map(e => ({key: e.key, value: e.value, required: e.required}));
+                .filter((e) => e.key && e.value)
+                .map((e) => ({ key: e.key, value: e.value, required: e.required }));
             }
 
             this.configuration.emit(config);

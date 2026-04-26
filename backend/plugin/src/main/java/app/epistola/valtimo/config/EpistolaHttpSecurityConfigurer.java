@@ -21,6 +21,8 @@ public class EpistolaHttpSecurityConfigurer implements HttpSecurityConfigurer {
             http.authorizeHttpRequests(requests -> requests
                     // Callback endpoint is public (webhook from Epistola)
                     .requestMatchers("/api/v1/plugin/epistola/callback/**").permitAll()
+                    // Admin endpoints require ROLE_ADMIN
+                    .requestMatchers("/api/v1/plugin/epistola/admin/**").hasAuthority("ROLE_ADMIN")
                     // All other Epistola endpoints require authentication
                     .requestMatchers("/api/v1/plugin/epistola/**").authenticated()
             );

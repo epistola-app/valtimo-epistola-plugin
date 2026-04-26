@@ -2,29 +2,29 @@ export const defaultDefinitionColumns = [
   {
     propertyName: 'sequence',
     translationKey: 'referenceNumber',
-    sortable: true
+    sortable: true,
   },
   {
     propertyName: 'createdBy',
     translationKey: 'createdBy',
-    sortable: true
+    sortable: true,
   },
   {
     propertyName: 'createdOn',
     translationKey: 'createdOn',
     sortable: true,
     viewType: 'date',
-    default: true
+    default: true,
   },
   {
     propertyName: 'modifiedOn',
     translationKey: 'lastModified',
     sortable: true,
-    viewType: 'date'
+    viewType: 'date',
   },
   {
     propertyName: 'assigneeFullName',
     translationKey: 'assigneeFullName',
-    sortable: true
-  }
+    sortable: true,
+  },
 ];

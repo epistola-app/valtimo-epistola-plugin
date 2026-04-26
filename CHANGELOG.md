@@ -16,25 +16,106 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Built-in `formatDate` and `str` sample functions
   - `GET /api/v1/plugin/epistola/expression-functions` REST endpoint listing available functions with typed signatures
   - Frontend function browser in expression (fx) mode showing available functions, overloads, and argument types
+- **Pending jobs overview** — Admin page now shows all process instances currently waiting for an Epistola document generation result. Displays configuration, process, activity, and request ID per waiting job. New backend endpoint `GET /api/v1/plugin/epistola/admin/pending`.
+- **Process link export** — Download button on each process link row in the admin page that exports the full configuration as a `.process-link.json` file matching Valtimo's auto-deploy format. New backend endpoint `GET /api/v1/plugin/epistola/admin/export/{processLinkId}`.
+- **oxfmt and oxlint** — Added code formatting (oxfmt) and linting (oxlint) with configuration matching epistola-suite. Managed via mise and npm devDependencies. CI pipeline updated with `lint:check` and `format:check` steps.
+- **Project governance files** — CODE_OF_CONDUCT.md (Contributor Covenant v2.1), CONTRIBUTING.md (development workflow, commit conventions, testing requirements), SECURITY.md (vulnerability reporting policy), PR template, CODEOWNERS, issue templates (bug report, feature request, documentation), labels.yml, and root .editorconfig
+- **Updated CLAUDE.md** — Replaced outdated "Current State" (which claimed mock implementations) and "Implementation Phases" (all completed) with accurate documentation of the actual implementation, known limitations, and test coverage gaps
+- **Epistola admin page** (`/epistola`) — Dedicated admin page under the Admin > Other menu with a card-based overview per plugin configuration showing connection status, tenant ID, server version, usage count, and problem count. Click a card to drill into its details showing case definition, process links, actions, and issues with clickable links to the process link configuration page. Plugin version shown as badge. Deep linking via `?configurationId=<uuid>`. Self-registers route and menu item via `forRoot()` — no host app configuration needed.
+- **Admin REST endpoints** — `GET /api/v1/plugin/epistola/admin/health` (connection check), `/versions` (plugin version), `/usage` (process link overview with problem detection). Requires `ROLE_ADMIN`.
+- **NL and EN translations** for all admin page labels
+
+## [0.5.2] - 2026-04-21
+
+### Fixed
+
+- Enable content hash output hashing (`outputHashing: "all"`) in Angular build to prevent browser cache issues across deployments
+- Add cache-control headers to nginx config — `no-cache` for `index.html`, `immutable` with 1-year expiry for hashed assets
+- Apply same cache-control headers to Helm chart nginx ConfigMap
+- Update Helm chart `appVersion` from 0.4.0 to 0.5.2
+
+### Reverted
+
+- Revert case definition version bump to 2.0.0 — the issue was browser cache, not process link deployment
+
+## [0.5.0] - 2026-04-20
+
+### Added
+
+- **Catalog selector in generate-document configuration** — Users now pick a catalog first, then see templates from that catalog. Added `CatalogInfo` domain record, `getCatalogs()` service method, `GET /configurations/{configurationId}/catalogs` REST endpoint, `createCatalogsApi()` factory method, and frontend catalog dropdown with cascading template loading.
+- **Catalog sync on startup** — Plugin scans classpath `config/epistola/catalogs/*/catalog.json`, builds ZIP in memory, and POSTs to Epistola's catalog import endpoint on startup. Replaces the old per-template sync.
 
 ### Changed
 
-- **Helm: consolidated secrets management**: All secret values are now grouped under a top-level `secrets:` block in `values.yaml`. The `secrets.existingSecret` value allows referencing a pre-existing Kubernetes Secret (e.g., managed by SealedSecrets) instead of the chart-managed one. Client secrets are no longer embedded in the Keycloak realm ConfigMap — they are injected at runtime via an init container.
-- **Helm chart release workflow**: Chart releases are now triggered by creating a GitHub Release with a `chart-X.Y.Z` tag, matching the app release pattern. Auto-release on push to main has been removed. Use `/release-chart` or `gh release create chart-X.Y.Z` to cut a chart release.
+- **Refactored generate-document configuration reactive state** — Replaced 6 independent `init*Loading()` methods with a single cascading reactive chain in `initCascade()`. Prefill values now seed the cascade (catalog → templates → variants/fields) instead of running as a separate subscription with timing issues. Added `distinctUntilChanged()` to prevent duplicate loads. Template fields are guaranteed loaded before data mapping prefill is applied.
+- **BREAKING: Added `catalogId` to all catalog-scoped API calls** for Epistola contract 0.2.0 compatibility. Affected methods: `getTemplates`, `getTemplateDetails`, `getAttributes`, `getVariants`, `submitGenerationJob`, `previewDocument`.
+- Added `catalogId` as a required action property on the `generate-document` plugin action.
+- Added `catalogId` and `catalogName` fields to `TemplateInfo` domain record.
+- REST endpoints for templates, attributes, variants, and validate-mapping now require a `catalogId` query parameter.
+- Removed `defaultEnvironmentId` from test plugin config — catalog-imported templates use latest published version fallback.
 
 ### Removed
 
-- **Helm: RabbitMQ support removed** from the valtimo-demo chart. Use `backend.extraEnv` if needed.
+- Template import (`importTemplates`) — superseded by catalog import.
+- Unused `ImportTemplatesRequest`/`ImportTemplatesResponse` imports.
 
-### Breaking Changes
+## [0.4.5] - 2026-04-09
 
-- `backend.existingSecret` moved to `secrets.existingSecret`
-- `backend.keycloak.backendClientSecret` moved to `secrets.keycloakClientSecret`
-- `backend.valtimo.pluginEncryptionSecret` moved to `secrets.pluginEncryptionSecret`
-- `backend.operaton.adminPassword` moved to `secrets.operatonAdminPassword`
-- `keycloak.adminPassword` moved to `secrets.keycloakAdminPassword`
-- `epistola.keycloak.clientSecret` and `externalEpistola.clientSecret` merged into `secrets.epistolaClientSecret`
-- `backend.rabbitmq.*` removed entirely
+### Fixed
+
+- **Restored `versionTag` in case definitions** — Valtimo requires `versionTag` to be present (NPE on startup without it). The `dev` profile is needed to allow draft case definitions.
+- **Default Spring profile** changed back to `"dev"`. The `dev` profile enables draft case definition support which is required for auto-deployed case definitions with `versionTag`.
+
+### Helm Chart (0.3.2)
+
+- Default `springProfilesActive` changed from `""` to `"dev"`.
+
+## [0.4.2] - 2026-04-08
+
+### Fixed
+
+- **CI: upgraded Node.js from 22 to 24** across all workflows. Node 24 ships with npm 11 which is required for OIDC trusted publishing. This removes the need for the broken `npm install -g npm@latest` self-upgrade step.
+
+## [0.4.1] - 2026-04-08 [BROKEN]
+
+_Release pipeline failed — npm and Docker frontend artifacts not published. Use v0.4.2 instead._
+
+## [0.4.0] - 2026-04-08
+
+### Added
+
+- **Configurator metadata**: Added `valtimo-configurator-metadata.json` for plugin auto-discovery by the Valtimo Configurator.
+
+### Changed
+
+- **Case definitions: removed `versionTag`** from all 5 demo case definitions. The `versionTag` field triggered Valtimo's draft gate, which required `dev`/`test`/`inttest` profiles. Removing it allows case definitions to load in any environment.
+
+### Helm Chart (0.3.0)
+
+#### Changed
+
+- **Per-credential secret references**: Each secret now supports `secretRef` to reference an existing K8s Secret directly, enabling secret reuse across apps (e.g. the same Keycloak client secret used by both valtimo-demo and epistola). Credentials without a `secretRef` are auto-generated when `value` is empty. Legacy `existingSecret` is still supported.
+- **Auto-generate secrets**: All secret values are auto-generated with random values when left empty, removing hardcoded defaults from `values.yaml`. Generated secrets are persisted across Helm upgrades.
+- **Default Spring profile** changed from `"demo,dev"` to `""` (empty). Neither profile was defined in the application.
+- **Consolidated secrets management**: All secret values grouped under `secrets:` block. Client secrets injected into Keycloak realm at runtime via init container.
+- **Chart release workflow**: Triggered by `chart-X.Y.Z` GitHub Release tag.
+
+#### Removed
+
+- **RabbitMQ support** from the valtimo-demo chart. Use `backend.extraEnv` if needed.
+- **`externalEpistola.clientSecret`** value path (was never wired into any template).
+
+#### Breaking Changes
+
+- `secrets.*` values changed from flat strings to objects with `value` and `secretRef` fields. Migration: `secrets.keycloakClientSecret: "val"` → `secrets.keycloakClientSecret.value: "val"`
+- `backend.existingSecret` → `secrets.existingSecret`
+- `backend.keycloak.backendClientSecret` → `secrets.keycloakClientSecret`
+- `backend.valtimo.pluginEncryptionSecret` → `secrets.pluginEncryptionSecret`
+- `backend.operaton.adminPassword` → `secrets.operatonAdminPassword`
+- `keycloak.adminPassword` → `secrets.keycloakAdminPassword`
+- `epistola.keycloak.clientSecret` / `externalEpistola.clientSecret` → `secrets.epistolaClientSecret`
+- `backend.rabbitmq.*` removed
+- `backend.springProfilesActive` default changed from `"demo,dev"` to `""`
 
 ## [0.3.3] - 2026-04-02
 

@@ -1,14 +1,14 @@
 [
-    {
-        "processDefinitionKey": "example",
-        "canInitializeDocument": true,
-        "startableByUser": true,
-        "processIsVisibleInMenu": true
-    },
-    {
-        "processDefinitionKey": "single-document",
-        "canInitializeDocument": false,
-        "startableByUser": true,
-        "processIsVisibleInMenu": false
-    }
+  {
+    "processDefinitionKey": "example",
+    "canInitializeDocument": true,
+    "startableByUser": true,
+    "processIsVisibleInMenu": true
+  },
+  {
+    "processDefinitionKey": "single-document",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
+  }
 ]

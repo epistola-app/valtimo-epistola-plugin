@@ -1,41 +1,41 @@
 {
-    "display": "form",
-    "components": [
-        {
-            "key": "description",
-            "type": "textfield",
-            "input": true,
-            "label": "Beschrijving",
-            "defaultValue": "WOZ-aanslag 2026 - Gemeente Amsterdam",
-            "validate": { "required": true }
-        },
-        {
-            "key": "pv:selectedTemplateId",
-            "type": "textfield",
-            "input": true,
-            "label": "Template ID",
-            "description": "Het Epistola template ID voor de brieven",
-            "defaultValue": "belastingbrief",
-            "validate": { "required": true }
-        },
-        {
-            "key": "pv:taxpayersJson",
-            "type": "textarea",
-            "input": true,
-            "label": "Belastingplichtigen (JSON)",
-            "description": "JSON array met objecten: [{\"name\": \"...\", \"bsn\": \"...\", \"address\": {\"street\": \"...\", \"houseNumber\": \"...\", \"postalCode\": \"...\", \"city\": \"...\"}, \"amount\": 1234.56}]",
-            "rows": 10,
-            "defaultValue": "[\n  {\n    \"name\": \"A. Jansen\",\n    \"bsn\": \"123456789\",\n    \"address\": {\n      \"street\": \"Damrak\",\n      \"houseNumber\": \"1\",\n      \"postalCode\": \"1012LG\",\n      \"city\": \"Amsterdam\"\n    },\n    \"amount\": 2845.00\n  },\n  {\n    \"name\": \"B. de Groot\",\n    \"bsn\": \"987654321\",\n    \"address\": {\n      \"street\": \"Rokin\",\n      \"houseNumber\": \"75\",\n      \"postalCode\": \"1012KL\",\n      \"city\": \"Amsterdam\"\n    },\n    \"amount\": 3120.50\n  },\n  {\n    \"name\": \"C. van der Berg\",\n    \"bsn\": \"456789123\",\n    \"address\": {\n      \"street\": \"Singel\",\n      \"houseNumber\": \"200\",\n      \"postalCode\": \"1016AA\",\n      \"city\": \"Amsterdam\"\n    },\n    \"amount\": 1975.25\n  }\n]",
-            "validate": { "required": true }
-        },
-        {
-            "key": "submit",
-            "type": "button",
-            "input": true,
-            "label": "Starten",
-            "action": "submit",
-            "theme": "primary",
-            "disableOnInvalid": true
-        }
-    ]
+  "display": "form",
+  "components": [
+    {
+      "key": "description",
+      "type": "textfield",
+      "input": true,
+      "label": "Beschrijving",
+      "defaultValue": "WOZ-aanslag 2026 - Gemeente Amsterdam",
+      "validate": { "required": true }
+    },
+    {
+      "key": "pv:selectedTemplateId",
+      "type": "textfield",
+      "input": true,
+      "label": "Template ID",
+      "description": "Het Epistola template ID voor de brieven",
+      "defaultValue": "belastingbrief",
+      "validate": { "required": true }
+    },
+    {
+      "key": "pv:taxpayersJson",
+      "type": "textarea",
+      "input": true,
+      "label": "Belastingplichtigen (JSON)",
+      "description": "JSON array met objecten: [{\"name\": \"...\", \"bsn\": \"...\", \"address\": {\"street\": \"...\", \"houseNumber\": \"...\", \"postalCode\": \"...\", \"city\": \"...\"}, \"amount\": 1234.56}]",
+      "rows": 10,
+      "defaultValue": "[\n  {\n    \"name\": \"A. Jansen\",\n    \"bsn\": \"123456789\",\n    \"address\": {\n      \"street\": \"Damrak\",\n      \"houseNumber\": \"1\",\n      \"postalCode\": \"1012LG\",\n      \"city\": \"Amsterdam\"\n    },\n    \"amount\": 2845.00\n  },\n  {\n    \"name\": \"B. de Groot\",\n    \"bsn\": \"987654321\",\n    \"address\": {\n      \"street\": \"Rokin\",\n      \"houseNumber\": \"75\",\n      \"postalCode\": \"1012KL\",\n      \"city\": \"Amsterdam\"\n    },\n    \"amount\": 3120.50\n  },\n  {\n    \"name\": \"C. van der Berg\",\n    \"bsn\": \"456789123\",\n    \"address\": {\n      \"street\": \"Singel\",\n      \"houseNumber\": \"200\",\n      \"postalCode\": \"1016AA\",\n      \"city\": \"Amsterdam\"\n    },\n    \"amount\": 1975.25\n  }\n]",
+      "validate": { "required": true }
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Starten",
+      "action": "submit",
+      "theme": "primary",
+      "disableOnInvalid": true
+    }
+  ]
 }

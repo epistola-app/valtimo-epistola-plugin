@@ -1,26 +1,26 @@
 {
-    "display": "form",
-    "components": [
-        {
-            "key": "pv:companyName",
-            "type": "textfield",
-            "input": true,
-            "label": "Company Name",
-            "tableView": true,
-            "defaultValue": "Acme B.V.",
-            "validate": {
-                "required": true
-            }
-        },
-        {
-            "key": "submit",
-            "type": "button",
-            "input": true,
-            "label": "Submit",
-            "tableView": false,
-            "disableOnInvalid": true,
-            "action": "submit",
-            "theme": "primary"
-        }
-    ]
+  "display": "form",
+  "components": [
+    {
+      "key": "pv:companyName",
+      "type": "textfield",
+      "input": true,
+      "label": "Company Name",
+      "tableView": true,
+      "defaultValue": "Acme B.V.",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Submit",
+      "tableView": false,
+      "disableOnInvalid": true,
+      "action": "submit",
+      "theme": "primary"
+    }
+  ]
 }

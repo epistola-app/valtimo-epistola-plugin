@@ -17,11 +17,11 @@ When a template is selected, the backend fetches its JSON Schema from Epistola a
 
 Each field has a `fieldType`:
 
-| FieldType | Description | Example |
-|-----------|-------------|---------|
-| `SCALAR`  | Primitive value (string, number, boolean) | `customerName`, `invoice.date` |
-| `OBJECT`  | Nested group of fields | `invoice`, `customer.address` |
-| `ARRAY`   | Collection of items (objects or primitives) | `lineItems` |
+| FieldType | Description                                 | Example                        |
+| --------- | ------------------------------------------- | ------------------------------ |
+| `SCALAR`  | Primitive value (string, number, boolean)   | `customerName`, `invoice.date` |
+| `OBJECT`  | Nested group of fields                      | `invoice`, `customer.address`  |
+| `ARRAY`   | Collection of items (objects or primitives) | `lineItems`                    |
 
 ### Example schema
 
@@ -76,12 +76,12 @@ The data mapping is a nested object that mirrors the template schema. Each leaf 
 
 ### Value expression prefixes
 
-| Prefix | Source | Example |
-|--------|--------|---------|
-| `doc:` | Document (case) field | `doc:customer.name` |
-| `case:` | Case field | `case:order.total` |
-| `pv:` | Process variable | `pv:invoiceDate` |
-| `template:` | Template expression | `template:{{amount * 1.21}}` |
+| Prefix      | Source                | Example                      |
+| ----------- | --------------------- | ---------------------------- |
+| `doc:`      | Document (case) field | `doc:customer.name`          |
+| `case:`     | Case field            | `case:order.total`           |
+| `pv:`       | Process variable      | `pv:invoiceDate`             |
+| `template:` | Template expression   | `template:{{amount * 1.21}}` |
 
 Strings without a recognised prefix are passed through as literal values.
 
@@ -162,12 +162,12 @@ Each item in the resolved source list is transformed: only the mapped fields are
 
 Rules per field type:
 
-| FieldType | Valid when |
-|-----------|-----------|
-| SCALAR | Non-empty string value present |
-| OBJECT | All required children valid (recursive) |
-| ARRAY (direct) | Non-empty string value present |
-| ARRAY (_source) | `_source` is non-empty **and** all required children have non-empty mapping strings |
+| FieldType        | Valid when                                                                          |
+| ---------------- | ----------------------------------------------------------------------------------- |
+| SCALAR           | Non-empty string value present                                                      |
+| OBJECT           | All required children valid (recursive)                                             |
+| ARRAY (direct)   | Non-empty string value present                                                      |
+| ARRAY (\_source) | `_source` is non-empty **and** all required children have non-empty mapping strings |
 
 Returns a list of missing field paths (e.g. `["customerName", "invoice.date", "lineItems[].price"]`).
 
@@ -223,8 +223,8 @@ Batch-resolves all expressions via `ValueResolverService.resolveValues()` (singl
   "invoice": {
     "date": "2024-01-15",
     "lineItems": [
-      {"product": "Services", "price": 1500},
-      {"product": "License",  "price": 299}
+      { "product": "Services", "price": 1500 },
+      { "product": "License", "price": 299 }
     ]
   }
 }
@@ -236,25 +236,26 @@ Note how `mapArrayItems()` extracted only the `product` and `price` fields from 
 
 Each SCALAR and ARRAY field has a 3-mode input selector:
 
-| Mode | Button | Input control | Emitted value |
-|------|--------|--------------|---------------|
-| Browse | `⊞` | ValuePathSelector (doc:/case: dropdown with search) | `doc:path.to.field` |
-| PV | `pv` | Dropdown of discovered process variables | `pv:variableName` |
-| Expression | `fx` | Free text input | Any string (literal or expression) |
+| Mode       | Button | Input control                                       | Emitted value                      |
+| ---------- | ------ | --------------------------------------------------- | ---------------------------------- |
+| Browse     | `⊞`    | ValuePathSelector (doc:/case: dropdown with search) | `doc:path.to.field`                |
+| PV         | `pv`   | Dropdown of discovered process variables            | `pv:variableName`                  |
+| Expression | `fx`   | Free text input                                     | Any string (literal or expression) |
 
 The active mode is auto-detected from prefilled values:
+
 - Starts with `doc:` or `case:` → Browse
 - Starts with `pv:` → PV
 - Anything else → Expression
 
 ## Key Files
 
-| File | Role |
-|------|------|
-| `EpistolaServiceImpl.extractFieldsFromSchema()` | Parse JSON Schema → TemplateField tree |
-| `TemplateMappingValidator` | Validate required fields are mapped |
-| `EpistolaPlugin.resolveNestedMapping()` | Two-pass value resolution |
-| `DataMappingResolver.mapArrayItems()` | Per-item field name transformation |
-| `DataMappingResolver.toNestedStructure()` | Dot-notation → nested conversion (legacy, currently unused) |
-| `FieldTreeComponent` | Recursive tree form per field |
-| `DataMappingTreeComponent` | Top-level wrapper managing the full mapping |
+| File                                            | Role                                                        |
+| ----------------------------------------------- | ----------------------------------------------------------- |
+| `EpistolaServiceImpl.extractFieldsFromSchema()` | Parse JSON Schema → TemplateField tree                      |
+| `TemplateMappingValidator`                      | Validate required fields are mapped                         |
+| `EpistolaPlugin.resolveNestedMapping()`         | Two-pass value resolution                                   |
+| `DataMappingResolver.mapArrayItems()`           | Per-item field name transformation                          |
+| `DataMappingResolver.toNestedStructure()`       | Dot-notation → nested conversion (legacy, currently unused) |
+| `FieldTreeComponent`                            | Recursive tree form per field                               |
+| `DataMappingTreeComponent`                      | Top-level wrapper managing the full mapping                 |

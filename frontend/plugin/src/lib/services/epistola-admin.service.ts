@@ -1,0 +1,58 @@
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { ConfigService } from '@valtimo/shared';
+import { Observable } from 'rxjs';
+import { ConnectionStatus, PendingJob, PluginUsageEntry, VersionInfo } from '../models';
+
+/**
+ * Service for Epistola plugin administrative operations.
+ * Provides health checks, version info, and usage overview.
+ */
+@Injectable()
+export class EpistolaAdminService {
+  private readonly apiEndpoint: string;
+
+  constructor(
+    private readonly http: HttpClient,
+    private readonly configService: ConfigService,
+  ) {
+    this.apiEndpoint = `${this.configService.config.valtimoApi.endpointUri}v1/plugin/epistola/admin`;
+  }
+
+  /**
+   * Check connectivity to Epistola for all plugin configurations.
+   */
+  getConnectionStatus(): Observable<ConnectionStatus[]> {
+    return this.http.get<ConnectionStatus[]>(`${this.apiEndpoint}/health`);
+  }
+
+  /**
+   * Get version information for the plugin and connected Epistola server.
+   */
+  getVersions(): Observable<VersionInfo> {
+    return this.http.get<VersionInfo>(`${this.apiEndpoint}/versions`);
+  }
+
+  /**
+   * Get an overview of all Epistola plugin usages across process definitions.
+   */
+  getPluginUsage(): Observable<PluginUsageEntry[]> {
+    return this.http.get<PluginUsageEntry[]>(`${this.apiEndpoint}/usage`);
+  }
+
+  /**
+   * Get all process instances currently waiting for an Epistola document generation result.
+   */
+  getPendingJobs(): Observable<PendingJob[]> {
+    return this.http.get<PendingJob[]>(`${this.apiEndpoint}/pending`);
+  }
+
+  /**
+   * Export a single process link as a .process-link.json file.
+   */
+  exportProcessLink(processLinkId: string): Observable<Blob> {
+    return this.http.get(`${this.apiEndpoint}/export/${encodeURIComponent(processLinkId)}`, {
+      responseType: 'blob',
+    });
+  }
+}

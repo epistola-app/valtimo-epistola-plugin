@@ -5,10 +5,12 @@
 export function filterAttributeKeys(
   availableKeys: string[],
   usedKeys: string[],
-  currentInput: string
+  currentInput: string,
 ): string[] {
   const usedSet = new Set(usedKeys);
-  return availableKeys.filter(key =>
-    !usedSet.has(key) && (!currentInput || key.toLowerCase().includes(currentInput.toLowerCase()))
+  return availableKeys.filter(
+    (key) =>
+      !usedSet.has(key) &&
+      (!currentInput || key.toLowerCase().includes(currentInput.toLowerCase())),
   );
 }

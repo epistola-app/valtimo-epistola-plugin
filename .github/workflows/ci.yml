@@ -63,11 +63,17 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint:check
+
+      - name: Check format
+        run: pnpm format:check
 
       - name: Build plugin
         run: pnpm --filter @epistola.app/valtimo-plugin build

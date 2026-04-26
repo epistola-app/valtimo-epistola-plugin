@@ -164,6 +164,7 @@ public class EpistolaPlugin {
         if (defaultEnvironmentId != null && !defaultEnvironmentId.isBlank()) {
             validateSlug("defaultEnvironmentId", defaultEnvironmentId, 3, 30);
         }
+
     }
 
     private void validateSlug(String propertyName, String value, int minLength, int maxLength) {
@@ -200,6 +201,7 @@ public class EpistolaPlugin {
      * variantId and variantAttributes are mutually exclusive.
      *
      * @param execution             The process execution context
+     * @param catalogId             The ID of the catalog containing the template
      * @param templateId            The ID of the template to use for document generation
      * @param variantId             The ID of the template variant (optional — omit to use default or attribute selection)
      * @param variantAttributes     Key-value attributes for automatic variant selection (optional).
@@ -220,6 +222,7 @@ public class EpistolaPlugin {
     )
     public void generateDocument(
             DelegateExecution execution,
+            @PluginActionProperty String catalogId,
             @PluginActionProperty String templateId,
             @PluginActionProperty String variantId,
             @PluginActionProperty Object variantAttributes,
@@ -230,8 +233,8 @@ public class EpistolaPlugin {
             @PluginActionProperty String correlationId,
             @PluginActionProperty String resultProcessVariable
     ) {
-        log.info("Starting document generation: templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
-                templateId, variantId, variantAttributes, outputFormat, filename);
+        log.info("Starting document generation: catalogId={}, templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
+                catalogId, templateId, variantId, variantAttributes, outputFormat, filename);
 
         // Normalize variant attributes from either old (Map<String, String>) or new (List<Map>) format
         List<NormalizedAttribute> normalizedAttributes = normalizeVariantAttributes(variantAttributes);
@@ -290,6 +293,7 @@ public class EpistolaPlugin {
                     baseUrl,
                     apiKey,
                     tenantId,
+                    catalogId,
                     templateId,
                     hasVariantId ? variantId : null,
                     resolvedAttributes,

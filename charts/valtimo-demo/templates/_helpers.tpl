@@ -280,25 +280,72 @@ the URLs that backend services expect.
 {{- end }}
 
 {{/*
-  Bootstrap admin password for Keycloak. Resuses existing secret when present to
-  avoid regenerating credentials on every upgrade.
+  Resolve or auto-generate a secret value for the chart-managed Secret.
+  Only called when the credential is NOT using a secretRef.
+  Usage: include "valtimo-demo.resolveSecretValue" (dict "root" . "value" "explicit" "chartKey" "keycloak-client-secret" "length" 40)
 */}}
-{{- define "valtimo-demo.keycloak.adminPassword" -}}
-{{- if .Values.secrets.existingSecret -}}
-{{- /* Password is managed externally via existingSecret */ -}}
-{{- "" -}}
-{{- else -}}
-{{- $password := .Values.secrets.keycloakAdminPassword | default "" -}}
-{{- if and .Values.keycloak.enabled (eq $password "") -}}
-  {{- $existing := lookup "v1" "Secret" .Release.Namespace (include "valtimo-demo.backend.fullname" .) -}}
-  {{- if and $existing (index $existing.data "keycloak-admin-password") -}}
-    {{- $password = ((index $existing.data "keycloak-admin-password") | b64dec) -}}
+{{- define "valtimo-demo.resolveSecretValue" -}}
+{{- $result := .value | default "" -}}
+{{- if eq $result "" -}}
+  {{- $existing := lookup "v1" "Secret" .root.Release.Namespace (include "valtimo-demo.backend.fullname" .root) -}}
+  {{- if and $existing (index $existing.data .chartKey) -}}
+    {{- $result = ((index $existing.data .chartKey) | b64dec) -}}
   {{- else -}}
-    {{- $password = randAlphaNum 32 -}}
+    {{- $result = randAlphaNum (.length | default 32) -}}
   {{- end -}}
 {{- end -}}
-{{- $password -}}
+{{- $result -}}
+{{- end }}
+
+{{/*
+  Returns the Secret name for a given credential.
+  Resolution order: secretRef.name > existingSecret > chart-managed secret.
+  Usage: include "valtimo-demo.secretName" (dict "root" . "credential" .Values.secrets.keycloakClientSecret)
+*/}}
+{{- define "valtimo-demo.secretName" -}}
+{{- if .credential.secretRef.name -}}
+  {{- .credential.secretRef.name -}}
+{{- else if .root.Values.secrets.existingSecret -}}
+  {{- .root.Values.secrets.existingSecret -}}
+{{- else -}}
+  {{- include "valtimo-demo.backend.fullname" .root -}}
 {{- end -}}
+{{- end }}
+
+{{/*
+  Returns the Secret key for a given credential.
+  When using secretRef, returns the configured key. Otherwise returns the chart's standard key.
+  Usage: include "valtimo-demo.secretKey" (dict "root" . "credential" .Values.secrets.keycloakClientSecret "chartKey" "keycloak-client-secret")
+*/}}
+{{- define "valtimo-demo.secretKey" -}}
+{{- if .credential.secretRef.name -}}
+  {{- .credential.secretRef.key -}}
+{{- else -}}
+  {{- .chartKey -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+  Auto-generate values for credentials stored in the chart-managed Secret.
+*/}}
+{{- define "valtimo-demo.keycloakClientSecret.value" -}}
+{{- include "valtimo-demo.resolveSecretValue" (dict "root" . "value" .Values.secrets.keycloakClientSecret.value "chartKey" "keycloak-client-secret" "length" 40) -}}
+{{- end }}
+
+{{- define "valtimo-demo.pluginEncryptionSecret.value" -}}
+{{- include "valtimo-demo.resolveSecretValue" (dict "root" . "value" .Values.secrets.pluginEncryptionSecret.value "chartKey" "plugin-encryption-secret" "length" 32) -}}
+{{- end }}
+
+{{- define "valtimo-demo.operatonAdminPassword.value" -}}
+{{- include "valtimo-demo.resolveSecretValue" (dict "root" . "value" .Values.secrets.operatonAdminPassword.value "chartKey" "operaton-admin-password" "length" 24) -}}
+{{- end }}
+
+{{- define "valtimo-demo.keycloakAdminPassword.value" -}}
+{{- include "valtimo-demo.resolveSecretValue" (dict "root" . "value" .Values.secrets.keycloakAdminPassword.value "chartKey" "keycloak-admin-password" "length" 32) -}}
+{{- end }}
+
+{{- define "valtimo-demo.epistolaClientSecret.value" -}}
+{{- include "valtimo-demo.resolveSecretValue" (dict "root" . "value" .Values.secrets.epistolaClientSecret.value "chartKey" "epistola-client-secret" "length" 40) -}}
 {{- end }}
 
 {{/*

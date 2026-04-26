@@ -1,8 +1,18 @@
-import {Injectable} from '@angular/core';
-import {HttpClient} from '@angular/common/http';
-import {ConfigService} from '@valtimo/shared';
-import {Observable} from 'rxjs';
-import {AttributeDefinition, EnvironmentInfo, ExpressionFunctionInfo, PreviewSource, TemplateDetails, TemplateInfo, ValidationResult, VariantInfo} from '../models';
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { ConfigService } from '@valtimo/shared';
+import { Observable } from 'rxjs';
+import {
+  AttributeDefinition,
+  CatalogInfo,
+  EnvironmentInfo,
+  ExpressionFunctionInfo,
+  PreviewSource,
+  TemplateDetails,
+  TemplateInfo,
+  ValidationResult,
+  VariantInfo,
+} from '../models';
 
 /**
  * Service for interacting with Epistola plugin API endpoints.
@@ -15,35 +25,58 @@ export class EpistolaPluginService {
 
   constructor(
     private readonly http: HttpClient,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
   ) {
     this.apiEndpoint = `${this.configService.config.valtimoApi.endpointUri}v1/plugin/epistola`;
   }
 
   /**
-   * Get all available templates for a plugin configuration.
+   * Get all available catalogs for a plugin configuration.
    */
-  getTemplates(pluginConfigurationId: string): Observable<TemplateInfo[]> {
+  getCatalogs(pluginConfigurationId: string): Observable<CatalogInfo[]> {
+    return this.http.get<CatalogInfo[]>(
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/catalogs`,
+    );
+  }
+
+  /**
+   * Get all available templates for a plugin configuration and catalog.
+   */
+  getTemplates(pluginConfigurationId: string, catalogId?: string): Observable<TemplateInfo[]> {
+    const params: Record<string, string> = {};
+    if (catalogId) params['catalogId'] = catalogId;
     return this.http.get<TemplateInfo[]>(
-      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates`
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates`,
+      { params },
     );
   }
 
   /**
    * Get template details including its fields.
    */
-  getTemplateDetails(pluginConfigurationId: string, templateId: string): Observable<TemplateDetails> {
+  getTemplateDetails(
+    pluginConfigurationId: string,
+    templateId: string,
+    catalogId: string,
+  ): Observable<TemplateDetails> {
     return this.http.get<TemplateDetails>(
-      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}`
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}`,
+      { params: { catalogId } },
     );
   }
 
   /**
-   * Get all attribute definitions for a plugin configuration's tenant.
+   * Get all attribute definitions for a plugin configuration's tenant and catalog.
    */
-  getAttributes(pluginConfigurationId: string): Observable<AttributeDefinition[]> {
+  getAttributes(
+    pluginConfigurationId: string,
+    catalogId: string,
+  ): Observable<AttributeDefinition[]> {
+    const params: Record<string, string> = {};
+    if (catalogId) params['catalogId'] = catalogId;
     return this.http.get<AttributeDefinition[]>(
-      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/attributes`
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/attributes`,
+      { params },
     );
   }
 
@@ -52,16 +85,23 @@ export class EpistolaPluginService {
    */
   getEnvironments(pluginConfigurationId: string): Observable<EnvironmentInfo[]> {
     return this.http.get<EnvironmentInfo[]>(
-      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/environments`
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/environments`,
     );
   }
 
   /**
    * Get all variants for a specific template.
    */
-  getVariants(pluginConfigurationId: string, templateId: string): Observable<VariantInfo[]> {
+  getVariants(
+    pluginConfigurationId: string,
+    templateId: string,
+    catalogId: string,
+  ): Observable<VariantInfo[]> {
+    const params: Record<string, string> = {};
+    if (catalogId) params['catalogId'] = catalogId;
     return this.http.get<VariantInfo[]>(
-      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}/variants`
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}/variants`,
+      { params },
     );
   }
 
@@ -69,10 +109,9 @@ export class EpistolaPluginService {
    * Discover process variable names for a given process definition.
    */
   getProcessVariables(processDefinitionKey: string): Observable<string[]> {
-    return this.http.get<string[]>(
-      `${this.apiEndpoint}/process-variables`,
-      {params: {processDefinitionKey}}
-    );
+    return this.http.get<string[]>(`${this.apiEndpoint}/process-variables`, {
+      params: { processDefinitionKey },
+    });
   }
 
   /**
@@ -81,11 +120,11 @@ export class EpistolaPluginService {
   validateMapping(
     pluginConfigurationId: string,
     templateId: string,
-    dataMapping: Record<string, any>
+    dataMapping: Record<string, any>,
   ): Observable<ValidationResult> {
     return this.http.post<ValidationResult>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}/validate-mapping`,
-      {dataMapping}
+      { dataMapping },
     );
   }
 
@@ -95,35 +134,32 @@ export class EpistolaPluginService {
   getRetryForm(
     processInstanceId: string,
     documentId?: string,
-    sourceActivityId?: string
+    sourceActivityId?: string,
   ): Observable<any> {
-    const params: Record<string, string> = {processInstanceId};
+    const params: Record<string, string> = { processInstanceId };
     if (documentId) {
       params['documentId'] = documentId;
     }
     if (sourceActivityId) {
       params['sourceActivityId'] = sourceActivityId;
     }
-    return this.http.get<any>(`${this.apiEndpoint}/retry-form`, {params});
+    return this.http.get<any>(`${this.apiEndpoint}/retry-form`, { params });
   }
 
   /**
    * List all available expression functions for expr: data mapping values.
    */
   getExpressionFunctions(): Observable<ExpressionFunctionInfo[]> {
-    return this.http.get<ExpressionFunctionInfo[]>(
-      `${this.apiEndpoint}/expression-functions`
-    );
+    return this.http.get<ExpressionFunctionInfo[]>(`${this.apiEndpoint}/expression-functions`);
   }
 
   /**
    * Discover all previewable document sources for a given Valtimo document.
    */
   getPreviewSources(documentId: string): Observable<PreviewSource[]> {
-    return this.http.get<PreviewSource[]>(
-      `${this.apiEndpoint}/preview-sources`,
-      {params: {documentId}}
-    );
+    return this.http.get<PreviewSource[]>(`${this.apiEndpoint}/preview-sources`, {
+      params: { documentId },
+    });
   }
 
   /**
@@ -135,14 +171,14 @@ export class EpistolaPluginService {
     processDefinitionKey: string,
     sourceActivityId: string,
     processInstanceId?: string,
-    overrides?: Record<string, any>
+    overrides?: Record<string, any>,
   ): Observable<any> {
     return this.http.post<any>(`${this.apiEndpoint}/preview`, {
       documentId,
       processDefinitionKey,
       sourceActivityId,
       processInstanceId: processInstanceId || null,
-      overrides: overrides || null
+      overrides: overrides || null,
     });
   }
 }

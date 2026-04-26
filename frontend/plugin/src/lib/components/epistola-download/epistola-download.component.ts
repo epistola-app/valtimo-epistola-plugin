@@ -1,7 +1,7 @@
-import {Component, EventEmitter, Input, Output} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {HttpClient} from '@angular/common/http';
-import {FormioCustomComponent} from '@valtimo/components';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { FormioCustomComponent } from '@valtimo/components';
 
 export interface DownloadData {
   documentId: string;
@@ -54,12 +54,13 @@ export class EpistolaDownloadComponent implements FormioCustomComponent<Download
     this.downloading = true;
     this.error = null;
 
-    const {documentId, tenantId} = this.value;
-    const url = `/api/v1/plugin/epistola/documents/${encodeURIComponent(documentId)}/download`
-      + `?tenantId=${encodeURIComponent(tenantId)}`
-      + `&filename=${encodeURIComponent(this.filename)}`;
+    const { documentId, tenantId } = this.value;
+    const url =
+      `/api/v1/plugin/epistola/documents/${encodeURIComponent(documentId)}/download` +
+      `?tenantId=${encodeURIComponent(tenantId)}` +
+      `&filename=${encodeURIComponent(this.filename)}`;
 
-    this.http.get(url, {responseType: 'blob'}).subscribe({
+    this.http.get(url, { responseType: 'blob' }).subscribe({
       next: (blob) => {
         const objectUrl = URL.createObjectURL(blob);
         const anchor = document.createElement('a');

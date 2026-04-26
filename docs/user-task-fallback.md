@@ -68,10 +68,10 @@ Add a process-link entry for the retry user task pointing to the built-in `epist
 
 ```json
 {
-    "activityId": "retry-edit-data",
-    "activityType": "bpmn:UserTask:create",
-    "processLinkType": "form",
-    "formDefinitionName": "epistola-retry-document"
+  "activityId": "retry-edit-data",
+  "activityType": "bpmn:UserTask:create",
+  "processLinkType": "form",
+  "formDefinitionName": "epistola-retry-document"
 }
 ```
 
@@ -84,8 +84,8 @@ In your Angular `AppModule`, register the retry form component:
 ```typescript
 import {
   registerEpistolaDownloadComponent,
-  registerEpistolaRetryFormComponent
-} from '@epistola.app/valtimo-plugin';
+  registerEpistolaRetryFormComponent,
+} from "@epistola.app/valtimo-plugin";
 
 export class AppModule {
   constructor(private injector: Injector) {
@@ -124,6 +124,7 @@ The retry form needs to know which `generate-document` activity's configuration 
 ```
 
 The resolution priority is:
+
 1. Explicit `sourceActivityId` query parameter (from Formio field option)
 2. `epistolaSourceActivityId` local variable on the active user task (BPMN input parameter)
 3. Auto-discovery from process links (single generate-document only)
@@ -140,13 +141,13 @@ The retry form is generated dynamically by the backend endpoint `GET /api/v1/plu
 
 Template fields are mapped to Formio components:
 
-| Template Field Type | Formio Component |
-|---|---|
-| SCALAR (string) | `textfield` |
-| SCALAR (number) | `number` |
-| SCALAR (boolean) | `checkbox` |
-| OBJECT | `fieldset` with nested children |
-| ARRAY | `datagrid` with item columns |
+| Template Field Type | Formio Component                |
+| ------------------- | ------------------------------- |
+| SCALAR (string)     | `textfield`                     |
+| SCALAR (number)     | `number`                        |
+| SCALAR (boolean)    | `checkbox`                      |
+| OBJECT              | `fieldset` with nested children |
+| ARRAY               | `datagrid` with item columns    |
 
 Field keys use dot-notation paths (e.g., `applicant.address.street`) so Formio automatically nests the submission data.
 
@@ -157,8 +158,8 @@ The `epistola-retry-document` form is auto-deployed for each case definition via
 ```yaml
 epistola:
   retry-form:
-    enabled: true          # default: true
-    case-filter: "all"     # "all", "none", or regex (e.g., "permit.*|subsidy.*")
+    enabled: true # default: true
+    case-filter: "all" # "all", "none", or regex (e.g., "permit.*|subsidy.*")
 ```
 
 ## Architecture
@@ -198,6 +199,7 @@ epistola:
 ## Example
 
 See the permit-confirmation process in the test-app:
+
 - BPMN: `test-app/backend/.../bpmn/permit-confirmation.bpmn`
 - Process-link: `test-app/backend/.../process-link/permit-confirmation.process-link.json`
 - Start form with optional BSN field to trigger failures: `test-app/backend/.../form/permit-start.form.json`

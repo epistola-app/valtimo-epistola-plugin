@@ -17,7 +17,9 @@ export class PluginManagementPage {
   async openAddPluginModal() {
     await this.addPluginButton.click();
     // Wait for the modal to appear
-    await expect(this.page.locator('.modal, cds-modal, valtimo-modal')).toBeVisible({ timeout: 5_000 });
+    await expect(this.page.locator('.modal, cds-modal, valtimo-modal')).toBeVisible({
+      timeout: 5_000,
+    });
   }
 
   async selectEpistolaPlugin() {

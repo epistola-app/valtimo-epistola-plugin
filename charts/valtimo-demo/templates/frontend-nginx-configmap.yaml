@@ -39,8 +39,16 @@ data:
             proxy_pass http://{{ include "valtimo-demo.backend.fullname" . }}:{{ .Values.backend.service.port }};
         }
 
+        # Hashed assets (JS, CSS) — cache aggressively
+        location ~* \.[0-9a-f]{16,}\.(js|css)$ {
+            root   /usr/share/nginx/html;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
         location / {
             root   /usr/share/nginx/html;
+            add_header Cache-Control "no-cache";
             try_files $uri $uri/ /index.html?$args;
         }
     }

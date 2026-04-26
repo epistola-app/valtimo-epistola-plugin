@@ -1,4 +1,4 @@
-import {TemplateField} from '../models';
+import { TemplateField } from '../models';
 
 export interface RequiredFieldsStatus {
   mapped: number;
@@ -7,7 +7,7 @@ export interface RequiredFieldsStatus {
 
 export function countRequiredMapped(
   fields: TemplateField[],
-  mapping: Record<string, any>
+  mapping: Record<string, any>,
 ): RequiredFieldsStatus {
   let mapped = 0;
   let total = 0;
@@ -29,13 +29,14 @@ export function countRequiredMapped(
         }
       }
     } else if (field.fieldType === 'OBJECT' && field.children) {
-      const nested = (typeof mapping[field.name] === 'object' && mapping[field.name] !== null)
-        ? mapping[field.name]
-        : {};
+      const nested =
+        typeof mapping[field.name] === 'object' && mapping[field.name] !== null
+          ? mapping[field.name]
+          : {};
       const childStats = countRequiredMapped(field.children, nested);
       mapped += childStats.mapped;
       total += childStats.total;
     }
   }
-  return {mapped, total};
+  return { mapped, total };
 }

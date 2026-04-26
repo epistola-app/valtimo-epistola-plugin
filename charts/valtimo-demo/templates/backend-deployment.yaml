@@ -111,8 +111,8 @@ spec:
             - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTSECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "valtimo-demo.backend.secretName" . }}
-                  key: keycloak-client-secret
+                  name: {{ include "valtimo-demo.secretName" (dict "root" . "credential" .Values.secrets.keycloakClientSecret) }}
+                  key: {{ include "valtimo-demo.secretKey" (dict "root" . "credential" .Values.secrets.keycloakClientSecret "chartKey" "keycloak-client-secret") }}
 
             # Valtimo
             - name: VALTIMO_APP_HOSTNAME
@@ -120,8 +120,8 @@ spec:
             - name: VALTIMO_PLUGIN_ENCRYPTIONSECRET
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "valtimo-demo.backend.secretName" . }}
-                  key: plugin-encryption-secret
+                  name: {{ include "valtimo-demo.secretName" (dict "root" . "credential" .Values.secrets.pluginEncryptionSecret) }}
+                  key: {{ include "valtimo-demo.secretKey" (dict "root" . "credential" .Values.secrets.pluginEncryptionSecret "chartKey" "plugin-encryption-secret") }}
 
             # Epistola
             - name: EPISTOLA_BASE_URL
@@ -131,8 +131,8 @@ spec:
             - name: OPERATON_BPM_ADMINUSER_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ include "valtimo-demo.backend.secretName" . }}
-                  key: operaton-admin-password
+                  name: {{ include "valtimo-demo.secretName" (dict "root" . "credential" .Values.secrets.operatonAdminPassword) }}
+                  key: {{ include "valtimo-demo.secretKey" (dict "root" . "credential" .Values.secrets.operatonAdminPassword "chartKey" "operaton-admin-password") }}
 
             {{- with .Values.backend.extraEnv }}
             {{- toYaml . | nindent 12 }}

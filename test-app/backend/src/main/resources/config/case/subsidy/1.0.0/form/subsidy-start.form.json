@@ -1,106 +1,106 @@
 {
-    "display": "form",
-    "components": [
+  "display": "form",
+  "components": [
+    {
+      "key": "beneficiary",
+      "type": "fieldset",
+      "label": "Begunstigde",
+      "components": [
         {
-            "key": "beneficiary",
-            "type": "fieldset",
-            "label": "Begunstigde",
-            "components": [
-                {
-                    "key": "beneficiary.name",
-                    "type": "textfield",
-                    "input": true,
-                    "label": "Naam",
-                    "defaultValue": "Stichting Groen Amsterdam",
-                    "validate": { "required": true }
-                },
-                {
-                    "key": "beneficiary.address.street",
-                    "type": "textfield",
-                    "input": true,
-                    "label": "Straat",
-                    "defaultValue": "Vondelstraat",
-                    "validate": { "required": true }
-                },
-                {
-                    "key": "beneficiary.address.houseNumber",
-                    "type": "textfield",
-                    "input": true,
-                    "label": "Huisnummer",
-                    "defaultValue": "18",
-                    "validate": { "required": true }
-                },
-                {
-                    "key": "beneficiary.address.postalCode",
-                    "type": "textfield",
-                    "input": true,
-                    "label": "Postcode",
-                    "defaultValue": "1054GE",
-                    "validate": { "required": true, "pattern": "^[0-9]{4}[A-Z]{2}$" }
-                },
-                {
-                    "key": "beneficiary.address.city",
-                    "type": "textfield",
-                    "input": true,
-                    "label": "Woonplaats",
-                    "defaultValue": "Amsterdam",
-                    "validate": { "required": true }
-                }
-            ]
+          "key": "beneficiary.name",
+          "type": "textfield",
+          "input": true,
+          "label": "Naam",
+          "defaultValue": "Stichting Groen Amsterdam",
+          "validate": { "required": true }
         },
         {
-            "key": "subsidy",
-            "type": "fieldset",
-            "label": "Subsidie",
-            "components": [
-                {
-                    "key": "subsidy.programName",
-                    "type": "textfield",
-                    "input": true,
-                    "label": "Programma",
-                    "defaultValue": "Stimulering Duurzame Stedelijke Ontwikkeling",
-                    "validate": { "required": true }
-                },
-                {
-                    "key": "subsidy.amount",
-                    "type": "number",
-                    "input": true,
-                    "label": "Bedrag (\u20ac)",
-                    "defaultValue": 25000,
-                    "validate": { "required": true, "min": 0 }
-                },
-                {
-                    "key": "subsidy.decision",
-                    "type": "select",
-                    "input": true,
-                    "label": "Besluit",
-                    "defaultValue": "toegekend",
-                    "data": {
-                        "values": [
-                            { "label": "Toegekend", "value": "toegekend" },
-                            { "label": "Afgewezen", "value": "afgewezen" }
-                        ]
-                    },
-                    "validate": { "required": true }
-                },
-                {
-                    "key": "subsidy.conditions",
-                    "type": "textarea",
-                    "input": true,
-                    "label": "Voorwaarden",
-                    "defaultValue": "De subsidie dient besteed te worden aan vergroening van openbare ruimte binnen de gemeente Amsterdam. Verantwoording dient uiterlijk 31 december 2026 te worden ingediend.",
-                    "rows": 3
-                }
-            ]
+          "key": "beneficiary.address.street",
+          "type": "textfield",
+          "input": true,
+          "label": "Straat",
+          "defaultValue": "Vondelstraat",
+          "validate": { "required": true }
         },
         {
-            "key": "submit",
-            "type": "button",
-            "input": true,
-            "label": "Starten",
-            "action": "submit",
-            "theme": "primary",
-            "disableOnInvalid": true
+          "key": "beneficiary.address.houseNumber",
+          "type": "textfield",
+          "input": true,
+          "label": "Huisnummer",
+          "defaultValue": "18",
+          "validate": { "required": true }
+        },
+        {
+          "key": "beneficiary.address.postalCode",
+          "type": "textfield",
+          "input": true,
+          "label": "Postcode",
+          "defaultValue": "1054GE",
+          "validate": { "required": true, "pattern": "^[0-9]{4}[A-Z]{2}$" }
+        },
+        {
+          "key": "beneficiary.address.city",
+          "type": "textfield",
+          "input": true,
+          "label": "Woonplaats",
+          "defaultValue": "Amsterdam",
+          "validate": { "required": true }
         }
-    ]
+      ]
+    },
+    {
+      "key": "subsidy",
+      "type": "fieldset",
+      "label": "Subsidie",
+      "components": [
+        {
+          "key": "subsidy.programName",
+          "type": "textfield",
+          "input": true,
+          "label": "Programma",
+          "defaultValue": "Stimulering Duurzame Stedelijke Ontwikkeling",
+          "validate": { "required": true }
+        },
+        {
+          "key": "subsidy.amount",
+          "type": "number",
+          "input": true,
+          "label": "Bedrag (\u20ac)",
+          "defaultValue": 25000,
+          "validate": { "required": true, "min": 0 }
+        },
+        {
+          "key": "subsidy.decision",
+          "type": "select",
+          "input": true,
+          "label": "Besluit",
+          "defaultValue": "toegekend",
+          "data": {
+            "values": [
+              { "label": "Toegekend", "value": "toegekend" },
+              { "label": "Afgewezen", "value": "afgewezen" }
+            ]
+          },
+          "validate": { "required": true }
+        },
+        {
+          "key": "subsidy.conditions",
+          "type": "textarea",
+          "input": true,
+          "label": "Voorwaarden",
+          "defaultValue": "De subsidie dient besteed te worden aan vergroening van openbare ruimte binnen de gemeente Amsterdam. Verantwoording dient uiterlijk 31 december 2026 te worden ingediend.",
+          "rows": 3
+        }
+      ]
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Starten",
+      "action": "submit",
+      "theme": "primary",
+      "disableOnInvalid": true
+    }
+  ]
 }

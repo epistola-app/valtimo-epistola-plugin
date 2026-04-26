@@ -1,34 +1,22 @@
 services:
   ved-epistola-server:
     profiles: ["server"]
-    image: ghcr.io/epistola-app/epistola-suite:0.6.1
+    image: ghcr.io/epistola-app/epistola-suite:latest
     container_name: ved-epistola-server
     environment:
-      SPRING_PROFILES_ACTIVE: demo,keycloak
+      SPRING_PROFILES_ACTIVE: demo,localauth
       SPRING_DATASOURCE_URL: jdbc:postgresql://ved-postgres:5432/epistola_suite
       SPRING_DATASOURCE_USERNAME: epistola
       SPRING_DATASOURCE_PASSWORD: epistola
-      # Override issuer to point at the shared valtimo realm on port 8081
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUERURI: http://localhost:8081/realms/valtimo
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUERURI: http://localhost:8081/realms/valtimo
-      # Backchannel: server-to-server calls use container-internal URL
-      EPISTOLA_AUTH_OIDC_BACKCHANNELBASEURL: http://ved-keycloak:8080
-      # Keycloak Admin API for tenant group provisioning
-      EPISTOLA_KEYCLOAK_ADMINURL: http://ved-keycloak:8080
-      EPISTOLA_KEYCLOAK_REALM: valtimo
-      EPISTOLA_KEYCLOAK_CLIENTID: epistola-suite
-      EPISTOLA_KEYCLOAK_CLIENTSECRET: epistola-dev-secret
     ports:
       - "4010:4000"
     depends_on:
       ved-postgres:
         condition: service_healthy
-      ved-keycloak:
-        condition: service_started
 
   ved-epistola-mock:
     profiles: ["mock"]
-    image: ghcr.io/epistola-app/epistola-contract/mock-server:0.1.18
+    image: ghcr.io/epistola-app/epistola-contract/mock-server:0.2.0
     container_name: ved-epistola-mock
     ports:
       - "4010:4010"

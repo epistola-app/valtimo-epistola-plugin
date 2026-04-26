@@ -1,9 +1,9 @@
-import {Component, EventEmitter, Input, OnDestroy, Output} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {HttpClient} from '@angular/common/http';
-import {DomSanitizer, SafeResourceUrl} from '@angular/platform-browser';
-import {FormioCustomComponent} from '@valtimo/components';
-import {ConfigService} from '@valtimo/shared';
+import { Component, EventEmitter, Input, OnDestroy, Output } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { FormioCustomComponent } from '@valtimo/components';
+import { ConfigService } from '@valtimo/shared';
 
 export interface PreviewButtonData {
   documentId: string;
@@ -29,7 +29,9 @@ export interface PreviewButtonData {
       <div class="preview-modal-content" (click)="$event.stopPropagation()">
         <div class="preview-modal-header">
           <span>Document Preview</span>
-          <button type="button" class="preview-modal-close" (click)="closePreview()">&times;</button>
+          <button type="button" class="preview-modal-close" (click)="closePreview()">
+            &times;
+          </button>
         </div>
         <div class="preview-modal-body">
           <div *ngIf="previewLoading" class="preview-loading">Generating preview...</div>
@@ -46,71 +48,76 @@ export interface PreviewButtonData {
       </div>
     </div>
   `,
-  styles: [`
-    .preview-modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      background: rgba(0, 0, 0, 0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10000;
-    }
-    .preview-modal-content {
-      background: white;
-      border-radius: 8px;
-      width: 90vw;
-      height: 90vh;
-      max-width: 1200px;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-    .preview-modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid #dee2e6;
-      font-weight: bold;
-      font-size: 1rem;
-    }
-    .preview-modal-close {
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-      color: #6c757d;
-      line-height: 1;
-      padding: 0 0.25rem;
-    }
-    .preview-modal-close:hover {
-      color: #333;
-    }
-    .preview-modal-body {
-      flex: 1;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-    .preview-loading, .preview-error {
-      padding: 2rem;
-      text-align: center;
-    }
-    .preview-error {
-      color: #dc3545;
-    }
-    .preview-pdf {
-      width: 100%;
-      flex: 1;
-    }
-  `]
+  styles: [
+    `
+      .preview-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      }
+      .preview-modal-content {
+        background: white;
+        border-radius: 8px;
+        width: 90vw;
+        height: 90vh;
+        max-width: 1200px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+      .preview-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #dee2e6;
+        font-weight: bold;
+        font-size: 1rem;
+      }
+      .preview-modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #6c757d;
+        line-height: 1;
+        padding: 0 0.25rem;
+      }
+      .preview-modal-close:hover {
+        color: #333;
+      }
+      .preview-modal-body {
+        flex: 1;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .preview-loading,
+      .preview-error {
+        padding: 2rem;
+        text-align: center;
+      }
+      .preview-error {
+        color: #dc3545;
+      }
+      .preview-pdf {
+        width: 100%;
+        flex: 1;
+      }
+    `,
+  ],
 })
-export class EpistolaPreviewButtonComponent implements FormioCustomComponent<PreviewButtonData>, OnDestroy {
+export class EpistolaPreviewButtonComponent
+  implements FormioCustomComponent<PreviewButtonData>, OnDestroy
+{
   @Input() value!: PreviewButtonData;
   @Output() valueChange = new EventEmitter<PreviewButtonData>();
 
@@ -133,7 +140,7 @@ export class EpistolaPreviewButtonComponent implements FormioCustomComponent<Pre
   constructor(
     private readonly http: HttpClient,
     private readonly sanitizer: DomSanitizer,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
   ) {
     this.apiEndpoint = `${this.configService.config.valtimoApi.endpointUri}v1/plugin/epistola`;
   }
@@ -154,12 +161,13 @@ export class EpistolaPreviewButtonComponent implements FormioCustomComponent<Pre
     this.previewError = null;
     this.revokeBlobUrl();
 
-    const {documentId, tenantId} = this.value;
-    const url = `${this.apiEndpoint}/documents/${encodeURIComponent(documentId)}/download`
-      + `?tenantId=${encodeURIComponent(tenantId)}`
-      + `&filename=preview.pdf`;
+    const { documentId, tenantId } = this.value;
+    const url =
+      `${this.apiEndpoint}/documents/${encodeURIComponent(documentId)}/download` +
+      `?tenantId=${encodeURIComponent(tenantId)}` +
+      `&filename=preview.pdf`;
 
-    this.http.get(url, {responseType: 'blob'}).subscribe({
+    this.http.get(url, { responseType: 'blob' }).subscribe({
       next: (blob) => {
         this.currentBlobUrl = URL.createObjectURL(blob);
         this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.currentBlobUrl);
@@ -168,7 +176,7 @@ export class EpistolaPreviewButtonComponent implements FormioCustomComponent<Pre
       error: () => {
         this.previewError = 'Could not load the document.';
         this.previewLoading = false;
-      }
+      },
     });
   }
 

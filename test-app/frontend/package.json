@@ -1,6 +1,7 @@
 {
   "name": "gzac-frontend-template",
   "version": "1.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "ng": "ng",
@@ -13,10 +14,7 @@
     "e2e:ui": "playwright test --config=e2e/playwright.config.ts --ui",
     "e2e:install": "playwright install chromium"
   },
-  "private": true,
   "dependencies": {
-    "@carbon/charts-angular": "1.23.6",
-    "@foxythemes/bootstrap-datetime-picker-bs4": "2.3.5",
     "@angular/animations": "^19.2.8",
     "@angular/cdk": "^19.2.11",
     "@angular/common": "^19.2.8",
@@ -30,6 +28,9 @@
     "@angular/router": "^19.2.8",
     "@bpmn-io/dmn-migrate": "0.5.0",
     "@bpmn-io/properties-panel": "3.26.4",
+    "@carbon/charts-angular": "1.23.6",
+    "@epistola.app/valtimo-plugin": "workspace:*",
+    "@foxythemes/bootstrap-datetime-picker-bs4": "2.3.5",
     "@mdi/font": "7.4.47",
     "@ngx-translate/core": "16.0.4",
     "@ngx-translate/http-loader": "16.0.1",
@@ -69,15 +70,14 @@
     "@valtimo/swagger": "13.21.0",
     "@valtimo/task": "13.21.0",
     "@valtimo/task-management": "13.21.0",
-    "@epistola.app/valtimo-plugin": "workspace:*",
     "@webcomponents/custom-elements": "1.6.0",
     "bootstrap": "4.6.2",
     "bpmn-js": "18.6.1",
-    "buffer": "^6.0.3",
-    "components-jqueryui": "1.12.1",
     "bpmn-js-properties-panel": "5.35.0",
+    "buffer": "^6.0.3",
     "camunda-bpmn-js-behaviors": "1.10.0",
     "camunda-bpmn-moddle": "7.0.1",
+    "components-jqueryui": "1.12.1",
     "core-js": "3.41.0",
     "diagram-js": "15.3.0",
     "dmn-js": "17.2.0",
@@ -103,6 +103,7 @@
     "@angular/cli": "^19.2.9",
     "@angular/compiler-cli": "^19.2.8",
     "@angular/language-service": "^19.2.8",
+    "@playwright/test": "^1.50.0",
     "@types/jasmine": "5.1.7",
     "@types/jasminewd2": "2.0.13",
     "@types/node": "22.15.3",
@@ -120,7 +121,6 @@
     "moment-duration-format": "2.3.2",
     "replace": "1.2.2",
     "ts-node": "10.9.1",
-    "typescript": "5.8.3",
-    "@playwright/test": "^1.50.0"
+    "typescript": "5.8.3"
   }
 }

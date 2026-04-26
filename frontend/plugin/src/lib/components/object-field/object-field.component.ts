@@ -1,9 +1,17 @@
-import {ChangeDetectionStrategy, Component, EventEmitter, Input, OnChanges, Output, SimpleChanges} from '@angular/core';
-import {CommonModule} from '@angular/common';
-import {PluginTranslatePipeModule} from '@valtimo/plugin';
-import {TemplateField} from '../../models';
-import {countRequiredMapped} from '../../utils/template-field-utils';
-import type {FieldTreeComponent as FieldTreeComponentType} from '../field-tree/field-tree.component';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  EventEmitter,
+  Input,
+  OnChanges,
+  Output,
+  SimpleChanges,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { PluginTranslatePipeModule } from '@valtimo/plugin';
+import { TemplateField } from '../../models';
+import { countRequiredMapped } from '../../utils/template-field-utils';
+import type { FieldTreeComponent as FieldTreeComponentType } from '../field-tree/field-tree.component';
 
 // Break the circular dependency: FieldTreeComponent imports ObjectFieldComponent,
 // so we defer the import using a getter that resolves at runtime.
@@ -21,10 +29,7 @@ function getFieldTreeComponent(): typeof FieldTreeComponentType {
   styleUrls: ['./object-field.component.scss'],
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [
-    CommonModule,
-    PluginTranslatePipeModule,
-  ]
+  imports: [CommonModule, PluginTranslatePipeModule],
 })
 export class ObjectFieldComponent implements OnChanges {
   @Input() field!: TemplateField;
@@ -54,7 +59,7 @@ export class ObjectFieldComponent implements OnChanges {
   }
 
   onChildChange(childName: string, childValue: any): void {
-    const current = (typeof this.value === 'object' && this.value !== null) ? {...this.value} : {};
+    const current = typeof this.value === 'object' && this.value !== null ? { ...this.value } : {};
     if (childValue === undefined || childValue === null || childValue === '') {
       delete current[childName];
     } else {

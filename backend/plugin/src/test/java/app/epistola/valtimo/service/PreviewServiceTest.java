@@ -218,6 +218,7 @@ class PreviewServiceTest {
 
             // Set up process link with action properties
             ObjectNode actionProps = objectMapper.createObjectNode();
+            actionProps.put("catalogId", "default");
             actionProps.put("templateId", "template-123");
             actionProps.putObject("dataMapping");
 
@@ -245,7 +246,7 @@ class PreviewServiceTest {
 
             // Epistola API throws
             when(epistolaService.previewDocument(
-                    anyString(), anyString(), anyString(),
+                    anyString(), anyString(), anyString(), anyString(),
                     anyString(), any(), anyString(), any()))
                     .thenThrow(new RuntimeException("Connection refused"));
 

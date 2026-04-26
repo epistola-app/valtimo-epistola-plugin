@@ -98,6 +98,7 @@ docker compose -f docker/docker-compose.yml --profile server up -d
 ```
 
 This starts:
+
 - **PostgreSQL** on `localhost:5432`
 - **Keycloak** on `localhost:8081` (shared `valtimo` realm)
 - **Epistola server** on `localhost:4010` (with SSO via Keycloak)
