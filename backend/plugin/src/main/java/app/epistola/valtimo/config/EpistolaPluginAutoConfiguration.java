@@ -6,7 +6,6 @@ import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
-import app.epistola.valtimo.expression.ExpressionResolver;
 import app.epistola.valtimo.expression.functions.FormatDateFunction;
 import app.epistola.valtimo.expression.functions.StringFunctions;
 import app.epistola.valtimo.mapping.JsonataMappingService;
@@ -67,12 +66,6 @@ public class EpistolaPluginAutoConfiguration {
             List<EpistolaExpressionFunction> functions
     ) {
         return new ExpressionFunctionRegistry(functions);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(ExpressionResolver.class)
-    public ExpressionResolver expressionResolver(ExpressionFunctionRegistry registry) {
-        return new ExpressionResolver(registry);
     }
 
     @Bean
