@@ -1,4 +1,5 @@
-package app.epistola.valtimo.service;
+package app.epistola.valtimo.service.form;
+import app.epistola.valtimo.service.form.FormioFormGenerator;
 
 import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateField.FieldType;

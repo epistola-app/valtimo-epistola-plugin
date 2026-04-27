@@ -1,7 +1,9 @@
-package app.epistola.valtimo.service;
+package app.epistola.valtimo.service.preview;
+import app.epistola.valtimo.service.preview.PreviewService;
+import app.epistola.valtimo.service.EpistolaService;
 
 import app.epistola.valtimo.mapping.JsonataMappingService;
-import app.epistola.valtimo.service.PreviewService.PreviewException;
+import app.epistola.valtimo.service.preview.PreviewService.PreviewException;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;

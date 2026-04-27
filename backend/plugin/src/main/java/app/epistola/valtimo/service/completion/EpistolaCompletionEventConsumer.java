@@ -1,4 +1,4 @@
-package app.epistola.valtimo.service;
+package app.epistola.valtimo.service.completion;
 
 /**
  * Consumes document generation completion events from Epistola

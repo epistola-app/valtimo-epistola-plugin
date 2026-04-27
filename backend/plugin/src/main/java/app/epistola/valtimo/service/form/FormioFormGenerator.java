@@ -1,4 +1,4 @@
-package app.epistola.valtimo.service;
+package app.epistola.valtimo.service.form;
 
 import app.epistola.valtimo.domain.TemplateField;
 import com.fasterxml.jackson.databind.ObjectMapper;

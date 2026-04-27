@@ -6,7 +6,7 @@ import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.mapping.JsonataMappingService;
-import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
+import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 
 import app.epistola.valtimo.service.EpistolaService;
 import com.fasterxml.jackson.core.type.TypeReference;

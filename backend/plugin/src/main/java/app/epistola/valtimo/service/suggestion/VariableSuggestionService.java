@@ -1,4 +1,6 @@
-package app.epistola.valtimo.service;
+package app.epistola.valtimo.service.suggestion;
+
+import app.epistola.valtimo.service.EpistolaService;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.ritense.document.domain.DocumentDefinition;

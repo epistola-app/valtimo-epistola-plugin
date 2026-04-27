@@ -1,6 +1,6 @@
 package app.epistola.valtimo.web.rest;
 
-import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
+import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 import com.ritense.valtimo.contract.annotation.SkipComponentScan;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,5 @@
-package app.epistola.valtimo.service;
+package app.epistola.valtimo.service.completion;
+import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import org.junit.jupiter.api.BeforeEach;

@@ -1,4 +1,6 @@
-package app.epistola.valtimo.service;
+package app.epistola.valtimo.service.admin;
+import app.epistola.valtimo.service.admin.EpistolaAdminService;
+import app.epistola.valtimo.service.EpistolaService;
 
 import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;

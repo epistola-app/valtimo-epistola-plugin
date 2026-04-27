@@ -1,4 +1,6 @@
-package app.epistola.valtimo.service;
+package app.epistola.valtimo.service.completion;
+import app.epistola.valtimo.service.completion.PollingCompletionEventConsumer;
+import app.epistola.valtimo.service.EpistolaService;
 
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.GenerationJobDetail;

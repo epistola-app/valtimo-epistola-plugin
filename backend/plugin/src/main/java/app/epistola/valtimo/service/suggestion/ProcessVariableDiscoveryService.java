@@ -1,4 +1,4 @@
-package app.epistola.valtimo.service;
+package app.epistola.valtimo.service.suggestion;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

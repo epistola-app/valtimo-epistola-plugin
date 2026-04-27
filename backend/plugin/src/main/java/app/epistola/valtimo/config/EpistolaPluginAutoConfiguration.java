@@ -9,16 +9,16 @@ import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.expression.functions.FormatDateFunction;
 import app.epistola.valtimo.expression.functions.StringFunctions;
 import app.epistola.valtimo.mapping.JsonataMappingService;
-import app.epistola.valtimo.service.EpistolaAdminService;
-import app.epistola.valtimo.service.EpistolaCompletionEventConsumer;
-import app.epistola.valtimo.service.VariableSuggestionService;
-import app.epistola.valtimo.service.EpistolaMessageCorrelationService;
+import app.epistola.valtimo.service.admin.EpistolaAdminService;
+import app.epistola.valtimo.service.completion.EpistolaCompletionEventConsumer;
+import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
+import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
-import app.epistola.valtimo.service.FormioFormGenerator;
-import app.epistola.valtimo.service.PollingCompletionEventConsumer;
-import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
-import app.epistola.valtimo.service.RetryFormService;
+import app.epistola.valtimo.service.form.FormioFormGenerator;
+import app.epistola.valtimo.service.completion.PollingCompletionEventConsumer;
+import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
+import app.epistola.valtimo.service.form.RetryFormService;
 import app.epistola.valtimo.web.rest.EpistolaAdminResource;
 import app.epistola.valtimo.web.rest.EpistolaCallbackResource;
 import app.epistola.valtimo.web.rest.EpistolaPluginResource;
@@ -136,8 +136,8 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(app.epistola.valtimo.service.PreviewService.class)
-    public app.epistola.valtimo.service.PreviewService previewService(
+    @ConditionalOnMissingBean(app.epistola.valtimo.service.preview.PreviewService.class)
+    public app.epistola.valtimo.service.preview.PreviewService previewService(
             PluginService pluginService,
             EpistolaService epistolaService,
             ProcessLinkService processLinkService,
@@ -147,7 +147,7 @@ public class EpistolaPluginAutoConfiguration {
             com.ritense.document.service.DocumentService documentService,
             ObjectMapper objectMapper
     ) {
-        return new app.epistola.valtimo.service.PreviewService(pluginService, epistolaService,
+        return new app.epistola.valtimo.service.preview.PreviewService(pluginService, epistolaService,
                 processLinkService, operatonRepositoryService, runtimeService,
                 jsonataMappingService, documentService, objectMapper);
     }
@@ -168,7 +168,7 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaService epistolaService,
             ProcessVariableDiscoveryService processVariableDiscoveryService,
             RetryFormService retryFormService,
-            app.epistola.valtimo.service.PreviewService previewService,
+            app.epistola.valtimo.service.preview.PreviewService previewService,
             ExpressionFunctionRegistry expressionFunctionRegistry,
             VariableSuggestionService variableSuggestionService,
             JsonataMappingService jsonataMappingService,

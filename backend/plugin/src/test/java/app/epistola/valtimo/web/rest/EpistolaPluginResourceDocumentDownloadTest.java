@@ -2,8 +2,8 @@ package app.epistola.valtimo.web.rest;
 
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.service.EpistolaService;
-import app.epistola.valtimo.service.ProcessVariableDiscoveryService;
-import app.epistola.valtimo.service.RetryFormService;
+import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
+import app.epistola.valtimo.service.form.RetryFormService;
 import com.ritense.plugin.domain.PluginConfiguration;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
@@ -36,9 +36,9 @@ class EpistolaPluginResourceDocumentDownloadTest {
         epistolaService = mock(EpistolaService.class);
         var processVariableDiscoveryService = mock(ProcessVariableDiscoveryService.class);
         var retryFormService = mock(RetryFormService.class);
-        var previewService = mock(app.epistola.valtimo.service.PreviewService.class);
+        var previewService = mock(app.epistola.valtimo.service.preview.PreviewService.class);
         var expressionFunctionRegistry = new ExpressionFunctionRegistry(List.of());
-        var variableSuggestionService = mock(app.epistola.valtimo.service.VariableSuggestionService.class);
+        var variableSuggestionService = mock(app.epistola.valtimo.service.suggestion.VariableSuggestionService.class);
         var jsonataMappingService = mock(app.epistola.valtimo.mapping.JsonataMappingService.class);
         var documentService = mock(com.ritense.document.service.DocumentService.class);
         var objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
