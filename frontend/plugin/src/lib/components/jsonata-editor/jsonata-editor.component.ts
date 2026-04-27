@@ -2,16 +2,18 @@ import {
   AfterViewInit,
   Component,
   EventEmitter,
+  Inject,
   Input,
   OnChanges,
   OnDestroy,
+  Optional,
   Output,
   SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { EditorModule } from '@valtimo/components';
-import { Subject, debounceTime, takeUntil } from 'rxjs';
+import { first, Subject, debounceTime, takeUntil } from 'rxjs';
 import { ExpressionFunctionInfo, VariableSuggestions } from '../../models';
 import { jsonataCompletionData, registerJsonataLanguage } from '../../utils/jsonata-monaco';
 
@@ -69,7 +71,7 @@ export class JsonataEditorComponent implements AfterViewInit, OnChanges, OnDestr
   @Output() expressionChange = new EventEmitter<string>();
   @Output() validChange = new EventEmitter<boolean>();
 
-  editorModel: { value: string; language: string } = { value: '', language: 'json' };
+  editorModel: { value: string; language: string } = { value: '', language: 'jsonata' };
   editorOptions: Record<string, any> = {
     minimap: { enabled: false },
     lineNumbers: 'on',
@@ -85,23 +87,29 @@ export class JsonataEditorComponent implements AfterViewInit, OnChanges, OnDestr
   private destroy$ = new Subject<void>();
   private validate$ = new Subject<string>();
   private suppressChange = false;
-  private languageRegistered = false;
+  private editorService: any;
 
-  constructor() {
+  constructor(@Optional() @Inject('EditorService') editorServiceToken: any) {
+    // Try to get EditorService — it's provided by Valtimo at the app level
+    this.editorService = editorServiceToken;
+
     this.validate$.pipe(debounceTime(300), takeUntil(this.destroy$)).subscribe((value) => {
       this.validateExpression(value);
     });
   }
 
   ngAfterViewInit(): void {
-    // Wait for Valtimo's editor to load Monaco, then register JSONata language
-    this.waitForMonaco();
+    // Register JSONata language once Monaco is loaded
+    // Valtimo's EditorComponent uses EditorService internally to load Monaco.
+    // By the time our ngAfterViewInit runs and Valtimo's editor renders,
+    // Monaco will be available as a global. Register on next tick to ensure
+    // Valtimo's editor has initialized first.
+    setTimeout(() => this.registerLanguage());
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['expression'] && !this.suppressChange) {
-      const lang = this.languageRegistered ? 'jsonata' : 'json';
-      this.editorModel = { value: this.expression || '', language: lang };
+      this.editorModel = { value: this.expression || '', language: 'jsonata' };
       this.validate$.next(this.expression);
     }
     if (changes['suggestions']) {
@@ -125,29 +133,13 @@ export class JsonataEditorComponent implements AfterViewInit, OnChanges, OnDestr
     setTimeout(() => (this.suppressChange = false));
   }
 
-  private waitForMonaco(): void {
-    const check = setInterval(() => {
-      const m = (window as any).monaco;
-      if (m) {
-        clearInterval(check);
-        this.onMonacoReady(m);
-      }
-    }, 200);
-
-    // Stop trying after 10s
-    setTimeout(() => clearInterval(check), 10000);
-  }
-
-  private onMonacoReady(monaco: any): void {
-    registerJsonataLanguage(monaco);
-    this.languageRegistered = true;
-
-    // Update completion data
-    jsonataCompletionData.suggestions = this.suggestions;
-    jsonataCompletionData.functions = this.functions;
-
-    // Switch language to jsonata now that it's registered
-    this.editorModel = { value: this.expression || '', language: 'jsonata' };
+  private registerLanguage(): void {
+    const m = (window as any).monaco;
+    if (m) {
+      registerJsonataLanguage(m);
+      jsonataCompletionData.suggestions = this.suggestions;
+      jsonataCompletionData.functions = this.functions;
+    }
   }
 
   private validateExpression(value: string): void {
