@@ -2,6 +2,72 @@
 
 Epistola document generation plugin for Valtimo.
 
+## Installation
+
+### Backend
+
+Add the plugin dependency to your Valtimo application's `build.gradle.kts`:
+
+```kotlin
+dependencies {
+    implementation("app.epistola.valtimo:epistola-plugin:${epistolaVersion}")
+}
+```
+
+The plugin auto-configures itself via Spring Boot auto-configuration. Set `epistola.enabled=false` to disable.
+
+### Frontend
+
+Install the frontend plugin:
+
+```bash
+npm install @epistola.app/valtimo-plugin
+# or
+pnpm add @epistola.app/valtimo-plugin
+```
+
+**Required peer dependency** — `monaco-editor` must be installed in your host application for the JSONata editor:
+
+```bash
+npm install monaco-editor
+# or
+pnpm add monaco-editor
+```
+
+**angular.json** — Add the Monaco editor assets to your project's `angular.json`:
+
+```json
+{
+  "architect": {
+    "build": {
+      "options": {
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "node_modules/monaco-editor",
+            "output": "assets/monaco-editor"
+          }
+        ]
+      }
+    }
+  }
+}
+```
+
+**App module** — Import and configure the plugin module:
+
+```typescript
+import { EpistolaPluginModule, epistolaPluginSpecification } from "@epistola.app/valtimo-plugin";
+
+@NgModule({
+  imports: [EpistolaPluginModule.forRoot()],
+})
+export class AppModule {}
+
+// Register the plugin specification with Valtimo's plugin system
+export const pluginSpecifications = [epistolaPluginSpecification];
+```
+
 ## Project Structure
 
 ```
