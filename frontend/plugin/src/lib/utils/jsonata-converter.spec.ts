@@ -108,6 +108,34 @@ describe('jsonata-converter', () => {
       expect(result).toContain('"fullName": $doc.first & " " & $doc.last');
     });
 
+    it('should generate JSONata with deeply nested objects', () => {
+      const fields: BuilderField[] = [
+        {
+          name: 'applicant',
+          mode: 'ref',
+          value: '',
+          children: [
+            { name: 'name', mode: 'ref', value: '$doc.applicant.name' },
+            {
+              name: 'address',
+              mode: 'ref',
+              value: '',
+              children: [
+                { name: 'street', mode: 'ref', value: '$doc.applicant.address.street' },
+                { name: 'city', mode: 'ref', value: '$doc.applicant.address.city' },
+              ],
+            },
+          ],
+        },
+      ];
+      const result = builderToJsonata(fields);
+
+      expect(result).toContain('"applicant": {');
+      expect(result).toContain('"address": {');
+      expect(result).toContain('"street": $doc.applicant.address.street');
+      expect(result).toContain('"city": $doc.applicant.address.city');
+    });
+
     it('should return empty string for empty fields', () => {
       expect(builderToJsonata([])).toBe('');
     });
@@ -126,7 +154,35 @@ describe('jsonata-converter', () => {
       const fields = parseJsonataToBuilder(original);
       const regenerated = builderToJsonata(fields);
 
-      // Parse both to verify semantic equivalence
+      const reparsed = parseJsonataToBuilder(regenerated);
+      expect(reparsed).toEqual(fields);
+    });
+
+    it('should round-trip nested objects', () => {
+      const original =
+        '{ "customer": { "name": $doc.name, "address": { "street": $doc.street, "city": $doc.city } } }';
+      const fields = parseJsonataToBuilder(original);
+
+      expect(fields).toHaveLength(1);
+      expect(fields[0].children).toHaveLength(2);
+      expect(fields[0].children![1].name).toBe('address');
+      expect(fields[0].children![1].children).toHaveLength(2);
+
+      const regenerated = builderToJsonata(fields);
+      const reparsed = parseJsonataToBuilder(regenerated);
+      expect(reparsed).toEqual(fields);
+    });
+
+    it('should round-trip mixed simple and raw fields', () => {
+      const original =
+        '{ "name": $doc.name, "fullName": $doc.first & " " & $doc.last, "items": $pv.orderLines }';
+      const fields = parseJsonataToBuilder(original);
+
+      expect(fields[0].mode).toBe('ref');
+      expect(fields[1].mode).toBe('raw');
+      expect(fields[2].mode).toBe('ref');
+
+      const regenerated = builderToJsonata(fields);
       const reparsed = parseJsonataToBuilder(regenerated);
       expect(reparsed).toEqual(fields);
     });
