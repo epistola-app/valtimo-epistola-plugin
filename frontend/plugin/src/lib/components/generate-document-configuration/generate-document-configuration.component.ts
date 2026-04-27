@@ -90,6 +90,8 @@ export class GenerateDocumentConfigurationComponent
 
   dataMapping$ = new BehaviorSubject<string>('');
   mappingMode: 'simple' | 'advanced' = 'simple';
+  toolsCollapsed = false;
+  activeToolTab: 'schema' | 'preview' = 'preview';
 
   outputFormatOptions: SelectItem[] = [
     { id: 'PDF', text: 'PDF' },
@@ -447,10 +449,7 @@ export class GenerateDocumentConfigurationComponent
             ),
         ),
       )
-      .subscribe((resource) => {
-        console.debug('[Epistola] Template fields loaded:', resource);
-        this.templateFields$.next(resource);
-      });
+      .subscribe((resource) => this.templateFields$.next(resource));
 
     // ── Seed variant + dataMapping from prefill once templateFields are loaded ──
     combineLatest([
