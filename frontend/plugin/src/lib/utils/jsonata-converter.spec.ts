@@ -7,8 +7,8 @@ describe('jsonata-converter', () => {
       const fields = parseJsonataToBuilder(expr);
 
       expect(fields).toHaveLength(2);
-      expect(fields[0]).toEqual({ name: 'name', mode: 'ref', value: 'doc:customer.name' });
-      expect(fields[1]).toEqual({ name: 'email', mode: 'ref', value: 'doc:customer.email' });
+      expect(fields[0]).toEqual({ name: 'name', mode: 'ref', value: '$doc.customer.name' });
+      expect(fields[1]).toEqual({ name: 'email', mode: 'ref', value: '$doc.customer.email' });
     });
 
     it('should parse pv and case references', () => {
@@ -16,8 +16,8 @@ describe('jsonata-converter', () => {
       const fields = parseJsonataToBuilder(expr);
 
       expect(fields).toHaveLength(2);
-      expect(fields[0]).toEqual({ name: 'status', mode: 'ref', value: 'pv:approvalStatus' });
-      expect(fields[1]).toEqual({ name: 'owner', mode: 'ref', value: 'case:assignee' });
+      expect(fields[0]).toEqual({ name: 'status', mode: 'ref', value: '$pv.approvalStatus' });
+      expect(fields[1]).toEqual({ name: 'owner', mode: 'ref', value: '$case.assignee' });
     });
 
     it('should parse string literals', () => {
@@ -36,8 +36,8 @@ describe('jsonata-converter', () => {
       expect(fields[0].name).toBe('customer');
       expect(fields[0].mode).toBe('ref');
       expect(fields[0].children).toHaveLength(2);
-      expect(fields[0].children![0]).toEqual({ name: 'name', mode: 'ref', value: 'doc:name' });
-      expect(fields[0].children![1]).toEqual({ name: 'email', mode: 'ref', value: 'pv:email' });
+      expect(fields[0].children![0]).toEqual({ name: 'name', mode: 'ref', value: '$doc.name' });
+      expect(fields[0].children![1]).toEqual({ name: 'email', mode: 'ref', value: '$pv.email' });
     });
 
     it('should fall back to raw for unsupported expressions', () => {
@@ -69,8 +69,8 @@ describe('jsonata-converter', () => {
   describe('builderToJsonata', () => {
     it('should generate JSONata from simple refs', () => {
       const fields: BuilderField[] = [
-        { name: 'name', mode: 'ref', value: 'doc:customer.name' },
-        { name: 'email', mode: 'ref', value: 'pv:email' },
+        { name: 'name', mode: 'ref', value: '$doc.customer.name' },
+        { name: 'email', mode: 'ref', value: '$pv.email' },
       ];
       const result = builderToJsonata(fields);
 
@@ -85,8 +85,8 @@ describe('jsonata-converter', () => {
           mode: 'ref',
           value: '',
           children: [
-            { name: 'name', mode: 'ref', value: 'doc:name' },
-            { name: 'city', mode: 'ref', value: 'doc:city' },
+            { name: 'name', mode: 'ref', value: '$doc.name' },
+            { name: 'city', mode: 'ref', value: '$doc.city' },
           ],
         },
       ];
@@ -99,7 +99,7 @@ describe('jsonata-converter', () => {
 
     it('should pass through raw values as-is', () => {
       const fields: BuilderField[] = [
-        { name: 'name', mode: 'ref', value: 'doc:name' },
+        { name: 'name', mode: 'ref', value: '$doc.name' },
         { name: 'fullName', mode: 'raw', value: '$doc.first & " " & $doc.last' },
       ];
       const result = builderToJsonata(fields);

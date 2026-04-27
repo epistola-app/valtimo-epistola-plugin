@@ -16,7 +16,14 @@ import {
   template: `
     <ng-template #fieldRow let-field let-path="path">
       <div class="mapping-builder__row">
-        <div class="mapping-builder__name">
+        <div
+          class="mapping-builder__name"
+          [class.mapping-builder__name--clickable]="field.children"
+          (click)="field.children && toggleCollapse(path)"
+        >
+          <span *ngIf="field.children" class="mapping-builder__chevron">{{
+            isCollapsed(path) ? '&#x25B6;' : '&#x25BC;'
+          }}</span>
           <span class="mapping-builder__field-name">{{ field.name }}</span>
           <span *ngIf="isRequired(field.name)" class="mapping-builder__required">*</span>
           <span *ngIf="field.children" class="mapping-builder__type">(object)</span>
@@ -30,7 +37,7 @@ import {
             [ngModel]="field.value"
             (ngModelChange)="onNestedValueChange(path, $event)"
             [disabled]="disabled"
-            placeholder="doc:path.to.field"
+            placeholder="$doc.path.to.field"
             [attr.list]="'suggestions-' + path.join('-')"
           />
           <datalist *ngIf="field.mode === 'ref'" [id]="'suggestions-' + path.join('-')">
@@ -55,7 +62,7 @@ import {
           </button>
         </div>
 
-        <div *ngIf="field.children" class="mapping-builder__children">
+        <div *ngIf="field.children && !isCollapsed(path)" class="mapping-builder__children">
           <ng-container *ngFor="let child of field.children; let j = index">
             <ng-container
               *ngTemplateOutlet="fieldRow; context: { $implicit: child, path: path.concat(j) }"
@@ -96,6 +103,17 @@ import {
       }
       .mapping-builder__name {
         margin-bottom: 2px;
+      }
+      .mapping-builder__name--clickable {
+        cursor: pointer;
+        user-select: none;
+      }
+      .mapping-builder__name--clickable:hover {
+        color: #0f62fe;
+      }
+      .mapping-builder__chevron {
+        font-size: 0.7em;
+        margin-right: 4px;
       }
       .mapping-builder__field-name {
         font-weight: 500;
@@ -163,6 +181,7 @@ export class MappingBuilderComponent implements OnChanges {
 
   fields: BuilderField[] = [];
   allSuggestions: string[] = [];
+  private collapsedPaths = new Set<string>();
 
   ngOnChanges(changes: SimpleChanges): void {
     // Skip re-parse only when expression alone changed (from our own emit)
@@ -200,6 +219,19 @@ export class MappingBuilderComponent implements OnChanges {
     return this.templateFields?.find((tf) => tf.name === fieldName)?.required ?? false;
   }
 
+  isCollapsed(path: number[]): boolean {
+    return this.collapsedPaths.has(path.join('.'));
+  }
+
+  toggleCollapse(path: number[]): void {
+    const key = path.join('.');
+    if (this.collapsedPaths.has(key)) {
+      this.collapsedPaths.delete(key);
+    } else {
+      this.collapsedPaths.add(key);
+    }
+  }
+
   private getFieldAtPath(path: number[]): BuilderField | null {
     if (path.length === 0) return null;
     let current: BuilderField = this.fields[path[0]];
@@ -224,8 +256,8 @@ export class MappingBuilderComponent implements OnChanges {
       this.allSuggestions = [];
       return;
     }
-    const docSuggestions = (this.suggestions.doc || []).map((p) => `doc:${p}`);
-    const pvSuggestions = (this.suggestions.pv || []).map((p) => `pv:${p}`);
+    const docSuggestions = (this.suggestions.doc || []).map((p) => `$doc.${p}`);
+    const pvSuggestions = (this.suggestions.pv || []).map((p) => `$pv.${p}`);
     this.allSuggestions = [...docSuggestions, ...pvSuggestions];
   }
 

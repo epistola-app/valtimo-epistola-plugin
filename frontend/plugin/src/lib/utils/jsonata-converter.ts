@@ -75,7 +75,7 @@ function parseObjectEntries(entries: any[][], source: string): BuilderField[] {
 }
 
 function classifyValue(name: string, node: any, source: string): BuilderField {
-  // Simple path reference: $doc.x.y, $pv.x, $case.x
+  // Simple path reference: $doc.x.y, $pv.x, $case.x — store as JSONata directly
   if (node.type === 'path' && node.steps?.length > 0 && node.steps[0].type === 'variable') {
     const varName = node.steps[0].value; // doc, pv, case
     if (['doc', 'pv', 'case'].includes(varName)) {
@@ -83,7 +83,7 @@ function classifyValue(name: string, node: any, source: string): BuilderField {
         .slice(1)
         .map((s: any) => s.value)
         .join('.');
-      return { name, mode: 'ref', value: `${varName}:${path}` };
+      return { name, mode: 'ref', value: `$${varName}.${path}` };
     }
   }
 
@@ -168,27 +168,12 @@ function reconstructExpression(node: any): string {
 }
 
 function formatFieldEntry(field: BuilderField, indent: string = '  '): string {
-  if (field.mode === 'raw') {
-    return `${indent}"${field.name}": ${field.value}`;
-  }
-
   if (field.children && field.children.length > 0) {
     const childEntries = field.children.map((c) => formatFieldEntry(c, indent + '  ')).join(',\n');
     return `${indent}"${field.name}": {\n${childEntries}\n${indent}}`;
   }
 
-  const value = field.value;
-  // Simple ref: doc:x.y → $doc.x.y
-  if (value.startsWith('doc:') || value.startsWith('pv:') || value.startsWith('case:')) {
-    const colonIdx = value.indexOf(':');
-    const prefix = value.substring(0, colonIdx);
-    const path = value.substring(colonIdx + 1);
-    return `${indent}"${field.name}": $${prefix}.${path}`;
-  }
-  // String literal (already quoted)
-  if (value.startsWith('"') && value.endsWith('"')) {
-    return `${indent}"${field.name}": ${value}`;
-  }
-  // Number/boolean/other
+  // Value is already valid JSONata (e.g. $doc.x.y, "string", 42, or raw expression)
+  const value = field.value || 'null';
   return `${indent}"${field.name}": ${value}`;
 }
