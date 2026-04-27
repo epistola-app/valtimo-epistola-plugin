@@ -69,7 +69,7 @@ export class JsonataEditorComponent implements OnChanges, OnDestroy {
   @Output() expressionChange = new EventEmitter<string>();
   @Output() validChange = new EventEmitter<boolean>();
 
-  editorModel: { value: string; language: string } = { value: '', language: 'json' };
+  editorModel: { value: string; language: string } = { value: '', language: 'jsonata' };
   editorOptions: Record<string, any> = {
     minimap: { enabled: false },
     lineNumbers: 'on',
@@ -86,7 +86,6 @@ export class JsonataEditorComponent implements OnChanges, OnDestroy {
   private validate$ = new Subject<string>();
   private suppressChange = false;
   private languageRegistered = false;
-  private editorInitialized = false;
 
   constructor() {
     this.validate$.pipe(debounceTime(300), takeUntil(this.destroy$)).subscribe((value) => {
@@ -99,8 +98,7 @@ export class JsonataEditorComponent implements OnChanges, OnDestroy {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['expression'] && !this.suppressChange) {
-      const lang = this.languageRegistered ? 'jsonata' : 'json';
-      this.editorModel = { value: this.expression || '', language: lang };
+      this.editorModel = { value: this.expression || '', language: 'jsonata' };
       this.validate$.next(this.expression);
     }
     if (changes['suggestions']) {
@@ -117,17 +115,9 @@ export class JsonataEditorComponent implements OnChanges, OnDestroy {
   }
 
   onEditorValueChange(value: string): void {
-    // First event from valtimo-editor means Monaco is initialized
-    if (!this.editorInitialized) {
-      this.editorInitialized = true;
-      if (!this.languageRegistered) {
-        this.tryRegisterLanguage();
-        if (this.languageRegistered) {
-          // Re-set model with jsonata language
-          this.editorModel = { value: value || this.expression || '', language: 'jsonata' };
-          return;
-        }
-      }
+    // Register language on first editor event (Monaco is now loaded)
+    if (!this.languageRegistered) {
+      this.tryRegisterLanguage();
     }
 
     if (this.suppressChange) return;
@@ -145,10 +135,6 @@ export class JsonataEditorComponent implements OnChanges, OnDestroy {
       this.languageRegistered = true;
       jsonataCompletionData.suggestions = this.suggestions;
       jsonataCompletionData.functions = this.functions;
-      // If model was set before language was registered, update it
-      if (this.editorModel.language !== 'jsonata') {
-        this.editorModel = { value: this.expression || '', language: 'jsonata' };
-      }
     }
   }
 

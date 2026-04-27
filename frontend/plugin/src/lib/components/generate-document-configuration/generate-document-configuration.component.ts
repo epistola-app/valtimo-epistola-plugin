@@ -90,7 +90,7 @@ export class GenerateDocumentConfigurationComponent
 
   dataMapping$ = new BehaviorSubject<string>('');
   mappingMode: 'simple' | 'advanced' = 'simple';
-  toolsCollapsed = false;
+  toolsCollapsed = true;
   activeToolTab: 'schema' | 'preview' = 'preview';
 
   outputFormatOptions: SelectItem[] = [

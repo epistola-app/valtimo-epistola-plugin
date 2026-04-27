@@ -281,7 +281,6 @@
     <div *ngIf="!toolsCollapsed" class="mapping-tools__content">
       <div class="mapping-tools__tabs">
         <button
-          *ngIf="mappingMode === 'advanced'"
           class="mapping-tools__tab"
           [class.mapping-tools__tab--active]="activeToolTab === 'schema'"
           (click)="activeToolTab = 'schema'"
@@ -298,7 +297,7 @@
       </div>
 
       <epistola-expected-structure
-        *ngIf="activeToolTab === 'schema' && mappingMode === 'advanced'"
+        *ngIf="activeToolTab === 'schema'"
         [templateFields]="(templateFields$ | async)?.data ?? []"
       ></epistola-expected-structure>
 
