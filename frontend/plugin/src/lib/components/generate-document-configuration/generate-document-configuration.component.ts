@@ -447,7 +447,10 @@ export class GenerateDocumentConfigurationComponent
             ),
         ),
       )
-      .subscribe((resource) => this.templateFields$.next(resource));
+      .subscribe((resource) => {
+        console.debug('[Epistola] Template fields loaded:', resource);
+        this.templateFields$.next(resource);
+      });
 
     // ── Seed variant + dataMapping from prefill once templateFields are loaded ──
     combineLatest([

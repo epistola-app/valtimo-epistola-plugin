@@ -193,10 +193,14 @@ export class MappingBuilderComponent implements OnChanges {
   allSuggestions: string[] = [];
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['expression'] && !changes['expression'].firstChange) {
+    // Skip re-parse only when expression alone changed (from our own emit)
+    const expressionChanged = !!changes['expression'];
+    const templateFieldsChanged = !!changes['templateFields'];
+
+    if (expressionChanged && !templateFieldsChanged && !changes['expression'].firstChange) {
       return; // Don't re-parse when we emit changes ourselves
     }
-    if (changes['expression'] || changes['templateFields']) {
+    if (expressionChanged || templateFieldsChanged) {
       this.rebuildFields();
     }
     if (changes['suggestions']) {
