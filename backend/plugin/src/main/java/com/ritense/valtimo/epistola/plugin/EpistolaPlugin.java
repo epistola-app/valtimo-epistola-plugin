@@ -45,17 +45,20 @@ public class EpistolaPlugin {
     private final ValueResolverService valueResolverService;
     private final ObjectMapper objectMapper;
     private final JsonataMappingService jsonataMappingService;
+    private final com.ritense.document.service.DocumentService documentService;
 
     public EpistolaPlugin(
             EpistolaService epistolaService,
             ValueResolverService valueResolverService,
             ObjectMapper objectMapper,
-            JsonataMappingService jsonataMappingService
+            JsonataMappingService jsonataMappingService,
+            com.ritense.document.service.DocumentService documentService
     ) {
         this.epistolaService = epistolaService;
         this.valueResolverService = valueResolverService;
         this.objectMapper = objectMapper;
         this.jsonataMappingService = jsonataMappingService;
+        this.documentService = documentService;
     }
 
     /**
@@ -272,7 +275,7 @@ public class EpistolaPlugin {
             // Evaluate JSONata expression to produce the template data
             var evalCtx = app.epistola.valtimo.mapping.EvaluationContext.builder()
                     .expression(dataMapping != null ? dataMapping : "")
-                    .documentResolver(docId -> resolveDocumentData(execution))
+                    .documentResolver(this::loadDocumentContent)
                     .processVariableResolver(execution::getVariable)
                     .execution(execution)
                     .documentId(execution.getBusinessKey())
@@ -424,24 +427,22 @@ public class EpistolaPlugin {
     }
 
     /**
-     * Resolve the full document content as a Map for JSONata binding.
-     * Uses ValueResolverService to resolve "doc:/" (the document root).
+     * Load the full document content as a Map via DocumentService.
      */
     @SuppressWarnings("unchecked")
-    private Map<String, Object> resolveDocumentData(DelegateExecution execution) {
+    private Map<String, Object> loadDocumentContent(String documentId) {
         try {
-            Map<String, Object> resolved = valueResolverService.resolveValues(
-                    execution.getProcessInstanceId(),
-                    execution,
-                    List.of("doc:/")
-            );
-            Object docRoot = resolved.get("doc:/");
-            if (docRoot instanceof Map<?, ?> map) {
-                return (Map<String, Object>) map;
+            var doc = documentService.findBy(
+                    com.ritense.document.domain.impl.JsonSchemaDocumentId.existingId(
+                            java.util.UUID.fromString(documentId)));
+            if (doc.isPresent()) {
+                return (Map<String, Object>) objectMapper.convertValue(
+                        doc.get().content().asJson(), Map.class);
             }
+            log.warn("Document not found: {}", documentId);
             return Map.of();
         } catch (Exception e) {
-            log.warn("Failed to resolve document data: {}", e.getMessage());
+            log.warn("Failed to load document content for {}: {}", documentId, e.getMessage());
             return Map.of();
         }
     }

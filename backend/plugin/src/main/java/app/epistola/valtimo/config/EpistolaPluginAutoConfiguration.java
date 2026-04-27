@@ -101,10 +101,11 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaService epistolaService,
             ValueResolverService valueResolverService,
             ObjectMapper objectMapper,
-            JsonataMappingService jsonataMappingService
+            JsonataMappingService jsonataMappingService,
+            com.ritense.document.service.DocumentService documentService
     ) {
         return new EpistolaPluginFactory(pluginService, epistolaService, valueResolverService,
-                objectMapper, jsonataMappingService);
+                objectMapper, jsonataMappingService, documentService);
     }
 
     @Bean

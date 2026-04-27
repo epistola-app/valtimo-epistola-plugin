@@ -29,7 +29,8 @@ class NormalizeVariantAttributesTest {
                 mock(EpistolaService.class),
                 mock(ValueResolverService.class),
                 mock(ObjectMapper.class),
-                mock(JsonataMappingService.class)
+                mock(JsonataMappingService.class),
+                mock(com.ritense.document.service.DocumentService.class)
         );
     }
 
