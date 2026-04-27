@@ -42,6 +42,7 @@ public class EpistolaPlugin {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
     private final EpistolaService epistolaService;
+    /** Used only for resolving single values (filenames, variant attributes). To be replaced by JSONata — see issue #30. */
     private final ValueResolverService valueResolverService;
     private final ObjectMapper objectMapper;
     private final JsonataMappingService jsonataMappingService;
