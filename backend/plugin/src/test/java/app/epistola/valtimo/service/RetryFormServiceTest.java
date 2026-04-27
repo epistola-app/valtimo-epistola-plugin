@@ -29,6 +29,7 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -97,7 +98,7 @@ class RetryFormServiceTest {
                     .thenReturn(templateDetails);
 
             Map<String, Object> resolvedData = Map.of("name", "John Doe");
-            when(jsonataMappingService.evaluate(anyString(), anyMap(), anyMap(), anyMap()))
+            when(jsonataMappingService.evaluate(any(app.epistola.valtimo.mapping.EvaluationContext.class)))
                     .thenReturn(resolvedData);
 
             ObjectNode expectedForm = objectMapper.createObjectNode();
@@ -132,7 +133,7 @@ class RetryFormServiceTest {
             TemplateDetails templateDetails = new TemplateDetails(TEMPLATE_ID, "Invoice", List.of());
             when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID))
                     .thenReturn(templateDetails);
-            when(jsonataMappingService.evaluate(anyString(), anyMap(), anyMap(), anyMap()))
+            when(jsonataMappingService.evaluate(any(app.epistola.valtimo.mapping.EvaluationContext.class)))
                     .thenReturn(Map.of());
 
             ObjectNode expectedForm = objectMapper.createObjectNode();
@@ -278,7 +279,7 @@ class RetryFormServiceTest {
             TemplateDetails templateDetails = new TemplateDetails(TEMPLATE_ID, "Invoice", List.of());
             when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID))
                     .thenReturn(templateDetails);
-            when(jsonataMappingService.evaluate(anyString(), anyMap(), anyMap(), anyMap()))
+            when(jsonataMappingService.evaluate(any(app.epistola.valtimo.mapping.EvaluationContext.class)))
                     .thenReturn(Map.of());
 
             ObjectNode expectedForm = objectMapper.createObjectNode();

@@ -62,12 +62,13 @@ public class RetryFormService {
         String dataMapping = extractDataMapping(originalLink);
 
         String effectiveDocumentId = resolveDocumentId(documentId, processInstance);
-        Map<String, Object> lazyDoc = new app.epistola.valtimo.mapping.LazyDocumentMap(
-                () -> loadDocumentContent(effectiveDocumentId));
-        Map<String, Object> lazyPv = new app.epistola.valtimo.mapping.LazyProcessVariableMap(
-                key -> runtimeService.getVariable(processInstanceId, key));
-        Map<String, Object> resolvedData = jsonataMappingService.evaluate(
-                dataMapping, lazyDoc, lazyPv, Map.of());
+        var evalCtx = app.epistola.valtimo.mapping.EvaluationContext.builder()
+                .expression(dataMapping)
+                .documentResolver(this::loadDocumentContent)
+                .processVariableResolver(key -> runtimeService.getVariable(processInstanceId, key))
+                .documentId(effectiveDocumentId)
+                .build();
+        Map<String, Object> resolvedData = jsonataMappingService.evaluate(evalCtx);
 
         EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
                 originalLink.getPluginConfigurationId());

@@ -55,11 +55,13 @@ public class PreviewService {
         String templateId = extractTemplateId(processLink);
         String dataMapping = extractDataMapping(processLink);
 
-        // Resolve data mapping against the document (lazy — only loads if $doc is accessed)
-        Map<String, Object> lazyDoc = new app.epistola.valtimo.mapping.LazyDocumentMap(
-                () -> loadDocumentContent(request.documentId()));
-        Map<String, Object> resolvedData = jsonataMappingService.evaluate(
-                dataMapping, lazyDoc, Map.of(), Map.of());
+        // Resolve data mapping against the document
+        var evalCtx = app.epistola.valtimo.mapping.EvaluationContext.builder()
+                .expression(dataMapping)
+                .documentResolver(this::loadDocumentContent)
+                .documentId(request.documentId())
+                .build();
+        Map<String, Object> resolvedData = jsonataMappingService.evaluate(evalCtx);
 
         // Deep-merge with overrides (overrides win)
         if (request.overrides() != null && !request.overrides().isEmpty()) {

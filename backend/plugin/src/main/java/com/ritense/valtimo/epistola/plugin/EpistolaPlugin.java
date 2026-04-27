@@ -270,11 +270,14 @@ public class EpistolaPlugin {
             execution.removeVariable(EpistolaProcessVariables.EDITED_DATA);
         } else {
             // Evaluate JSONata expression to produce the template data
-            // $doc and $pv are resolved lazily — only accessed data is fetched
-            resolvedData = jsonataMappingService.evaluate(
-                    dataMapping != null ? dataMapping : "",
-                    () -> resolveDocumentData(execution),
-                    execution);
+            var evalCtx = app.epistola.valtimo.mapping.EvaluationContext.builder()
+                    .expression(dataMapping != null ? dataMapping : "")
+                    .documentResolver(docId -> resolveDocumentData(execution))
+                    .processVariableResolver(execution::getVariable)
+                    .execution(execution)
+                    .documentId(execution.getBusinessKey())
+                    .build();
+            resolvedData = jsonataMappingService.evaluate(evalCtx);
         }
 
         // Resolve the filename if it uses value resolvers

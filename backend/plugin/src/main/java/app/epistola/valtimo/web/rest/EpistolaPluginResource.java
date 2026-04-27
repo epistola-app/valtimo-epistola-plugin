@@ -283,14 +283,12 @@ public class EpistolaPluginResource {
     public ResponseEntity<EvaluationResult> evaluateMapping(@RequestBody EvaluationRequest request) {
         log.debug("Evaluating mapping expression against document {}", request.documentId());
         try {
-            Map<String, Object> lazyDoc = new app.epistola.valtimo.mapping.LazyDocumentMap(() -> {
-                if (request.documentId() == null || request.documentId().isBlank()) {
-                    return Map.of();
-                }
-                return loadDocumentContent(request.documentId());
-            });
-            Map<String, Object> result = jsonataMappingService.evaluate(
-                    request.expression(), lazyDoc, Map.of(), Map.of());
+            var evalCtx = app.epistola.valtimo.mapping.EvaluationContext.builder()
+                    .expression(request.expression())
+                    .documentResolver(this::loadDocumentContent)
+                    .documentId(request.documentId())
+                    .build();
+            Map<String, Object> result = jsonataMappingService.evaluate(evalCtx);
             return ResponseEntity.ok(EvaluationResult.success(result));
         } catch (Exception e) {
             return ResponseEntity.ok(EvaluationResult.failure(e.getMessage()));

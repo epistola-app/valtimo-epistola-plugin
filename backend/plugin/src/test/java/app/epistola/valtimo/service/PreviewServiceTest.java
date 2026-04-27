@@ -239,7 +239,7 @@ class PreviewServiceTest {
                     .thenReturn(List.of(processLink));
 
             // Data mapping resolution
-            when(jsonataMappingService.evaluate(anyString(), anyMap(), anyMap(), anyMap()))
+            when(jsonataMappingService.evaluate(any(app.epistola.valtimo.mapping.EvaluationContext.class)))
                     .thenReturn(new LinkedHashMap<>());
 
             // Plugin instance
