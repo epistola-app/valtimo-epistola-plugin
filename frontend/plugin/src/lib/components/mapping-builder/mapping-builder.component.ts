@@ -182,6 +182,7 @@ export class MappingBuilderComponent implements OnChanges {
   fields: BuilderField[] = [];
   allSuggestions: string[] = [];
   private collapsedPaths = new Set<string>();
+  private initialCollapseApplied = false;
 
   ngOnChanges(changes: SimpleChanges): void {
     // Skip re-parse only when expression alone changed (from our own emit)
@@ -193,6 +194,10 @@ export class MappingBuilderComponent implements OnChanges {
     }
     if (expressionChanged || templateFieldsChanged) {
       this.rebuildFields();
+      if (!this.initialCollapseApplied && this.fields.length > 0) {
+        this.collapseAll();
+        this.initialCollapseApplied = true;
+      }
     }
     if (changes['suggestions']) {
       this.buildSuggestionList();
@@ -230,6 +235,25 @@ export class MappingBuilderComponent implements OnChanges {
     } else {
       this.collapsedPaths.add(key);
     }
+  }
+
+  private collapseAll(): void {
+    this.collapsedPaths.clear();
+    this.fields.forEach((field, i) => {
+      if (field.children) {
+        this.collapsedPaths.add(String(i));
+        this.collapseChildren(field.children, [i]);
+      }
+    });
+  }
+
+  private collapseChildren(children: BuilderField[], parentPath: number[]): void {
+    children.forEach((child, j) => {
+      if (child.children) {
+        this.collapsedPaths.add([...parentPath, j].join('.'));
+        this.collapseChildren(child.children, [...parentPath, j]);
+      }
+    });
   }
 
   private getFieldAtPath(path: number[]): BuilderField | null {
