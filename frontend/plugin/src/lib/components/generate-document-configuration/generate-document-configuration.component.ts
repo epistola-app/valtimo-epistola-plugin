@@ -43,6 +43,7 @@ import {
 } from '../../models';
 import { EpistolaPluginService } from '../../services';
 import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
+import { ExpectedStructureComponent } from '../expected-structure/expected-structure.component';
 import { MappingBuilderComponent } from '../mapping-builder/mapping-builder.component';
 import { MappingPreviewComponent } from '../mapping-preview/mapping-preview.component';
 
@@ -61,6 +62,7 @@ export type VariantSelectionMode = 'explicit' | 'attributes';
     FormModule,
     InputModule,
     SelectModule,
+    ExpectedStructureComponent,
     JsonataEditorComponent,
     MappingBuilderComponent,
     MappingPreviewComponent,

@@ -239,3 +239,18 @@
     }
   }
 }
+
+.mapping-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 12px;
+  align-items: start;
+
+  &__editor {
+    min-width: 0;
+  }
+
+  &__schema {
+    min-width: 0;
+  }
+}

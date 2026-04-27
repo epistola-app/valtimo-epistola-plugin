@@ -253,21 +253,31 @@
     </button>
   </div>
 
-  <epistola-mapping-builder
-    *ngIf="mappingMode === 'simple'"
-    [expression]="dataMapping$ | async"
-    [templateFields]="(templateFields$ | async)?.data ?? []"
-    [suggestions]="variableSuggestions"
-    [disabled]="!!(disabled$ | async)"
-    (expressionChange)="onDataMappingChange($event)"
-  ></epistola-mapping-builder>
+  <div class="mapping-layout">
+    <div class="mapping-layout__editor">
+      <epistola-mapping-builder
+        *ngIf="mappingMode === 'simple'"
+        [expression]="dataMapping$ | async"
+        [templateFields]="(templateFields$ | async)?.data ?? []"
+        [suggestions]="variableSuggestions"
+        [disabled]="!!(disabled$ | async)"
+        (expressionChange)="onDataMappingChange($event)"
+      ></epistola-mapping-builder>
 
-  <epistola-jsonata-editor
-    *ngIf="mappingMode === 'advanced'"
-    [expression]="dataMapping$ | async"
-    [disabled]="!!(disabled$ | async)"
-    (expressionChange)="onDataMappingChange($event)"
-  ></epistola-jsonata-editor>
+      <epistola-jsonata-editor
+        *ngIf="mappingMode === 'advanced'"
+        [expression]="dataMapping$ | async"
+        [disabled]="!!(disabled$ | async)"
+        (expressionChange)="onDataMappingChange($event)"
+      ></epistola-jsonata-editor>
+    </div>
+
+    <div class="mapping-layout__schema">
+      <epistola-expected-structure
+        [templateFields]="(templateFields$ | async)?.data ?? []"
+      ></epistola-expected-structure>
+    </div>
+  </div>
 
   <epistola-mapping-preview
     [expression]="dataMapping$ | async"
