@@ -1,19 +1,16 @@
 import {
-  AfterViewInit,
   Component,
   EventEmitter,
-  Inject,
   Input,
   OnChanges,
   OnDestroy,
-  Optional,
   Output,
   SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { EditorModule } from '@valtimo/components';
-import { first, Subject, debounceTime, takeUntil } from 'rxjs';
+import { Subject, debounceTime, takeUntil } from 'rxjs';
 import { ExpressionFunctionInfo, VariableSuggestions } from '../../models';
 import { jsonataCompletionData, registerJsonataLanguage } from '../../utils/jsonata-monaco';
 
@@ -31,7 +28,8 @@ const jsonata = (_jsonata as any).default || _jsonata;
         [editorOptions]="editorOptions"
         [disabled]="disabled"
         [heightPx]="250"
-        (valueChangeEvent)="onValueChange($event)"
+        [formatOnLoad]="false"
+        (valueChangeEvent)="onEditorValueChange($event)"
       ></valtimo-editor>
       <div class="jsonata-editor__footer">
         <span *ngIf="error" class="jsonata-editor__error">{{ error }}</span>
@@ -63,7 +61,7 @@ const jsonata = (_jsonata as any).default || _jsonata;
     `,
   ],
 })
-export class JsonataEditorComponent implements AfterViewInit, OnChanges, OnDestroy {
+export class JsonataEditorComponent implements OnChanges, OnDestroy {
   @Input() expression: string = '';
   @Input() disabled: boolean = false;
   @Input() suggestions: VariableSuggestions | null = null;
@@ -71,7 +69,7 @@ export class JsonataEditorComponent implements AfterViewInit, OnChanges, OnDestr
   @Output() expressionChange = new EventEmitter<string>();
   @Output() validChange = new EventEmitter<boolean>();
 
-  editorModel: { value: string; language: string } = { value: '', language: 'jsonata' };
+  editorModel: { value: string; language: string } = { value: '', language: 'json' };
   editorOptions: Record<string, any> = {
     minimap: { enabled: false },
     lineNumbers: 'on',
@@ -87,29 +85,22 @@ export class JsonataEditorComponent implements AfterViewInit, OnChanges, OnDestr
   private destroy$ = new Subject<void>();
   private validate$ = new Subject<string>();
   private suppressChange = false;
-  private editorService: any;
+  private languageRegistered = false;
+  private editorInitialized = false;
 
-  constructor(@Optional() @Inject('EditorService') editorServiceToken: any) {
-    // Try to get EditorService — it's provided by Valtimo at the app level
-    this.editorService = editorServiceToken;
-
+  constructor() {
     this.validate$.pipe(debounceTime(300), takeUntil(this.destroy$)).subscribe((value) => {
       this.validateExpression(value);
     });
-  }
 
-  ngAfterViewInit(): void {
-    // Register JSONata language once Monaco is loaded
-    // Valtimo's EditorComponent uses EditorService internally to load Monaco.
-    // By the time our ngAfterViewInit runs and Valtimo's editor renders,
-    // Monaco will be available as a global. Register on next tick to ensure
-    // Valtimo's editor has initialized first.
-    setTimeout(() => this.registerLanguage());
+    // Try to register language eagerly if Monaco is already loaded
+    this.tryRegisterLanguage();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['expression'] && !this.suppressChange) {
-      this.editorModel = { value: this.expression || '', language: 'jsonata' };
+      const lang = this.languageRegistered ? 'jsonata' : 'json';
+      this.editorModel = { value: this.expression || '', language: lang };
       this.validate$.next(this.expression);
     }
     if (changes['suggestions']) {
@@ -125,7 +116,21 @@ export class JsonataEditorComponent implements AfterViewInit, OnChanges, OnDestr
     this.destroy$.complete();
   }
 
-  onValueChange(value: string): void {
+  onEditorValueChange(value: string): void {
+    // First event from valtimo-editor means Monaco is initialized
+    if (!this.editorInitialized) {
+      this.editorInitialized = true;
+      if (!this.languageRegistered) {
+        this.tryRegisterLanguage();
+        if (this.languageRegistered) {
+          // Re-set model with jsonata language
+          this.editorModel = { value: value || this.expression || '', language: 'jsonata' };
+          return;
+        }
+      }
+    }
+
+    if (this.suppressChange) return;
     this.suppressChange = true;
     this.expression = value;
     this.expressionChange.emit(value);
@@ -133,12 +138,17 @@ export class JsonataEditorComponent implements AfterViewInit, OnChanges, OnDestr
     setTimeout(() => (this.suppressChange = false));
   }
 
-  private registerLanguage(): void {
+  private tryRegisterLanguage(): void {
     const m = (window as any).monaco;
     if (m) {
       registerJsonataLanguage(m);
+      this.languageRegistered = true;
       jsonataCompletionData.suggestions = this.suggestions;
       jsonataCompletionData.functions = this.functions;
+      // If model was set before language was registered, update it
+      if (this.editorModel.language !== 'jsonata') {
+        this.editorModel = { value: this.expression || '', language: 'jsonata' };
+      }
     }
   }
 
