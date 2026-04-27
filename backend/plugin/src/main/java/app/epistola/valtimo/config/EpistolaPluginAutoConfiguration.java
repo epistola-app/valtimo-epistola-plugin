@@ -125,12 +125,12 @@ public class EpistolaPluginAutoConfiguration {
             TaskService taskService,
             ProcessLinkService processLinkService,
             JsonataMappingService jsonataMappingService,
-            ValueResolverService valueResolverService,
+            com.ritense.document.service.DocumentService documentService,
             FormioFormGenerator formioFormGenerator,
             ObjectMapper objectMapper
     ) {
         return new RetryFormService(pluginService, epistolaService, runtimeService,
-                taskService, processLinkService, jsonataMappingService, valueResolverService,
+                taskService, processLinkService, jsonataMappingService, documentService,
                 formioFormGenerator, objectMapper);
     }
 
@@ -143,12 +143,12 @@ public class EpistolaPluginAutoConfiguration {
             com.ritense.valtimo.operaton.service.OperatonRepositoryService operatonRepositoryService,
             RuntimeService runtimeService,
             JsonataMappingService jsonataMappingService,
-            ValueResolverService valueResolverService,
+            com.ritense.document.service.DocumentService documentService,
             ObjectMapper objectMapper
     ) {
         return new app.epistola.valtimo.service.PreviewService(pluginService, epistolaService,
                 processLinkService, operatonRepositoryService, runtimeService,
-                jsonataMappingService, valueResolverService, objectMapper);
+                jsonataMappingService, documentService, objectMapper);
     }
 
     @Bean
@@ -171,12 +171,13 @@ public class EpistolaPluginAutoConfiguration {
             ExpressionFunctionRegistry expressionFunctionRegistry,
             VariableSuggestionService variableSuggestionService,
             JsonataMappingService jsonataMappingService,
-            ValueResolverService valueResolverService
+            com.ritense.document.service.DocumentService documentService,
+            ObjectMapper objectMapper
     ) {
         return new EpistolaPluginResource(pluginService, epistolaService,
                 processVariableDiscoveryService, retryFormService, previewService,
                 expressionFunctionRegistry, variableSuggestionService,
-                jsonataMappingService, valueResolverService);
+                jsonataMappingService, documentService, objectMapper);
     }
 
     @Bean

@@ -61,7 +61,8 @@ public class EpistolaPluginResource {
     private final ExpressionFunctionRegistry expressionFunctionRegistry;
     private final VariableSuggestionService variableSuggestionService;
     private final JsonataMappingService jsonataMappingService;
-    private final com.ritense.valueresolver.ValueResolverService valueResolverService;
+    private final com.ritense.document.service.DocumentService documentService;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper2;
 
     /**
      * Get all available catalogs for a plugin configuration.
@@ -282,17 +283,14 @@ public class EpistolaPluginResource {
     public ResponseEntity<EvaluationResult> evaluateMapping(@RequestBody EvaluationRequest request) {
         log.debug("Evaluating mapping expression against document {}", request.documentId());
         try {
-            Map<String, Object> docData = Map.of();
-            if (request.documentId() != null && !request.documentId().isBlank()) {
-                Map<String, Object> resolved = valueResolverService.resolveValues(
-                        request.documentId(), List.of("doc:/"));
-                Object docRoot = resolved.get("doc:/");
-                if (docRoot instanceof Map<?, ?> map) {
-                    docData = (Map<String, Object>) map;
+            Map<String, Object> lazyDoc = new app.epistola.valtimo.mapping.LazyDocumentMap(() -> {
+                if (request.documentId() == null || request.documentId().isBlank()) {
+                    return Map.of();
                 }
-            }
+                return loadDocumentContent(request.documentId());
+            });
             Map<String, Object> result = jsonataMappingService.evaluate(
-                    request.expression(), docData, Map.of(), Map.of());
+                    request.expression(), lazyDoc, Map.of(), Map.of());
             return ResponseEntity.ok(EvaluationResult.success(result));
         } catch (Exception e) {
             return ResponseEntity.ok(EvaluationResult.failure(e.getMessage()));
@@ -451,5 +449,21 @@ public class EpistolaPluginResource {
             }
         }
         return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> loadDocumentContent(String documentId) {
+        try {
+            var doc = documentService.findBy(
+                    com.ritense.document.domain.impl.JsonSchemaDocumentId.existingId(java.util.UUID.fromString(documentId)));
+            if (doc.isPresent()) {
+                return (Map<String, Object>) objectMapper2.convertValue(
+                        doc.get().content().asJson(), Map.class);
+            }
+            return Map.of();
+        } catch (Exception e) {
+            log.warn("Failed to load document content for {}: {}", documentId, e.getMessage());
+            return Map.of();
+        }
     }
 }

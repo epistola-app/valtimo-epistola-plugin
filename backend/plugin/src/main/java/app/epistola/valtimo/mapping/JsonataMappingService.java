@@ -7,8 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 
-import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import static com.dashjoin.jsonata.Jsonata.jsonata;
 
@@ -74,20 +74,22 @@ public class JsonataMappingService {
 
     /**
      * Evaluate a JSONata expression using a DelegateExecution context.
-     * Resolves document data and process variables from the execution.
+     * Process variables are resolved lazily per-access (traverses parent scopes).
+     * Document data is loaded lazily on first $doc access.
      *
-     * @param expression the JSONata expression
-     * @param execution  the Operaton execution context
-     * @param documentData pre-resolved document data
+     * @param expression      the JSONata expression
+     * @param documentLoader  loads document content on demand
+     * @param execution       the Operaton execution context (for $pv)
      * @return the evaluated result as a Map
      */
     public Map<String, Object> evaluate(
             String expression,
-            DelegateExecution execution,
-            Map<String, Object> documentData
+            java.util.function.Supplier<Map<String, Object>> documentLoader,
+            DelegateExecution execution
     ) {
-        Map<String, Object> processVariables = new LinkedHashMap<>(execution.getVariables());
-        return evaluate(expression, documentData, processVariables, Map.of());
+        Map<String, Object> lazyDoc = new LazyDocumentMap(documentLoader);
+        Map<String, Object> lazyPv = new LazyProcessVariableMap(execution::getVariable);
+        return evaluate(expression, lazyDoc, lazyPv, Map.of());
     }
 
     private void registerCustomFunctions(Frame frame) {

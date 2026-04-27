@@ -9,7 +9,6 @@ import com.ritense.plugin.domain.PluginProcessLink;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processlink.domain.ProcessLink;
 import com.ritense.processlink.service.ProcessLinkService;
-import com.ritense.valueresolver.ValueResolverService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +37,7 @@ public class RetryFormService {
     private final TaskService taskService;
     private final ProcessLinkService processLinkService;
     private final JsonataMappingService jsonataMappingService;
-    private final ValueResolverService valueResolverService;
+    private final com.ritense.document.service.DocumentService documentService;
     private final FormioFormGenerator formioFormGenerator;
     private final ObjectMapper objectMapper;
 
@@ -63,9 +62,12 @@ public class RetryFormService {
         String dataMapping = extractDataMapping(originalLink);
 
         String effectiveDocumentId = resolveDocumentId(documentId, processInstance);
-        Map<String, Object> docData = resolveDocumentData(effectiveDocumentId);
+        Map<String, Object> lazyDoc = new app.epistola.valtimo.mapping.LazyDocumentMap(
+                () -> loadDocumentContent(effectiveDocumentId));
+        Map<String, Object> lazyPv = new app.epistola.valtimo.mapping.LazyProcessVariableMap(
+                key -> runtimeService.getVariable(processInstanceId, key));
         Map<String, Object> resolvedData = jsonataMappingService.evaluate(
-                dataMapping, docData, Map.of(), Map.of());
+                dataMapping, lazyDoc, lazyPv, Map.of());
 
         EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
                 originalLink.getPluginConfigurationId());
@@ -149,9 +151,17 @@ public class RetryFormService {
 
     private String extractDataMapping(PluginProcessLink link) {
         ObjectNode actionProps = link.getActionProperties();
-        return actionProps.has("dataMapping")
-                ? actionProps.get("dataMapping").asText("")
-                : "";
+        if (!actionProps.has("dataMapping")) {
+            return "";
+        }
+        var node = actionProps.get("dataMapping");
+        if (node.isTextual()) {
+            return node.asText("");
+        }
+        // Legacy: dataMapping stored as JSON object — not supported with JSONata
+        log.warn("Process link {} has dataMapping in legacy object format. " +
+                "Please redeploy process links to use JSONata string format.", link.getId());
+        return "";
     }
 
     private String resolveDocumentId(String documentId, ProcessInstance processInstance) {
@@ -223,13 +233,18 @@ public class RetryFormService {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> resolveDocumentData(String documentId) {
+    private Map<String, Object> loadDocumentContent(String documentId) {
         try {
-            Map<String, Object> resolved = valueResolverService.resolveValues(documentId, List.of("doc:/"));
-            Object docRoot = resolved.get("doc:/");
-            return docRoot instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of();
+            var doc = documentService.findBy(
+                    com.ritense.document.domain.impl.JsonSchemaDocumentId.existingId(java.util.UUID.fromString(documentId)));
+            if (doc.isPresent()) {
+                return (Map<String, Object>) objectMapper.convertValue(
+                        doc.get().content().asJson(), Map.class);
+            }
+            log.warn("Document not found: {}", documentId);
+            return Map.of();
         } catch (Exception e) {
-            log.warn("Failed to resolve document data for {}: {}", documentId, e.getMessage());
+            log.warn("Failed to load document content for {}: {}", documentId, e.getMessage());
             return Map.of();
         }
     }

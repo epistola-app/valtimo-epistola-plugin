@@ -40,11 +40,12 @@ class EpistolaPluginResourceDocumentDownloadTest {
         var expressionFunctionRegistry = new ExpressionFunctionRegistry(List.of());
         var variableSuggestionService = mock(app.epistola.valtimo.service.VariableSuggestionService.class);
         var jsonataMappingService = mock(app.epistola.valtimo.mapping.JsonataMappingService.class);
-        var valueResolverService = mock(com.ritense.valueresolver.ValueResolverService.class);
+        var documentService = mock(com.ritense.document.service.DocumentService.class);
+        var objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
         resource = new EpistolaPluginResource(pluginService, epistolaService,
                 processVariableDiscoveryService, retryFormService, previewService,
                 expressionFunctionRegistry, variableSuggestionService,
-                jsonataMappingService, valueResolverService);
+                jsonataMappingService, documentService, objectMapper);
     }
 
     @Test

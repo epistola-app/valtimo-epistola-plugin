@@ -59,6 +59,7 @@ dependencies {
     testImplementation(libs.valtimo.outbox)
     testImplementation(libs.valtimo.value.resolver)
     testImplementation(libs.valtimo.process.link)
+    testImplementation(libs.valtimo.case)
     testImplementation(libs.valtimo.process.document)
     testImplementation(libs.valtimo.form)
     testImplementation(libs.valtimo.importer)

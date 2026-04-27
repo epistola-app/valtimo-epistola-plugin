@@ -18,7 +18,6 @@ import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -271,10 +270,11 @@ public class EpistolaPlugin {
             execution.removeVariable(EpistolaProcessVariables.EDITED_DATA);
         } else {
             // Evaluate JSONata expression to produce the template data
-            Map<String, Object> docData = resolveDocumentData(execution);
-            Map<String, Object> pvData = new LinkedHashMap<>(execution.getVariables());
+            // $doc and $pv are resolved lazily — only accessed data is fetched
             resolvedData = jsonataMappingService.evaluate(
-                    dataMapping != null ? dataMapping : "", docData, pvData, Map.of());
+                    dataMapping != null ? dataMapping : "",
+                    () -> resolveDocumentData(execution),
+                    execution);
         }
 
         // Resolve the filename if it uses value resolvers
