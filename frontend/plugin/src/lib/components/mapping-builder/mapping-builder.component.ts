@@ -14,15 +14,8 @@ import {
   standalone: true,
   imports: [CommonModule, FormsModule, PluginTranslatePipeModule],
   template: `
-    <div class="mapping-builder">
-      <div
-        *ngIf="fields.length === 0 && (!templateFields || templateFields.length === 0)"
-        class="mapping-builder__empty"
-      >
-        {{ 'noTemplateFields' | pluginTranslate: 'epistola' | async }}
-      </div>
-
-      <div *ngFor="let field of fields; let i = index" class="mapping-builder__row">
+    <ng-template #fieldRow let-field let-path="path">
+      <div class="mapping-builder__row">
         <div class="mapping-builder__name">
           <span class="mapping-builder__field-name">{{ field.name }}</span>
           <span *ngIf="isRequired(field.name)" class="mapping-builder__required">*</span>
@@ -35,12 +28,12 @@ import {
             type="text"
             class="mapping-builder__input"
             [ngModel]="field.value"
-            (ngModelChange)="onFieldValueChange(i, $event)"
+            (ngModelChange)="onNestedValueChange(path, $event)"
             [disabled]="disabled"
             placeholder="doc:path.to.field"
-            [attr.list]="'suggestions-' + i"
+            [attr.list]="'suggestions-' + path.join('-')"
           />
-          <datalist *ngIf="field.mode === 'ref'" [id]="'suggestions-' + i">
+          <datalist *ngIf="field.mode === 'ref'" [id]="'suggestions-' + path.join('-')">
             <option *ngFor="let s of allSuggestions" [value]="s"></option>
           </datalist>
           <input
@@ -48,13 +41,13 @@ import {
             type="text"
             class="mapping-builder__input mapping-builder__input--raw"
             [ngModel]="field.value"
-            (ngModelChange)="onFieldValueChange(i, $event)"
+            (ngModelChange)="onNestedValueChange(path, $event)"
             [disabled]="disabled"
             placeholder="JSONata expression"
           />
           <button
             class="mapping-builder__mode-toggle"
-            (click)="toggleFieldMode(i)"
+            (click)="onNestedModeToggle(path)"
             [disabled]="disabled"
             [title]="field.mode === 'ref' ? 'Switch to raw JSONata' : 'Switch to reference'"
           >
@@ -62,50 +55,29 @@ import {
           </button>
         </div>
 
-        <!-- Nested object children -->
         <div *ngIf="field.children" class="mapping-builder__children">
-          <div
-            *ngFor="let child of field.children; let j = index"
-            class="mapping-builder__row mapping-builder__row--child"
-          >
-            <div class="mapping-builder__name">
-              <span class="mapping-builder__field-name">{{ child.name }}</span>
-            </div>
-            <div class="mapping-builder__value">
-              <input
-                *ngIf="child.mode === 'ref'"
-                type="text"
-                class="mapping-builder__input"
-                [ngModel]="child.value"
-                (ngModelChange)="onChildValueChange(i, j, $event)"
-                [disabled]="disabled"
-                placeholder="doc:path.to.field"
-                [attr.list]="'suggestions-' + i + '-' + j"
-              />
-              <datalist *ngIf="child.mode === 'ref'" [id]="'suggestions-' + i + '-' + j">
-                <option *ngFor="let s of allSuggestions" [value]="s"></option>
-              </datalist>
-              <input
-                *ngIf="child.mode === 'raw'"
-                type="text"
-                class="mapping-builder__input mapping-builder__input--raw"
-                [ngModel]="child.value"
-                (ngModelChange)="onChildValueChange(i, j, $event)"
-                [disabled]="disabled"
-                placeholder="JSONata expression"
-              />
-              <button
-                class="mapping-builder__mode-toggle"
-                (click)="toggleChildMode(i, j)"
-                [disabled]="disabled"
-                [title]="child.mode === 'ref' ? 'Switch to raw JSONata' : 'Switch to reference'"
-              >
-                {{ child.mode === 'ref' ? 'fx' : '·' }}
-              </button>
-            </div>
-          </div>
+          <ng-container *ngFor="let child of field.children; let j = index">
+            <ng-container
+              *ngTemplateOutlet="fieldRow; context: { $implicit: child, path: path.concat(j) }"
+            ></ng-container>
+          </ng-container>
         </div>
       </div>
+    </ng-template>
+
+    <div class="mapping-builder">
+      <div
+        *ngIf="fields.length === 0 && (!templateFields || templateFields.length === 0)"
+        class="mapping-builder__empty"
+      >
+        {{ 'noTemplateFields' | pluginTranslate: 'epistola' | async }}
+      </div>
+
+      <ng-container *ngFor="let field of fields; let i = index">
+        <ng-container
+          *ngTemplateOutlet="fieldRow; context: { $implicit: field, path: [i] }"
+        ></ng-container>
+      </ng-container>
     </div>
   `,
   styles: [
@@ -208,16 +180,18 @@ export class MappingBuilderComponent implements OnChanges {
     }
   }
 
-  onFieldValueChange(index: number, value: string): void {
-    this.fields[index] = { ...this.fields[index], value };
-    this.emit();
+  onNestedValueChange(path: number[], value: string): void {
+    const field = this.getFieldAtPath(path);
+    if (field) {
+      field.value = value;
+      this.emit();
+    }
   }
 
-  onChildValueChange(parentIndex: number, childIndex: number, value: string): void {
-    const parent = this.fields[parentIndex];
-    if (parent.children) {
-      parent.children[childIndex] = { ...parent.children[childIndex], value };
-      this.fields[parentIndex] = { ...parent };
+  onNestedModeToggle(path: number[]): void {
+    const field = this.getFieldAtPath(path);
+    if (field) {
+      field.mode = field.mode === 'ref' ? 'raw' : 'ref';
       this.emit();
     }
   }
@@ -226,26 +200,14 @@ export class MappingBuilderComponent implements OnChanges {
     return this.templateFields?.find((tf) => tf.name === fieldName)?.required ?? false;
   }
 
-  toggleFieldMode(index: number): void {
-    const field = this.fields[index];
-    this.fields[index] = {
-      ...field,
-      mode: field.mode === 'ref' ? 'raw' : 'ref',
-    };
-    this.emit();
-  }
-
-  toggleChildMode(parentIndex: number, childIndex: number): void {
-    const parent = this.fields[parentIndex];
-    if (parent.children) {
-      const child = parent.children[childIndex];
-      parent.children[childIndex] = {
-        ...child,
-        mode: child.mode === 'ref' ? 'raw' : 'ref',
-      };
-      this.fields[parentIndex] = { ...parent };
-      this.emit();
+  private getFieldAtPath(path: number[]): BuilderField | null {
+    if (path.length === 0) return null;
+    let current: BuilderField = this.fields[path[0]];
+    for (let i = 1; i < path.length; i++) {
+      if (!current.children) return null;
+      current = current.children[path[i]];
     }
+    return current;
   }
 
   private emit(): void {
