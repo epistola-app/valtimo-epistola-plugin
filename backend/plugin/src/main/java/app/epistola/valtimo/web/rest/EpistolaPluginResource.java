@@ -17,8 +17,6 @@ import app.epistola.valtimo.service.VariableSuggestionService;
 import app.epistola.valtimo.web.rest.dto.EvaluationRequest;
 import app.epistola.valtimo.web.rest.dto.EvaluationResult;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
-import app.epistola.valtimo.web.rest.dto.ValidateMappingRequest;
-import app.epistola.valtimo.web.rest.dto.ValidateMappingResponse;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ritense.plugin.domain.PluginConfiguration;
 import com.ritense.plugin.service.PluginService;
@@ -215,29 +213,6 @@ public class EpistolaPluginResource {
         );
 
         return ResponseEntity.ok(variants);
-    }
-
-    /**
-     * Validate that a data mapping covers all required template fields.
-     *
-     * @param configurationId The plugin configuration ID
-     * @param catalogId       The catalog ID
-     * @param templateId      The template ID
-     * @param request         The data mapping to validate
-     * @return Validation result with missing required fields (if any)
-     */
-    @PostMapping("/configurations/{configurationId}/templates/{templateId}/validate-mapping")
-    public ResponseEntity<ValidateMappingResponse> validateMapping(
-            @PathVariable("configurationId") UUID configurationId,
-            @PathVariable("templateId") String templateId,
-            @RequestParam("catalogId") String catalogId,
-            @RequestBody ValidateMappingRequest request
-    ) {
-        log.debug("Validating mapping for plugin configuration: {}, catalog: {}, template: {}",
-                configurationId, catalogId, templateId);
-
-        // TODO: implement JSONata-aware validation (parse expression, check output keys against template fields)
-        return ResponseEntity.ok(new ValidateMappingResponse(true, List.of()));
     }
 
     /**

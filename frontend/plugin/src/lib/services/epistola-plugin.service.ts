@@ -11,7 +11,6 @@ import {
   TemplateDetails,
   TemplateInfo,
   EvaluationResult,
-  ValidationResult,
   VariableSuggestions,
   VariantInfo,
 } from '../models';
@@ -144,20 +143,6 @@ export class EpistolaPluginService {
       documentId,
       processInstanceId: processInstanceId ?? null,
     });
-  }
-
-  /**
-   * Validate that a data mapping covers all required template fields.
-   */
-  validateMapping(
-    pluginConfigurationId: string,
-    templateId: string,
-    dataMapping: Record<string, any>,
-  ): Observable<ValidationResult> {
-    return this.http.post<ValidationResult>(
-      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}/validate-mapping`,
-      { dataMapping },
-    );
   }
 
   /**
