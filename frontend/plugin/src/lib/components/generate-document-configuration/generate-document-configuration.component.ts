@@ -44,6 +44,7 @@ import {
 import { EpistolaPluginService } from '../../services';
 import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
 import { MappingBuilderComponent } from '../mapping-builder/mapping-builder.component';
+import { MappingPreviewComponent } from '../mapping-preview/mapping-preview.component';
 
 export type VariantSelectionMode = 'explicit' | 'attributes';
 
@@ -62,6 +63,7 @@ export type VariantSelectionMode = 'explicit' | 'attributes';
     SelectModule,
     JsonataEditorComponent,
     MappingBuilderComponent,
+    MappingPreviewComponent,
   ],
 })
 export class GenerateDocumentConfigurationComponent

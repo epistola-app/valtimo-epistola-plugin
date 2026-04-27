@@ -10,6 +10,7 @@ import {
   PreviewSource,
   TemplateDetails,
   TemplateInfo,
+  EvaluationResult,
   ValidationResult,
   VariableSuggestions,
   VariantInfo,
@@ -127,6 +128,21 @@ export class EpistolaPluginService {
     if (processDefinitionKey) params['processDefinitionKey'] = processDefinitionKey;
     return this.http.get<VariableSuggestions>(`${this.apiEndpoint}/variable-suggestions`, {
       params,
+    });
+  }
+
+  /**
+   * Evaluate a JSONata expression against a real document.
+   */
+  evaluateMapping(
+    expression: string,
+    documentId: string,
+    processInstanceId?: string,
+  ): Observable<EvaluationResult> {
+    return this.http.post<EvaluationResult>(`${this.apiEndpoint}/evaluate-mapping`, {
+      expression,
+      documentId,
+      processInstanceId: processInstanceId ?? null,
     });
   }
 

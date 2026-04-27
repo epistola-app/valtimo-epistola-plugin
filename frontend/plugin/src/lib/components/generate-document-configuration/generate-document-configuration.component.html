@@ -268,4 +268,10 @@
     [disabled]="!!(disabled$ | async)"
     (expressionChange)="onDataMappingChange($event)"
   ></epistola-jsonata-editor>
+
+  <epistola-mapping-preview
+    [expression]="dataMapping$ | async"
+    [templateFields]="(templateFields$ | async)?.data ?? []"
+    [caseDefinitionKey]="caseDefinitionKey"
+  ></epistola-mapping-preview>
 </div>

@@ -79,3 +79,9 @@ export interface VariableSuggestions {
   doc: string[];
   pv: string[];
 }
+
+export interface EvaluationResult {
+  success: boolean;
+  result: Record<string, any> | null;
+  error: string | null;
+}
