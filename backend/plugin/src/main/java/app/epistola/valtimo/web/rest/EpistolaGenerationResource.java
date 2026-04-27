@@ -1,22 +1,13 @@
 package app.epistola.valtimo.web.rest;
 
-import app.epistola.valtimo.domain.AttributeDefinition;
-import app.epistola.valtimo.domain.CatalogInfo;
-import app.epistola.valtimo.domain.EnvironmentInfo;
-import app.epistola.valtimo.domain.TemplateDetails;
-import app.epistola.valtimo.domain.TemplateInfo;
-import app.epistola.valtimo.domain.VariantInfo;
-import app.epistola.valtimo.expression.ExpressionFunctionInfo;
-import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.preview.PreviewService;
-import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.form.RetryFormService;
-import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
 import app.epistola.valtimo.web.rest.dto.EvaluationRequest;
 import app.epistola.valtimo.web.rest.dto.EvaluationResult;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ritense.plugin.domain.PluginConfiguration;
 import com.ritense.plugin.service.PluginService;
@@ -41,213 +32,22 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * REST controller for Epistola plugin operations.
- * Provides endpoints for fetching templates and template details.
+ * REST controller for Epistola generation, preview, and download operations.
  */
 @Slf4j
 @RestController
 @RequestMapping("/api/v1/plugin/epistola")
 @SkipComponentScan
 @RequiredArgsConstructor
-public class EpistolaPluginResource {
+public class EpistolaGenerationResource {
 
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
-    private final ProcessVariableDiscoveryService processVariableDiscoveryService;
-    private final RetryFormService retryFormService;
     private final PreviewService previewService;
-    private final ExpressionFunctionRegistry expressionFunctionRegistry;
-    private final VariableSuggestionService variableSuggestionService;
+    private final RetryFormService retryFormService;
     private final JsonataMappingService jsonataMappingService;
     private final com.ritense.document.service.DocumentService documentService;
-    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper2;
-
-    /**
-     * Get all available catalogs for a plugin configuration.
-     *
-     * @param configurationId The plugin configuration ID
-     * @return List of available catalogs
-     */
-    @GetMapping("/configurations/{configurationId}/catalogs")
-    public ResponseEntity<List<CatalogInfo>> getCatalogs(
-            @PathVariable("configurationId") UUID configurationId
-    ) {
-        log.debug("Fetching catalogs for plugin configuration: {}", configurationId);
-
-        EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        List<CatalogInfo> catalogs = epistolaService.getCatalogs(
-                plugin.getBaseUrl(),
-                plugin.getApiKey(),
-                plugin.getTenantId()
-        );
-
-        return ResponseEntity.ok(catalogs);
-    }
-
-    /**
-     * Get all available templates for a plugin configuration.
-     *
-     * @param configurationId The plugin configuration ID
-     * @param catalogId       The catalog ID
-     * @return List of available templates
-     */
-    @GetMapping("/configurations/{configurationId}/templates")
-    public ResponseEntity<List<TemplateInfo>> getTemplates(
-            @PathVariable("configurationId") UUID configurationId,
-            @RequestParam("catalogId") String catalogId
-    ) {
-        log.debug("Fetching templates for plugin configuration: {}, catalog: {}", configurationId, catalogId);
-
-        EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        List<TemplateInfo> templates = epistolaService.getTemplates(
-                plugin.getBaseUrl(),
-                plugin.getApiKey(),
-                plugin.getTenantId(),
-                catalogId
-        );
-
-        return ResponseEntity.ok(templates);
-    }
-
-    /**
-     * Get template details including its fields.
-     *
-     * @param configurationId The plugin configuration ID
-     * @param catalogId       The catalog ID
-     * @param templateId      The template ID
-     * @return Template details with fields
-     */
-    @GetMapping("/configurations/{configurationId}/templates/{templateId}")
-    public ResponseEntity<TemplateDetails> getTemplateDetails(
-            @PathVariable("configurationId") UUID configurationId,
-            @PathVariable("templateId") String templateId,
-            @RequestParam("catalogId") String catalogId
-    ) {
-        log.debug("Fetching template details for plugin configuration: {}, catalog: {}, template: {}",
-                configurationId, catalogId, templateId);
-
-        EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        TemplateDetails templateDetails = epistolaService.getTemplateDetails(
-                plugin.getBaseUrl(),
-                plugin.getApiKey(),
-                plugin.getTenantId(),
-                catalogId,
-                templateId
-        );
-
-        return ResponseEntity.ok(templateDetails);
-    }
-
-    /**
-     * Get all attribute definitions for a plugin configuration's tenant and catalog.
-     * These define the keys that can be used for variant selection.
-     *
-     * @param configurationId The plugin configuration ID
-     * @param catalogId       The catalog ID
-     * @return List of attribute definitions
-     */
-    @GetMapping("/configurations/{configurationId}/attributes")
-    public ResponseEntity<List<AttributeDefinition>> getAttributes(
-            @PathVariable("configurationId") UUID configurationId,
-            @RequestParam("catalogId") String catalogId
-    ) {
-        log.debug("Fetching attribute definitions for plugin configuration: {}, catalog: {}", configurationId, catalogId);
-
-        EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        List<AttributeDefinition> attributes = epistolaService.getAttributes(
-                plugin.getBaseUrl(),
-                plugin.getApiKey(),
-                plugin.getTenantId(),
-                catalogId
-        );
-
-        return ResponseEntity.ok(attributes);
-    }
-
-    /**
-     * Get all available environments for a plugin configuration.
-     *
-     * @param configurationId The plugin configuration ID
-     * @return List of available environments
-     */
-    @GetMapping("/configurations/{configurationId}/environments")
-    public ResponseEntity<List<EnvironmentInfo>> getEnvironments(
-            @PathVariable("configurationId") UUID configurationId
-    ) {
-        log.debug("Fetching environments for plugin configuration: {}", configurationId);
-
-        EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        List<EnvironmentInfo> environments = epistolaService.getEnvironments(
-                plugin.getBaseUrl(),
-                plugin.getApiKey(),
-                plugin.getTenantId()
-        );
-
-        return ResponseEntity.ok(environments);
-    }
-
-    /**
-     * Get all variants for a specific template.
-     *
-     * @param configurationId The plugin configuration ID
-     * @param catalogId       The catalog ID
-     * @param templateId      The template ID
-     * @return List of variants for the template
-     */
-    @GetMapping("/configurations/{configurationId}/templates/{templateId}/variants")
-    public ResponseEntity<List<VariantInfo>> getVariants(
-            @PathVariable("configurationId") UUID configurationId,
-            @PathVariable("templateId") String templateId,
-            @RequestParam("catalogId") String catalogId
-    ) {
-        log.debug("Fetching variants for plugin configuration: {}, catalog: {}, template: {}",
-                configurationId, catalogId, templateId);
-
-        EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        List<VariantInfo> variants = epistolaService.getVariants(
-                plugin.getBaseUrl(),
-                plugin.getApiKey(),
-                plugin.getTenantId(),
-                catalogId,
-                templateId
-        );
-
-        return ResponseEntity.ok(variants);
-    }
-
-    /**
-     * Discover process variable names for a given process definition.
-     * Combines variables from historic process instances and BPMN model definitions.
-     *
-     * @param processDefinitionKey The process definition key
-     * @return Sorted list of discovered variable names
-     */
-    @GetMapping("/process-variables")
-    public ResponseEntity<List<String>> getProcessVariables(
-            @RequestParam("processDefinitionKey") String processDefinitionKey
-    ) {
-        log.debug("Discovering process variables for process definition: {}", processDefinitionKey);
-
-        List<String> variables = processVariableDiscoveryService.discoverVariables(processDefinitionKey);
-        return ResponseEntity.ok(variables);
-    }
-
-    /**
-     * Get all available variable suggestions for autocompletion in JSONata expressions.
-     * Returns document fields (from JSON Schema) and process variables grouped by source.
-     *
-     * @param caseDefinitionKey    The case definition key (for document schema)
-     * @param processDefinitionKey The process definition key (for process variables)
-     * @return Variable paths grouped by source ($doc, $pv)
-     */
-    @GetMapping("/variable-suggestions")
-    public ResponseEntity<VariableSuggestionService.VariableSuggestions> getVariableSuggestions(
-            @RequestParam(value = "caseDefinitionKey", required = false) String caseDefinitionKey,
-            @RequestParam(value = "processDefinitionKey", required = false) String processDefinitionKey
-    ) {
-        log.debug("Fetching variable suggestions for case={}, process={}", caseDefinitionKey, processDefinitionKey);
-        return ResponseEntity.ok(variableSuggestionService.getSuggestions(caseDefinitionKey, processDefinitionKey));
-    }
+    private final ObjectMapper objectMapper;
 
     /**
      * Evaluate a JSONata data mapping expression against a real document.
@@ -268,16 +68,6 @@ public class EpistolaPluginResource {
         } catch (Exception e) {
             return ResponseEntity.ok(EvaluationResult.failure(e.getMessage()));
         }
-    }
-
-    /**
-     * List all available expression functions that can be used in JSONata expressions.
-     *
-     * @return List of expression functions with their overload signatures
-     */
-    @GetMapping("/expression-functions")
-    public ResponseEntity<List<ExpressionFunctionInfo>> getExpressionFunctions() {
-        return ResponseEntity.ok(expressionFunctionRegistry.listFunctions());
     }
 
     /**
@@ -430,7 +220,7 @@ public class EpistolaPluginResource {
             var doc = documentService.findBy(
                     com.ritense.document.domain.impl.JsonSchemaDocumentId.existingId(java.util.UUID.fromString(documentId)));
             if (doc.isPresent()) {
-                return (Map<String, Object>) objectMapper2.convertValue(
+                return (Map<String, Object>) objectMapper.convertValue(
                         doc.get().content().asJson(), Map.class);
             }
             return Map.of();

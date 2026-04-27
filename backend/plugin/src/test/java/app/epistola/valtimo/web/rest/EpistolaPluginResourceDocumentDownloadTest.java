@@ -1,16 +1,12 @@
 package app.epistola.valtimo.web.rest;
 
-import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.service.EpistolaService;
-import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
-import app.epistola.valtimo.service.form.RetryFormService;
 import com.ritense.plugin.domain.PluginConfiguration;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ContentDisposition;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,24 +24,20 @@ class EpistolaPluginResourceDocumentDownloadTest {
 
     private PluginService pluginService;
     private EpistolaService epistolaService;
-    private EpistolaPluginResource resource;
+    private EpistolaGenerationResource resource;
 
     @BeforeEach
     void setUp() {
         pluginService = mock(PluginService.class);
         epistolaService = mock(EpistolaService.class);
-        var processVariableDiscoveryService = mock(ProcessVariableDiscoveryService.class);
-        var retryFormService = mock(RetryFormService.class);
         var previewService = mock(app.epistola.valtimo.service.preview.PreviewService.class);
-        var expressionFunctionRegistry = new ExpressionFunctionRegistry(List.of());
-        var variableSuggestionService = mock(app.epistola.valtimo.service.suggestion.VariableSuggestionService.class);
+        var retryFormService = mock(app.epistola.valtimo.service.form.RetryFormService.class);
         var jsonataMappingService = mock(app.epistola.valtimo.mapping.JsonataMappingService.class);
         var documentService = mock(com.ritense.document.service.DocumentService.class);
         var objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        resource = new EpistolaPluginResource(pluginService, epistolaService,
-                processVariableDiscoveryService, retryFormService, previewService,
-                expressionFunctionRegistry, variableSuggestionService,
-                jsonataMappingService, documentService, objectMapper);
+        resource = new EpistolaGenerationResource(pluginService, epistolaService,
+                previewService, retryFormService, jsonataMappingService,
+                documentService, objectMapper);
     }
 
     @Test

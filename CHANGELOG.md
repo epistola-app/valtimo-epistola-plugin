@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Split EpistolaPluginResource into three focused controllers** — `EpistolaTemplateResource` (template browsing), `EpistolaGenerationResource` (generation, preview, download), and `EpistolaToolingResource` (process variables, suggestions, expression functions). Each controller only declares the dependencies it needs. No endpoint URLs changed.
+
 ### Added
 
 - **JSONata data mappings** — Replaced the custom prefix-based data mapping system (`doc:`, `pv:`, `expr:`) with [JSONata](https://jsonata.org), a purpose-built JSON transformation language. Supports conditionals, string operations, array filtering/projection, loops, and custom functions. Data mappings are now stored as a JSONata expression string.

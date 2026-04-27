@@ -21,7 +21,9 @@ import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.form.RetryFormService;
 import app.epistola.valtimo.web.rest.EpistolaAdminResource;
 import app.epistola.valtimo.web.rest.EpistolaCallbackResource;
-import app.epistola.valtimo.web.rest.EpistolaPluginResource;
+import app.epistola.valtimo.web.rest.EpistolaGenerationResource;
+import app.epistola.valtimo.web.rest.EpistolaTemplateResource;
+import app.epistola.valtimo.web.rest.EpistolaToolingResource;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
@@ -162,23 +164,39 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(EpistolaPluginResource.class)
-    public EpistolaPluginResource epistolaPluginResource(
+    @ConditionalOnMissingBean(EpistolaTemplateResource.class)
+    public EpistolaTemplateResource epistolaTemplateResource(
+            PluginService pluginService,
+            EpistolaService epistolaService
+    ) {
+        return new EpistolaTemplateResource(pluginService, epistolaService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaGenerationResource.class)
+    public EpistolaGenerationResource epistolaGenerationResource(
             PluginService pluginService,
             EpistolaService epistolaService,
-            ProcessVariableDiscoveryService processVariableDiscoveryService,
-            RetryFormService retryFormService,
             app.epistola.valtimo.service.preview.PreviewService previewService,
-            ExpressionFunctionRegistry expressionFunctionRegistry,
-            VariableSuggestionService variableSuggestionService,
+            RetryFormService retryFormService,
             JsonataMappingService jsonataMappingService,
             com.ritense.document.service.DocumentService documentService,
             ObjectMapper objectMapper
     ) {
-        return new EpistolaPluginResource(pluginService, epistolaService,
-                processVariableDiscoveryService, retryFormService, previewService,
-                expressionFunctionRegistry, variableSuggestionService,
-                jsonataMappingService, documentService, objectMapper);
+        return new EpistolaGenerationResource(pluginService, epistolaService,
+                previewService, retryFormService, jsonataMappingService,
+                documentService, objectMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaToolingResource.class)
+    public EpistolaToolingResource epistolaToolingResource(
+            ProcessVariableDiscoveryService processVariableDiscoveryService,
+            VariableSuggestionService variableSuggestionService,
+            ExpressionFunctionRegistry expressionFunctionRegistry
+    ) {
+        return new EpistolaToolingResource(processVariableDiscoveryService,
+                variableSuggestionService, expressionFunctionRegistry);
     }
 
     @Bean
