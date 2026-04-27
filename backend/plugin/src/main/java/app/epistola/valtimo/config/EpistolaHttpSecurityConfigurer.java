@@ -10,7 +10,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
  * Order 270 ensures this runs before Valtimo's default anyRequest() configuration.
  * <p>
  * The callback endpoint is accessible without authentication (for webhooks from Epistola).
- * All other endpoints require authentication.
+ * All other endpoints require ROLE_ADMIN.
  */
 @Order(270)
 public class EpistolaHttpSecurityConfigurer implements HttpSecurityConfigurer {
@@ -21,10 +21,8 @@ public class EpistolaHttpSecurityConfigurer implements HttpSecurityConfigurer {
             http.authorizeHttpRequests(requests -> requests
                     // Callback endpoint is public (webhook from Epistola)
                     .requestMatchers("/api/v1/plugin/epistola/callback/**").permitAll()
-                    // Admin endpoints require ROLE_ADMIN
-                    .requestMatchers("/api/v1/plugin/epistola/admin/**").hasAuthority("ROLE_ADMIN")
-                    // All other Epistola endpoints require authentication
-                    .requestMatchers("/api/v1/plugin/epistola/**").authenticated()
+                    // All other Epistola endpoints require ROLE_ADMIN
+                    .requestMatchers("/api/v1/plugin/epistola/**").hasAuthority("ROLE_ADMIN")
             );
         } catch (Exception e) {
             throw new HttpConfigurerConfigurationException(e);
