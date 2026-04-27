@@ -12,7 +12,12 @@ import { TemplateField } from '../../models';
       <div class="expected__header">
         {{ 'expectedStructure' | pluginTranslate: 'epistola' | async }}
       </div>
-      <pre class="expected__code">{{ structureText }}</pre>
+      <div *ngIf="!templateFields || templateFields.length === 0" class="expected__empty">
+        {{ 'expectedStructureLoading' | pluginTranslate: 'epistola' | async }}
+      </div>
+      <pre *ngIf="templateFields && templateFields.length > 0" class="expected__code">{{
+        structureText
+      }}</pre>
     </div>
   `,
   styles: [
@@ -43,6 +48,12 @@ import { TemplateField } from '../../models';
         padding: 8px 12px;
         white-space: pre-wrap;
         overflow-y: auto;
+      }
+      .expected__empty {
+        padding: 8px 12px;
+        color: #8d8d8d;
+        font-size: 0.85em;
+        font-style: italic;
       }
     `,
   ],
