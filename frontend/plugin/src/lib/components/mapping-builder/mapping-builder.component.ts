@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { TemplateField, VariableSuggestions } from '../../models';
+import { BuilderFieldComponent } from './builder-field/builder-field.component';
 import {
   BuilderField,
   builderToJsonata,
@@ -12,66 +13,8 @@ import {
 @Component({
   selector: 'epistola-mapping-builder',
   standalone: true,
-  imports: [CommonModule, FormsModule, PluginTranslatePipeModule],
+  imports: [CommonModule, FormsModule, PluginTranslatePipeModule, BuilderFieldComponent],
   template: `
-    <ng-template #fieldRow let-field let-path="path">
-      <div class="mapping-builder__row">
-        <div
-          class="mapping-builder__name"
-          [class.mapping-builder__name--clickable]="field.children"
-          (click)="field.children && toggleCollapse(path)"
-        >
-          <span *ngIf="field.children" class="mapping-builder__chevron">{{
-            isCollapsed(path) ? '&#x25B6;' : '&#x25BC;'
-          }}</span>
-          <span class="mapping-builder__field-name">{{ field.name }}</span>
-          <span *ngIf="isRequired(field.name)" class="mapping-builder__required">*</span>
-          <span *ngIf="field.children" class="mapping-builder__type">(object)</span>
-        </div>
-
-        <div class="mapping-builder__value" *ngIf="!field.children">
-          <input
-            *ngIf="field.mode === 'ref'"
-            type="text"
-            class="mapping-builder__input"
-            [ngModel]="field.value"
-            (ngModelChange)="onNestedValueChange(path, $event)"
-            [disabled]="disabled"
-            placeholder="$doc.path.to.field"
-            [attr.list]="'suggestions-' + path.join('-')"
-          />
-          <datalist *ngIf="field.mode === 'ref'" [id]="'suggestions-' + path.join('-')">
-            <option *ngFor="let s of allSuggestions" [value]="s"></option>
-          </datalist>
-          <input
-            *ngIf="field.mode === 'raw'"
-            type="text"
-            class="mapping-builder__input mapping-builder__input--raw"
-            [ngModel]="field.value"
-            (ngModelChange)="onNestedValueChange(path, $event)"
-            [disabled]="disabled"
-            placeholder="JSONata expression"
-          />
-          <button
-            class="mapping-builder__mode-toggle"
-            (click)="onNestedModeToggle(path)"
-            [disabled]="disabled"
-            [title]="field.mode === 'ref' ? 'Switch to raw JSONata' : 'Switch to reference'"
-          >
-            {{ field.mode === 'ref' ? 'fx' : '·' }}
-          </button>
-        </div>
-
-        <div *ngIf="field.children && !isCollapsed(path)" class="mapping-builder__children">
-          <ng-container *ngFor="let child of field.children; let j = index">
-            <ng-container
-              *ngTemplateOutlet="fieldRow; context: { $implicit: child, path: path.concat(j) }"
-            ></ng-container>
-          </ng-container>
-        </div>
-      </div>
-    </ng-template>
-
     <div class="mapping-builder">
       <div
         *ngIf="fields.length === 0 && (!templateFields || templateFields.length === 0)"
@@ -80,11 +23,18 @@ import {
         {{ 'noTemplateFields' | pluginTranslate: 'epistola' | async }}
       </div>
 
-      <ng-container *ngFor="let field of fields; let i = index">
-        <ng-container
-          *ngTemplateOutlet="fieldRow; context: { $implicit: field, path: [i] }"
-        ></ng-container>
-      </ng-container>
+      <epistola-builder-field
+        *ngFor="let field of fields; let i = index"
+        [field]="field"
+        [path]="[i]"
+        [suggestions]="allSuggestions"
+        [disabled]="disabled"
+        [collapsed]="isCollapsed([i])"
+        [required]="isRequired(field.name)"
+        (valueChange)="onNestedValueChange($event.path, $event.value)"
+        (modeToggle)="onNestedModeToggle($event)"
+        (collapseToggle)="toggleCollapse($event)"
+      ></epistola-builder-field>
     </div>
   `,
   styles: [
