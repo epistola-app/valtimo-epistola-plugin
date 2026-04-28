@@ -10,12 +10,23 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FormioCustomComponent } from '@valtimo/components';
 
+const FORM_REF_PREFIX = 'form:';
+
 interface OverrideRow {
   scope: 'doc' | 'pv';
   inputPath: string;
-  formField: string;
+  formFieldKey: string;
 }
 
+export interface FormFieldOption {
+  key: string;
+  label: string;
+}
+
+/**
+ * Override mapping format: scope → { inputPath → "form:<componentKey>" }
+ * The "form:" prefix identifies this as a reference to a Formio component.
+ */
 export type OverrideMapping = Record<string, Record<string, string>>;
 
 @Component({
@@ -52,12 +63,25 @@ export type OverrideMapping = Record<string, Record<string, string>>;
             (ngModelChange)="emitChange()"
             placeholder="e.g. beslissing.tekst"
           />
+          <!-- Dropdown when form fields are available, text input as fallback -->
+          <select
+            *ngIf="availableFields.length > 0"
+            class="col-field"
+            [(ngModel)]="row.formFieldKey"
+            (ngModelChange)="emitChange()"
+          >
+            <option value="">-- Select field --</option>
+            <option *ngFor="let field of availableFields" [value]="field.key">
+              {{ field.label }}
+            </option>
+          </select>
           <input
+            *ngIf="availableFields.length === 0"
             class="col-field"
             type="text"
-            [(ngModel)]="row.formField"
+            [(ngModel)]="row.formFieldKey"
             (ngModelChange)="emitChange()"
-            placeholder="e.g. beslissing"
+            placeholder="form field key"
           />
           <button type="button" class="col-action remove-btn" (click)="removeRow(i)">
             <i class="mdi mdi-close"></i>
@@ -74,7 +98,7 @@ export type OverrideMapping = Record<string, Record<string, string>>;
           class="json-editor"
           [ngModel]="jsonText"
           (ngModelChange)="onJsonChange($event)"
-          placeholder='{ "doc": { "path": "formFieldKey" } }'
+          placeholder='{ "pv": { "motivation": "form:pv:motivation" } }'
           rows="6"
         ></textarea>
         <div *ngIf="jsonError" class="json-error">{{ jsonError }}</div>
@@ -201,6 +225,7 @@ export class EpistolaOverrideBuilderComponent implements FormioCustomComponent<O
 
   @Input() disabled = false;
   @Input() label = 'Input Overrides';
+  @Input() availableFields: FormFieldOption[] = [];
 
   rows: OverrideRow[] = [];
   advancedMode = false;
@@ -209,12 +234,15 @@ export class EpistolaOverrideBuilderComponent implements FormioCustomComponent<O
 
   private initialized = false;
 
+  constructor(private readonly cdr: ChangeDetectorRef) {}
+
   ngOnChanges(): void {
     if (!this.initialized && this.value) {
       this.initialized = true;
       this.rows = this.mappingToRows(this.value);
       this.jsonText = JSON.stringify(this.value, null, 2);
     }
+    this.cdr.markForCheck();
   }
 
   toggleMode(): void {
@@ -235,7 +263,7 @@ export class EpistolaOverrideBuilderComponent implements FormioCustomComponent<O
   }
 
   addRow(): void {
-    this.rows.push({ scope: 'doc', inputPath: '', formField: '' });
+    this.rows.push({ scope: 'doc', inputPath: '', formFieldKey: '' });
   }
 
   removeRow(index: number): void {
@@ -270,11 +298,11 @@ export class EpistolaOverrideBuilderComponent implements FormioCustomComponent<O
   private rowsToMapping(): OverrideMapping {
     const mapping: OverrideMapping = {};
     for (const row of this.rows) {
-      if (row.inputPath && row.formField) {
+      if (row.inputPath && row.formFieldKey) {
         if (!mapping[row.scope]) {
           mapping[row.scope] = {};
         }
-        mapping[row.scope][row.inputPath] = row.formField;
+        mapping[row.scope][row.inputPath] = FORM_REF_PREFIX + row.formFieldKey;
       }
     }
     return mapping;
@@ -284,8 +312,11 @@ export class EpistolaOverrideBuilderComponent implements FormioCustomComponent<O
     const rows: OverrideRow[] = [];
     for (const [scope, fields] of Object.entries(mapping)) {
       if (scope === 'doc' || scope === 'pv') {
-        for (const [path, formField] of Object.entries(fields)) {
-          rows.push({ scope, inputPath: path, formField: String(formField) });
+        for (const [path, ref] of Object.entries(fields)) {
+          const formFieldKey = String(ref).startsWith(FORM_REF_PREFIX)
+            ? String(ref).substring(FORM_REF_PREFIX.length)
+            : String(ref);
+          rows.push({ scope, inputPath: path, formFieldKey });
         }
       }
     }

@@ -49,9 +49,12 @@ function expandDotNotation(flat: Record<string, any>): Record<string, any> {
   return result;
 }
 
+const FORM_REF_PREFIX = 'form:';
+
 /**
- * Given an override mapping (scope → { inputPath → formFieldKey })
+ * Given an override mapping (scope → { inputPath → "form:<componentKey>" })
  * and form data, produce the inputOverrides object for the backend.
+ * The "form:" prefix identifies form field references; the remainder is the Formio component key.
  */
 function computeInputOverrides(
   mapping: OverrideMapping,
@@ -61,7 +64,10 @@ function computeInputOverrides(
   for (const [scope, fields] of Object.entries(mapping)) {
     if (scope !== 'doc' && scope !== 'pv') continue;
     const flatOverrides: Record<string, any> = {};
-    for (const [inputPath, formFieldKey] of Object.entries(fields)) {
+    for (const [inputPath, ref] of Object.entries(fields)) {
+      const formFieldKey = String(ref).startsWith(FORM_REF_PREFIX)
+        ? String(ref).substring(FORM_REF_PREFIX.length)
+        : String(ref);
       const value = formData[formFieldKey];
       if (value !== undefined) {
         flatOverrides[inputPath] = value;

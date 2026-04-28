@@ -24,7 +24,37 @@ import { Subscription } from 'rxjs';
   selector: 'epistola-document-preview-component',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="epistola-preview-panel">
+    <!-- Design-time view: show configuration summary when no runtime context -->
+    <div *ngIf="designMode" class="epistola-preview-panel">
+      <div class="preview-header">
+        <span>{{ label || 'Document Preview' }}</span>
+      </div>
+      <div class="preview-body design-info">
+        <div class="design-section" *ngIf="sourceActivityId">
+          <div class="design-label">Process</div>
+          <div class="design-value">{{ processDefinitionKey || '(any)' }}</div>
+          <div class="design-label">Activity</div>
+          <div class="design-value">{{ sourceActivityId }}</div>
+        </div>
+        <div class="design-section" *ngIf="overrideMapping">
+          <div class="design-label">Input Overrides</div>
+          <div *ngFor="let scope of overrideMappingScopes" class="design-mapping">
+            <div *ngFor="let entry of overrideMappingEntries(scope)" class="design-entry">
+              <span class="design-scope">{{ scope }}</span
+              >.{{ entry.path }}
+              <i class="mdi mdi-arrow-left"></i>
+              <span class="design-field">{{ entry.field }}</span>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="!sourceActivityId" class="design-unconfigured">
+          Auto-discover mode (no process link configured)
+        </div>
+      </div>
+    </div>
+
+    <!-- Runtime view: actual preview -->
+    <div *ngIf="!designMode" class="epistola-preview-panel">
       <div class="preview-header">
         <span>{{ label || 'Document Preview' }}</span>
         <div class="preview-controls">
@@ -163,6 +193,51 @@ import { Subscription } from 'rxjs';
         color: #6c757d;
         font-style: italic;
       }
+      .design-info {
+        padding: 1rem;
+        min-height: auto;
+      }
+      .design-section {
+        margin-bottom: 0.75rem;
+      }
+      .design-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        color: #868e96;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+      }
+      .design-value {
+        font-family: monospace;
+        font-size: 0.85rem;
+        color: #212529;
+        margin-bottom: 0.25rem;
+      }
+      .design-mapping {
+        margin-top: 0.25rem;
+      }
+      .design-entry {
+        font-family: monospace;
+        font-size: 0.8rem;
+        color: #495057;
+        padding: 0.15rem 0;
+      }
+      .design-scope {
+        color: #0d6efd;
+      }
+      .design-field {
+        color: #198754;
+      }
+      .design-entry i {
+        font-size: 0.7rem;
+        margin: 0 0.25rem;
+        color: #adb5bd;
+      }
+      .design-unconfigured {
+        color: #6c757d;
+        font-style: italic;
+        font-size: 0.85rem;
+      }
     `,
   ],
 })
@@ -184,6 +259,7 @@ export class EpistolaDocumentPreviewComponent
   loading = false;
   error: string | null = null;
   previewUrl: SafeResourceUrl | null = null;
+  designMode = false;
   private initialized = false;
   private currentBlobUrl: string | null = null;
   private discoverSubscription?: Subscription;
@@ -206,14 +282,31 @@ export class EpistolaDocumentPreviewComponent
     this.apiEndpoint = `${this.configService.config.valtimoApi.endpointUri}v1/plugin/epistola`;
   }
 
+  get overrideMappingScopes(): string[] {
+    return this.overrideMapping ? Object.keys(this.overrideMapping) : [];
+  }
+
+  overrideMappingEntries(scope: string): { path: string; field: string }[] {
+    const fields = this.overrideMapping?.[scope];
+    if (!fields || typeof fields !== 'object') return [];
+    return Object.entries(fields).map(([path, field]) => ({ path, field: String(field) }));
+  }
+
   ngOnChanges(changes: SimpleChanges): void {
     if (!this.initialized) {
       this.initialized = true;
+
+      // Detect design mode: no runtime context (Formio builder)
+      const documentId = this.formIoStateService.documentId;
+      if (!documentId) {
+        this.designMode = true;
+        this.cdr.markForCheck();
+        return;
+      }
+
       if (this.configuredMode) {
-        // Configured mode: load preview directly using the configured process link
         this.loadConfiguredPreview();
       } else {
-        // Auto-discover mode: find sources from running process instances
         this.discoverSources();
       }
       return;

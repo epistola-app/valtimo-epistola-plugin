@@ -29,7 +29,15 @@
       "type": "epistola-document-preview",
       "key": "preview",
       "input": false,
-      "label": "Voorbeeld Besluitbrief"
+      "label": "Voorbeeld Besluitbrief",
+      "processDefinitionKey": "objection-handling",
+      "sourceActivityId": "generate-decision-gegrond",
+      "overrideMapping": {
+        "pv": {
+          "motivation": "form:pv:motivation",
+          "decision": "form:pv:decision"
+        }
+      }
     },
     {
       "key": "submit",
