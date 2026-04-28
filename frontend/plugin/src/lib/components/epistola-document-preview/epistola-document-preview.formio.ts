@@ -18,6 +18,7 @@ export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
         key: 'processLinkSelection',
         label: 'Process Link',
         weight: 10,
+        validate: { required: true },
       },
       {
         type: 'epistola-override-builder',
