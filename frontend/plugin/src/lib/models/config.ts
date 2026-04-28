@@ -37,7 +37,7 @@ export interface GenerateDocumentConfig {
   variantId?: string;
   variantAttributes?: VariantAttributeEntry[];
   environmentId?: string;
-  dataMapping: Record<string, any>;
+  dataMapping: string;
   outputFormat: 'PDF' | 'HTML';
   filename: string;
   correlationId?: string;
@@ -73,4 +73,15 @@ export interface PreviewSource {
   templateId: string;
   templateName: string;
   processInstanceId: string;
+}
+
+export interface VariableSuggestions {
+  doc: string[];
+  pv: string[];
+}
+
+export interface EvaluationResult {
+  success: boolean;
+  result: Record<string, any> | null;
+  error: string | null;
 }

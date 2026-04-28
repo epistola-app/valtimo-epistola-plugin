@@ -1,6 +1,6 @@
 package com.ritense.valtimo.epistola.plugin;
 
-import app.epistola.valtimo.service.DataMappingResolverService;
+import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.valueresolver.ValueResolverService;
@@ -29,7 +29,8 @@ class NormalizeVariantAttributesTest {
                 mock(EpistolaService.class),
                 mock(ValueResolverService.class),
                 mock(ObjectMapper.class),
-                mock(DataMappingResolverService.class)
+                mock(JsonataMappingService.class),
+                mock(com.ritense.document.service.DocumentService.class)
         );
     }
 

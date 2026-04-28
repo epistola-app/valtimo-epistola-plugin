@@ -1,6 +1,6 @@
 package app.epistola.valtimo.web.rest;
 
-import app.epistola.valtimo.service.EpistolaAdminService;
+import app.epistola.valtimo.service.admin.EpistolaAdminService;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;

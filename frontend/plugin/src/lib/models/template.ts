@@ -46,13 +46,6 @@ export interface DataMappingEntry {
 export type DataSourceType = 'document' | 'processVariable' | 'manual';
 
 /**
- * Validation result from the backend.
- */
-export interface ValidationResult {
-  valid: boolean;
-  missingRequiredFields: string[];
-}
-
 /**
  * Information about an Epistola environment.
  */

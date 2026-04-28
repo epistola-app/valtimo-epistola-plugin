@@ -29,6 +29,9 @@ dependencies {
     // Epistola client
     api(libs.epistola.client)
 
+    // JSONata (JSON transformation language)
+    api(libs.jsonata)
+
     // Valtimo dependencies (compileOnly - provided by implementing application)
     compileOnly(libs.valtimo.core)
     compileOnly(libs.valtimo.contract)
@@ -37,6 +40,7 @@ dependencies {
     compileOnly(libs.valtimo.plugin)
     compileOnly(libs.valtimo.value.resolver)
     compileOnly(libs.valtimo.process.link)
+    compileOnly(libs.valtimo.case)
     compileOnly(libs.valtimo.process.document)
     compileOnly(libs.valtimo.form)
     compileOnly(libs.valtimo.importer)
@@ -55,6 +59,7 @@ dependencies {
     testImplementation(libs.valtimo.outbox)
     testImplementation(libs.valtimo.value.resolver)
     testImplementation(libs.valtimo.process.link)
+    testImplementation(libs.valtimo.case)
     testImplementation(libs.valtimo.process.document)
     testImplementation(libs.valtimo.form)
     testImplementation(libs.valtimo.importer)

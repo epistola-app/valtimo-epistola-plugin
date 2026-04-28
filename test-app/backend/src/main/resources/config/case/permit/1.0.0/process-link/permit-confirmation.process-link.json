@@ -16,29 +16,7 @@
       "outputFormat": "PDF",
       "filename": "bevestigingsbrief.pdf",
       "resultProcessVariable": "epistolaRequestId",
-      "dataMapping": {
-        "applicant": {
-          "firstName": "doc:/applicant/firstName",
-          "lastName": "doc:/applicant/lastName",
-          "bsn": "doc:/applicant/bsn",
-          "address": {
-            "street": "doc:/applicant/address/street",
-            "houseNumber": "doc:/applicant/address/houseNumber",
-            "postalCode": "doc:/applicant/address/postalCode",
-            "city": "doc:/applicant/address/city"
-          }
-        },
-        "property": {
-          "address": {
-            "street": "doc:/property/address/street",
-            "houseNumber": "doc:/property/address/houseNumber",
-            "postalCode": "doc:/property/address/postalCode",
-            "city": "doc:/property/address/city"
-          },
-          "kadastraalNummer": "doc:/property/kadastraalNummer"
-        },
-        "activities": "doc:/activities"
-      },
+      "dataMapping": "{\n  \"applicant\": {\n    \"firstName\": $doc.applicant.firstName,\n    \"lastName\": $doc.applicant.lastName,\n    \"bsn\": $doc.applicant.bsn,\n    \"address\": {\n      \"street\": $doc.applicant.address.street,\n      \"houseNumber\": $doc.applicant.address.houseNumber,\n      \"postalCode\": $doc.applicant.address.postalCode,\n      \"city\": $doc.applicant.address.city\n    }\n  },\n  \"property\": {\n    \"address\": {\n      \"street\": $doc.property.address.street,\n      \"houseNumber\": $doc.property.address.houseNumber,\n      \"postalCode\": $doc.property.address.postalCode,\n      \"city\": $doc.property.address.city\n    },\n    \"kadastraalNummer\": $doc.property.kadastraalNummer\n  },\n  \"activities\": $doc.activities\n}",
       "catalogId": "municipality-demo"
     }
   },

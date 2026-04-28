@@ -13,11 +13,6 @@ import { EpistolaConfigurationComponent } from './components/epistola-configurat
 import { GenerateDocumentConfigurationComponent } from './components/generate-document-configuration/generate-document-configuration.component';
 import { CheckJobStatusConfigurationComponent } from './components/check-job-status-configuration/check-job-status-configuration.component';
 import { DownloadDocumentConfigurationComponent } from './components/download-document-configuration/download-document-configuration.component';
-import { DataMappingTreeComponent } from './components/data-mapping-tree/data-mapping-tree.component';
-import { FieldTreeComponent } from './components/field-tree/field-tree.component';
-import { ValueInputComponent } from './components/value-input/value-input.component';
-import { ScalarFieldComponent } from './components/scalar-field/scalar-field.component';
-import { ArrayFieldComponent } from './components/array-field/array-field.component';
 import { EpistolaDownloadComponent } from './components/epistola-download/epistola-download.component';
 import { EpistolaRetryFormComponent } from './components/epistola-retry-form/epistola-retry-form.component';
 import { EpistolaPreviewButtonComponent } from './components/epistola-preview-button/epistola-preview-button.component';
@@ -43,11 +38,6 @@ import { registerEpistolaDocumentPreviewComponent } from './components/epistola-
     GenerateDocumentConfigurationComponent,
     CheckJobStatusConfigurationComponent,
     DownloadDocumentConfigurationComponent,
-    DataMappingTreeComponent,
-    ValueInputComponent,
-    ScalarFieldComponent,
-    ArrayFieldComponent,
-    FieldTreeComponent,
     EpistolaDownloadComponent,
     EpistolaRetryFormComponent,
     EpistolaPreviewButtonComponent,
@@ -59,11 +49,6 @@ import { registerEpistolaDocumentPreviewComponent } from './components/epistola-
     GenerateDocumentConfigurationComponent,
     CheckJobStatusConfigurationComponent,
     DownloadDocumentConfigurationComponent,
-    DataMappingTreeComponent,
-    ValueInputComponent,
-    ScalarFieldComponent,
-    ArrayFieldComponent,
-    FieldTreeComponent,
     EpistolaDownloadComponent,
     EpistolaRetryFormComponent,
     EpistolaPreviewButtonComponent,

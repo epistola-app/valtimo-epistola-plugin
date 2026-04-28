@@ -86,6 +86,7 @@
     "jquery": "3.7.1",
     "json-server": "0.17.3",
     "keycloak-js": "26.1.5",
+    "monaco-editor": "0.50.0",
     "ngx-color-picker": "17.0.0",
     "ngx-logger": "5.0.12",
     "ngx-translate-multi-http-loader": "19.0.3",

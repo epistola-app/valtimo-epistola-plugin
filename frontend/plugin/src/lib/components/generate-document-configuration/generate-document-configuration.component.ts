@@ -33,14 +33,19 @@ import {
 import {
   AsyncResource,
   errorResource,
+  ExpressionFunctionInfo,
   GenerateDocumentConfig,
   initialResource,
   loadingResource,
   successResource,
   TemplateField,
+  VariableSuggestions,
 } from '../../models';
 import { EpistolaPluginService } from '../../services';
-import { DataMappingTreeComponent } from '../data-mapping-tree/data-mapping-tree.component';
+import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
+import { ExpectedStructureComponent } from '../expected-structure/expected-structure.component';
+import { MappingBuilderComponent } from '../mapping-builder/mapping-builder.component';
+import { MappingPreviewComponent } from '../mapping-preview/mapping-preview.component';
 
 export type VariantSelectionMode = 'explicit' | 'attributes';
 
@@ -57,7 +62,10 @@ export type VariantSelectionMode = 'explicit' | 'attributes';
     FormModule,
     InputModule,
     SelectModule,
-    DataMappingTreeComponent,
+    ExpectedStructureComponent,
+    JsonataEditorComponent,
+    MappingBuilderComponent,
+    MappingPreviewComponent,
   ],
 })
 export class GenerateDocumentConfigurationComponent
@@ -80,7 +88,10 @@ export class GenerateDocumentConfigurationComponent
   environments$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   templateFields$ = new BehaviorSubject<AsyncResource<TemplateField[]>>(initialResource([]));
 
-  dataMapping$ = new BehaviorSubject<Record<string, any>>({});
+  dataMapping$ = new BehaviorSubject<string>('');
+  mappingMode: 'simple' | 'advanced' = 'simple';
+  toolsCollapsed = true;
+  activeToolTab: 'schema' | 'preview' = 'preview';
 
   outputFormatOptions: SelectItem[] = [
     { id: 'PDF', text: 'PDF' },
@@ -102,6 +113,8 @@ export class GenerateDocumentConfigurationComponent
   availableAttributeKeys: string[] = [];
   caseDefinitionKey: string | null = null;
   processVariables: string[] = [];
+  expressionFunctions: ExpressionFunctionInfo[] = [];
+  variableSuggestions: VariableSuggestions | null = null;
   requiredFieldsStatus: { mapped: number; total: number } = { mapped: 0, total: 0 };
   prefillDataMapping: Record<string, any> = {};
 
@@ -126,6 +139,7 @@ export class GenerateDocumentConfigurationComponent
     this.initContext();
     this.initPluginConfiguration();
     this.initCascade();
+    this.loadExpressionFunctions();
     this.openSaveSubscription();
   }
 
@@ -161,8 +175,8 @@ export class GenerateDocumentConfigurationComponent
     this.handleValid(formValue);
   }
 
-  onDataMappingChange(mapping: Record<string, any>): void {
-    this.dataMapping$.next(mapping);
+  onDataMappingChange(expression: string): void {
+    this.dataMapping$.next(expression);
     const currentFormValue = this.formValue$.getValue();
     if (currentFormValue) {
       this.handleValid(currentFormValue);
@@ -422,6 +436,7 @@ export class GenerateDocumentConfigurationComponent
         tap(() => {
           this.templateFields$.next(loadingResource(this.templateFields$.getValue().data));
           this.loadProcessVariables();
+          this.loadVariableSuggestions();
         }),
         switchMap(([configurationId, catalogId, templateId]) =>
           this.epistolaPluginService
@@ -469,18 +484,26 @@ export class GenerateDocumentConfigurationComponent
           this.selectedVariantId$.next(config.variantId);
         }
 
-        // Apply dataMapping prefill — templateFields are guaranteed loaded at this point.
-        // Use setTimeout to ensure the tree component exists in the DOM (after *ngIf resolves)
-        // before setting the prefill, so ngOnChanges fires correctly on the child.
+        // Apply dataMapping prefill (JSONata expression string)
         if (config.dataMapping) {
-          this.dataMapping$.next(config.dataMapping);
-          setTimeout(() => {
-            this.prefillDataMapping = { ...config.dataMapping };
-            this.cdr.detectChanges();
-          });
+          const expr = typeof config.dataMapping === 'string' ? config.dataMapping : '';
+          this.dataMapping$.next(expr);
         } else {
           this.cdr.detectChanges();
         }
+      });
+  }
+
+  private loadExpressionFunctions(): void {
+    this.epistolaPluginService
+      .getExpressionFunctions()
+      .pipe(
+        takeUntil(this.destroy$),
+        catchError(() => of([])),
+      )
+      .subscribe((functions) => {
+        this.expressionFunctions = functions;
+        this.cdr.markForCheck();
       });
   }
 
@@ -497,6 +520,22 @@ export class GenerateDocumentConfigurationComponent
           this.cdr.markForCheck();
         });
     }
+  }
+
+  private loadVariableSuggestions(): void {
+    this.epistolaPluginService
+      .getVariableSuggestions(
+        this.caseDefinitionKey ?? undefined,
+        this.caseDefinitionKey ?? undefined,
+      )
+      .pipe(
+        takeUntil(this.destroy$),
+        catchError(() => of({ doc: [], pv: [] })),
+      )
+      .subscribe((suggestions) => {
+        this.variableSuggestions = suggestions;
+        this.cdr.markForCheck();
+      });
   }
 
   private handleValid(formValue: Partial<GenerateDocumentConfig & { catalogId: string }>): void {

@@ -7,8 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Split EpistolaPluginResource into three focused controllers** — `EpistolaTemplateResource` (template browsing), `EpistolaGenerationResource` (generation, preview, download), and `EpistolaToolingResource` (process variables, suggestions, expression functions). Each controller only declares the dependencies it needs. No endpoint URLs changed.
+
 ### Added
 
+- **JSONata data mappings** — Replaced the custom prefix-based data mapping system (`doc:`, `pv:`, `expr:`) with [JSONata](https://jsonata.org), a purpose-built JSON transformation language. Supports conditionals, string operations, array filtering/projection, loops, and custom functions. Data mappings are now stored as a JSONata expression string.
+  - `JsonataMappingService` evaluates JSONata with `$doc`, `$pv`, `$case` context variables
+  - Custom functions from `ExpressionFunctionRegistry` bridged as native JSONata functions
+  - Frontend JSONata editor with real-time syntax validation (via `jsonata` npm package)
+  - Visual mapping builder (Simple mode) for field-by-field mapping that generates JSONata
+  - Simple/Advanced mode toggle — switch between visual builder and raw code editor
+  - Removed: `DataMappingResolverService`, `DataMappingResolver`, `TemplateMappingValidator`, old tree components
+- **Expression function support** — Custom expression functions (`EpistolaExpressionFunction` interface) with typed `execute(ExpressionContext, ...)` methods, overload support, and reflection-based discovery. Built-in `formatDate` and `str` functions. Available as `$formatDate(...)`, `$str(...)` in JSONata expressions.
+  - `GET /api/v1/plugin/epistola/expression-functions` REST endpoint listing available functions with typed signatures
 - **Pending jobs overview** — Admin page now shows all process instances currently waiting for an Epistola document generation result. Displays configuration, process, activity, and request ID per waiting job. New backend endpoint `GET /api/v1/plugin/epistola/admin/pending`.
 - **Process link export** — Download button on each process link row in the admin page that exports the full configuration as a `.process-link.json` file matching Valtimo's auto-deploy format. New backend endpoint `GET /api/v1/plugin/epistola/admin/export/{processLinkId}`.
 - **oxfmt and oxlint** — Added code formatting (oxfmt) and linting (oxlint) with configuration matching epistola-suite. Managed via mise and npm devDependencies. CI pipeline updated with `lint:check` and `format:check` steps.

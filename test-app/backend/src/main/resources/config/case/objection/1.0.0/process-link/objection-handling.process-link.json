@@ -16,27 +16,7 @@
       "outputFormat": "PDF",
       "filename": "ontvangstbevestiging.pdf",
       "resultProcessVariable": "epistolaRequestId",
-      "dataMapping": {
-        "objector": {
-          "firstName": "doc:/objector/firstName",
-          "lastName": "doc:/objector/lastName",
-          "address": {
-            "street": "doc:/objector/address/street",
-            "houseNumber": "doc:/objector/address/houseNumber",
-            "postalCode": "doc:/objector/address/postalCode",
-            "city": "doc:/objector/address/city"
-          }
-        },
-        "originalDecision": {
-          "reference": "doc:/originalDecision/reference",
-          "date": "doc:/originalDecision/date",
-          "subject": "doc:/originalDecision/subject"
-        },
-        "objection": {
-          "grounds": "doc:/objection/grounds",
-          "receivedDate": "doc:/objection/receivedDate"
-        }
-      },
+      "dataMapping": "{\n  \"objector\": {\n    \"firstName\": $doc.objector.firstName,\n    \"lastName\": $doc.objector.lastName,\n    \"address\": {\n      \"street\": $doc.objector.address.street,\n      \"houseNumber\": $doc.objector.address.houseNumber,\n      \"postalCode\": $doc.objector.address.postalCode,\n      \"city\": $doc.objector.address.city\n    }\n  },\n  \"originalDecision\": {\n    \"reference\": $doc.originalDecision.reference,\n    \"date\": $doc.originalDecision.date,\n    \"subject\": $doc.originalDecision.subject\n  },\n  \"objection\": {\n    \"grounds\": $doc.objection.grounds,\n    \"receivedDate\": $doc.objection.receivedDate\n  }\n}",
       "catalogId": "municipality-demo"
     }
   },
@@ -68,25 +48,7 @@
       "outputFormat": "PDF",
       "filename": "besluit-gegrond.pdf",
       "resultProcessVariable": "epistolaRequestId",
-      "dataMapping": {
-        "objector": {
-          "firstName": "doc:/objector/firstName",
-          "lastName": "doc:/objector/lastName",
-          "address": {
-            "street": "doc:/objector/address/street",
-            "houseNumber": "doc:/objector/address/houseNumber",
-            "postalCode": "doc:/objector/address/postalCode",
-            "city": "doc:/objector/address/city"
-          }
-        },
-        "originalDecision": {
-          "reference": "doc:/originalDecision/reference",
-          "date": "doc:/originalDecision/date",
-          "subject": "doc:/originalDecision/subject"
-        },
-        "decision": "pv:decision",
-        "motivation": "pv:motivation"
-      },
+      "dataMapping": "{\n  \"objector\": {\n    \"firstName\": $doc.objector.firstName,\n    \"lastName\": $doc.objector.lastName,\n    \"address\": {\n      \"street\": $doc.objector.address.street,\n      \"houseNumber\": $doc.objector.address.houseNumber,\n      \"postalCode\": $doc.objector.address.postalCode,\n      \"city\": $doc.objector.address.city\n    }\n  },\n  \"originalDecision\": {\n    \"reference\": $doc.originalDecision.reference,\n    \"date\": $doc.originalDecision.date,\n    \"subject\": $doc.originalDecision.subject\n  },\n  \"decision\": $pv.decision,\n  \"motivation\": $pv.motivation\n}",
       "catalogId": "municipality-demo"
     }
   },
@@ -101,25 +63,7 @@
       "outputFormat": "PDF",
       "filename": "besluit-ongegrond.pdf",
       "resultProcessVariable": "epistolaRequestId",
-      "dataMapping": {
-        "objector": {
-          "firstName": "doc:/objector/firstName",
-          "lastName": "doc:/objector/lastName",
-          "address": {
-            "street": "doc:/objector/address/street",
-            "houseNumber": "doc:/objector/address/houseNumber",
-            "postalCode": "doc:/objector/address/postalCode",
-            "city": "doc:/objector/address/city"
-          }
-        },
-        "originalDecision": {
-          "reference": "doc:/originalDecision/reference",
-          "date": "doc:/originalDecision/date",
-          "subject": "doc:/originalDecision/subject"
-        },
-        "decision": "pv:decision",
-        "motivation": "pv:motivation"
-      },
+      "dataMapping": "{\n  \"objector\": {\n    \"firstName\": $doc.objector.firstName,\n    \"lastName\": $doc.objector.lastName,\n    \"address\": {\n      \"street\": $doc.objector.address.street,\n      \"houseNumber\": $doc.objector.address.houseNumber,\n      \"postalCode\": $doc.objector.address.postalCode,\n      \"city\": $doc.objector.address.city\n    }\n  },\n  \"originalDecision\": {\n    \"reference\": $doc.originalDecision.reference,\n    \"date\": $doc.originalDecision.date,\n    \"subject\": $doc.originalDecision.subject\n  },\n  \"decision\": $pv.decision,\n  \"motivation\": $pv.motivation\n}",
       "catalogId": "municipality-demo"
     }
   },
@@ -134,25 +78,7 @@
       "outputFormat": "PDF",
       "filename": "besluit-deels-gegrond.pdf",
       "resultProcessVariable": "epistolaRequestId",
-      "dataMapping": {
-        "objector": {
-          "firstName": "doc:/objector/firstName",
-          "lastName": "doc:/objector/lastName",
-          "address": {
-            "street": "doc:/objector/address/street",
-            "houseNumber": "doc:/objector/address/houseNumber",
-            "postalCode": "doc:/objector/address/postalCode",
-            "city": "doc:/objector/address/city"
-          }
-        },
-        "originalDecision": {
-          "reference": "doc:/originalDecision/reference",
-          "date": "doc:/originalDecision/date",
-          "subject": "doc:/originalDecision/subject"
-        },
-        "decision": "pv:decision",
-        "motivation": "pv:motivation"
-      },
+      "dataMapping": "{\n  \"objector\": {\n    \"firstName\": $doc.objector.firstName,\n    \"lastName\": $doc.objector.lastName,\n    \"address\": {\n      \"street\": $doc.objector.address.street,\n      \"houseNumber\": $doc.objector.address.houseNumber,\n      \"postalCode\": $doc.objector.address.postalCode,\n      \"city\": $doc.objector.address.city\n    }\n  },\n  \"originalDecision\": {\n    \"reference\": $doc.originalDecision.reference,\n    \"date\": $doc.originalDecision.date,\n    \"subject\": $doc.originalDecision.subject\n  },\n  \"decision\": $pv.decision,\n  \"motivation\": $pv.motivation\n}",
       "catalogId": "municipality-demo"
     }
   },

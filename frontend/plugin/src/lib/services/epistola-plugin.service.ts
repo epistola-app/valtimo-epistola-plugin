@@ -6,10 +6,12 @@ import {
   AttributeDefinition,
   CatalogInfo,
   EnvironmentInfo,
+  ExpressionFunctionInfo,
   PreviewSource,
   TemplateDetails,
   TemplateInfo,
-  ValidationResult,
+  EvaluationResult,
+  VariableSuggestions,
   VariantInfo,
 } from '../models';
 
@@ -114,17 +116,33 @@ export class EpistolaPluginService {
   }
 
   /**
-   * Validate that a data mapping covers all required template fields.
+   * Get variable suggestions for JSONata autocompletion.
    */
-  validateMapping(
-    pluginConfigurationId: string,
-    templateId: string,
-    dataMapping: Record<string, any>,
-  ): Observable<ValidationResult> {
-    return this.http.post<ValidationResult>(
-      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}/validate-mapping`,
-      { dataMapping },
-    );
+  getVariableSuggestions(
+    caseDefinitionKey?: string,
+    processDefinitionKey?: string,
+  ): Observable<VariableSuggestions> {
+    const params: Record<string, string> = {};
+    if (caseDefinitionKey) params['caseDefinitionKey'] = caseDefinitionKey;
+    if (processDefinitionKey) params['processDefinitionKey'] = processDefinitionKey;
+    return this.http.get<VariableSuggestions>(`${this.apiEndpoint}/variable-suggestions`, {
+      params,
+    });
+  }
+
+  /**
+   * Evaluate a JSONata expression against a real document.
+   */
+  evaluateMapping(
+    expression: string,
+    documentId: string,
+    processInstanceId?: string,
+  ): Observable<EvaluationResult> {
+    return this.http.post<EvaluationResult>(`${this.apiEndpoint}/evaluate-mapping`, {
+      expression,
+      documentId,
+      processInstanceId: processInstanceId ?? null,
+    });
   }
 
   /**
@@ -143,6 +161,13 @@ export class EpistolaPluginService {
       params['sourceActivityId'] = sourceActivityId;
     }
     return this.http.get<any>(`${this.apiEndpoint}/retry-form`, { params });
+  }
+
+  /**
+   * List all available expression functions for expr: data mapping values.
+   */
+  getExpressionFunctions(): Observable<ExpressionFunctionInfo[]> {
+    return this.http.get<ExpressionFunctionInfo[]>(`${this.apiEndpoint}/expression-functions`);
   }
 
   /**

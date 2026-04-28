@@ -235,33 +235,84 @@
   {{ templateFieldsError }}
 </div>
 
-<epistola-data-mapping-tree
-  *ngIf="selectedTemplateId$ | async"
-  [pluginId]="pluginId"
-  [templateFields]="(templateFields$ | async)?.data ?? []"
-  [disabled]="!!(disabled$ | async)"
-  [prefillMapping]="prefillDataMapping"
-  [caseDefinitionKey]="caseDefinitionKey"
-  [processVariables]="processVariables"
-  (mappingChange)="onDataMappingChange($event)"
-  (requiredFieldsStatus)="onRequiredFieldsStatusChange($event)"
-></epistola-data-mapping-tree>
+<div *ngIf="selectedTemplateId$ | async" class="mapping-section">
+  <h5 class="mapping-section__title">
+    {{ 'dataMappingTitle' | pluginTranslate: pluginId | async }}
+  </h5>
+  <p class="mapping-section__description">
+    {{ 'dataMappingDescription' | pluginTranslate: pluginId | async }}
+  </p>
+  <div class="mapping-mode-toggle">
+    <button
+      class="mapping-mode-toggle__btn"
+      [class.mapping-mode-toggle__btn--active]="mappingMode === 'simple'"
+      (click)="mappingMode = 'simple'"
+    >
+      {{ 'mappingModeSimple' | pluginTranslate: pluginId | async }}
+    </button>
+    <button
+      class="mapping-mode-toggle__btn"
+      [class.mapping-mode-toggle__btn--active]="mappingMode === 'advanced'"
+      (click)="mappingMode = 'advanced'"
+    >
+      {{ 'mappingModeAdvanced' | pluginTranslate: pluginId | async }}
+    </button>
+  </div>
 
-<div
-  class="validation-summary"
-  *ngIf="(selectedTemplateId$ | async) && requiredFieldsStatus.total > 0"
->
-  <span
-    *ngIf="requiredFieldsStatus.mapped === requiredFieldsStatus.total"
-    class="validation-complete"
-  >
-    {{ 'requiredFieldsComplete' | pluginTranslate: pluginId | async }}
-  </span>
-  <span
-    *ngIf="requiredFieldsStatus.mapped < requiredFieldsStatus.total"
-    class="validation-incomplete"
-  >
-    {{ requiredFieldsStatus.mapped }} / {{ requiredFieldsStatus.total }}
-    {{ 'validationSummary' | pluginTranslate: pluginId | async }}
-  </span>
+  <!-- Editor area (full width) -->
+  <epistola-mapping-builder
+    *ngIf="mappingMode === 'simple'"
+    [expression]="dataMapping$ | async"
+    [templateFields]="(templateFields$ | async)?.data ?? []"
+    [suggestions]="variableSuggestions"
+    [disabled]="!!(disabled$ | async)"
+    (expressionChange)="onDataMappingChange($event)"
+  ></epistola-mapping-builder>
+
+  <epistola-jsonata-editor
+    *ngIf="mappingMode === 'advanced'"
+    [expression]="dataMapping$ | async"
+    [disabled]="!!(disabled$ | async)"
+    [suggestions]="variableSuggestions"
+    [functions]="expressionFunctions"
+    (expressionChange)="onDataMappingChange($event)"
+  ></epistola-jsonata-editor>
+
+  <!-- Bottom tabs: Schema + Preview (collapsible) -->
+  <div class="mapping-tools" [class.mapping-tools--collapsed]="toolsCollapsed">
+    <div class="mapping-tools__header" (click)="toolsCollapsed = !toolsCollapsed">
+      <span class="mapping-tools__chevron">{{ toolsCollapsed ? '&#x25B6;' : '&#x25BC;' }}</span>
+      <span>{{ 'mappingTools' | pluginTranslate: pluginId | async }}</span>
+    </div>
+    <div *ngIf="!toolsCollapsed" class="mapping-tools__content">
+      <div class="mapping-tools__tabs">
+        <button
+          class="mapping-tools__tab"
+          [class.mapping-tools__tab--active]="activeToolTab === 'schema'"
+          (click)="activeToolTab = 'schema'"
+        >
+          {{ 'expectedStructure' | pluginTranslate: pluginId | async }}
+        </button>
+        <button
+          class="mapping-tools__tab"
+          [class.mapping-tools__tab--active]="activeToolTab === 'preview'"
+          (click)="activeToolTab = 'preview'"
+        >
+          {{ 'previewTitle' | pluginTranslate: pluginId | async }}
+        </button>
+      </div>
+
+      <epistola-expected-structure
+        *ngIf="activeToolTab === 'schema'"
+        [templateFields]="(templateFields$ | async)?.data ?? []"
+      ></epistola-expected-structure>
+
+      <epistola-mapping-preview
+        *ngIf="activeToolTab === 'preview'"
+        [expression]="dataMapping$ | async"
+        [templateFields]="(templateFields$ | async)?.data ?? []"
+        [caseDefinitionKey]="caseDefinitionKey"
+      ></epistola-mapping-preview>
+    </div>
+  </div>
 </div>
