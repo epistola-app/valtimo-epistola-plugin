@@ -398,6 +398,35 @@ class PreviewServiceTest {
         }
 
         @Test
+        void variantIdExpression_evaluatedDynamically() {
+            PluginProcessLink processLink = mockFullChain("instance-1", "my-process:1:abc");
+
+            // Add a variantId expression to the action properties
+            ObjectNode actionProps = processLink.getActionProperties();
+            actionProps.put("variantId", "$pv.letterType");
+
+            when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
+                    .thenReturn(new LinkedHashMap<>());
+
+            when(jsonataMappingService.evaluateScalar(any(EvaluationContext.class)))
+                    .thenReturn("letter-formal");
+
+            PreviewRequest request = new PreviewRequest(
+                    "doc-123", null, null, "instance-1", null, null);
+
+            previewService.generatePreview(request);
+
+            // Verify that the variantId passed to epistolaService.previewDocument() is the
+            // dynamically evaluated result, not the raw expression string "$pv.letterType"
+            ArgumentCaptor<String> variantIdCaptor = ArgumentCaptor.forClass(String.class);
+            verify(epistolaService).previewDocument(
+                    anyString(), anyString(), anyString(), anyString(),
+                    anyString(), variantIdCaptor.capture(), anyString(), any());
+
+            assertEquals("letter-formal", variantIdCaptor.getValue());
+        }
+
+        @Test
         void inputOverridesCombinedWithOutputOverrides_bothApplied() {
             mockFullChain("instance-1", "my-process:1:abc");
 
