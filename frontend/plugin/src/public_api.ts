@@ -22,3 +22,7 @@ export * from './lib/components/epistola-preview-button/epistola-preview-button.
 export * from './lib/components/epistola-preview-button/epistola-preview-button.formio';
 export * from './lib/components/epistola-document-preview/epistola-document-preview.component';
 export * from './lib/components/epistola-document-preview/epistola-document-preview.formio';
+export * from './lib/components/override-builder/override-builder.component';
+export * from './lib/components/override-builder/override-builder.formio';
+export * from './lib/components/process-link-selector/process-link-selector.component';
+export * from './lib/components/process-link-selector/process-link-selector.formio';

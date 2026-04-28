@@ -29,7 +29,7 @@ import { Subscription } from 'rxjs';
         <span>{{ label || 'Document Preview' }}</span>
         <div class="preview-controls">
           <select
-            *ngIf="sources.length > 1"
+            *ngIf="!sourceActivityId && sources.length > 1"
             class="preview-select"
             [value]="selectedIndex"
             (change)="onSourceChange($event)"
@@ -65,7 +65,14 @@ import { Subscription } from 'rxjs';
           PDF preview is not supported in this browser.
         </object>
         <div
-          *ngIf="!previewUrl && !loading && !discovering && !error && sources.length === 0"
+          *ngIf="
+            !previewUrl &&
+            !loading &&
+            !discovering &&
+            !error &&
+            !sourceActivityId &&
+            sources.length === 0
+          "
           class="preview-empty"
         >
           No previewable documents found
@@ -160,13 +167,16 @@ import { Subscription } from 'rxjs';
   ],
 })
 export class EpistolaDocumentPreviewComponent
-  implements FormioCustomComponent<null>, OnChanges, OnDestroy
+  implements FormioCustomComponent<Record<string, any> | null>, OnChanges, OnDestroy
 {
-  @Input() value!: null;
-  @Output() valueChange = new EventEmitter<null>();
+  @Input() value!: Record<string, any> | null;
+  @Output() valueChange = new EventEmitter<Record<string, any> | null>();
 
   @Input() disabled = false;
   @Input() label = 'Document Preview';
+  @Input() processDefinitionKey?: string;
+  @Input() sourceActivityId?: string;
+  @Input() overrideMapping?: Record<string, any>;
 
   sources: PreviewSource[] = [];
   selectedIndex = 0;
@@ -179,6 +189,11 @@ export class EpistolaDocumentPreviewComponent
   private discoverSubscription?: Subscription;
   private previewSubscription?: Subscription;
   private readonly apiEndpoint: string;
+
+  /** Whether the component is in configured mode (explicit process link) vs auto-discover mode */
+  private get configuredMode(): boolean {
+    return !!this.sourceActivityId;
+  }
 
   constructor(
     private readonly epistolaPluginService: EpistolaPluginService,
@@ -194,7 +209,19 @@ export class EpistolaDocumentPreviewComponent
   ngOnChanges(changes: SimpleChanges): void {
     if (!this.initialized) {
       this.initialized = true;
-      this.discoverSources();
+      if (this.configuredMode) {
+        // Configured mode: load preview directly using the configured process link
+        this.loadConfiguredPreview();
+      } else {
+        // Auto-discover mode: find sources from running process instances
+        this.discoverSources();
+      }
+      return;
+    }
+
+    // In configured mode, react to value changes (input overrides from Formio wrapper)
+    if (this.configuredMode && changes['value']) {
+      this.loadConfiguredPreview();
     }
   }
 
@@ -206,13 +233,59 @@ export class EpistolaDocumentPreviewComponent
 
   onSourceChange(event: Event): void {
     this.selectedIndex = +(event.target as HTMLSelectElement).value;
-    this.loadPreview();
+    this.loadDiscoveredPreview();
   }
 
   refresh(): void {
-    this.loadPreview();
+    if (this.configuredMode) {
+      this.loadConfiguredPreview();
+    } else {
+      this.loadDiscoveredPreview();
+    }
   }
 
+  /**
+   * Configured mode: preview using the explicitly configured process link + input overrides.
+   */
+  private loadConfiguredPreview(): void {
+    const documentId = this.formIoStateService.documentId;
+    if (!documentId) {
+      this.error = 'Could not determine document ID from context.';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.loading = true;
+    this.error = null;
+    this.cdr.markForCheck();
+    this.revokeBlobUrl();
+
+    this.previewSubscription?.unsubscribe();
+    this.previewSubscription = this.http
+      .post(
+        `${this.apiEndpoint}/preview`,
+        {
+          documentId,
+          processDefinitionKey: this.processDefinitionKey || null,
+          processInstanceId: this.formIoStateService.processInstanceId || null,
+          sourceActivityId: this.sourceActivityId,
+          inputOverrides: this.value || null,
+          overrides: null,
+        },
+        {
+          responseType: 'blob',
+          headers: new HttpHeaders().set('X-Skip-Interceptor', '422'),
+        },
+      )
+      .subscribe({
+        next: (blob) => this.handlePreviewSuccess(blob),
+        error: (err) => this.handlePreviewError(err),
+      });
+  }
+
+  /**
+   * Auto-discover mode: discover sources from running process instances.
+   */
   private discoverSources(): void {
     const documentId = this.formIoStateService.documentId;
     if (!documentId) {
@@ -232,7 +305,7 @@ export class EpistolaDocumentPreviewComponent
         this.cdr.markForCheck();
         if (sources.length > 0) {
           this.selectedIndex = 0;
-          this.loadPreview();
+          this.loadDiscoveredPreview();
         }
       },
       error: (err) => {
@@ -243,7 +316,10 @@ export class EpistolaDocumentPreviewComponent
     });
   }
 
-  private loadPreview(): void {
+  /**
+   * Auto-discover mode: load preview for the selected discovered source.
+   */
+  private loadDiscoveredPreview(): void {
     const source = this.sources[this.selectedIndex];
     if (!source) return;
 
@@ -271,33 +347,37 @@ export class EpistolaDocumentPreviewComponent
         },
       )
       .subscribe({
-        next: (blob) => {
-          this.currentBlobUrl = URL.createObjectURL(blob);
-          this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.currentBlobUrl);
-          this.error = null;
-          this.loading = false;
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.previewUrl = null;
-          if (err.error instanceof Blob) {
-            err.error.text().then((text: string) => {
-              try {
-                const body = JSON.parse(text);
-                this.error = body.details || body.error || 'Preview could not be generated';
-              } catch {
-                this.error = 'Preview could not be generated';
-              }
-              this.loading = false;
-              this.cdr.markForCheck();
-            });
-          } else {
-            this.error = err.error?.error || 'Preview could not be generated';
-            this.loading = false;
-            this.cdr.markForCheck();
-          }
-        },
+        next: (blob) => this.handlePreviewSuccess(blob),
+        error: (err) => this.handlePreviewError(err),
       });
+  }
+
+  private handlePreviewSuccess(blob: Blob): void {
+    this.currentBlobUrl = URL.createObjectURL(blob);
+    this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.currentBlobUrl);
+    this.error = null;
+    this.loading = false;
+    this.cdr.markForCheck();
+  }
+
+  private handlePreviewError(err: any): void {
+    this.previewUrl = null;
+    if (err.error instanceof Blob) {
+      err.error.text().then((text: string) => {
+        try {
+          const body = JSON.parse(text);
+          this.error = body.details || body.error || 'Preview could not be generated';
+        } catch {
+          this.error = 'Preview could not be generated';
+        }
+        this.loading = false;
+        this.cdr.markForCheck();
+      });
+    } else {
+      this.error = err.error?.error || 'Preview could not be generated';
+      this.loading = false;
+      this.cdr.markForCheck();
+    }
   }
 
   private revokeBlobUrl(): void {

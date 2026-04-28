@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Input-level overrides for document preview** — The `epistola-document-preview` Formio component can now be configured with a specific process link (`processDefinitionKey` + `sourceActivityId`) and an override mapping that feeds form field values into the template as `$doc`/`$pv` overrides before JSONata evaluation. This enables live document previews while users are still filling in forms.
+  - `OverlayMap` — layered Map implementation that checks overrides first, delegates to the base map (e.g. lazy-loaded document) for non-overridden paths. Supports recursive overlay for nested structures.
+  - `PreviewRequest.inputOverrides` — new field with `{ "doc": {...}, "pv": {...} }` structure, applied before JSONata evaluation (vs existing `overrides` which is applied after).
+  - `EpistolaProcessLinkSelectorComponent` — Formio component for selecting a generate-document process link from a dropdown populated via the admin usage API.
+  - `EpistolaOverrideBuilderComponent` — Formio component with table-based builder (simple mode) and raw JSON editor (advanced mode) for configuring input variable overrides.
+  - Custom Formio registration for the preview component that listens to `root.on('change')` events, computes input overrides from the mapping configuration and current form data, and pushes them to the Angular component.
+
 ## [0.6.0] - 2026-04-28
 
 ### Changed

@@ -9,13 +9,18 @@ import java.util.Map;
  * @param processDefinitionKey The process definition key (required — identifies the process link)
  * @param sourceActivityId     The BPMN activity ID of the generate-document service task (required)
  * @param processInstanceId    Optional process instance ID (resolves pv: expressions if provided)
- * @param overrides            Optional data overrides (deep-merged with resolved data, overrides win)
+ * @param overrides            Optional data overrides (deep-merged with resolved data after mapping, overrides win)
+ * @param inputOverrides       Optional input-level overrides applied before JSONata evaluation.
+ *                             Structure: {@code {"doc": {...}, "pv": {...}}}. Values under "doc" are
+ *                             overlaid on the document content; values under "pv" take precedence over
+ *                             process variables. The JSONata mapping then runs against the overridden inputs.
  */
 public record PreviewRequest(
         String documentId,
         String processDefinitionKey,
         String sourceActivityId,
         String processInstanceId,
-        Map<String, Object> overrides
+        Map<String, Object> overrides,
+        Map<String, Map<String, Object>> inputOverrides
 ) {
 }

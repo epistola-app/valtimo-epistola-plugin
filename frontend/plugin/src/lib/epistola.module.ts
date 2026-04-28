@@ -24,6 +24,8 @@ import { registerEpistolaDownloadComponent } from './components/epistola-downloa
 import { registerEpistolaRetryFormComponent } from './components/epistola-retry-form/epistola-retry-form.formio';
 import { registerEpistolaPreviewButtonComponent } from './components/epistola-preview-button/epistola-preview-button.formio';
 import { registerEpistolaDocumentPreviewComponent } from './components/epistola-document-preview/epistola-document-preview.formio';
+import { registerEpistolaOverrideBuilderComponent } from './components/override-builder/override-builder.formio';
+import { registerEpistolaProcessLinkSelectorComponent } from './components/process-link-selector/process-link-selector.formio';
 
 @NgModule({
   imports: [
@@ -71,6 +73,8 @@ export class EpistolaPluginModule {
             registerEpistolaDownloadComponent(injector);
             registerEpistolaRetryFormComponent(injector);
             registerEpistolaPreviewButtonComponent(injector);
+            registerEpistolaOverrideBuilderComponent(injector);
+            registerEpistolaProcessLinkSelectorComponent(injector);
             registerEpistolaDocumentPreviewComponent(injector);
             // Eagerly create EpistolaMenuService to trigger menu registration
             inject(EpistolaMenuService);

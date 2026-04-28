@@ -57,15 +57,36 @@ public class PreviewService {
         String templateId = extractTemplateId(processLink);
         String dataMapping = extractDataMapping(processLink);
 
-        // Resolve data mapping against the document
-        var evalCtx = app.epistola.valtimo.mapping.EvaluationContext.builder()
-                .expression(dataMapping)
-                .documentResolver(this::loadDocumentContent)
-                .documentId(request.documentId())
-                .build();
-        Map<String, Object> resolvedData = jsonataMappingService.evaluate(evalCtx);
+        // Build resolvers with input-level overrides layered on top.
+        // The OverlayMap checks overrides first; non-overridden paths fall through
+        // to the regular resolver (lazy document load / process variable lookup).
+        var docOverrides = request.inputOverrides() != null ? request.inputOverrides().get("doc") : null;
+        var pvOverrides = request.inputOverrides() != null ? request.inputOverrides().get("pv") : null;
 
-        // Deep-merge with overrides (overrides win)
+        var evalCtxBuilder = app.epistola.valtimo.mapping.EvaluationContext.builder()
+                .expression(dataMapping)
+                .documentResolver(docId -> {
+                    Map<String, Object> doc = loadDocumentContent(docId);
+                    return docOverrides != null ? new OverlayMap(docOverrides, doc) : doc;
+                })
+                .documentId(request.documentId());
+
+        // Add process variable resolver (with override fallback)
+        if (pvOverrides != null || request.processInstanceId() != null) {
+            evalCtxBuilder.processVariableResolver(name -> {
+                if (pvOverrides != null && pvOverrides.containsKey(name)) {
+                    return pvOverrides.get(name);
+                }
+                if (request.processInstanceId() != null) {
+                    return runtimeService.getVariable(request.processInstanceId(), name);
+                }
+                return null;
+            });
+        }
+
+        Map<String, Object> resolvedData = jsonataMappingService.evaluate(evalCtxBuilder.build());
+
+        // Deep-merge with output-level overrides (overrides win) — used by retry-form
         if (request.overrides() != null && !request.overrides().isEmpty()) {
             resolvedData = deepMerge(resolvedData, request.overrides());
         }

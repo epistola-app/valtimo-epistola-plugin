@@ -147,7 +147,7 @@ class PreviewServiceTest {
         @Test
         void missingProcessDefinitionKeyAndProcessInstanceId_throwsMissingContext() {
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", null, "activity-1", null, null);
+                    "doc-123", null, "activity-1", null, null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
@@ -160,7 +160,7 @@ class PreviewServiceTest {
             when(repositoryService.findLatestProcessDefinition("my-process")).thenReturn(null);
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", "my-process", "activity-1", null, null);
+                    "doc-123", "my-process", "activity-1", null, null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
@@ -178,7 +178,7 @@ class PreviewServiceTest {
                     .thenReturn(List.of());
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", "my-process", "activity-1", null, null);
+                    "doc-123", "my-process", "activity-1", null, null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
@@ -206,7 +206,7 @@ class PreviewServiceTest {
 
             // No sourceActivityId provided — should auto-discover and find ambiguity
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", "my-process", null, null, null);
+                    "doc-123", "my-process", null, null, null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
@@ -259,7 +259,7 @@ class PreviewServiceTest {
                     .thenThrow(new RuntimeException("Connection refused"));
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", "my-process", null, null, null);
+                    "doc-123", "my-process", null, null, null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
