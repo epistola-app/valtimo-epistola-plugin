@@ -279,7 +279,7 @@ public class EpistolaPlugin {
             resolvedData = jsonataMappingService.evaluate(evalCtx);
         }
 
-        // Resolve the filename (supports JSONata expressions and legacy doc:/pv: prefixes)
+        // Resolve the filename as a JSONata expression
         String resolvedFilename = jsonataMappingService.evaluateScalar(buildEvalCtx(execution, filename));
 
         // Use action-level environmentId if provided, otherwise fall back to plugin default
