@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-28
+
 ### Changed
 
 - **Split EpistolaPluginResource into three focused controllers** — `EpistolaTemplateResource` (template browsing), `EpistolaGenerationResource` (generation, preview, download), and `EpistolaToolingResource` (process variables, suggestions, expression functions). Each controller only declares the dependencies it needs. No endpoint URLs changed.
