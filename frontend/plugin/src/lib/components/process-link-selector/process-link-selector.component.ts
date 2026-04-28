@@ -98,6 +98,11 @@ export class EpistolaProcessLinkSelectorComponent
       this.initialized = true;
       this.loadEntries();
     }
+    // Restore selection whenever value changes (Formio may set it after init)
+    if (changes['value'] && this.value) {
+      this.selectedKey = `${this.value.processDefinitionKey}::${this.value.sourceActivityId}`;
+      this.cdr.markForCheck();
+    }
   }
 
   ngOnDestroy(): void {
