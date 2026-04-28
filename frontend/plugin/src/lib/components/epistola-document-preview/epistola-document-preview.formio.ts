@@ -1,7 +1,7 @@
 import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
 import { EpistolaDocumentPreviewComponent } from './epistola-document-preview.component';
-import { OverrideMapping } from '../override-builder/override-builder.component';
+import { computeInputOverrides } from './preview-utils';
 
 export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-document-preview',
@@ -29,57 +29,6 @@ export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
     ],
   }),
 };
-
-/**
- * Expand dot-notation keys into nested objects.
- * e.g. { "beslissing.tekst": "value" } → { beslissing: { tekst: "value" } }
- */
-function expandDotNotation(flat: Record<string, any>): Record<string, any> {
-  const result: Record<string, any> = {};
-  for (const [key, value] of Object.entries(flat)) {
-    const parts = key.split('.');
-    let current = result;
-    for (let i = 0; i < parts.length - 1; i++) {
-      if (!current[parts[i]] || typeof current[parts[i]] !== 'object') {
-        current[parts[i]] = {};
-      }
-      current = current[parts[i]];
-    }
-    current[parts[parts.length - 1]] = value;
-  }
-  return result;
-}
-
-const FORM_REF_PREFIX = 'form:';
-
-/**
- * Given an override mapping (scope → { inputPath → "form:<componentKey>" })
- * and form data, produce the inputOverrides object for the backend.
- * The "form:" prefix identifies form field references; the remainder is the Formio component key.
- */
-function computeInputOverrides(
-  mapping: OverrideMapping,
-  formData: Record<string, any>,
-): Record<string, any> {
-  const result: Record<string, any> = {};
-  for (const [scope, fields] of Object.entries(mapping)) {
-    if (scope !== 'doc' && scope !== 'pv') continue;
-    const flatOverrides: Record<string, any> = {};
-    for (const [inputPath, ref] of Object.entries(fields)) {
-      const formFieldKey = String(ref).startsWith(FORM_REF_PREFIX)
-        ? String(ref).substring(FORM_REF_PREFIX.length)
-        : String(ref);
-      const value = formData[formFieldKey];
-      if (value !== undefined) {
-        flatOverrides[inputPath] = value;
-      }
-    }
-    if (Object.keys(flatOverrides).length > 0) {
-      result[scope] = expandDotNotation(flatOverrides);
-    }
-  }
-  return result;
-}
 
 export function registerEpistolaDocumentPreviewComponent(injector: Injector): void {
   if (customElements.get(EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.selector)) {
@@ -123,7 +72,8 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
       const result = super.attach(element);
 
       if (this._customAngularElement) {
-        this._customAngularElement['processDefinitionKey'] = this.component.processDefinitionKey || '';
+        this._customAngularElement['processDefinitionKey'] =
+          this.component.processDefinitionKey || '';
         this._customAngularElement['sourceActivityId'] = this.component.sourceActivityId || '';
       }
 

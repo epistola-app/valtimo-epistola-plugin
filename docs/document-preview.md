@@ -126,18 +126,18 @@ In the Formio builder (no runtime context), the component shows a configuration 
 
 ### Backend
 
-| Class | File | Role |
-| --- | --- | --- |
-| `PreviewService` | `service/preview/PreviewService.java` | Orchestrates preview generation with input overrides |
-| `OverlayMap` | `service/preview/OverlayMap.java` | Layered Map — checks overlay first, delegates to base |
-| `PreviewRequest` | `web/rest/dto/PreviewRequest.java` | Request DTO with `inputOverrides` field |
+| Class            | File                                  | Role                                                  |
+| ---------------- | ------------------------------------- | ----------------------------------------------------- |
+| `PreviewService` | `service/preview/PreviewService.java` | Orchestrates preview generation with input overrides  |
+| `OverlayMap`     | `service/preview/OverlayMap.java`     | Layered Map — checks overlay first, delegates to base |
+| `PreviewRequest` | `web/rest/dto/PreviewRequest.java`    | Request DTO with `inputOverrides` field               |
 
 ### Frontend
 
-| Component | File | Role |
-| --- | --- | --- |
-| `EpistolaDocumentPreviewComponent` | `epistola-document-preview/` | Angular component — auto-discover and configured modes |
-| `EpistolaProcessLinkSelectorComponent` | `process-link-selector/` | Dropdown of generate-document process links |
-| `EpistolaOverrideBuilderComponent` | `override-builder/` | Table builder + advanced JSON for override mapping |
-| Preview Formio registration | `epistola-document-preview.formio.ts` | Extended Formio class with `root.on('change')` listener and `editForm` |
-| Override builder Formio registration | `override-builder.formio.ts` | Extended Formio class that extracts form fields from `options.editForm` |
+| Component                              | File                                  | Role                                                                    |
+| -------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------- |
+| `EpistolaDocumentPreviewComponent`     | `epistola-document-preview/`          | Angular component — auto-discover and configured modes                  |
+| `EpistolaProcessLinkSelectorComponent` | `process-link-selector/`              | Dropdown of generate-document process links                             |
+| `EpistolaOverrideBuilderComponent`     | `override-builder/`                   | Table builder + advanced JSON for override mapping                      |
+| Preview Formio registration            | `epistola-document-preview.formio.ts` | Extended Formio class with `root.on('change')` listener and `editForm`  |
+| Override builder Formio registration   | `override-builder.formio.ts`          | Extended Formio class that extracts form fields from `options.editForm` |

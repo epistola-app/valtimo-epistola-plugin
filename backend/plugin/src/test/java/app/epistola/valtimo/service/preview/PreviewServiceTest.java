@@ -2,6 +2,7 @@ package app.epistola.valtimo.service.preview;
 import app.epistola.valtimo.service.preview.PreviewService;
 import app.epistola.valtimo.service.EpistolaService;
 
+import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.preview.PreviewService.PreviewException;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
@@ -16,6 +17,8 @@ import com.ritense.valtimo.operaton.service.OperatonRepositoryService;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -24,6 +27,8 @@ import org.operaton.bpm.engine.RuntimeService;
 import org.operaton.bpm.engine.runtime.ProcessInstance;
 import org.operaton.bpm.engine.runtime.ProcessInstanceQuery;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,6 +40,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -61,8 +67,14 @@ class PreviewServiceTest {
     @Mock
     private ValueResolverService valueResolverService;
 
+    @Mock
+    private com.ritense.document.service.DocumentService documentService;
+
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
+
+    @Captor
+    private ArgumentCaptor<EvaluationContext> evaluationContextCaptor;
 
     @InjectMocks
     private PreviewService previewService;
@@ -282,6 +294,153 @@ class PreviewServiceTest {
 
             assertEquals(PreviewException.Reason.RENDER_FAILED, ex.getReason());
             assertTrue(ex.getMessage().contains("Connection refused"));
+        }
+    }
+
+    @Nested
+    class InputOverrides {
+
+        private PluginProcessLink mockFullChain(String processInstanceId, String processDefinitionId) {
+            mockProcessInstance(processInstanceId, processDefinitionId);
+
+            ObjectNode actionProps = objectMapper.createObjectNode();
+            actionProps.put("catalogId", "default");
+            actionProps.put("templateId", "template-123");
+            actionProps.put("dataMapping", "$spread($doc)");
+
+            PluginProcessLink processLink = mock(PluginProcessLink.class);
+            when(processLink.getPluginActionDefinitionKey()).thenReturn("generate-document");
+            when(processLink.getActionProperties()).thenReturn(actionProps);
+            var configId = mock(com.ritense.plugin.domain.PluginConfigurationId.class);
+            when(processLink.getPluginConfigurationId()).thenReturn(configId);
+
+            when(processLinkService.getProcessLinks(processDefinitionId))
+                    .thenReturn(List.of(processLink));
+
+            EpistolaPlugin plugin = mock(EpistolaPlugin.class);
+            when(plugin.getBaseUrl()).thenReturn("https://api.epistola.app");
+            when(plugin.getApiKey()).thenReturn("secret-key");
+            when(plugin.getTenantId()).thenReturn("tenant-1");
+            when(plugin.getDefaultEnvironmentId()).thenReturn("env-1");
+            when(pluginService.createInstance(configId)).thenReturn(plugin);
+
+            when(epistolaService.previewDocument(
+                    anyString(), anyString(), anyString(), anyString(),
+                    anyString(), any(), anyString(), any()))
+                    .thenReturn(new ByteArrayInputStream(new byte[]{0x25, 0x50, 0x44, 0x46}));
+
+            return processLink;
+        }
+
+        @Test
+        void docScopeOverrides_wrapsDocumentResolverWithOverlayMap() {
+            mockFullChain("instance-1", "my-process:1:abc");
+
+            Map<String, Object> resolvedData = new LinkedHashMap<>();
+            resolvedData.put("name", "override");
+            when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
+                    .thenReturn(resolvedData);
+
+            Map<String, Map<String, Object>> inputOverrides = new HashMap<>();
+            inputOverrides.put("doc", Map.of("name", "override"));
+
+            PreviewRequest request = new PreviewRequest(
+                    "doc-123", null, null, "instance-1", null, inputOverrides);
+
+            previewService.generatePreview(request);
+
+            verify(jsonataMappingService).evaluate(evaluationContextCaptor.capture());
+            EvaluationContext ctx = evaluationContextCaptor.getValue();
+
+            // Invoke the document resolver and verify the result is an OverlayMap
+            Map<String, Object> resolved = ctx.getDocumentResolver().apply("doc-123");
+            assertInstanceOf(OverlayMap.class, resolved);
+            assertEquals("override", resolved.get("name"));
+        }
+
+        @Test
+        void pvScopeOverrides_processVariableResolverReturnsOverrideValue() {
+            mockFullChain("instance-1", "my-process:1:abc");
+
+            when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
+                    .thenReturn(new LinkedHashMap<>());
+
+            Map<String, Map<String, Object>> inputOverrides = new HashMap<>();
+            inputOverrides.put("pv", Map.of("status", "approved"));
+
+            PreviewRequest request = new PreviewRequest(
+                    "doc-123", null, null, "instance-1", null, inputOverrides);
+
+            previewService.generatePreview(request);
+
+            verify(jsonataMappingService).evaluate(evaluationContextCaptor.capture());
+            EvaluationContext ctx = evaluationContextCaptor.getValue();
+
+            // The process variable resolver should return the override value
+            assertNotNull(ctx.getProcessVariableResolver());
+            assertEquals("approved", ctx.getProcessVariableResolver().apply("status"));
+        }
+
+        @Test
+        void nullInputOverrides_documentResolverDoesNotWrapWithOverlayMap() {
+            mockFullChain("instance-1", "my-process:1:abc");
+
+            when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
+                    .thenReturn(new LinkedHashMap<>());
+
+            PreviewRequest request = new PreviewRequest(
+                    "doc-123", null, null, "instance-1", null, null);
+
+            previewService.generatePreview(request);
+
+            verify(jsonataMappingService).evaluate(evaluationContextCaptor.capture());
+            EvaluationContext ctx = evaluationContextCaptor.getValue();
+
+            // Invoke the document resolver — result should NOT be an OverlayMap
+            Map<String, Object> resolved = ctx.getDocumentResolver().apply("doc-123");
+            assertFalse(resolved instanceof OverlayMap);
+        }
+
+        @Test
+        void inputOverridesCombinedWithOutputOverrides_bothApplied() {
+            mockFullChain("instance-1", "my-process:1:abc");
+
+            // JSONata evaluation returns data from input overrides
+            Map<String, Object> resolvedData = new LinkedHashMap<>();
+            resolvedData.put("name", "from-input-override");
+            resolvedData.put("address", "original-address");
+            when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
+                    .thenReturn(resolvedData);
+
+            // Input overrides (pre-JSONata)
+            Map<String, Map<String, Object>> inputOverrides = new HashMap<>();
+            inputOverrides.put("doc", Map.of("name", "from-input-override"));
+
+            // Output overrides (post-JSONata) — should override the address field
+            Map<String, Object> outputOverrides = Map.of("address", "overridden-address");
+
+            PreviewRequest request = new PreviewRequest(
+                    "doc-123", null, null, "instance-1", outputOverrides, inputOverrides);
+
+            previewService.generatePreview(request);
+
+            // Verify input overrides were applied (doc resolver wraps with OverlayMap)
+            verify(jsonataMappingService).evaluate(evaluationContextCaptor.capture());
+            EvaluationContext ctx = evaluationContextCaptor.getValue();
+            Map<String, Object> docResolved = ctx.getDocumentResolver().apply("doc-123");
+            assertInstanceOf(OverlayMap.class, docResolved);
+
+            // Verify the final data passed to epistolaService includes the output override
+            @SuppressWarnings("unchecked")
+            ArgumentCaptor<Map<String, Object>> dataCaptor =
+                    ArgumentCaptor.forClass(Map.class);
+            verify(epistolaService).previewDocument(
+                    anyString(), anyString(), anyString(), anyString(),
+                    anyString(), any(), anyString(), dataCaptor.capture());
+
+            Map<String, Object> finalData = dataCaptor.getValue();
+            assertEquals("from-input-override", finalData.get("name"));
+            assertEquals("overridden-address", finalData.get("address"));
         }
     }
 }
