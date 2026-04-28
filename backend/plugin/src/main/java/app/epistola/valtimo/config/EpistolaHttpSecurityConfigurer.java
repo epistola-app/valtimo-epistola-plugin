@@ -21,6 +21,10 @@ public class EpistolaHttpSecurityConfigurer implements HttpSecurityConfigurer {
             http.authorizeHttpRequests(requests -> requests
                     // Callback endpoint is public (webhook from Epistola)
                     .requestMatchers("/api/v1/plugin/epistola/callback/**").permitAll()
+                    // Preview and download are used in user task forms — any authenticated user
+                    .requestMatchers("/api/v1/plugin/epistola/preview").authenticated()
+                    .requestMatchers("/api/v1/plugin/epistola/preview-sources").authenticated()
+                    .requestMatchers("/api/v1/plugin/epistola/documents/*/download").authenticated()
                     // All other Epistola endpoints require ROLE_ADMIN
                     .requestMatchers("/api/v1/plugin/epistola/**").hasAuthority("ROLE_ADMIN")
             );

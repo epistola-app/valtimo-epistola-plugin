@@ -21,7 +21,8 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.operaton.bpm.engine.RuntimeService;
-import com.ritense.valtimo.operaton.domain.OperatonProcessDefinition;
+import org.operaton.bpm.engine.runtime.ProcessInstance;
+import org.operaton.bpm.engine.runtime.ProcessInstanceQuery;
 
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -65,6 +66,22 @@ class PreviewServiceTest {
 
     @InjectMocks
     private PreviewService previewService;
+
+    private void mockProcessInstance(String processInstanceId, String processDefinitionId) {
+        ProcessInstanceQuery query = mock(ProcessInstanceQuery.class);
+        when(runtimeService.createProcessInstanceQuery()).thenReturn(query);
+        when(query.processInstanceId(processInstanceId)).thenReturn(query);
+        ProcessInstance processInstance = mock(ProcessInstance.class);
+        when(processInstance.getProcessDefinitionId()).thenReturn(processDefinitionId);
+        when(query.singleResult()).thenReturn(processInstance);
+    }
+
+    private void mockProcessInstanceNotFound(String processInstanceId) {
+        ProcessInstanceQuery query = mock(ProcessInstanceQuery.class);
+        when(runtimeService.createProcessInstanceQuery()).thenReturn(query);
+        when(query.processInstanceId(processInstanceId)).thenReturn(query);
+        when(query.singleResult()).thenReturn(null);
+    }
 
     @Nested
     class DeepMerge {
@@ -145,7 +162,7 @@ class PreviewServiceTest {
     class GeneratePreview {
 
         @Test
-        void missingProcessDefinitionKeyAndProcessInstanceId_throwsMissingContext() {
+        void missingProcessInstanceId_throwsMissingContext() {
             PreviewRequest request = new PreviewRequest(
                     "doc-123", null, "activity-1", null, null, null);
 
@@ -156,11 +173,11 @@ class PreviewServiceTest {
         }
 
         @Test
-        void processDefinitionNotFound_throwsProcessNotFound() {
-            when(repositoryService.findLatestProcessDefinition("my-process")).thenReturn(null);
+        void processInstanceNotFound_throwsProcessNotFound() {
+            mockProcessInstanceNotFound("instance-1");
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", "my-process", "activity-1", null, null, null);
+                    "doc-123", null, "activity-1", "instance-1", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
@@ -169,16 +186,28 @@ class PreviewServiceTest {
         }
 
         @Test
+        void processDefinitionKeyMismatch_throwsProcessNotFound() {
+            mockProcessInstance("instance-1", "other-process:1:abc");
+
+            PreviewRequest request = new PreviewRequest(
+                    "doc-123", "my-process", "activity-1", "instance-1", null, null);
+
+            PreviewException ex = assertThrows(PreviewException.class,
+                    () -> previewService.generatePreview(request));
+
+            assertEquals(PreviewException.Reason.PROCESS_NOT_FOUND, ex.getReason());
+            assertTrue(ex.getMessage().contains("other-process"));
+            assertTrue(ex.getMessage().contains("my-process"));
+        }
+
+        @Test
         void noProcessLinkFound_throwsLinkNotFound() {
-            OperatonProcessDefinition processDefinition = mock(OperatonProcessDefinition.class);
-            when(processDefinition.getId()).thenReturn("my-process:1:abc");
-            when(repositoryService.findLatestProcessDefinition("my-process"))
-                    .thenReturn(processDefinition);
+            mockProcessInstance("instance-1", "my-process:1:abc");
             when(processLinkService.getProcessLinks("my-process:1:abc", "activity-1"))
                     .thenReturn(List.of());
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", "my-process", "activity-1", null, null, null);
+                    "doc-123", "my-process", "activity-1", "instance-1", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
@@ -188,10 +217,7 @@ class PreviewServiceTest {
 
         @Test
         void multipleGenerateDocumentLinks_noSourceActivityId_throwsAmbiguous() {
-            OperatonProcessDefinition processDefinition = mock(OperatonProcessDefinition.class);
-            when(processDefinition.getId()).thenReturn("my-process:1:abc");
-            when(repositoryService.findLatestProcessDefinition("my-process"))
-                    .thenReturn(processDefinition);
+            mockProcessInstance("instance-1", "my-process:1:abc");
 
             PluginProcessLink link1 = mock(PluginProcessLink.class);
             when(link1.getPluginActionDefinitionKey()).thenReturn("generate-document");
@@ -204,9 +230,8 @@ class PreviewServiceTest {
             when(processLinkService.getProcessLinks("my-process:1:abc"))
                     .thenReturn(List.of(link1, link2));
 
-            // No sourceActivityId provided — should auto-discover and find ambiguity
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", "my-process", null, null, null, null);
+                    "doc-123", null, null, "instance-1", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
@@ -218,13 +243,8 @@ class PreviewServiceTest {
 
         @Test
         void epistolaApiFailure_throwsRenderFailed() {
-            // Set up process definition resolution
-            OperatonProcessDefinition processDefinition = mock(OperatonProcessDefinition.class);
-            when(processDefinition.getId()).thenReturn("my-process:1:abc");
-            when(repositoryService.findLatestProcessDefinition("my-process"))
-                    .thenReturn(processDefinition);
+            mockProcessInstance("instance-1", "my-process:1:abc");
 
-            // Set up process link with action properties
             ObjectNode actionProps = objectMapper.createObjectNode();
             actionProps.put("catalogId", "default");
             actionProps.put("templateId", "template-123");
@@ -236,15 +256,12 @@ class PreviewServiceTest {
             var configId = mock(com.ritense.plugin.domain.PluginConfigurationId.class);
             when(processLink.getPluginConfigurationId()).thenReturn(configId);
 
-            // Auto-discover: single link
             when(processLinkService.getProcessLinks("my-process:1:abc"))
                     .thenReturn(List.of(processLink));
 
-            // Data mapping resolution
             when(jsonataMappingService.evaluate(any(app.epistola.valtimo.mapping.EvaluationContext.class)))
                     .thenReturn(new LinkedHashMap<>());
 
-            // Plugin instance
             EpistolaPlugin plugin = mock(EpistolaPlugin.class);
             when(plugin.getBaseUrl()).thenReturn("https://api.epistola.app");
             when(plugin.getApiKey()).thenReturn("secret-key");
@@ -252,14 +269,13 @@ class PreviewServiceTest {
             when(plugin.getDefaultEnvironmentId()).thenReturn("env-1");
             when(pluginService.createInstance(configId)).thenReturn(plugin);
 
-            // Epistola API throws
             when(epistolaService.previewDocument(
                     anyString(), anyString(), anyString(), anyString(),
                     anyString(), any(), anyString(), any()))
                     .thenThrow(new RuntimeException("Connection refused"));
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", "my-process", null, null, null, null);
+                    "doc-123", null, null, "instance-1", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));

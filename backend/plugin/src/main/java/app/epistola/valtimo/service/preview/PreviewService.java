@@ -162,26 +162,30 @@ public class PreviewService {
     }
 
     private String resolveProcessDefinitionId(PreviewRequest request) {
+        if (request.processInstanceId() == null) {
+            throw new PreviewException(PreviewException.Reason.MISSING_CONTEXT,
+                    "processInstanceId is required for preview");
+        }
+        var processInstance = runtimeService.createProcessInstanceQuery()
+                .processInstanceId(request.processInstanceId())
+                .singleResult();
+        if (processInstance == null) {
+            throw new PreviewException(PreviewException.Reason.PROCESS_NOT_FOUND,
+                    "Process instance not found: " + request.processInstanceId());
+        }
+        String processDefinitionId = processInstance.getProcessDefinitionId();
+
+        // If processDefinitionKey is provided, verify it matches
         if (request.processDefinitionKey() != null) {
-            var processDefinition = repositoryService.findLatestProcessDefinition(request.processDefinitionKey());
-            if (processDefinition == null) {
+            String actualKey = processDefinitionId.split(":")[0];
+            if (!actualKey.equals(request.processDefinitionKey())) {
                 throw new PreviewException(PreviewException.Reason.PROCESS_NOT_FOUND,
-                        "Process definition not found: " + request.processDefinitionKey());
+                        "Process instance " + request.processInstanceId()
+                                + " belongs to '" + actualKey
+                                + "', not '" + request.processDefinitionKey() + "'");
             }
-            return processDefinition.getId();
         }
-        if (request.processInstanceId() != null) {
-            var processInstance = runtimeService.createProcessInstanceQuery()
-                    .processInstanceId(request.processInstanceId())
-                    .singleResult();
-            if (processInstance == null) {
-                throw new PreviewException(PreviewException.Reason.PROCESS_NOT_FOUND,
-                        "Process instance not found: " + request.processInstanceId());
-            }
-            return processInstance.getProcessDefinitionId();
-        }
-        throw new PreviewException(PreviewException.Reason.MISSING_CONTEXT,
-                "Either processDefinitionKey or processInstanceId is required");
+        return processDefinitionId;
     }
 
     private PluginProcessLink resolveProcessLink(String processDefinitionId, String sourceActivityId) {
