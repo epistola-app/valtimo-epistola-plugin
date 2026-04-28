@@ -10,6 +10,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Input-level overrides for document preview** — The `epistola-document-preview` Formio component can now be configured with a specific process link (`processDefinitionKey` + `sourceActivityId`) and an override mapping that feeds form field values into the template as `$doc`/`$pv` overrides before JSONata evaluation. This enables live document previews while users are still filling in forms.
+- **Dynamic JSONata expressions for variantId, variant attributes, and filename** — All single-value fields in the generate-document action now support JSONata expressions (e.g., `$pv.letterType`, `"besluit-" & $doc.name & ".pdf"`). Added `evaluateScalar()` to `JsonataMappingService` for scalar evaluation with the same `$doc`/`$pv`/`$case` bindings. Frontend adds `fx` toggle buttons to switch between dropdown/plain input and expression mode.
+
+### Removed
+
+- **ValueResolverService dependency** — The `doc:`, `pv:`, `case:`, `template:` prefix resolution system has been replaced by JSONata. All single-value expression evaluation now uses `JsonataMappingService.evaluateScalar()`.
   - `OverlayMap` — layered Map implementation that checks overrides first, delegates to the base map (e.g. lazy-loaded document) for non-overridden paths. Supports recursive overlay for nested structures.
   - `PreviewRequest.inputOverrides` — new field with `{ "doc": {...}, "pv": {...} }` structure, applied before JSONata evaluation (vs existing `overrides` which is applied after).
   - `EpistolaProcessLinkSelectorComponent` — Formio component for selecting a generate-document process link from a dropdown populated via the admin usage API.

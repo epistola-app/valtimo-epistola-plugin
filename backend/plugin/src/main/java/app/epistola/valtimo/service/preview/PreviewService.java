@@ -96,8 +96,11 @@ public class PreviewService {
                 processLink.getPluginConfigurationId());
 
         ObjectNode actionProps = processLink.getActionProperties();
-        String variantId = actionProps.has("variantId") && !actionProps.get("variantId").isNull()
+        String variantIdExpr = actionProps.has("variantId") && !actionProps.get("variantId").isNull()
                 ? actionProps.get("variantId").asText() : null;
+        String variantId = variantIdExpr != null
+                ? jsonataMappingService.evaluateScalar(evalCtxBuilder.build().withExpression(variantIdExpr))
+                : null;
         String environmentId = actionProps.has("environmentId") && !actionProps.get("environmentId").isNull()
                 ? actionProps.get("environmentId").asText() : plugin.getDefaultEnvironmentId();
 

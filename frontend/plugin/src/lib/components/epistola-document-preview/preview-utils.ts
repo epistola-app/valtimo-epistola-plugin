@@ -3,6 +3,14 @@ import { OverrideMapping } from '../override-builder/override-builder.component'
 export const FORM_REF_PREFIX = 'form:';
 
 /**
+ * Detect if a string value is a JSONata expression (vs a plain literal).
+ * Checks for characters that indicate JSONata operators: $, &, (, {, ?, [
+ */
+export function isExpression(value: string): boolean {
+  return /[$&({?\[]/.test(value);
+}
+
+/**
  * Expand dot-notation keys into nested objects.
  * e.g. { "beslissing.tekst": "value" } -> { beslissing: { tekst: "value" } }
  */

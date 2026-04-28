@@ -46,6 +46,7 @@ import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.compone
 import { ExpectedStructureComponent } from '../expected-structure/expected-structure.component';
 import { MappingBuilderComponent } from '../mapping-builder/mapping-builder.component';
 import { MappingPreviewComponent } from '../mapping-preview/mapping-preview.component';
+import { isExpression } from '../epistola-document-preview/preview-utils';
 
 export type VariantSelectionMode = 'explicit' | 'attributes';
 
@@ -227,11 +228,6 @@ export class GenerateDocumentConfigurationComponent
 
   onFilenameExpressionChange(): void {
     this.revalidate();
-  }
-
-  /** Detect if a value is a JSONata expression (contains $doc, $pv, $case, or &) */
-  private isExpression(value: string): boolean {
-    return /[$&({?\[]/.test(value);
   }
 
   onKeySelected(
@@ -491,7 +487,7 @@ export class GenerateDocumentConfigurationComponent
               key: e.key,
               value: e.value,
               required: e.required !== false,
-              _expressionMode: this.isExpression(e.value),
+              _expressionMode: isExpression(e.value),
             }));
           } else {
             this.variantAttributeEntries = Object.entries(config.variantAttributes as any).map(
@@ -500,7 +496,7 @@ export class GenerateDocumentConfigurationComponent
           }
         } else if (config.variantId) {
           this.variantSelectionMode = 'explicit';
-          if (this.isExpression(config.variantId)) {
+          if (isExpression(config.variantId)) {
             this.variantIdExpressionMode = true;
             this.variantIdExpression = config.variantId;
           } else {
@@ -509,7 +505,7 @@ export class GenerateDocumentConfigurationComponent
         }
 
         // Detect expression mode for filename
-        if (config.filename && this.isExpression(config.filename)) {
+        if (config.filename && isExpression(config.filename)) {
           this.filenameExpressionMode = true;
           this.filenameExpression = config.filename;
         }
