@@ -30,6 +30,7 @@ import {
         [suggestions]="allSuggestions"
         [disabled]="disabled"
         [collapsed]="isCollapsed([i])"
+        [collapsedPaths]="collapsedPaths"
         [required]="isRequired(field.name)"
         (valueChange)="onNestedValueChange($event.path, $event.value)"
         (modeToggle)="onNestedModeToggle($event)"
@@ -131,7 +132,7 @@ export class MappingBuilderComponent implements OnChanges {
 
   fields: BuilderField[] = [];
   allSuggestions: string[] = [];
-  private collapsedPaths = new Set<string>();
+  collapsedPaths = new Set<string>();
   private initialCollapseApplied = false;
 
   ngOnChanges(changes: SimpleChanges): void {

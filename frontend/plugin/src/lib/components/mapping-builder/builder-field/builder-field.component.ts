@@ -63,6 +63,7 @@ import { BuilderField } from '../../../utils/jsonata-converter';
           [suggestions]="suggestions"
           [disabled]="disabled"
           [collapsed]="isChildCollapsed(j)"
+          [collapsedPaths]="collapsedPaths"
           [required]="false"
           (valueChange)="valueChange.emit($event)"
           (modeToggle)="modeToggle.emit($event)"
@@ -154,16 +155,12 @@ export class BuilderFieldComponent {
   @Input() disabled = false;
   @Input() collapsed = false;
   @Input() required = false;
+  @Input() collapsedPaths: Set<string> = new Set();
   @Output() valueChange = new EventEmitter<{ path: number[]; value: string }>();
   @Output() modeToggle = new EventEmitter<number[]>();
   @Output() collapseToggle = new EventEmitter<number[]>();
 
-  /** Track collapsed state for children — delegated up to parent via collapseToggle */
-  private childCollapsed = new Set<string>();
-
   isChildCollapsed(childIndex: number): boolean {
-    // Children collapse state is managed by the parent MappingBuilderComponent
-    // This component just passes the collapsed input through
-    return false;
+    return this.collapsedPaths.has(this.path.concat(childIndex).join('.'));
   }
 }

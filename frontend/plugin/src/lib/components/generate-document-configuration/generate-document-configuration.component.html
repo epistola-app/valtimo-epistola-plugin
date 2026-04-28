@@ -236,6 +236,12 @@
 </div>
 
 <div *ngIf="selectedTemplateId$ | async" class="mapping-section">
+  <h5 class="mapping-section__title">
+    {{ 'dataMappingTitle' | pluginTranslate: pluginId | async }}
+  </h5>
+  <p class="mapping-section__description">
+    {{ 'dataMappingDescription' | pluginTranslate: pluginId | async }}
+  </p>
   <div class="mapping-mode-toggle">
     <button
       class="mapping-mode-toggle__btn"

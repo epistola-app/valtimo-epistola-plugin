@@ -209,6 +209,18 @@
 
 .mapping-section {
   margin-top: 1rem;
+
+  &__title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 4px 0;
+  }
+
+  &__description {
+    font-size: 0.85em;
+    color: #6f6f6f;
+    margin: 0 0 12px 0;
+  }
 }
 
 .mapping-mode-toggle {
