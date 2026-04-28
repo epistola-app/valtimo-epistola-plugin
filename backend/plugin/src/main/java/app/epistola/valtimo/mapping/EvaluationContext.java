@@ -34,6 +34,17 @@ public class EvaluationContext {
     public String getDocumentId() { return documentId; }
     public DelegateExecution getExecution() { return execution; }
 
+    /** Return a copy with a different expression, keeping all resolvers. */
+    public EvaluationContext withExpression(String newExpression) {
+        return builder()
+                .expression(newExpression)
+                .documentResolver(this.documentResolver)
+                .processVariableResolver(this.processVariableResolver)
+                .documentId(this.documentId)
+                .execution(this.execution)
+                .build();
+    }
+
     public static Builder builder() { return new Builder(); }
 
     public static class Builder {

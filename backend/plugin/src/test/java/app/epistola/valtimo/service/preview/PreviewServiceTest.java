@@ -11,7 +11,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ritense.plugin.domain.PluginProcessLink;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processlink.service.ProcessLinkService;
-import com.ritense.valueresolver.ValueResolverService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import com.ritense.valtimo.operaton.service.OperatonRepositoryService;
 import org.junit.jupiter.api.Nested;
@@ -63,9 +62,6 @@ class PreviewServiceTest {
 
     @Mock
     private JsonataMappingService jsonataMappingService;
-
-    @Mock
-    private ValueResolverService valueResolverService;
 
     @Mock
     private com.ritense.document.service.DocumentService documentService;

@@ -283,6 +283,42 @@ class JsonataMappingServiceTest {
     }
 
     @Nested
+    class ScalarEvaluation {
+
+        @Test
+        void shouldEvaluateSimpleReference() {
+            var ctx = EvaluationContext.builder()
+                    .expression("$pv.language")
+                    .processVariableResolver(Map.of("language", "nl")::get)
+                    .build();
+
+            assertThat(service.evaluateScalar(ctx)).isEqualTo("nl");
+        }
+
+        @Test
+        void shouldEvaluateStringConcatenation() {
+            var ctx = EvaluationContext.builder()
+                    .expression("\"besluit-\" & $doc.lastName & \".pdf\"")
+                    .documentResolver(id -> Map.of("lastName", "Jansen"))
+                    .build();
+
+            assertThat(service.evaluateScalar(ctx)).isEqualTo("besluit-Jansen.pdf");
+        }
+
+        @Test
+        void shouldReturnNullForNullExpression() {
+            var ctx = EvaluationContext.builder().expression(null).build();
+            assertThat(service.evaluateScalar(ctx)).isNull();
+        }
+
+        @Test
+        void shouldReturnBlankForBlankExpression() {
+            var ctx = EvaluationContext.builder().expression("  ").build();
+            assertThat(service.evaluateScalar(ctx)).isEqualTo("  ");
+        }
+    }
+
+    @Nested
     class CustomFunctions {
 
         @BeforeEach

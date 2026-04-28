@@ -14,7 +14,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.annotation.*;
 import com.ritense.plugin.domain.EventType;
 import com.ritense.processlink.domain.ActivityTypeWithEventName;
-import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 
@@ -42,21 +41,17 @@ public class EpistolaPlugin {
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
     private final EpistolaService epistolaService;
-    /** Used only for resolving single values (filenames, variant attributes). To be replaced by JSONata — see issue #30. */
-    private final ValueResolverService valueResolverService;
     private final ObjectMapper objectMapper;
     private final JsonataMappingService jsonataMappingService;
     private final com.ritense.document.service.DocumentService documentService;
 
     public EpistolaPlugin(
             EpistolaService epistolaService,
-            ValueResolverService valueResolverService,
             ObjectMapper objectMapper,
             JsonataMappingService jsonataMappingService,
             com.ritense.document.service.DocumentService documentService
     ) {
         this.epistolaService = epistolaService;
-        this.valueResolverService = valueResolverService;
         this.objectMapper = objectMapper;
         this.jsonataMappingService = jsonataMappingService;
         this.documentService = documentService;
@@ -284,17 +279,27 @@ public class EpistolaPlugin {
             resolvedData = jsonataMappingService.evaluate(evalCtx);
         }
 
-        // Resolve the filename if it uses value resolvers
-        String resolvedFilename = resolveValue(execution, filename);
+        // Resolve the filename (supports JSONata expressions and legacy doc:/pv: prefixes)
+        String resolvedFilename = jsonataMappingService.evaluateScalar(buildEvalCtx(execution, filename));
 
         // Use action-level environmentId if provided, otherwise fall back to plugin default
         String effectiveEnvironmentId = (environmentId != null && !environmentId.isBlank())
                 ? environmentId
                 : defaultEnvironmentId;
 
-        // Build variant selection attributes if using attribute-based selection
+        // Resolve variantId if it uses a JSONata expression
+        String resolvedVariantId = hasVariantId
+                ? jsonataMappingService.evaluateScalar(buildEvalCtx(execution, variantId))
+                : null;
+
+        // Build variant selection attributes, resolving each value as a JSONata expression
         List<VariantSelectionAttribute> resolvedAttributes = hasAttributes
-                ? resolveVariantAttributes(execution, normalizedAttributes)
+                ? normalizedAttributes.stream()
+                        .map(attr -> new VariantSelectionAttribute(
+                                attr.key(),
+                                jsonataMappingService.evaluateScalar(buildEvalCtx(execution, attr.value())),
+                                attr.required()))
+                        .toList()
                 : null;
 
         // Submit the document generation request
@@ -306,7 +311,7 @@ public class EpistolaPlugin {
                     tenantId,
                     catalogId,
                     templateId,
-                    hasVariantId ? variantId : null,
+                    resolvedVariantId,
                     resolvedAttributes,
                     effectiveEnvironmentId,
                     resolvedData,
@@ -449,21 +454,16 @@ public class EpistolaPlugin {
     }
 
     /**
-     * Resolve a single value if it uses a value resolver prefix.
+     * Build an EvaluationContext for scalar expression evaluation (filename, variantId, attribute values).
      */
-    private String resolveValue(DelegateExecution execution, String value) {
-        if (value == null || !isResolvableValue(value)) {
-            return value;
-        }
-
-        Map<String, Object> resolved = valueResolverService.resolveValues(
-                execution.getProcessInstanceId(),
-                execution,
-                List.of(value)
-        );
-
-        Object resolvedValue = resolved.get(value);
-        return resolvedValue != null ? resolvedValue.toString() : value;
+    private app.epistola.valtimo.mapping.EvaluationContext buildEvalCtx(DelegateExecution execution, String expression) {
+        return app.epistola.valtimo.mapping.EvaluationContext.builder()
+                .expression(expression)
+                .documentResolver(this::loadDocumentContent)
+                .processVariableResolver(execution::getVariable)
+                .execution(execution)
+                .documentId(execution.getBusinessKey())
+                .build();
     }
 
     /**
@@ -509,48 +509,4 @@ public class EpistolaPlugin {
         return List.of();
     }
 
-    /**
-     * Resolve variant attributes, resolving any value resolver expressions in the values.
-     */
-    private List<VariantSelectionAttribute> resolveVariantAttributes(
-            DelegateExecution execution,
-            List<NormalizedAttribute> attributes
-    ) {
-        // Collect resolvable attribute values
-        List<String> valuesToResolve = attributes.stream()
-                .map(NormalizedAttribute::value)
-                .filter(this::isResolvableValue)
-                .toList();
-
-        // Batch-resolve all values at once
-        Map<String, Object> resolvedValues = valuesToResolve.isEmpty()
-                ? Map.of()
-                : valueResolverService.resolveValues(
-                        execution.getProcessInstanceId(),
-                        execution,
-                        valuesToResolve
-                );
-
-        // Build VariantSelectionAttribute list with resolved values
-        return attributes.stream()
-                .map(attr -> {
-                    String resolvedValue = isResolvableValue(attr.value()) && resolvedValues.containsKey(attr.value())
-                            ? String.valueOf(resolvedValues.get(attr.value()))
-                            : attr.value();
-                    return new VariantSelectionAttribute(attr.key(), resolvedValue, attr.required());
-                })
-                .toList();
-    }
-
-    /**
-     * Check if a value should be resolved using the ValueResolverService.
-     */
-    private boolean isResolvableValue(String value) {
-        return value != null && (
-                value.startsWith("doc:") ||
-                value.startsWith("case:") ||
-                value.startsWith("pv:") ||
-                value.startsWith("template:")
-        );
-    }
 }
