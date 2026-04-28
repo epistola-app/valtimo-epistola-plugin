@@ -443,7 +443,7 @@
                       "text": "toe te kennen",
                       "marks": [
                         {
-                          "type": "bold"
+                          "type": "strong"
                         }
                       ]
                     },
@@ -465,7 +465,7 @@
                       "type": "text",
                       "marks": [
                         {
-                          "type": "bold"
+                          "type": "strong"
                         }
                       ],
                       "text": "€ "
@@ -520,7 +520,7 @@
                       "text": "af te wijzen",
                       "marks": [
                         {
-                          "type": "bold"
+                          "type": "strong"
                         }
                       ]
                     },
@@ -532,7 +532,7 @@
                       "type": "text",
                       "marks": [
                         {
-                          "type": "bold"
+                          "type": "strong"
                         }
                       ],
                       "text": "€ "
