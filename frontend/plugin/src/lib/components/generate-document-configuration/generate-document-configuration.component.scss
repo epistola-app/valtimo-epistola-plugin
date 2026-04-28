@@ -207,6 +207,77 @@
   }
 }
 
+.field-with-fx {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+
+  > *:first-child {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.fx-toggle {
+  width: 28px;
+  height: 28px;
+  margin-top: 22px; // align with input field (below label)
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-family: monospace;
+  font-size: 0.8em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  &:hover {
+    background: #f4f4f4;
+  }
+
+  &--inline {
+    margin-top: 0;
+  }
+}
+
+.fx-input-group {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0.75rem;
+}
+
+.fx-input-label {
+  display: block;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
+  color: #525252;
+}
+
+.fx-input {
+  width: 100%;
+  border: 1px solid #8d8d8d;
+  border-radius: 0;
+  padding: 0.4rem 0.75rem;
+  font-family: monospace;
+  font-size: 0.875rem;
+  background: #f4f4f4;
+}
+
+.attribute-value-with-fx {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+
+  > input {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
 .mapping-section {
   margin-top: 1rem;
 

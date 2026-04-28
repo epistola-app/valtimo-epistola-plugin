@@ -104,11 +104,16 @@ export class GenerateDocumentConfigurationComponent
   readonly selectedVariantId$ = new BehaviorSubject<string>('');
 
   variantSelectionMode: VariantSelectionMode = 'explicit';
+  variantIdExpressionMode = false;
+  variantIdExpression = '';
+  filenameExpressionMode = false;
+  filenameExpression = '';
   variantAttributeEntries: {
     key: string;
     value: string;
     required: boolean;
     _customKey?: boolean;
+    _expressionMode?: boolean;
   }[] = [];
   availableAttributeKeys: string[] = [];
   caseDefinitionKey: string | null = null;
@@ -214,6 +219,19 @@ export class GenerateDocumentConfigurationComponent
 
   onAttributeEntryChange(): void {
     this.revalidate();
+  }
+
+  onVariantIdExpressionChange(): void {
+    this.revalidate();
+  }
+
+  onFilenameExpressionChange(): void {
+    this.revalidate();
+  }
+
+  /** Detect if a value is a JSONata expression (contains $doc, $pv, $case, or &) */
+  private isExpression(value: string): boolean {
+    return /[$&({?\[]/.test(value);
   }
 
   onKeySelected(
@@ -473,6 +491,7 @@ export class GenerateDocumentConfigurationComponent
               key: e.key,
               value: e.value,
               required: e.required !== false,
+              _expressionMode: this.isExpression(e.value),
             }));
           } else {
             this.variantAttributeEntries = Object.entries(config.variantAttributes as any).map(
@@ -481,7 +500,18 @@ export class GenerateDocumentConfigurationComponent
           }
         } else if (config.variantId) {
           this.variantSelectionMode = 'explicit';
-          this.selectedVariantId$.next(config.variantId);
+          if (this.isExpression(config.variantId)) {
+            this.variantIdExpressionMode = true;
+            this.variantIdExpression = config.variantId;
+          } else {
+            this.selectedVariantId$.next(config.variantId);
+          }
+        }
+
+        // Detect expression mode for filename
+        if (config.filename && this.isExpression(config.filename)) {
+          this.filenameExpressionMode = true;
+          this.filenameExpression = config.filename;
         }
 
         // Apply dataMapping prefill (JSONata expression string)
@@ -576,13 +606,15 @@ export class GenerateDocumentConfigurationComponent
               environmentId: formValue.environmentId || undefined,
               dataMapping: dataMapping,
               outputFormat: formValue.outputFormat as 'PDF' | 'HTML',
-              filename: formValue.filename!,
+              filename: this.filenameExpressionMode ? this.filenameExpression : formValue.filename!,
               correlationId: formValue.correlationId || undefined,
               resultProcessVariable: formValue.resultProcessVariable!,
             };
 
             if (this.variantSelectionMode === 'explicit') {
-              config.variantId = formValue.variantId!;
+              config.variantId = this.variantIdExpressionMode
+                ? this.variantIdExpression
+                : formValue.variantId!;
             } else {
               config.variantAttributes = this.variantAttributeEntries
                 .filter((e) => e.key && e.value)

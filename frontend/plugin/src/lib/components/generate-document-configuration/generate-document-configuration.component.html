@@ -67,20 +67,42 @@
     </div>
   </div>
 
-  <!-- Explicit variant selection (dropdown) -->
-  <v-select
-    *ngIf="variantSelectionMode === 'explicit'"
-    name="variantId"
-    [title]="'variantId' | pluginTranslate: pluginId | async"
-    [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
-    [margin]="true"
-    [items]="obs.variants.data"
-    [defaultSelectionId]="obs.prefill?.variantId"
-    [disabled]="obs.disabled || obs.variants.loading || !obs.selectedTemplateId"
-    [required]="false"
-    [loading]="obs.variants.loading"
-  >
-  </v-select>
+  <!-- Explicit variant selection (dropdown or expression) -->
+  <div *ngIf="variantSelectionMode === 'explicit'" class="field-with-fx">
+    <v-select
+      *ngIf="!variantIdExpressionMode"
+      name="variantId"
+      [title]="'variantId' | pluginTranslate: pluginId | async"
+      [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
+      [margin]="true"
+      [items]="obs.variants.data"
+      [defaultSelectionId]="obs.prefill?.variantId"
+      [disabled]="obs.disabled || obs.variants.loading || !obs.selectedTemplateId"
+      [required]="false"
+      [loading]="obs.variants.loading"
+    >
+    </v-select>
+    <div *ngIf="variantIdExpressionMode" class="fx-input-group">
+      <label class="fx-input-label">{{ 'variantId' | pluginTranslate: pluginId | async }}</label>
+      <input
+        type="text"
+        class="fx-input"
+        [ngModel]="variantIdExpression"
+        (ngModelChange)="variantIdExpression = $event; onVariantIdExpressionChange()"
+        [disabled]="obs.disabled"
+        placeholder="$pv.letterType"
+      />
+    </div>
+    <button
+      type="button"
+      class="fx-toggle"
+      (click)="variantIdExpressionMode = !variantIdExpressionMode"
+      [disabled]="obs.disabled"
+      [title]="variantIdExpressionMode ? 'Switch to dropdown' : 'Switch to expression'"
+    >
+      {{ variantIdExpressionMode ? '·' : 'fx' }}
+    </button>
+  </div>
   <div *ngIf="obs.variants.error" class="loading-error">{{ obs.variants.error }}</div>
 
   <!-- Attribute-based variant selection -->
@@ -129,14 +151,30 @@
             &times;
           </button>
         </div>
-        <input
-          type="text"
-          class="variant-attribute-input"
-          [placeholder]="'attributeValue' | pluginTranslate: pluginId | async"
-          [(ngModel)]="entry.value"
-          (ngModelChange)="onAttributeEntryChange()"
-          [disabled]="obs.disabled"
-        />
+        <div class="attribute-value-with-fx">
+          <input
+            type="text"
+            class="variant-attribute-input"
+            [class.fx-input]="entry._expressionMode"
+            [placeholder]="
+              entry._expressionMode
+                ? '$pv.language'
+                : ('attributeValue' | pluginTranslate: pluginId | async)
+            "
+            [(ngModel)]="entry.value"
+            (ngModelChange)="onAttributeEntryChange()"
+            [disabled]="obs.disabled"
+          />
+          <button
+            type="button"
+            class="fx-toggle fx-toggle--inline"
+            (click)="entry._expressionMode = !entry._expressionMode"
+            [disabled]="obs.disabled"
+            [title]="entry._expressionMode ? 'Switch to plain value' : 'Switch to expression'"
+          >
+            {{ entry._expressionMode ? '·' : 'fx' }}
+          </button>
+        </div>
         <label class="variant-attribute-required-toggle">
           <input
             type="checkbox"
@@ -197,16 +235,39 @@
   >
   </v-select>
 
-  <v-input
-    name="filename"
-    [title]="'filename' | pluginTranslate: pluginId | async"
-    [tooltip]="'filenameTooltip' | pluginTranslate: pluginId | async"
-    [margin]="true"
-    [defaultValue]="obs.prefill?.filename"
-    [disabled]="obs.disabled"
-    [required]="true"
-  >
-  </v-input>
+  <div class="field-with-fx">
+    <v-input
+      *ngIf="!filenameExpressionMode"
+      name="filename"
+      [title]="'filename' | pluginTranslate: pluginId | async"
+      [tooltip]="'filenameTooltip' | pluginTranslate: pluginId | async"
+      [margin]="true"
+      [defaultValue]="obs.prefill?.filename"
+      [disabled]="obs.disabled"
+      [required]="true"
+    >
+    </v-input>
+    <div *ngIf="filenameExpressionMode" class="fx-input-group">
+      <label class="fx-input-label">{{ 'filename' | pluginTranslate: pluginId | async }}</label>
+      <input
+        type="text"
+        class="fx-input"
+        [ngModel]="filenameExpression"
+        (ngModelChange)="filenameExpression = $event; onFilenameExpressionChange()"
+        [disabled]="obs.disabled"
+        placeholder='"besluit-" & $doc.name & ".pdf"'
+      />
+    </div>
+    <button
+      type="button"
+      class="fx-toggle"
+      (click)="filenameExpressionMode = !filenameExpressionMode"
+      [disabled]="obs.disabled"
+      [title]="filenameExpressionMode ? 'Switch to plain input' : 'Switch to expression'"
+    >
+      {{ filenameExpressionMode ? '·' : 'fx' }}
+    </button>
+  </div>
 
   <v-input
     name="correlationId"
