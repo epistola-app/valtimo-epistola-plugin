@@ -106,17 +106,25 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
     private _changeListenerAttached = false;
 
     attach(element: HTMLElement) {
-      const result = super.attach(element);
-
-      // Sync processLinkSelection → processDefinitionKey + sourceActivityId
+      // Bidirectional sync between processLinkSelection object and separate properties.
+      // The editForm uses processLinkSelection (single field), while the component
+      // config and Angular inputs use processDefinitionKey + sourceActivityId.
       if (this.component?.processLinkSelection) {
         const sel = this.component.processLinkSelection;
         this.component.processDefinitionKey = sel.processDefinitionKey || '';
         this.component.sourceActivityId = sel.sourceActivityId || '';
-        if (this._customAngularElement) {
-          this._customAngularElement['processDefinitionKey'] = this.component.processDefinitionKey;
-          this._customAngularElement['sourceActivityId'] = this.component.sourceActivityId;
-        }
+      } else if (this.component?.processDefinitionKey && this.component?.sourceActivityId) {
+        this.component.processLinkSelection = {
+          processDefinitionKey: this.component.processDefinitionKey,
+          sourceActivityId: this.component.sourceActivityId,
+        };
+      }
+
+      const result = super.attach(element);
+
+      if (this._customAngularElement) {
+        this._customAngularElement['processDefinitionKey'] = this.component.processDefinitionKey || '';
+        this._customAngularElement['sourceActivityId'] = this.component.sourceActivityId || '';
       }
 
       // Listen to form changes and compute input overrides from the mapping
