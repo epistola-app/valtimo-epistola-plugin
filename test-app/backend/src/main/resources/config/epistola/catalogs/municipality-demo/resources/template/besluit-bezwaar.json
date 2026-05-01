@@ -196,13 +196,19 @@
                   "content": [
                     { "type": "expression", "attrs": { "expression": "objector.address.street" } },
                     { "type": "text", "text": " " },
-                    { "type": "expression", "attrs": { "expression": "objector.address.houseNumber" } }
+                    {
+                      "type": "expression",
+                      "attrs": { "expression": "objector.address.houseNumber" }
+                    }
                   ]
                 },
                 {
                   "type": "paragraph",
                   "content": [
-                    { "type": "expression", "attrs": { "expression": "objector.address.postalCode" } },
+                    {
+                      "type": "expression",
+                      "attrs": { "expression": "objector.address.postalCode" }
+                    },
                     { "type": "text", "text": " " },
                     { "type": "expression", "attrs": { "expression": "objector.address.city" } }
                   ]
@@ -226,7 +232,10 @@
                   "type": "paragraph",
                   "content": [
                     { "type": "text", "text": "Ons kenmerk: " },
-                    { "type": "expression", "attrs": { "expression": "originalDecision.reference" } }
+                    {
+                      "type": "expression",
+                      "attrs": { "expression": "originalDecision.reference" }
+                    }
                   ]
                 }
               ]
@@ -250,7 +259,12 @@
             "content": {
               "type": "doc",
               "content": [
-                { "type": "paragraph", "content": [{ "type": "text", "text": "Betreft: Beslissing op uw bezwaarschrift - Gegrond" }] }
+                {
+                  "type": "paragraph",
+                  "content": [
+                    { "type": "text", "text": "Betreft: Beslissing op uw bezwaarschrift - Gegrond" }
+                  ]
+                }
               ]
             }
           }
@@ -272,7 +286,15 @@
             "content": {
               "type": "doc",
               "content": [
-                { "type": "paragraph", "content": [{ "type": "text", "text": "Betreft: Beslissing op uw bezwaarschrift - Ongegrond" }] }
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Betreft: Beslissing op uw bezwaarschrift - Ongegrond"
+                    }
+                  ]
+                }
               ]
             }
           }
@@ -294,7 +316,15 @@
             "content": {
               "type": "doc",
               "content": [
-                { "type": "paragraph", "content": [{ "type": "text", "text": "Betreft: Beslissing op uw bezwaarschrift - Deels gegrond" }] }
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Betreft: Beslissing op uw bezwaarschrift - Deels gegrond"
+                    }
+                  ]
+                }
               ]
             }
           }
@@ -337,10 +367,16 @@
                     { "type": "text", "text": "Op " },
                     { "type": "expression", "attrs": { "expression": "originalDecision.date" } },
                     { "type": "text", "text": " hebben wij een besluit genomen met kenmerk " },
-                    { "type": "expression", "attrs": { "expression": "originalDecision.reference" } },
+                    {
+                      "type": "expression",
+                      "attrs": { "expression": "originalDecision.reference" }
+                    },
                     { "type": "text", "text": " inzake " },
                     { "type": "expression", "attrs": { "expression": "originalDecision.subject" } },
-                    { "type": "text", "text": ". Tegen dit besluit hebt u een bezwaarschrift ingediend." }
+                    {
+                      "type": "text",
+                      "text": ". Tegen dit besluit hebt u een bezwaarschrift ingediend."
+                    }
                   ]
                 }
               ]
@@ -459,9 +495,7 @@
               "content": [
                 {
                   "type": "paragraph",
-                  "content": [
-                    { "type": "expression", "attrs": { "expression": "decision" } }
-                  ]
+                  "content": [{ "type": "expression", "attrs": { "expression": "decision" } }]
                 }
               ]
             }
@@ -492,9 +526,7 @@
               "content": [
                 {
                   "type": "paragraph",
-                  "content": [
-                    { "type": "expression", "attrs": { "expression": "motivation" } }
-                  ]
+                  "content": [{ "type": "expression", "attrs": { "expression": "motivation" } }]
                 }
               ]
             }
@@ -518,7 +550,10 @@
                 {
                   "type": "paragraph",
                   "content": [
-                    { "type": "text", "text": "Indien u het niet eens bent met deze beslissing, kunt u binnen zes weken na de dag van verzending van dit besluit een beroepschrift indienen bij de Rechtbank. Het beroepschrift moet worden ondertekend en bevat ten minste uw naam en adres, de dagtekening, een omschrijving van het besluit waartegen het beroep is gericht en de gronden van het beroep." }
+                    {
+                      "type": "text",
+                      "text": "Indien u het niet eens bent met deze beslissing, kunt u binnen zes weken na de dag van verzending van dit besluit een beroepschrift indienen bij de Rechtbank. Het beroepschrift moet worden ondertekend en bevat ten minste uw naam en adres, de dagtekening, een omschrijving van het besluit waartegen het beroep is gericht en de gronden van het beroep."
+                    }
                   ]
                 }
               ]
@@ -534,8 +569,16 @@
             "content": {
               "type": "doc",
               "content": [
-                { "type": "paragraph", "content": [{ "type": "text", "text": "Met vriendelijke groet," }] },
-                { "type": "paragraph", "content": [{ "type": "text", "text": "Het college van burgemeester en wethouders" }] }
+                {
+                  "type": "paragraph",
+                  "content": [{ "type": "text", "text": "Met vriendelijke groet," }]
+                },
+                {
+                  "type": "paragraph",
+                  "content": [
+                    { "type": "text", "text": "Het college van burgemeester en wethouders" }
+                  ]
+                }
               ]
             }
           }
