@@ -33,9 +33,12 @@ runner.
 ```
 @PostConstruct start()
   └─ if !epistola.result-collector.enabled → return
-  └─ reconcile()                                   ← also @Scheduled every 60s
+  └─ reconcile()                                   ← also triggered by:
+                                                       • @Scheduled every 60s (safety net)
+                                                       • PluginsDeployedEvent (create/update)
+                                                       • PluginConfigurationDeletedEvent (delete)
 
-reconcile()
+reconcile()                                         ← synchronized (safe across triggers)
   ├─ active = pluginService.findPluginConfigurations(EpistolaPlugin.class, _ → true)
   │           // {pluginConfigurationId → EpistolaPlugin instance with baseUrl/apiKey/tenantId}
   ├─ for configId in collectors.keySet() − active.keySet():
@@ -213,10 +216,25 @@ correlate to the original BPMN execution.
 
 ## 1. Plugin configuration drift across instances
 
-**Behavior today.** Each Valtimo instance reconciles independently every 60s
-via `pluginService.findPluginConfigurations(...)`. Adds, removes, and
-URL/key/tenant changes propagate to each instance within 60s of the change
-landing in the shared Valtimo DB.
+**Behavior today.** Each Valtimo instance reconciles independently on three
+triggers:
+
+- A `@Scheduled` tick every `epistola.result-collector.reconcile-interval-ms`
+  (60s default) — the safety net.
+- A Spring `@EventListener` on `com.ritense.valtimo.contract.event.PluginsDeployedEvent`
+  — fired by Valtimo's `PluginService` after every plugin **create** and
+  **update**.
+- A Spring `@EventListener` on `com.ritense.plugin.events.PluginConfigurationDeletedEvent`
+  — fired after every plugin **delete**.
+
+Spring application events are in-process: an event published on instance A
+does **not** propagate to instances B and C. Each instance only sees its own
+local Valtimo's events. So the event listener gives instant reaction on the
+instance that handled the user's UI request; the other instances pick up
+the change at their next scheduled tick (still ≤ 60s).
+
+`reconcile()` is `synchronized` because the scheduled tick and the event
+listeners can run on different threads simultaneously.
 
 **Add a config in the UI:**
 
@@ -250,12 +268,14 @@ landing in the shared Valtimo DB.
 - Brief gap (milliseconds) between stop and start where `routingKeyFor`
   returns null. Same null-fallback behavior as add.
 
-**Limitation worth flagging:** the 60s reconcile interval is the worst-case
-detection latency, _per instance_. If you need faster reaction to config
-changes, lower `epistola.result-collector.reconcile-interval-ms`. A future
-improvement would be to subscribe to plugin lifecycle events from
-`PluginService` (if Valtimo emits them) to trigger reconcile immediately.
-We don't do that today.
+**Latency by instance:**
+
+- The instance that handled the UI write reacts within milliseconds (event
+  listener) — no 60s wait.
+- Other instances in a multi-node deployment still wait up to
+  `epistola.result-collector.reconcile-interval-ms` for their next scheduled
+  tick, because Spring events are JVM-local. Lower the property if that's
+  too long for your environment.
 
 **Rebalance flicker:** when N nodes turn into N+1 or N-1, the suite's
 re-assignment changes which partitions each node owns. During that window:

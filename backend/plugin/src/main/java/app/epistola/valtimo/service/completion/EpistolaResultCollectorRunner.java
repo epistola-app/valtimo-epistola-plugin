@@ -4,13 +4,16 @@ import app.epistola.client.collect.ResultCollector;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.config.EpistolaProperties;
 import com.ritense.plugin.domain.PluginConfiguration;
+import com.ritense.plugin.events.PluginConfigurationDeletedEvent;
 import com.ritense.plugin.service.PluginService;
+import com.ritense.valtimo.contract.event.PluginsDeployedEvent;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import kotlin.Unit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import java.time.Duration;
@@ -23,21 +26,25 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Replaces {@link PollingCompletionEventConsumer}: a single Spring bean that runs one
- * {@link ResultCollector} per Epistola plugin configuration, streams completed
- * generation results from {@code POST /tenants/{tenantId}/generation/collect},
- * and correlates each result back to the waiting BPMN execution.
+ * A single Spring bean that runs one {@link ResultCollector} per Epistola plugin
+ * configuration, streams completed generation results from
+ * {@code POST /tenants/{tenantId}/generation/collect}, and correlates each result
+ * back to the waiting BPMN execution.
  * <p>
- * Reactive lifecycle (mirrors today's polling consumer pattern):
+ * Reconciliation has three triggers:
  * <ol>
- *     <li>{@link PostConstruct} performs an initial reconcile — every active plugin
- *         configuration gets a collector started on a virtual thread.</li>
- *     <li>{@link Scheduled} (every {@code epistola.result-collector.reconcile-interval-ms})
- *         walks {@link PluginService#findPluginConfigurations(Class, java.util.function.Function)}
- *         again, starts collectors for new configurations, stops collectors for removed
- *         configurations, and restarts collectors whose URL/API-key/tenant changed.</li>
- *     <li>{@link PreDestroy} stops everything.</li>
+ *     <li>{@link PostConstruct} — initial reconcile on bean startup.</li>
+ *     <li>{@link Scheduled} — every {@code epistola.result-collector.reconcile-interval-ms}
+ *         (60s default), as a safety net for missed events.</li>
+ *     <li>{@link EventListener}s on {@link PluginsDeployedEvent} (fired by Valtimo
+ *         after every plugin create/update) and {@link PluginConfigurationDeletedEvent}
+ *         (fired after delete) — lets us react to UI-driven config changes without
+ *         waiting for the scheduled tick.</li>
  * </ol>
+ * Each tick walks {@link PluginService#findPluginConfigurations(Class, java.util.function.Function)},
+ * starts collectors for new configurations, stops collectors for removed ones, and
+ * restarts collectors whose URL/API-key/tenant changed. {@link PreDestroy} stops
+ * everything.
  * <p>
  * Each result is delivered to {@link EpistolaMessageCorrelationService#correlateCompletion}
  * with the same {@code epistola:job:{tenantId}/{requestId}} job path encoding the
@@ -75,9 +82,14 @@ public class EpistolaResultCollectorRunner {
      * Periodically reconcile the running collectors with the current set of plugin
      * configurations. Picks up newly-added configurations and tears down ones that
      * have been removed or had their connection details changed.
+     * <p>
+     * {@code synchronized} because the {@link Scheduled} tick and the
+     * {@link EventListener}-driven calls below can run on different threads.
+     * The body is fast enough (one DB query + a small map walk) that serializing
+     * is cheaper than reasoning about partial overlaps.
      */
     @Scheduled(fixedDelayString = "${epistola.result-collector.reconcile-interval-ms:60000}")
-    public void reconcile() {
+    public synchronized void reconcile() {
         if (!properties.getResultCollector().isEnabled()) {
             return;
         }
@@ -97,6 +109,31 @@ public class EpistolaResultCollectorRunner {
                 startCollector(id, plugin);
             }
         });
+    }
+
+    /**
+     * Reconcile immediately when Valtimo signals that any plugin configuration was
+     * created or updated. The event is global to all plugin types, but {@link #reconcile()}
+     * filters to {@link EpistolaPlugin}, so unrelated plugin changes are a cheap no-op
+     * (one DB query, no map mutations).
+     */
+    @EventListener
+    public void onPluginsDeployed(PluginsDeployedEvent event) {
+        log.debug("PluginsDeployedEvent received; reconciling Epistola collectors");
+        reconcile();
+    }
+
+    /**
+     * Reconcile immediately when Valtimo signals a plugin configuration delete.
+     * Same global-to-all-plugins caveat as {@link #onPluginsDeployed} — but a
+     * deleted Epistola config will be missing from the next {@code findPluginConfigurations}
+     * call, so its collector gets stopped right away instead of waiting for the
+     * scheduled tick.
+     */
+    @EventListener
+    public void onPluginConfigurationDeleted(PluginConfigurationDeletedEvent event) {
+        log.debug("PluginConfigurationDeletedEvent received; reconciling Epistola collectors");
+        reconcile();
     }
 
     /**

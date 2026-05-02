@@ -3,13 +3,19 @@ package app.epistola.valtimo.service.completion;
 import app.epistola.client.collect.ResultCollector;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.config.EpistolaProperties;
+import com.ritense.plugin.domain.PluginConfiguration;
+import com.ritense.plugin.events.PluginConfigurationDeletedEvent;
 import com.ritense.plugin.service.PluginService;
+import com.ritense.valtimo.contract.event.PluginsDeployedEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -73,6 +79,41 @@ class EpistolaResultCollectorRunnerTest {
         String key = runner.routingKeyFor("https://epistola.example/api", "key-1", "acme", "req-1");
 
         assertThat(key).isNull();
+    }
+
+    @Test
+    void onPluginsDeployed_triggersReconcile() {
+        // The event listener should call reconcile(), which queries pluginService.
+        // We use the no-config baseline: reconcile returns immediately after that query.
+        when(pluginService.findPluginConfigurations(eq(com.ritense.valtimo.epistola.plugin.EpistolaPlugin.class), any()))
+                .thenReturn(Collections.emptyList());
+
+        runner.onPluginsDeployed(new PluginsDeployedEvent());
+
+        verify(pluginService, atLeastOnce())
+                .findPluginConfigurations(eq(com.ritense.valtimo.epistola.plugin.EpistolaPlugin.class), any());
+    }
+
+    @Test
+    void onPluginConfigurationDeleted_triggersReconcile() {
+        when(pluginService.findPluginConfigurations(eq(com.ritense.valtimo.epistola.plugin.EpistolaPlugin.class), any()))
+                .thenReturn(Collections.emptyList());
+
+        runner.onPluginConfigurationDeleted(new PluginConfigurationDeletedEvent(mock(PluginConfiguration.class)));
+
+        verify(pluginService, atLeastOnce())
+                .findPluginConfigurations(eq(com.ritense.valtimo.epistola.plugin.EpistolaPlugin.class), any());
+    }
+
+    @Test
+    void onPluginsDeployed_isNoOpWhenCollectorDisabled() {
+        properties.getResultCollector().setEnabled(false);
+
+        runner.onPluginsDeployed(new PluginsDeployedEvent());
+
+        // reconcile() short-circuits at the enabled check, never asking pluginService.
+        verify(pluginService, times(0))
+                .findPluginConfigurations(eq(com.ritense.valtimo.epistola.plugin.EpistolaPlugin.class), any());
     }
 
     private static ResultCollector.GenerationResult makeResult(
