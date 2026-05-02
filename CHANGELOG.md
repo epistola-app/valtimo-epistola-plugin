@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Gradle 9 compatibility** — Bumped `foojay-resolver-convention` from `0.8.0` to `1.0.0`. The old version referenced `JvmVendorSpec.IBM_SEMERU`, which was removed in Gradle 9, causing settings evaluation to fail when loading the project.
 - **`:test-app:backend` testcontainers resolution** — Added `testImplementation(platform(libs.testcontainers.bom))` so the renamed Testcontainers 2.x artifact (`org.testcontainers:testcontainers-postgresql`) gets a version. Previously the Valtimo BOM only managed the old 1.x name (`org.testcontainers:postgresql`), so the dependency resolved with no version and the build failed.
 
+### Changed
+
+- **Removed JSONata signature reflection hack** — `JsonataMappingService` no longer uses reflection to null out `Jsonata.JFunction.signature` after construction. The previous code passed the function name into the JFunction constructor's `signature` parameter (causing a parse failure), then patched it via reflection. Now passes `null` for the signature directly — same effect, no dependency on JSONata internals.
+
 ### Added
 
 - **Input-level overrides for document preview** — The `epistola-document-preview` Formio component can now be configured with a specific process link (`processDefinitionKey` + `sourceActivityId`) and an override mapping that feeds form field values into the template as `$doc`/`$pv` overrides before JSONata evaluation. This enables live document previews while users are still filling in forms.

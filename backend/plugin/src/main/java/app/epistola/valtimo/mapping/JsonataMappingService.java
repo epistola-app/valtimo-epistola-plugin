@@ -187,14 +187,7 @@ public class JsonataMappingService {
                     return null;
                 }
             };
-            Jsonata.JFunction jFunc = new Jsonata.JFunction(callable, name);
-            try {
-                var sigField = Jsonata.JFunction.class.getDeclaredField("signature");
-                sigField.setAccessible(true);
-                sigField.set(jFunc, null);
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                log.debug("Could not disable signature validation for function '{}': {}", name, e.getMessage());
-            }
+            Jsonata.JFunction jFunc = new Jsonata.JFunction(callable, null);
             frame.bind(name, jFunc);
         }
     }
