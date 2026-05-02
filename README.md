@@ -10,15 +10,25 @@ Add the plugin dependency to your Valtimo application's `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("app.epistola.valtimo:epistola-plugin:${epistolaVersion}")
+    implementation("app.epistola.valtimo:epistola-plugin:0.6.0")
 }
 ```
 
-The plugin auto-configures itself via Spring Boot auto-configuration. Set `epistola.enabled=false` to disable.
+Releases are published to [Maven Central](https://central.sonatype.com/artifact/app.epistola.valtimo/epistola-plugin) — the [Maven metadata](https://repo1.maven.org/maven2/app/epistola/valtimo/epistola-plugin/maven-metadata.xml) is authoritative if the search index lags behind.
+
+The plugin auto-configures itself via Spring Boot. Set `epistola.enabled=false` to disable globally — see [Required configuration](#required-configuration) for the full property tree.
+
+The plugin needs to know where to reach the Epistola server (see [Running the Epistola server](#running-the-epistola-server) for how to start one):
+
+```yaml
+# application.yml — equivalent to setting EPISTOLA_BASE_URL in the environment
+epistola:
+  base-url: http://localhost:4000/api
+```
 
 ### Frontend
 
-Install the frontend plugin:
+Install the plugin:
 
 ```bash
 npm install @epistola.app/valtimo-plugin
@@ -26,47 +36,101 @@ npm install @epistola.app/valtimo-plugin
 pnpm add @epistola.app/valtimo-plugin
 ```
 
-**Required peer dependency** — `monaco-editor` must be installed in your host application for the JSONata editor:
+`monaco-editor` is pulled in automatically as a peer dependency (it powers the JSONata editor). If your package manager has peer-dep auto-install turned off (`auto-install-peers=false` in pnpm, or you're on npm < 7), install it explicitly: `npm install monaco-editor`.
 
-```bash
-npm install monaco-editor
-# or
-pnpm add monaco-editor
-```
-
-**angular.json** — Add the Monaco editor assets to your project's `angular.json`:
+**angular.json** — serve Monaco's bundle from `assets/monaco-editor` by adding this entry to your build configuration's `assets` array:
 
 ```json
-{
-  "architect": {
-    "build": {
-      "options": {
-        "assets": [
-          {
-            "glob": "**/*",
-            "input": "node_modules/monaco-editor",
-            "output": "assets/monaco-editor"
-          }
-        ]
-      }
-    }
-  }
-}
+{ "glob": "**/*", "input": "node_modules/monaco-editor", "output": "assets/monaco-editor" }
 ```
 
-**App module** — Import and configure the plugin module:
+> Users starting from [`gzac-frontend-template`](https://github.com/generiekzaakafhandelcomponent/gzac-frontend-template) v/13+ already have this entry — no action needed.
+
+**App module** — register the plugin module and wire its plugin specification into Valtimo's `PLUGINS_TOKEN`:
 
 ```typescript
 import { EpistolaPluginModule, epistolaPluginSpecification } from "@epistola.app/valtimo-plugin";
+import { PLUGINS_TOKEN } from "@valtimo/plugin";
 
 @NgModule({
   imports: [EpistolaPluginModule.forRoot()],
+  providers: [
+    {
+      provide: PLUGINS_TOKEN,
+      useValue: [
+        // …other plugin specifications…
+        epistolaPluginSpecification,
+      ],
+    },
+  ],
 })
 export class AppModule {}
-
-// Register the plugin specification with Valtimo's plugin system
-export const pluginSpecifications = [epistolaPluginSpecification];
 ```
+
+## Required configuration
+
+There are two configuration layers — application-wide settings (in `application.yml`) and per-instance settings (created in the Valtimo console under **Admin → Plugins → Epistola Document Suite**).
+
+### Per-instance plugin properties
+
+Filled in via the Valtimo console form when creating an Epistola plugin configuration.
+
+| Property               | Type    | Required | Secret | Description                                                                                                                                                    |
+| ---------------------- | ------- | -------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `baseUrl`              | string  | yes      | no     | Base URL of the Epistola API, e.g. `http://localhost:4000/api` for a local Docker run.                                                                         |
+| `apiKey`               | string  | yes      | yes    | API key minted in the Epistola server's UI under **Settings → API Keys**.                                                                                      |
+| `tenantId`             | string  | yes      | no     | Tenant slug in Epistola — 3–63 characters, lowercase alphanumeric with hyphens.                                                                                |
+| `defaultEnvironmentId` | string  | no       | no     | Default environment slug for document generation, 3–30 chars. Can be overridden per action at process-time.                                                    |
+| `templateSyncEnabled`  | boolean | no       | no     | When `true`, the plugin automatically syncs catalogs from the classpath on startup — see [Catalog auto-deployment](#catalog-auto-deployment). Default `false`. |
+
+> **First-time setup against the demo Epistola server** (`SPRING_PROFILES_ACTIVE=demo,localauth`): the demo profile seeds tenant `demo` with a deterministic API key. See [`test-app/backend/src/main/resources/config/app.pluginconfig.json`](test-app/backend/src/main/resources/config/app.pluginconfig.json) for the exact values shipped with the demo image.
+
+### Application-wide settings
+
+Configure under `epistola:` in `application.yml`:
+
+```yaml
+epistola:
+  enabled: true # disable the plugin entirely (default: true)
+  base-url: ${EPISTOLA_BASE_URL} # fallback baseUrl, also used by classpath-deployed plugin configs
+  retry-form:
+    enabled: true # auto-deploy the retry form for case failures (default: true)
+    case-filter: "all" # "all" | "none" | regex on case definition keys
+  poller:
+    enabled: true # poll Epistola for async job completion (default: true)
+    interval: 30000 # poll cycle in ms (default: 30000)
+```
+
+Source of truth: `app.epistola.valtimo.config.EpistolaProperties`.
+
+> When setting `epistola.enabled=false`, first remove any existing Epistola plugin configurations and process links from the Valtimo database. Otherwise the frontend keeps showing stale entries that fail on every API call (the backend endpoints no longer exist).
+
+## Catalog auto-deployment
+
+When a plugin configuration has `templateSyncEnabled: true`, the plugin scans the classpath for Epistola catalogs on `ApplicationReadyEvent` and pushes them to the Epistola server. Idempotent and version-tracked — repeated startups are no-ops unless `release.version` in `catalog.json` changes.
+
+### Layout on the classpath
+
+```
+src/main/resources/config/epistola/catalogs/
+  ├── municipality-demo/
+  │   ├── catalog.json              # required — declares slug, release version, templates
+  │   └── resources/
+  │       └── template/
+  │           ├── besluit-bezwaar.json
+  │           ├── voorwaarden-bijlage.json
+  │           └── …
+  └── another-catalog/
+      └── …
+```
+
+Each `catalog.json` must include at minimum a `catalog.slug` and a `release.version` — the slug is the catalog's identity in Epistola, the version drives the redeploy decision.
+
+### Worked example
+
+The `:test-app:backend` module ships a complete `municipality-demo` catalog with eight Dutch municipal templates — see [`test-app/backend/src/main/resources/config/epistola/catalogs/municipality-demo/`](test-app/backend/src/main/resources/config/epistola/catalogs/municipality-demo/). It's enabled via [`test-app/backend/src/main/resources/config/app.pluginconfig.json`](test-app/backend/src/main/resources/config/app.pluginconfig.json) (`templateSyncEnabled: true`). Replicate that structure in your own Valtimo backend to ship templates alongside your application code.
+
+Implementation: `app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger` + `CatalogScanner` (classpath glob `classpath*:config/epistola/catalogs/*/catalog.json`).
 
 ## Project Structure
 
@@ -140,74 +204,89 @@ pnpm start
 pnpm build
 ```
 
-## Configuration
+## Running the Epistola server
 
-### Feature Toggle
+The plugin connects to a running Epistola backend. There are three ways to provide one.
 
-The plugin can be disabled entirely by setting `epistola.enabled=false` in `application.yml`:
+### Option A — Docker only, no clone (simplest)
 
-```yaml
-epistola:
-  enabled: false
-```
-
-When disabled, no Epistola beans are registered (REST endpoints, plugin factory, poller, callback handler, etc.). The default is `true`.
-
-**Important:** This toggle is backend-only. Before disabling, remove any existing Epistola plugin configurations and process links from the Valtimo database. Otherwise, the frontend will still show stale entries that fail on all API calls since the backend endpoints no longer exist.
-
-## Local Development with Docker
-
-Start the full stack (PostgreSQL, Keycloak, and Epistola server):
+The Epistola server is published as `ghcr.io/epistola-app/epistola-suite:latest` and needs a Postgres alongside it. A self-contained `docker run` flow:
 
 ```bash
+docker network create epistola-net
+
+docker run -d --name epistola-pg --network epistola-net \
+  -e POSTGRES_USER=epistola -e POSTGRES_PASSWORD=epistola -e POSTGRES_DB=epistola_suite \
+  postgres:16-alpine
+
+docker run -d --name epistola-server --network epistola-net \
+  -p 4000:4000 \
+  -e SPRING_PROFILES_ACTIVE=demo,localauth \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://epistola-pg:5432/epistola_suite \
+  -e SPRING_DATASOURCE_USERNAME=epistola \
+  -e SPRING_DATASOURCE_PASSWORD=epistola \
+  ghcr.io/epistola-app/epistola-suite:latest
+```
+
+Epistola UI: <http://localhost:4000>. Set the plugin's `baseUrl` to `http://localhost:4000/api`.
+
+### Option B — Compose (this repo)
+
+If you've cloned this repo, [`docker/docker-compose.yml`](docker/docker-compose.yml) orchestrates the full stack via profiles:
+
+| Profile      | What it adds                                               | When to use                                                             |
+| ------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `server`     | Postgres + Keycloak + Epistola server                      | Running Valtimo locally from source against a real Epistola             |
+| `mock`       | Postgres + Keycloak + Epistola mock-server (contract-only) | Offline / CI — exercises the plugin without a real Epistola             |
+| `containers` | Adds pre-built Valtimo demo backend + frontend             | End-to-end demo without building your own Valtimo                       |
+| `reset`      | One-shot DB reset utility                                  | Testing the CronJob/data flows in [Demo Environment](#demo-environment) |
+
+Common combos:
+
+```bash
+# End-to-end demo (Valtimo at :4200, Epistola at :4000):
+docker compose -f docker/docker-compose.yml --profile server --profile containers up -d
+
+# Just the Epistola side, then run your own Valtimo locally:
 docker compose -f docker/docker-compose.yml --profile server up -d
 ```
 
-This starts:
-
-- **PostgreSQL** on `localhost:5432`
-- **Keycloak** on `localhost:8081` (shared `valtimo` realm)
-- **Epistola server** on `localhost:4010` (with SSO via Keycloak)
-
-### Keycloak authentication
-
-Both Valtimo and Epistola share the same Keycloak realm (`valtimo`). The
-Docker Compose setup handles the split-horizon problem (browsers reach
-Keycloak at `localhost:8081`, containers reach it at `keycloak:8080`) using:
-
-- **KC_HOSTNAME** = `http://localhost:8081` — ensures JWT `iss` claims are
-  consistent
-- **KC_HOSTNAME_BACKCHANNEL_DYNAMIC** = `true` — allows containers to reach
-  Keycloak on the internal hostname
-- **EPISTOLA_AUTH_OIDC_BACKCHANNELBASEURL** = `http://keycloak:8080` —
-  Epistola uses this for server-to-server OIDC calls (token, JWK, userinfo)
-
-Default Valtimo users: `admin/admin` and `user/user`. Epistola demo users: `reader@demo/reader`, `editor@demo/editor`, `generator@demo/generator`, `manager@demo/manager`, `admin@demo/admin` (full access).
-
-### Running the test application
-
-Start the backend (connects to the Docker-managed PostgreSQL and Keycloak):
+Run the test-app against the docker stack (build the plugin first so the test-app/frontend picks it up):
 
 ```bash
 ./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev'
-```
-
-Build and start the frontend:
-
-```bash
 cd frontend/plugin && pnpm build
 cd ../../test-app/frontend && pnpm start
 ```
 
-Open `http://localhost:4200` (Valtimo) or `http://localhost:4010` (Epistola).
+Open <http://localhost:4200> (Valtimo) or <http://localhost:4000> (Epistola).
 
-### Using the mock server instead
+#### Keycloak SSO between Valtimo and Epistola
 
-For quick tests without a real Epistola server:
+Both Valtimo and Epistola share the `valtimo` realm. The compose setup handles the split-horizon problem (browsers reach Keycloak at `localhost:8081`, containers reach it at `keycloak:8080`) using:
 
-```bash
-docker compose -f docker/docker-compose.yml --profile mock up -d
-```
+- **`KC_HOSTNAME`** = `http://localhost:8081` — keeps JWT `iss` claims consistent.
+- **`KC_HOSTNAME_BACKCHANNEL_DYNAMIC`** = `true` — allows containers to reach Keycloak on the internal hostname.
+- **`EPISTOLA_AUTH_OIDC_BACKCHANNELBASEURL`** = `http://keycloak:8080` — Epistola uses this for server-to-server OIDC calls (token, JWK, userinfo).
+
+### Option C — Bring your own
+
+Run the Epistola server somewhere reachable and set `baseUrl` accordingly. The plugin doesn't care how it's hosted.
+
+### Ports
+
+| Service                             | URL                                                                                                                 |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Epistola server (`server` profile)  | <http://localhost:4000>                                                                                             |
+| Epistola mock (`mock` profile)      | <http://localhost:4010> (mock listens on 4010 internally — kept distinct so it's never confused with a real server) |
+| Keycloak                            | <http://localhost:8081>                                                                                             |
+| Valtimo (with `containers` profile) | <http://localhost:4200>                                                                                             |
+
+### Default credentials
+
+- **Valtimo / Keycloak:** `admin/admin`, `user/user`
+- **Epistola server demo users:** `reader@demo/reader`, `editor@demo/editor`, `generator@demo/generator`, `manager@demo/manager`, `admin@demo/admin` (full access)
+- **Plugin → Epistola API key (demo profile):** tenant `demo` with the deterministic key in [`test-app/backend/src/main/resources/config/app.pluginconfig.json`](test-app/backend/src/main/resources/config/app.pluginconfig.json)
 
 ## Kubernetes Deployment
 
