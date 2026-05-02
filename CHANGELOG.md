@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **`jsonata` declared as a frontend peer dependency** — `frontend/plugin/src/lib/utils/jsonata-converter.ts` imports `jsonata` at runtime, but the package was only listed under `devDependencies`. Consumers installing `@epistola.app/valtimo-plugin` would crash at runtime with a missing module. Added to `peerDependencies` (kept in `devDependencies` so the lib's own build/tests still work standalone, same pattern as `@valtimo/*`). Also added the dep to `test-app/frontend/package.json` so local dev mirrors a real consumer.
+
 - **Gradle 9 compatibility** — Bumped `foojay-resolver-convention` from `0.8.0` to `1.0.0`. The old version referenced `JvmVendorSpec.IBM_SEMERU`, which was removed in Gradle 9, causing settings evaluation to fail when loading the project.
 - **`:test-app:backend` testcontainers resolution** — Added `testImplementation(platform(libs.testcontainers.bom))` so the renamed Testcontainers 2.x artifact (`org.testcontainers:testcontainers-postgresql`) gets a version. Previously the Valtimo BOM only managed the old 1.x name (`org.testcontainers:postgresql`), so the dependency resolved with no version and the build failed.
 

@@ -47,6 +47,7 @@
     "@valtimo/plugin": "^13.21.0",
     "@valtimo/process-link": "^13.21.0",
     "@valtimo/security": "^13.21.0",
-    "@valtimo/shared": "^13.21.0"
+    "@valtimo/shared": "^13.21.0",
+    "jsonata": "^2.1.0"
   }
 }
