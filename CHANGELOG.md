@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **CI workflows install mise before invoking `./gradlew`** — the gradle wrapper is a `mise exec -- gradle` shim, but `mise` isn't on the GitHub Actions runner by default, causing `exec: mise: not found`. Replaced `actions/setup-java@v4` with `jdx/mise-action@v2` in `ci.yml` and `release.yml` (build + publish-backend + docker-backend jobs). Mise installs JDK and Gradle from `.mise.toml`, so CI now mirrors local dev exactly. `setup-gradle@v4` is kept for build caching.
+
 - **`jsonata` declared as a frontend peer dependency** — `frontend/plugin/src/lib/utils/jsonata-converter.ts` imports `jsonata` at runtime, but the package was only listed under `devDependencies`. Consumers installing `@epistola.app/valtimo-plugin` would crash at runtime with a missing module. Added to `peerDependencies` (kept in `devDependencies` so the lib's own build/tests still work standalone, same pattern as `@valtimo/*`). Also added the dep to `test-app/frontend/package.json` so local dev mirrors a real consumer.
 
 - **Gradle 9 compatibility** — Bumped `foojay-resolver-convention` from `0.8.0` to `1.0.0`. The old version referenced `JvmVendorSpec.IBM_SEMERU`, which was removed in Gradle 9, causing settings evaluation to fail when loading the project.
