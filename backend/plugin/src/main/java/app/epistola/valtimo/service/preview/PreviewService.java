@@ -82,6 +82,13 @@ public class PreviewService {
                 }
                 return null;
             });
+            // Enumeration ($keys($pv), $pv.*): overlay overrides on top of process variables
+            evalCtxBuilder.processVariableEnumerator(() -> {
+                Map<String, Object> base = request.processInstanceId() != null
+                        ? runtimeService.getVariables(request.processInstanceId())
+                        : Map.of();
+                return pvOverrides != null ? new OverlayMap(pvOverrides, base) : base;
+            });
         }
 
         Map<String, Object> resolvedData = jsonataMappingService.evaluate(evalCtxBuilder.build());

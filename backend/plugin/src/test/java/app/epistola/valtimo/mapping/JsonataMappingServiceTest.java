@@ -320,6 +320,39 @@ class JsonataMappingServiceTest {
     }
 
     @Nested
+    class ProcessVariableEnumeration {
+
+        @Test
+        void shouldEnumerateProcessVariablesViaKeys() {
+            Map<String, Object> pv = Map.of("alpha", 1, "beta", 2, "gamma", 3);
+            var ctx = EvaluationContext.builder()
+                    .expression("{ \"names\": $keys($pv) }")
+                    .processVariableResolver(pv::get)
+                    .processVariableEnumerator(() -> pv)
+                    .build();
+
+            Map<String, Object> result = service.evaluate(ctx);
+
+            @SuppressWarnings("unchecked")
+            List<String> names = (List<String>) result.get("names");
+            assertThat(names).containsExactlyInAnyOrder("alpha", "beta", "gamma");
+        }
+
+        @Test
+        void shouldReturnEmptyKeysWhenNoEnumeratorSupplied() {
+            var ctx = EvaluationContext.builder()
+                    .expression("{ \"names\": $keys($pv) }")
+                    .processVariableResolver(name -> "ignored")
+                    .build();
+
+            Map<String, Object> result = service.evaluate(ctx);
+
+            // Without an enumerator, $keys returns nothing — preserves legacy behavior
+            assertThat(result.get("names")).isNull();
+        }
+    }
+
+    @Nested
     class CustomFunctions {
 
         @BeforeEach

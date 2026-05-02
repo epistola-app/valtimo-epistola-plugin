@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Enumerable `$pv` in JSONata** — `LazyProcessVariableMap` now supports an optional bulk loader so JSONata expressions like `$keys($pv)`, `$each($pv, ...)`, and `$pv.*` see actual variables instead of an empty map. Per-key access (`$pv.someVar`) keeps its existing lazy resolver path. `EvaluationContext` gained a `processVariableEnumerator` builder method; both `EpistolaPlugin` (using `execution::getVariables`) and `PreviewService` (overlaying input overrides on top of `runtimeService.getVariables(processInstanceId)`) now supply it.
+
 - **Input-level overrides for document preview** — The `epistola-document-preview` Formio component can now be configured with a specific process link (`processDefinitionKey` + `sourceActivityId`) and an override mapping that feeds form field values into the template as `$doc`/`$pv` overrides before JSONata evaluation. This enables live document previews while users are still filling in forms.
 - **Dynamic JSONata expressions for variantId, variant attributes, and filename** — All single-value fields in the generate-document action now support JSONata expressions (e.g., `$pv.letterType`, `"besluit-" & $doc.name & ".pdf"`). Added `evaluateScalar()` to `JsonataMappingService` for scalar evaluation with the same `$doc`/`$pv`/`$case` bindings. Frontend adds `fx` toggle buttons to switch between dropdown/plain input and expression mode.
 

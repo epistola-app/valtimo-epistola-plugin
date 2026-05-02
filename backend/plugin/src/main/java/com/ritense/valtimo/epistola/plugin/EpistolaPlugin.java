@@ -273,6 +273,7 @@ public class EpistolaPlugin {
                     .expression(dataMapping != null ? dataMapping : "")
                     .documentResolver(this::loadDocumentContent)
                     .processVariableResolver(execution::getVariable)
+                    .processVariableEnumerator(execution::getVariables)
                     .execution(execution)
                     .documentId(execution.getBusinessKey())
                     .build();
@@ -461,6 +462,7 @@ public class EpistolaPlugin {
                 .expression(expression)
                 .documentResolver(this::loadDocumentContent)
                 .processVariableResolver(execution::getVariable)
+                .processVariableEnumerator(execution::getVariables)
                 .execution(execution)
                 .documentId(execution.getBusinessKey())
                 .build();

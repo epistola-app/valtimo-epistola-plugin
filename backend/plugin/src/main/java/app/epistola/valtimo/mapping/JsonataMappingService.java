@@ -163,7 +163,12 @@ public class JsonataMappingService {
 
     private Map<String, Object> buildProcessVariableMap(EvaluationContext ctx) {
         if (ctx.getProcessVariableResolver() != null) {
-            return new LazyProcessVariableMap(ctx.getProcessVariableResolver());
+            return new LazyProcessVariableMap(
+                    ctx.getProcessVariableResolver(),
+                    ctx.getProcessVariableEnumerator());
+        }
+        if (ctx.getProcessVariableEnumerator() != null) {
+            return new LazyProcessVariableMap(name -> null, ctx.getProcessVariableEnumerator());
         }
         return Map.of();
     }
