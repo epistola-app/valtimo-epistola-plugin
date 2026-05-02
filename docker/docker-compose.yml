@@ -9,7 +9,7 @@ services:
       SPRING_DATASOURCE_USERNAME: epistola
       SPRING_DATASOURCE_PASSWORD: epistola
     ports:
-      - "4010:4000"
+      - "4000:4000"
     depends_on:
       ved-postgres:
         condition: service_healthy
