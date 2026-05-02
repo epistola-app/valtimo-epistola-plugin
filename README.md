@@ -103,6 +103,33 @@ Source of truth: `app.epistola.valtimo.config.EpistolaProperties`.
 
 > When setting `epistola.enabled=false`, first remove any existing Epistola plugin configurations and process links from the Valtimo database. Otherwise the frontend keeps showing stale entries that fail on every API call (the backend endpoints no longer exist).
 
+## Catalog auto-deployment
+
+When a plugin configuration has `templateSyncEnabled: true`, the plugin scans the classpath for Epistola catalogs on `ApplicationReadyEvent` and pushes them to the Epistola server. Idempotent and version-tracked — repeated startups are no-ops unless `release.version` in `catalog.json` changes.
+
+### Layout on the classpath
+
+```
+src/main/resources/config/epistola/catalogs/
+  ├── municipality-demo/
+  │   ├── catalog.json              # required — declares slug, release version, templates
+  │   └── resources/
+  │       └── template/
+  │           ├── besluit-bezwaar.json
+  │           ├── voorwaarden-bijlage.json
+  │           └── …
+  └── another-catalog/
+      └── …
+```
+
+Each `catalog.json` must include at minimum a `catalog.slug` and a `release.version` — the slug is the catalog's identity in Epistola, the version drives the redeploy decision.
+
+### Worked example
+
+The `:test-app:backend` module ships a complete `municipality-demo` catalog with eight Dutch municipal templates — see [`test-app/backend/src/main/resources/config/epistola/catalogs/municipality-demo/`](test-app/backend/src/main/resources/config/epistola/catalogs/municipality-demo/). It's enabled via [`test-app/backend/src/main/resources/config/app.pluginconfig.json`](test-app/backend/src/main/resources/config/app.pluginconfig.json) (`templateSyncEnabled: true`). Replicate that structure in your own Valtimo backend to ship templates alongside your application code.
+
+Implementation: `app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger` + `CatalogScanner` (classpath glob `classpath*:config/epistola/catalogs/*/catalog.json`).
+
 ## Project Structure
 
 ```
