@@ -73,13 +73,13 @@ There are two configuration layers — application-wide settings (in `applicatio
 
 Filled in via the Valtimo console form when creating an Epistola plugin configuration.
 
-| Property | Type | Required | Secret | Description |
-|---|---|---|---|---|
-| `baseUrl` | string | yes | no | Base URL of the Epistola API, e.g. `http://localhost:4000/api` for a local Docker run. |
-| `apiKey` | string | yes | yes | API key minted in the Epistola server's UI under **Settings → API Keys**. |
-| `tenantId` | string | yes | no | Tenant slug in Epistola — 3–63 characters, lowercase alphanumeric with hyphens. |
-| `defaultEnvironmentId` | string | no | no | Default environment slug for document generation, 3–30 chars. Can be overridden per action at process-time. |
-| `templateSyncEnabled` | boolean | no | no | When `true`, the plugin automatically syncs catalogs from the classpath on startup — see [Catalog auto-deployment](#catalog-auto-deployment). Default `false`. |
+| Property               | Type    | Required | Secret | Description                                                                                                                                                    |
+| ---------------------- | ------- | -------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `baseUrl`              | string  | yes      | no     | Base URL of the Epistola API, e.g. `http://localhost:4000/api` for a local Docker run.                                                                         |
+| `apiKey`               | string  | yes      | yes    | API key minted in the Epistola server's UI under **Settings → API Keys**.                                                                                      |
+| `tenantId`             | string  | yes      | no     | Tenant slug in Epistola — 3–63 characters, lowercase alphanumeric with hyphens.                                                                                |
+| `defaultEnvironmentId` | string  | no       | no     | Default environment slug for document generation, 3–30 chars. Can be overridden per action at process-time.                                                    |
+| `templateSyncEnabled`  | boolean | no       | no     | When `true`, the plugin automatically syncs catalogs from the classpath on startup — see [Catalog auto-deployment](#catalog-auto-deployment). Default `false`. |
 
 > **First-time setup against the demo Epistola server** (`SPRING_PROFILES_ACTIVE=demo,localauth`): the demo profile seeds tenant `demo` with a deterministic API key. See [`test-app/backend/src/main/resources/config/app.pluginconfig.json`](test-app/backend/src/main/resources/config/app.pluginconfig.json) for the exact values shipped with the demo image.
 
@@ -89,14 +89,14 @@ Configure under `epistola:` in `application.yml`:
 
 ```yaml
 epistola:
-  enabled: true                    # disable the plugin entirely (default: true)
-  base-url: ${EPISTOLA_BASE_URL}   # fallback baseUrl, also used by classpath-deployed plugin configs
+  enabled: true # disable the plugin entirely (default: true)
+  base-url: ${EPISTOLA_BASE_URL} # fallback baseUrl, also used by classpath-deployed plugin configs
   retry-form:
-    enabled: true                  # auto-deploy the retry form for case failures (default: true)
-    case-filter: "all"             # "all" | "none" | regex on case definition keys
+    enabled: true # auto-deploy the retry form for case failures (default: true)
+    case-filter: "all" # "all" | "none" | regex on case definition keys
   poller:
-    enabled: true                  # poll Epistola for async job completion (default: true)
-    interval: 30000                # poll cycle in ms (default: 30000)
+    enabled: true # poll Epistola for async job completion (default: true)
+    interval: 30000 # poll cycle in ms (default: 30000)
 ```
 
 Source of truth: `app.epistola.valtimo.config.EpistolaProperties`.
@@ -232,12 +232,12 @@ Epistola UI: <http://localhost:4000>. Set the plugin's `baseUrl` to `http://loca
 
 If you've cloned this repo, [`docker/docker-compose.yml`](docker/docker-compose.yml) orchestrates the full stack via profiles:
 
-| Profile | What it adds | When to use |
-|---|---|---|
-| `server` | Postgres + Keycloak + Epistola server | Running Valtimo locally from source against a real Epistola |
-| `mock` | Postgres + Keycloak + Epistola mock-server (contract-only) | Offline / CI — exercises the plugin without a real Epistola |
-| `containers` | Adds pre-built Valtimo demo backend + frontend | End-to-end demo without building your own Valtimo |
-| `reset` | One-shot DB reset utility | Testing the CronJob/data flows in [Demo Environment](#demo-environment) |
+| Profile      | What it adds                                               | When to use                                                             |
+| ------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `server`     | Postgres + Keycloak + Epistola server                      | Running Valtimo locally from source against a real Epistola             |
+| `mock`       | Postgres + Keycloak + Epistola mock-server (contract-only) | Offline / CI — exercises the plugin without a real Epistola             |
+| `containers` | Adds pre-built Valtimo demo backend + frontend             | End-to-end demo without building your own Valtimo                       |
+| `reset`      | One-shot DB reset utility                                  | Testing the CronJob/data flows in [Demo Environment](#demo-environment) |
 
 Common combos:
 
@@ -273,12 +273,12 @@ Run the Epistola server somewhere reachable and set `baseUrl` accordingly. The p
 
 ### Ports
 
-| Service | URL |
-|---|---|
-| Epistola server (`server` profile) | <http://localhost:4000> |
-| Epistola mock (`mock` profile) | <http://localhost:4010> (mock listens on 4010 internally — kept distinct so it's never confused with a real server) |
-| Keycloak | <http://localhost:8081> |
-| Valtimo (with `containers` profile) | <http://localhost:4200> |
+| Service                             | URL                                                                                                                 |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Epistola server (`server` profile)  | <http://localhost:4000>                                                                                             |
+| Epistola mock (`mock` profile)      | <http://localhost:4010> (mock listens on 4010 internally — kept distinct so it's never confused with a real server) |
+| Keycloak                            | <http://localhost:8081>                                                                                             |
+| Valtimo (with `containers` profile) | <http://localhost:4200>                                                                                             |
 
 ### Default credentials
 
