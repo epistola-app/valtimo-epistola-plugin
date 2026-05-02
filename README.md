@@ -65,6 +65,44 @@ import { PLUGINS_TOKEN } from "@valtimo/plugin";
 export class AppModule {}
 ```
 
+## Required configuration
+
+There are two configuration layers — application-wide settings (in `application.yml`) and per-instance settings (created in the Valtimo console under **Admin → Plugins → Epistola Document Suite**).
+
+### Per-instance plugin properties
+
+Filled in via the Valtimo console form when creating an Epistola plugin configuration.
+
+| Property | Type | Required | Secret | Description |
+|---|---|---|---|---|
+| `baseUrl` | string | yes | no | Base URL of the Epistola API, e.g. `http://localhost:4000/api` for a local Docker run. |
+| `apiKey` | string | yes | yes | API key minted in the Epistola server's UI under **Settings → API Keys**. |
+| `tenantId` | string | yes | no | Tenant slug in Epistola — 3–63 characters, lowercase alphanumeric with hyphens. |
+| `defaultEnvironmentId` | string | no | no | Default environment slug for document generation, 3–30 chars. Can be overridden per action at process-time. |
+| `templateSyncEnabled` | boolean | no | no | When `true`, the plugin automatically syncs catalogs from the classpath on startup — see [Catalog auto-deployment](#catalog-auto-deployment). Default `false`. |
+
+> **First-time setup against the demo Epistola server** (`SPRING_PROFILES_ACTIVE=demo,localauth`): the demo profile seeds tenant `demo` with a deterministic API key. See [`test-app/backend/src/main/resources/config/app.pluginconfig.json`](test-app/backend/src/main/resources/config/app.pluginconfig.json) for the exact values shipped with the demo image.
+
+### Application-wide settings
+
+Configure under `epistola:` in `application.yml`:
+
+```yaml
+epistola:
+  enabled: true                    # disable the plugin entirely (default: true)
+  base-url: ${EPISTOLA_BASE_URL}   # fallback baseUrl, also used by classpath-deployed plugin configs
+  retry-form:
+    enabled: true                  # auto-deploy the retry form for case failures (default: true)
+    case-filter: "all"             # "all" | "none" | regex on case definition keys
+  poller:
+    enabled: true                  # poll Epistola for async job completion (default: true)
+    interval: 30000                # poll cycle in ms (default: 30000)
+```
+
+Source of truth: `app.epistola.valtimo.config.EpistolaProperties`.
+
+> When setting `epistola.enabled=false`, first remove any existing Epistola plugin configurations and process links from the Valtimo database. Otherwise the frontend keeps showing stale entries that fail on every API call (the backend endpoints no longer exist).
+
 ## Project Structure
 
 ```
@@ -136,21 +174,6 @@ pnpm start
 ```bash
 pnpm build
 ```
-
-## Configuration
-
-### Feature Toggle
-
-The plugin can be disabled entirely by setting `epistola.enabled=false` in `application.yml`:
-
-```yaml
-epistola:
-  enabled: false
-```
-
-When disabled, no Epistola beans are registered (REST endpoints, plugin factory, poller, callback handler, etc.). The default is `true`.
-
-**Important:** This toggle is backend-only. Before disabling, remove any existing Epistola plugin configurations and process links from the Valtimo database. Otherwise, the frontend will still show stale entries that fail on all API calls since the backend endpoints no longer exist.
 
 ## Local Development with Docker
 
