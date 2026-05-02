@@ -101,6 +101,11 @@ public interface EpistolaService {
      * @param format             The output format (PDF or HTML)
      * @param filename           The desired filename for the generated document
      * @param correlationId      Optional correlation ID for tracking
+     * @param routingKey         Optional routing key controlling which collector node receives the
+     *                           generation result. Pass a key produced by
+     *                           {@code EpistolaResultCollectorRunner#routingKeyFor(...)} so the result
+     *                           comes back to this Valtimo node. May be {@code null}, in which case
+     *                           the server uses the request id as the routing key.
      * @return The generation job result containing the request ID
      */
     GenerationJobResult submitGenerationJob(
@@ -115,7 +120,8 @@ public interface EpistolaService {
             Map<String, Object> data,
             FileFormat format,
             String filename,
-            String correlationId
+            String correlationId,
+            String routingKey
     );
 
     /**

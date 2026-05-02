@@ -145,7 +145,7 @@ pnpm format:check   # check only (used in CI)
 - **Variant selection**: 3 modes — default, explicit variantId, or attribute-based automatic selection
 - **Value resolution**: Supports `doc:`, `pv:`, `case:`, `template:` prefixes in data mappings
 - **Security**: Callback endpoint public (webhooks), admin endpoints require `ROLE_ADMIN`, all other endpoints authenticated
-- **Configuration**: Spring Boot auto-configuration with feature toggles (`epistola.enabled`, `epistola.poller.enabled`, `epistola.retry-form.enabled`)
+- **Configuration**: Spring Boot auto-configuration with feature toggles (`epistola.enabled`, `epistola.result-collector.enabled`, `epistola.retry-form.enabled`)
 
 ### Frontend
 

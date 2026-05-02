@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Replaced per-execution polling with the `ResultCollector`** — `PollingCompletionEventConsumer` is gone. A single `EpistolaResultCollectorRunner` bean now manages one `ResultCollector` per active Epistola plugin configuration, streaming completed/failed results from `POST /tenants/{tenantId}/generation/collect` (NDJSON, gzip-negotiated, sequence-acked). Each result is delivered to the existing `EpistolaMessageCorrelationService` with the same `epistola:job:{tenantId}/{requestId}` job path encoding, so deployed BPMN processes don't need any changes. Significantly lower load on the suite (no per-request status polling).
+- **`generate-document` action passes `routingKey` on submit** — derived from `EpistolaResultCollectorRunner.routingKeyFor(...)` so the result is routed back to this Valtimo node's collector partition. Falls back to the server's default (hash of `requestId`) when the collector hasn't completed its first poll yet.
+- **Bumped contract dependency to `0.3.0`** (`app.epistola.contract:client-spring3-restclient`).
+- **Plugin properties** — `epistola.poller.*` removed; replaced by `epistola.result-collector.*` (`enabled`, `batch-size`, `min-interval-ms`, `max-interval-ms`, `reconcile-interval-ms`).
+- **Outbound requests now carry the contract's identity headers** (`User-Agent: epistola-contract/<version> valtimo-epistola-plugin/<version>` and `X-EP-Node-Id`), required by contract v0.3+. `EpistolaApiClientFactory` wires the `ClientIdentity` interceptor onto every `RestClient` it builds.
+
+### Removed
+
+- **`PollingCompletionEventConsumer`** and the `EpistolaCompletionEventConsumer` interface — superseded by `EpistolaResultCollectorRunner`.
+- **`EpistolaCallbackResource`** — the placeholder webhook endpoint (`POST /api/v1/plugin/epistola/callback/generation-complete`) is gone. The suite never wired this path; with the result collector in place there's no remaining need for a push channel.
+- **Plugin properties `epistola.poller.enabled` / `epistola.poller.interval`** — see `Changed` above for the replacements.
+
+### Notes
+
+- Authentication remains on `X-API-Key` for this PR. JWT (self-signed + OAuth) and consumer onboarding are deferred to a follow-up PR.
+
 ### Fixed
 
 - **CI workflows install mise before invoking `./gradlew`** — the gradle wrapper is a `mise exec -- gradle` shim, but `mise` isn't on the GitHub Actions runner by default, causing `exec: mise: not found`. Replaced `actions/setup-java@v4` with `jdx/mise-action@v2` in `ci.yml` and `release.yml` (build + publish-backend + docker-backend jobs). Mise installs JDK and Gradle from `.mise.toml`, so CI now mirrors local dev exactly. `setup-gradle@v4` is kept for build caching.

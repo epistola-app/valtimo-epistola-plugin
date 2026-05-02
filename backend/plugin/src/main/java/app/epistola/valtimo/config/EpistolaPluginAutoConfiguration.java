@@ -10,17 +10,15 @@ import app.epistola.valtimo.expression.functions.FormatDateFunction;
 import app.epistola.valtimo.expression.functions.StringFunctions;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
-import app.epistola.valtimo.service.completion.EpistolaCompletionEventConsumer;
+import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
 import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
 import app.epistola.valtimo.service.form.FormioFormGenerator;
-import app.epistola.valtimo.service.completion.PollingCompletionEventConsumer;
 import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.form.RetryFormService;
 import app.epistola.valtimo.web.rest.EpistolaAdminResource;
-import app.epistola.valtimo.web.rest.EpistolaCallbackResource;
 import app.epistola.valtimo.web.rest.EpistolaGenerationResource;
 import app.epistola.valtimo.web.rest.EpistolaTemplateResource;
 import app.epistola.valtimo.web.rest.EpistolaToolingResource;
@@ -102,10 +100,11 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaService epistolaService,
             ObjectMapper objectMapper,
             JsonataMappingService jsonataMappingService,
-            com.ritense.document.service.DocumentService documentService
+            com.ritense.document.service.DocumentService documentService,
+            EpistolaResultCollectorRunner resultCollectorRunner
     ) {
         return new EpistolaPluginFactory(pluginService, epistolaService,
-                objectMapper, jsonataMappingService, documentService);
+                objectMapper, jsonataMappingService, documentService, resultCollectorRunner);
     }
 
     @Bean
@@ -228,25 +227,18 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(EpistolaCallbackResource.class)
-    public EpistolaCallbackResource epistolaCallbackResource(
-            EpistolaMessageCorrelationService correlationService
-    ) {
-        return new EpistolaCallbackResource(correlationService);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(EpistolaCompletionEventConsumer.class)
-    @ConditionalOnProperty(name = "epistola.poller.enabled", havingValue = "true", matchIfMissing = true)
-    public PollingCompletionEventConsumer pollingCompletionEventConsumer(
-            RuntimeService runtimeService,
+    @ConditionalOnMissingBean(EpistolaResultCollectorRunner.class)
+    public EpistolaResultCollectorRunner epistolaResultCollectorRunner(
             PluginService pluginService,
-            EpistolaService epistolaService
+            EpistolaApiClientFactory apiClientFactory,
+            EpistolaMessageCorrelationService correlationService,
+            EpistolaProperties properties
     ) {
-        return new PollingCompletionEventConsumer(
-                runtimeService,
+        return new EpistolaResultCollectorRunner(
                 pluginService,
-                epistolaService
+                apiClientFactory,
+                correlationService,
+                properties
         );
     }
 

@@ -18,7 +18,7 @@ public class EpistolaProperties {
      */
     private boolean enabled = true;
 
-    private final Poller poller = new Poller();
+    private final ResultCollector resultCollector = new ResultCollector();
     private final RetryForm retryForm = new RetryForm();
 
     @Data
@@ -40,17 +40,33 @@ public class EpistolaProperties {
     }
 
     @Data
-    public static class Poller {
+    public static class ResultCollector {
 
         /**
-         * Whether the polling completion event consumer is enabled.
-         * Disable when using webhooks or event API for completion notifications.
+         * Whether the result collector is enabled.
+         * When false, generated documents will not be picked up automatically.
          */
         private boolean enabled = true;
 
         /**
-         * Fixed delay in milliseconds between poll cycles.
+         * Maximum number of results requested per /generation/collect call.
          */
-        private long interval = 30000;
+        private int batchSize = 100;
+
+        /**
+         * Minimum poll interval (ms) when results are flowing.
+         */
+        private long minIntervalMs = 1000;
+
+        /**
+         * Maximum poll interval (ms) when the queue is idle.
+         */
+        private long maxIntervalMs = 30000;
+
+        /**
+         * Reconciliation interval (ms) for the runner to check for new/removed
+         * plugin configurations and start/stop their collectors accordingly.
+         */
+        private long reconcileIntervalMs = 60000;
     }
 }
