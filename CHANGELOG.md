@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Removed JSONata signature reflection hack** — `JsonataMappingService` no longer uses reflection to null out `Jsonata.JFunction.signature` after construction. The previous code passed the function name into the JFunction constructor's `signature` parameter (causing a parse failure), then patched it via reflection. Now passes `null` for the signature directly — same effect, no dependency on JSONata internals.
+- **Custom JSONata function failures now throw instead of silently returning `null`** — `JsonataMappingService.registerCustomFunctions` previously caught all exceptions from custom function bodies and returned `null` to JSONata, producing wrong template data with no error trail. It now rethrows as `ExpressionEvaluationException` (unwrapping `InvocationTargetException` so the original cause is preserved). Brings custom functions in line with how the rest of the evaluator already surfaces errors.
 
 ### Added
 

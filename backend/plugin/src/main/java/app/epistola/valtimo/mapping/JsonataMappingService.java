@@ -2,12 +2,14 @@ package app.epistola.valtimo.mapping;
 
 import app.epistola.valtimo.expression.DefaultExpressionContext;
 import app.epistola.valtimo.expression.ExpressionContext;
+import app.epistola.valtimo.expression.ExpressionEvaluationException;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import com.dashjoin.jsonata.Jsonata;
 import com.dashjoin.jsonata.Jsonata.Frame;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
 import static com.dashjoin.jsonata.Jsonata.jsonata;
@@ -182,9 +184,15 @@ public class JsonataMappingService {
                     fullArgs[0] = exprCtx;
                     System.arraycopy(argsArray, 0, fullArgs, 1, argsArray.length);
                     return match.method().invoke(match.bean(), fullArgs);
+                } catch (InvocationTargetException e) {
+                    Throwable cause = e.getTargetException();
+                    throw new ExpressionEvaluationException(
+                            "Custom function '" + name + "' failed: " + cause.getMessage(), cause);
+                } catch (ExpressionEvaluationException e) {
+                    throw e;
                 } catch (Exception e) {
-                    log.warn("Custom function '{}' failed: {}", name, e.getMessage());
-                    return null;
+                    throw new ExpressionEvaluationException(
+                            "Custom function '" + name + "' invocation failed: " + e.getMessage(), e);
                 }
             };
             Jsonata.JFunction jFunc = new Jsonata.JFunction(callable, null);

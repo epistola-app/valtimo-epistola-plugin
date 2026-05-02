@@ -1,8 +1,9 @@
 package app.epistola.valtimo.mapping;
 
-import app.epistola.valtimo.expression.ExpressionContext;
-import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
+import app.epistola.valtimo.expression.ExpressionContext;
+import app.epistola.valtimo.expression.ExpressionEvaluationException;
+import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -351,6 +352,52 @@ class JsonataMappingServiceTest {
             Map<String, Object> result = service.evaluate(expression, doc, Map.of(), Map.of());
 
             assertThat(result).containsEntry("greeting", "Hello, World!");
+        }
+
+        @Test
+        void shouldRethrowCustomFunctionExceptionWithCause() {
+            EpistolaExpressionFunction throwing = new EpistolaExpressionFunction() {
+                @Override
+                public String name() { return "boom"; }
+
+                @Override
+                public String description() { return "Always throws"; }
+
+                @SuppressWarnings("unused")
+                public String execute(ExpressionContext ctx, String input) {
+                    throw new IllegalStateException("kaboom");
+                }
+            };
+            service = new JsonataMappingService(new ExpressionFunctionRegistry(List.of(throwing)));
+
+            assertThatThrownBy(() -> service.evaluate(
+                    "{ \"x\": $boom('hi') }", Map.of(), Map.of(), Map.of()))
+                    .isInstanceOf(ExpressionEvaluationException.class)
+                    .hasMessageContaining("boom")
+                    .hasMessageContaining("kaboom")
+                    .hasCauseInstanceOf(IllegalStateException.class);
+        }
+
+        @Test
+        void shouldIncludeFunctionNameInErrorMessage() {
+            EpistolaExpressionFunction throwing = new EpistolaExpressionFunction() {
+                @Override
+                public String name() { return "myCustomFunc"; }
+
+                @Override
+                public String description() { return "Throws"; }
+
+                @SuppressWarnings("unused")
+                public String execute(ExpressionContext ctx, String input) {
+                    throw new RuntimeException("inner failure");
+                }
+            };
+            service = new JsonataMappingService(new ExpressionFunctionRegistry(List.of(throwing)));
+
+            assertThatThrownBy(() -> service.evaluate(
+                    "{ \"x\": $myCustomFunc('hi') }", Map.of(), Map.of(), Map.of()))
+                    .isInstanceOf(ExpressionEvaluationException.class)
+                    .hasMessageContaining("myCustomFunc");
         }
     }
 }
