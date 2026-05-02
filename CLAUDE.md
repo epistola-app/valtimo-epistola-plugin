@@ -1,5 +1,9 @@
 # Valtimo Epistola Plugin
 
+## Before committing
+
+Run `pnpm format` before every `git commit` that touches `.md`, `.yaml`, `.yml`, `.ts`, or `.json` files — `pnpm format:check` is the gate CI runs, easier to fix locally than to chase down after pushing. Other pre-push gates (`pnpm test`, `./gradlew :backend:plugin:test`, `pnpm build`) are listed in [Testing](#testing).
+
 ## Build Order
 
 The frontend plugin must be built BEFORE the test-app frontend:
