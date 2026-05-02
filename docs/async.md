@@ -1,5 +1,10 @@
 # Async Document Generation
 
+> For the detailed client-side flow (how the runner manages collectors,
+> how routing keys are computed, multi-instance behavior, the four known
+> edge cases around config drift, node-id uniqueness, backpressure, and
+> the BPMN-subscription race), see [result-collector.md](result-collector.md).
+
 ## The Problem
 
 Document generation via Epistola is asynchronous: you submit a request, get a `requestId`, and the document becomes available later. A naive approach is to add a timer loop inside each BPMN process that polls for completion:
