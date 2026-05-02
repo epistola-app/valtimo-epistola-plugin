@@ -36,9 +36,11 @@ import {
   ExpressionFunctionInfo,
   GenerateDocumentConfig,
   initialResource,
+  JsonataFieldError,
   loadingResource,
   successResource,
   TemplateField,
+  ValidateJsonataRequest,
   VariableSuggestions,
 } from '../../models';
 import { EpistolaPluginService } from '../../services';
@@ -123,6 +125,7 @@ export class GenerateDocumentConfigurationComponent
   variableSuggestions: VariableSuggestions | null = null;
   requiredFieldsStatus: { mapped: number; total: number } = { mapped: 0, total: 0 };
   prefillDataMapping: Record<string, any> = {};
+  validationErrors$ = new BehaviorSubject<JsonataFieldError[]>([]);
 
   private readonly destroy$ = new Subject<void>();
   private saveSubscription!: Subscription;
@@ -617,9 +620,54 @@ export class GenerateDocumentConfigurationComponent
                 .map((e) => ({ key: e.key, value: e.value, required: e.required }));
             }
 
-            this.configuration.emit(config);
+            this.validateAndEmit(config);
           }
         });
     });
+  }
+
+  /**
+   * Build a JSONata validation request from the config and call the backend.
+   * Only fields that are JSONata expressions get validated:
+   * - dataMapping is always JSONata
+   * - filename / variantId only when their `fx` toggle is on
+   * - variant attribute values only when isExpression() reports true
+   * On invalid response, surface errors and abort the emit.
+   * If the validator endpoint itself fails (network/server), proceed with the
+   * emit — the validation is a quality-of-life check, not a hard gate.
+   */
+  private validateAndEmit(config: GenerateDocumentConfig): void {
+    const variantAttributeValues: Record<string, string> = {};
+    if (config.variantAttributes) {
+      for (const attr of config.variantAttributes) {
+        if (isExpression(attr.value)) {
+          variantAttributeValues[attr.key] = attr.value;
+        }
+      }
+    }
+
+    const request: ValidateJsonataRequest = {
+      dataMapping: config.dataMapping || null,
+      filename: this.filenameExpressionMode ? config.filename : null,
+      variantId: this.variantIdExpressionMode ? config.variantId || null : null,
+      variantAttributeValues:
+        Object.keys(variantAttributeValues).length > 0 ? variantAttributeValues : null,
+    };
+
+    this.epistolaPluginService
+      .validateJsonata(request)
+      .pipe(
+        take(1),
+        catchError(() => of({ valid: true, errors: [] as JsonataFieldError[] })),
+      )
+      .subscribe((result) => {
+        if (result.valid) {
+          this.validationErrors$.next([]);
+          this.configuration.emit(config);
+        } else {
+          this.validationErrors$.next(result.errors);
+          this.cdr.markForCheck();
+        }
+      });
   }
 }

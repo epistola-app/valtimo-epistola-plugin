@@ -4,16 +4,23 @@ import app.epistola.valtimo.expression.ExpressionFunctionInfo;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
+import app.epistola.valtimo.web.rest.dto.JsonataValidationResult;
+import app.epistola.valtimo.web.rest.dto.ValidateJsonataRequest;
+import com.dashjoin.jsonata.Jsonata;
 import com.ritense.valtimo.contract.annotation.SkipComponentScan;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST controller for Epistola tooling and suggestion operations.
@@ -72,5 +79,37 @@ public class EpistolaToolingResource {
     @GetMapping("/expression-functions")
     public ResponseEntity<List<ExpressionFunctionInfo>> getExpressionFunctions() {
         return ResponseEntity.ok(expressionFunctionRegistry.listFunctions());
+    }
+
+    /**
+     * Validate the JSONata syntax of action-config expressions at save time.
+     * Parse-only — does not evaluate, so missing variables and runtime type errors
+     * are not detected here.
+     */
+    @PostMapping("/validate-jsonata")
+    public ResponseEntity<JsonataValidationResult> validateJsonata(
+            @RequestBody ValidateJsonataRequest request
+    ) {
+        List<JsonataValidationResult.FieldError> errors = new ArrayList<>();
+        validate("dataMapping", request.dataMapping(), errors);
+        validate("filename", request.filename(), errors);
+        validate("variantId", request.variantId(), errors);
+        if (request.variantAttributeValues() != null) {
+            for (Map.Entry<String, String> entry : request.variantAttributeValues().entrySet()) {
+                validate("variantAttributes." + entry.getKey(), entry.getValue(), errors);
+            }
+        }
+        return ResponseEntity.ok(new JsonataValidationResult(errors.isEmpty(), errors));
+    }
+
+    private void validate(String field, String expression, List<JsonataValidationResult.FieldError> errors) {
+        if (expression == null || expression.isBlank()) {
+            return;
+        }
+        try {
+            Jsonata.jsonata(expression);
+        } catch (Exception e) {
+            errors.add(new JsonataValidationResult.FieldError(field, expression, e.getMessage()));
+        }
     }
 }

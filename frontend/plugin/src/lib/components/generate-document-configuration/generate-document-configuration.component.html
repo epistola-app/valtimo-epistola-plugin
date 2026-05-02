@@ -10,8 +10,21 @@
     templateFields: templateFields$ | async,
     selectedCatalogId: selectedCatalogId$ | async,
     selectedTemplateId: selectedTemplateId$ | async,
+    validationErrors: validationErrors$ | async,
   } as obs"
 >
+  <div
+    *ngIf="obs.validationErrors && obs.validationErrors.length > 0"
+    class="jsonata-validation-errors"
+  >
+    <strong>{{ 'jsonataValidationErrorsHeading' | pluginTranslate: pluginId | async }}</strong>
+    <ul>
+      <li *ngFor="let err of obs.validationErrors">
+        <code>{{ err.field }}</code
+        >: {{ err.message }}
+      </li>
+    </ul>
+  </div>
   <v-select
     name="catalogId"
     [title]="'catalogId' | pluginTranslate: pluginId | async"

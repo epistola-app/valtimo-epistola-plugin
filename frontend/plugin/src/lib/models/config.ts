@@ -85,3 +85,25 @@ export interface EvaluationResult {
   result: Record<string, any> | null;
   error: string | null;
 }
+
+/**
+ * Request body for the JSONata save-time validation endpoint.
+ * All fields are optional; null/blank values are skipped.
+ */
+export interface ValidateJsonataRequest {
+  dataMapping?: string | null;
+  filename?: string | null;
+  variantId?: string | null;
+  variantAttributeValues?: Record<string, string> | null;
+}
+
+export interface JsonataFieldError {
+  field: string;
+  expression: string;
+  message: string;
+}
+
+export interface JsonataValidationResult {
+  valid: boolean;
+  errors: JsonataFieldError[];
+}

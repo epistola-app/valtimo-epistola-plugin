@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Save-time JSONata validation in the generate-document configurator** — A new backend endpoint `POST /api/v1/plugin/epistola/validate-jsonata` parses the configured expressions (dataMapping, filename when in `fx` mode, variantId when in `fx` mode, expression-mode variant attribute values) without evaluating them, returning per-field syntax errors. The configurator calls it on Save and blocks the emit when any expression fails to parse, surfacing field-level errors at the top of the form. Catches malformed expressions like `{ broken` or `$pv.foo &` at design time. Note: this is a syntax check only — typos in variable names and runtime type errors still surface at process execution.
+
 - **Enumerable `$pv` in JSONata** — `LazyProcessVariableMap` now supports an optional bulk loader so JSONata expressions like `$keys($pv)`, `$each($pv, ...)`, and `$pv.*` see actual variables instead of an empty map. Per-key access (`$pv.someVar`) keeps its existing lazy resolver path. `EvaluationContext` gained a `processVariableEnumerator` builder method; both `EpistolaPlugin` (using `execution::getVariables`) and `PreviewService` (overlaying input overrides on top of `runtimeService.getVariables(processInstanceId)`) now supply it.
 
 - **Input-level overrides for document preview** — The `epistola-document-preview` Formio component can now be configured with a specific process link (`processDefinitionKey` + `sourceActivityId`) and an override mapping that feeds form field values into the template as `$doc`/`$pv` overrides before JSONata evaluation. This enables live document previews while users are still filling in forms.
