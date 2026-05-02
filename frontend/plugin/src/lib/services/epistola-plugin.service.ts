@@ -7,10 +7,12 @@ import {
   CatalogInfo,
   EnvironmentInfo,
   ExpressionFunctionInfo,
+  JsonataValidationResult,
   PreviewSource,
   TemplateDetails,
   TemplateInfo,
   EvaluationResult,
+  ValidateJsonataRequest,
   VariableSuggestions,
   VariantInfo,
 } from '../models';
@@ -168,6 +170,14 @@ export class EpistolaPluginService {
    */
   getExpressionFunctions(): Observable<ExpressionFunctionInfo[]> {
     return this.http.get<ExpressionFunctionInfo[]>(`${this.apiEndpoint}/expression-functions`);
+  }
+
+  /**
+   * Validate the JSONata syntax of action-config expressions before save.
+   * Parse-only; runtime errors (missing variables, type mismatches) are not detected.
+   */
+  validateJsonata(request: ValidateJsonataRequest): Observable<JsonataValidationResult> {
+    return this.http.post<JsonataValidationResult>(`${this.apiEndpoint}/validate-jsonata`, request);
   }
 
   /**

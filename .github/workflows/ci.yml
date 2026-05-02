@@ -26,10 +26,7 @@ jobs:
             echo "::warning::Contract version '$VERSION' is a snapshot/feature-stamped version. Update to a released version before merging."
           fi
 
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: 21
+      - uses: jdx/mise-action@v2
 
       - uses: gradle/actions/setup-gradle@v4
 

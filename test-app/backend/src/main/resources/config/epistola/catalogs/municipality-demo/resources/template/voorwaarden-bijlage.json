@@ -389,7 +389,7 @@
                       "text": "Meldingsplicht",
                       "marks": [
                         {
-                          "type": "bold"
+                          "type": "strong"
                         }
                       ]
                     }
@@ -427,7 +427,7 @@
                       "text": "Administratieplicht",
                       "marks": [
                         {
-                          "type": "bold"
+                          "type": "strong"
                         }
                       ]
                     }
@@ -465,7 +465,7 @@
                       "text": "Medewerking controle",
                       "marks": [
                         {
-                          "type": "bold"
+                          "type": "strong"
                         }
                       ]
                     }
@@ -503,7 +503,7 @@
                       "text": "Terugvordering",
                       "marks": [
                         {
-                          "type": "bold"
+                          "type": "strong"
                         }
                       ]
                     }

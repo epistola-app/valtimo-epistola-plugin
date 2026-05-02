@@ -7,9 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **CI workflows install mise before invoking `./gradlew`** — the gradle wrapper is a `mise exec -- gradle` shim, but `mise` isn't on the GitHub Actions runner by default, causing `exec: mise: not found`. Replaced `actions/setup-java@v4` with `jdx/mise-action@v2` in `ci.yml` and `release.yml` (build + publish-backend + docker-backend jobs). Mise installs JDK and Gradle from `.mise.toml`, so CI now mirrors local dev exactly. `setup-gradle@v4` is kept for build caching.
+
+- **`jsonata` declared as a frontend peer dependency** — `frontend/plugin/src/lib/utils/jsonata-converter.ts` imports `jsonata` at runtime, but the package was only listed under `devDependencies`. Consumers installing `@epistola.app/valtimo-plugin` would crash at runtime with a missing module. Added to `peerDependencies` (kept in `devDependencies` so the lib's own build/tests still work standalone, same pattern as `@valtimo/*`). Also added the dep to `test-app/frontend/package.json` so local dev mirrors a real consumer.
+
+- **Gradle 9 compatibility** — Bumped `foojay-resolver-convention` from `0.8.0` to `1.0.0`. The old version referenced `JvmVendorSpec.IBM_SEMERU`, which was removed in Gradle 9, causing settings evaluation to fail when loading the project.
+- **`:test-app:backend` testcontainers resolution** — Added `testImplementation(platform(libs.testcontainers.bom))` so the renamed Testcontainers 2.x artifact (`org.testcontainers:testcontainers-postgresql`) gets a version. Previously the Valtimo BOM only managed the old 1.x name (`org.testcontainers:postgresql`), so the dependency resolved with no version and the build failed.
+
+### Changed
+
+- **Removed JSONata signature reflection hack** — `JsonataMappingService` no longer uses reflection to null out `Jsonata.JFunction.signature` after construction. The previous code passed the function name into the JFunction constructor's `signature` parameter (causing a parse failure), then patched it via reflection. Now passes `null` for the signature directly — same effect, no dependency on JSONata internals.
+- **Custom JSONata function failures now throw instead of silently returning `null`** — `JsonataMappingService.registerCustomFunctions` previously caught all exceptions from custom function bodies and returned `null` to JSONata, producing wrong template data with no error trail. It now rethrows as `ExpressionEvaluationException` (unwrapping `InvocationTargetException` so the original cause is preserved). Brings custom functions in line with how the rest of the evaluator already surfaces errors.
+
 ### Added
 
+- **Save-time JSONata validation in the generate-document configurator** — A new backend endpoint `POST /api/v1/plugin/epistola/validate-jsonata` parses the configured expressions (dataMapping, filename when in `fx` mode, variantId when in `fx` mode, expression-mode variant attribute values) without evaluating them, returning per-field syntax errors. The configurator calls it on Save and blocks the emit when any expression fails to parse, surfacing field-level errors at the top of the form. Catches malformed expressions like `{ broken` or `$pv.foo &` at design time. Note: this is a syntax check only — typos in variable names and runtime type errors still surface at process execution.
+
+- **Enumerable `$pv` in JSONata** — `LazyProcessVariableMap` now supports an optional bulk loader so JSONata expressions like `$keys($pv)`, `$each($pv, ...)`, and `$pv.*` see actual variables instead of an empty map. Per-key access (`$pv.someVar`) keeps its existing lazy resolver path. `EvaluationContext` gained a `processVariableEnumerator` builder method; both `EpistolaPlugin` (using `execution::getVariables`) and `PreviewService` (overlaying input overrides on top of `runtimeService.getVariables(processInstanceId)`) now supply it.
+
 - **Input-level overrides for document preview** — The `epistola-document-preview` Formio component can now be configured with a specific process link (`processDefinitionKey` + `sourceActivityId`) and an override mapping that feeds form field values into the template as `$doc`/`$pv` overrides before JSONata evaluation. This enables live document previews while users are still filling in forms.
+- **Dynamic JSONata expressions for variantId, variant attributes, and filename** — All single-value fields in the generate-document action now support JSONata expressions (e.g., `$pv.letterType`, `"besluit-" & $doc.name & ".pdf"`). Added `evaluateScalar()` to `JsonataMappingService` for scalar evaluation with the same `$doc`/`$pv`/`$case` bindings. Frontend adds `fx` toggle buttons to switch between dropdown/plain input and expression mode.
+
+### Removed
+
+- **ValueResolverService dependency** — The `doc:`, `pv:`, `case:`, `template:` prefix resolution system has been replaced by JSONata. All single-value expression evaluation now uses `JsonataMappingService.evaluateScalar()`.
   - `OverlayMap` — layered Map implementation that checks overrides first, delegates to the base map (e.g. lazy-loaded document) for non-overridden paths. Supports recursive overlay for nested structures.
   - `PreviewRequest.inputOverrides` — new field with `{ "doc": {...}, "pv": {...} }` structure, applied before JSONata evaluation (vs existing `overrides` which is applied after).
   - `EpistolaProcessLinkSelectorComponent` — Formio component for selecting a generate-document process link from a dropdown populated via the admin usage API.

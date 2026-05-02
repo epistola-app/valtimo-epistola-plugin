@@ -1,6 +1,6 @@
 plugins {
     // Settings-level plugin - version catalog not available here, keep in sync with libs.versions.toml
-    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
 rootProject.name = "valtimo-epistola-plugin"

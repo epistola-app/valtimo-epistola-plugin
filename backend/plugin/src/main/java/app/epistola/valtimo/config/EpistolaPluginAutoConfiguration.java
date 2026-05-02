@@ -28,7 +28,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
 import com.ritense.processlink.service.ProcessLinkService;
-import com.ritense.valueresolver.ValueResolverService;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.HistoryService;
 import org.operaton.bpm.engine.RepositoryService;
@@ -101,12 +100,11 @@ public class EpistolaPluginAutoConfiguration {
     public EpistolaPluginFactory epistolaPluginFactory(
             PluginService pluginService,
             EpistolaService epistolaService,
-            ValueResolverService valueResolverService,
             ObjectMapper objectMapper,
             JsonataMappingService jsonataMappingService,
             com.ritense.document.service.DocumentService documentService
     ) {
-        return new EpistolaPluginFactory(pluginService, epistolaService, valueResolverService,
+        return new EpistolaPluginFactory(pluginService, epistolaService,
                 objectMapper, jsonataMappingService, documentService);
     }
 

@@ -1,8 +1,9 @@
 package app.epistola.valtimo.mapping;
 
-import app.epistola.valtimo.expression.ExpressionContext;
-import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
+import app.epistola.valtimo.expression.ExpressionContext;
+import app.epistola.valtimo.expression.ExpressionEvaluationException;
+import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -283,6 +284,75 @@ class JsonataMappingServiceTest {
     }
 
     @Nested
+    class ScalarEvaluation {
+
+        @Test
+        void shouldEvaluateSimpleReference() {
+            var ctx = EvaluationContext.builder()
+                    .expression("$pv.language")
+                    .processVariableResolver(Map.of("language", "nl")::get)
+                    .build();
+
+            assertThat(service.evaluateScalar(ctx)).isEqualTo("nl");
+        }
+
+        @Test
+        void shouldEvaluateStringConcatenation() {
+            var ctx = EvaluationContext.builder()
+                    .expression("\"besluit-\" & $doc.lastName & \".pdf\"")
+                    .documentResolver(id -> Map.of("lastName", "Jansen"))
+                    .build();
+
+            assertThat(service.evaluateScalar(ctx)).isEqualTo("besluit-Jansen.pdf");
+        }
+
+        @Test
+        void shouldReturnNullForNullExpression() {
+            var ctx = EvaluationContext.builder().expression(null).build();
+            assertThat(service.evaluateScalar(ctx)).isNull();
+        }
+
+        @Test
+        void shouldReturnBlankForBlankExpression() {
+            var ctx = EvaluationContext.builder().expression("  ").build();
+            assertThat(service.evaluateScalar(ctx)).isEqualTo("  ");
+        }
+    }
+
+    @Nested
+    class ProcessVariableEnumeration {
+
+        @Test
+        void shouldEnumerateProcessVariablesViaKeys() {
+            Map<String, Object> pv = Map.of("alpha", 1, "beta", 2, "gamma", 3);
+            var ctx = EvaluationContext.builder()
+                    .expression("{ \"names\": $keys($pv) }")
+                    .processVariableResolver(pv::get)
+                    .processVariableEnumerator(() -> pv)
+                    .build();
+
+            Map<String, Object> result = service.evaluate(ctx);
+
+            @SuppressWarnings("unchecked")
+            List<String> names = (List<String>) result.get("names");
+            assertThat(names).containsExactlyInAnyOrder("alpha", "beta", "gamma");
+        }
+
+        @Test
+        void shouldReturnEmptyKeysWhenNoEnumeratorSupplied() {
+            var ctx = EvaluationContext.builder()
+                    .expression("{ \"names\": $keys($pv) }")
+                    .processVariableResolver(name -> "ignored")
+                    .build();
+
+            Map<String, Object> result = service.evaluate(ctx);
+
+            // Without an enumerator, $keys returns nothing — preserves legacy behavior
+            assertThat(result.get("names")).isNull();
+        }
+    }
+
+    @Nested
     class CustomFunctions {
 
         @BeforeEach
@@ -315,6 +385,52 @@ class JsonataMappingServiceTest {
             Map<String, Object> result = service.evaluate(expression, doc, Map.of(), Map.of());
 
             assertThat(result).containsEntry("greeting", "Hello, World!");
+        }
+
+        @Test
+        void shouldRethrowCustomFunctionExceptionWithCause() {
+            EpistolaExpressionFunction throwing = new EpistolaExpressionFunction() {
+                @Override
+                public String name() { return "boom"; }
+
+                @Override
+                public String description() { return "Always throws"; }
+
+                @SuppressWarnings("unused")
+                public String execute(ExpressionContext ctx, String input) {
+                    throw new IllegalStateException("kaboom");
+                }
+            };
+            service = new JsonataMappingService(new ExpressionFunctionRegistry(List.of(throwing)));
+
+            assertThatThrownBy(() -> service.evaluate(
+                    "{ \"x\": $boom('hi') }", Map.of(), Map.of(), Map.of()))
+                    .isInstanceOf(ExpressionEvaluationException.class)
+                    .hasMessageContaining("boom")
+                    .hasMessageContaining("kaboom")
+                    .hasCauseInstanceOf(IllegalStateException.class);
+        }
+
+        @Test
+        void shouldIncludeFunctionNameInErrorMessage() {
+            EpistolaExpressionFunction throwing = new EpistolaExpressionFunction() {
+                @Override
+                public String name() { return "myCustomFunc"; }
+
+                @Override
+                public String description() { return "Throws"; }
+
+                @SuppressWarnings("unused")
+                public String execute(ExpressionContext ctx, String input) {
+                    throw new RuntimeException("inner failure");
+                }
+            };
+            service = new JsonataMappingService(new ExpressionFunctionRegistry(List.of(throwing)));
+
+            assertThatThrownBy(() -> service.evaluate(
+                    "{ \"x\": $myCustomFunc('hi') }", Map.of(), Map.of(), Map.of()))
+                    .isInstanceOf(ExpressionEvaluationException.class)
+                    .hasMessageContaining("myCustomFunc");
         }
     }
 }

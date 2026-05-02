@@ -48,6 +48,7 @@ configurations.runtimeClasspath {
 
 dependencies {
     implementation(platform(libs.valtimo.bom))
+    testImplementation(platform(libs.testcontainers.bom))
 
     implementation(libs.valtimo.dependencies)
 

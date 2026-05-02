@@ -1,6 +1,44 @@
-import { expandDotNotation, computeInputOverrides, FORM_REF_PREFIX } from './preview-utils';
+import {
+  expandDotNotation,
+  computeInputOverrides,
+  isExpression,
+  FORM_REF_PREFIX,
+} from './preview-utils';
 
 describe('preview-utils', () => {
+  describe('isExpression', () => {
+    it('should detect $ variable references', () => {
+      expect(isExpression('$pv.language')).toBe(true);
+      expect(isExpression('$doc.name')).toBe(true);
+    });
+
+    it('should detect string concatenation', () => {
+      expect(isExpression('"besluit-" & $doc.name')).toBe(true);
+    });
+
+    it('should detect function calls', () => {
+      expect(isExpression('$uppercase($doc.name)')).toBe(true);
+    });
+
+    it('should detect conditionals', () => {
+      expect(isExpression('$pv.x ? "a" : "b"')).toBe(true);
+    });
+
+    it('should detect object literals', () => {
+      expect(isExpression('{"key": $pv.val}')).toBe(true);
+    });
+
+    it('should return false for plain literals', () => {
+      expect(isExpression('output.pdf')).toBe(false);
+      expect(isExpression('my-variant')).toBe(false);
+      expect(isExpression('letter-formal')).toBe(false);
+    });
+
+    it('should return false for empty string', () => {
+      expect(isExpression('')).toBe(false);
+    });
+  });
+
   describe('expandDotNotation', () => {
     it('should return simple keys unchanged', () => {
       expect(expandDotNotation({ a: 1 })).toEqual({ a: 1 });

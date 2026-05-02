@@ -36,9 +36,11 @@ import {
   ExpressionFunctionInfo,
   GenerateDocumentConfig,
   initialResource,
+  JsonataFieldError,
   loadingResource,
   successResource,
   TemplateField,
+  ValidateJsonataRequest,
   VariableSuggestions,
 } from '../../models';
 import { EpistolaPluginService } from '../../services';
@@ -46,6 +48,7 @@ import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.compone
 import { ExpectedStructureComponent } from '../expected-structure/expected-structure.component';
 import { MappingBuilderComponent } from '../mapping-builder/mapping-builder.component';
 import { MappingPreviewComponent } from '../mapping-preview/mapping-preview.component';
+import { isExpression } from '../epistola-document-preview/preview-utils';
 
 export type VariantSelectionMode = 'explicit' | 'attributes';
 
@@ -104,11 +107,16 @@ export class GenerateDocumentConfigurationComponent
   readonly selectedVariantId$ = new BehaviorSubject<string>('');
 
   variantSelectionMode: VariantSelectionMode = 'explicit';
+  variantIdExpressionMode = false;
+  variantIdExpression = '';
+  filenameExpressionMode = false;
+  filenameExpression = '';
   variantAttributeEntries: {
     key: string;
     value: string;
     required: boolean;
     _customKey?: boolean;
+    _expressionMode?: boolean;
   }[] = [];
   availableAttributeKeys: string[] = [];
   caseDefinitionKey: string | null = null;
@@ -117,6 +125,7 @@ export class GenerateDocumentConfigurationComponent
   variableSuggestions: VariableSuggestions | null = null;
   requiredFieldsStatus: { mapped: number; total: number } = { mapped: 0, total: 0 };
   prefillDataMapping: Record<string, any> = {};
+  validationErrors$ = new BehaviorSubject<JsonataFieldError[]>([]);
 
   private readonly destroy$ = new Subject<void>();
   private saveSubscription!: Subscription;
@@ -213,6 +222,14 @@ export class GenerateDocumentConfigurationComponent
   }
 
   onAttributeEntryChange(): void {
+    this.revalidate();
+  }
+
+  onVariantIdExpressionChange(): void {
+    this.revalidate();
+  }
+
+  onFilenameExpressionChange(): void {
     this.revalidate();
   }
 
@@ -473,6 +490,7 @@ export class GenerateDocumentConfigurationComponent
               key: e.key,
               value: e.value,
               required: e.required !== false,
+              _expressionMode: isExpression(e.value),
             }));
           } else {
             this.variantAttributeEntries = Object.entries(config.variantAttributes as any).map(
@@ -481,7 +499,18 @@ export class GenerateDocumentConfigurationComponent
           }
         } else if (config.variantId) {
           this.variantSelectionMode = 'explicit';
-          this.selectedVariantId$.next(config.variantId);
+          if (isExpression(config.variantId)) {
+            this.variantIdExpressionMode = true;
+            this.variantIdExpression = config.variantId;
+          } else {
+            this.selectedVariantId$.next(config.variantId);
+          }
+        }
+
+        // Detect expression mode for filename
+        if (config.filename && isExpression(config.filename)) {
+          this.filenameExpressionMode = true;
+          this.filenameExpression = config.filename;
         }
 
         // Apply dataMapping prefill (JSONata expression string)
@@ -576,22 +605,69 @@ export class GenerateDocumentConfigurationComponent
               environmentId: formValue.environmentId || undefined,
               dataMapping: dataMapping,
               outputFormat: formValue.outputFormat as 'PDF' | 'HTML',
-              filename: formValue.filename!,
+              filename: this.filenameExpressionMode ? this.filenameExpression : formValue.filename!,
               correlationId: formValue.correlationId || undefined,
               resultProcessVariable: formValue.resultProcessVariable!,
             };
 
             if (this.variantSelectionMode === 'explicit') {
-              config.variantId = formValue.variantId!;
+              config.variantId = this.variantIdExpressionMode
+                ? this.variantIdExpression
+                : formValue.variantId!;
             } else {
               config.variantAttributes = this.variantAttributeEntries
                 .filter((e) => e.key && e.value)
                 .map((e) => ({ key: e.key, value: e.value, required: e.required }));
             }
 
-            this.configuration.emit(config);
+            this.validateAndEmit(config);
           }
         });
     });
+  }
+
+  /**
+   * Build a JSONata validation request from the config and call the backend.
+   * Only fields that are JSONata expressions get validated:
+   * - dataMapping is always JSONata
+   * - filename / variantId only when their `fx` toggle is on
+   * - variant attribute values only when isExpression() reports true
+   * On invalid response, surface errors and abort the emit.
+   * If the validator endpoint itself fails (network/server), proceed with the
+   * emit — the validation is a quality-of-life check, not a hard gate.
+   */
+  private validateAndEmit(config: GenerateDocumentConfig): void {
+    const variantAttributeValues: Record<string, string> = {};
+    if (config.variantAttributes) {
+      for (const attr of config.variantAttributes) {
+        if (isExpression(attr.value)) {
+          variantAttributeValues[attr.key] = attr.value;
+        }
+      }
+    }
+
+    const request: ValidateJsonataRequest = {
+      dataMapping: config.dataMapping || null,
+      filename: this.filenameExpressionMode ? config.filename : null,
+      variantId: this.variantIdExpressionMode ? config.variantId || null : null,
+      variantAttributeValues:
+        Object.keys(variantAttributeValues).length > 0 ? variantAttributeValues : null,
+    };
+
+    this.epistolaPluginService
+      .validateJsonata(request)
+      .pipe(
+        take(1),
+        catchError(() => of({ valid: true, errors: [] as JsonataFieldError[] })),
+      )
+      .subscribe((result) => {
+        if (result.valid) {
+          this.validationErrors$.next([]);
+          this.configuration.emit(config);
+        } else {
+          this.validationErrors$.next(result.errors);
+          this.cdr.markForCheck();
+        }
+      });
   }
 }

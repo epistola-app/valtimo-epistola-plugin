@@ -2,12 +2,14 @@ package app.epistola.valtimo.mapping;
 
 import app.epistola.valtimo.expression.DefaultExpressionContext;
 import app.epistola.valtimo.expression.ExpressionContext;
+import app.epistola.valtimo.expression.ExpressionEvaluationException;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import com.dashjoin.jsonata.Jsonata;
 import com.dashjoin.jsonata.Jsonata.Frame;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
 import static com.dashjoin.jsonata.Jsonata.jsonata;
@@ -26,13 +28,11 @@ public class JsonataMappingService {
     private static final long TIMEOUT_MS = 5000;
     private static final int MAX_RECURSION_DEPTH = 100;
 
+
     private final ExpressionFunctionRegistry functionRegistry;
 
     /**
-     * Evaluate a JSONata expression using an EvaluationContext.
-     * <p>
-     * The context provides delegates for resolving document data and process
-     * variables lazily. Custom functions receive a populated ExpressionContext.
+     * Evaluate a JSONata expression that returns an object (for data mapping).
      *
      * @param ctx the evaluation context with expression and resolvers
      * @return the evaluated result as a Map
@@ -44,29 +44,8 @@ public class JsonataMappingService {
             return Map.of();
         }
 
-        // Build lazy maps from context delegates
-        Map<String, Object> docMap = buildDocumentMap(ctx);
-        Map<String, Object> pvMap = buildProcessVariableMap(ctx);
-
-        // Build ExpressionContext for custom functions
-        ExpressionContext exprCtx = new DefaultExpressionContext(
-                ctx.getExecution(),
-                ctx.getDocumentId(),
-                docMap,
-                pvMap,
-                Map.of()
-        );
-
+        Frame frame = buildFrame(ctx);
         Jsonata jsonataExpr = jsonata(expression);
-        Frame frame = jsonataExpr.createFrame();
-        frame.setRuntimeBounds(TIMEOUT_MS, MAX_RECURSION_DEPTH);
-
-        frame.bind("doc", docMap);
-        frame.bind("pv", pvMap);
-        frame.bind("case", Map.of());
-
-        registerCustomFunctions(frame, exprCtx);
-
         Object result = jsonataExpr.evaluate(Map.of(), frame);
         if (result instanceof Map<?, ?> map) {
             return (Map<String, Object>) map;
@@ -78,6 +57,25 @@ public class JsonataMappingService {
     }
 
     /**
+     * Evaluate a JSONata expression that returns a scalar string.
+     * Used for variantId, variant attribute values, and filename.
+     *
+     * @param ctx the evaluation context with expression and resolvers
+     * @return the evaluated scalar result as a String, or null
+     */
+    public String evaluateScalar(EvaluationContext ctx) {
+        String expression = ctx.getExpression();
+        if (expression == null || expression.isBlank()) {
+            return expression;
+        }
+
+        Frame frame = buildFrame(ctx);
+        Jsonata jsonataExpr = jsonata(expression);
+        Object result = jsonataExpr.evaluate(Map.of(), frame);
+        return result != null ? result.toString() : null;
+    }
+
+    /**
      * Convenience method for simple evaluation without full context (e.g., tests).
      */
     public Map<String, Object> evaluate(
@@ -86,13 +84,32 @@ public class JsonataMappingService {
             Map<String, Object> processVariables,
             Map<String, Object> caseData
     ) {
-        var ctx = EvaluationContext.builder()
-                .expression(expression)
-                .documentResolver(id -> documentData)
-                .processVariableResolver(processVariables::get)
-                .build();
-        // Override with explicit maps for backward compatibility
         return evaluateWithMaps(expression, documentData, processVariables, caseData, null);
+    }
+
+    private Frame buildFrame(EvaluationContext ctx) {
+        Map<String, Object> docMap = buildDocumentMap(ctx);
+        Map<String, Object> pvMap = buildProcessVariableMap(ctx);
+
+        ExpressionContext exprCtx = new DefaultExpressionContext(
+                ctx.getExecution(),
+                ctx.getDocumentId(),
+                docMap,
+                pvMap,
+                Map.of()
+        );
+
+        String expression = ctx.getExpression();
+        Jsonata jsonataExpr = jsonata(expression);
+        Frame frame = jsonataExpr.createFrame();
+        frame.setRuntimeBounds(TIMEOUT_MS, MAX_RECURSION_DEPTH);
+
+        frame.bind("doc", docMap);
+        frame.bind("pv", pvMap);
+        frame.bind("case", Map.of());
+
+        registerCustomFunctions(frame, exprCtx);
+        return frame;
     }
 
     /**
@@ -146,7 +163,12 @@ public class JsonataMappingService {
 
     private Map<String, Object> buildProcessVariableMap(EvaluationContext ctx) {
         if (ctx.getProcessVariableResolver() != null) {
-            return new LazyProcessVariableMap(ctx.getProcessVariableResolver());
+            return new LazyProcessVariableMap(
+                    ctx.getProcessVariableResolver(),
+                    ctx.getProcessVariableEnumerator());
+        }
+        if (ctx.getProcessVariableEnumerator() != null) {
+            return new LazyProcessVariableMap(name -> null, ctx.getProcessVariableEnumerator());
         }
         return Map.of();
     }
@@ -167,19 +189,18 @@ public class JsonataMappingService {
                     fullArgs[0] = exprCtx;
                     System.arraycopy(argsArray, 0, fullArgs, 1, argsArray.length);
                     return match.method().invoke(match.bean(), fullArgs);
+                } catch (InvocationTargetException e) {
+                    Throwable cause = e.getTargetException();
+                    throw new ExpressionEvaluationException(
+                            "Custom function '" + name + "' failed: " + cause.getMessage(), cause);
+                } catch (ExpressionEvaluationException e) {
+                    throw e;
                 } catch (Exception e) {
-                    log.warn("Custom function '{}' failed: {}", name, e.getMessage());
-                    return null;
+                    throw new ExpressionEvaluationException(
+                            "Custom function '" + name + "' invocation failed: " + e.getMessage(), e);
                 }
             };
-            Jsonata.JFunction jFunc = new Jsonata.JFunction(callable, name);
-            try {
-                var sigField = Jsonata.JFunction.class.getDeclaredField("signature");
-                sigField.setAccessible(true);
-                sigField.set(jFunc, null);
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                log.debug("Could not disable signature validation for function '{}': {}", name, e.getMessage());
-            }
+            Jsonata.JFunction jFunc = new Jsonata.JFunction(callable, null);
             frame.bind(name, jFunc);
         }
     }

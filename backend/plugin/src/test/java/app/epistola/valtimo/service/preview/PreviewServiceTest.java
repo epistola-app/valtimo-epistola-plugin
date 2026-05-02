@@ -11,7 +11,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ritense.plugin.domain.PluginProcessLink;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processlink.service.ProcessLinkService;
-import com.ritense.valueresolver.ValueResolverService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import com.ritense.valtimo.operaton.service.OperatonRepositoryService;
 import org.junit.jupiter.api.Nested;
@@ -63,9 +62,6 @@ class PreviewServiceTest {
 
     @Mock
     private JsonataMappingService jsonataMappingService;
-
-    @Mock
-    private ValueResolverService valueResolverService;
 
     @Mock
     private com.ritense.document.service.DocumentService documentService;
@@ -399,6 +395,35 @@ class PreviewServiceTest {
             // Invoke the document resolver — result should NOT be an OverlayMap
             Map<String, Object> resolved = ctx.getDocumentResolver().apply("doc-123");
             assertFalse(resolved instanceof OverlayMap);
+        }
+
+        @Test
+        void variantIdExpression_evaluatedDynamically() {
+            PluginProcessLink processLink = mockFullChain("instance-1", "my-process:1:abc");
+
+            // Add a variantId expression to the action properties
+            ObjectNode actionProps = processLink.getActionProperties();
+            actionProps.put("variantId", "$pv.letterType");
+
+            when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
+                    .thenReturn(new LinkedHashMap<>());
+
+            when(jsonataMappingService.evaluateScalar(any(EvaluationContext.class)))
+                    .thenReturn("letter-formal");
+
+            PreviewRequest request = new PreviewRequest(
+                    "doc-123", null, null, "instance-1", null, null);
+
+            previewService.generatePreview(request);
+
+            // Verify that the variantId passed to epistolaService.previewDocument() is the
+            // dynamically evaluated result, not the raw expression string "$pv.letterType"
+            ArgumentCaptor<String> variantIdCaptor = ArgumentCaptor.forClass(String.class);
+            verify(epistolaService).previewDocument(
+                    anyString(), anyString(), anyString(), anyString(),
+                    anyString(), variantIdCaptor.capture(), anyString(), any());
+
+            assertEquals("letter-formal", variantIdCaptor.getValue());
         }
 
         @Test

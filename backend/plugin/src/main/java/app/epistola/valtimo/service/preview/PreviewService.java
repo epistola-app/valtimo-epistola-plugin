@@ -82,6 +82,13 @@ public class PreviewService {
                 }
                 return null;
             });
+            // Enumeration ($keys($pv), $pv.*): overlay overrides on top of process variables
+            evalCtxBuilder.processVariableEnumerator(() -> {
+                Map<String, Object> base = request.processInstanceId() != null
+                        ? runtimeService.getVariables(request.processInstanceId())
+                        : Map.of();
+                return pvOverrides != null ? new OverlayMap(pvOverrides, base) : base;
+            });
         }
 
         Map<String, Object> resolvedData = jsonataMappingService.evaluate(evalCtxBuilder.build());
@@ -96,8 +103,11 @@ public class PreviewService {
                 processLink.getPluginConfigurationId());
 
         ObjectNode actionProps = processLink.getActionProperties();
-        String variantId = actionProps.has("variantId") && !actionProps.get("variantId").isNull()
+        String variantIdExpr = actionProps.has("variantId") && !actionProps.get("variantId").isNull()
                 ? actionProps.get("variantId").asText() : null;
+        String variantId = variantIdExpr != null
+                ? jsonataMappingService.evaluateScalar(evalCtxBuilder.build().withExpression(variantIdExpr))
+                : null;
         String environmentId = actionProps.has("environmentId") && !actionProps.get("environmentId").isNull()
                 ? actionProps.get("environmentId").asText() : plugin.getDefaultEnvironmentId();
 

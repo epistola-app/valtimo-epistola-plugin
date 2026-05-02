@@ -21,21 +21,9 @@
     },
     {
       "type": "template",
-      "slug": "besluit-bezwaar-deels-gegrond",
-      "name": "Besluit op bezwaar - Deels gegrond",
-      "detailUrl": "./resources/template/besluit-bezwaar-deels-gegrond.json"
-    },
-    {
-      "type": "template",
-      "slug": "besluit-bezwaar-gegrond",
-      "name": "Besluit op bezwaar - Gegrond",
-      "detailUrl": "./resources/template/besluit-bezwaar-gegrond.json"
-    },
-    {
-      "type": "template",
-      "slug": "besluit-bezwaar-ongegrond",
-      "name": "Besluit op bezwaar - Ongegrond",
-      "detailUrl": "./resources/template/besluit-bezwaar-ongegrond.json"
+      "slug": "besluit-bezwaar",
+      "name": "Besluit op bezwaar",
+      "detailUrl": "./resources/template/besluit-bezwaar.json"
     },
     {
       "type": "template",
