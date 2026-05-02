@@ -202,59 +202,89 @@ pnpm start
 pnpm build
 ```
 
-## Local Development with Docker
+## Running the Epistola server
 
-Start the full stack (PostgreSQL, Keycloak, and Epistola server):
+The plugin connects to a running Epistola backend. There are three ways to provide one.
+
+### Option A — Docker only, no clone (simplest)
+
+The Epistola server is published as `ghcr.io/epistola-app/epistola-suite:latest` and needs a Postgres alongside it. A self-contained `docker run` flow:
 
 ```bash
+docker network create epistola-net
+
+docker run -d --name epistola-pg --network epistola-net \
+  -e POSTGRES_USER=epistola -e POSTGRES_PASSWORD=epistola -e POSTGRES_DB=epistola_suite \
+  postgres:16-alpine
+
+docker run -d --name epistola-server --network epistola-net \
+  -p 4000:4000 \
+  -e SPRING_PROFILES_ACTIVE=demo,localauth \
+  -e SPRING_DATASOURCE_URL=jdbc:postgresql://epistola-pg:5432/epistola_suite \
+  -e SPRING_DATASOURCE_USERNAME=epistola \
+  -e SPRING_DATASOURCE_PASSWORD=epistola \
+  ghcr.io/epistola-app/epistola-suite:latest
+```
+
+Epistola UI: <http://localhost:4000>. Set the plugin's `baseUrl` to `http://localhost:4000/api`.
+
+### Option B — Compose (this repo)
+
+If you've cloned this repo, [`docker/docker-compose.yml`](docker/docker-compose.yml) orchestrates the full stack via profiles:
+
+| Profile | What it adds | When to use |
+|---|---|---|
+| `server` | Postgres + Keycloak + Epistola server | Running Valtimo locally from source against a real Epistola |
+| `mock` | Postgres + Keycloak + Epistola mock-server (contract-only) | Offline / CI — exercises the plugin without a real Epistola |
+| `containers` | Adds pre-built Valtimo demo backend + frontend | End-to-end demo without building your own Valtimo |
+| `reset` | One-shot DB reset utility | Testing the CronJob/data flows in [Demo Environment](#demo-environment) |
+
+Common combos:
+
+```bash
+# End-to-end demo (Valtimo at :4200, Epistola at :4000):
+docker compose -f docker/docker-compose.yml --profile server --profile containers up -d
+
+# Just the Epistola side, then run your own Valtimo locally:
 docker compose -f docker/docker-compose.yml --profile server up -d
 ```
 
-This starts:
-
-- **PostgreSQL** on `localhost:5432`
-- **Keycloak** on `localhost:8081` (shared `valtimo` realm)
-- **Epistola server** on `localhost:4010` (with SSO via Keycloak)
-
-### Keycloak authentication
-
-Both Valtimo and Epistola share the same Keycloak realm (`valtimo`). The
-Docker Compose setup handles the split-horizon problem (browsers reach
-Keycloak at `localhost:8081`, containers reach it at `keycloak:8080`) using:
-
-- **KC_HOSTNAME** = `http://localhost:8081` — ensures JWT `iss` claims are
-  consistent
-- **KC_HOSTNAME_BACKCHANNEL_DYNAMIC** = `true` — allows containers to reach
-  Keycloak on the internal hostname
-- **EPISTOLA_AUTH_OIDC_BACKCHANNELBASEURL** = `http://keycloak:8080` —
-  Epistola uses this for server-to-server OIDC calls (token, JWK, userinfo)
-
-Default Valtimo users: `admin/admin` and `user/user`. Epistola demo users: `reader@demo/reader`, `editor@demo/editor`, `generator@demo/generator`, `manager@demo/manager`, `admin@demo/admin` (full access).
-
-### Running the test application
-
-Start the backend (connects to the Docker-managed PostgreSQL and Keycloak):
+Run the test-app against the docker stack (build the plugin first so the test-app/frontend picks it up):
 
 ```bash
 ./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev'
-```
-
-Build and start the frontend:
-
-```bash
 cd frontend/plugin && pnpm build
 cd ../../test-app/frontend && pnpm start
 ```
 
-Open `http://localhost:4200` (Valtimo) or `http://localhost:4010` (Epistola).
+Open <http://localhost:4200> (Valtimo) or <http://localhost:4000> (Epistola).
 
-### Using the mock server instead
+#### Keycloak SSO between Valtimo and Epistola
 
-For quick tests without a real Epistola server:
+Both Valtimo and Epistola share the `valtimo` realm. The compose setup handles the split-horizon problem (browsers reach Keycloak at `localhost:8081`, containers reach it at `keycloak:8080`) using:
 
-```bash
-docker compose -f docker/docker-compose.yml --profile mock up -d
-```
+- **`KC_HOSTNAME`** = `http://localhost:8081` — keeps JWT `iss` claims consistent.
+- **`KC_HOSTNAME_BACKCHANNEL_DYNAMIC`** = `true` — allows containers to reach Keycloak on the internal hostname.
+- **`EPISTOLA_AUTH_OIDC_BACKCHANNELBASEURL`** = `http://keycloak:8080` — Epistola uses this for server-to-server OIDC calls (token, JWK, userinfo).
+
+### Option C — Bring your own
+
+Run the Epistola server somewhere reachable and set `baseUrl` accordingly. The plugin doesn't care how it's hosted.
+
+### Ports
+
+| Service | URL |
+|---|---|
+| Epistola server (`server` profile) | <http://localhost:4000> |
+| Epistola mock (`mock` profile) | <http://localhost:4010> (mock listens on 4010 internally — kept distinct so it's never confused with a real server) |
+| Keycloak | <http://localhost:8081> |
+| Valtimo (with `containers` profile) | <http://localhost:4200> |
+
+### Default credentials
+
+- **Valtimo / Keycloak:** `admin/admin`, `user/user`
+- **Epistola server demo users:** `reader@demo/reader`, `editor@demo/editor`, `generator@demo/generator`, `manager@demo/manager`, `admin@demo/admin` (full access)
+- **Plugin → Epistola API key (demo profile):** tenant `demo` with the deterministic key in [`test-app/backend/src/main/resources/config/app.pluginconfig.json`](test-app/backend/src/main/resources/config/app.pluginconfig.json)
 
 ## Kubernetes Deployment
 
