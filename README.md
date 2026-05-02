@@ -10,62 +10,59 @@ Add the plugin dependency to your Valtimo application's `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("app.epistola.valtimo:epistola-plugin:${epistolaVersion}")
+    implementation("app.epistola.valtimo:epistola-plugin:0.6.0")
 }
 ```
 
-The plugin auto-configures itself via Spring Boot auto-configuration. Set `epistola.enabled=false` to disable.
+Releases are published to [Maven Central](https://central.sonatype.com/artifact/app.epistola.valtimo/epistola-plugin) — the [Maven metadata](https://repo1.maven.org/maven2/app/epistola/valtimo/epistola-plugin/maven-metadata.xml) is authoritative if the search index lags behind.
+
+The plugin auto-configures itself via Spring Boot. Set `epistola.enabled=false` to disable globally — see [Required configuration](#required-configuration) for the full property tree.
+
+The plugin needs to know where to reach the Epistola server (see [Running the Epistola server](#running-the-epistola-server) for how to start one):
+
+```yaml
+# application.yml — equivalent to setting EPISTOLA_BASE_URL in the environment
+epistola:
+  base-url: http://localhost:4000/api
+```
 
 ### Frontend
 
-Install the frontend plugin:
+Install the plugin and its `monaco-editor` peer dependency (used by the JSONata editor):
 
 ```bash
-npm install @epistola.app/valtimo-plugin
+npm install @epistola.app/valtimo-plugin monaco-editor
 # or
-pnpm add @epistola.app/valtimo-plugin
+pnpm add @epistola.app/valtimo-plugin monaco-editor
 ```
 
-**Required peer dependency** — `monaco-editor` must be installed in your host application for the JSONata editor:
-
-```bash
-npm install monaco-editor
-# or
-pnpm add monaco-editor
-```
-
-**angular.json** — Add the Monaco editor assets to your project's `angular.json`:
+**angular.json** — serve Monaco's bundle from `assets/monaco-editor` by adding this entry to your build configuration's `assets` array:
 
 ```json
-{
-  "architect": {
-    "build": {
-      "options": {
-        "assets": [
-          {
-            "glob": "**/*",
-            "input": "node_modules/monaco-editor",
-            "output": "assets/monaco-editor"
-          }
-        ]
-      }
-    }
-  }
-}
+{ "glob": "**/*", "input": "node_modules/monaco-editor", "output": "assets/monaco-editor" }
 ```
 
-**App module** — Import and configure the plugin module:
+> Users starting from [`gzac-frontend-template`](https://github.com/generiekzaakafhandelcomponent/gzac-frontend-template) v/13+ already have this entry — no action needed.
+
+**App module** — register the plugin module and wire its plugin specification into Valtimo's `PLUGINS_TOKEN`:
 
 ```typescript
 import { EpistolaPluginModule, epistolaPluginSpecification } from "@epistola.app/valtimo-plugin";
+import { PLUGINS_TOKEN } from "@valtimo/plugin";
 
 @NgModule({
   imports: [EpistolaPluginModule.forRoot()],
+  providers: [
+    {
+      provide: PLUGINS_TOKEN,
+      useValue: [
+        // …other plugin specifications…
+        epistolaPluginSpecification,
+      ],
+    },
+  ],
 })
 export class AppModule {}
-
-// Register the plugin specification with Valtimo's plugin system
-export const pluginSpecifications = [epistolaPluginSpecification];
 ```
 
 ## Project Structure
