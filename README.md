@@ -28,13 +28,15 @@ epistola:
 
 ### Frontend
 
-Install the plugin and its `monaco-editor` peer dependency (used by the JSONata editor):
+Install the plugin:
 
 ```bash
-npm install @epistola.app/valtimo-plugin monaco-editor
+npm install @epistola.app/valtimo-plugin
 # or
-pnpm add @epistola.app/valtimo-plugin monaco-editor
+pnpm add @epistola.app/valtimo-plugin
 ```
+
+`monaco-editor` is pulled in automatically as a peer dependency (it powers the JSONata editor). If your package manager has peer-dep auto-install turned off (`auto-install-peers=false` in pnpm, or you're on npm < 7), install it explicitly: `npm install monaco-editor`.
 
 **angular.json** — serve Monaco's bundle from `assets/monaco-editor` by adding this entry to your build configuration's `assets` array:
 
