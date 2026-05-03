@@ -68,7 +68,13 @@ public class EpistolaResultCollectorRunner {
             log.info("Epistola result collector disabled (epistola.result-collector.enabled=false)");
             return;
         }
-        reconcile();
+        // Initial reconcile is intentionally NOT called here. At @PostConstruct time
+        // the Epistola plugin bean (epistolaPluginFactory) is still being created in
+        // the same context-refresh pass, so pluginService.createInstance(cfg) throws
+        // BeanCurrentlyInCreationException for every config. The first reconcile is
+        // covered by two later triggers — the PluginsDeployedEvent that Valtimo emits
+        // once plugins are deployed, and the @Scheduled tick which fires immediately
+        // after the scheduler is up. Either rescue is fast enough for a clean boot.
     }
 
     @PreDestroy

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Drop the `@PostConstruct` reconcile in `EpistolaResultCollectorRunner`** to silence the harmless-but-noisy `BeanCurrentlyInCreationException` warning at boot. The Epistola plugin bean is still being constructed when `@PostConstruct` runs on the runner, so `pluginService.createInstance(cfg)` couldn't resolve `epistolaPluginFactory` and every config logged a WARN. The first reconcile is already covered by Valtimo's `PluginsDeployedEvent` and the `@Scheduled` tick (which fires immediately when the scheduler starts). Removing the early call has no functional impact — both rescue paths fire within the same boot — and produces a clean startup log.
+
 ### Changed
 
 - **Kick the result collector after a successful generate** — `EpistolaPlugin.generateDocument` calls `EpistolaResultCollectorRunner.kickFor(baseUrl, apiKey, tenantId)` after a successful submit. If the collector has backed off into idle mode, this brings the next poll forward to ~3s instead of waiting out the full backoff (up to 30s by default). Threshold-guarded inside the contract collector — no-op when polling fast, useful only after periods of inactivity. Two new properties on `epistola.result-collector`: `kickIntervalMs` (default 3000) and `backoffMultiplier` (default 3.0; was effectively 2.0 hard-coded in the contract client). The new multiplier gives the sequence 1s → 3s → 9s → 27s → 30s (capped at `maxIntervalMs`), reaching idle mode faster — the kick is the safety net that gets us back to fast polling when work arrives.
