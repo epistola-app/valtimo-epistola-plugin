@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Plugin logo replaced with the actual Epistola logo** — `frontend/plugin/src/lib/assets/epistola-logo.ts` previously held a placeholder document icon. Replaced with the wax-sealed letter-stack logo from the Epistola website (`website/public/logo.svg`), inlined as a base64 data URL so the library has no extra asset to ship. The logo surfaces in the Valtimo plugin configuration UI via `pluginLogoBase64` in `epistola.specification.ts`.
+
 - **`docker/docker-compose.yml`** — `ved-epistola-server` host port aligned to `4000:4000` (was `4010:4000`). The host port now matches Epistola's documented default, so `http://localhost:4000` works directly in the plugin's `baseUrl` field without a one-port offset. Mock service kept on `4010:4010` so it stays distinct from a real server when both are referenced in docs.
 
 - **Removed JSONata signature reflection hack** — `JsonataMappingService` no longer uses reflection to null out `Jsonata.JFunction.signature` after construction. The previous code passed the function name into the JFunction constructor's `signature` parameter (causing a parse failure), then patched it via reflection. Now passes `null` for the signature directly — same effect, no dependency on JSONata internals.
