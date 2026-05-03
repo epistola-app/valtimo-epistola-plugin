@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Notes
 
-- Authentication remains on `X-API-Key` for this PR. JWT (self-signed + OAuth) and consumer onboarding are deferred to a follow-up PR.
+- Authentication uses `X-API-Key` — the `api-key` `authMethod` in the contract's `ConsumerDto` enum. JWT (self-signed + OAuth) registration paths defined in the contract are not used by this plugin; switching to those would be a follow-up.
 
 ### Fixed
 
