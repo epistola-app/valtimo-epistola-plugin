@@ -355,6 +355,13 @@ public class EpistolaPlugin {
         String jobPath = EpistolaMessageCorrelationService.buildJobPath(tenantId, result.getRequestId());
         execution.setVariable(EpistolaProcessVariables.JOB_PATH, jobPath);
 
+        // Hint the collector to look for the result soon — if it's currently
+        // backed off into idle mode, this brings the next poll forward to
+        // ~kickIntervalMs (default 3s) instead of waiting out the full backoff
+        // (which can be up to maxIntervalMs, default 30s). Threshold-guarded
+        // inside the contract collector: no-op when polling fast.
+        resultCollectorRunner.kickFor(baseUrl, apiKey, tenantId);
+
         log.info("Document generation request submitted. jobPath={}, resultVar={}",
                 jobPath, resultProcessVariable);
     }

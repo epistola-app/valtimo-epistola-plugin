@@ -151,6 +151,29 @@ public class EpistolaResultCollectorRunner {
         return null;
     }
 
+    /**
+     * Hint that a result is expected soon on the collector matching this
+     * connection — typically called right after a successful submit. If the
+     * collector has backed off into idle mode (poll interval larger than
+     * `kickIntervalMs`), the next poll happens within `kickIntervalMs` instead
+     * of waiting out the full backoff.
+     * <p>
+     * No-op if no collector is running for this connection (e.g. the
+     * configuration was deleted but a still-in-flight action raced the delete),
+     * or if the collector is already polling fast enough.
+     * <p>
+     * Safe to call from any thread, any number of times — extra calls collapse
+     * harmlessly inside the contract collector's wake mechanism.
+     */
+    public void kickFor(String baseUrl, String apiKey, String tenantId) {
+        for (ManagedCollector managed : collectors.values()) {
+            if (managed.matches(baseUrl, apiKey, tenantId)) {
+                managed.collector.kick();
+                return;
+            }
+        }
+    }
+
     private Map<String, EpistolaPlugin> loadActivePlugins() {
         Map<String, EpistolaPlugin> result = new HashMap<>();
         try {
@@ -181,6 +204,8 @@ public class EpistolaResultCollectorRunner {
                 .batchSize(cfg.getBatchSize())
                 .minInterval(Duration.ofMillis(cfg.getMinIntervalMs()))
                 .maxInterval(Duration.ofMillis(cfg.getMaxIntervalMs()))
+                .kickInterval(Duration.ofMillis(cfg.getKickIntervalMs()))
+                .backoffMultiplier(cfg.getBackoffMultiplier())
                 .registerShutdownHook(false)
                 .handler(result -> {
                     handleResult(plugin.getTenantId(), result);

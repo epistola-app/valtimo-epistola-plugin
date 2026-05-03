@@ -68,5 +68,25 @@ public class EpistolaProperties {
          * plugin configurations and start/stop their collectors accordingly.
          */
         private long reconcileIntervalMs = 60000;
+
+        /**
+         * Wait used by `kick()` to override the current backoff (ms).
+         * After successfully submitting a generate (which the plugin actions
+         * report via {@link app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner#kickFor}),
+         * if the collector has backed off past this interval it resets to
+         * `kickIntervalMs` so the next poll happens within ~3s instead of
+         * waiting the full backoff. Should be long enough that the suite
+         * has had a chance to actually emit the row before we poll for it.
+         */
+        private long kickIntervalMs = 3000;
+
+        /**
+         * Exponential backoff multiplier applied to the current poll interval
+         * on each empty poll. Higher values reach `maxIntervalMs` faster,
+         * reducing idle poll volume; the kick mechanism is the safety net
+         * that gets us back to fast polling when a result is expected.
+         * Default 3.0 gives the sequence 1s → 3s → 9s → 27s → 30s (capped).
+         */
+        private double backoffMultiplier = 3.0;
     }
 }

@@ -82,6 +82,18 @@ class EpistolaResultCollectorRunnerTest {
     }
 
     @Test
+    void kickFor_isNoOpWhenNoCollectorMatches() {
+        // Same cold-start as the routingKeyFor test — no collector running for
+        // this connection. Calling kickFor must not throw; it just silently
+        // does nothing (the connection presumably wasn't reconciled yet, or
+        // was just removed). Correctness invariant: the collector is an
+        // optimization, never a required path for a successful generate.
+        runner.kickFor("https://epistola.example/api", "key-1", "acme");
+
+        // No exception, no assertion needed beyond "didn't throw."
+    }
+
+    @Test
     void onPluginsDeployed_triggersReconcile() {
         // The event listener should call reconcile(), which queries pluginService.
         // We use the no-config baseline: reconcile returns immediately after that query.
