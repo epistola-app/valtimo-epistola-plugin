@@ -118,9 +118,7 @@ Set both `false` per environment for a fully invisible plugin. The frontend flag
 
 Host app wiring does not change for optional loading. Keep `EpistolaPluginModule.forRoot()` in `imports` and keep `epistolaPluginSpecification` in the normal `PLUGINS_TOKEN` array, as shown in the setup snippet above. The plugin library reads the flag at runtime and hides its own surfaces when disabled.
 
-When the flag is `false`, the plugin's `ENVIRONMENT_INITIALIZER` short-circuits before registering Formio components and the menu service, the `/epistola` route guard redirects to `/`, and `epistolaPluginSpecification.pluginId` no longer matches the backend `epistola` plugin definition — so no admin menu entry, no admin page, no plugin configuration picker entry, and no process-link action types appear.
-
-> **Why not conditionally spread the plugin specification in `PLUGINS_TOKEN`?** Angular's AOT compiler cannot statically resolve `window['env']` accesses (NG1010), so runtime conditionals should not live directly in `@NgModule` decorator metadata. Epistola keeps the host app's provider static and moves the runtime check behind the plugin specification and module guards.
+When the flag is `false`, the plugin's frontend surfaces stay hidden — no admin menu entry, no admin page, no plugin configuration picker entry, and no process-link action types appear.
 
 The default-true semantics (any value other than literal `false` / `'false'` is enabled) match the backend's `matchIfMissing = true` behaviour, so deployments that never set the env var keep the plugin enabled.
 
