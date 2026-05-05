@@ -20,7 +20,7 @@ Start → Generate Doc ◄──────────────────
 3. The user task renders a **dynamically generated Formio form** with all template fields prefilled from the original data
 4. The user edits the data and submits
 5. The form writes the edited data to process variable `epistolaEditedData`
-6. The BPMN loops back to `generate-document`, which detects the edited data and uses it directly (skipping value resolver expressions)
+6. The BPMN loops back to `generate-document`, which detects the edited data and uses it directly (skipping the configured JSONata mapping)
 7. If generation succeeds, the process continues normally. If it fails again, the loop repeats.
 
 ## Setup
@@ -101,8 +101,8 @@ That's it. No per-process form JSON, no custom configuration.
 
 The `generate-document` action checks for a process variable named `epistolaEditedData`:
 
-- **Present**: Uses the JSON data directly (no value resolver expressions evaluated). Clears the variable after use.
-- **Absent**: Resolves the data mapping expressions (`doc:`, `pv:`, `case:`) as usual.
+- **Present**: Uses the edited JSON data directly. Clears the variable after use.
+- **Absent**: Evaluates the configured JSONata data mapping as usual.
 
 This means the same `generate-document` service task handles both initial generation and retries. No separate retry action is needed.
 
@@ -135,7 +135,7 @@ The retry form is generated dynamically by the backend endpoint `GET /api/v1/plu
 
 1. Looks up the original generate-document process link
 2. Extracts the data mapping from action properties
-3. Resolves all value expressions against the current document
+3. Evaluates the configured JSONata mapping against the current case/process context
 4. Fetches the template field schema from Epistola
 5. Generates a Formio form JSON with fields prefilled from the resolved data
 
@@ -180,7 +180,7 @@ epistola:
 │                                                              │
 │  GET /retry-form                                             │
 │    ├── ProcessLinkService → find generate-document config    │
-│    ├── DataMappingResolverService → resolve doc:/pv: values  │
+│    ├── JsonataMappingService → evaluate configured mapping    │
 │    ├── EpistolaService → get template field schema           │
 │    └── FormioFormGenerator → build Formio JSON with defaults │
 │                                                              │

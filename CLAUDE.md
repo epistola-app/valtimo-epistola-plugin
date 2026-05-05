@@ -111,7 +111,7 @@ docker/            # Docker compose for local dependencies
 - **Plugin properties**: Backend `@PluginProperty` keys must match frontend field names exactly
 - **Translations**: Add both `nl` and `en` translations in `epistola.specification.ts`
 - **Feature toggle**: The plugin can be disabled per environment from a single build artifact.
-  - **Backend**: `epistola.enabled=false` (Spring property, defaults to `true`). Disables auto-configuration — no beans, no endpoints, no scheduled poller.
+  - **Backend**: `epistola.enabled=false` (Spring property, defaults to `true`). Disables auto-configuration — no beans, no endpoints, no result collector.
   - **Frontend**: `EPISTOLA_ENABLED=false` (container env var, substituted into `assets/config.js` via the Dockerfile entrypoint, defaults to `true`). The plugin library reads `window['env']['epistolaEnabled']` at runtime via the exported `isEpistolaEnabled()` helper. `EpistolaPluginModule.forRoot()` stays unconditional in the host's `imports`; its `ENVIRONMENT_INITIALIZER` short-circuits when disabled, the `/epistola` route guard redirects to `/`, and `epistolaPluginSpecification.pluginId` stops matching the backend `epistola` definition. Keep `PLUGINS_TOKEN` static (`useValue`) in host apps; do not push optional-loading conditionals into installer-facing app-module wiring.
   - Set both flags `false` per environment to fully hide the plugin (no admin menu, no admin page, no plugin picker entry, no process-link action types). On environments where the plugin was previously active, remove existing plugin configurations and process links **before** disabling — otherwise stored references remain in the database and will surface stale entries that fail on API calls if the plugin is re-enabled.
 
@@ -140,14 +140,14 @@ pnpm format:check   # check only (used in CI)
 
 - **Full Epistola API integration** via `app.epistola.contract:client-spring3-restclient` (OpenAPI-generated client)
 - **3 plugin actions**: `generate-document`, `check-job-status`, `download-document`
-- **Async completion**: Both polling (`PollingCompletionEventConsumer`, configurable interval) and webhook callback (`EpistolaCallbackResource`)
+- **Async completion**: `EpistolaResultCollectorRunner` manages one contract `ResultCollector` per active plugin configuration and correlates results via `EpistolaMessageCorrelationService`
 - **Catalog sync**: Automatic import of classpath-based catalogs on startup (`EpistolaCatalogSyncService`)
 - **Retry flow**: Dynamic Formio form generation for failed document retries (`RetryFormService`)
 - **Document preview**: Preview without creating generation jobs (`PreviewService`)
 - **Admin page**: Health checks, plugin usage overview, version info (`EpistolaAdminResource`)
 - **Variant selection**: 3 modes — default, explicit variantId, or attribute-based automatic selection
-- **Value resolution**: Supports `doc:`, `pv:`, `case:`, `template:` prefixes in data mappings
-- **Security**: Callback endpoint public (webhooks), admin endpoints require `ROLE_ADMIN`, all other endpoints authenticated
+- **Value resolution**: Data mappings are JSONata expressions evaluated with `$doc`, `$pv`, and `$case` context variables
+- **Security**: Admin endpoints require `ROLE_ADMIN`; generation/tooling endpoints require normal authentication
 - **Configuration**: Spring Boot auto-configuration with feature toggles (`epistola.enabled`, `epistola.result-collector.enabled`, `epistola.retry-form.enabled`)
 
 ### Frontend
@@ -171,7 +171,7 @@ pnpm format:check   # check only (used in CI)
 | ------------------- | ------------------------------------------------------ | --------------------------------------------------------- |
 | API Scope           | Generation + Read-only Templates/Environments/Variants | Plugin is for document generation, not template authoring |
 | Authentication      | API key in plugin config                               | Simple, stateless, matches typical service integrations   |
-| Async Pattern       | Message correlation + polling fallback                 | Supports both patterns for flexibility                    |
+| Async Pattern       | Result collector + message correlation                 | Avoids per-process timers and keeps BPMN simple           |
 | Environment/Variant | Plugin default + action override                       | Sensible defaults with per-action flexibility             |
 | Composite Job Path  | `epistola:job:{tenantId}/{requestId}` single variable  | Avoids scoping issues, enables correlation and polling    |
 
@@ -179,7 +179,6 @@ pnpm format:check   # check only (used in CI)
 
 ## Known Limitations
 
-- **Callback signature verification**: The callback endpoint (`EpistolaCallbackResource`) accepts but does not verify the `X-Epistola-Signature` header. Blocked: Epistola does not yet support HMAC signing.
 - **Server version endpoint**: `EpistolaAdminService.getVersions()` returns the plugin version only. Blocked: Epistola does not yet expose a version/health API endpoint.
 
 ## Test Coverage
@@ -187,10 +186,9 @@ pnpm format:check   # check only (used in CI)
 ### What's tested
 
 - `EpistolaServiceImpl` — Integration test using Epistola contract mock server (Testcontainers + Prism)
-- `DataMappingResolver` — Dot-notation flattening and nested structure building
-- `TemplateMappingValidator` — Required field validation
+- `JsonataMappingService` — JSONata evaluation and custom function bridging
 - `FormioFormGenerator` — Form schema generation from template fields
-- `PollingCompletionEventConsumer` — Scheduled polling logic
+- `EpistolaResultCollectorRunner` — Result collector lifecycle and message delivery
 - `EpistolaMessageCorrelationService` — BPMN message correlation
 - `PreviewService` — Document preview functionality
 - `RetryFormService` — Dynamic retry form generation
@@ -205,6 +203,6 @@ pnpm format:check   # check only (used in CI)
 ### Gaps (tracked as future work)
 
 - `EpistolaPlugin` action methods (`generateDocument`, `checkJobStatus`, `downloadDocument`) — no unit tests for the orchestration logic
-- `EpistolaCallbackResource` — no tests for webhook handling
+- Full multi-node result collector behavior depends on Epistola contract/server integration tests
 - `EpistolaPluginResource` — only document download endpoint tested, other endpoints untested at controller level
 - Frontend `.spec.ts` unit tests — minimal coverage (E2E tests cover the main flows)

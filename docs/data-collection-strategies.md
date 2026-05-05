@@ -10,7 +10,7 @@ But real-world document generation often needs data from multiple sources:
 - **Process variables** — transient values from the current process
 - **External systems** — OpenZaak (zaken, documenten), Objects API, BRP, KVK, etc.
 
-Not all of this data is available in `doc:` or `pv:` at the time of generation. A permit decision letter might need the applicant's address from BRP, the case status from OpenZaak, and the decision details from the case document — three different sources.
+Not all of this data is available in `$doc` or `$pv` at the time of generation. A permit decision letter might need the applicant's address from BRP, the case status from OpenZaak, and the decision details from the case document — three different sources.
 
 This document describes four strategies for collecting and assembling this data before it reaches the Epistola data mapping. Each has different trade-offs for complexity, reusability, and batch generation support.
 
@@ -25,25 +25,25 @@ Fetch all required data in preceding service tasks, store it in process variable
 ```
 [Service Task: fetch-brp-data]     → pv:applicantAddress, pv:applicantName
 [Service Task: fetch-zaak-status]  → pv:zaakStatus, pv:zaakDecision
-[Service Task: generate-document]  → maps from pv: and doc: as usual
+[Service Task: generate-document]  → JSONata maps from $pv and $doc
 ```
 
-Each service task calls an external system and stores the result in process variables. By the time `generate-document` runs, all data is available via `pv:` prefixes.
+Each service task calls an external system and stores the result in process variables. By the time `generate-document` runs, all data is available under `$pv` or `$doc`.
 
 ### Example
 
 A permit decision letter needs BRP data and the zaak status:
 
-```json
+```jsonata
 {
-  "applicantName": "pv:applicantName",
+  "applicantName": $pv.applicantName,
   "applicantAddress": {
-    "street": "pv:applicantStreet",
-    "city": "pv:applicantCity",
-    "postalCode": "pv:applicantPostalCode"
+    "street": $pv.applicantStreet,
+    "city": $pv.applicantCity,
+    "postalCode": $pv.applicantPostalCode
   },
-  "decision": "doc:permit.decision",
-  "zaakStatus": "pv:zaakStatus"
+  "decision": $doc.permit.decision,
+  "zaakStatus": $pv.zaakStatus
 }
 ```
 
@@ -56,7 +56,7 @@ The BPMN process handles the orchestration:
 ### Pros
 
 - **Fully visible** — the entire data flow is in the BPMN model, easy to trace and debug
-- **No plugin changes** — works with the current `pv:` and `doc:` mapping infrastructure
+- **No plugin changes** — works with the current JSONata mapping context
 - **Flexible** — any service task plugin can be wired in (OpenZaak, REST, Objects API, etc.)
 - **Error handling per source** — each fetch can have its own error boundary and retry logic
 
@@ -76,39 +76,37 @@ Poorly suited for batch generation. If you need to generate 200 letters, each wi
 
 The process variable approach fundamentally assumes a single execution context. Scaling it to N recipients means N execution contexts, each running its own fetch chain.
 
-## Strategy 2: Custom Value Resolvers
+## Strategy 2: Custom JSONata Functions
 
-Extend Valtimo's `ValueResolverService` with new prefixes that fetch data on-the-fly during mapping resolution.
+Register custom expression functions that fetch data on-the-fly during JSONata evaluation.
 
 ### How it works
 
-Valtimo's value resolution already supports `doc:`, `case:`, and `pv:` prefixes. Custom value resolvers add new prefixes like `oz:` (OpenZaak), `brp:`, or `obj:` (Objects API). During the data mapping resolution pass (see [data-mapping.md](data-mapping.md), section 4), these prefixes trigger API calls to external systems.
+The plugin bridges functions from `ExpressionFunctionRegistry` into JSONata. A custom function such as `$brpPerson($doc.applicant.bsn)` or `$zaakStatus($doc.zaakUrl)` can call an external system and return structured data to the mapping expression.
 
-```json
+```jsonata
 {
-  "applicantName": "brp:bsn(doc:applicant.bsn).name",
-  "applicantAddress": "brp:bsn(doc:applicant.bsn).address",
-  "zaakStatus": "oz:zaak(doc:zaakUrl).status",
-  "decision": "doc:permit.decision"
+  "applicantName": $brpPerson($doc.applicant.bsn).name,
+  "applicantAddress": $brpPerson($doc.applicant.bsn).address,
+  "zaakStatus": $zaakStatus($doc.zaakUrl),
+  "decision": $doc.permit.decision
 }
 ```
 
-The `brp:` resolver takes a BSN, calls the BRP API, and returns the requested field. The `oz:` resolver takes a zaak URL, calls OpenZaak, and returns the requested attribute.
+The BRP function takes a BSN, calls the BRP API, and returns the requested fields. The OpenZaak function takes a zaak URL, calls OpenZaak, and returns the current status.
 
 ### Example implementation sketch
 
 ```java
 @Component
-public class BrpValueResolverFactory implements ValueResolverFactory {
+public class BrpPersonFunction implements EpistolaExpressionFunction {
 
-    @Override
-    public String supportedPrefix() {
-        return "brp";
+    public String name() {
+        return "brpPerson";
     }
 
-    @Override
-    public ValueResolver createResolver(String processInstanceId) {
-        return new BrpValueResolver(brpClient, processInstanceId);
+    public Person execute(ExpressionContext ctx, String bsn) {
+        return brpClient.getPerson(bsn);
     }
 }
 ```
@@ -122,30 +120,30 @@ The data mapping stays clean — no intermediary process variables, no extra ser
 ### Pros
 
 - **Clean BPMN** — no fetch tasks cluttering the process model
-- **Reusable** — once a resolver is registered, any template mapping can use it
+- **Reusable** — once a function is registered, any template mapping can use it
 - **Declarative** — the mapping itself describes where data comes from
-- **Composable** — resolvers can reference other resolved values (e.g., BSN from `doc:`)
+- **Composable** — functions can receive values from `$doc`, `$pv`, or `$case`
 
 ### Cons
 
 - **Hidden complexity** — API calls happen implicitly during resolution; failures are harder to trace
 - **No per-source error handling** — all resolution happens in one batch; a single failure can block the entire mapping
-- **Development effort** — each external system needs a resolver implementation
-- **Caching concerns** — the same BSN might be resolved multiple times if multiple fields reference it; resolvers need internal caching to avoid redundant API calls
-- **Valtimo coupling** — value resolvers are a Valtimo framework concept; implementation must follow Valtimo's `ValueResolverFactory` contract
+- **Development effort** — each external system needs a function implementation
+- **Caching concerns** — the same BSN might be resolved multiple times if multiple fields reference it; functions need internal caching to avoid redundant API calls
+- **Runtime coupling** — external calls now happen during JSONata evaluation, so function latency directly affects the generate action
 
 ### Batch implications
 
-Depends heavily on resolver implementation. For batch generation:
+Depends heavily on function implementation. For batch generation:
 
-- **Naive approach**: each of 200 documents triggers individual API calls per resolver — N documents x M external calls = potentially thousands of requests
-- **Smart approach**: resolvers could accept batch hints, pre-fetching data for all recipients in a single API call and serving individual lookups from a local cache
+- **Naive approach**: each of 200 documents triggers individual API calls per function — N documents x M external calls = potentially thousands of requests
+- **Smart approach**: functions could accept batch hints, pre-fetching data for all recipients in a single API call and serving individual lookups from a local cache
 
-The batch-aware resolver pattern requires careful design. The resolver needs to know it's operating in a batch context and which identifiers to pre-fetch. This is not supported by Valtimo's current `ValueResolverFactory` contract and would need extension or a wrapper layer.
+The batch-aware function pattern requires careful design. The function needs to know it's operating in a batch context and which identifiers to pre-fetch. That usually means a request-scoped cache or a purpose-built collection step before generation.
 
 ## Strategy 3: Document Enrichment
 
-Enrich the case document with all required data before generation. The case document becomes the single canonical data layer — all mappings use `doc:` exclusively.
+Enrich the case document with all required data before generation. The case document becomes the single canonical data layer — all mappings use `$doc` exclusively.
 
 ### How it works
 
@@ -153,7 +151,7 @@ Before document generation, a dedicated enrichment step collects data from all e
 
 ```
 [Service Task: enrich-case-document]  → writes external data into doc
-[Service Task: generate-document]     → maps exclusively from doc:
+[Service Task: generate-document]     → maps exclusively from $doc
 ```
 
 The enrichment task fetches BRP data, zaak status, and any other external data, then merges it into the case document:
@@ -182,22 +180,22 @@ The enrichment task fetches BRP data, zaak status, and any other external data, 
 
 The mapping becomes simple and uniform:
 
-```json
+```jsonata
 {
-  "applicantName": "doc:applicant.name",
+  "applicantName": $doc.applicant.name,
   "applicantAddress": {
-    "street": "doc:applicant.address.street",
-    "city": "doc:applicant.address.city",
-    "postalCode": "doc:applicant.address.postalCode"
+    "street": $doc.applicant.address.street,
+    "city": $doc.applicant.address.city,
+    "postalCode": $doc.applicant.address.postalCode
   },
-  "zaakStatus": "doc:zaak.status",
-  "decision": "doc:permit.decision"
+  "zaakStatus": $doc.zaak.status,
+  "decision": $doc.permit.decision
 }
 ```
 
 ### Pros
 
-- **Single data source** — all mappings use `doc:`, simple and consistent
+- **Single data source** — all mappings use `$doc`, simple and consistent
 - **Data reuse** — enriched data is available for any future document generation or process logic
 - **Auditable** — the case document is a persisted record; you can see exactly what data was used
 - **Decoupled timing** — enrichment can happen well before generation (e.g., on case creation or status change)
@@ -212,7 +210,7 @@ The mapping becomes simple and uniform:
 
 ### Batch implications
 
-Moderately suited for batch generation. If the enrichment step has already run for all cases, generation can proceed without any external calls — pure `doc:` resolution is fast and local.
+Moderately suited for batch generation. If the enrichment step has already run for all cases, generation can proceed without any external calls — pure `$doc` JSONata evaluation is fast and local.
 
 However, if enrichment needs to happen as part of the batch:
 
@@ -231,7 +229,7 @@ A new `collect-document-data` plugin action is configured with a list of data so
 
 ```
 [Service Task: collect-document-data]  → pv:documentData (merged object)
-[Service Task: generate-document]      → maps from pv:documentData.*
+[Service Task: generate-document]      → maps from $pv.documentData.*
 ```
 
 ### Example configuration
@@ -258,7 +256,7 @@ A new `collect-document-data` plugin action is configured with a list of data so
     },
     {
       "type": "openzaak",
-      "zaakUrl": "doc:zaakUrl",
+      "zaakUrl": "$doc.zaakUrl",
       "mappings": {
         "zaakStatus": "status.omschrijving"
       }
@@ -312,10 +310,10 @@ However, this concentrates a lot of logic in a single action. Debugging a failed
 
 ## Comparison
 
-| Aspect                | BPMN Orchestration             | Custom Value Resolvers         | Document Enrichment             | Data Collection Action         |
+| Aspect                | BPMN Orchestration             | Custom JSONata Functions       | Document Enrichment             | Data Collection Action         |
 | --------------------- | ------------------------------ | ------------------------------ | ------------------------------- | ------------------------------ |
 | BPMN complexity       | High (many tasks)              | Low (one task)                 | Medium (enrich + generate)      | Low (collect + generate)       |
-| Implementation effort | Low (existing plugins)         | High (resolver per source)     | Medium (enrichment logic)       | High (multi-source action)     |
+| Implementation effort | Low (existing plugins)         | High (function per source)     | Medium (enrichment logic)       | High (multi-source action)     |
 | Debuggability         | Excellent (visible flow)       | Poor (implicit calls)          | Good (data in document)         | Medium (single action)         |
 | Reusability           | Low (per-process)              | High (any mapping)             | High (data in document)         | Medium (per-action config)     |
 | Batch suitability     | Poor                           | Medium (needs extensions)      | Good (decouple enrich/generate) | Good (if batch-designed)       |
@@ -327,8 +325,8 @@ However, this concentrates a lot of logic in a single action. Debugging a failed
 These strategies are not mutually exclusive. A pragmatic approach might combine them:
 
 - **Simple cases**: BPMN orchestration — when a template only needs one or two external values, a couple of fetch tasks are the simplest solution
-- **Recurring patterns**: Custom value resolvers — when the same external lookup appears across many templates (e.g., BRP data by BSN), a resolver eliminates repetitive BPMN tasks
+- **Recurring patterns**: Custom JSONata functions — when the same external lookup appears across many templates (e.g., BRP data by BSN), a function eliminates repetitive BPMN tasks
 - **Data-heavy cases**: Document enrichment — when a case naturally accumulates rich data over its lifecycle, use the enriched document as the generation source
 - **Batch generation**: Data collection action or bulk enrichment — purpose-built for collecting data at scale
 
-The data mapping layer (see [data-mapping.md](data-mapping.md)) is agnostic to how data arrives in `doc:` or `pv:` — it just resolves expressions. This means the strategy choice is purely an upstream concern and can vary per process or even per template.
+The data mapping layer (see [data-mapping.md](data-mapping.md)) is agnostic to how data arrives in `$doc` or `$pv` — it just evaluates JSONata. This means the strategy choice is purely an upstream concern and can vary per process or even per template.

@@ -27,7 +27,7 @@ A citizen applies for a building permit. The system automatically generates a co
 
 ### Focus
 
-- **Rich data mapping**: nested objects (`doc:applicant.address.street`), arrays with per-item field renaming (`_source` pattern), mixed value resolvers (`doc:`, `pv:`)
+- **Rich data mapping**: JSONata builds nested objects from `$doc`, `$pv`, and `$case`, including arrays
 - **Environment and variant selection**: action-level overrides
 - **Full async lifecycle**: generate, message catch, download
 - **User task with download link**: case worker reviews the document before the process continues
@@ -45,29 +45,31 @@ Service Task: "Generate Confirmation Letter"
   │    variantId:      <formal variant>
   │    environmentId:  <production>
   │    outputFormat:   PDF
-  │    filename:       "pv:confirmationFilename"
+  │    filename:       bevestigingsbrief.pdf
   │    resultProcessVariable: "requestId"
-  │    dataMapping:
-  │      applicantName:      "doc:applicant.firstName"
-  │      applicantLastName:  "doc:applicant.lastName"
-  │      applicantBsn:       "doc:applicant.bsn"
-  │      applicantAddress:
-  │        street:            "doc:applicant.address.street"
-  │        houseNumber:       "doc:applicant.address.houseNumber"
-  │        postalCode:        "doc:applicant.address.postalCode"
-  │        city:              "doc:applicant.address.city"
-  │      propertyAddress:
-  │        street:            "doc:property.address.street"
-  │        houseNumber:       "doc:property.address.houseNumber"
-  │        postalCode:        "doc:property.address.postalCode"
-  │        city:              "doc:property.address.city"
-  │      kadastraalNummer:   "doc:property.kadastraalNummer"
-  │      requestDate:        "pv:requestDate"
-  │      activities:                              ◄── array per-item mapping
-  │        _source:           "doc:activities"
-  │        type:              "type"
-  │        description:       "description"
-  │        cost:              "estimatedCost"     ◄── field rename
+  │    dataMapping: {
+  │      "applicant": {
+  │        "firstName": $doc.applicant.firstName,
+  │        "lastName": $doc.applicant.lastName,
+  │        "bsn": $doc.applicant.bsn,
+  │        "address": {
+  │          "street": $doc.applicant.address.street,
+  │          "houseNumber": $doc.applicant.address.houseNumber,
+  │          "postalCode": $doc.applicant.address.postalCode,
+  │          "city": $doc.applicant.address.city
+  │        }
+  │      },
+  │      "property": {
+  │        "address": {
+  │          "street": $doc.property.address.street,
+  │          "houseNumber": $doc.property.address.houseNumber,
+  │          "postalCode": $doc.property.address.postalCode,
+  │          "city": $doc.property.address.city
+  │        },
+  │        "kadastraalNummer": $doc.property.kadastraalNummer
+  │      },
+  │      "activities": $doc.activities
+  │    }
   │
   │  Error boundary → Error End Event
   ▼
@@ -155,15 +157,15 @@ End Event
 
 ### What this demonstrates
 
-| Capability             | How it's shown                                                        |
-| ---------------------- | --------------------------------------------------------------------- |
-| Nested object mapping  | `doc:applicant.address.street` resolves through 2 levels              |
-| Array per-item mapping | `activities` uses `_source` + field rename (`estimatedCost` → `cost`) |
-| Environment override   | Action-level `environmentId` overrides the plugin default             |
-| Variant selection      | Specific variant chosen for the formal letter style                   |
-| Async completion       | Message Catch Event waits for the result collector to correlate       |
-| Download + review      | `download-document` stores Base64 in pv, user task renders download   |
-| Error handling         | Boundary error events on both generate and receive tasks              |
+| Capability            | How it's shown                                                      |
+| --------------------- | ------------------------------------------------------------------- |
+| Nested object mapping | `$doc.applicant.address.street` resolves through 2 levels           |
+| Array mapping         | `activities` forwards the document array into the template payload  |
+| Environment override  | Action-level `environmentId` overrides the plugin default           |
+| Variant selection     | Specific variant chosen for the formal letter style                 |
+| Async completion      | Message Catch Event waits for the result collector to correlate     |
+| Download + review     | `download-document` stores Base64 in pv, user task renders download |
+| Error handling        | Boundary error events on both generate and receive tasks            |
 
 ---
 
@@ -189,18 +191,27 @@ Start Form
 Service Task: "Genereer Ontvangstbevestiging"
   │  Action: generate-document
   │  Template: "Ontvangstbevestiging Bezwaar"
-  │  dataMapping:
-  │    objectorName:      "doc:objector.firstName"
-  │    objectorLastName:  "doc:objector.lastName"
-  │    objectorAddress:
-  │      street:           "doc:objector.address.street"
-  │      houseNumber:      "doc:objector.address.houseNumber"
-  │      postalCode:       "doc:objector.address.postalCode"
-  │      city:             "doc:objector.address.city"
-  │    originalDecisionRef:   "doc:originalDecision.reference"
-  │    originalDecisionDate:  "doc:originalDecision.date"
-  │    originalDecisionSubject: "doc:originalDecision.subject"
-  │    receivedDate:          "doc:objection.receivedDate"
+  │  dataMapping: {
+  │    "objector": {
+  │      "firstName": $doc.objector.firstName,
+  │      "lastName": $doc.objector.lastName,
+  │      "address": {
+  │        "street": $doc.objector.address.street,
+  │        "houseNumber": $doc.objector.address.houseNumber,
+  │        "postalCode": $doc.objector.address.postalCode,
+  │        "city": $doc.objector.address.city
+  │      }
+  │    },
+  │    "originalDecision": {
+  │      "reference": $doc.originalDecision.reference,
+  │      "date": $doc.originalDecision.date,
+  │      "subject": $doc.originalDecision.subject
+  │    },
+  │    "objection": {
+  │      "grounds": $doc.objection.grounds,
+  │      "receivedDate": $doc.objection.receivedDate
+  │    }
+  │  }
   │  resultProcessVariable: "ackRequestId"
   │
   │  Error boundary → Error End Event
@@ -228,6 +239,7 @@ Exclusive Gateway: pv:decision
   └─ "deels_gegrond" → Service Task: generate-document (Template: "Besluit Bezwaar Deels Gegrond")
   │
   │  Each branch maps: objector details + original decision + motivation + decision
+  │  filename: "\"besluit-\" & $pv.decision & \".pdf\""
   │  resultProcessVariable: "decisionRequestId"
   ▼
 (merge)
@@ -317,7 +329,7 @@ A municipality needs to send personalized tax assessment letters to all property
 - **Scale**: designed for hundreds or thousands of documents
 - **Per-instance error handling**: one failure doesn't stop the batch
 - **Completion tracking**: success/failure counters
-- **Centralized poller under load**: many concurrent waiting processes
+- **Result collector under load**: many concurrent waiting processes
 
 ### Process: `bulk-tax-letters`
 
@@ -336,16 +348,18 @@ Multi-Instance Subprocess (parallel)
   │  │                                                            │
   │  │  Service Task: "Generate Tax Letter"                       │
   │  │    Action: generate-document                               │
-  │  │    templateId: pv:selectedTemplateId                       │
-  │  │    dataMapping:                                            │
-  │  │      name:          "pv:taxpayer.name"                     │
-  │  │      address:                                              │
-  │  │        street:      "pv:taxpayer.address.street"           │
-  │  │        postalCode:  "pv:taxpayer.address.postalCode"       │
-  │  │        city:        "pv:taxpayer.address.city"             │
-  │  │      propertyId:    "pv:taxpayer.propertyId"               │
-  │  │      assessedValue: "pv:taxpayer.assessedValue"            │
-  │  │      taxAmount:     "pv:taxpayer.taxAmount"                │
+  │  │    templateId: $pv.selectedTemplateId                      │
+  │  │    dataMapping: {                                          │
+  │  │      "name": $pv.taxpayer.name,                            │
+  │  │      "address": {                                          │
+  │  │        "street": $pv.taxpayer.address.street,              │
+  │  │        "houseNumber": $pv.taxpayer.address.houseNumber,    │
+  │  │        "postalCode": $pv.taxpayer.address.postalCode,      │
+  │  │        "city": $pv.taxpayer.address.city                   │
+  │  │      },                                                    │
+  │  │      "bsn": $pv.taxpayer.bsn,                              │
+  │  │      "taxAmount": $pv.taxpayer.taxAmount                   │
+  │  │    }                                                       │
   │  │    resultProcessVariable: "requestId"                      │
   │  │                                                            │
   │  │    Error boundary ─────────────────────────┐               │
@@ -379,16 +393,24 @@ The `pv:taxpayers` process variable is a JSON array provided at start:
 [
   {
     "name": "J. de Vries",
-    "address": { "street": "Kerkstraat 1", "postalCode": "1234AB", "city": "Amsterdam" },
-    "propertyId": "AMS-2024-001",
-    "assessedValue": 350000,
+    "address": {
+      "street": "Kerkstraat",
+      "houseNumber": "1",
+      "postalCode": "1234AB",
+      "city": "Amsterdam"
+    },
+    "bsn": "123456789",
     "taxAmount": 1250.0
   },
   {
     "name": "A. Bakker",
-    "address": { "street": "Dorpsweg 42", "postalCode": "5678CD", "city": "Rotterdam" },
-    "propertyId": "RTD-2024-002",
-    "assessedValue": 280000,
+    "address": {
+      "street": "Dorpsweg",
+      "houseNumber": "42",
+      "postalCode": "5678CD",
+      "city": "Rotterdam"
+    },
+    "bsn": "987654321",
     "taxAmount": 980.0
   }
 ]
@@ -396,7 +418,7 @@ The `pv:taxpayers` process variable is a JSON array provided at start:
 
 ### Design considerations
 
-**Multi-instance + message correlation**: Each subprocess instance gets its own `epistolaJobPath` process variable (encoding both tenant and request ID), so the centralized poller can correlate each completion independently. The `correlateAllWithResult()` call in `EpistolaMessageCorrelationService` handles multiple matching executions safely.
+**Multi-instance + message correlation**: Each subprocess instance gets its own `epistolaJobPath` process variable (encoding both tenant and request ID), so the result collector can correlate each completion independently. The `correlateAllWithResult()` call in `EpistolaMessageCorrelationService` handles multiple matching executions safely.
 
 **Result-collector efficiency**: The plugin runs a single long-running `ResultCollector` per Epistola configuration that streams completed/failed results from `POST /generation/collect`. With 1000 concurrent waiting instances, this is _one_ HTTP connection per Epistola tenant draining the result queue — not 1000 status polls per tenant per cycle. See [async.md](async.md) for details.
 
@@ -410,14 +432,14 @@ The `pv:taxpayers` process variable is a JSON array provided at start:
 
 ### What this demonstrates
 
-| Capability                 | How it's shown                                                |
-| -------------------------- | ------------------------------------------------------------- |
-| Multi-instance subprocess  | Camunda `collection` variable iterates over taxpayer array    |
-| Scale                      | Works with 10, 100, or 1000 items — same pattern              |
-| Per-instance data mapping  | Each iteration maps from `pv:taxpayer.*` (element variable)   |
-| Error resilience           | Boundary error per instance; failure counter; batch continues |
-| Centralized poller at load | Many concurrent waiting processes, single poller handles all  |
-| Completion summary         | User task shows success/failure breakdown                     |
+| Capability                | How it's shown                                                |
+| ------------------------- | ------------------------------------------------------------- |
+| Multi-instance subprocess | Camunda `collection` variable iterates over taxpayer array    |
+| Scale                     | Works with 10, 100, or 1000 items — same pattern              |
+| Per-instance data mapping | Each iteration maps from `$pv.taxpayer.*` (element variable)  |
+| Error resilience          | Boundary error per instance; failure counter; batch continues |
+| Result collector at load  | Many concurrent waiting processes, one collector handles all  |
+| Completion summary        | User task shows success/failure breakdown                     |
 
 ---
 
@@ -564,7 +586,7 @@ These use cases should be implemented incrementally, each building on patterns e
 | 0     | (infrastructure)        | Frontend config components for `check-job-status` and `download-document` actions         |
 | 1     | Vergunningsaanvraag     | Establishes: case definition, BPMN with message catch, data mapping, download + user task |
 | 2     | Bezwaarprocedure        | Adds: multi-template, conditional gateway, documents tab storage                          |
-| 3     | Massale correspondentie | Adds: multi-instance subprocess, error counters, bulk poller load                         |
+| 3     | Massale correspondentie | Adds: multi-instance subprocess, error counters, result collector load                    |
 | 4     | Subsidie zaakdossier    | Adds: parallel gateway, OpenZaak infrastructure, multi-plugin orchestration               |
 
 ## Test-App File Structure

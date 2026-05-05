@@ -52,7 +52,7 @@ When an admin configures a call activity to use a building block, the process-li
 
 1. **Select building block** from a list (name, description, icon)
 2. **Select plugin configuration** (e.g., which Epistola instance to use)
-3. **Configure input/output mappings** using value-path-selectors (`doc:`, `pv:`, `case:`)
+3. **Configure input/output mappings** using the building-block mapping UI
 
 ### Runtime flow
 
@@ -103,7 +103,7 @@ Building blocks support `pluginConfigurationMappings`. The admin selects which E
 
 Building blocks do **not** have this extension point. Every building block gets the same generic configuration wizard with a value-path-selector mapping table. The components are hardcoded in `process-link-modal.component.html`. There is no injection token, no dynamic component loading, and no way to register a custom component per building block type.
 
-**Impact**: An admin configuring the epistola building block would use a generic mapping table instead of the purpose-built generate-document form. They'd map `doc:/applicant/firstName` to `dataMapping.applicant.firstName` row by row, without seeing the template schema, without the tree view, and without validation that required fields are mapped.
+**Impact**: An admin configuring the epistola building block would use a generic mapping table instead of the purpose-built generate-document form. They would need to wire building-block input fields to the JSONata data mapping manually, without seeing the template schema or the JSONata validation feedback from the current configurator.
 
 ### Building block fields come from a static document schema
 
@@ -121,7 +121,7 @@ The workaround is to put these values in the BB document schema and have the adm
 
 ### Separate document context
 
-The BB's internal plugin action resolves `doc:` expressions against the **BB document**, not the case document. The same data mapping configured once today would need to be configured in two places: case to BB input mapping, and BB internal process-link to plugin action.
+The BB's internal plugin action evaluates JSONata against the **BB document**, not the case document. The same data mapping configured once today would need to be configured in two places: case to BB input mapping, and BB internal process-link to plugin action.
 
 ## Why Not a Global Form?
 
