@@ -12,4 +12,5 @@
   window['env']['keycloakLogoutRedirectUri'] = '${KEYCLOAK_LOGOUT_REDIRECT_URI}';
   window['env']['whiteListedDomain'] = '${WHITELISTED_DOMAIN}';
   window['env']['openZaakCatalogusId'] = '${OPENZAAK_CATALOGUS_ID}';
+  window['env']['epistolaEnabled'] = '${EPISTOLA_ENABLED}';
 })(this);

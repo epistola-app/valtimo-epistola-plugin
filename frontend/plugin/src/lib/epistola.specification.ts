@@ -4,10 +4,15 @@ import { GenerateDocumentConfigurationComponent } from './components/generate-do
 import { CheckJobStatusConfigurationComponent } from './components/check-job-status-configuration/check-job-status-configuration.component';
 import { DownloadDocumentConfigurationComponent } from './components/download-document-configuration/download-document-configuration.component';
 import { EPISTOLA_PLUGIN_LOGO_BASE64 } from './assets';
+import { isEpistolaEnabled } from './epistola-runtime-config';
+
+const EPISTOLA_PLUGIN_ID = 'epistola';
+const DISABLED_EPISTOLA_PLUGIN_ID = '__epistola_disabled__';
 
 const epistolaPluginSpecification: PluginSpecification = {
-  // Must match backend @Plugin(key = "epistola")
-  pluginId: 'epistola',
+  get pluginId(): string {
+    return isEpistolaEnabled() ? EPISTOLA_PLUGIN_ID : DISABLED_EPISTOLA_PLUGIN_ID;
+  },
 
   // Component for plugin-level configuration (tenantId)
   pluginConfigurationComponent: EpistolaConfigurationComponent,
