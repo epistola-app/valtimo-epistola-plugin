@@ -181,10 +181,11 @@ public class EpistolaServiceImpl implements EpistolaService {
             Map<String, Object> data,
             FileFormat format,
             String filename,
-            String correlationId
+            String correlationId,
+            String routingKey
     ) {
-        log.info("Submitting document generation request: tenantId={}, templateId={}, variantId={}, attributes={}, format={}, filename={}",
-                tenantId, templateId, variantId, variantAttributes, format, filename);
+        log.info("Submitting document generation request: tenantId={}, templateId={}, variantId={}, attributes={}, format={}, filename={}, routingKey={}",
+                tenantId, templateId, variantId, variantAttributes, format, filename, routingKey);
         log.debug("Template data: {}", data);
 
         try {
@@ -202,7 +203,8 @@ public class EpistolaServiceImpl implements EpistolaService {
                     null,               // versionId - not used when environmentId is specified
                     environmentId,
                     filename,
-                    correlationId
+                    correlationId,
+                    routingKey          // routes the result back to the submitting collector node
             );
 
             GenerationJobResponse response = generationApi.generateDocument(tenantId, request);

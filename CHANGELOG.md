@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Drop the `@PostConstruct` reconcile in `EpistolaResultCollectorRunner`** to silence the harmless-but-noisy `BeanCurrentlyInCreationException` warning at boot. The Epistola plugin bean is still being constructed when `@PostConstruct` runs on the runner, so `pluginService.createInstance(cfg)` couldn't resolve `epistolaPluginFactory` and every config logged a WARN. The first reconcile is already covered by Valtimo's `PluginsDeployedEvent` and the `@Scheduled` tick (which fires immediately when the scheduler starts). Removing the early call has no functional impact — both rescue paths fire within the same boot — and produces a clean startup log.
+
+### Changed
+
+- **Kick the result collector after a successful generate** — `EpistolaPlugin.generateDocument` calls `EpistolaResultCollectorRunner.kickFor(baseUrl, apiKey, tenantId)` after a successful submit. If the collector has backed off into idle mode, this brings the next poll forward to ~3s instead of waiting out the full backoff (up to 30s by default). Threshold-guarded inside the contract collector — no-op when polling fast, useful only after periods of inactivity. Two new properties on `epistola.result-collector`: `kickIntervalMs` (default 3000) and `backoffMultiplier` (default 3.0; was effectively 2.0 hard-coded in the contract client). The new multiplier gives the sequence 1s → 3s → 9s → 27s → 30s (capped at `maxIntervalMs`), reaching idle mode faster — the kick is the safety net that gets us back to fast polling when work arrives.
+- **Replaced per-execution polling with the `ResultCollector`** — `PollingCompletionEventConsumer` is gone. A single `EpistolaResultCollectorRunner` bean now manages one `ResultCollector` per active Epistola plugin configuration, streaming completed/failed results from `POST /tenants/{tenantId}/generation/collect` (NDJSON, gzip-negotiated, sequence-acked). Each result is delivered to the existing `EpistolaMessageCorrelationService` with the same `epistola:job:{tenantId}/{requestId}` job path encoding, so deployed BPMN processes don't need any changes. Significantly lower load on the suite (no per-request status polling). Reconciliation runs on bean startup, on a 60s scheduled tick, and reactively on Valtimo's `PluginsDeployedEvent` and `PluginConfigurationDeletedEvent` so plugin config changes from the UI are picked up immediately on the handling instance.
+- **`generate-document` action passes `routingKey` on submit** — derived from `EpistolaResultCollectorRunner.routingKeyFor(...)` so the result is routed back to this Valtimo node's collector partition. Falls back to the server's default (hash of `requestId`) when the collector hasn't completed its first poll yet.
+- **Bumped contract dependency to `0.3.0`** (`app.epistola.contract:client-spring3-restclient`).
+- **Plugin properties** — `epistola.poller.*` removed; replaced by `epistola.result-collector.*` (`enabled`, `batch-size`, `min-interval-ms`, `max-interval-ms`, `reconcile-interval-ms`).
+- **Outbound requests now carry the contract's identity headers** (`User-Agent: epistola-contract/<version> valtimo-epistola-plugin/<version>` and `X-EP-Node-Id`), required by contract v0.3+. `EpistolaApiClientFactory` wires the `ClientIdentity` interceptor onto every `RestClient` it builds.
+
+### Removed
+
+- **`PollingCompletionEventConsumer`** and the `EpistolaCompletionEventConsumer` interface — superseded by `EpistolaResultCollectorRunner`.
+- **`EpistolaCallbackResource`** — the placeholder webhook endpoint (`POST /api/v1/plugin/epistola/callback/generation-complete`) is gone. The suite never wired this path; with the result collector in place there's no remaining need for a push channel.
+- **Plugin properties `epistola.poller.enabled` / `epistola.poller.interval`** — see `Changed` above for the replacements.
+
+### Notes
+
+- Authentication uses `X-API-Key` — the `api-key` `authMethod` in the contract's `ConsumerDto` enum. JWT (self-signed + OAuth) registration paths defined in the contract are not used by this plugin; switching to those would be a follow-up.
+
+### Fixed
+
 - **CI workflows install mise before invoking `./gradlew`** — the gradle wrapper is a `mise exec -- gradle` shim, but `mise` isn't on the GitHub Actions runner by default, causing `exec: mise: not found`. Replaced `actions/setup-java@v4` with `jdx/mise-action@v2` in `ci.yml` and `release.yml` (build + publish-backend + docker-backend jobs). Mise installs JDK and Gradle from `.mise.toml`, so CI now mirrors local dev exactly. `setup-gradle@v4` is kept for build caching.
 
 - **`jsonata` declared as a frontend peer dependency** — `frontend/plugin/src/lib/utils/jsonata-converter.ts` imports `jsonata` at runtime, but the package was only listed under `devDependencies`. Consumers installing `@epistola.app/valtimo-plugin` would crash at runtime with a missing module. Added to `peerDependencies` (kept in `devDependencies` so the lib's own build/tests still work standalone, same pattern as `@valtimo/*`). Also added the dep to `test-app/frontend/package.json` so local dev mirrors a real consumer.

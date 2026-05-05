@@ -6,8 +6,10 @@ import app.epistola.client.api.EnvironmentsApi;
 import app.epistola.client.api.GenerationApi;
 import app.epistola.client.api.TemplatesApi;
 import app.epistola.client.api.VariantsApi;
+import app.epistola.client.identity.ClientIdentity;
 import app.epistola.client.infrastructure.Serializer;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestClient;
 
@@ -20,18 +22,28 @@ import org.springframework.web.client.RestClient;
  * Uses the generated client's {@link Serializer#getJacksonObjectMapper()} to ensure
  * proper serialization settings (NON_ABSENT inclusion, lenient deserialization, etc.)
  * are consistent with the generated Kotlin DTOs.
+ * <p>
+ * Every request also carries the contract's {@link ClientIdentity} headers
+ * ({@code User-Agent} starting with {@code epistola-contract/<version>} and
+ * {@code X-EP-Node-Id}), which v0.3+ of the contract requires.
  */
 @Slf4j
 public class EpistolaApiClientFactory {
 
     private static final String API_KEY_HEADER = "X-API-Key";
+    private static final String PRODUCT_NAME = "valtimo-epistola-plugin";
+
+    private final ClientHttpRequestInterceptor identityInterceptor;
+
+    public EpistolaApiClientFactory() {
+        this.identityInterceptor = ClientIdentity.Companion.builder()
+                .product(PRODUCT_NAME, resolveProductVersion())
+                .build()
+                .interceptor();
+    }
 
     /**
      * Create a GenerationApi client for document generation operations.
-     *
-     * @param baseUrl The Epistola API base URL
-     * @param apiKey  The API key for authentication
-     * @return Configured GenerationApi client
      */
     public GenerationApi createGenerationApi(String baseUrl, String apiKey) {
         return new GenerationApi(createRestClient(baseUrl, apiKey));
@@ -39,10 +51,6 @@ public class EpistolaApiClientFactory {
 
     /**
      * Create a CatalogsApi client for catalog operations.
-     *
-     * @param baseUrl The Epistola API base URL
-     * @param apiKey  The API key for authentication
-     * @return Configured CatalogsApi client
      */
     public CatalogsApi createCatalogsApi(String baseUrl, String apiKey) {
         return new CatalogsApi(createRestClient(baseUrl, apiKey));
@@ -50,10 +58,6 @@ public class EpistolaApiClientFactory {
 
     /**
      * Create a TemplatesApi client for template operations.
-     *
-     * @param baseUrl The Epistola API base URL
-     * @param apiKey  The API key for authentication
-     * @return Configured TemplatesApi client
      */
     public TemplatesApi createTemplatesApi(String baseUrl, String apiKey) {
         return new TemplatesApi(createRestClient(baseUrl, apiKey));
@@ -61,10 +65,6 @@ public class EpistolaApiClientFactory {
 
     /**
      * Create an AttributesApi client for attribute definition operations.
-     *
-     * @param baseUrl The Epistola API base URL
-     * @param apiKey  The API key for authentication
-     * @return Configured AttributesApi client
      */
     public AttributesApi createAttributesApi(String baseUrl, String apiKey) {
         return new AttributesApi(createRestClient(baseUrl, apiKey));
@@ -72,10 +72,6 @@ public class EpistolaApiClientFactory {
 
     /**
      * Create an EnvironmentsApi client for environment operations.
-     *
-     * @param baseUrl The Epistola API base URL
-     * @param apiKey  The API key for authentication
-     * @return Configured EnvironmentsApi client
      */
     public EnvironmentsApi createEnvironmentsApi(String baseUrl, String apiKey) {
         return new EnvironmentsApi(createRestClient(baseUrl, apiKey));
@@ -83,37 +79,38 @@ public class EpistolaApiClientFactory {
 
     /**
      * Create a VariantsApi client for variant operations.
-     *
-     * @param baseUrl The Epistola API base URL
-     * @param apiKey  The API key for authentication
-     * @return Configured VariantsApi client
      */
     public VariantsApi createVariantsApi(String baseUrl, String apiKey) {
         return new VariantsApi(createRestClient(baseUrl, apiKey));
     }
 
     /**
-     * Create a RestClient with authentication headers configured.
-     * <p>
-     * Uses the generated client's ObjectMapper which has:
-     * <ul>
-     *   <li>NON_ABSENT serialization (excludes null fields from request bodies)</li>
-     *   <li>FAIL_ON_UNKNOWN_PROPERTIES disabled (tolerates extra fields in responses)</li>
-     *   <li>Kotlin module and Java time module registered</li>
-     * </ul>
+     * Create a RestClient with authentication and identity headers configured.
      * <p>
      * Public so callers can make direct HTTP calls for endpoints where
-     * the generated client's return type doesn't work (e.g., binary downloads).
+     * the generated client's return type doesn't work (e.g., binary downloads,
+     * NDJSON streaming).
      */
     public RestClient createRestClient(String baseUrl, String apiKey) {
         var converter = new MappingJackson2HttpMessageConverter(Serializer.getJacksonObjectMapper());
         return RestClient.builder()
                 .baseUrl(baseUrl)
                 .defaultHeader(API_KEY_HEADER, apiKey)
+                .requestInterceptor(identityInterceptor)
                 .messageConverters(converters -> {
                     converters.removeIf(c -> c instanceof MappingJackson2HttpMessageConverter);
                     converters.add(converter);
                 })
                 .build();
+    }
+
+    /**
+     * Resolve this product's version from the package metadata, falling back
+     * to "unknown" when running outside a packaged JAR (e.g. during tests).
+     */
+    private String resolveProductVersion() {
+        Package pkg = EpistolaApiClientFactory.class.getPackage();
+        String version = pkg != null ? pkg.getImplementationVersion() : null;
+        return version != null && !version.isBlank() ? version : "unknown";
     }
 }

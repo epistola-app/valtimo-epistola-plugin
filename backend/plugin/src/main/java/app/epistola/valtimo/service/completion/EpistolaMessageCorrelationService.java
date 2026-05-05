@@ -14,17 +14,12 @@ import static app.epistola.valtimo.domain.EpistolaProcessVariables.*;
 /**
  * Shared service for correlating BPMN messages when Epistola document generation completes.
  * <p>
- * The callback endpoint uses this service for message correlation via
- * {@code processInstanceVariableEquals}. This works for sequential processes
- * and single-branch cases, but does <b>not</b> support parallel branches
- * within a single process instance (callbacks don't know execution IDs).
- * <p>
- * For parallel/multi-instance support, the {@link PollingCompletionEventConsumer}
- * uses direct {@code messageEventReceived()} targeting specific executions instead.
- * <p>
- * Job identification uses a single composite variable ({@link EpistolaProcessVariables#JOB_PATH}) with format
- * {@code epistola:job:{tenantId}/{requestId}}. This ensures both tenant and request ID
- * are always stored and retrieved atomically.
+ * Each result the {@link EpistolaResultCollectorRunner} pulls from
+ * {@code POST /generation/collect} is dispatched here, which uses
+ * {@code processInstanceVariableEquals} on the {@link EpistolaProcessVariables#JOB_PATH}
+ * composite variable to wake up the matching BPMN execution. The single composite
+ * variable encoding ({@code epistola:job:{tenantId}/{requestId}}) ensures both
+ * tenant and request id are always stored and retrieved atomically.
  */
 @Slf4j
 @RequiredArgsConstructor

@@ -135,7 +135,8 @@ class EpistolaServiceImplTest {
                 Map.of("customer", Map.of("name", "Test Customer", "email", "test@example.com")),
                 FileFormat.PDF,
                 "invoice-001.pdf",
-                "correlation-123"
+                "correlation-123",
+                null
         );
 
         assertNotNull(result);

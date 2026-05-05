@@ -1,5 +1,10 @@
 # Async Document Generation
 
+> For the detailed client-side flow (how the runner manages collectors,
+> how routing keys are computed, multi-instance behavior, the four known
+> edge cases around config drift, node-id uniqueness, backpressure, and
+> the BPMN-subscription race), see [result-collector.md](result-collector.md).
+
 ## The Problem
 
 Document generation via Epistola is asynchronous: you submit a request, get a `requestId`, and the document becomes available later. A naive approach is to add a timer loop inside each BPMN process that polls for completion:
@@ -88,66 +93,34 @@ public interface EpistolaCompletionEventConsumer {
 
 Implementations decide how to discover completed jobs and when to trigger message correlation.
 
-### PollingCompletionEventConsumer (Initial Implementation)
+### EpistolaResultCollectorRunner (current implementation)
 
-A `@Scheduled` service that polls Epistola for job completion:
+A single Spring bean that runs one `ResultCollector` per active Epistola plugin configuration. Each collector calls `POST /tenants/{tenantId}/generation/collect` and streams completed/failed results back as NDJSON, with sequence-based acknowledgment and partition-aware routing (see contract v0.3+ docs).
 
-1. Queries Operaton for all executions waiting on message `"EpistolaDocumentGenerated"`
-2. Reads the `epistolaJobPath` variable from each execution and parses out `tenantId` and `requestId`
-3. Groups by `tenantId` and loads the matching plugin configuration per tenant
-4. Calls `getJobStatus()` per waiting job, delivers BPMN messages for completed/failed/cancelled jobs
+Per result, the runner:
 
-This centralizes polling into one scheduled task instead of N timer loops in the engine.
+1. Builds the composite job path `epistola:job:{tenantId}/{requestId}`.
+2. Calls `EpistolaMessageCorrelationService.correlateCompletion(...)`, which uses `processInstanceVariableEquals` on `epistolaJobPath` to deliver the BPMN message to the matching execution.
+3. Returns success so the collector advances its sequence cursor and never re-delivers the same result.
+
+A scheduled reconcile loop (default every 60s) compares the running collectors against `pluginService.findPluginConfigurations(EpistolaPlugin.class, ...)` and starts/stops/restarts collectors as configurations are added, removed, or have their `baseUrl`/`apiKey`/`tenantId` changed. This mirrors the "enumerate plugin configs every cycle" pattern from the previous polling consumer, but now drives long-running streaming clients instead of per-request status polls.
 
 ## Multi-Tenant Routing
 
-The poller needs to know which Epistola instance to query for each waiting process. The `generate-document` action stores a single composite `epistolaJobPath` variable (format: `epistola:job:{tenantId}/{requestId}`) that encodes both the tenant and request ID atomically.
-
-The polling flow:
-
-1. Query all waiting executions
-2. Read `epistolaJobPath` from each execution, parse into `tenantId` + `requestId`
-3. Load all Epistola plugin configurations (via `PluginService`)
-4. Match by `tenantId` to find the correct API credentials
-5. Call `getJobStatus()` with the matched plugin's `baseUrl` and `apiKey`
-
-This supports multiple Epistola plugin configurations in the same Valtimo instance, each connecting to a different Epistola tenant.
+The runner naturally handles multi-tenant deployments: one `ResultCollector` per `(baseUrl, apiKey, tenantId)` configuration tuple. Each `generate-document` invocation looks up the right collector via the plugin's properties and asks it for a `routingKey` that targets that collector's currently-assigned partitions, so the result is guaranteed to land back here. If this Valtimo node dies, the suite reassigns its partitions to surviving consumers and they pick up the orphaned results.
 
 ## Configuration
 
 ```yaml
 epistola:
-  poller:
-    enabled: true # Set to false to disable polling (default: true)
-    interval: 30000 # Milliseconds between poll cycles (default: 30000)
+  result-collector:
+    enabled: true # Set to false to disable the collector entirely (default: true)
+    batch-size: 100 # Max results per /generation/collect call (default: 100)
+    min-interval-ms: 1000 # Lower bound on poll interval when busy (default: 1000)
+    max-interval-ms: 30000 # Upper bound on poll interval when idle (default: 30000)
+    reconcile-interval-ms: 60000 # How often to check for config drift (default: 60000)
 ```
-
-The poller is enabled by default. Disable it when using webhooks or a future event API for completion notifications.
-
-## Callback Webhook (Alternative)
-
-The callback endpoint at `POST /api/v1/plugin/epistola/callback/generation-complete` can also trigger message correlation. Configure Epistola to send a webhook when generation completes:
-
-```json
-{
-  "tenantId": "...",
-  "requestId": "...",
-  "status": "COMPLETED",
-  "documentId": "...",
-  "errorMessage": null,
-  "correlationId": "..."
-}
-```
-
-Both the poller and the callback use the same `EpistolaMessageCorrelationService`, so they can coexist safely. The callback provides near-instant notification, while the poller acts as a safety net for missed callbacks.
 
 ## Future Evolution
 
-When Epistola's event API becomes available:
-
-1. Implement a new `EpistolaCompletionEventConsumer` (e.g., `EventApiCompletionEventConsumer`) that subscribes to the event stream
-2. Register it as a Spring bean — it replaces the poller via `@ConditionalOnMissingBean`
-3. Optionally keep the poller as a fallback with `epistola.poller.enabled=true`
-4. **No BPMN changes needed** — same message name, same process variables
-
-The key insight is that the BPMN process is decoupled from the notification mechanism. Swapping from polling to event-driven consumption is purely an infrastructure change.
+The contract also defines self-signed-JWT and OAuth bearer auth as an alternative to `X-API-Key`. That migration (plus the corresponding consumer onboarding flow) is tracked as a separate change.

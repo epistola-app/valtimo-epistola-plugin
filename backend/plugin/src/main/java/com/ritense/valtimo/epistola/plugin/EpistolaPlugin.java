@@ -7,6 +7,7 @@ import app.epistola.valtimo.domain.GenerationJobResult;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
+import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
 
 import app.epistola.valtimo.service.EpistolaService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -44,17 +45,20 @@ public class EpistolaPlugin {
     private final ObjectMapper objectMapper;
     private final JsonataMappingService jsonataMappingService;
     private final com.ritense.document.service.DocumentService documentService;
+    private final EpistolaResultCollectorRunner resultCollectorRunner;
 
     public EpistolaPlugin(
             EpistolaService epistolaService,
             ObjectMapper objectMapper,
             JsonataMappingService jsonataMappingService,
-            com.ritense.document.service.DocumentService documentService
+            com.ritense.document.service.DocumentService documentService,
+            EpistolaResultCollectorRunner resultCollectorRunner
     ) {
         this.epistolaService = epistolaService;
         this.objectMapper = objectMapper;
         this.jsonataMappingService = jsonataMappingService;
         this.documentService = documentService;
+        this.resultCollectorRunner = resultCollectorRunner;
     }
 
     /**
@@ -303,6 +307,15 @@ public class EpistolaPlugin {
                         .toList()
                 : null;
 
+        // Compute a routing key that targets this Valtimo node's collector partition.
+        // If the collector hasn't completed its first poll yet (cold start) this returns null,
+        // in which case the server falls back to the requestId as the routing key — the
+        // result then routes by hash, which may land on another node and bypass us.
+        String baseRoutingKey = correlationId != null && !correlationId.isBlank()
+                ? correlationId
+                : java.util.UUID.randomUUID().toString();
+        String routingKey = resultCollectorRunner.routingKeyFor(baseUrl, apiKey, tenantId, baseRoutingKey);
+
         // Submit the document generation request
         GenerationJobResult result;
         try {
@@ -318,7 +331,8 @@ public class EpistolaPlugin {
                     resolvedData,
                     outputFormat,
                     resolvedFilename,
-                    correlationId
+                    correlationId,
+                    routingKey
             );
         } catch (Exception e) {
             // Store error details so the retry flow can trigger
@@ -340,6 +354,13 @@ public class EpistolaPlugin {
         // to the polling consumer's execution.
         String jobPath = EpistolaMessageCorrelationService.buildJobPath(tenantId, result.getRequestId());
         execution.setVariable(EpistolaProcessVariables.JOB_PATH, jobPath);
+
+        // Hint the collector to look for the result soon — if it's currently
+        // backed off into idle mode, this brings the next poll forward to
+        // ~kickIntervalMs (default 3s) instead of waiting out the full backoff
+        // (which can be up to maxIntervalMs, default 30s). Threshold-guarded
+        // inside the contract collector: no-op when polling fast.
+        resultCollectorRunner.kickFor(baseUrl, apiKey, tenantId);
 
         log.info("Document generation request submitted. jobPath={}, resultVar={}",
                 jobPath, resultProcessVariable);

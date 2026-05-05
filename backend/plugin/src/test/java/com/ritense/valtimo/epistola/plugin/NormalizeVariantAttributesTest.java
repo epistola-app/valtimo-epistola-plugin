@@ -2,6 +2,7 @@ package com.ritense.valtimo.epistola.plugin;
 
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaService;
+import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin.NormalizedAttribute;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +29,8 @@ class NormalizeVariantAttributesTest {
                 mock(EpistolaService.class),
                 mock(ObjectMapper.class),
                 mock(JsonataMappingService.class),
-                mock(com.ritense.document.service.DocumentService.class)
+                mock(com.ritense.document.service.DocumentService.class),
+                mock(EpistolaResultCollectorRunner.class)
         );
     }
 

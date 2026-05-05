@@ -5,7 +5,7 @@ This document describes four demo scenarios that showcase the Epistola plugin in
 **Related documentation:**
 
 - [Data Mapping](data-mapping.md) — how case/process data flows into Epistola templates
-- [Async Document Generation](async.md) — the centralized polling and message correlation architecture
+- [Async Document Generation](async.md) — the result-collector + message correlation architecture
 - [Data Collection Strategies](data-collection-strategies.md) — strategies for assembling template input data
 
 ## Overview
@@ -161,7 +161,7 @@ End Event
 | Array per-item mapping | `activities` uses `_source` + field rename (`estimatedCost` → `cost`) |
 | Environment override   | Action-level `environmentId` overrides the plugin default             |
 | Variant selection      | Specific variant chosen for the formal letter style                   |
-| Async completion       | Message Catch Event waits for centralized poller to correlate         |
+| Async completion       | Message Catch Event waits for the result collector to correlate       |
 | Download + review      | `download-document` stores Base64 in pv, user task renders download   |
 | Error handling         | Boundary error events on both generate and receive tasks              |
 
@@ -398,13 +398,13 @@ The `pv:taxpayers` process variable is a JSON array provided at start:
 
 **Multi-instance + message correlation**: Each subprocess instance gets its own `epistolaJobPath` process variable (encoding both tenant and request ID), so the centralized poller can correlate each completion independently. The `correlateAllWithResult()` call in `EpistolaMessageCorrelationService` handles multiple matching executions safely.
 
-**Centralized poller efficiency**: The poller queries all executions waiting on `"EpistolaDocumentGenerated"` in a single database query, extracts tenant and request ID from the composite `epistolaJobPath` variable, groups by tenant, and checks job status in batches. With 1000 concurrent waiting instances, this is one scheduled task making N API calls — not 1000 timer loops in the engine. See [async.md](async.md) for details.
+**Result-collector efficiency**: The plugin runs a single long-running `ResultCollector` per Epistola configuration that streams completed/failed results from `POST /generation/collect`. With 1000 concurrent waiting instances, this is _one_ HTTP connection per Epistola tenant draining the result queue — not 1000 status polls per tenant per cycle. See [async.md](async.md) for details.
 
 **Throttling options**: For very large batches, consider:
 
 - **Sequential multi-instance** instead of parallel (set `isSequential="true"`) to limit concurrent API load
 - **Camunda `completionCondition`** to stop early (e.g., if failure rate exceeds threshold)
-- **Poller interval tuning** via `epistola.poller.interval` — shorter interval for faster batch completion
+- **Collector interval tuning** via `epistola.result-collector.min-interval-ms` and `max-interval-ms` — tighter bounds for faster batch completion
 
 **Error isolation**: The boundary error event on the generate task catches failures per instance. The subprocess continues for other taxpayers even if one generation fails.
 
