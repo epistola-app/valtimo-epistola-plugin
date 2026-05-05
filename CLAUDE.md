@@ -178,7 +178,6 @@ pnpm format:check   # check only (used in CI)
 
 - **Callback signature verification**: The callback endpoint (`EpistolaCallbackResource`) accepts but does not verify the `X-Epistola-Signature` header. Blocked: Epistola does not yet support HMAC signing.
 - **Server version endpoint**: `EpistolaAdminService.getVersions()` returns the plugin version only. Blocked: Epistola does not yet expose a version/health API endpoint.
-- **Plugin logo**: Uses a placeholder logo (`epistola-logo.ts`). Should be replaced with the actual Epistola logo.
 
 ## Test Coverage
 
