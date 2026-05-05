@@ -110,7 +110,10 @@ docker/            # Docker compose for local dependencies
 - **Package name**: Epistola client uses `app.epistola.client` (not `io.epistola`)
 - **Plugin properties**: Backend `@PluginProperty` keys must match frontend field names exactly
 - **Translations**: Add both `nl` and `en` translations in `epistola.specification.ts`
-- **Feature toggle**: Set `epistola.enabled=false` to disable the backend entirely. This is backend-only — the frontend has no equivalent guard. Remove any existing plugin configurations and process links before disabling, otherwise the UI will show stale entries that fail on API calls.
+- **Feature toggle**: The plugin can be disabled per environment from a single build artifact.
+  - **Backend**: `epistola.enabled=false` (Spring property, defaults to `true`). Disables auto-configuration — no beans, no endpoints, no scheduled poller.
+  - **Frontend**: `EPISTOLA_ENABLED=false` (container env var, substituted into `assets/config.js` via the Dockerfile entrypoint, defaults to `true`). The plugin library reads `window['env']['epistolaEnabled']` at runtime via the exported `isEpistolaEnabled()` helper. `EpistolaPluginModule.forRoot()` stays unconditional in the host's `imports`; its `ENVIRONMENT_INITIALIZER` short-circuits when disabled, the `/epistola` route guard redirects to `/`, and `epistolaPluginSpecification.pluginId` stops matching the backend `epistola` definition. Keep `PLUGINS_TOKEN` static (`useValue`) in host apps; conditional decorator metadata (`...(flag ? [...] : [])`) breaks AOT (NG1010) because `window` is not statically resolvable.
+  - Set both flags `false` per environment to fully hide the plugin (no admin menu, no admin page, no plugin picker entry, no process-link action types). On environments where the plugin was previously active, remove existing plugin configurations and process links **before** disabling — otherwise stored references remain in the database and will surface stale entries that fail on API calls if the plugin is re-enabled.
 
 ## Testing
 

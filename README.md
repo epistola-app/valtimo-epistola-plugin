@@ -103,7 +103,34 @@ epistola:
 
 Source of truth: `app.epistola.valtimo.config.EpistolaProperties`.
 
-> When setting `epistola.enabled=false`, first remove any existing Epistola plugin configurations and process links from the Valtimo database. Otherwise the frontend keeps showing stale entries that fail on every API call (the backend endpoints no longer exist).
+> When setting `epistola.enabled=false`, first remove any existing Epistola plugin configurations and process links from the Valtimo database. Otherwise stored references remain in the database and surface stale entries that fail on every API call if the plugin is re-enabled later.
+
+### Disabling the plugin per environment
+
+A common deployment shape is to enable Epistola on test but keep it dark on production while shipping a single frontend artifact. Two flags control this:
+
+| Flag                                 | Layer    | Default | Effect when `false`                                                                                                                                                                  |
+| ------------------------------------ | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `epistola.enabled` (Spring property) | Backend  | `true`  | Auto-configuration short-circuits — no beans, REST resources, scheduled poller, or callback endpoint registered.                                                                     |
+| `EPISTOLA_ENABLED` (container env)   | Frontend | `true`  | The plugin specification stops matching the backend `epistola` definition; the plugin module also skips menu/Formio registration and guards the admin route — no menu, route, or UI. |
+
+Set both `false` per environment for a fully invisible plugin. The frontend flag is read at runtime from `window['env']['epistolaEnabled']`, populated by `envsubst` against `assets/config.template.js` at container start (the standard Valtimo runtime-config pattern). Same image, different env vars per environment.
+
+Host app wiring does not change for optional loading. Keep `EpistolaPluginModule.forRoot()` in `imports` and keep `epistolaPluginSpecification` in the normal `PLUGINS_TOKEN` array, as shown in the setup snippet above. The plugin library reads the flag at runtime and hides its own surfaces when disabled.
+
+When the flag is `false`, the plugin's `ENVIRONMENT_INITIALIZER` short-circuits before registering Formio components and the menu service, the `/epistola` route guard redirects to `/`, and `epistolaPluginSpecification.pluginId` no longer matches the backend `epistola` plugin definition — so no admin menu entry, no admin page, no plugin configuration picker entry, and no process-link action types appear.
+
+> **Why not conditionally spread the plugin specification in `PLUGINS_TOKEN`?** Angular's AOT compiler cannot statically resolve `window['env']` accesses (NG1010), so runtime conditionals should not live directly in `@NgModule` decorator metadata. Epistola keeps the host app's provider static and moves the runtime check behind the plugin specification and module guards.
+
+The default-true semantics (any value other than literal `false` / `'false'` is enabled) match the backend's `matchIfMissing = true` behaviour, so deployments that never set the env var keep the plugin enabled.
+
+**`assets/config.template.js`** — append the placeholder so the entrypoint's `envsubst` pass picks it up:
+
+```js
+window["env"]["epistolaEnabled"] = "${EPISTOLA_ENABLED}";
+```
+
+The plugin module's JS still ships in the bundle (price of one-build-many-envs); it is just never activated when disabled.
 
 ## Catalog auto-deployment
 

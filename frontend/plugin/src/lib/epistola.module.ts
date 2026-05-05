@@ -20,6 +20,7 @@ import { EpistolaDocumentPreviewComponent } from './components/epistola-document
 import { EpistolaAdminPageComponent } from './components/epistola-admin-page/epistola-admin-page.component';
 import { EpistolaPluginService, EpistolaAdminService, EpistolaMenuService } from './services';
 import { EpistolaAdminRoutingModule } from './epistola-admin-routing.module';
+import { isEpistolaEnabled } from './epistola-runtime-config';
 import { registerEpistolaDownloadComponent } from './components/epistola-download/epistola-download.formio';
 import { registerEpistolaRetryFormComponent } from './components/epistola-retry-form/epistola-retry-form.formio';
 import { registerEpistolaPreviewButtonComponent } from './components/epistola-preview-button/epistola-preview-button.formio';
@@ -69,6 +70,7 @@ export class EpistolaPluginModule {
           provide: ENVIRONMENT_INITIALIZER,
           multi: true,
           useValue: () => {
+            if (!isEpistolaEnabled()) return;
             const injector = inject(Injector);
             registerEpistolaDownloadComponent(injector);
             registerEpistolaRetryFormComponent(injector);

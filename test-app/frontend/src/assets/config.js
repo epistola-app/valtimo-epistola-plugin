@@ -11,4 +11,5 @@
   window['env']['keycloakRedirectUri'] = undefined;
   window['env']['keycloakLogoutRedirectUri'] = undefined;
   window['env']['whiteListedDomain'] = undefined;
+  window['env']['epistolaEnabled'] = true;
 })(this);
