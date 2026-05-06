@@ -1,126 +1,128 @@
 # Async Document Generation
 
-> For the detailed client-side flow (how the runner manages collectors,
-> how routing keys are computed, multi-instance behavior, the four known
-> edge cases around config drift, node-id uniqueness, backpressure, and
-> the BPMN-subscription race), see [result-collector.md](result-collector.md).
+> For the detailed client-side flow (collector lifecycle, routing keys,
+> multi-instance behavior, backpressure, and BPMN subscription timing), see
+> [result-collector.md](result-collector.md).
 
 ## The Problem
 
-Document generation via Epistola is asynchronous: you submit a request, get a `requestId`, and the document becomes available later. A naive approach is to add a timer loop inside each BPMN process that polls for completion:
+Document generation via Epistola is asynchronous: Valtimo submits a request,
+gets a `requestId`, and the document becomes available later. A timer loop in
+every BPMN process works functionally, but it creates one timer job per waiting
+process:
 
 ```
-[generate-document] → [timer: 30s] → [check-job-status] → [gateway: done?]
-                                                               ├─ No → loop back to timer
-                                                               └─ Yes → [download-document]
+[generate-document] -> [timer: 30s] -> [check-job-status] -> [gateway]
+                                                           | no
+                                                           v
+                                                        [timer]
 ```
 
-This doesn't scale. Each waiting process creates its own timer job in the engine, leading to O(n) timer firings per interval. With hundreds of concurrent generation jobs, this puts unnecessary load on the process engine.
+That pattern does not scale well. With many concurrent documents, the process
+engine spends work repeatedly waking process instances just to ask whether a job
+has finished.
 
 ## Recommended BPMN Pattern
 
-Use a **Message Intermediate Catch Event** instead of a timer loop:
+Use a Message Intermediate Catch Event. The process submits the generation
+request, waits for the Epistola completion message, then downloads the document
+or handles the failure.
 
 ```
 [Service Task: generate-document]
-  → sets process variable: epistolaJobPath (epistola:job:{tenantId}/{requestId})
-→ [Message Catch Event: "EpistolaDocumentGenerated"]
-  → receives: epistolaStatus, epistolaDocumentId, epistolaErrorMessage
-→ [Exclusive Gateway: epistolaStatus == "COMPLETED"?]
-  ├─ Yes → [Service Task: download-document]
-  └─ No  → [Error handling]
+  -> sets epistolaJobPath = epistola:job:{tenantId}/{requestId}
+-> [Message Catch Event: "EpistolaDocumentGenerated"]
+  -> receives epistolaStatus, epistolaDocumentId, epistolaErrorMessage
+-> [Exclusive Gateway: epistolaStatus == "COMPLETED"?]
+  -> yes: [Service Task: download-document]
+  -> no:  [failure handling]
 ```
 
-The process simply waits for a message. It doesn't know or care how that message gets delivered — whether by polling, webhook callback, or a future event stream. This separation of concerns keeps the BPMN clean and the notification mechanism swappable.
+The BPMN does not need to know how completion is delivered. The plugin's result
+collector owns that infrastructure and correlates the message when Epistola
+reports a terminal result.
 
-### Process Variables
+## Process Variables
 
 | Variable               | Set By                     | Description                                                     |
 | ---------------------- | -------------------------- | --------------------------------------------------------------- |
 | `epistolaJobPath`      | `generate-document` action | Composite job identifier: `epistola:job:{tenantId}/{requestId}` |
 | `epistolaStatus`       | Correlation service        | Job status: `COMPLETED`, `FAILED`, or `CANCELLED`               |
-| `epistolaDocumentId`   | Correlation service        | Document ID when completed (null otherwise)                     |
-| `epistolaErrorMessage` | Correlation service        | Error message when failed (null otherwise)                      |
+| `epistolaDocumentId`   | Correlation service        | Document ID when completed                                      |
+| `epistolaErrorMessage` | Correlation service        | Error message when failed                                       |
 
-The `generate-document` action also stores the raw request ID in a user-configured process variable (e.g., `epistolaRequestId`) via the `resultProcessVariable` parameter.
+The `generate-document` action also stores the raw request ID in the configured
+`resultProcessVariable`, for example `epistolaRequestId`.
 
-### Message Catch Event Configuration
+## Message Catch Event
 
-In your BPMN model, add a Message Intermediate Catch Event with:
+Configure the BPMN message catch event with:
 
-- **Message Name**: `EpistolaDocumentGenerated`
+- **Message name**: `EpistolaDocumentGenerated`
 
-No additional configuration is needed. The `epistolaJobPath` variable is set automatically by the `generate-document` action.
+No listener or script task is needed. `generate-document` sets `epistolaJobPath`
+automatically, and the correlation service uses that value to wake the matching
+execution.
 
-## Architecture
+## Current Architecture
 
 ```
-BPMN Process:
-  [generate-document] → [Message Catch: "EpistolaDocumentGenerated"] → [download-document]
-
-Infrastructure:
-  EpistolaCompletionEventConsumer (interface)
-    └─ PollingCompletionEventConsumer (initial: batch poller)
-    └─ (future: event API consumer, webhook consumer, etc.)
-          │
-          ▼
-  EpistolaMessageCorrelationService
-          │
-          ▼
-  RuntimeService.createMessageCorrelation() → wakes up waiting process
+BPMN process
+  [generate-document] -> [Message Catch: EpistolaDocumentGenerated]
+          |
+          v
+Epistola API generation request
+          |
+          v
+EpistolaResultCollectorRunner
+  one ResultCollector per active plugin configuration
+          |
+          v
+EpistolaMessageCorrelationService
+          |
+          v
+RuntimeService message correlation
 ```
 
-### EpistolaMessageCorrelationService
+`EpistolaResultCollectorRunner` is a Spring singleton. It starts one contract
+`ResultCollector` for each active Epistola plugin configuration. A collector
+calls `POST /tenants/{tenantId}/generation/collect` and receives completed or
+failed generation results as NDJSON with sequence acknowledgment.
 
-Both the poller and the callback endpoint delegate to this shared service for message correlation. This ensures consistent variable naming and correlation behavior:
+For each result, the runner:
 
-```java
-correlationService.correlateCompletion(tenantId, requestId, status, documentId, errorMessage);
-```
+1. Builds `epistola:job:{tenantId}/{requestId}`.
+2. Calls `EpistolaMessageCorrelationService.correlateCompletion(...)`.
+3. Acknowledges the result only after correlation succeeds.
 
-The service builds the composite `epistolaJobPath` from `tenantId` and `requestId` for correlation. Internally, it uses `correlateAllWithResult()` which correlates all matching process instances (safe and idempotent).
+The runner reconciles collectors when Valtimo plugin configurations are
+deployed or deleted and on the scheduled reconcile interval. Configuration
+changes from the UI are therefore picked up without restarting the JVM.
 
-### EpistolaCompletionEventConsumer
+## Multi-Node Routing
 
-A simple lifecycle interface for consuming completion events:
+Each `generate-document` invocation asks the runner for a routing key for its
+plugin configuration. When the local collector has already received its
+partition assignment, the request is routed back to this Valtimo node. If the
+collector is not ready yet, the request is submitted without a routing key and
+Epistola uses its default routing.
 
-```java
-public interface EpistolaCompletionEventConsumer {
-    void start();
-    void stop();
-}
-```
-
-Implementations decide how to discover completed jobs and when to trigger message correlation.
-
-### EpistolaResultCollectorRunner (current implementation)
-
-A single Spring bean that runs one `ResultCollector` per active Epistola plugin configuration. Each collector calls `POST /tenants/{tenantId}/generation/collect` and streams completed/failed results back as NDJSON, with sequence-based acknowledgment and partition-aware routing (see contract v0.3+ docs).
-
-Per result, the runner:
-
-1. Builds the composite job path `epistola:job:{tenantId}/{requestId}`.
-2. Calls `EpistolaMessageCorrelationService.correlateCompletion(...)`, which uses `processInstanceVariableEquals` on `epistolaJobPath` to deliver the BPMN message to the matching execution.
-3. Returns success so the collector advances its sequence cursor and never re-delivers the same result.
-
-A scheduled reconcile loop (default every 60s) compares the running collectors against `pluginService.findPluginConfigurations(EpistolaPlugin.class, ...)` and starts/stops/restarts collectors as configurations are added, removed, or have their `baseUrl`/`apiKey`/`tenantId` changed. This mirrors the "enumerate plugin configs every cycle" pattern from the previous polling consumer, but now drives long-running streaming clients instead of per-request status polls.
-
-## Multi-Tenant Routing
-
-The runner naturally handles multi-tenant deployments: one `ResultCollector` per `(baseUrl, apiKey, tenantId)` configuration tuple. Each `generate-document` invocation looks up the right collector via the plugin's properties and asks it for a `routingKey` that targets that collector's currently-assigned partitions, so the result is guaranteed to land back here. If this Valtimo node dies, the suite reassigns its partitions to surviving consumers and they pick up the orphaned results.
+If a Valtimo node stops, Epistola reassigns its result partitions to surviving
+collectors. The remaining nodes continue collecting and correlating results.
 
 ## Configuration
 
 ```yaml
 epistola:
   result-collector:
-    enabled: true # Set to false to disable the collector entirely (default: true)
-    batch-size: 100 # Max results per /generation/collect call (default: 100)
-    min-interval-ms: 1000 # Lower bound on poll interval when busy (default: 1000)
-    max-interval-ms: 30000 # Upper bound on poll interval when idle (default: 30000)
-    reconcile-interval-ms: 60000 # How often to check for config drift (default: 60000)
+    enabled: true # collect async generation results automatically
+    batch-size: 100 # max results per /generation/collect call
+    min-interval-ms: 1000 # lower bound when results are flowing
+    max-interval-ms: 30000 # upper bound when idle
+    reconcile-interval-ms: 60000 # check plugin configuration drift
+    kick-interval-ms: 3000 # wake an idle collector after submit
+    backoff-multiplier: 3.0 # idle backoff multiplier
 ```
 
-## Future Evolution
-
-The contract also defines self-signed-JWT and OAuth bearer auth as an alternative to `X-API-Key`. That migration (plus the corresponding consumer onboarding flow) is tracked as a separate change.
+The `check-job-status` action still exists for explicit status checks, but the
+recommended process model is generate -> message catch -> download.

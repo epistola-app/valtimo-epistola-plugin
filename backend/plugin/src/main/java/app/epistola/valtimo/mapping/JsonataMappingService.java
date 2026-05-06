@@ -34,7 +34,7 @@ public class JsonataMappingService {
     /**
      * Evaluate a JSONata expression that returns an object (for data mapping).
      *
-     * @param ctx the evaluation context with expression and resolvers
+     * @param ctx the evaluation context with expression and JSONata variables
      * @return the evaluated result as a Map
      */
     @SuppressWarnings("unchecked")

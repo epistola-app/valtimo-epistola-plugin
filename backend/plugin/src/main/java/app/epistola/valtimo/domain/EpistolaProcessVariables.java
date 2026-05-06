@@ -16,7 +16,7 @@ public final class EpistolaProcessVariables {
     /** Prefix for the composite job path variable. */
     public static final String JOB_PATH_PREFIX = "epistola:job:";
 
-    /** Generation status set by the completion callback/poller (COMPLETED, FAILED, etc.). */
+    /** Generation status set by the result collector (COMPLETED, FAILED, etc.). */
     public static final String STATUS = "epistolaStatus";
 
     /** Document ID set when generation completes successfully. */

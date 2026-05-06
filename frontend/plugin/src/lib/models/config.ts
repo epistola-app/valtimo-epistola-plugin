@@ -29,7 +29,7 @@ export interface VariantAttributeEntry {
  *
  * Variant selection supports two modes:
  * - Explicit: set variantId directly
- * - By attributes: set variantAttributes with key-value pairs (values can be value resolver expressions)
+ * - By attributes: set variantAttributes with key-value pairs (values can be JSONata expressions)
  */
 export interface GenerateDocumentConfig {
   catalogId: string;

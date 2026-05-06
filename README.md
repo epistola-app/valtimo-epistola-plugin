@@ -96,9 +96,14 @@ epistola:
   retry-form:
     enabled: true # auto-deploy the retry form for case failures (default: true)
     case-filter: "all" # "all" | "none" | regex on case definition keys
-  poller:
-    enabled: true # poll Epistola for async job completion (default: true)
-    interval: 30000 # poll cycle in ms (default: 30000)
+  result-collector:
+    enabled: true # collect async generation results automatically (default: true)
+    batch-size: 100 # max results per collect call (default: 100)
+    min-interval-ms: 1000 # lower bound when results are flowing (default: 1000)
+    max-interval-ms: 30000 # upper bound when idle (default: 30000)
+    reconcile-interval-ms: 60000 # check plugin config drift (default: 60000)
+    kick-interval-ms: 3000 # wake idle collector after submit (default: 3000)
+    backoff-multiplier: 3.0 # idle backoff multiplier (default: 3.0)
 ```
 
 Source of truth: `app.epistola.valtimo.config.EpistolaProperties`.
@@ -109,10 +114,10 @@ Source of truth: `app.epistola.valtimo.config.EpistolaProperties`.
 
 A common deployment shape is to enable Epistola on test but keep it dark on production while shipping a single frontend artifact. Two flags control this:
 
-| Flag                                 | Layer    | Default | Effect when `false`                                                                                                                                                                  |
-| ------------------------------------ | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `epistola.enabled` (Spring property) | Backend  | `true`  | Auto-configuration short-circuits — no beans, REST resources, scheduled poller, or callback endpoint registered.                                                                     |
-| `EPISTOLA_ENABLED` (container env)   | Frontend | `true`  | The plugin specification stops matching the backend `epistola` definition; the plugin module also skips menu/Formio registration and guards the admin route — no menu, route, or UI. |
+| Flag                                 | Layer    | Default | Effect when `false`                                                                                                   |
+| ------------------------------------ | -------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
+| `epistola.enabled` (Spring property) | Backend  | `true`  | Auto-configuration short-circuits — no beans, REST resources, result collector, or Epistola API endpoints registered. |
+| `EPISTOLA_ENABLED` (container env)   | Frontend | `true`  | The plugin hides its frontend surfaces — no menu, route, plugin picker entry, or process-link action types.           |
 
 Set both `false` per environment for a fully invisible plugin. The frontend flag is read at runtime from `window['env']['epistolaEnabled']`, populated by `envsubst` against `assets/config.template.js` at container start (the standard Valtimo runtime-config pattern). Same image, different env vars per environment.
 

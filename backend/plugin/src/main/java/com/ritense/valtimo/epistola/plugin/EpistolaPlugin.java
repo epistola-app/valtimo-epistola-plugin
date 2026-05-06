@@ -191,15 +191,14 @@ public class EpistolaPlugin {
      * <p>
      * This action submits a document generation request to Epistola. The generation is
      * asynchronous - a request ID is returned immediately and stored in the specified
-     * process variable. The actual document will be available via a callback when
-     * generation is complete.
+     * process variable. Completion is correlated later by the result collector.
      * <p>
      * Variant selection supports three modes:
      * <ul>
      *   <li>Default: omit both variantId and variantAttributes — the template's default variant is used</li>
      *   <li>Explicit: specify variantId directly</li>
      *   <li>By attributes: specify variantAttributes (key-value pairs), and the API selects the matching variant.
-     *       Values can use value resolver expressions (doc:, pv:, case:).</li>
+     *       Expression values can use the JSONata context ($doc, $pv, $case).</li>
      * </ul>
      * variantId and variantAttributes are mutually exclusive.
      *
@@ -208,12 +207,12 @@ public class EpistolaPlugin {
      * @param templateId            The ID of the template to use for document generation
      * @param variantId             The ID of the template variant (optional — omit to use default or attribute selection)
      * @param variantAttributes     Key-value attributes for automatic variant selection (optional).
-     *                              Values can use value resolver expressions (doc:, pv:, case:).
+     *                              Expression values can use the JSONata context ($doc, $pv, $case).
      * @param environmentId         The environment ID (optional, uses plugin default if not specified)
      * @param dataMapping           JSONata expression that produces the template data payload.
      *                              Has access to $doc (document data), $pv (process variables), $case (case data).
      * @param outputFormat          The desired output format (PDF or HTML)
-     * @param filename              The filename for the generated document (can use value resolvers)
+     * @param filename              The filename for the generated document
      * @param correlationId         Optional correlation ID for tracking across systems
      * @param resultProcessVariable The name of the process variable to store the request ID in
      */

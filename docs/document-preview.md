@@ -97,7 +97,7 @@ POST /api/v1/plugin/epistola/preview
 Backend: PreviewService.generatePreview()
   - resolves process link → gets catalogId, templateId, dataMapping
   - creates OverlayMap(inputOverrides.doc, lazyDocumentContent) for $doc
-  - creates PV resolver that checks inputOverrides.pv first
+  - creates process-variable context that checks inputOverrides.pv first
   - evaluates JSONata mapping with overridden inputs
   - calls Epistola preview API → returns PDF
   ↓

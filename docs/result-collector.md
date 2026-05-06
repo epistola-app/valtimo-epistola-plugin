@@ -33,7 +33,9 @@ runner.
 ```
 @PostConstruct start()
   └─ if !epistola.result-collector.enabled → return
-  └─ reconcile()                                   ← also triggered by:
+  └─ no reconcile here                             ← avoids plugin factory construction races
+
+reconcile()                                        ← triggered by:
                                                        • @Scheduled every 60s (safety net)
                                                        • PluginsDeployedEvent (create/update)
                                                        • PluginConfigurationDeletedEvent (delete)
@@ -459,6 +461,8 @@ epistola:
     min-interval-ms: 1000 # floor on poll interval when busy
     max-interval-ms: 30000 # ceiling on poll interval when idle
     reconcile-interval-ms: 60000 # how often to detect plugin-config drift
+    kick-interval-ms: 3000 # wake idle collector after a successful submit
+    backoff-multiplier: 3.0 # idle backoff multiplier
 ```
 
 For environment-variable form, replace `.` with `_`, hyphens with `_`, and

@@ -13,7 +13,7 @@ public class GenerationJobResult {
     /**
      * Unique identifier of the generation request (job) in Epistola.
      * This is NOT the document ID — the document ID is only available
-     * after the job completes (via polling or callback).
+     * after the job completes.
      */
     String requestId;
 
