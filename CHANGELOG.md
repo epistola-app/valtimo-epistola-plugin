@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-06
+
 ### Fixed
 
 - **Drop the `@PostConstruct` reconcile in `EpistolaResultCollectorRunner`** to silence the harmless-but-noisy `BeanCurrentlyInCreationException` warning at boot. The Epistola plugin bean is still being constructed when `@PostConstruct` runs on the runner, so `pluginService.createInstance(cfg)` couldn't resolve `epistolaPluginFactory` and every config logged a WARN. The first reconcile is already covered by Valtimo's `PluginsDeployedEvent` and the `@Scheduled` tick (which fires immediately when the scheduler starts). Removing the early call has no functional impact — both rescue paths fire within the same boot — and produces a clean startup log.
