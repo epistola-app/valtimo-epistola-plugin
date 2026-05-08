@@ -6,7 +6,6 @@ import {
   Input,
   OnChanges,
   OnDestroy,
-  Optional,
   Output,
   SimpleChanges,
 } from '@angular/core';
@@ -15,8 +14,8 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { ConfigService } from '@valtimo/shared';
-import { TaskDetailContentComponent } from '@valtimo/task';
 import { Subscription } from 'rxjs';
+import { EpistolaTaskContextService } from '../../services';
 
 @Component({
   standalone: true,
@@ -239,17 +238,18 @@ export class EpistolaDocumentPreviewComponent
     private readonly configService: ConfigService,
     private readonly formIoStateService: FormIoStateService,
     private readonly cdr: ChangeDetectorRef,
-    @Optional() private readonly taskDetailContent: TaskDetailContentComponent | null,
+    private readonly taskContext: EpistolaTaskContextService,
   ) {
     this.apiEndpoint = `${this.configService.config.valtimoApi.endpointUri}v1/plugin/epistola`;
   }
 
   /**
-   * Resolve the active task id from the surrounding TaskDetailContentComponent.
-   * Returns null when used outside a task context (e.g. Formio builder, design mode).
+   * Resolve the active task id from {@link EpistolaTaskContextService}, populated
+   * by {@code EpistolaTaskContextInterceptor} on the canonical Valtimo task-open
+   * call. Returns null when used outside a task context (e.g. Formio builder).
    */
   private get currentTaskId(): string | null {
-    return this.taskDetailContent?.taskInstanceId$.value || null;
+    return this.taskContext.taskInstanceId;
   }
 
   get overrideMappingScopes(): string[] {
@@ -325,7 +325,7 @@ export class EpistolaDocumentPreviewComponent
       return;
     }
 
-    const taskId = this.taskDetailContent?.taskInstanceId$.value || null;
+    const taskId = this.currentTaskId;
     if (!taskId) {
       this.error = 'Preview is only available from within a user task.';
       this.cdr.markForCheck();

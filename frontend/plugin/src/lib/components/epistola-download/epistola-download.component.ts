@@ -1,8 +1,8 @@
-import { Component, EventEmitter, Input, Optional, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormioCustomComponent } from '@valtimo/components';
-import { TaskDetailContentComponent } from '@valtimo/task';
+import { EpistolaTaskContextService } from '../../services';
 
 export interface DownloadData {
   documentId: string;
@@ -43,7 +43,7 @@ export class EpistolaDownloadComponent implements FormioCustomComponent<Download
 
   constructor(
     private readonly http: HttpClient,
-    @Optional() private readonly taskDetailContent: TaskDetailContentComponent | null,
+    private readonly taskContext: EpistolaTaskContextService,
   ) {}
 
   hasRequiredData(): boolean {
@@ -55,7 +55,7 @@ export class EpistolaDownloadComponent implements FormioCustomComponent<Download
       return;
     }
 
-    const taskId = this.taskDetailContent?.taskInstanceId$.value || null;
+    const taskId = this.taskContext.taskInstanceId;
     if (!taskId) {
       this.error = 'Download is only available from within a user task.';
       return;

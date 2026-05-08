@@ -6,7 +6,6 @@ import {
   Input,
   OnChanges,
   OnDestroy,
-  Optional,
   Output,
   SimpleChanges,
 } from '@angular/core';
@@ -15,7 +14,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { ConfigService } from '@valtimo/shared';
-import { TaskDetailContentComponent } from '@valtimo/task';
+import { EpistolaTaskContextService } from '../../services/epistola-task-context.service';
 import { FormioModule } from '@formio/angular';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, switchMap } from 'rxjs/operators';
@@ -177,7 +176,7 @@ export class EpistolaRetryFormComponent
     private readonly http: HttpClient,
     private readonly sanitizer: DomSanitizer,
     private readonly configService: ConfigService,
-    @Optional() private readonly taskDetailContent: TaskDetailContentComponent | null,
+    private readonly taskContext: EpistolaTaskContextService,
   ) {
     this.apiEndpoint = `${this.configService.config.valtimoApi.endpointUri}v1/plugin/epistola`;
     // Debounce preview calls
@@ -221,7 +220,7 @@ export class EpistolaRetryFormComponent
     const processInstanceId = this.formIoStateService.processInstanceId;
     if (!documentId || !processInstanceId) return;
 
-    const taskId = this.taskDetailContent?.taskInstanceId$.value || null;
+    const taskId = this.taskContext.taskInstanceId;
     if (!taskId) {
       this.previewError = 'Preview is only available from within a user task.';
       this.cdr.markForCheck();
@@ -291,7 +290,7 @@ export class EpistolaRetryFormComponent
       return;
     }
 
-    const taskId = this.taskDetailContent?.taskInstanceId$.value || null;
+    const taskId = this.taskContext.taskInstanceId;
     if (!taskId) {
       this.error = 'Retry form is only available from within a user task.';
       this.loading = false;

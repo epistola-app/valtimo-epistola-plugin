@@ -6,7 +6,7 @@ import {
   NgModule,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClientModule } from '@angular/common/http';
+import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { FormModule, InputModule, SelectModule } from '@valtimo/components';
 import { EpistolaConfigurationComponent } from './components/epistola-configuration/epistola-configuration.component';
@@ -18,7 +18,12 @@ import { EpistolaRetryFormComponent } from './components/epistola-retry-form/epi
 import { EpistolaPreviewButtonComponent } from './components/epistola-preview-button/epistola-preview-button.component';
 import { EpistolaDocumentPreviewComponent } from './components/epistola-document-preview/epistola-document-preview.component';
 import { EpistolaAdminPageComponent } from './components/epistola-admin-page/epistola-admin-page.component';
-import { EpistolaPluginService, EpistolaAdminService, EpistolaMenuService } from './services';
+import {
+  EpistolaPluginService,
+  EpistolaAdminService,
+  EpistolaMenuService,
+  EpistolaTaskContextInterceptor,
+} from './services';
 import { EpistolaAdminRoutingModule } from './epistola-admin-routing.module';
 import { isEpistolaEnabled } from './epistola-runtime-config';
 import { registerEpistolaDownloadComponent } from './components/epistola-download/epistola-download.formio';
@@ -66,6 +71,11 @@ export class EpistolaPluginModule {
       ngModule: EpistolaPluginModule,
       providers: [
         EpistolaMenuService,
+        {
+          provide: HTTP_INTERCEPTORS,
+          useClass: EpistolaTaskContextInterceptor,
+          multi: true,
+        },
         {
           provide: ENVIRONMENT_INITIALIZER,
           multi: true,

@@ -221,6 +221,27 @@ public class EpistolaResultCollectorRunner {
                     log.warn("Collector error for tenantId={}: {}", plugin.getTenantId(), err.getMessage());
                     return Unit.INSTANCE;
                 })
+                .metricsListener(new ResultCollector.MetricsListener() {
+                    @Override
+                    public void onPoll(int count, boolean idle, long durationMs, Exception error) {
+                        if (error != null) {
+                            log.warn("Collector poll failed for tenantId={} (idle={}, durationMs={}): {}",
+                                    plugin.getTenantId(), idle, durationMs, error.toString());
+                        } else {
+                            log.debug("Collector poll for tenantId={}: count={}, idle={}, durationMs={}",
+                                    plugin.getTenantId(), count, idle, durationMs);
+                        }
+                    }
+
+                    @Override
+                    public void onPartitionChange(
+                            ResultCollector.PartitionAssignment oldAssignment,
+                            ResultCollector.PartitionAssignment newAssignment
+                    ) {
+                        log.info("Collector partition assignment changed for tenantId={}: {} -> {}",
+                                plugin.getTenantId(), oldAssignment, newAssignment);
+                    }
+                })
                 .build();
 
         Thread thread = Thread.ofVirtual()
