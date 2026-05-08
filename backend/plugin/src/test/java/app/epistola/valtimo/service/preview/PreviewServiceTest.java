@@ -172,7 +172,7 @@ class PreviewServiceTest {
         @Test
         void missingProcessInstanceId_throwsMissingContext() {
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", null, "activity-1", null, null, null);
+                    "task-id-test", "doc-123", null, "activity-1", null, null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
@@ -185,7 +185,7 @@ class PreviewServiceTest {
             mockProcessInstanceNotFound("instance-1");
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", null, "activity-1", "instance-1", null, null);
+                    "task-id-test", "doc-123", null, "activity-1", "instance-1", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
@@ -198,7 +198,7 @@ class PreviewServiceTest {
             mockProcessInstance("instance-1", "other-process:1:abc");
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", "my-process", "activity-1", "instance-1", null, null);
+                    "task-id-test", "doc-123", "my-process", "activity-1", "instance-1", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
@@ -215,7 +215,7 @@ class PreviewServiceTest {
                     .thenReturn(List.of());
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", "my-process", "activity-1", "instance-1", null, null);
+                    "task-id-test", "doc-123", "my-process", "activity-1", "instance-1", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
@@ -239,7 +239,7 @@ class PreviewServiceTest {
                     .thenReturn(List.of(link1, link2));
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", null, null, "instance-1", null, null);
+                    "task-id-test", "doc-123", null, null, "instance-1", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
@@ -283,7 +283,7 @@ class PreviewServiceTest {
                     .thenThrow(new RuntimeException("Connection refused"));
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", null, null, "instance-1", null, null);
+                    "task-id-test", "doc-123", null, null, "instance-1", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request));
@@ -341,7 +341,7 @@ class PreviewServiceTest {
             inputOverrides.put("doc", Map.of("name", "override"));
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", null, null, "instance-1", null, inputOverrides);
+                    "task-id-test", "doc-123", null, null, "instance-1", null, inputOverrides);
 
             previewService.generatePreview(request);
 
@@ -365,7 +365,7 @@ class PreviewServiceTest {
             inputOverrides.put("pv", Map.of("status", "approved"));
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", null, null, "instance-1", null, inputOverrides);
+                    "task-id-test", "doc-123", null, null, "instance-1", null, inputOverrides);
 
             previewService.generatePreview(request);
 
@@ -385,7 +385,7 @@ class PreviewServiceTest {
                     .thenReturn(new LinkedHashMap<>());
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", null, null, "instance-1", null, null);
+                    "task-id-test", "doc-123", null, null, "instance-1", null, null);
 
             previewService.generatePreview(request);
 
@@ -412,7 +412,7 @@ class PreviewServiceTest {
                     .thenReturn("letter-formal");
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", null, null, "instance-1", null, null);
+                    "task-id-test", "doc-123", null, null, "instance-1", null, null);
 
             previewService.generatePreview(request);
 
@@ -445,7 +445,7 @@ class PreviewServiceTest {
             Map<String, Object> outputOverrides = Map.of("address", "overridden-address");
 
             PreviewRequest request = new PreviewRequest(
-                    "doc-123", null, null, "instance-1", outputOverrides, inputOverrides);
+                    "task-id-test", "doc-123", null, null, "instance-1", outputOverrides, inputOverrides);
 
             previewService.generatePreview(request);
 

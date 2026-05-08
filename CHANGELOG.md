@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **PBAC-based authorization for plugin endpoints** ([#38](https://github.com/epistola-app/valtimo-epistola-plugin/issues/38)). User-task-bound endpoints (`POST /preview`, `GET /preview-sources`, `GET /retry-form`, `GET /documents/{id}/download`) now require a `taskId` and check `OperatonTask:VIEW` via Valtimo's `AuthorizationService`. The Formio preview/download/retry-form components inject `TaskDetailContentComponent` from `@valtimo/task` and read `taskInstanceId$` to forward the task id to the backend. Admin endpoints (`/admin/**`) require a new PBAC permission, `EpistolaAdministration:MANAGE`, granted by default to `ROLE_ADMIN` via a seeded `*.permission.json` changeset. Configurator endpoints (`/configurations/**`, tooling listings, `/evaluate-mapping`) remain HTTP-gated by `ROLE_ADMIN` (the de-facto process-link author authority in Valtimo 13.21).
+
+### Added
+
+- **`EpistolaAdministration` PBAC resource type** with a `MANAGE` action. Operators can revoke the default `ROLE_ADMIN` grant and assign the action to a more specific role to lock down the Epistola admin pages independently of the global admin role.
+
 ## [0.7.0] - 2026-05-06
 
 ### Fixed

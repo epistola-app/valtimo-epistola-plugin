@@ -149,13 +149,16 @@ export class EpistolaPluginService {
 
   /**
    * Get a dynamically generated Formio form for retrying a failed document generation.
+   *
+   * @param taskId Operaton user task id (required — backend authorizes via OperatonTask:VIEW)
    */
   getRetryForm(
+    taskId: string,
     processInstanceId: string,
     documentId?: string,
     sourceActivityId?: string,
   ): Observable<any> {
-    const params: Record<string, string> = { processInstanceId };
+    const params: Record<string, string> = { taskId, processInstanceId };
     if (documentId) {
       params['documentId'] = documentId;
     }
@@ -182,18 +185,22 @@ export class EpistolaPluginService {
 
   /**
    * Discover all previewable document sources for a given Valtimo document.
+   *
+   * @param taskId Operaton user task id (required — backend authorizes via OperatonTask:VIEW)
    */
-  getPreviewSources(documentId: string): Observable<PreviewSource[]> {
+  getPreviewSources(documentId: string, taskId: string): Observable<PreviewSource[]> {
     return this.http.get<PreviewSource[]>(`${this.apiEndpoint}/preview-sources`, {
-      params: { documentId },
+      params: { documentId, taskId },
     });
   }
 
   /**
    * Preview a document by dry-running the generate-document process link.
-   * Returns the resolved data as a mock preview (Phase 1).
+   *
+   * @param taskId Operaton user task id (required — backend authorizes via OperatonTask:VIEW)
    */
   previewDocument(
+    taskId: string,
     documentId: string,
     processDefinitionKey: string,
     sourceActivityId: string,
@@ -201,6 +208,7 @@ export class EpistolaPluginService {
     overrides?: Record<string, any>,
   ): Observable<any> {
     return this.http.post<any>(`${this.apiEndpoint}/preview`, {
+      taskId,
       documentId,
       processDefinitionKey,
       sourceActivityId,

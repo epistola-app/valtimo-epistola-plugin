@@ -1,11 +1,15 @@
 package app.epistola.valtimo.web.rest;
 
+import app.epistola.valtimo.authorization.EpistolaAdministration;
+import app.epistola.valtimo.authorization.EpistolaAdministrationActionProvider;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
 import app.epistola.valtimo.web.rest.dto.ProcessLinkExport;
 import app.epistola.valtimo.web.rest.dto.VersionInfo;
+import com.ritense.authorization.AuthorizationService;
+import com.ritense.authorization.request.EntityAuthorizationRequest;
 import com.ritense.valtimo.contract.annotation.SkipComponentScan;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +27,11 @@ import java.util.UUID;
 
 /**
  * REST controller for Epistola plugin administrative operations.
- * Provides health checks, version info, and usage overview.
+ *
+ * <p>Every endpoint requires {@code EpistolaAdministration:MANAGE}. By default that
+ * permission is granted to {@code ROLE_ADMIN} via the seeded
+ * {@code epistola-admin-default.permission.json} changeset; operators who want a stricter
+ * setup can revoke it from {@code ROLE_ADMIN} and assign it to a more specific role.
  */
 @Slf4j
 @RestController
@@ -33,12 +41,14 @@ import java.util.UUID;
 public class EpistolaAdminResource {
 
     private final EpistolaAdminService adminService;
+    private final AuthorizationService authorizationService;
 
     /**
      * Check connectivity to Epistola for all plugin configurations.
      */
     @GetMapping("/health")
     public ResponseEntity<List<ConnectionStatus>> checkConnections() {
+        requireManagePermission();
         log.debug("Checking Epistola connection health");
         return ResponseEntity.ok(adminService.checkConnections());
     }
@@ -48,6 +58,7 @@ public class EpistolaAdminResource {
      */
     @GetMapping("/versions")
     public ResponseEntity<VersionInfo> getVersions() {
+        requireManagePermission();
         log.debug("Fetching Epistola version info");
         return ResponseEntity.ok(adminService.getVersions());
     }
@@ -57,6 +68,7 @@ public class EpistolaAdminResource {
      */
     @GetMapping("/usage")
     public ResponseEntity<List<PluginUsageEntry>> getPluginUsage() {
+        requireManagePermission();
         log.debug("Fetching Epistola plugin usage overview");
         return ResponseEntity.ok(adminService.getPluginUsage());
     }
@@ -66,6 +78,7 @@ public class EpistolaAdminResource {
      */
     @GetMapping("/pending")
     public ResponseEntity<List<PendingJob>> getPendingJobs() {
+        requireManagePermission();
         log.debug("Fetching pending Epistola jobs");
         return ResponseEntity.ok(adminService.getPendingJobs());
     }
@@ -75,6 +88,7 @@ public class EpistolaAdminResource {
      */
     @GetMapping("/export/{processLinkId}")
     public ResponseEntity<ProcessLinkExport> exportProcessLink(@PathVariable UUID processLinkId) {
+        requireManagePermission();
         log.debug("Exporting process link {}", processLinkId);
         ProcessLinkExport export = adminService.exportProcessLink(processLinkId);
         String filename = export.activityId() + ".process-link.json";
@@ -83,5 +97,12 @@ public class EpistolaAdminResource {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename(filename).build().toString())
                 .body(export);
+    }
+
+    private void requireManagePermission() {
+        authorizationService.requirePermission(
+                new EntityAuthorizationRequest<>(
+                        EpistolaAdministration.class,
+                        EpistolaAdministrationActionProvider.MANAGE));
     }
 }

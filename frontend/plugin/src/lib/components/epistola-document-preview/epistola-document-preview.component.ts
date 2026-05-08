@@ -6,6 +6,7 @@ import {
   Input,
   OnChanges,
   OnDestroy,
+  Optional,
   Output,
   SimpleChanges,
 } from '@angular/core';
@@ -14,6 +15,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { ConfigService } from '@valtimo/shared';
+import { TaskDetailContentComponent } from '@valtimo/task';
 import { PreviewSource } from '../../models';
 import { EpistolaPluginService } from '../../services';
 import { Subscription } from 'rxjs';
@@ -278,8 +280,17 @@ export class EpistolaDocumentPreviewComponent
     private readonly configService: ConfigService,
     private readonly formIoStateService: FormIoStateService,
     private readonly cdr: ChangeDetectorRef,
+    @Optional() private readonly taskDetailContent: TaskDetailContentComponent | null,
   ) {
     this.apiEndpoint = `${this.configService.config.valtimoApi.endpointUri}v1/plugin/epistola`;
+  }
+
+  /**
+   * Resolve the active task id from the surrounding TaskDetailContentComponent.
+   * Returns null when used outside a task context (e.g. Formio builder, design mode).
+   */
+  private get currentTaskId(): string | null {
+    return this.taskDetailContent?.taskInstanceId$.value || null;
   }
 
   get overrideMappingScopes(): string[] {
@@ -348,6 +359,13 @@ export class EpistolaDocumentPreviewComponent
       return;
     }
 
+    const taskId = this.currentTaskId;
+    if (!taskId) {
+      this.error = 'Preview is only available from within a user task.';
+      this.cdr.markForCheck();
+      return;
+    }
+
     this.loading = true;
     this.error = null;
     this.cdr.markForCheck();
@@ -358,6 +376,7 @@ export class EpistolaDocumentPreviewComponent
       .post(
         `${this.apiEndpoint}/preview`,
         {
+          taskId,
           documentId,
           processDefinitionKey: this.processDefinitionKey || null,
           processInstanceId: this.formIoStateService.processInstanceId || null,
@@ -387,26 +406,35 @@ export class EpistolaDocumentPreviewComponent
       return;
     }
 
+    const taskId = this.currentTaskId;
+    if (!taskId) {
+      this.error = 'Preview is only available from within a user task.';
+      this.cdr.markForCheck();
+      return;
+    }
+
     this.discovering = true;
     this.error = null;
     this.cdr.markForCheck();
 
-    this.discoverSubscription = this.epistolaPluginService.getPreviewSources(documentId).subscribe({
-      next: (sources) => {
-        this.sources = sources;
-        this.discovering = false;
-        this.cdr.markForCheck();
-        if (sources.length > 0) {
-          this.selectedIndex = 0;
-          this.loadDiscoveredPreview();
-        }
-      },
-      error: (err) => {
-        this.error = err.error?.error || 'Failed to discover preview sources';
-        this.discovering = false;
-        this.cdr.markForCheck();
-      },
-    });
+    this.discoverSubscription = this.epistolaPluginService
+      .getPreviewSources(documentId, taskId)
+      .subscribe({
+        next: (sources) => {
+          this.sources = sources;
+          this.discovering = false;
+          this.cdr.markForCheck();
+          if (sources.length > 0) {
+            this.selectedIndex = 0;
+            this.loadDiscoveredPreview();
+          }
+        },
+        error: (err) => {
+          this.error = err.error?.error || 'Failed to discover preview sources';
+          this.discovering = false;
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   /**
@@ -419,6 +447,13 @@ export class EpistolaDocumentPreviewComponent
     const documentId = this.formIoStateService.documentId;
     if (!documentId) return;
 
+    const taskId = this.currentTaskId;
+    if (!taskId) {
+      this.error = 'Preview is only available from within a user task.';
+      this.cdr.markForCheck();
+      return;
+    }
+
     this.loading = true;
     this.error = null;
     this.cdr.markForCheck();
@@ -429,6 +464,7 @@ export class EpistolaDocumentPreviewComponent
       .post(
         `${this.apiEndpoint}/preview`,
         {
+          taskId,
           documentId,
           processInstanceId: source.processInstanceId,
           sourceActivityId: source.activityId,

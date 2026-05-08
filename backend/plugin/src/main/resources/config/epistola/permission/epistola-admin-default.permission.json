@@ -1,0 +1,10 @@
+{
+  "changesetId": "epistola-pbac-admin-default-1",
+  "permissions": [
+    {
+      "resourceType": "app.epistola.valtimo.authorization.EpistolaAdministration",
+      "actions": ["manage"],
+      "roleKey": "ROLE_ADMIN"
+    }
+  ]
+}

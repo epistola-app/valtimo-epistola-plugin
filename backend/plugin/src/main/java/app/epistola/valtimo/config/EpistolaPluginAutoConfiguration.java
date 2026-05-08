@@ -1,5 +1,7 @@
 package app.epistola.valtimo.config;
 
+import app.epistola.valtimo.authorization.EpistolaAdministrationActionProvider;
+import app.epistola.valtimo.authorization.EpistolaAdministrationSpecificationFactory;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.deploy.CatalogScanner;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
@@ -178,11 +180,13 @@ public class EpistolaPluginAutoConfiguration {
             RetryFormService retryFormService,
             JsonataMappingService jsonataMappingService,
             com.ritense.document.service.DocumentService documentService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            com.ritense.authorization.AuthorizationService authorizationService,
+            com.ritense.valtimo.service.OperatonTaskService operatonTaskService
     ) {
         return new EpistolaGenerationResource(pluginService, epistolaService,
                 previewService, retryFormService, jsonataMappingService,
-                documentService, objectMapper);
+                documentService, objectMapper, authorizationService, operatonTaskService);
     }
 
     @Bean
@@ -213,9 +217,10 @@ public class EpistolaPluginAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(EpistolaAdminResource.class)
     public EpistolaAdminResource epistolaAdminResource(
-            EpistolaAdminService adminService
+            EpistolaAdminService adminService,
+            com.ritense.authorization.AuthorizationService authorizationService
     ) {
-        return new EpistolaAdminResource(adminService);
+        return new EpistolaAdminResource(adminService, authorizationService);
     }
 
     @Bean
@@ -246,6 +251,18 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(EpistolaHttpSecurityConfigurer.class)
     public EpistolaHttpSecurityConfigurer epistolaHttpSecurityConfigurer() {
         return new EpistolaHttpSecurityConfigurer();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaAdministrationActionProvider.class)
+    public EpistolaAdministrationActionProvider epistolaAdministrationActionProvider() {
+        return new EpistolaAdministrationActionProvider();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaAdministrationSpecificationFactory.class)
+    public EpistolaAdministrationSpecificationFactory epistolaAdministrationSpecificationFactory() {
+        return new EpistolaAdministrationSpecificationFactory();
     }
 
     @Bean

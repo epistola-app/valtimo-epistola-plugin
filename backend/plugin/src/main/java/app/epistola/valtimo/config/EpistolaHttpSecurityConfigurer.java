@@ -7,10 +7,20 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
 /**
  * Security configuration for Epistola plugin REST endpoints.
- * Order 270 ensures this runs before Valtimo's default anyRequest() configuration.
- * <p>
- * Preview and document download are available to authenticated users. Admin and
- * tooling endpoints require ROLE_ADMIN.
+ *
+ * <p>Order 270 ensures this runs before Valtimo's default {@code anyRequest()} configuration.
+ *
+ * <p>Two layers of authorization apply:
+ * <ul>
+ *   <li><b>HTTP layer (this configurer)</b> — coarse-grained role gates. Everything
+ *       authenticated by default; configurator-only endpoints additionally require
+ *       {@code ROLE_ADMIN} (the de-facto "process-link author" authority in Valtimo 13.21,
+ *       since process-link CRUD itself requires ROLE_ADMIN).</li>
+ *   <li><b>Controller layer (PBAC)</b> — fine-grained checks via {@code AuthorizationService}.
+ *       Preview / preview-sources / download / retry-form check
+ *       {@code OperatonTask:VIEW} on the supplied taskId. Admin endpoints check
+ *       {@code EpistolaAdministration:MANAGE}.</li>
+ * </ul>
  */
 @Order(270)
 public class EpistolaHttpSecurityConfigurer implements HttpSecurityConfigurer {
@@ -19,12 +29,17 @@ public class EpistolaHttpSecurityConfigurer implements HttpSecurityConfigurer {
     public void configure(HttpSecurity http) {
         try {
             http.authorizeHttpRequests(requests -> requests
-                    // Preview and download are used in user task forms — any authenticated user
-                    .requestMatchers("/api/v1/plugin/epistola/preview").authenticated()
-                    .requestMatchers("/api/v1/plugin/epistola/preview-sources").authenticated()
-                    .requestMatchers("/api/v1/plugin/epistola/documents/*/download").authenticated()
-                    // All other Epistola endpoints require ROLE_ADMIN
-                    .requestMatchers("/api/v1/plugin/epistola/**").hasAuthority("ROLE_ADMIN")
+                    // Configurator endpoints (process-link configuration UI) — ROLE_ADMIN at HTTP layer.
+                    // Anyone who can author process links in Valtimo today already has ROLE_ADMIN.
+                    .requestMatchers("/api/v1/plugin/epistola/configurations/**").hasAuthority("ROLE_ADMIN")
+                    .requestMatchers("/api/v1/plugin/epistola/process-variables").hasAuthority("ROLE_ADMIN")
+                    .requestMatchers("/api/v1/plugin/epistola/variable-suggestions").hasAuthority("ROLE_ADMIN")
+                    .requestMatchers("/api/v1/plugin/epistola/expression-functions").hasAuthority("ROLE_ADMIN")
+                    .requestMatchers("/api/v1/plugin/epistola/validate-jsonata").hasAuthority("ROLE_ADMIN")
+                    .requestMatchers("/api/v1/plugin/epistola/evaluate-mapping").hasAuthority("ROLE_ADMIN")
+                    // All other Epistola endpoints (admin, preview, preview-sources, download,
+                    // retry-form) authenticate at the HTTP layer; the controllers enforce PBAC.
+                    .requestMatchers("/api/v1/plugin/epistola/**").authenticated()
             );
         } catch (Exception e) {
             throw new HttpConfigurerConfigurationException(e);
