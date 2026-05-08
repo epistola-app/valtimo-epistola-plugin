@@ -1,12 +1,17 @@
 package app.epistola.valtimo.service.admin;
+import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
 import app.epistola.valtimo.service.EpistolaService;
+import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 
 import app.epistola.valtimo.domain.CatalogInfo;
+import app.epistola.valtimo.domain.GenerationJobDetail;
+import app.epistola.valtimo.domain.GenerationJobStatus;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
 import app.epistola.valtimo.web.rest.dto.ProcessLinkExport;
+import app.epistola.valtimo.web.rest.dto.ReconcileResult;
 import app.epistola.valtimo.web.rest.dto.VersionInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -54,23 +59,27 @@ class EpistolaAdminServiceTest {
 
     private PluginService pluginService;
     private EpistolaService epistolaService;
+    private EpistolaMessageCorrelationService correlationService;
     private ProcessLinkService processLinkService;
     private RepositoryService repositoryService;
     private RuntimeService runtimeService;
     private ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
+    private EpistolaProcessDefinitionValidator processDefinitionValidator;
     private EpistolaAdminService adminService;
 
     @BeforeEach
     void setUp() {
         pluginService = mock(PluginService.class);
         epistolaService = mock(EpistolaService.class);
+        correlationService = mock(EpistolaMessageCorrelationService.class);
         processLinkService = mock(ProcessLinkService.class);
         repositoryService = mock(RepositoryService.class);
         runtimeService = mock(RuntimeService.class);
         processDefinitionCaseDefinitionService = mock(ProcessDefinitionCaseDefinitionService.class);
+        processDefinitionValidator = mock(EpistolaProcessDefinitionValidator.class);
         adminService = new EpistolaAdminService(
-                pluginService, epistolaService, processLinkService, repositoryService,
-                runtimeService, processDefinitionCaseDefinitionService);
+                pluginService, epistolaService, correlationService, processLinkService, repositoryService,
+                runtimeService, processDefinitionCaseDefinitionService, processDefinitionValidator);
     }
 
     @Nested
@@ -469,6 +478,119 @@ class EpistolaAdminServiceTest {
             lenient().when(execution.getProcessInstanceId()).thenReturn(processInstanceId);
             lenient().when(execution.getProcessDefinitionKey()).thenReturn(processDefinitionKey);
             return execution;
+        }
+    }
+
+    @Nested
+    class Reconcile {
+
+        @Test
+        void shouldCorrelateWhenJobIsTerminal() {
+            mockSinglePluginConfiguration();
+            mockExecutionWithSubscription("exec-1", "pi-1", TENANT_ID + "/req-1");
+            when(epistolaService.getJobStatus(BASE_URL, API_KEY, TENANT_ID, "req-1"))
+                    .thenReturn(GenerationJobDetail.builder()
+                            .requestId("req-1")
+                            .status(GenerationJobStatus.FAILED)
+                            .errorMessage("validation failed")
+                            .build());
+            when(correlationService.correlateCompletion(TENANT_ID, "req-1", "FAILED", null, "validation failed"))
+                    .thenReturn(1);
+
+            ReconcileResult result = adminService.reconcile("exec-1");
+
+            assertThat(result.correlated()).isTrue();
+            assertThat(result.correlatedCount()).isEqualTo(1);
+            assertThat(result.epistolaStatus()).isEqualTo("FAILED");
+            assertThat(result.tenantId()).isEqualTo(TENANT_ID);
+            assertThat(result.requestId()).isEqualTo("req-1");
+        }
+
+        @Test
+        void shouldNotCorrelateWhenJobIsStillPending() {
+            mockSinglePluginConfiguration();
+            mockExecutionWithSubscription("exec-1", "pi-1", TENANT_ID + "/req-2");
+            when(epistolaService.getJobStatus(BASE_URL, API_KEY, TENANT_ID, "req-2"))
+                    .thenReturn(GenerationJobDetail.builder()
+                            .requestId("req-2")
+                            .status(GenerationJobStatus.IN_PROGRESS)
+                            .build());
+
+            ReconcileResult result = adminService.reconcile("exec-1");
+
+            assertThat(result.correlated()).isFalse();
+            assertThat(result.correlatedCount()).isNull();
+            assertThat(result.epistolaStatus()).isEqualTo("IN_PROGRESS");
+        }
+
+        @Test
+        void shouldRejectMissingExecution() {
+            ExecutionQuery query = mock(ExecutionQuery.class);
+            when(runtimeService.createExecutionQuery()).thenReturn(query);
+            when(query.executionId("missing")).thenReturn(query);
+            when(query.messageEventSubscriptionName("EpistolaDocumentGenerated")).thenReturn(query);
+            when(query.singleResult()).thenReturn(null);
+
+            assertThatThrownBy(() -> adminService.reconcile("missing"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("not found or not waiting");
+        }
+
+        @Test
+        void shouldRejectMissingJobPathVariable() {
+            Execution execution = mock(Execution.class);
+            lenient().when(execution.getId()).thenReturn("exec-1");
+            lenient().when(execution.getProcessInstanceId()).thenReturn("pi-1");
+
+            ExecutionQuery query = mock(ExecutionQuery.class);
+            when(runtimeService.createExecutionQuery()).thenReturn(query);
+            when(query.executionId("exec-1")).thenReturn(query);
+            when(query.messageEventSubscriptionName("EpistolaDocumentGenerated")).thenReturn(query);
+            when(query.singleResult()).thenReturn(execution);
+            when(runtimeService.getVariable("exec-1", "epistolaJobPath")).thenReturn(null);
+
+            assertThatThrownBy(() -> adminService.reconcile("exec-1"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("epistolaJobPath");
+        }
+
+        @Test
+        void shouldRejectUnknownTenant() {
+            // Plugin config exists but for a different tenant.
+            PluginConfiguration config = mockPluginConfiguration(CONFIG_TITLE);
+            EpistolaPlugin plugin = mockPluginInstance("other-tenant");
+            when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
+                    .thenReturn(List.of(config));
+            when(pluginService.createInstance(config)).thenReturn(plugin);
+            mockExecutionWithSubscription("exec-1", "pi-1", TENANT_ID + "/req-3");
+
+            assertThatThrownBy(() -> adminService.reconcile("exec-1"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("No Epistola plugin configuration");
+        }
+
+        @Test
+        void shouldRejectBlankExecutionId() {
+            assertThatThrownBy(() -> adminService.reconcile(""))
+                    .isInstanceOf(IllegalArgumentException.class);
+            assertThatThrownBy(() -> adminService.reconcile(null))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+
+        private void mockExecutionWithSubscription(String executionId, String processInstanceId,
+                                                   String tenantSlashRequest) {
+            Execution execution = mock(Execution.class);
+            lenient().when(execution.getId()).thenReturn(executionId);
+            lenient().when(execution.getProcessInstanceId()).thenReturn(processInstanceId);
+
+            ExecutionQuery query = mock(ExecutionQuery.class);
+            when(runtimeService.createExecutionQuery()).thenReturn(query);
+            when(query.executionId(executionId)).thenReturn(query);
+            when(query.messageEventSubscriptionName("EpistolaDocumentGenerated")).thenReturn(query);
+            when(query.singleResult()).thenReturn(execution);
+
+            when(runtimeService.getVariable(executionId, "epistolaJobPath"))
+                    .thenReturn("epistola:job:" + tenantSlashRequest);
         }
     }
 

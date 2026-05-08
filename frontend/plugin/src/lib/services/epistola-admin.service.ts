@@ -2,7 +2,14 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { ConfigService } from '@valtimo/shared';
 import { Observable } from 'rxjs';
-import { ConnectionStatus, PendingJob, PluginUsageEntry, VersionInfo } from '../models';
+import {
+  BpmnValidationViolation,
+  ConnectionStatus,
+  PendingJob,
+  PluginUsageEntry,
+  ReconcileResult,
+  VersionInfo,
+} from '../models';
 
 /**
  * Service for Epistola plugin administrative operations.
@@ -45,6 +52,28 @@ export class EpistolaAdminService {
    */
   getPendingJobs(): Observable<PendingJob[]> {
     return this.http.get<PendingJob[]>(`${this.apiEndpoint}/pending`);
+  }
+
+  /**
+   * Manually reconcile a stuck Epistola catch event by querying Epistola for the
+   * job's current status and re-running message correlation. Returns 200 with
+   * `correlated=true` on success, 409 with `correlated=false` when the job is
+   * still in flight, or surfaces a validation error when the execution can't be
+   * recovered (no subscription, missing variable, unknown tenant).
+   */
+  reconcilePending(executionId: string): Observable<ReconcileResult> {
+    return this.http.post<ReconcileResult>(
+      `${this.apiEndpoint}/pending/${encodeURIComponent(executionId)}/reconcile`,
+      null,
+    );
+  }
+
+  /**
+   * Get the latest BPMN race-safety validation violations across deployed
+   * process definitions. Empty list = healthy.
+   */
+  getValidationViolations(): Observable<BpmnValidationViolation[]> {
+    return this.http.get<BpmnValidationViolation[]>(`${this.apiEndpoint}/validations`);
   }
 
   /**

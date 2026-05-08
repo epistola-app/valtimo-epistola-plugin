@@ -1,13 +1,18 @@
 package app.epistola.valtimo.service.admin;
 
+import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
+import app.epistola.valtimo.domain.GenerationJobDetail;
+import app.epistola.valtimo.domain.GenerationJobStatus;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
+import app.epistola.valtimo.web.rest.dto.BpmnValidationViolation;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
 import app.epistola.valtimo.web.rest.dto.ProcessLinkExport;
+import app.epistola.valtimo.web.rest.dto.ReconcileResult;
 import app.epistola.valtimo.web.rest.dto.VersionInfo;
 import com.ritense.plugin.domain.PluginConfiguration;
 import com.ritense.plugin.domain.PluginConfigurationId;
@@ -48,10 +53,21 @@ public class EpistolaAdminService {
 
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
+    private final EpistolaMessageCorrelationService correlationService;
     private final ProcessLinkService processLinkService;
     private final RepositoryService repositoryService;
     private final RuntimeService runtimeService;
     private final ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
+    private final EpistolaProcessDefinitionValidator processDefinitionValidator;
+
+    /**
+     * Latest BPMN race-safety violations as reported by the validator. Empty when
+     * everything's well-formed (the desired steady state). Cheap to call — backed
+     * by an in-memory snapshot the validator updates on its scheduled tick.
+     */
+    public List<BpmnValidationViolation> getValidationViolations() {
+        return processDefinitionValidator.getViolations();
+    }
 
     /**
      * Check connectivity to Epistola for each plugin configuration.
@@ -236,6 +252,110 @@ public class EpistolaAdminService {
         }
 
         return jobs;
+    }
+
+    /**
+     * Manual recovery for a stuck Epistola catch event.
+     *
+     * <p>Looks up the execution by id, validates that it still has an active
+     * {@code EpistolaDocumentGenerated} subscription, reads its {@code epistolaJobPath},
+     * fetches the current job status from Epistola, and runs message correlation
+     * if the job is in a terminal state. This is the way out when the natural
+     * collector→correlate path missed the original message — typically a narrow
+     * transactional race between the result-collector poll and the BPMN engine
+     * commit; see {@link app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator}
+     * for the structural prevention.
+     *
+     * @param executionId the catch-event execution id (matches the {@code executionId}
+     *                    field of the {@link PendingJob} rows shown in the admin UI).
+     * @throws IllegalArgumentException if the execution doesn't exist, isn't waiting
+     *         for an Epistola message, has no jobPath variable, or no plugin configuration
+     *         is registered for its tenant.
+     * @return a {@link ReconcileResult}; {@link ReconcileResult#correlated()} is
+     *         {@code false} when Epistola reports a non-terminal status — the
+     *         caller should map that to HTTP 409 so the UI can surface "still pending".
+     */
+    public ReconcileResult reconcile(String executionId) {
+        if (executionId == null || executionId.isBlank()) {
+            throw new IllegalArgumentException("executionId must not be blank");
+        }
+
+        Execution execution = runtimeService.createExecutionQuery()
+                .executionId(executionId)
+                .messageEventSubscriptionName(EpistolaProcessVariables.MESSAGE_NAME)
+                .singleResult();
+        if (execution == null) {
+            throw new IllegalArgumentException(
+                    "Execution " + executionId + " not found or not waiting for an Epistola message");
+        }
+
+        String jobPath = (String) runtimeService.getVariable(
+                execution.getId(), EpistolaProcessVariables.JOB_PATH);
+        if (jobPath == null) {
+            // Execution exists and has the subscription but lost the variable somehow;
+            // we can't reconstruct (tenantId, requestId) without it.
+            throw new IllegalArgumentException(
+                    "Execution " + executionId + " has no " + EpistolaProcessVariables.JOB_PATH + " variable");
+        }
+
+        String[] parts = EpistolaMessageCorrelationService.parseJobPath(jobPath);
+        String tenantId = parts[0];
+        String requestId = parts[1];
+
+        EpistolaPlugin plugin = findPluginForTenant(tenantId);
+        GenerationJobDetail detail = epistolaService.getJobStatus(
+                plugin.getBaseUrl(), plugin.getApiKey(), tenantId, requestId);
+        GenerationJobStatus status = detail.getStatus();
+
+        if (!isTerminal(status)) {
+            log.info("Reconcile: tenantId={}, requestId={} still {} on Epistola — nothing to correlate",
+                    tenantId, requestId, status);
+            return new ReconcileResult(
+                    execution.getId(),
+                    execution.getProcessInstanceId(),
+                    tenantId,
+                    requestId,
+                    status.name(),
+                    null,
+                    false
+            );
+        }
+
+        int count = correlationService.correlateCompletion(
+                tenantId,
+                requestId,
+                status.name(),
+                detail.getDocumentId(),
+                detail.getErrorMessage()
+        );
+        log.info("Reconcile: correlated executionId={} (tenantId={}, requestId={}, status={}): {} instance(s)",
+                execution.getId(), tenantId, requestId, status, count);
+
+        return new ReconcileResult(
+                execution.getId(),
+                execution.getProcessInstanceId(),
+                tenantId,
+                requestId,
+                status.name(),
+                count,
+                true
+        );
+    }
+
+    private static boolean isTerminal(GenerationJobStatus status) {
+        return status == GenerationJobStatus.COMPLETED
+                || status == GenerationJobStatus.FAILED
+                || status == GenerationJobStatus.CANCELLED;
+    }
+
+    private EpistolaPlugin findPluginForTenant(String tenantId) {
+        for (PluginConfigEntry entry : loadPluginConfigurations()) {
+            if (tenantId.equals(entry.plugin().getTenantId())) {
+                return entry.plugin();
+            }
+        }
+        throw new IllegalArgumentException(
+                "No Epistola plugin configuration found for tenantId=" + tenantId);
     }
 
     private Map<String, String> buildTenantConfigTitleMap() {

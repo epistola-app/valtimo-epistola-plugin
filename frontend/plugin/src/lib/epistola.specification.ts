@@ -166,6 +166,19 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminNoPendingJobs: 'Geen wachtende taken voor deze verbinding.',
       epistolaAdminConfiguration: 'Configuratie',
       epistolaAdminRequestId: 'Request ID',
+      epistolaAdminReconcile: 'Hersynchroniseer',
+      epistolaAdminReconciling: 'Bezig...',
+      epistolaAdminReconcileTooltip:
+        'Vraag de huidige status op bij Epistola en hervat het wachtende proces als het klaar is.',
+      epistolaAdminConfigurations: 'Configuraties',
+      epistolaAdminValidations: 'BPMN-validatie',
+      epistolaAdminNoValidations:
+        'Geen race-onveilige procesdefinities gevonden. Alles ziet er goed uit.',
+      epistolaAdminValidationWarningTitle: 'BPMN configuratie waarschuwing',
+      epistolaAdminValidationWarningBody:
+        'In deze procesdefinities is de grens tussen de generate-document service task en de EpistolaDocumentGenerated catch event niet synchroon. Resultaten kunnen verloren gaan; gebruik in dat geval de Hersynchroniseer-knop in de Wachtende taken-tab.',
+      epistolaAdminValidationCode: 'Code',
+      epistolaAdminValidationMessage: 'Bericht',
     },
     en: {
       title: 'Epistola Document Suite',
@@ -303,6 +316,19 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminNoPendingJobs: 'No pending jobs for this connection.',
       epistolaAdminConfiguration: 'Configuration',
       epistolaAdminRequestId: 'Request ID',
+      epistolaAdminReconcile: 'Reconcile',
+      epistolaAdminReconciling: 'Reconciling...',
+      epistolaAdminReconcileTooltip:
+        "Ask Epistola for this job's current status and resume the waiting process if it has finished.",
+      epistolaAdminConfigurations: 'Configurations',
+      epistolaAdminValidations: 'BPMN validation',
+      epistolaAdminNoValidations:
+        'No race-unsafe process definitions detected. Everything looks good.',
+      epistolaAdminValidationWarningTitle: 'BPMN configuration warning',
+      epistolaAdminValidationWarningBody:
+        'These process definitions have a non-synchronous boundary between the generate-document service task and the EpistolaDocumentGenerated catch event. Results can be missed; use the Reconcile button on the Pending Jobs tab to recover.',
+      epistolaAdminValidationCode: 'Code',
+      epistolaAdminValidationMessage: 'Message',
     },
   },
 };

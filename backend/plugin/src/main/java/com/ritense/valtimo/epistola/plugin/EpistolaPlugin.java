@@ -18,6 +18,7 @@ import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -341,8 +342,21 @@ public class EpistolaPlugin {
             throw new RuntimeException("Failed to submit document generation request to Epistola", e);
         }
 
-        // Store the request ID in the user-configured process variable
-        execution.setVariable(resultProcessVariable, result.getRequestId());
+        // Store a rich result object on the user-configured process variable. The
+        // collector updates the same variable in-place when the result lands; users
+        // read individual fields via JUEL: ${var.status}, ${var.documentId}, etc.
+        // Pre-populated with status=PENDING so downstream BPMN can react immediately
+        // (e.g. a "result not yet available" branch).
+        Map<String, Object> resultData = new LinkedHashMap<>();
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID, result.getRequestId());
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_STATUS, "PENDING");
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE, null);
+        execution.setVariable(resultProcessVariable, resultData);
+
+        // Companion variable: the *name* of resultProcessVariable on this instance,
+        // so the result collector knows where to write the updated rich object later.
+        execution.setVariable(EpistolaProcessVariables.RESULT_VARIABLE_NAME, resultProcessVariable);
 
         // Store tenantId as a standalone process variable so it can be used in forms
         // (e.g. for building document download URLs without parsing the composite jobPath)
@@ -390,7 +404,24 @@ public class EpistolaPlugin {
             @PluginActionProperty String documentIdVariable,
             @PluginActionProperty String errorMessageVariable
     ) {
-        String requestId = (String) execution.getVariable(requestIdVariable);
+        // The variable can be either a plain String (legacy: when only `generate-document`
+        // wrote the requestId) or a Map<String,Object> with a `requestId` key (current:
+        // the rich result object). Accept both for backward compatibility — a process
+        // mid-flight when this version ships might still hold the legacy String.
+        Object rawValue = execution.getVariable(requestIdVariable);
+        String requestId;
+        if (rawValue instanceof Map<?, ?> map) {
+            Object idValue = map.get(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID);
+            requestId = idValue == null ? null : idValue.toString();
+        } else if (rawValue instanceof String str) {
+            requestId = str;
+        } else if (rawValue == null) {
+            requestId = null;
+        } else {
+            throw new IllegalArgumentException("Variable '" + requestIdVariable
+                    + "' must be a String or a Map with a '" + EpistolaProcessVariables.RESULT_KEY_REQUEST_ID
+                    + "' key, got " + rawValue.getClass().getName());
+        }
         log.info("Checking job status for requestId: {}", requestId);
 
         if (requestId == null || requestId.isBlank()) {

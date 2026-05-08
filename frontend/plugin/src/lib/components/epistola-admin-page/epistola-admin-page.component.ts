@@ -5,7 +5,12 @@ import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { TabsModule } from 'carbon-components-angular/tabs';
 import { TagModule } from 'carbon-components-angular/tag';
 import { EpistolaAdminService } from '../../services/epistola-admin.service';
-import { ConnectionStatus, PendingJob, PluginUsageEntry } from '../../models';
+import {
+  BpmnValidationViolation,
+  ConnectionStatus,
+  PendingJob,
+  PluginUsageEntry,
+} from '../../models';
 
 /**
  * Combined view model for a single plugin configuration card.
@@ -35,8 +40,16 @@ export class EpistolaAdminPageComponent implements OnInit {
   cards: ConfigurationCard[] = [];
   selectedCard: ConfigurationCard | null = null;
   activeTab: 'actions' | 'pending' = 'actions';
+  overviewTab: 'configurations' | 'validations' = 'configurations';
   loading = false;
   pluginVersion: string | null = null;
+  validationViolations: BpmnValidationViolation[] = [];
+  reconcilingExecutionIds = new Set<string>();
+  reconcileFeedback: {
+    executionId: string;
+    type: 'success' | 'pending' | 'error';
+    message: string;
+  } | null = null;
 
   private connectionStatuses: ConnectionStatus[] = [];
   private usageEntries: PluginUsageEntry[] = [];
@@ -79,6 +92,10 @@ export class EpistolaAdminPageComponent implements OnInit {
     this.updateUrl(this.selectedCard?.configurationId ?? null, tab);
   }
 
+  setOverviewTab(tab: 'configurations' | 'validations'): void {
+    this.overviewTab = tab;
+  }
+
   refresh(): void {
     this.selectedCard = null;
     this.loadData();
@@ -95,6 +112,56 @@ export class EpistolaAdminPageComponent implements OnInit {
         URL.revokeObjectURL(url);
       },
     });
+  }
+
+  /**
+   * Manually reconcile a single stuck catch event. Pulls the current Epistola job
+   * status and re-runs message correlation if the job is in a terminal state.
+   * Refreshes the Pending list on success so the row drops out of the table.
+   */
+  reconcilePending(job: PendingJob): void {
+    if (this.reconcilingExecutionIds.has(job.executionId)) {
+      return;
+    }
+    this.reconcilingExecutionIds.add(job.executionId);
+    this.reconcileFeedback = null;
+
+    this.adminService.reconcilePending(job.executionId).subscribe({
+      next: (result) => {
+        this.reconcilingExecutionIds.delete(job.executionId);
+        this.reconcileFeedback = {
+          executionId: job.executionId,
+          type: 'success',
+          message: `OK (${result.epistolaStatus}, ${result.correlatedCount ?? 0} correlated)`,
+        };
+        this.loadData();
+      },
+      error: (err) => {
+        this.reconcilingExecutionIds.delete(job.executionId);
+        // 409 from the backend = job is still PENDING/IN_PROGRESS, surface as
+        // informational rather than an error.
+        if (err?.status === 409) {
+          const status = err.error?.epistolaStatus ?? 'still pending';
+          this.reconcileFeedback = {
+            executionId: job.executionId,
+            type: 'pending',
+            message: `Epistola: ${status}. Try again in a moment.`,
+          };
+        } else {
+          const message =
+            err?.error?.detail ?? err?.error?.message ?? err?.message ?? 'unknown error';
+          this.reconcileFeedback = {
+            executionId: job.executionId,
+            type: 'error',
+            message,
+          };
+        }
+      },
+    });
+  }
+
+  isReconciling(job: PendingJob): boolean {
+    return this.reconcilingExecutionIds.has(job.executionId);
   }
 
   private updateUrl(configurationId: string | null, tab: string | null): void {
@@ -150,6 +217,17 @@ export class EpistolaAdminPageComponent implements OnInit {
         this.pendingJobs = [];
         this.pendingLoaded = true;
         this.tryBuildCards();
+      },
+    });
+
+    // Validation violations are independent of cards — load alongside but don't
+    // gate the loading flag on them.
+    this.adminService.getValidationViolations().subscribe({
+      next: (violations) => {
+        this.validationViolations = violations;
+      },
+      error: () => {
+        this.validationViolations = [];
       },
     });
   }

@@ -36,4 +36,25 @@ public final class EpistolaProcessVariables {
 
     /** BPMN message name correlated when document generation completes. */
     public static final String MESSAGE_NAME = "EpistolaDocumentGenerated";
+
+    /**
+     * Internal companion variable: the *name* of the user-configured result process
+     * variable (i.e. the value of {@code resultProcessVariable} from the process-link).
+     * Set by {@code generate-document} at submit time so the result collector knows
+     * where to write the rich result object on the matching process instance later.
+     * Hardcoded; not exposed in user-facing docs.
+     */
+    public static final String RESULT_VARIABLE_NAME = "epistolaResultVariableName";
+
+    /** Result-object key for the Epistola request id (UUID string). */
+    public static final String RESULT_KEY_REQUEST_ID = "requestId";
+
+    /** Result-object key for the current job status (PENDING / IN_PROGRESS / COMPLETED / FAILED / CANCELLED). */
+    public static final String RESULT_KEY_STATUS = "status";
+
+    /** Result-object key for the generated document id (set on COMPLETED, null otherwise). */
+    public static final String RESULT_KEY_DOCUMENT_ID = "documentId";
+
+    /** Result-object key for the failure message (set on FAILED, null otherwise). */
+    public static final String RESULT_KEY_ERROR_MESSAGE = "errorMessage";
 }

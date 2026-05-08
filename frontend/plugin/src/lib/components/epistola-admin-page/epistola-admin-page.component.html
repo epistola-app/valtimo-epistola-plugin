@@ -1,5 +1,5 @@
 <div class="epistola-admin">
-  <!-- Overview: card grid (no configuration selected) -->
+  <!-- Overview: tabs (no configuration selected) -->
   <ng-container *ngIf="!selectedCard">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div class="d-flex align-items-center">
@@ -11,83 +11,148 @@
       </button>
     </div>
 
-    <div *ngIf="loading" class="text-muted">
-      {{ 'epistolaAdminLoading' | pluginTranslate: 'epistola' | async }}
-    </div>
+    <ng-template #configurationsHeading>
+      {{ 'epistolaAdminConfigurations' | pluginTranslate: 'epistola' | async }}
+      <cds-tag size="sm" type="gray" class="ms-1">{{ cards.length }}</cds-tag>
+    </ng-template>
 
-    <div *ngIf="!loading && cards.length === 0" class="text-muted">
-      {{ 'epistolaAdminNoConfigurations' | pluginTranslate: 'epistola' | async }}
-    </div>
+    <ng-template #validationsHeading>
+      {{ 'epistolaAdminValidations' | pluginTranslate: 'epistola' | async }}
+      <cds-tag size="sm" [type]="validationViolations.length > 0 ? 'red' : 'gray'" class="ms-1">
+        {{ validationViolations.length }}
+      </cds-tag>
+    </ng-template>
 
-    <div *ngIf="!loading && cards.length > 0" class="card-grid">
-      <div
-        *ngFor="let card of cards"
-        class="config-card"
-        [class.config-card--ok]="card.reachable && card.problemCount === 0"
-        [class.config-card--warning]="card.reachable && card.problemCount > 0"
-        [class.config-card--error]="!card.reachable"
-        (click)="selectConfiguration(card)"
+    <cds-tabs [cacheActive]="true" type="contained">
+      <cds-tab
+        [heading]="configurationsHeading"
+        [active]="overviewTab === 'configurations'"
+        (selected)="setOverviewTab('configurations')"
       >
-        <div class="config-card__header">
-          <span
-            class="status-dot"
-            [class.status-dot--ok]="card.reachable"
-            [class.status-dot--error]="!card.reachable"
+        <div *ngIf="loading" class="text-muted mt-3">
+          {{ 'epistolaAdminLoading' | pluginTranslate: 'epistola' | async }}
+        </div>
+
+        <div *ngIf="!loading && cards.length === 0" class="text-muted mt-3">
+          {{ 'epistolaAdminNoConfigurations' | pluginTranslate: 'epistola' | async }}
+        </div>
+
+        <div *ngIf="!loading && cards.length > 0" class="card-grid">
+          <div
+            *ngFor="let card of cards"
+            class="config-card"
+            [class.config-card--ok]="card.reachable && card.problemCount === 0"
+            [class.config-card--warning]="card.reachable && card.problemCount > 0"
+            [class.config-card--error]="!card.reachable"
+            (click)="selectConfiguration(card)"
           >
-          </span>
-          <h5 class="config-card__title">{{ card.configurationTitle }}</h5>
+            <div class="config-card__header">
+              <span
+                class="status-dot"
+                [class.status-dot--ok]="card.reachable"
+                [class.status-dot--error]="!card.reachable"
+              >
+              </span>
+              <h5 class="config-card__title">{{ card.configurationTitle }}</h5>
+            </div>
+
+            <div class="config-card__body">
+              <div class="config-card__field">
+                <span class="config-card__label">{{
+                  'epistolaAdminTenantId' | pluginTranslate: 'epistola' | async
+                }}</span>
+                <code class="config-card__value">{{ card.tenantId }}</code>
+              </div>
+              <div class="config-card__field">
+                <span class="config-card__label">{{
+                  'epistolaAdminStatus' | pluginTranslate: 'epistola' | async
+                }}</span>
+                <cds-tag size="sm" [type]="card.reachable ? 'green' : 'red'">
+                  {{
+                    card.reachable
+                      ? ('epistolaAdminConnected' | pluginTranslate: 'epistola' | async)
+                      : ('epistolaAdminUnreachable' | pluginTranslate: 'epistola' | async)
+                  }}
+                </cds-tag>
+              </div>
+              <div *ngIf="card.serverVersion" class="config-card__field">
+                <span class="config-card__label">{{
+                  'epistolaAdminServerVersion' | pluginTranslate: 'epistola' | async
+                }}</span>
+                <span class="config-card__value">{{ card.serverVersion }}</span>
+              </div>
+              <div class="config-card__field">
+                <span class="config-card__label">{{
+                  'epistolaAdminPluginActions' | pluginTranslate: 'epistola' | async
+                }}</span>
+                <span class="config-card__value">{{ card.usageCount }}</span>
+              </div>
+              <div *ngIf="card.pendingJobs.length > 0" class="config-card__field">
+                <span class="config-card__label">{{
+                  'epistolaAdminPendingJobs' | pluginTranslate: 'epistola' | async
+                }}</span>
+                <cds-tag size="sm" type="blue">{{ card.pendingJobs.length }}</cds-tag>
+              </div>
+              <div *ngIf="card.problemCount > 0" class="config-card__field">
+                <span class="config-card__label">{{
+                  'epistolaAdminProblems' | pluginTranslate: 'epistola' | async
+                }}</span>
+                <cds-tag size="sm" type="red">{{ card.problemCount }}</cds-tag>
+              </div>
+            </div>
+
+            <div class="config-card__footer">
+              <span class="config-card__latency">{{ card.latencyMs }} ms</span>
+            </div>
+          </div>
+        </div>
+      </cds-tab>
+
+      <cds-tab
+        [heading]="validationsHeading"
+        [active]="overviewTab === 'validations'"
+        (selected)="setOverviewTab('validations')"
+      >
+        <div *ngIf="validationViolations.length === 0" class="text-muted mt-3 mb-3">
+          {{ 'epistolaAdminNoValidations' | pluginTranslate: 'epistola' | async }}
         </div>
 
-        <div class="config-card__body">
-          <div class="config-card__field">
-            <span class="config-card__label">{{
-              'epistolaAdminTenantId' | pluginTranslate: 'epistola' | async
-            }}</span>
-            <code class="config-card__value">{{ card.tenantId }}</code>
-          </div>
-          <div class="config-card__field">
-            <span class="config-card__label">{{
-              'epistolaAdminStatus' | pluginTranslate: 'epistola' | async
-            }}</span>
-            <cds-tag size="sm" [type]="card.reachable ? 'green' : 'red'">
-              {{
-                card.reachable
-                  ? ('epistolaAdminConnected' | pluginTranslate: 'epistola' | async)
-                  : ('epistolaAdminUnreachable' | pluginTranslate: 'epistola' | async)
-              }}
-            </cds-tag>
-          </div>
-          <div *ngIf="card.serverVersion" class="config-card__field">
-            <span class="config-card__label">{{
-              'epistolaAdminServerVersion' | pluginTranslate: 'epistola' | async
-            }}</span>
-            <span class="config-card__value">{{ card.serverVersion }}</span>
-          </div>
-          <div class="config-card__field">
-            <span class="config-card__label">{{
-              'epistolaAdminPluginActions' | pluginTranslate: 'epistola' | async
-            }}</span>
-            <span class="config-card__value">{{ card.usageCount }}</span>
-          </div>
-          <div *ngIf="card.pendingJobs.length > 0" class="config-card__field">
-            <span class="config-card__label">{{
-              'epistolaAdminPendingJobs' | pluginTranslate: 'epistola' | async
-            }}</span>
-            <cds-tag size="sm" type="blue">{{ card.pendingJobs.length }}</cds-tag>
-          </div>
-          <div *ngIf="card.problemCount > 0" class="config-card__field">
-            <span class="config-card__label">{{
-              'epistolaAdminProblems' | pluginTranslate: 'epistola' | async
-            }}</span>
-            <cds-tag size="sm" type="red">{{ card.problemCount }}</cds-tag>
-          </div>
+        <div *ngIf="validationViolations.length > 0" class="mt-3">
+          <p class="text-muted mb-3">
+            {{ 'epistolaAdminValidationWarningBody' | pluginTranslate: 'epistola' | async }}
+          </p>
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>{{ 'epistolaAdminProcess' | pluginTranslate: 'epistola' | async }}</th>
+                <th>{{ 'epistolaAdminActivity' | pluginTranslate: 'epistola' | async }}</th>
+                <th>{{ 'epistolaAdminValidationCode' | pluginTranslate: 'epistola' | async }}</th>
+                <th>
+                  {{ 'epistolaAdminValidationMessage' | pluginTranslate: 'epistola' | async }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let v of validationViolations">
+                <td>
+                  {{ v.processDefinitionName || v.processDefinitionKey }}
+                  <div *ngIf="v.processDefinitionName" class="text-muted small">
+                    <code>{{ v.processDefinitionKey }}</code>
+                  </div>
+                </td>
+                <td>
+                  <code>{{ v.activityId }}</code>
+                </td>
+                <td>
+                  <cds-tag size="sm" type="red">{{ v.code }}</cds-tag>
+                </td>
+                <td>{{ v.message }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-
-        <div class="config-card__footer">
-          <span class="config-card__latency">{{ card.latencyMs }} ms</span>
-        </div>
-      </div>
-    </div>
+      </cds-tab>
+    </cds-tabs>
   </ng-container>
 
   <!-- Detail view: selected configuration -->
@@ -250,6 +315,7 @@
               <th>{{ 'epistolaAdminProcess' | pluginTranslate: 'epistola' | async }}</th>
               <th>{{ 'epistolaAdminActivity' | pluginTranslate: 'epistola' | async }}</th>
               <th>{{ 'epistolaAdminRequestId' | pluginTranslate: 'epistola' | async }}</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -258,6 +324,30 @@
               <td>{{ job.activityName }}</td>
               <td>
                 <code>{{ job.requestId }}</code>
+              </td>
+              <td class="text-end">
+                <button
+                  class="btn btn-sm btn-outline-primary"
+                  (click)="reconcilePending(job)"
+                  [disabled]="isReconciling(job)"
+                  [title]="'epistolaAdminReconcileTooltip' | pluginTranslate: 'epistola' | async"
+                >
+                  <span *ngIf="!isReconciling(job)">
+                    {{ 'epistolaAdminReconcile' | pluginTranslate: 'epistola' | async }}
+                  </span>
+                  <span *ngIf="isReconciling(job)">
+                    {{ 'epistolaAdminReconciling' | pluginTranslate: 'epistola' | async }}
+                  </span>
+                </button>
+                <div
+                  *ngIf="reconcileFeedback && reconcileFeedback.executionId === job.executionId"
+                  class="reconcile-feedback small mt-1"
+                  [class.text-success]="reconcileFeedback.type === 'success'"
+                  [class.text-warning]="reconcileFeedback.type === 'pending'"
+                  [class.text-danger]="reconcileFeedback.type === 'error'"
+                >
+                  {{ reconcileFeedback.message }}
+                </div>
               </td>
             </tr>
           </tbody>

@@ -6,6 +6,7 @@ import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.deploy.CatalogScanner;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger;
+import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.expression.functions.FormatDateFunction;
@@ -207,13 +208,24 @@ public class EpistolaPluginAutoConfiguration {
     public EpistolaAdminService epistolaAdminService(
             PluginService pluginService,
             EpistolaService epistolaService,
+            EpistolaMessageCorrelationService correlationService,
             ProcessLinkService processLinkService,
             RepositoryService repositoryService,
             RuntimeService runtimeService,
-            ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService
+            ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService,
+            EpistolaProcessDefinitionValidator processDefinitionValidator
     ) {
-        return new EpistolaAdminService(pluginService, epistolaService, processLinkService,
-                repositoryService, runtimeService, processDefinitionCaseDefinitionService);
+        return new EpistolaAdminService(pluginService, epistolaService, correlationService, processLinkService,
+                repositoryService, runtimeService, processDefinitionCaseDefinitionService, processDefinitionValidator);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaProcessDefinitionValidator.class)
+    public EpistolaProcessDefinitionValidator epistolaProcessDefinitionValidator(
+            RepositoryService repositoryService,
+            ProcessLinkService processLinkService
+    ) {
+        return new EpistolaProcessDefinitionValidator(repositoryService, processLinkService);
     }
 
     @Bean
