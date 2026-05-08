@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-08
+
 ### Added
 
 - **Variable pattern: rich-object `resultProcessVariable`** — `generate-document` now writes a `Map<String, Object>` (`requestId` / `status` / `documentId` / `errorMessage`) to the configured result variable instead of a plain requestId string. The result collector updates the same variable in-place when the job finishes, so processes that don't use a catch event can read the result later via JUEL: `${epistolaResult.status == 'COMPLETED'}`, `${epistolaResult.documentId}`. Companion var `epistolaResultVariableName` (internal) tracks the user-configured name so the collector knows where to write. Catch-event users continue to get the legacy `epistolaStatus` / `epistolaDocumentId` / `epistolaErrorMessage` per-execution variables — both patterns work in the same process.
