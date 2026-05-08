@@ -18,6 +18,7 @@ import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -217,7 +218,7 @@ public class EpistolaPlugin {
      * @param resultProcessVariable The name of the process variable to store the request ID in
      */
     @PluginAction(
-            key = "generate-document",
+            key = "epistola-generate-document",
             title = "Generate Document",
             description = "Submit a document generation request to Epistola. The request ID will be stored in the specified process variable.",
             activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
@@ -334,15 +335,35 @@ public class EpistolaPlugin {
                     routingKey
             );
         } catch (Exception e) {
-            // Store error details so the retry flow can trigger
-            execution.setVariable(EpistolaProcessVariables.STATUS, "FAILED");
-            execution.setVariable(EpistolaProcessVariables.ERROR_MESSAGE,
+            // Submit-time failure: write a FAILED rich object on resultProcessVariable so
+            // downstream BPMN (or a Formio retry form) can read the error via
+            // ${<resultProcessVariable>.errorMessage} just like a post-submit failure.
+            Map<String, Object> failureData = new LinkedHashMap<>();
+            failureData.put(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID, null);
+            failureData.put(EpistolaProcessVariables.RESULT_KEY_STATUS, "FAILED");
+            failureData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
+            failureData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE,
                     "Document generation request failed: " + e.getMessage());
+            execution.setVariable(resultProcessVariable, failureData);
+            execution.setVariable(EpistolaProcessVariables.RESULT_VARIABLE_NAME, resultProcessVariable);
             throw new RuntimeException("Failed to submit document generation request to Epistola", e);
         }
 
-        // Store the request ID in the user-configured process variable
-        execution.setVariable(resultProcessVariable, result.getRequestId());
+        // Store a rich result object on the user-configured process variable. The
+        // collector updates the same variable in-place when the result lands; users
+        // read individual fields via JUEL: ${var.status}, ${var.documentId}, etc.
+        // Pre-populated with status=PENDING so downstream BPMN can react immediately
+        // (e.g. a "result not yet available" branch).
+        Map<String, Object> resultData = new LinkedHashMap<>();
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID, result.getRequestId());
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_STATUS, "PENDING");
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE, null);
+        execution.setVariable(resultProcessVariable, resultData);
+
+        // Companion variable: the *name* of resultProcessVariable on this instance,
+        // so the result collector knows where to write the updated rich object later.
+        execution.setVariable(EpistolaProcessVariables.RESULT_VARIABLE_NAME, resultProcessVariable);
 
         // Store tenantId as a standalone process variable so it can be used in forms
         // (e.g. for building document download URLs without parsing the composite jobPath)
@@ -378,7 +399,7 @@ public class EpistolaPlugin {
      * @param errorMessageVariable    The name of the process variable to store any error message in (when failed)
      */
     @PluginAction(
-            key = "check-job-status",
+            key = "epistola-check-job-status",
             title = "Check Job Status",
             description = "Check the status of a document generation job. Stores status, document ID (if completed), and error message (if failed) in process variables.",
             activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
@@ -390,7 +411,24 @@ public class EpistolaPlugin {
             @PluginActionProperty String documentIdVariable,
             @PluginActionProperty String errorMessageVariable
     ) {
-        String requestId = (String) execution.getVariable(requestIdVariable);
+        // The variable can be either a plain String (legacy: when only `generate-document`
+        // wrote the requestId) or a Map<String,Object> with a `requestId` key (current:
+        // the rich result object). Accept both for backward compatibility — a process
+        // mid-flight when this version ships might still hold the legacy String.
+        Object rawValue = execution.getVariable(requestIdVariable);
+        String requestId;
+        if (rawValue instanceof Map<?, ?> map) {
+            Object idValue = map.get(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID);
+            requestId = idValue == null ? null : idValue.toString();
+        } else if (rawValue instanceof String str) {
+            requestId = str;
+        } else if (rawValue == null) {
+            requestId = null;
+        } else {
+            throw new IllegalArgumentException("Variable '" + requestIdVariable
+                    + "' must be a String or a Map with a '" + EpistolaProcessVariables.RESULT_KEY_REQUEST_ID
+                    + "' key, got " + rawValue.getClass().getName());
+        }
         log.info("Checking job status for requestId: {}", requestId);
 
         if (requestId == null || requestId.isBlank()) {
@@ -422,26 +460,43 @@ public class EpistolaPlugin {
      * This action downloads a completed document from Epistola. The document must have
      * been successfully generated (status = COMPLETED) before it can be downloaded.
      *
-     * @param execution              The process execution context
-     * @param documentIdVariable     The name of the process variable containing the document ID
-     * @param contentVariable        The name of the process variable to store the document content (Base64 encoded)
+     * @param execution           The process execution context
+     * @param documentVariable    Name of the process variable that holds the result. May be a
+     *                            plain String document id (legacy) or a {@code Map<String,Object>}
+     *                            rich result with a {@code documentId} key (canonical).
+     * @param contentVariable     The name of the process variable to store the document content (Base64 encoded)
      */
     @PluginAction(
-            key = "download-document",
+            key = "epistola-download-document",
             title = "Download Document",
             description = "Download a generated document from Epistola. Stores the document content as Base64 in the specified process variable.",
             activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
     )
     public void downloadDocument(
             DelegateExecution execution,
-            @PluginActionProperty String documentIdVariable,
+            @PluginActionProperty String documentVariable,
             @PluginActionProperty String contentVariable
     ) {
-        String documentId = (String) execution.getVariable(documentIdVariable);
+        // Type-tolerant: documentVariable may hold a plain String (legacy scalar) or a
+        // Map<String,Object> with a documentId key (canonical rich-result-object). Both work.
+        Object rawValue = execution.getVariable(documentVariable);
+        String documentId;
+        if (rawValue instanceof Map<?, ?> map) {
+            Object docId = map.get(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID);
+            documentId = docId == null ? null : docId.toString();
+        } else if (rawValue instanceof String str) {
+            documentId = str;
+        } else if (rawValue == null) {
+            documentId = null;
+        } else {
+            throw new IllegalArgumentException("Variable '" + documentVariable
+                    + "' must be a String or a Map with a '" + EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID
+                    + "' key, got " + rawValue.getClass().getName());
+        }
         log.info("Downloading document: {}", documentId);
 
         if (documentId == null || documentId.isBlank()) {
-            throw new IllegalArgumentException("Document ID variable '" + documentIdVariable + "' is null or empty");
+            throw new IllegalArgumentException("Document variable '" + documentVariable + "' is null or empty");
         }
 
         byte[] content = epistolaService.downloadDocument(baseUrl, apiKey, tenantId, documentId);

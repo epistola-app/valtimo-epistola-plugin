@@ -2,26 +2,12 @@
   "display": "form",
   "components": [
     {
-      "key": "pv:epistolaStatus",
-      "type": "textfield",
-      "input": true,
-      "label": "Generatie Status",
-      "disabled": true
-    },
-    {
-      "key": "pv:epistolaDocumentId",
-      "type": "textfield",
-      "input": true,
-      "label": "Document ID",
-      "disabled": true
-    },
-    {
       "type": "epistola-document",
       "key": "document",
       "input": false,
       "label": "Bevestigingsbrief",
       "display": "both",
-      "documentIdVariable": "epistolaDocumentId",
+      "documentVariable": "epistolaResult",
       "tenantIdVariable": "epistolaTenantId",
       "filename": "bevestigingsbrief.pdf"
     },

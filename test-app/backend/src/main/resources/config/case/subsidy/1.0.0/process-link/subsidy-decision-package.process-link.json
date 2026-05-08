@@ -10,7 +10,7 @@
     "activityType": "bpmn:ServiceTask:start",
     "processLinkType": "plugin",
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
-    "pluginActionDefinitionKey": "generate-document",
+    "pluginActionDefinitionKey": "epistola-generate-document",
     "actionProperties": {
       "templateId": "subsidiebesluit",
       "outputFormat": "PDF",
@@ -25,9 +25,9 @@
     "activityType": "bpmn:ServiceTask:start",
     "processLinkType": "plugin",
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
-    "pluginActionDefinitionKey": "download-document",
+    "pluginActionDefinitionKey": "epistola-download-document",
     "actionProperties": {
-      "documentIdVariable": "epistolaDocumentId",
+      "documentVariable": "requestId1",
       "contentVariable": "doc1Content"
     }
   },
@@ -36,7 +36,7 @@
     "activityType": "bpmn:ServiceTask:start",
     "processLinkType": "plugin",
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
-    "pluginActionDefinitionKey": "generate-document",
+    "pluginActionDefinitionKey": "epistola-generate-document",
     "actionProperties": {
       "templateId": "financieel-overzicht",
       "outputFormat": "PDF",
@@ -51,9 +51,9 @@
     "activityType": "bpmn:ServiceTask:start",
     "processLinkType": "plugin",
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
-    "pluginActionDefinitionKey": "download-document",
+    "pluginActionDefinitionKey": "epistola-download-document",
     "actionProperties": {
-      "documentIdVariable": "epistolaDocumentId",
+      "documentVariable": "requestId2",
       "contentVariable": "doc2Content"
     }
   },
@@ -62,7 +62,7 @@
     "activityType": "bpmn:ServiceTask:start",
     "processLinkType": "plugin",
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
-    "pluginActionDefinitionKey": "generate-document",
+    "pluginActionDefinitionKey": "epistola-generate-document",
     "actionProperties": {
       "templateId": "voorwaarden-bijlage",
       "outputFormat": "PDF",
@@ -77,9 +77,9 @@
     "activityType": "bpmn:ServiceTask:start",
     "processLinkType": "plugin",
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
-    "pluginActionDefinitionKey": "download-document",
+    "pluginActionDefinitionKey": "epistola-download-document",
     "actionProperties": {
-      "documentIdVariable": "epistolaDocumentId",
+      "documentVariable": "requestId3",
       "contentVariable": "doc3Content"
     }
   }

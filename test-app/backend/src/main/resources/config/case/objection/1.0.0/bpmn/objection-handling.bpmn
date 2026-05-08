@@ -21,7 +21,7 @@
       <bpmn:outgoing>Flow_to_gen_ack</bpmn:outgoing>
     </bpmn:startEvent>
 
-    <bpmn:serviceTask id="generate-ack" name="Genereer Ontvangstbevestiging">
+    <bpmn:serviceTask id="generate-ack" name="Genereer Ontvangstbevestiging" camunda:expression="${null}">
       <bpmn:incoming>Flow_to_gen_ack</bpmn:incoming>
       <bpmn:outgoing>Flow_to_wait_ack</bpmn:outgoing>
     </bpmn:serviceTask>
@@ -58,7 +58,7 @@
 
     <!-- ===== Phase 3: Decision letter ===== -->
 
-    <bpmn:serviceTask id="generate-decision" name="Genereer Besluit">
+    <bpmn:serviceTask id="generate-decision" name="Genereer Besluit" camunda:expression="${null}">
       <bpmn:incoming>Flow_to_gen_decision</bpmn:incoming>
       <bpmn:outgoing>Flow_to_wait_decision</bpmn:outgoing>
     </bpmn:serviceTask>
@@ -100,10 +100,10 @@
     <bpmn:sequenceFlow id="Flow_ack_error" sourceRef="boundary-ack-error" targetRef="end-error" />
     <bpmn:sequenceFlow id="Flow_to_check_ack" sourceRef="wait-for-ack" targetRef="check-ack-status" />
     <bpmn:sequenceFlow id="Flow_ack_ok" name="Ja" sourceRef="check-ack-status" targetRef="download-ack">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaStatus == 'COMPLETED'}</bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status == 'COMPLETED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_ack_fail" name="Nee" sourceRef="check-ack-status" targetRef="end-error">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaStatus != 'COMPLETED'}</bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status != 'COMPLETED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_to_assess" sourceRef="download-ack" targetRef="assess-objection" />
 
@@ -112,10 +112,10 @@
     <bpmn:sequenceFlow id="Flow_to_wait_decision" sourceRef="generate-decision" targetRef="wait-for-decision" />
     <bpmn:sequenceFlow id="Flow_to_check_decision" sourceRef="wait-for-decision" targetRef="check-decision-status" />
     <bpmn:sequenceFlow id="Flow_decision_ok" name="Ja" sourceRef="check-decision-status" targetRef="download-decision">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaStatus == 'COMPLETED'}</bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status == 'COMPLETED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_decision_fail" name="Nee" sourceRef="check-decision-status" targetRef="end-error">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaStatus != 'COMPLETED'}</bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status != 'COMPLETED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_to_end" sourceRef="download-decision" targetRef="end-success" />
 

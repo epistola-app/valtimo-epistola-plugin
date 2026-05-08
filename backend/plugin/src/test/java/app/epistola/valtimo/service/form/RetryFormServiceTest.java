@@ -318,7 +318,7 @@ class RetryFormServiceTest {
     private PluginProcessLink mockPluginProcessLink(String activityId, String templateId, Map<String, Object> dataMapping) {
         PluginProcessLink link = mock(PluginProcessLink.class);
         lenient().when(link.getActivityId()).thenReturn(activityId);
-        lenient().when(link.getPluginActionDefinitionKey()).thenReturn("generate-document");
+        lenient().when(link.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
 
         ObjectNode actionProps = objectMapper.createObjectNode();
         actionProps.put("catalogId", CATALOG_ID);

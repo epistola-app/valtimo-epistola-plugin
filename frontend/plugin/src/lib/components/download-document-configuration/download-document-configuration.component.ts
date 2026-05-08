@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angu
 import { CommonModule } from '@angular/common';
 import { FunctionConfigurationComponent, PluginTranslatePipeModule } from '@valtimo/plugin';
 import { FormModule, FormOutput, InputModule } from '@valtimo/components';
-import { BehaviorSubject, combineLatest, Observable, Subscription, take } from 'rxjs';
+import { BehaviorSubject, combineLatest, Observable, of, Subscription, take } from 'rxjs';
 import { delay, startWith } from 'rxjs/operators';
 import { DownloadDocumentConfig } from '../../models';
 
@@ -29,10 +29,23 @@ export class DownloadDocumentConfigurationComponent
   private readonly formValue$ = new BehaviorSubject<DownloadDocumentConfig | null>(null);
   private readonly valid$ = new BehaviorSubject<boolean>(false);
 
+  /**
+   * Resolved prefill — populated synchronously before the v-form renders. Avoids the
+   * v-input `[defaultValue]` async-binding race that otherwise drops one of the
+   * fields when prefill arrives after mount.
+   */
+  resolvedPrefill: Partial<DownloadDocumentConfig> = {};
+  readonly prefillResolved$ = new BehaviorSubject<boolean>(false);
+
   safeDisabled$!: Observable<boolean>;
 
   ngOnInit(): void {
     this.safeDisabled$ = this.disabled$.pipe(startWith(true), delay(0));
+    const prefill$ = this.prefillConfiguration$ ?? of({} as DownloadDocumentConfig);
+    prefill$.pipe(take(1)).subscribe((prefill) => {
+      this.resolvedPrefill = prefill ?? {};
+      this.prefillResolved$.next(true);
+    });
     this.openSaveSubscription();
   }
 
@@ -47,7 +60,7 @@ export class DownloadDocumentConfigurationComponent
   }
 
   private handleValid(formValue: DownloadDocumentConfig): void {
-    const valid = !!(formValue?.documentIdVariable && formValue?.contentVariable);
+    const valid = !!(formValue?.documentVariable && formValue?.contentVariable);
     this.valid$.next(valid);
     this.valid.emit(valid);
   }

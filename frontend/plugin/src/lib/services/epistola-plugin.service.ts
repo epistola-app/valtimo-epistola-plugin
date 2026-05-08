@@ -42,7 +42,7 @@ export interface PreviewBlobRequest {
 export interface DownloadDocumentRequest {
   taskId: string;
   caseDocumentId: string;
-  documentIdVariable: string;
+  documentVariable: string;
   tenantIdVariable: string;
   filename: string;
   disposition: 'attachment' | 'inline';
@@ -239,7 +239,7 @@ export class EpistolaPluginService {
     const params = new URLSearchParams({
       taskId: request.taskId,
       caseDocumentId: request.caseDocumentId,
-      documentIdVariable: request.documentIdVariable,
+      documentVariable: request.documentVariable,
       tenantIdVariable: request.tenantIdVariable,
       filename: request.filename,
       disposition: request.disposition,

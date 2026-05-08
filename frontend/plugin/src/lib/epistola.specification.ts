@@ -22,9 +22,9 @@ const epistolaPluginSpecification: PluginSpecification = {
 
   // Map action keys to their configuration components
   functionConfigurationComponents: {
-    'generate-document': GenerateDocumentConfigurationComponent,
-    'check-job-status': CheckJobStatusConfigurationComponent,
-    'download-document': DownloadDocumentConfigurationComponent,
+    'epistola-generate-document': GenerateDocumentConfigurationComponent,
+    'epistola-check-job-status': CheckJobStatusConfigurationComponent,
+    'epistola-download-document': DownloadDocumentConfigurationComponent,
   },
 
   // Translations
@@ -46,7 +46,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       templateSyncEnabled: 'Template synchronisatie',
       templateSyncEnabledTooltip:
         'Synchroniseer template definities automatisch van het classpath naar Epistola bij het opstarten',
-      'generate-document': 'Genereer Document',
+      'epistola-generate-document': 'Genereer Document',
       catalogId: 'Catalogus',
       catalogIdTooltip: 'Selecteer de catalogus waaruit een template gekozen wordt',
       templateId: 'Template',
@@ -126,7 +126,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       sourceFieldPlaceholder: 'Bronveldnaam',
       noTemplateFields: 'Geen template velden beschikbaar',
       // Check job status action
-      'check-job-status': 'Controleer Taakstatus',
+      'epistola-check-job-status': 'Controleer Taakstatus',
       requestIdVariable: 'Request ID Variabele',
       requestIdVariableTooltip: 'Naam van de procesvariabele met het Epistola request ID',
       statusVariable: 'Status Variabele',
@@ -138,7 +138,10 @@ const epistolaPluginSpecification: PluginSpecification = {
       errorMessageVariableTooltip:
         'Naam van de procesvariabele waarin de foutmelding wordt opgeslagen (bij fout)',
       // Download document action
-      'download-document': 'Download Document',
+      'epistola-download-document': 'Download Document',
+      documentVariable: 'Document Variabele',
+      documentVariableTooltip:
+        'Naam van de procesvariabele met het Epistola resultaat. Mag een String document ID zijn (legacy) of een rich-result object met een documentId-veld; de actie haalt het document ID eruit.',
       contentVariable: 'Inhoud Variabele',
       contentVariableTooltip:
         'Naam van de procesvariabele waarin de documentinhoud (Base64) wordt opgeslagen',
@@ -166,6 +169,19 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminNoPendingJobs: 'Geen wachtende taken voor deze verbinding.',
       epistolaAdminConfiguration: 'Configuratie',
       epistolaAdminRequestId: 'Request ID',
+      epistolaAdminReconcile: 'Hersynchroniseer',
+      epistolaAdminReconciling: 'Bezig...',
+      epistolaAdminReconcileTooltip:
+        'Vraag de huidige status op bij Epistola en hervat het wachtende proces als het klaar is.',
+      epistolaAdminConfigurations: 'Configuraties',
+      epistolaAdminValidations: 'BPMN-validatie',
+      epistolaAdminNoValidations:
+        'Geen race-onveilige procesdefinities gevonden. Alles ziet er goed uit.',
+      epistolaAdminValidationWarningTitle: 'BPMN configuratie waarschuwing',
+      epistolaAdminValidationWarningBody:
+        'In deze procesdefinities is de grens tussen de generate-document service task en de EpistolaDocumentGenerated catch event niet synchroon. Resultaten kunnen verloren gaan; gebruik in dat geval de Hersynchroniseer-knop in de Wachtende taken-tab.',
+      epistolaAdminValidationCode: 'Code',
+      epistolaAdminValidationMessage: 'Bericht',
     },
     en: {
       title: 'Epistola Document Suite',
@@ -184,7 +200,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       templateSyncEnabled: 'Template sync',
       templateSyncEnabledTooltip:
         'Automatically synchronize template definitions from classpath to Epistola on startup',
-      'generate-document': 'Generate Document',
+      'epistola-generate-document': 'Generate Document',
       catalogId: 'Catalog',
       catalogIdTooltip: 'Select the catalog to choose a template from',
       templateId: 'Template',
@@ -263,7 +279,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       sourceFieldPlaceholder: 'Source field name',
       noTemplateFields: 'No template fields available',
       // Check job status action
-      'check-job-status': 'Check Job Status',
+      'epistola-check-job-status': 'Check Job Status',
       requestIdVariable: 'Request ID Variable',
       requestIdVariableTooltip: 'Name of the process variable containing the Epistola request ID',
       statusVariable: 'Status Variable',
@@ -275,7 +291,10 @@ const epistolaPluginSpecification: PluginSpecification = {
       errorMessageVariableTooltip:
         'Name of the process variable to store the error message in (when failed)',
       // Download document action
-      'download-document': 'Download Document',
+      'epistola-download-document': 'Download Document',
+      documentVariable: 'Document Variable',
+      documentVariableTooltip:
+        'Name of the process variable holding the Epistola result. May be a String document id (legacy) or a rich result object with a `documentId` key — the action extracts the document id from it.',
       contentVariable: 'Content Variable',
       contentVariableTooltip:
         'Name of the process variable to store the document content (Base64) in',
@@ -303,6 +322,19 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminNoPendingJobs: 'No pending jobs for this connection.',
       epistolaAdminConfiguration: 'Configuration',
       epistolaAdminRequestId: 'Request ID',
+      epistolaAdminReconcile: 'Reconcile',
+      epistolaAdminReconciling: 'Reconciling...',
+      epistolaAdminReconcileTooltip:
+        "Ask Epistola for this job's current status and resume the waiting process if it has finished.",
+      epistolaAdminConfigurations: 'Configurations',
+      epistolaAdminValidations: 'BPMN validation',
+      epistolaAdminNoValidations:
+        'No race-unsafe process definitions detected. Everything looks good.',
+      epistolaAdminValidationWarningTitle: 'BPMN configuration warning',
+      epistolaAdminValidationWarningBody:
+        'These process definitions have a non-synchronous boundary between the generate-document service task and the EpistolaDocumentGenerated catch event. Results can be missed; use the Reconcile button on the Pending Jobs tab to recover.',
+      epistolaAdminValidationCode: 'Code',
+      epistolaAdminValidationMessage: 'Message',
     },
   },
 };

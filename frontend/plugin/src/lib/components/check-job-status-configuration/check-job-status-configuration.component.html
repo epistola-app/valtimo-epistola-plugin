@@ -1,17 +1,11 @@
-<v-form
-  (valueChange)="formValueChange($event)"
-  *ngIf="{
-    disabled: safeDisabled$ | async,
-    prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null,
-  } as obs"
->
+<v-form (valueChange)="formValueChange($event)" *ngIf="prefillResolved$ | async">
   <v-input
     name="requestIdVariable"
     [title]="'requestIdVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'requestIdVariableTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
-    [defaultValue]="obs.prefill?.requestIdVariable || 'epistolaRequestId'"
-    [disabled]="obs.disabled"
+    [defaultValue]="resolvedPrefill?.requestIdVariable"
+    [disabled]="safeDisabled$ | async"
     [required]="true"
   >
   </v-input>
@@ -21,8 +15,8 @@
     [title]="'statusVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'statusVariableTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
-    [defaultValue]="obs.prefill?.statusVariable || 'epistolaStatus'"
-    [disabled]="obs.disabled"
+    [defaultValue]="resolvedPrefill?.statusVariable"
+    [disabled]="safeDisabled$ | async"
     [required]="true"
   >
   </v-input>
@@ -32,8 +26,8 @@
     [title]="'documentIdVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'documentIdVariableTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
-    [defaultValue]="obs.prefill?.documentIdVariable || 'epistolaDocumentId'"
-    [disabled]="obs.disabled"
+    [defaultValue]="resolvedPrefill?.documentIdVariable"
+    [disabled]="safeDisabled$ | async"
     [required]="false"
   >
   </v-input>
@@ -43,8 +37,8 @@
     [title]="'errorMessageVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'errorMessageVariableTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
-    [defaultValue]="obs.prefill?.errorMessageVariable || 'epistolaErrorMessage'"
-    [disabled]="obs.disabled"
+    [defaultValue]="resolvedPrefill?.errorMessageVariable"
+    [disabled]="safeDisabled$ | async"
     [required]="false"
   >
   </v-input>

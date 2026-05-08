@@ -3,10 +3,12 @@ package app.epistola.valtimo.web.rest;
 import app.epistola.valtimo.authorization.EpistolaAdministration;
 import app.epistola.valtimo.authorization.EpistolaAdministrationActionProvider;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
+import app.epistola.valtimo.web.rest.dto.BpmnValidationViolation;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
 import app.epistola.valtimo.web.rest.dto.ProcessLinkExport;
+import app.epistola.valtimo.web.rest.dto.ReconcileResult;
 import app.epistola.valtimo.web.rest.dto.VersionInfo;
 import com.ritense.authorization.AuthorizationService;
 import com.ritense.authorization.request.EntityAuthorizationRequest;
@@ -15,10 +17,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -81,6 +85,41 @@ public class EpistolaAdminResource {
         requireManagePermission();
         log.debug("Fetching pending Epistola jobs");
         return ResponseEntity.ok(adminService.getPendingJobs());
+    }
+
+    /**
+     * Get the latest BPMN race-safety validation violations across all deployed
+     * process definitions. Empty list = healthy. The frontend uses this to show a
+     * warning badge on the admin page when any deployed process definition violates
+     * the rule that {@code generate-document} must flow synchronously into the
+     * {@code EpistolaDocumentGenerated} catch event.
+     */
+    @GetMapping("/validations")
+    public ResponseEntity<List<BpmnValidationViolation>> getValidationViolations() {
+        requireManagePermission();
+        return ResponseEntity.ok(adminService.getValidationViolations());
+    }
+
+    /**
+     * Manually reconcile a stuck Epistola catch event. The Pending Jobs admin UI
+     * surfaces a button per row that calls this endpoint when a process instance
+     * has been waiting on {@code EpistolaDocumentGenerated} longer than expected.
+     *
+     * <p>Returns 200 if the Epistola job is in a terminal state (COMPLETED / FAILED /
+     * CANCELLED) and message correlation ran (regardless of how many executions it
+     * matched). Returns 409 if the job is still PENDING / IN_PROGRESS — the UI should
+     * surface "still in progress, try again later" rather than treating that as an
+     * error. Returns 400 / 404-equivalent (mapped from {@link IllegalArgumentException}
+     * by Valtimo's global advice) when the execution doesn't exist or isn't waiting
+     * for an Epistola message.
+     */
+    @PostMapping("/pending/{executionId}/reconcile")
+    public ResponseEntity<ReconcileResult> reconcilePending(@PathVariable String executionId) {
+        requireManagePermission();
+        log.info("Manual reconcile requested for execution {}", executionId);
+        ReconcileResult result = adminService.reconcile(executionId);
+        HttpStatus status = result.correlated() ? HttpStatus.OK : HttpStatus.CONFLICT;
+        return ResponseEntity.status(status).body(result);
     }
 
     /**

@@ -9,7 +9,7 @@ export const EPISTOLA_DOCUMENT_OPTIONS: FormioCustomComponentInfo = {
   group: 'basic',
   icon: 'file-pdf-o',
   emptyValue: null,
-  fieldOptions: ['label', 'display', 'documentIdVariable', 'tenantIdVariable', 'filename'],
+  fieldOptions: ['label', 'display', 'documentVariable', 'tenantIdVariable', 'filename'],
 };
 
 export function registerEpistolaDocumentComponent(injector: Injector): void {

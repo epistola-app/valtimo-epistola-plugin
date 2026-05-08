@@ -228,11 +228,11 @@ class PreviewServiceTest {
             mockProcessInstance("instance-1", "my-process:1:abc");
 
             PluginProcessLink link1 = mock(PluginProcessLink.class);
-            when(link1.getPluginActionDefinitionKey()).thenReturn("generate-document");
+            when(link1.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
             when(link1.getActivityId()).thenReturn("task-1");
 
             PluginProcessLink link2 = mock(PluginProcessLink.class);
-            when(link2.getPluginActionDefinitionKey()).thenReturn("generate-document");
+            when(link2.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
             when(link2.getActivityId()).thenReturn("task-2");
 
             when(processLinkService.getProcessLinks("my-process:1:abc"))
@@ -259,7 +259,7 @@ class PreviewServiceTest {
             actionProps.putObject("dataMapping");
 
             PluginProcessLink processLink = mock(PluginProcessLink.class);
-            when(processLink.getPluginActionDefinitionKey()).thenReturn("generate-document");
+            when(processLink.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
             when(processLink.getActionProperties()).thenReturn(actionProps);
             var configId = mock(com.ritense.plugin.domain.PluginConfigurationId.class);
             when(processLink.getPluginConfigurationId()).thenReturn(configId);
@@ -305,7 +305,7 @@ class PreviewServiceTest {
             actionProps.put("dataMapping", "$spread($doc)");
 
             PluginProcessLink processLink = mock(PluginProcessLink.class);
-            when(processLink.getPluginActionDefinitionKey()).thenReturn("generate-document");
+            when(processLink.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
             when(processLink.getActionProperties()).thenReturn(actionProps);
             var configId = mock(com.ritense.plugin.domain.PluginConfigurationId.class);
             when(processLink.getPluginConfigurationId()).thenReturn(configId);
