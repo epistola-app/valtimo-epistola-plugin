@@ -1,0 +1,53 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended", ":dependencyDashboard", "helpers:pinGitHubActionDigests"],
+  "timezone": "Europe/Amsterdam",
+  "schedule": ["before 9am on monday"],
+  "prHourlyLimit": 4,
+  "prConcurrentLimit": 10,
+  "labels": ["dependencies"],
+  "rangeStrategy": "bump",
+  "separateMajorMinor": true,
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["before 9am on monday"]
+  },
+  "vulnerabilityAlerts": {
+    "labels": ["security"]
+  },
+  "packageRules": [
+    {
+      "description": "Keep all Valtimo backend modules in lockstep — they share a BOM contract",
+      "matchPackagePatterns": ["^com\\.ritense\\.valtimo:"],
+      "groupName": "valtimo backend"
+    },
+    {
+      "description": "Keep all Valtimo frontend packages in lockstep with the backend modules",
+      "matchPackagePatterns": ["^@valtimo/"],
+      "groupName": "valtimo frontend"
+    },
+    {
+      "description": "Group the Angular ecosystem so it moves as one",
+      "matchPackagePatterns": ["^@angular/", "^@angular-devkit/", "^@angular-eslint/"],
+      "groupName": "angular"
+    },
+    {
+      "description": "Group Spring Boot starters with the Spring Boot Gradle plugin",
+      "matchPackagePatterns": [
+        "^org\\.springframework\\.boot",
+        "^io\\.spring\\.dependency-management"
+      ],
+      "groupName": "spring-boot"
+    },
+    {
+      "description": "Group Testcontainers modules — versions must match",
+      "matchPackagePatterns": ["^org\\.testcontainers:"],
+      "groupName": "testcontainers"
+    },
+    {
+      "description": "Group GitHub Actions updates into a single weekly PR",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions"
+    }
+  ]
+}
