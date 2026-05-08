@@ -10,12 +10,10 @@ import {
   SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
-import { ConfigService } from '@valtimo/shared';
 import { Subscription } from 'rxjs';
-import { EpistolaTaskContextService } from '../../services';
+import { EpistolaPluginService, EpistolaTaskContextService } from '../../services';
 
 @Component({
   standalone: true,
@@ -230,18 +228,14 @@ export class EpistolaDocumentPreviewComponent
   private initialized = false;
   private currentBlobUrl: string | null = null;
   private previewSubscription?: Subscription;
-  private readonly apiEndpoint: string;
 
   constructor(
-    private readonly http: HttpClient,
+    private readonly epistolaPluginService: EpistolaPluginService,
     private readonly sanitizer: DomSanitizer,
-    private readonly configService: ConfigService,
     private readonly formIoStateService: FormIoStateService,
     private readonly cdr: ChangeDetectorRef,
     private readonly taskContext: EpistolaTaskContextService,
-  ) {
-    this.apiEndpoint = `${this.configService.config.valtimoApi.endpointUri}v1/plugin/epistola`;
-  }
+  ) {}
 
   /**
    * Resolve the active task id from {@link EpistolaTaskContextService}, populated
@@ -338,23 +332,16 @@ export class EpistolaDocumentPreviewComponent
     this.revokeBlobUrl();
 
     this.previewSubscription?.unsubscribe();
-    this.previewSubscription = this.http
-      .post(
-        `${this.apiEndpoint}/preview`,
-        {
-          taskId,
-          documentId,
-          processDefinitionKey: this.processDefinitionKey || null,
-          processInstanceId,
-          sourceActivityId: this.sourceActivityId,
-          inputOverrides: this.value || null,
-          overrides: null,
-        },
-        {
-          responseType: 'blob',
-          headers: new HttpHeaders().set('X-Skip-Interceptor', '422'),
-        },
-      )
+    this.previewSubscription = this.epistolaPluginService
+      .previewToBlob({
+        taskId,
+        documentId,
+        processDefinitionKey: this.processDefinitionKey || null,
+        processInstanceId,
+        sourceActivityId: this.sourceActivityId,
+        inputOverrides: this.value || null,
+        overrides: null,
+      })
       .subscribe({
         next: (blob) => this.handlePreviewSuccess(blob),
         error: (err) => this.handlePreviewError(err),

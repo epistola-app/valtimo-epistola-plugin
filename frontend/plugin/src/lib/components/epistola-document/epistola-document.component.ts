@@ -9,11 +9,14 @@ import {
   Output,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { Subscription } from 'rxjs';
-import { EpistolaTaskContextService } from '../../services';
+import {
+  DownloadDocumentRequest,
+  EpistolaPluginService,
+  EpistolaTaskContextService,
+} from '../../services';
 
 export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
 
@@ -235,7 +238,7 @@ export class EpistolaDocumentComponent
   }
 
   constructor(
-    private readonly http: HttpClient,
+    private readonly epistolaPluginService: EpistolaPluginService,
     private readonly sanitizer: DomSanitizer,
     private readonly formIoStateService: FormIoStateService,
     private readonly taskContext: EpistolaTaskContextService,
@@ -264,13 +267,13 @@ export class EpistolaDocumentComponent
     if (this.designMode || this.downloading) {
       return;
     }
-    const url = this.buildUrl('attachment');
-    if (!url) return;
+    const request = this.buildRequest('attachment');
+    if (!request) return;
     this.downloading = true;
     this.error = null;
     this.cdr.markForCheck();
 
-    this.http.get(url, { responseType: 'blob' }).subscribe({
+    this.epistolaPluginService.downloadDocumentBlob(request).subscribe({
       next: (blob) => {
         const objectUrl = URL.createObjectURL(blob);
         const anchor = document.createElement('a');
@@ -290,15 +293,15 @@ export class EpistolaDocumentComponent
   }
 
   private loadInline(): void {
-    const url = this.buildUrl('inline');
-    if (!url) return;
+    const request = this.buildRequest('inline');
+    if (!request) return;
     this.loading = true;
     this.error = null;
     this.cdr.markForCheck();
     this.revokeBlobUrl();
 
     this.subscription?.unsubscribe();
-    this.subscription = this.http.get(url, { responseType: 'blob' }).subscribe({
+    this.subscription = this.epistolaPluginService.downloadDocumentBlob(request).subscribe({
       next: (blob) => {
         this.currentBlobUrl = URL.createObjectURL(blob);
         this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.currentBlobUrl);
@@ -317,7 +320,7 @@ export class EpistolaDocumentComponent
     });
   }
 
-  private buildUrl(disposition: 'inline' | 'attachment'): string | null {
+  private buildRequest(disposition: 'inline' | 'attachment'): DownloadDocumentRequest | null {
     const taskId = this.taskContext.taskInstanceId;
     const caseDocumentId = this.formIoStateService.documentId;
     if (!taskId || !caseDocumentId) {
@@ -325,15 +328,14 @@ export class EpistolaDocumentComponent
       this.cdr.markForCheck();
       return null;
     }
-    return (
-      `/api/v1/plugin/epistola/documents/download` +
-      `?taskId=${encodeURIComponent(taskId)}` +
-      `&caseDocumentId=${encodeURIComponent(caseDocumentId)}` +
-      `&documentIdVariable=${encodeURIComponent(this.documentIdVariable)}` +
-      `&tenantIdVariable=${encodeURIComponent(this.tenantIdVariable)}` +
-      `&filename=${encodeURIComponent(this.filename)}` +
-      `&disposition=${disposition}`
-    );
+    return {
+      taskId,
+      caseDocumentId,
+      documentIdVariable: this.documentIdVariable,
+      tenantIdVariable: this.tenantIdVariable,
+      filename: this.filename,
+      disposition,
+    };
   }
 
   private revokeBlobUrl(): void {

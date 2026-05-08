@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ConfigService } from '@valtimo/shared';
 import { Observable } from 'rxjs';
 import {
@@ -15,6 +15,38 @@ import {
   VariableSuggestions,
   VariantInfo,
 } from '../models';
+
+/**
+ * Body of a {@link EpistolaPluginService.previewToBlob} call. Mirrors the
+ * backend {@code PreviewRequest} record. {@code processInstanceId},
+ * {@code processDefinitionKey} and {@code sourceActivityId} together identify
+ * the {@code generate-document} process link being previewed; {@code overrides}
+ * and {@code inputOverrides} let the caller substitute data before the
+ * JSONata mapping runs.
+ */
+export interface PreviewBlobRequest {
+  taskId: string;
+  documentId: string;
+  processDefinitionKey?: string | null;
+  sourceActivityId?: string | null;
+  processInstanceId?: string | null;
+  inputOverrides?: Record<string, unknown> | null;
+  overrides?: Record<string, unknown> | null;
+}
+
+/**
+ * Query-string parameters for {@link EpistolaPluginService.downloadDocumentBlob}.
+ * The backend resolves the Epistola PDF id and tenant id from the named process
+ * variables on the caller's task — no raw PDF id is sent on the wire.
+ */
+export interface DownloadDocumentRequest {
+  taskId: string;
+  caseDocumentId: string;
+  documentIdVariable: string;
+  tenantIdVariable: string;
+  filename: string;
+  disposition: 'attachment' | 'inline';
+}
 
 /**
  * Service for interacting with Epistola plugin API endpoints.
@@ -180,5 +212,40 @@ export class EpistolaPluginService {
    */
   validateJsonata(request: ValidateJsonataRequest): Observable<JsonataValidationResult> {
     return this.http.post<JsonataValidationResult>(`${this.apiEndpoint}/validate-jsonata`, request);
+  }
+
+  /**
+   * Preview a document by dry-running the {@code generate-document} process
+   * link. Returns the rendered PDF as a {@link Blob}.
+   *
+   * <p>The {@code X-Skip-Interceptor: 422} header tells the global Valtimo
+   * error interceptor to skip its toast for validation failures so the
+   * caller can render an inline error message.
+   */
+  previewToBlob(request: PreviewBlobRequest): Observable<Blob> {
+    return this.http.post(`${this.apiEndpoint}/preview`, request, {
+      responseType: 'blob',
+      headers: new HttpHeaders().set('X-Skip-Interceptor', '422'),
+    });
+  }
+
+  /**
+   * Stream an already-generated Epistola PDF for the caller's task. The
+   * backend resolves the Epistola document id and tenant id from the named
+   * process variables on the task's process instance, so the wire never
+   * carries a raw PDF id.
+   */
+  downloadDocumentBlob(request: DownloadDocumentRequest): Observable<Blob> {
+    const params = new URLSearchParams({
+      taskId: request.taskId,
+      caseDocumentId: request.caseDocumentId,
+      documentIdVariable: request.documentIdVariable,
+      tenantIdVariable: request.tenantIdVariable,
+      filename: request.filename,
+      disposition: request.disposition,
+    });
+    return this.http.get(`${this.apiEndpoint}/documents/download?${params.toString()}`, {
+      responseType: 'blob',
+    });
   }
 }

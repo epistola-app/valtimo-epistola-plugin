@@ -10,15 +10,12 @@ import {
   SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
-import { ConfigService } from '@valtimo/shared';
-import { EpistolaTaskContextService } from '../../services/epistola-task-context.service';
 import { FormioModule } from '@formio/angular';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, switchMap } from 'rxjs/operators';
-import { EpistolaPluginService } from '../../services';
+import { EpistolaPluginService, EpistolaTaskContextService } from '../../services';
 
 @Component({
   standalone: true,
@@ -162,7 +159,6 @@ export class EpistolaRetryFormComponent
   private currentBlobUrl: string | null = null;
   private resolvedSourceActivityId?: string;
   private processDefinitionKey?: string;
-  private readonly apiEndpoint: string;
 
   formOptions: any = {
     noAlerts: true,
@@ -173,12 +169,9 @@ export class EpistolaRetryFormComponent
     private readonly epistolaPluginService: EpistolaPluginService,
     private readonly formIoStateService: FormIoStateService,
     private readonly cdr: ChangeDetectorRef,
-    private readonly http: HttpClient,
     private readonly sanitizer: DomSanitizer,
-    private readonly configService: ConfigService,
     private readonly taskContext: EpistolaTaskContextService,
   ) {
-    this.apiEndpoint = `${this.configService.config.valtimoApi.endpointUri}v1/plugin/epistola`;
     // Debounce preview calls
     this.previewSubscription = this.previewSubject.pipe(debounceTime(1500)).subscribe((data) => {
       this.loadPreview(data);
@@ -237,18 +230,14 @@ export class EpistolaRetryFormComponent
       this.currentBlobUrl = null;
     }
 
-    this.http
-      .post(
-        `${this.apiEndpoint}/preview`,
-        {
-          taskId,
-          documentId,
-          processInstanceId,
-          sourceActivityId: this.sourceActivityId || null,
-          overrides: formData,
-        },
-        { responseType: 'blob', headers: new HttpHeaders().set('X-Skip-Interceptor', '422') },
-      )
+    this.epistolaPluginService
+      .previewToBlob({
+        taskId,
+        documentId,
+        processInstanceId,
+        sourceActivityId: this.sourceActivityId || null,
+        overrides: formData,
+      })
       .subscribe({
         next: (blob) => {
           this.currentBlobUrl = URL.createObjectURL(blob);
