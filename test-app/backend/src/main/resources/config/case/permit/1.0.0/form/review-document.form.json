@@ -16,24 +16,20 @@
       "disabled": true
     },
     {
-      "key": "pv:epistolaTenantId",
-      "type": "hidden",
-      "input": true,
-      "label": "Tenant ID"
-    },
-    {
-      "type": "epistola-preview-button",
-      "key": "previewData",
+      "type": "epistola-generated-document-preview",
+      "key": "preview",
       "input": false,
       "label": "Preview PDF",
-      "calculateValue": "value = { documentId: data['pv:epistolaDocumentId'], tenantId: data['pv:epistolaTenantId'] }"
+      "documentIdVariable": "epistolaDocumentId",
+      "tenantIdVariable": "epistolaTenantId"
     },
     {
       "type": "epistola-download",
-      "key": "downloadData",
+      "key": "download",
       "input": false,
       "label": "Download PDF",
-      "calculateValue": "value = { documentId: data['pv:epistolaDocumentId'], tenantId: data['pv:epistolaTenantId'] }",
+      "documentIdVariable": "epistolaDocumentId",
+      "tenantIdVariable": "epistolaTenantId",
       "filename": "bevestigingsbrief.pdf"
     },
     {
@@ -42,7 +38,7 @@
       "input": false,
       "label": "",
       "tag": "div",
-      "content": "<p>Het document is gegenereerd en gedownload. Controleer het document en klik op 'Goedkeuren' om het proces af te ronden.</p>"
+      "content": "<p>Het document is gegenereerd. Bekijk het document en klik op 'Goedkeuren' om het proces af te ronden.</p>"
     },
     {
       "key": "submit",
