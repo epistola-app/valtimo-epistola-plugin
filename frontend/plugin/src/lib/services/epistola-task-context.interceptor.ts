@@ -1,7 +1,8 @@
-import { inject, Injectable } from '@angular/core';
+import { Injectable } from '@angular/core';
 import { HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { EpistolaTaskContextService } from './epistola-task-context.service';
+import { extractTaskInstanceIdFromUrl } from './epistola-task-context.matcher';
 
 /**
  * Sniffs Valtimo's task-open signal and pushes the active taskInstanceId into
@@ -16,23 +17,19 @@ import { EpistolaTaskContextService } from './epistola-task-context.service';
  * <p>Workaround for Valtimo 13.21 not exposing taskInstanceId through any
  * injectable service. Remove once upstream adds e.g.
  * {@code FormIoStateService.setTaskInstanceId(...)}.
+ *
+ * <p>The actual URL-matching logic lives in
+ * {@link extractTaskInstanceIdFromUrl} so it can be unit-tested without an
+ * Angular harness.
  */
 @Injectable()
 export class EpistolaTaskContextInterceptor implements HttpInterceptor {
-  private static readonly TASK_PROCESS_LINK_PATTERN =
-    /\/api\/v2\/process-link\/task\/([0-9a-fA-F-]{36})(?:\?|$)/;
-
-  private readonly taskContext = inject(EpistolaTaskContextService);
+  constructor(private readonly taskContext: EpistolaTaskContextService) {}
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
-    if (request.method === 'GET') {
-      const match = EpistolaTaskContextInterceptor.TASK_PROCESS_LINK_PATTERN.exec(request.url);
-      if (match) {
-        const taskId = match[1];
-        if (taskId !== this.taskContext.taskInstanceId) {
-          this.taskContext.setTaskInstanceId(taskId);
-        }
-      }
+    const taskId = extractTaskInstanceIdFromUrl(request.method, request.url);
+    if (taskId !== null && taskId !== this.taskContext.taskInstanceId) {
+      this.taskContext.setTaskInstanceId(taskId);
     }
     return next.handle(request);
   }
