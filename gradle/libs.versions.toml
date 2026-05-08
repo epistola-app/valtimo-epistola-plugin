@@ -20,6 +20,7 @@ idea-ext = "1.1.8"
 ktlint-gradle = "12.1.2"
 spotless = "6.25.0"
 docker-compose = "0.17.12"
+cyclonedx-gradle = "1.10.0"
 
 [libraries]
 # Epistola
@@ -93,3 +94,4 @@ idea-ext = { id = "org.jetbrains.gradle.plugin.idea-ext", version.ref = "idea-ex
 ktlint = { id = "org.jlleitschuh.gradle.ktlint", version.ref = "ktlint-gradle" }
 spotless = { id = "com.diffplug.spotless", version.ref = "spotless" }
 docker-compose = { id = "com.avast.gradle.docker-compose", version.ref = "docker-compose" }
+cyclonedx = { id = "org.cyclonedx.bom", version.ref = "cyclonedx-gradle" }
