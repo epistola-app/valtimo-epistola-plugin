@@ -13,10 +13,9 @@ import { EpistolaConfigurationComponent } from './components/epistola-configurat
 import { GenerateDocumentConfigurationComponent } from './components/generate-document-configuration/generate-document-configuration.component';
 import { CheckJobStatusConfigurationComponent } from './components/check-job-status-configuration/check-job-status-configuration.component';
 import { DownloadDocumentConfigurationComponent } from './components/download-document-configuration/download-document-configuration.component';
-import { EpistolaDownloadComponent } from './components/epistola-download/epistola-download.component';
+import { EpistolaDocumentComponent } from './components/epistola-document/epistola-document.component';
 import { EpistolaRetryFormComponent } from './components/epistola-retry-form/epistola-retry-form.component';
 import { EpistolaDocumentPreviewComponent } from './components/epistola-document-preview/epistola-document-preview.component';
-import { EpistolaGeneratedDocumentPreviewComponent } from './components/epistola-generated-document-preview/epistola-generated-document-preview.component';
 import { EpistolaAdminPageComponent } from './components/epistola-admin-page/epistola-admin-page.component';
 import {
   EpistolaPluginService,
@@ -26,10 +25,9 @@ import {
 } from './services';
 import { EpistolaAdminRoutingModule } from './epistola-admin-routing.module';
 import { isEpistolaEnabled } from './epistola-runtime-config';
-import { registerEpistolaDownloadComponent } from './components/epistola-download/epistola-download.formio';
+import { registerEpistolaDocumentComponent } from './components/epistola-document/epistola-document.formio';
 import { registerEpistolaRetryFormComponent } from './components/epistola-retry-form/epistola-retry-form.formio';
 import { registerEpistolaDocumentPreviewComponent } from './components/epistola-document-preview/epistola-document-preview.formio';
-import { registerEpistolaGeneratedDocumentPreviewComponent } from './components/epistola-generated-document-preview/epistola-generated-document-preview.formio';
 import { registerEpistolaOverrideBuilderComponent } from './components/override-builder/override-builder.formio';
 import { registerEpistolaProcessLinkSelectorComponent } from './components/process-link-selector/process-link-selector.formio';
 
@@ -46,10 +44,9 @@ import { registerEpistolaProcessLinkSelectorComponent } from './components/proce
     GenerateDocumentConfigurationComponent,
     CheckJobStatusConfigurationComponent,
     DownloadDocumentConfigurationComponent,
-    EpistolaDownloadComponent,
+    EpistolaDocumentComponent,
     EpistolaRetryFormComponent,
     EpistolaDocumentPreviewComponent,
-    EpistolaGeneratedDocumentPreviewComponent,
     EpistolaAdminPageComponent,
   ],
   exports: [
@@ -57,10 +54,9 @@ import { registerEpistolaProcessLinkSelectorComponent } from './components/proce
     GenerateDocumentConfigurationComponent,
     CheckJobStatusConfigurationComponent,
     DownloadDocumentConfigurationComponent,
-    EpistolaDownloadComponent,
+    EpistolaDocumentComponent,
     EpistolaRetryFormComponent,
     EpistolaDocumentPreviewComponent,
-    EpistolaGeneratedDocumentPreviewComponent,
     EpistolaAdminPageComponent,
   ],
   providers: [EpistolaPluginService, EpistolaAdminService],
@@ -82,12 +78,11 @@ export class EpistolaPluginModule {
           useValue: () => {
             if (!isEpistolaEnabled()) return;
             const injector = inject(Injector);
-            registerEpistolaDownloadComponent(injector);
+            registerEpistolaDocumentComponent(injector);
             registerEpistolaRetryFormComponent(injector);
             registerEpistolaOverrideBuilderComponent(injector);
             registerEpistolaProcessLinkSelectorComponent(injector);
             registerEpistolaDocumentPreviewComponent(injector);
-            registerEpistolaGeneratedDocumentPreviewComponent(injector);
             // Eagerly create EpistolaMenuService to trigger menu registration
             inject(EpistolaMenuService);
           },

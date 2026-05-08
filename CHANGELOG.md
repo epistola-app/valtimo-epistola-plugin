@@ -16,17 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **`EpistolaAdministration` PBAC resource type** with a `MANAGE` action. Operators can revoke the default `ROLE_ADMIN` grant and assign the action to a more specific role to lock down the Epistola admin pages independently of the global admin role.
-- **`epistola-generated-document-preview` Formio component** — inline panel that renders an already-generated Epistola PDF in any user task form. Configured with `documentIdVariable` / `tenantIdVariable` on the form designer side (defaults `epistolaDocumentId` / `epistolaTenantId`). Distinct from `epistola-document-preview` (which dry-runs the data mapping); use this one when you want to view the actual PDF that was previously generated.
+- **`epistola-document` Formio component** — unified after-generation document UX. One component, one configuration, three presentations via the `display` property: `inline` (PDF in a panel), `button` (download button only), `both` (default — inline preview with a download icon in the header). Configured with `documentIdVariable` / `tenantIdVariable` (defaults `epistolaDocumentId` / `epistolaTenantId`). Distinct from `epistola-document-preview`, which dry-runs the data mapping; use `epistola-document` to display the actual PDF that was previously generated.
 
 ### Changed (breaking)
 
-- **`epistola-download` Formio component** no longer accepts `value: {documentId, tenantId}`. Configure `documentIdVariable` and `tenantIdVariable` on the component instead (defaults match the canonical `epistolaDocumentId` / `epistolaTenantId`). Existing forms that hand-wired the value field need to be updated.
-- **`GET /api/v1/plugin/epistola/documents/{documentId}/download`** is replaced by **`GET /api/v1/plugin/epistola/documents/download`** with a new query-param shape: `taskId`, `caseDocumentId`, `documentIdVariable`, `tenantIdVariable`, optional `filename` and `disposition` (`attachment` or `inline`). The PDF id is no longer accepted on the wire.
+- **`GET /api/v1/plugin/epistola/documents/{documentId}/download`** is replaced by **`GET /api/v1/plugin/epistola/documents/download`** with a new query-param shape: `taskId`, `caseDocumentId`, `documentIdVariable`, `tenantIdVariable`, optional `filename` and `disposition` (`attachment` or `inline`). The PDF id is no longer accepted on the wire — the backend reads it from a named process variable on the caller's task.
 
 ### Removed (breaking)
 
 - **`GET /api/v1/plugin/epistola/preview-sources`** and the corresponding auto-discover preview mode. The `epistola-document-preview` Formio component now requires `sourceActivityId` to be configured at design time and shows "Preview is not configured" otherwise. `EpistolaPluginService.getPreviewSources(...)` and the `PreviewSource` model are deleted. Forms that depended on auto-discover must be updated to pin a `processDefinitionKey + sourceActivityId`.
-- **`epistola-preview-button` Formio component** — replaced by the inline `epistola-generated-document-preview` (above). Forms using the modal-style button should switch to the inline preview, or rely on the download button for one-click access.
+- **`epistola-preview-button` and `epistola-download` Formio components** — superseded by the unified `epistola-document` (above). Forms using either should switch to `epistola-document` and remove any `value: {documentId, tenantId}` hand-wiring.
 
 ## [0.7.0] - 2026-05-06
 

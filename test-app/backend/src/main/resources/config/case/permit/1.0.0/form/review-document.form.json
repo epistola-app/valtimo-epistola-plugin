@@ -16,18 +16,11 @@
       "disabled": true
     },
     {
-      "type": "epistola-generated-document-preview",
-      "key": "preview",
+      "type": "epistola-document",
+      "key": "document",
       "input": false,
-      "label": "Preview PDF",
-      "documentIdVariable": "epistolaDocumentId",
-      "tenantIdVariable": "epistolaTenantId"
-    },
-    {
-      "type": "epistola-download",
-      "key": "download",
-      "input": false,
-      "label": "Download PDF",
+      "label": "Bevestigingsbrief",
+      "display": "both",
       "documentIdVariable": "epistolaDocumentId",
       "tenantIdVariable": "epistolaTenantId",
       "filename": "bevestigingsbrief.pdf"
