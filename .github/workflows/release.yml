@@ -70,10 +70,23 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build & test backend plugin
-        run: ./gradlew :backend:plugin:build -Pversion=${{ needs.version.outputs.version }}
+        run: ./gradlew :backend:plugin:build :backend:plugin:cyclonedxBom -Pversion=${{ needs.version.outputs.version }}
 
       - name: Build frontend plugin
         run: pnpm --filter @epistola.app/valtimo-plugin build
+
+      - name: Generate frontend SBOM
+        run: pnpm sbom:plugin
+
+      - name: Upload SBOMs
+        uses: actions/upload-artifact@v4
+        with:
+          name: sboms
+          path: |
+            backend/plugin/build/reports/bom.json
+            frontend/plugin/dist/sbom.json
+          retention-days: 7
+          if-no-files-found: error
 
   publish-backend:
     name: Publish Backend to Maven Central
@@ -117,6 +130,9 @@ jobs:
 
       - name: Build plugin
         run: pnpm --filter @epistola.app/valtimo-plugin build
+
+      - name: Generate frontend SBOM into dist
+        run: pnpm sbom:plugin
 
       - name: Set version and publish
         working-directory: frontend/plugin/dist
@@ -215,6 +231,62 @@ jobs:
       - name: Sign image
         run: cosign sign --yes "${{ env.IMAGE }}@${{ steps.build.outputs.digest }}"
 
+  scan-backend-image:
+    name: Scan backend image
+    needs: [version, docker-backend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/epistola-app/valtimo/demo-backend:${{ needs.version.outputs.version }}
+          format: sarif
+          output: trivy-image-backend.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image-backend.sarif
+          category: trivy-image-backend
+
+  scan-frontend-image:
+    name: Scan frontend image
+    needs: [version, docker-frontend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ghcr.io/epistola-app/valtimo/demo-frontend:${{ needs.version.outputs.version }}
+          format: sarif
+          output: trivy-image-frontend.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-image-frontend.sarif
+          category: trivy-image-frontend
+
   update-release:
     name: Update GitHub Release
     needs: [version, docker-backend, docker-frontend]
@@ -255,5 +327,30 @@ jobs:
           ghcr.io/epistola-app/valtimo/demo-backend:${VERSION}
           ghcr.io/epistola-app/valtimo/demo-frontend:${VERSION}
           \`\`\`
+
+          ### Software Bill of Materials (CycloneDX)
+          The release assets include CycloneDX SBOMs for both the backend and
+          frontend plugin. The backend SBOM is also published to Maven Central
+          as the \`cyclonedx\` classifier; the frontend SBOM is bundled inside
+          the published npm tarball at \`sbom.json\`.
           EOF
           )"
+
+      - name: Download SBOMs
+        uses: actions/download-artifact@v4
+        with:
+          name: sboms
+          path: ./sboms
+
+      - name: Attach SBOMs to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          cp sboms/backend/plugin/build/reports/bom.json "epistola-plugin-${VERSION}-backend-sbom.json"
+          cp sboms/frontend/plugin/dist/sbom.json "epistola-plugin-${VERSION}-frontend-sbom.json"
+          gh release upload "v${VERSION}" \
+            "epistola-plugin-${VERSION}-backend-sbom.json" \
+            "epistola-plugin-${VERSION}-frontend-sbom.json" \
+            --repo "${{ github.repository }}" \
+            --clobber
