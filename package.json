@@ -11,6 +11,7 @@
     "start": "pnpm --filter gzac-frontend-template start",
     "dev": "pnpm build:plugin && pnpm start",
     "watch:plugin": "pnpm --filter @epistola.app/valtimo-plugin watch",
+    "sbom:plugin": "pnpm dlx @cyclonedx/cdxgen@11.4.0 -t pnpm --no-recurse -o frontend/plugin/dist/sbom.json frontend/plugin",
     "test": "pnpm -r test",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
