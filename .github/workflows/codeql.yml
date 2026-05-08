@@ -43,7 +43,11 @@ jobs:
         if: matrix.language == 'java-kotlin'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: ./gradlew :backend:plugin:assemble -x test
+        # --no-build-cache forces compilation to actually run so CodeQL can
+        # trace javac/kotlinc and populate the extraction database. Without
+        # this, a warm Gradle build cache makes the build a no-op and the
+        # finalize step fails with "could not process any of it".
+        run: ./gradlew :backend:plugin:assemble -x test --no-build-cache
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v3
