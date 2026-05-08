@@ -2,20 +2,6 @@
   "display": "form",
   "components": [
     {
-      "key": "pv:epistolaResult.status",
-      "type": "textfield",
-      "input": true,
-      "label": "Generatie Status",
-      "disabled": true
-    },
-    {
-      "key": "pv:epistolaResult.documentId",
-      "type": "textfield",
-      "input": true,
-      "label": "Document ID",
-      "disabled": true
-    },
-    {
       "type": "epistola-document",
       "key": "document",
       "input": false,
