@@ -181,27 +181,4 @@ export class EpistolaPluginService {
   validateJsonata(request: ValidateJsonataRequest): Observable<JsonataValidationResult> {
     return this.http.post<JsonataValidationResult>(`${this.apiEndpoint}/validate-jsonata`, request);
   }
-
-  /**
-   * Preview a document by dry-running the generate-document process link.
-   *
-   * @param taskId Operaton user task id (required — backend authorizes via OperatonTask:VIEW)
-   */
-  previewDocument(
-    taskId: string,
-    documentId: string,
-    processDefinitionKey: string,
-    sourceActivityId: string,
-    processInstanceId?: string,
-    overrides?: Record<string, any>,
-  ): Observable<any> {
-    return this.http.post<any>(`${this.apiEndpoint}/preview`, {
-      taskId,
-      documentId,
-      processDefinitionKey,
-      sourceActivityId,
-      processInstanceId: processInstanceId || null,
-      overrides: overrides || null,
-    });
-  }
 }

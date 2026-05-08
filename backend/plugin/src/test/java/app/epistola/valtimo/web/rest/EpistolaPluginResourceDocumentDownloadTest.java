@@ -13,10 +13,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.operaton.bpm.engine.RuntimeService;
 import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.Collections;
 import java.util.List;
@@ -161,6 +163,25 @@ class EpistolaPluginResourceDocumentDownloadTest {
         when(runtimeService.getVariable(PROCESS_INSTANCE_ID, TENANT_ID_VAR)).thenReturn("ghost-tenant");
         when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
                 .thenReturn(Collections.emptyList());
+
+        ResponseEntity<byte[]> response = resource.downloadDocument(
+                TASK_ID, CASE_DOCUMENT_ID, DOC_ID_VAR, TENANT_ID_VAR, "out.pdf", "attachment");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void downloadDocument_returns404WhenEpistolaReturns404ForResolvedId() {
+        // Variables resolve and the plugin config matches, but Epistola itself says
+        // it has no such document (stale id from a wiped/deleted upstream record).
+        // The controller must translate the upstream 404 into a clean 404 — never
+        // bubble up the HttpClientErrorException as a 500.
+        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_ID_VAR)).thenReturn("stale-doc");
+        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, TENANT_ID_VAR)).thenReturn("tenant-a");
+        registerPlugin(mockPlugin("https://api.epistola.app", "api-key", "tenant-a"));
+        when(epistolaService.downloadDocument(any(), any(), any(), eq("stale-doc")))
+                .thenThrow(HttpClientErrorException.create(
+                        HttpStatus.NOT_FOUND, "Not Found", HttpHeaders.EMPTY, new byte[0], null));
 
         ResponseEntity<byte[]> response = resource.downloadDocument(
                 TASK_ID, CASE_DOCUMENT_ID, DOC_ID_VAR, TENANT_ID_VAR, "out.pdf", "attachment");

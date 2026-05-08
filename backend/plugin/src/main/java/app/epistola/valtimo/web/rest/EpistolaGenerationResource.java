@@ -28,6 +28,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -160,8 +161,19 @@ public class EpistolaGenerationResource {
             return ResponseEntity.notFound().build();
         }
 
-        byte[] content = epistolaService.downloadDocument(
-                plugin.getBaseUrl(), plugin.getApiKey(), tenantId, documentId);
+        byte[] content;
+        try {
+            content = epistolaService.downloadDocument(
+                    plugin.getBaseUrl(), plugin.getApiKey(), tenantId, documentId);
+        } catch (HttpClientErrorException.NotFound e) {
+            // Stale reference: process variable still holds an Epistola PDF id but the
+            // server no longer has the document (data wiped, expired, deleted upstream).
+            // Surface as 404 with a body distinct from the variable-null case so callers
+            // can differentiate "not yet generated" from "no longer available".
+            log.debug("Epistola returned 404 for documentId={} (tenantId={}); treating as not-available",
+                    documentId, tenantId);
+            return ResponseEntity.notFound().build();
+        }
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
@@ -285,6 +297,14 @@ public class EpistolaGenerationResource {
      * confirmed we compare the task's {@code processInstanceId} and business key
      * (which Valtimo dossier-driven processes set to the case document UUID) against
      * the request parameters. Mismatch throws {@link AccessDeniedException} → HTTP 403.
+     *
+     * @param taskId            Operaton user task id; required.
+     * @param processInstanceId The expected process instance id, or {@code null} if the
+     *                          caller infers it from the task itself (e.g.
+     *                          {@code downloadDocument} doesn't carry it on the wire).
+     *                          When non-null, must equal {@code task.getProcessInstanceId()}.
+     * @param documentId        The expected Valtimo case-document UUID; required and
+     *                          must equal {@code task.getProcessInstance().getBusinessKey()}.
      */
     private OperatonTask requireTaskBoundTo(String taskId, String processInstanceId, String documentId) {
         OperatonTask task = operatonTaskService.findTaskById(taskId);
