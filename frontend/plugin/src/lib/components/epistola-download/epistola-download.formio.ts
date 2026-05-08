@@ -9,7 +9,7 @@ export const EPISTOLA_DOWNLOAD_OPTIONS: FormioCustomComponentInfo = {
   group: 'basic',
   icon: 'download',
   emptyValue: null,
-  fieldOptions: ['filename', 'label'],
+  fieldOptions: ['documentIdVariable', 'tenantIdVariable', 'filename', 'label'],
 };
 
 export function registerEpistolaDownloadComponent(injector: Injector): void {

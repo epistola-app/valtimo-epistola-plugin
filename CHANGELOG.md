@@ -10,15 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 
 - **PBAC-based authorization for plugin endpoints** ([#38](https://github.com/epistola-app/valtimo-epistola-plugin/issues/38)). User-task-bound endpoints (`POST /preview`, `GET /retry-form`, `GET /documents/{id}/download`) now require a `taskId` and check `OperatonTask:VIEW` via Valtimo's `AuthorizationService`. The Formio preview/download/retry-form components inject `TaskDetailContentComponent` from `@valtimo/task` and read `taskInstanceId$` to forward the task id to the backend. Admin endpoints (`/admin/**`) require a new PBAC permission, `EpistolaAdministration:MANAGE`, granted by default to `ROLE_ADMIN` via a seeded `*.permission.json` changeset. Configurator endpoints (`/configurations/**`, tooling listings, `/evaluate-mapping`) remain HTTP-gated by `ROLE_ADMIN` (the de-facto process-link author authority in Valtimo 13.21).
-- **Tightened linkage on preview / retry-form**. The earlier check (VIEW on the supplied task) was bypassable: a caller with VIEW on any task could pivot by sending their own `taskId` plus a foreign `processInstanceId` / `documentId`. `POST /preview` and `GET /retry-form` now additionally require that the request's `processInstanceId` equals the task's process instance and that the request's `documentId` equals the task's process business key (the Valtimo case-document UUID). Mismatch returns 403. The download endpoint still uses the VIEW-only check pending a separate decision on its design.
+- **Tightened linkage on preview / retry-form**. The earlier check (VIEW on the supplied task) was bypassable: a caller with VIEW on any task could pivot by sending their own `taskId` plus a foreign `processInstanceId` / `documentId`. `POST /preview` and `GET /retry-form` now additionally require that the request's `processInstanceId` equals the task's process instance and that the request's `documentId` equals the task's process business key (the Valtimo case-document UUID). Mismatch returns 403.
+- **Tightened linkage on download**. The download endpoint now resolves the Epistola PDF id and tenant id from named process variables on the caller's task instead of accepting them on the wire. Callers send `taskId`, `caseDocumentId`, and the _names_ of the process variables that hold the PDF id and tenant id (`documentIdVariable`, `tenantIdVariable` — defaults `epistolaDocumentId` / `epistolaTenantId`). The backend verifies same-task / same-case binding, reads the live variables, and proxies the download. Forge-proof by construction: a caller cannot supply an id that isn't already in their process. No history-variable dependency.
 
 ### Added
 
 - **`EpistolaAdministration` PBAC resource type** with a `MANAGE` action. Operators can revoke the default `ROLE_ADMIN` grant and assign the action to a more specific role to lock down the Epistola admin pages independently of the global admin role.
+- **`epistola-generated-document-preview` Formio component** — inline panel that renders an already-generated Epistola PDF in any user task form. Configured with `documentIdVariable` / `tenantIdVariable` on the form designer side (defaults `epistolaDocumentId` / `epistolaTenantId`). Distinct from `epistola-document-preview` (which dry-runs the data mapping); use this one when you want to view the actual PDF that was previously generated.
+
+### Changed (breaking)
+
+- **`epistola-download` Formio component** no longer accepts `value: {documentId, tenantId}`. Configure `documentIdVariable` and `tenantIdVariable` on the component instead (defaults match the canonical `epistolaDocumentId` / `epistolaTenantId`). Existing forms that hand-wired the value field need to be updated.
+- **`GET /api/v1/plugin/epistola/documents/{documentId}/download`** is replaced by **`GET /api/v1/plugin/epistola/documents/download`** with a new query-param shape: `taskId`, `caseDocumentId`, `documentIdVariable`, `tenantIdVariable`, optional `filename` and `disposition` (`attachment` or `inline`). The PDF id is no longer accepted on the wire.
 
 ### Removed (breaking)
 
 - **`GET /api/v1/plugin/epistola/preview-sources`** and the corresponding auto-discover preview mode. The `epistola-document-preview` Formio component now requires `sourceActivityId` to be configured at design time and shows "Preview is not configured" otherwise. `EpistolaPluginService.getPreviewSources(...)` and the `PreviewSource` model are deleted. Forms that depended on auto-discover must be updated to pin a `processDefinitionKey + sourceActivityId`.
+- **`epistola-preview-button` Formio component** — replaced by the inline `epistola-generated-document-preview` (above). Forms using the modal-style button should switch to the inline preview, or rely on the download button for one-click access.
 
 ## [0.7.0] - 2026-05-06
 

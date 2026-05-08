@@ -15,8 +15,8 @@ import { CheckJobStatusConfigurationComponent } from './components/check-job-sta
 import { DownloadDocumentConfigurationComponent } from './components/download-document-configuration/download-document-configuration.component';
 import { EpistolaDownloadComponent } from './components/epistola-download/epistola-download.component';
 import { EpistolaRetryFormComponent } from './components/epistola-retry-form/epistola-retry-form.component';
-import { EpistolaPreviewButtonComponent } from './components/epistola-preview-button/epistola-preview-button.component';
 import { EpistolaDocumentPreviewComponent } from './components/epistola-document-preview/epistola-document-preview.component';
+import { EpistolaGeneratedDocumentPreviewComponent } from './components/epistola-generated-document-preview/epistola-generated-document-preview.component';
 import { EpistolaAdminPageComponent } from './components/epistola-admin-page/epistola-admin-page.component';
 import {
   EpistolaPluginService,
@@ -28,8 +28,8 @@ import { EpistolaAdminRoutingModule } from './epistola-admin-routing.module';
 import { isEpistolaEnabled } from './epistola-runtime-config';
 import { registerEpistolaDownloadComponent } from './components/epistola-download/epistola-download.formio';
 import { registerEpistolaRetryFormComponent } from './components/epistola-retry-form/epistola-retry-form.formio';
-import { registerEpistolaPreviewButtonComponent } from './components/epistola-preview-button/epistola-preview-button.formio';
 import { registerEpistolaDocumentPreviewComponent } from './components/epistola-document-preview/epistola-document-preview.formio';
+import { registerEpistolaGeneratedDocumentPreviewComponent } from './components/epistola-generated-document-preview/epistola-generated-document-preview.formio';
 import { registerEpistolaOverrideBuilderComponent } from './components/override-builder/override-builder.formio';
 import { registerEpistolaProcessLinkSelectorComponent } from './components/process-link-selector/process-link-selector.formio';
 
@@ -48,8 +48,8 @@ import { registerEpistolaProcessLinkSelectorComponent } from './components/proce
     DownloadDocumentConfigurationComponent,
     EpistolaDownloadComponent,
     EpistolaRetryFormComponent,
-    EpistolaPreviewButtonComponent,
     EpistolaDocumentPreviewComponent,
+    EpistolaGeneratedDocumentPreviewComponent,
     EpistolaAdminPageComponent,
   ],
   exports: [
@@ -59,8 +59,8 @@ import { registerEpistolaProcessLinkSelectorComponent } from './components/proce
     DownloadDocumentConfigurationComponent,
     EpistolaDownloadComponent,
     EpistolaRetryFormComponent,
-    EpistolaPreviewButtonComponent,
     EpistolaDocumentPreviewComponent,
+    EpistolaGeneratedDocumentPreviewComponent,
     EpistolaAdminPageComponent,
   ],
   providers: [EpistolaPluginService, EpistolaAdminService],
@@ -84,10 +84,10 @@ export class EpistolaPluginModule {
             const injector = inject(Injector);
             registerEpistolaDownloadComponent(injector);
             registerEpistolaRetryFormComponent(injector);
-            registerEpistolaPreviewButtonComponent(injector);
             registerEpistolaOverrideBuilderComponent(injector);
             registerEpistolaProcessLinkSelectorComponent(injector);
             registerEpistolaDocumentPreviewComponent(injector);
+            registerEpistolaGeneratedDocumentPreviewComponent(injector);
             // Eagerly create EpistolaMenuService to trigger menu registration
             inject(EpistolaMenuService);
           },
