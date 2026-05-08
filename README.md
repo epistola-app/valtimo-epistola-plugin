@@ -162,6 +162,24 @@ The `:test-app:backend` module ships a complete `municipality-demo` catalog with
 
 Implementation: `app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger` + `CatalogScanner` (classpath glob `classpath*:config/epistola/catalogs/*/catalog.json`).
 
+## Authorization
+
+The plugin enforces three layers of authorization on its REST endpoints:
+
+- **User-task endpoints** (`/preview`, `/retry-form`, `/documents/download`) require `OperatonTask:VIEW` on the supplied `taskId` plus a same-process / same-case binding, so callers cannot use a task they own to read a different case's document.
+- **Admin endpoints** (`/admin/**`) require `EpistolaAdministration:MANAGE`. The plugin ships a default grant of this permission to `ROLE_ADMIN` via [`epistola-admin-default.permission.json`](backend/plugin/src/main/resources/config/epistola/permission/epistola-admin-default.permission.json) — override it in your application to assign the action to a different role.
+- **Configurator endpoints** (process-link configuration UI) are gated at the HTTP layer by `ROLE_ADMIN`, mirroring Valtimo's own process-link CRUD.
+
+See [docs/authorization.md](docs/authorization.md) for the full endpoint matrix and override examples, and [docs/document-component.md](docs/document-component.md) for the matching frontend (`epistola-document`) component reference.
+
+## Frontend Formio components
+
+| Component                   | When to use                                                     | Reference                                                |
+| --------------------------- | --------------------------------------------------------------- | -------------------------------------------------------- |
+| `epistola-document`         | Render or download a PDF that has **already been generated**.   | [docs/document-component.md](docs/document-component.md) |
+| `epistola-document-preview` | Live preview of a document **before generation** (form-driven). | [docs/document-preview.md](docs/document-preview.md)     |
+| `epistola-retry-form`       | Recovery UX after a failed generation.                          | [docs/user-task-fallback.md](docs/user-task-fallback.md) |
+
 ## Project Structure
 
 ```

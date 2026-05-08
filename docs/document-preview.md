@@ -2,8 +2,11 @@
 
 The `epistola-document-preview` Formio component shows a live PDF preview of a document that will be generated later in the process. It supports two modes: auto-discover and configured.
 
+> If you want to render or download a PDF that has **already been generated** (driven by process variables on the caller's task), use [`epistola-document`](document-component.md) instead.
+
 **Related documentation:**
 
+- [Document Component](document-component.md) — the after-generation render/download component
 - [Data Mapping](data-mapping.md) — how case/process data flows into Epistola templates
 - [Use Cases](use-cases.md) — demo scenarios including the bezwaarprocedure
 
