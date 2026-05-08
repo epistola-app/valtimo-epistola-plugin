@@ -8,7 +8,6 @@ import {
   EnvironmentInfo,
   ExpressionFunctionInfo,
   JsonataValidationResult,
-  PreviewSource,
   TemplateDetails,
   TemplateInfo,
   EvaluationResult,
@@ -181,17 +180,6 @@ export class EpistolaPluginService {
    */
   validateJsonata(request: ValidateJsonataRequest): Observable<JsonataValidationResult> {
     return this.http.post<JsonataValidationResult>(`${this.apiEndpoint}/validate-jsonata`, request);
-  }
-
-  /**
-   * Discover all previewable document sources for a given Valtimo document.
-   *
-   * @param taskId Operaton user task id (required — backend authorizes via OperatonTask:VIEW)
-   */
-  getPreviewSources(documentId: string, taskId: string): Observable<PreviewSource[]> {
-    return this.http.get<PreviewSource[]>(`${this.apiEndpoint}/preview-sources`, {
-      params: { documentId, taskId },
-    });
   }
 
   /**

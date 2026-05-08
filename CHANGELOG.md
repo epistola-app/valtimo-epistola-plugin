@@ -9,11 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
-- **PBAC-based authorization for plugin endpoints** ([#38](https://github.com/epistola-app/valtimo-epistola-plugin/issues/38)). User-task-bound endpoints (`POST /preview`, `GET /preview-sources`, `GET /retry-form`, `GET /documents/{id}/download`) now require a `taskId` and check `OperatonTask:VIEW` via Valtimo's `AuthorizationService`. The Formio preview/download/retry-form components inject `TaskDetailContentComponent` from `@valtimo/task` and read `taskInstanceId$` to forward the task id to the backend. Admin endpoints (`/admin/**`) require a new PBAC permission, `EpistolaAdministration:MANAGE`, granted by default to `ROLE_ADMIN` via a seeded `*.permission.json` changeset. Configurator endpoints (`/configurations/**`, tooling listings, `/evaluate-mapping`) remain HTTP-gated by `ROLE_ADMIN` (the de-facto process-link author authority in Valtimo 13.21).
+- **PBAC-based authorization for plugin endpoints** ([#38](https://github.com/epistola-app/valtimo-epistola-plugin/issues/38)). User-task-bound endpoints (`POST /preview`, `GET /retry-form`, `GET /documents/{id}/download`) now require a `taskId` and check `OperatonTask:VIEW` via Valtimo's `AuthorizationService`. The Formio preview/download/retry-form components inject `TaskDetailContentComponent` from `@valtimo/task` and read `taskInstanceId$` to forward the task id to the backend. Admin endpoints (`/admin/**`) require a new PBAC permission, `EpistolaAdministration:MANAGE`, granted by default to `ROLE_ADMIN` via a seeded `*.permission.json` changeset. Configurator endpoints (`/configurations/**`, tooling listings, `/evaluate-mapping`) remain HTTP-gated by `ROLE_ADMIN` (the de-facto process-link author authority in Valtimo 13.21).
+- **Tightened linkage on preview / retry-form**. The earlier check (VIEW on the supplied task) was bypassable: a caller with VIEW on any task could pivot by sending their own `taskId` plus a foreign `processInstanceId` / `documentId`. `POST /preview` and `GET /retry-form` now additionally require that the request's `processInstanceId` equals the task's process instance and that the request's `documentId` equals the task's process business key (the Valtimo case-document UUID). Mismatch returns 403. The download endpoint still uses the VIEW-only check pending a separate decision on its design.
 
 ### Added
 
 - **`EpistolaAdministration` PBAC resource type** with a `MANAGE` action. Operators can revoke the default `ROLE_ADMIN` grant and assign the action to a more specific role to lock down the Epistola admin pages independently of the global admin role.
+
+### Removed (breaking)
+
+- **`GET /api/v1/plugin/epistola/preview-sources`** and the corresponding auto-discover preview mode. The `epistola-document-preview` Formio component now requires `sourceActivityId` to be configured at design time and shows "Preview is not configured" otherwise. `EpistolaPluginService.getPreviewSources(...)` and the `PreviewSource` model are deleted. Forms that depended on auto-discover must be updated to pin a `processDefinitionKey + sourceActivityId`.
 
 ## [0.7.0] - 2026-05-06
 

@@ -25,6 +25,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,9 +40,15 @@ import java.util.Map;
 /**
  * REST controller for Epistola generation, preview, and download operations.
  *
- * <p>Endpoints invoked from user task forms (preview, preview-sources, download, retry-form)
- * authorize on {@code OperatonTask:VIEW} for a {@code taskId} the caller supplies. Spring
- * Security translates {@code AccessDeniedException} from the framework into HTTP 403.
+ * <p>Endpoints invoked from user task forms (preview, retry-form) authorize on
+ * {@code OperatonTask:VIEW} AND verify that the supplied {@code processInstanceId} and
+ * {@code documentId} are bound to the supplied task — the request must target the same
+ * process instance and the same case document the task is operating on. Without this
+ * second check, a caller with VIEW on any task could pivot to any document by supplying
+ * foreign ids alongside a task id they legitimately own.
+ *
+ * <p>{@code downloadDocument} keeps the legacy {@code OperatonTask:VIEW}-only check
+ * pending a separate decision on whether the endpoint should remain at all.
  *
  * <p>{@code evaluateMapping} is reachable only to {@code ROLE_ADMIN} via the HTTP layer
  * (it is used by the process-link configurator only) and has no controller-level PBAC check.
@@ -137,12 +144,12 @@ public class EpistolaGenerationResource {
     /**
      * Get a dynamically generated Formio form for retrying a failed document generation.
      *
-     * <p>Requires {@code OperatonTask:VIEW} on the supplied {@code taskId} — the retry form
-     * is rendered inside a user task form and must only be accessible to a user who can
-     * already open that task.
+     * <p>Requires {@code OperatonTask:VIEW} on the supplied {@code taskId} AND that the
+     * supplied {@code processInstanceId} matches the task's process instance AND that
+     * the supplied {@code documentId} matches the task's case document (process business key).
      *
      * @param taskId            The Operaton user task ID providing the authorization context
-     * @param processInstanceId The process instance ID (used to find the process definition)
+     * @param processInstanceId The process instance ID containing the original generate-document
      * @param documentId        The Valtimo document ID (used to resolve doc: expressions)
      * @param sourceActivityId  The BPMN activity ID of the original generate-document service task (optional)
      * @return A Formio form definition with prefilled values
@@ -151,14 +158,16 @@ public class EpistolaGenerationResource {
     public ResponseEntity<ObjectNode> getRetryForm(
             @RequestParam("taskId") String taskId,
             @RequestParam("processInstanceId") String processInstanceId,
-            @RequestParam(value = "documentId", required = false) String documentId,
+            @RequestParam("documentId") String documentId,
             @RequestParam(value = "sourceActivityId", required = false) String sourceActivityId
     ) {
-        if (taskId == null || taskId.isBlank()) {
+        if (taskId == null || taskId.isBlank()
+                || processInstanceId == null || processInstanceId.isBlank()
+                || documentId == null || documentId.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
         try {
-            requireTaskViewPermission(taskId);
+            requireTaskBoundTo(taskId, processInstanceId, documentId);
         } catch (TaskNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
@@ -176,53 +185,22 @@ public class EpistolaGenerationResource {
     }
 
     /**
-     * Discover all previewable document sources for a given Valtimo document.
-     * Returns generate-document process links from running process instances.
-     *
-     * <p>Requires {@code OperatonTask:VIEW} on the supplied {@code taskId}.
-     *
-     * @param documentId The Valtimo document ID
-     * @param taskId     The Operaton user task ID providing the authorization context
-     * @return List of preview sources
-     */
-    @GetMapping("/preview-sources")
-    public ResponseEntity<?> getPreviewSources(
-            @RequestParam("documentId") String documentId,
-            @RequestParam("taskId") String taskId
-    ) {
-        if (taskId == null || taskId.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "taskId is required"));
-        }
-        try {
-            requireTaskViewPermission(taskId);
-        } catch (TaskNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
-
-        try {
-            var sources = previewService.getPreviewSources(documentId);
-            return ResponseEntity.ok(sources);
-        } catch (Exception e) {
-            log.debug("Failed to discover preview sources: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(
-                    Map.of("error", "Failed to discover preview sources: " + e.getMessage()));
-        }
-    }
-
-    /**
      * Preview a document by "dry-running" the generate-document process link.
      *
      * <p>Resolves the data mapping, merges with optional overrides, and calls Epistola's
      * preview API to render a PDF without creating a generation job.
      *
-     * <p>Requires {@code OperatonTask:VIEW} on {@link PreviewRequest#taskId()}.
+     * <p>Requires {@code OperatonTask:VIEW} on {@link PreviewRequest#taskId()} AND that
+     * {@link PreviewRequest#processInstanceId()} matches the task's process instance AND
+     * that {@link PreviewRequest#documentId()} matches the task's case document
+     * (process business key).
      *
      * @param request The preview request with task context, document context, and optional overrides
      * @return Rendered PDF (inline) or error details
      */
     @PostMapping("/preview")
     public ResponseEntity<?> previewDocument(@RequestBody PreviewRequest request) {
-        if (request.documentId() == null) {
+        if (request.documentId() == null || request.documentId().isBlank()) {
             return ResponseEntity.badRequest().body(
                     Map.of("error", "documentId is required"));
         }
@@ -230,8 +208,12 @@ public class EpistolaGenerationResource {
             return ResponseEntity.badRequest().body(
                     Map.of("error", "taskId is required"));
         }
+        if (request.processInstanceId() == null || request.processInstanceId().isBlank()) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("error", "processInstanceId is required"));
+        }
         try {
-            requireTaskViewPermission(request.taskId());
+            requireTaskBoundTo(request.taskId(), request.processInstanceId(), request.documentId());
         } catch (TaskNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
@@ -262,11 +244,46 @@ public class EpistolaGenerationResource {
     }
 
     /**
-     * Resolve the task and require {@code OperatonTask:VIEW} for the current user.
+     * Resolve the task, require {@code OperatonTask:VIEW}, and verify the request is
+     * bound to the same process instance and case document the task is operating on.
      *
      * <p>{@code OperatonTaskService.findTaskById} performs the {@code VIEW} check itself,
-     * so a separate {@code requirePermission} call is not needed — but we issue one anyway
-     * for explicitness and to make the intent obvious in tests.
+     * but we issue an explicit {@code requirePermission} too so the intent and the
+     * thrown {@link AccessDeniedException} are obvious in tests. After permission is
+     * confirmed we compare the task's {@code processInstanceId} and business key
+     * (which Valtimo dossier-driven processes set to the case document UUID) against
+     * the request parameters. Mismatch throws {@link AccessDeniedException} → HTTP 403.
+     */
+    private OperatonTask requireTaskBoundTo(String taskId, String processInstanceId, String documentId) {
+        OperatonTask task = operatonTaskService.findTaskById(taskId);
+        authorizationService.requirePermission(
+                new EntityAuthorizationRequest<>(
+                        OperatonTask.class,
+                        OperatonTaskActionProvider.VIEW,
+                        List.of(task)));
+
+        String taskProcessInstanceId = task.getProcessInstanceId();
+        if (!processInstanceId.equals(taskProcessInstanceId)) {
+            log.debug("processInstanceId {} does not match task {} (taskPid={})",
+                    processInstanceId, taskId, taskProcessInstanceId);
+            throw new AccessDeniedException("Request processInstanceId does not match task");
+        }
+
+        String taskBusinessKey = task.getProcessInstance() != null
+                ? task.getProcessInstance().getBusinessKey()
+                : null;
+        if (taskBusinessKey == null || !taskBusinessKey.equals(documentId)) {
+            log.debug("documentId {} does not match task {} business key (taskBusinessKey={})",
+                    documentId, taskId, taskBusinessKey);
+            throw new AccessDeniedException("Request documentId does not match task's case");
+        }
+        return task;
+    }
+
+    /**
+     * Resolve the task and require {@code OperatonTask:VIEW} only — used by the
+     * download endpoint, which intentionally does not enforce same-case binding
+     * yet (pending a separate decision on the endpoint's design).
      */
     private void requireTaskViewPermission(String taskId) {
         OperatonTask task = operatonTaskService.findTaskById(taskId);

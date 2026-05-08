@@ -16,8 +16,6 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { ConfigService } from '@valtimo/shared';
 import { TaskDetailContentComponent } from '@valtimo/task';
-import { PreviewSource } from '../../models';
-import { EpistolaPluginService } from '../../services';
 import { Subscription } from 'rxjs';
 
 @Component({
@@ -60,55 +58,26 @@ import { Subscription } from 'rxjs';
       <div class="preview-header">
         <span>{{ label || 'Document Preview' }}</span>
         <div class="preview-controls">
-          <select
-            *ngIf="!sourceActivityId && sources.length > 1"
-            class="preview-select"
-            [value]="selectedIndex"
-            (change)="onSourceChange($event)"
-          >
-            <option *ngFor="let source of sources; let i = index" [value]="i">
-              {{ source.templateName }} ({{ source.activityId }})
-            </option>
-          </select>
-          <button
-            type="button"
-            class="preview-refresh"
-            [disabled]="loading || discovering"
-            (click)="refresh()"
-          >
+          <button type="button" class="preview-refresh" [disabled]="loading" (click)="refresh()">
             <i class="mdi mdi-refresh mr-1"></i>
             {{ loading ? 'Generating...' : 'Refresh' }}
           </button>
         </div>
       </div>
       <div class="preview-body">
-        <div *ngIf="discovering" class="preview-loading">Discovering documents...</div>
-        <div *ngIf="loading && !discovering" class="preview-loading">Generating preview...</div>
-        <div *ngIf="error && !loading && !discovering" class="preview-unavailable">
+        <div *ngIf="loading" class="preview-loading">Generating preview...</div>
+        <div *ngIf="error && !loading" class="preview-unavailable">
           <i class="mdi mdi-information-outline"></i>
-          Preview is niet beschikbaar — niet alle gegevens zijn al ingevuld.
+          {{ error }}
         </div>
         <object
-          *ngIf="previewUrl && !loading && !discovering"
+          *ngIf="previewUrl && !loading"
           [data]="previewUrl"
           type="application/pdf"
           class="preview-pdf"
         >
           PDF preview is not supported in this browser.
         </object>
-        <div
-          *ngIf="
-            !previewUrl &&
-            !loading &&
-            !discovering &&
-            !error &&
-            !sourceActivityId &&
-            sources.length === 0
-          "
-          class="preview-empty"
-        >
-          No previewable documents found
-        </div>
       </div>
     </div>
   `,
@@ -255,26 +224,16 @@ export class EpistolaDocumentPreviewComponent
   @Input() sourceActivityId?: string;
   @Input() overrideMapping?: Record<string, any>;
 
-  sources: PreviewSource[] = [];
-  selectedIndex = 0;
-  discovering = false;
   loading = false;
   error: string | null = null;
   previewUrl: SafeResourceUrl | null = null;
   designMode = false;
   private initialized = false;
   private currentBlobUrl: string | null = null;
-  private discoverSubscription?: Subscription;
   private previewSubscription?: Subscription;
   private readonly apiEndpoint: string;
 
-  /** Whether the component is in configured mode (explicit process link) vs auto-discover mode */
-  private get configuredMode(): boolean {
-    return !!this.sourceActivityId;
-  }
-
   constructor(
-    private readonly epistolaPluginService: EpistolaPluginService,
     private readonly http: HttpClient,
     private readonly sanitizer: DomSanitizer,
     private readonly configService: ConfigService,
@@ -315,43 +274,37 @@ export class EpistolaDocumentPreviewComponent
         return;
       }
 
-      if (this.configuredMode) {
-        this.loadConfiguredPreview();
-      } else {
-        this.discoverSources();
+      if (!this.sourceActivityId) {
+        this.error = 'Preview is not configured: set the source activity on the form component.';
+        this.cdr.markForCheck();
+        return;
       }
+
+      this.loadPreview();
       return;
     }
 
-    // In configured mode, react to value changes (input overrides from Formio wrapper)
-    if (this.configuredMode && changes['value']) {
-      this.loadConfiguredPreview();
+    // React to value changes (input overrides from the Formio wrapper).
+    if (changes['value']) {
+      this.loadPreview();
     }
   }
 
   ngOnDestroy(): void {
-    this.discoverSubscription?.unsubscribe();
     this.previewSubscription?.unsubscribe();
     this.revokeBlobUrl();
   }
 
-  onSourceChange(event: Event): void {
-    this.selectedIndex = +(event.target as HTMLSelectElement).value;
-    this.loadDiscoveredPreview();
-  }
-
   refresh(): void {
-    if (this.configuredMode) {
-      this.loadConfiguredPreview();
-    } else {
-      this.loadDiscoveredPreview();
-    }
+    this.loadPreview();
   }
 
   /**
-   * Configured mode: preview using the explicitly configured process link + input overrides.
+   * Preview using the explicitly configured process link + input overrides.
+   * Requires a runtime task context — the backend authorizes the request against
+   * the task's process instance and case document, so all three ids must match.
    */
-  private loadConfiguredPreview(): void {
+  private loadPreview(): void {
     const documentId = this.formIoStateService.documentId;
     if (!documentId) {
       this.error = 'Could not determine document ID from context.';
@@ -359,7 +312,20 @@ export class EpistolaDocumentPreviewComponent
       return;
     }
 
-    const taskId = this.currentTaskId;
+    if (!this.sourceActivityId) {
+      this.error = 'Preview is not configured: set the source activity on the form component.';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const processInstanceId = this.formIoStateService.processInstanceId;
+    if (!processInstanceId) {
+      this.error = 'Preview is only available from within a running process.';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const taskId = this.taskDetailContent?.taskInstanceId$.value || null;
     if (!taskId) {
       this.error = 'Preview is only available from within a user task.';
       this.cdr.markForCheck();
@@ -379,95 +345,9 @@ export class EpistolaDocumentPreviewComponent
           taskId,
           documentId,
           processDefinitionKey: this.processDefinitionKey || null,
-          processInstanceId: this.formIoStateService.processInstanceId || null,
+          processInstanceId,
           sourceActivityId: this.sourceActivityId,
           inputOverrides: this.value || null,
-          overrides: null,
-        },
-        {
-          responseType: 'blob',
-          headers: new HttpHeaders().set('X-Skip-Interceptor', '422'),
-        },
-      )
-      .subscribe({
-        next: (blob) => this.handlePreviewSuccess(blob),
-        error: (err) => this.handlePreviewError(err),
-      });
-  }
-
-  /**
-   * Auto-discover mode: discover sources from running process instances.
-   */
-  private discoverSources(): void {
-    const documentId = this.formIoStateService.documentId;
-    if (!documentId) {
-      this.error = 'Could not determine document ID from context.';
-      this.cdr.markForCheck();
-      return;
-    }
-
-    const taskId = this.currentTaskId;
-    if (!taskId) {
-      this.error = 'Preview is only available from within a user task.';
-      this.cdr.markForCheck();
-      return;
-    }
-
-    this.discovering = true;
-    this.error = null;
-    this.cdr.markForCheck();
-
-    this.discoverSubscription = this.epistolaPluginService
-      .getPreviewSources(documentId, taskId)
-      .subscribe({
-        next: (sources) => {
-          this.sources = sources;
-          this.discovering = false;
-          this.cdr.markForCheck();
-          if (sources.length > 0) {
-            this.selectedIndex = 0;
-            this.loadDiscoveredPreview();
-          }
-        },
-        error: (err) => {
-          this.error = err.error?.error || 'Failed to discover preview sources';
-          this.discovering = false;
-          this.cdr.markForCheck();
-        },
-      });
-  }
-
-  /**
-   * Auto-discover mode: load preview for the selected discovered source.
-   */
-  private loadDiscoveredPreview(): void {
-    const source = this.sources[this.selectedIndex];
-    if (!source) return;
-
-    const documentId = this.formIoStateService.documentId;
-    if (!documentId) return;
-
-    const taskId = this.currentTaskId;
-    if (!taskId) {
-      this.error = 'Preview is only available from within a user task.';
-      this.cdr.markForCheck();
-      return;
-    }
-
-    this.loading = true;
-    this.error = null;
-    this.cdr.markForCheck();
-    this.revokeBlobUrl();
-
-    this.previewSubscription?.unsubscribe();
-    this.previewSubscription = this.http
-      .post(
-        `${this.apiEndpoint}/preview`,
-        {
-          taskId,
-          documentId,
-          processInstanceId: source.processInstanceId,
-          sourceActivityId: source.activityId,
           overrides: null,
         },
         {
