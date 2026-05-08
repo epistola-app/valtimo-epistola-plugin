@@ -90,3 +90,4 @@ playwright-report/
 
 # Helm chart dependencies (downloaded via helm dependency build)
 charts/*/charts/*.tgz
+/.claude/worktrees/
