@@ -7,7 +7,7 @@
       <bpmn:outgoing>Flow_03oqn8d</bpmn:outgoing>
     </bpmn:startEvent>
     <bpmn:sequenceFlow id="Flow_03oqn8d" sourceRef="startEvent" targetRef="generate-document" />
-    <bpmn:serviceTask id="generate-document" name="Generate document">
+    <bpmn:serviceTask id="generate-document" name="Generate document" camunda:expression="${null}">
       <bpmn:incoming>Flow_03oqn8d</bpmn:incoming>
       <bpmn:outgoing>Flow_1l49nmw</bpmn:outgoing>
     </bpmn:serviceTask>

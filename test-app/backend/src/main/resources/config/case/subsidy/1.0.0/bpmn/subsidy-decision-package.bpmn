@@ -29,7 +29,7 @@
     </bpmn:parallelGateway>
 
     <!-- Branch A: Subsidiebesluit -->
-    <bpmn:serviceTask id="generate-doc1" name="Genereer Subsidiebesluit">
+    <bpmn:serviceTask id="generate-doc1" name="Genereer Subsidiebesluit" camunda:expression="${null}">
       <bpmn:incoming>Flow_fork_to_a</bpmn:incoming>
       <bpmn:outgoing>Flow_a_to_wait</bpmn:outgoing>
     </bpmn:serviceTask>
@@ -44,7 +44,7 @@
     </bpmn:serviceTask>
 
     <!-- Branch B: Financieel Overzicht -->
-    <bpmn:serviceTask id="generate-doc2" name="Genereer Financieel Overzicht">
+    <bpmn:serviceTask id="generate-doc2" name="Genereer Financieel Overzicht" camunda:expression="${null}">
       <bpmn:incoming>Flow_fork_to_b</bpmn:incoming>
       <bpmn:outgoing>Flow_b_to_wait</bpmn:outgoing>
     </bpmn:serviceTask>
@@ -59,7 +59,7 @@
     </bpmn:serviceTask>
 
     <!-- Branch C: Voorwaarden Bijlage -->
-    <bpmn:serviceTask id="generate-doc3" name="Genereer Voorwaarden Bijlage">
+    <bpmn:serviceTask id="generate-doc3" name="Genereer Voorwaarden Bijlage" camunda:expression="${null}">
       <bpmn:incoming>Flow_fork_to_c</bpmn:incoming>
       <bpmn:outgoing>Flow_c_to_wait</bpmn:outgoing>
     </bpmn:serviceTask>

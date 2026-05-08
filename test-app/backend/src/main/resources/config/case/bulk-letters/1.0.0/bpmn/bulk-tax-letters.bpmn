@@ -48,7 +48,7 @@ execution.setVariable("failCount", 0)
         <bpmn:outgoing>Flow_sub_to_generate</bpmn:outgoing>
       </bpmn:startEvent>
 
-      <bpmn:serviceTask id="generate-letter" name="Genereer Belastingbrief">
+      <bpmn:serviceTask id="generate-letter" name="Genereer Belastingbrief" camunda:expression="${null}">
         <bpmn:incoming>Flow_sub_to_generate</bpmn:incoming>
         <bpmn:outgoing>Flow_sub_to_wait</bpmn:outgoing>
       </bpmn:serviceTask>
