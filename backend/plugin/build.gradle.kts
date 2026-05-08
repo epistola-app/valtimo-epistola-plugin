@@ -1,9 +1,13 @@
 import com.vanniktech.maven.publish.SonatypeHost
+import org.gradle.api.publish.maven.MavenPublication
+import org.gradle.api.publish.maven.tasks.AbstractPublishToMaven
+import org.gradle.plugins.signing.Sign
 
 plugins {
     `java-library`
     alias(libs.plugins.vanniktech.publish)
     alias(libs.plugins.spring.dependency.management)
+    alias(libs.plugins.cyclonedx)
 }
 
 group = "app.epistola.valtimo"
@@ -85,6 +89,33 @@ tasks.withType<JavaCompile> {
 tasks.test {
     // Don't fail if there are no tests yet
     failOnNoDiscoveredTests.set(false)
+}
+
+tasks.named<org.cyclonedx.gradle.CycloneDxTask>("cyclonedxBom") {
+    outputFormat.set("json")
+    outputName.set("bom")
+    projectType.set("library")
+    includeBomSerialNumber.set(true)
+    includeLicenseText.set(false)
+    schemaVersion.set("1.5")
+}
+
+val sbomFile = layout.buildDirectory.file("reports/bom.json")
+
+afterEvaluate {
+    publishing.publications.withType<MavenPublication>().configureEach {
+        artifact(sbomFile) {
+            classifier = "cyclonedx"
+            extension = "json"
+            builtBy(tasks.named("cyclonedxBom"))
+        }
+    }
+    tasks.withType<AbstractPublishToMaven>().configureEach {
+        dependsOn("cyclonedxBom")
+    }
+    tasks.withType<Sign>().configureEach {
+        dependsOn("cyclonedxBom")
+    }
 }
 
 mavenPublishing {
