@@ -9,16 +9,26 @@ import app.epistola.valtimo.web.rest.dto.EvaluationResult;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ritense.authorization.AuthorizationService;
+import com.ritense.authorization.request.EntityAuthorizationRequest;
 import com.ritense.plugin.domain.PluginConfiguration;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valtimo.contract.annotation.SkipComponentScan;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
+import com.ritense.valtimo.operaton.authorization.OperatonTaskActionProvider;
+import com.ritense.valtimo.operaton.domain.OperatonTask;
+import com.ritense.valtimo.security.exceptions.TaskNotFoundException;
+import com.ritense.valtimo.service.OperatonTaskService;
+import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.operaton.bpm.engine.RuntimeService;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,10 +39,23 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * REST controller for Epistola generation, preview, and download operations.
+ *
+ * <p>Endpoints invoked from user task forms (preview, retry-form) authorize on
+ * {@code OperatonTask:VIEW} AND verify that the supplied {@code processInstanceId} and
+ * {@code documentId} are bound to the supplied task — the request must target the same
+ * process instance and the same case document the task is operating on. Without this
+ * second check, a caller with VIEW on any task could pivot to any document by supplying
+ * foreign ids alongside a task id they legitimately own.
+ *
+ * <p>{@code downloadDocument} authorizes by the same task/case binding and resolves
+ * the Epistola PDF id and tenant id from named process variables on the caller's
+ * task. Callers never send a raw PDF id over the wire — forge-proof by construction.
+ *
+ * <p>{@code evaluateMapping} is reachable only to {@code ROLE_ADMIN} via the HTTP layer
+ * (it is used by the process-link configurator only) and has no controller-level PBAC check.
  */
 @Slf4j
 @RestController
@@ -48,6 +71,9 @@ public class EpistolaGenerationResource {
     private final JsonataMappingService jsonataMappingService;
     private final com.ritense.document.service.DocumentService documentService;
     private final ObjectMapper objectMapper;
+    private final AuthorizationService authorizationService;
+    private final OperatonTaskService operatonTaskService;
+    private final RuntimeService runtimeService;
 
     /**
      * Evaluate a JSONata data mapping expression against a real document.
@@ -71,21 +97,63 @@ public class EpistolaGenerationResource {
     }
 
     /**
-     * Download a generated document directly from Epistola.
-     * Resolves the plugin configuration by tenantId and proxies the download.
+     * Download a generated document by reading the PDF id and tenant from
+     * named process variables on the caller's task. The caller never sends a
+     * raw Epistola document id — this is forge-proof by construction.
      *
-     * @param documentId The Epistola document ID
-     * @param tenantId   The Epistola tenant ID (used to find the correct plugin configuration)
-     * @param filename   The desired filename for the download (defaults to "document.pdf")
-     * @return The document bytes with PDF content type and attachment disposition
+     * <p>Requires:
+     * <ul>
+     *   <li>{@code OperatonTask:VIEW} on {@code taskId}.</li>
+     *   <li>{@code task.processInstance.businessKey == caseDocumentId} (same Valtimo case).</li>
+     *   <li>The named {@code documentIdVariable} and {@code tenantIdVariable} both
+     *       resolve to non-blank values on {@code task.processInstanceId}.</li>
+     * </ul>
+     *
+     * @param taskId               The Operaton user task ID providing the authorization context
+     * @param caseDocumentId       The Valtimo case document UUID; must equal {@code task.processInstance.businessKey}
+     * @param documentIdVariable   Process-variable name holding the Epistola PDF id (default {@code epistolaDocumentId})
+     * @param tenantIdVariable     Process-variable name holding the Epistola tenant id (default {@code epistolaTenantId})
+     * @param filename             Filename for the download (defaults to {@code document.pdf})
+     * @param disposition          {@code attachment} (default) or {@code inline}
+     * @return The PDF bytes with the requested Content-Disposition
      */
-    @GetMapping("/documents/{documentId}/download")
+    @GetMapping("/documents/download")
     public ResponseEntity<byte[]> downloadDocument(
-            @PathVariable("documentId") String documentId,
-            @RequestParam("tenantId") String tenantId,
-            @RequestParam(value = "filename", defaultValue = "document.pdf") String filename
+            @RequestParam("taskId") String taskId,
+            @RequestParam("caseDocumentId") String caseDocumentId,
+            @RequestParam(value = "documentIdVariable", defaultValue = EpistolaProcessVariables.DOCUMENT_ID) String documentIdVariable,
+            @RequestParam(value = "tenantIdVariable", defaultValue = EpistolaProcessVariables.TENANT_ID) String tenantIdVariable,
+            @RequestParam(value = "filename", defaultValue = "document.pdf") String filename,
+            @RequestParam(value = "disposition", defaultValue = "attachment") String disposition
     ) {
-        log.debug("Downloading document {} for tenantId={}", documentId, tenantId);
+        if (taskId == null || taskId.isBlank()
+                || caseDocumentId == null || caseDocumentId.isBlank()
+                || documentIdVariable == null || documentIdVariable.isBlank()
+                || tenantIdVariable == null || tenantIdVariable.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        OperatonTask task;
+        try {
+            task = requireTaskBoundTo(taskId, /* request supplies */ null, caseDocumentId);
+            // requireTaskBoundTo accepts a null processInstanceId (only checks when supplied).
+            // For download the task's processInstanceId is what we use to resolve variables;
+            // no separate processInstanceId is sent on the wire.
+        } catch (TaskNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+
+        Object documentIdValue = runtimeService.getVariable(task.getProcessInstanceId(), documentIdVariable);
+        Object tenantIdValue = runtimeService.getVariable(task.getProcessInstanceId(), tenantIdVariable);
+        String documentId = documentIdValue == null ? null : documentIdValue.toString();
+        String tenantId = tenantIdValue == null ? null : tenantIdValue.toString();
+
+        if (documentId == null || documentId.isBlank() || tenantId == null || tenantId.isBlank()) {
+            log.debug("Download requested for task {} but documentIdVariable={} / tenantIdVariable={} not yet set",
+                    taskId, documentIdVariable, tenantIdVariable);
+            return ResponseEntity.status(404)
+                    .body(null);
+        }
 
         EpistolaPlugin plugin = findPluginByTenantId(tenantId);
         if (plugin == null) {
@@ -93,14 +161,26 @@ public class EpistolaGenerationResource {
             return ResponseEntity.notFound().build();
         }
 
-        byte[] content = epistolaService.downloadDocument(
-                plugin.getBaseUrl(), plugin.getApiKey(), tenantId, documentId);
+        byte[] content;
+        try {
+            content = epistolaService.downloadDocument(
+                    plugin.getBaseUrl(), plugin.getApiKey(), tenantId, documentId);
+        } catch (HttpClientErrorException.NotFound e) {
+            // Stale reference: process variable still holds an Epistola PDF id but the
+            // server no longer has the document (data wiped, expired, deleted upstream).
+            // Surface as 404 with a body distinct from the variable-null case so callers
+            // can differentiate "not yet generated" from "no longer available".
+            log.debug("Epistola returned 404 for documentId={} (tenantId={}); treating as not-available",
+                    documentId, tenantId);
+            return ResponseEntity.notFound().build();
+        }
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
-        headers.setContentDisposition(ContentDisposition.attachment()
-                .filename(filename)
-                .build());
+        ContentDisposition contentDisposition = "inline".equalsIgnoreCase(disposition)
+                ? ContentDisposition.inline().filename(filename).build()
+                : ContentDisposition.attachment().filename(filename).build();
+        headers.setContentDisposition(contentDisposition);
 
         return ResponseEntity.ok().headers(headers).body(content);
     }
@@ -108,17 +188,34 @@ public class EpistolaGenerationResource {
     /**
      * Get a dynamically generated Formio form for retrying a failed document generation.
      *
-     * @param processInstanceId The process instance ID (used to find the process definition)
+     * <p>Requires {@code OperatonTask:VIEW} on the supplied {@code taskId} AND that the
+     * supplied {@code processInstanceId} matches the task's process instance AND that
+     * the supplied {@code documentId} matches the task's case document (process business key).
+     *
+     * @param taskId            The Operaton user task ID providing the authorization context
+     * @param processInstanceId The process instance ID containing the original generate-document
      * @param documentId        The Valtimo document ID (used to resolve doc: expressions)
      * @param sourceActivityId  The BPMN activity ID of the original generate-document service task (optional)
      * @return A Formio form definition with prefilled values
      */
     @GetMapping("/retry-form")
     public ResponseEntity<ObjectNode> getRetryForm(
+            @RequestParam("taskId") String taskId,
             @RequestParam("processInstanceId") String processInstanceId,
-            @RequestParam(value = "documentId", required = false) String documentId,
+            @RequestParam("documentId") String documentId,
             @RequestParam(value = "sourceActivityId", required = false) String sourceActivityId
     ) {
+        if (taskId == null || taskId.isBlank()
+                || processInstanceId == null || processInstanceId.isBlank()
+                || documentId == null || documentId.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            requireTaskBoundTo(taskId, processInstanceId, documentId);
+        } catch (TaskNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+
         try {
             ObjectNode form = retryFormService.generateRetryForm(processInstanceId, documentId, sourceActivityId);
             return ResponseEntity.ok(form);
@@ -132,38 +229,37 @@ public class EpistolaGenerationResource {
     }
 
     /**
-     * Discover all previewable document sources for a given Valtimo document.
-     * Returns generate-document process links from running process instances.
-     *
-     * @param documentId The Valtimo document ID
-     * @return List of preview sources
-     */
-    @GetMapping("/preview-sources")
-    public ResponseEntity<?> getPreviewSources(@RequestParam("documentId") String documentId) {
-        try {
-            var sources = previewService.getPreviewSources(documentId);
-            return ResponseEntity.ok(sources);
-        } catch (Exception e) {
-            log.debug("Failed to discover preview sources: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(
-                    Map.of("error", "Failed to discover preview sources: " + e.getMessage()));
-        }
-    }
-
-    /**
      * Preview a document by "dry-running" the generate-document process link.
-     * <p>
-     * Resolves the data mapping, merges with optional overrides, and calls Epistola's
+     *
+     * <p>Resolves the data mapping, merges with optional overrides, and calls Epistola's
      * preview API to render a PDF without creating a generation job.
      *
-     * @param request The preview request with document context and optional overrides
+     * <p>Requires {@code OperatonTask:VIEW} on {@link PreviewRequest#taskId()} AND that
+     * {@link PreviewRequest#processInstanceId()} matches the task's process instance AND
+     * that {@link PreviewRequest#documentId()} matches the task's case document
+     * (process business key).
+     *
+     * @param request The preview request with task context, document context, and optional overrides
      * @return Rendered PDF (inline) or error details
      */
     @PostMapping("/preview")
     public ResponseEntity<?> previewDocument(@RequestBody PreviewRequest request) {
-        if (request.documentId() == null) {
+        if (request.documentId() == null || request.documentId().isBlank()) {
             return ResponseEntity.badRequest().body(
                     Map.of("error", "documentId is required"));
+        }
+        if (request.taskId() == null || request.taskId().isBlank()) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("error", "taskId is required"));
+        }
+        if (request.processInstanceId() == null || request.processInstanceId().isBlank()) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("error", "processInstanceId is required"));
+        }
+        try {
+            requireTaskBoundTo(request.taskId(), request.processInstanceId(), request.documentId());
+        } catch (TaskNotFoundException e) {
+            return ResponseEntity.notFound().build();
         }
 
         try {
@@ -189,6 +285,51 @@ public class EpistolaGenerationResource {
                                 "details", e.getMessage()));
             };
         }
+    }
+
+    /**
+     * Resolve the task, require {@code OperatonTask:VIEW}, and verify the request is
+     * bound to the same process instance and case document the task is operating on.
+     *
+     * <p>{@code OperatonTaskService.findTaskById} performs the {@code VIEW} check itself,
+     * but we issue an explicit {@code requirePermission} too so the intent and the
+     * thrown {@link AccessDeniedException} are obvious in tests. After permission is
+     * confirmed we compare the task's {@code processInstanceId} and business key
+     * (which Valtimo dossier-driven processes set to the case document UUID) against
+     * the request parameters. Mismatch throws {@link AccessDeniedException} → HTTP 403.
+     *
+     * @param taskId            Operaton user task id; required.
+     * @param processInstanceId The expected process instance id, or {@code null} if the
+     *                          caller infers it from the task itself (e.g.
+     *                          {@code downloadDocument} doesn't carry it on the wire).
+     *                          When non-null, must equal {@code task.getProcessInstanceId()}.
+     * @param documentId        The expected Valtimo case-document UUID; required and
+     *                          must equal {@code task.getProcessInstance().getBusinessKey()}.
+     */
+    private OperatonTask requireTaskBoundTo(String taskId, String processInstanceId, String documentId) {
+        OperatonTask task = operatonTaskService.findTaskById(taskId);
+        authorizationService.requirePermission(
+                new EntityAuthorizationRequest<>(
+                        OperatonTask.class,
+                        OperatonTaskActionProvider.VIEW,
+                        List.of(task)));
+
+        String taskProcessInstanceId = task.getProcessInstanceId();
+        if (processInstanceId != null && !processInstanceId.equals(taskProcessInstanceId)) {
+            log.debug("processInstanceId {} does not match task {} (taskPid={})",
+                    processInstanceId, taskId, taskProcessInstanceId);
+            throw new AccessDeniedException("Request processInstanceId does not match task");
+        }
+
+        String taskBusinessKey = task.getProcessInstance() != null
+                ? task.getProcessInstance().getBusinessKey()
+                : null;
+        if (taskBusinessKey == null || !taskBusinessKey.equals(documentId)) {
+            log.debug("documentId {} does not match task {} business key (taskBusinessKey={})",
+                    documentId, taskId, taskBusinessKey);
+            throw new AccessDeniedException("Request documentId does not match task's case");
+        }
+        return task;
     }
 
     /**

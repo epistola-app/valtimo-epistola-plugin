@@ -1,0 +1,348 @@
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  Input,
+  OnDestroy,
+  OnInit,
+  Output,
+} from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
+import { Subscription } from 'rxjs';
+import {
+  DownloadDocumentRequest,
+  EpistolaPluginService,
+  EpistolaTaskContextService,
+} from '../../services';
+
+export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
+
+/**
+ * Unified Formio component for the after-generation Epistola PDF UX. Reads
+ * the PDF id and tenant id from named process variables on the caller's
+ * task via the {@code /documents/download} endpoint.
+ *
+ * <p>Three presentations, all backed by the same backend call:
+ * <ul>
+ *   <li>{@code display="inline"} — render the PDF inline in a panel.</li>
+ *   <li>{@code display="button"} — show a click-to-save download button only.</li>
+ *   <li>{@code display="both"} (default) — inline panel with a download icon
+ *       in the header.</li>
+ * </ul>
+ *
+ * <p>For the dry-run / what-would-be-generated UX use
+ * {@code epistola-document-preview} instead.
+ */
+@Component({
+  standalone: true,
+  imports: [CommonModule],
+  selector: 'epistola-document-component',
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  template: `
+    <!-- Design-time placeholder -->
+    <div *ngIf="designMode" class="epistola-doc-panel">
+      <div class="doc-header">
+        <span>{{ label || 'Document' }}</span>
+        <span class="design-tag">design mode</span>
+      </div>
+      <div class="doc-body design-info">
+        <div class="design-section">
+          <div class="design-label">Display</div>
+          <div class="design-value">{{ display }}</div>
+          <div class="design-label">Document ID variable</div>
+          <div class="design-value">{{ documentIdVariable }}</div>
+          <div class="design-label">Tenant ID variable</div>
+          <div class="design-value">{{ tenantIdVariable }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Button-only display -->
+    <div *ngIf="!designMode && display === 'button'">
+      <button
+        type="button"
+        class="btn btn-outline-primary"
+        [disabled]="disabled || downloading"
+        (click)="download()"
+      >
+        <i class="mdi mdi-download mr-1"></i>
+        {{ downloading ? 'Downloading...' : label || 'Download PDF' }}
+      </button>
+      <span *ngIf="error" class="text-danger ml-2">{{ error }}</span>
+    </div>
+
+    <!-- Inline / both: panel with optional download icon -->
+    <div *ngIf="!designMode && display !== 'button'" class="epistola-doc-panel">
+      <div class="doc-header">
+        <span>{{ label || 'Document' }}</span>
+        <div class="doc-controls">
+          <button
+            *ngIf="display === 'both'"
+            type="button"
+            class="doc-icon-btn"
+            [disabled]="disabled || downloading"
+            (click)="download()"
+            [title]="downloading ? 'Downloading...' : 'Download'"
+          >
+            <i class="mdi mdi-download"></i>
+          </button>
+          <button
+            type="button"
+            class="doc-icon-btn"
+            [disabled]="loading"
+            (click)="refresh()"
+            title="Refresh"
+          >
+            <i class="mdi mdi-refresh"></i>
+          </button>
+        </div>
+      </div>
+      <div class="doc-body">
+        <div *ngIf="loading" class="doc-loading">Loading document...</div>
+        <div *ngIf="error && !loading" class="doc-unavailable">
+          <i class="mdi mdi-information-outline"></i>
+          {{ error }}
+        </div>
+        <object
+          *ngIf="previewUrl && !loading"
+          [data]="previewUrl"
+          type="application/pdf"
+          class="doc-pdf"
+        >
+          PDF preview is not supported in this browser.
+        </object>
+      </div>
+    </div>
+  `,
+  styles: [
+    `
+      .epistola-doc-panel {
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        background: #f8f9fa;
+        display: flex;
+        flex-direction: column;
+      }
+      .doc-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.5rem 1rem;
+        border-bottom: 1px solid #dee2e6;
+        font-weight: bold;
+        color: #495057;
+      }
+      .doc-controls {
+        display: flex;
+        gap: 0.25rem;
+      }
+      .doc-icon-btn {
+        background: none;
+        border: 1px solid #6c757d;
+        border-radius: 4px;
+        color: #6c757d;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+      }
+      .doc-icon-btn:hover:not(:disabled) {
+        background: #e9ecef;
+      }
+      .doc-icon-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .doc-body {
+        display: flex;
+        flex-direction: column;
+        min-height: 500px;
+      }
+      .doc-loading,
+      .doc-unavailable {
+        padding: 2rem;
+        text-align: center;
+        color: #6c757d;
+        font-style: italic;
+      }
+      .doc-unavailable i {
+        margin-right: 0.25rem;
+      }
+      .doc-pdf {
+        width: 100%;
+        flex: 1;
+        min-height: 500px;
+      }
+      .design-info {
+        padding: 1rem;
+        min-height: auto;
+      }
+      .design-section {
+        margin-bottom: 0.5rem;
+      }
+      .design-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        color: #868e96;
+        font-weight: 600;
+        letter-spacing: 0.05em;
+      }
+      .design-value {
+        font-family: monospace;
+        font-size: 0.85rem;
+        color: #212529;
+        margin-bottom: 0.25rem;
+      }
+      .design-tag {
+        font-size: 0.7rem;
+        font-weight: normal;
+        color: #6c757d;
+        font-style: italic;
+      }
+    `,
+  ],
+})
+export class EpistolaDocumentComponent
+  implements FormioCustomComponent<unknown>, OnInit, OnDestroy
+{
+  @Input() value: unknown;
+  @Output() valueChange = new EventEmitter<unknown>();
+
+  @Input() disabled = false;
+  @Input() label = 'Document';
+
+  /** How to present the document. `both` (default) shows an inline panel with a download icon. */
+  @Input() display: EpistolaDocumentDisplay = 'both';
+
+  /** Process-variable name holding the Epistola PDF id. Default: `epistolaDocumentId`. */
+  @Input() documentIdVariable = 'epistolaDocumentId';
+
+  /** Process-variable name holding the Epistola tenant id. Default: `epistolaTenantId`. */
+  @Input() tenantIdVariable = 'epistolaTenantId';
+
+  /** Filename used for the download disposition. */
+  @Input() filename = 'document.pdf';
+
+  loading = false;
+  downloading = false;
+  error: string | null = null;
+  previewUrl: SafeResourceUrl | null = null;
+
+  private currentBlobUrl: string | null = null;
+  private subscription?: Subscription;
+
+  get designMode(): boolean {
+    return !this.formIoStateService.documentId;
+  }
+
+  constructor(
+    private readonly epistolaPluginService: EpistolaPluginService,
+    private readonly sanitizer: DomSanitizer,
+    private readonly formIoStateService: FormIoStateService,
+    private readonly taskContext: EpistolaTaskContextService,
+    private readonly cdr: ChangeDetectorRef,
+  ) {}
+
+  ngOnInit(): void {
+    if (this.designMode) {
+      return;
+    }
+    if (this.display !== 'button') {
+      this.loadInline();
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.subscription?.unsubscribe();
+    this.revokeBlobUrl();
+  }
+
+  refresh(): void {
+    this.loadInline();
+  }
+
+  download(): void {
+    if (this.designMode || this.downloading) {
+      return;
+    }
+    const request = this.buildRequest('attachment');
+    if (!request) return;
+    this.downloading = true;
+    this.error = null;
+    this.cdr.markForCheck();
+
+    this.epistolaPluginService.downloadDocumentBlob(request).subscribe({
+      next: (blob) => {
+        const objectUrl = URL.createObjectURL(blob);
+        const anchor = document.createElement('a');
+        anchor.href = objectUrl;
+        anchor.download = this.filename;
+        anchor.click();
+        URL.revokeObjectURL(objectUrl);
+        this.downloading = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        this.error = err.status === 404 ? 'Document is nog niet gegenereerd.' : 'Download mislukt.';
+        this.downloading = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private loadInline(): void {
+    const request = this.buildRequest('inline');
+    if (!request) return;
+    this.loading = true;
+    this.error = null;
+    this.cdr.markForCheck();
+    this.revokeBlobUrl();
+
+    this.subscription?.unsubscribe();
+    this.subscription = this.epistolaPluginService.downloadDocumentBlob(request).subscribe({
+      next: (blob) => {
+        this.currentBlobUrl = URL.createObjectURL(blob);
+        this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.currentBlobUrl);
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        this.previewUrl = null;
+        this.error =
+          err.status === 404
+            ? 'Document is nog niet gegenereerd.'
+            : 'Document kon niet geladen worden.';
+        this.loading = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private buildRequest(disposition: 'inline' | 'attachment'): DownloadDocumentRequest | null {
+    const taskId = this.taskContext.taskInstanceId;
+    const caseDocumentId = this.formIoStateService.documentId;
+    if (!taskId || !caseDocumentId) {
+      this.error = 'Document is alleen beschikbaar binnen een taak.';
+      this.cdr.markForCheck();
+      return null;
+    }
+    return {
+      taskId,
+      caseDocumentId,
+      documentIdVariable: this.documentIdVariable,
+      tenantIdVariable: this.tenantIdVariable,
+      filename: this.filename,
+      disposition,
+    };
+  }
+
+  private revokeBlobUrl(): void {
+    if (this.currentBlobUrl) {
+      URL.revokeObjectURL(this.currentBlobUrl);
+      this.currentBlobUrl = null;
+      this.previewUrl = null;
+    }
+  }
+}

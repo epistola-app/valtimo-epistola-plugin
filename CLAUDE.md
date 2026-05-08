@@ -147,7 +147,7 @@ pnpm format:check   # check only (used in CI)
 - **Admin page**: Health checks, plugin usage overview, version info (`EpistolaAdminResource`)
 - **Variant selection**: 3 modes — default, explicit variantId, or attribute-based automatic selection
 - **Value resolution**: Data mappings are JSONata expressions evaluated with `$doc`, `$pv`, and `$case` context variables
-- **Security**: Admin endpoints require `ROLE_ADMIN`; generation/tooling endpoints require normal authentication
+- **Security (PBAC)**: Three layers, see [Authorization](#authorization) below. User-task endpoints check `OperatonTask:VIEW`, admin endpoints check the custom `EpistolaAdministration:MANAGE` PBAC permission, and configurator endpoints stay HTTP-gated by `ROLE_ADMIN`.
 - **Configuration**: Spring Boot auto-configuration with feature toggles (`epistola.enabled`, `epistola.result-collector.enabled`, `epistola.retry-form.enabled`)
 
 ### Frontend
@@ -165,15 +165,27 @@ pnpm format:check   # check only (used in CI)
 - `defaultEnvironmentId` (optional) — Default environment for generation
 - `templateSyncEnabled` (optional) — Enable classpath template sync on startup
 
+## Authorization
+
+Three layers of authorization apply to plugin endpoints:
+
+- **User-task endpoints** — `POST /preview` and `GET /retry-form` require a `taskId` plus the same-process-instance and same-case binding: the controller verifies `OperatonTask:VIEW` on the task AND that `task.processInstanceId == request.processInstanceId` AND `task.processInstance.businessKey == request.documentId` (Valtimo dossier-driven processes carry the case document UUID as the process business key). Mismatch returns 403. `GET /documents/download` (new query-param shape, replaces the old `/documents/{id}/download` path) follows the same task/case binding and additionally resolves the Epistola PDF id and tenant id from named process variables on the caller's task — the wire never carries a raw PDF id, so callers cannot forge access to documents outside their process. The Formio components read the active `taskInstanceId` from `EpistolaTaskContextService` (populated by an HTTP interceptor that watches Valtimo's task-open call). Outside a user task context (Formio builder, design mode) the components fail closed.
+- **Admin endpoints** — `/admin/**`. Each method calls `requirePermission(EpistolaAdministration, MANAGE)`. The `EpistolaAdministration` resource type is plugin-defined (`app.epistola.valtimo.authorization`), seeded with a default `ROLE_ADMIN` grant via `config/epistola/permission/epistola-admin-default.permission.json` (deployed by Valtimo's `PermissionDeployer` on boot). To restrict admin access more tightly, revoke the default grant and assign `MANAGE` to a specific role.
+- **Configurator endpoints** — `/configurations/**`, `/process-variables`, `/variable-suggestions`, `/expression-functions`, `/validate-jsonata`, `/evaluate-mapping`. Gated at the HTTP layer by `ROLE_ADMIN`, which matches Valtimo's own process-link CRUD endpoints. There is no `ProcessLink` PBAC action in Valtimo 13.21, so `ROLE_ADMIN` is the de-facto "process-link author" authority.
+
+BPMN `@PluginAction` methods (`generate-document`, `check-job-status`, `download-document`) execute in the BPMN engine's transactional context with the engine identity, not a user identity, and are out of scope for PBAC. Process-level authorization handles those.
+
 ## Design Decisions
 
-| Decision            | Choice                                                 | Rationale                                                 |
-| ------------------- | ------------------------------------------------------ | --------------------------------------------------------- |
-| API Scope           | Generation + Read-only Templates/Environments/Variants | Plugin is for document generation, not template authoring |
-| Authentication      | API key in plugin config                               | Simple, stateless, matches typical service integrations   |
-| Async Pattern       | Result collector + message correlation                 | Avoids per-process timers and keeps BPMN simple           |
-| Environment/Variant | Plugin default + action override                       | Sensible defaults with per-action flexibility             |
-| Composite Job Path  | `epistola:job:{tenantId}/{requestId}` single variable  | Avoids scoping issues, enables correlation and polling    |
+| Decision            | Choice                                                  | Rationale                                                 |
+| ------------------- | ------------------------------------------------------- | --------------------------------------------------------- |
+| API Scope           | Generation + Read-only Templates/Environments/Variants  | Plugin is for document generation, not template authoring |
+| Authentication      | API key in plugin config                                | Simple, stateless, matches typical service integrations   |
+| Async Pattern       | Result collector + message correlation                  | Avoids per-process timers and keeps BPMN simple           |
+| Environment/Variant | Plugin default + action override                        | Sensible defaults with per-action flexibility             |
+| Composite Job Path  | `epistola:job:{tenantId}/{requestId}` single variable   | Avoids scoping issues, enables correlation and polling    |
+| User-task auth      | `OperatonTask:VIEW` via Valtimo PBAC, taskId in request | Reuses Valtimo's task authorization; no plugin-side ACL   |
+| Admin auth          | Custom `EpistolaAdministration:MANAGE` PBAC permission  | Decouples plugin admin from global `ROLE_ADMIN` if needed |
 
 ---
 

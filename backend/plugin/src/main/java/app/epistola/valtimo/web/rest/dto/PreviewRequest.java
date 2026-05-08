@@ -5,6 +5,8 @@ import java.util.Map;
 /**
  * Request body for document preview.
  *
+ * @param taskId               The Operaton user task ID providing the authorization context.
+ *                             Required: the caller must have {@code OperatonTask:VIEW} on this task.
  * @param documentId           The Valtimo document ID used to populate the $doc JSONata context.
  * @param processDefinitionKey The process definition key (required — identifies the process link)
  * @param sourceActivityId     The BPMN activity ID of the generate-document service task (required)
@@ -16,6 +18,7 @@ import java.util.Map;
  *                             process variables. The JSONata mapping then runs against the overridden inputs.
  */
 public record PreviewRequest(
+        String taskId,
         String documentId,
         String processDefinitionKey,
         String sourceActivityId,
