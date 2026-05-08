@@ -10,7 +10,7 @@
     "activityType": "bpmn:ServiceTask:start",
     "processLinkType": "plugin",
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
-    "pluginActionDefinitionKey": "generate-document",
+    "pluginActionDefinitionKey": "epistola-generate-document",
     "actionProperties": {
       "templateId": "ontvangstbevestiging-bezwaar",
       "outputFormat": "PDF",
@@ -25,7 +25,7 @@
     "activityType": "bpmn:ServiceTask:start",
     "processLinkType": "plugin",
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
-    "pluginActionDefinitionKey": "download-document",
+    "pluginActionDefinitionKey": "epistola-download-document",
     "actionProperties": {
       "documentVariable": "epistolaResult",
       "contentVariable": "ackDocumentContent"
@@ -42,7 +42,7 @@
     "activityType": "bpmn:ServiceTask:start",
     "processLinkType": "plugin",
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
-    "pluginActionDefinitionKey": "generate-document",
+    "pluginActionDefinitionKey": "epistola-generate-document",
     "actionProperties": {
       "templateId": "besluit-bezwaar",
       "outputFormat": "PDF",
@@ -57,7 +57,7 @@
     "activityType": "bpmn:ServiceTask:start",
     "processLinkType": "plugin",
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
-    "pluginActionDefinitionKey": "download-document",
+    "pluginActionDefinitionKey": "epistola-download-document",
     "actionProperties": {
       "documentVariable": "epistolaResult",
       "contentVariable": "decisionDocumentContent"

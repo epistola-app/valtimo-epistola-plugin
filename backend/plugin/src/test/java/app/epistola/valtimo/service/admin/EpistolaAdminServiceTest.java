@@ -194,7 +194,7 @@ class EpistolaAdminServiceTest {
             ProcessDefinition processDef = mockProcessDefinition("my-process", "My Process");
             mockProcessDefinitionQuery(List.of(processDef));
 
-            PluginProcessLink link = mockProcessLink("Activity_1", "generate-document",
+            PluginProcessLink link = mockProcessLink("Activity_1", "epistola-generate-document",
                     createActionProps("cat-1", "tmpl-1"));
             mockPluginInstanceForLink(link);
 
@@ -215,7 +215,7 @@ class EpistolaAdminServiceTest {
             assertThat(entry.processDefinitionKey()).isEqualTo("my-process");
             assertThat(entry.processDefinitionName()).isEqualTo("My Process");
             assertThat(entry.activityName()).isEqualTo("Generate Letter");
-            assertThat(entry.actionKey()).isEqualTo("generate-document");
+            assertThat(entry.actionKey()).isEqualTo("epistola-generate-document");
             assertThat(entry.problems()).isEmpty();
         }
 
@@ -224,7 +224,7 @@ class EpistolaAdminServiceTest {
             ProcessDefinition processDef = mockProcessDefinition("my-process", "My Process");
             mockProcessDefinitionQuery(List.of(processDef));
 
-            PluginProcessLink link = mockProcessLink("Activity_1", "generate-document",
+            PluginProcessLink link = mockProcessLink("Activity_1", "epistola-generate-document",
                     createActionProps("cat-1", null));
             mockPluginInstanceForLink(link);
 
@@ -243,7 +243,7 @@ class EpistolaAdminServiceTest {
             ProcessDefinition processDef = mockProcessDefinition("my-process", "My Process");
             mockProcessDefinitionQuery(List.of(processDef));
 
-            PluginProcessLink link = mockProcessLink("Activity_1", "generate-document",
+            PluginProcessLink link = mockProcessLink("Activity_1", "epistola-generate-document",
                     createActionProps(null, "tmpl-1"));
             mockPluginInstanceForLink(link);
 
@@ -262,7 +262,7 @@ class EpistolaAdminServiceTest {
             ProcessDefinition processDef = mockProcessDefinition("my-process", "My Process");
             mockProcessDefinitionQuery(List.of(processDef));
 
-            PluginProcessLink link = mockProcessLink("Activity_1", "generate-document",
+            PluginProcessLink link = mockProcessLink("Activity_1", "epistola-generate-document",
                     createActionProps("cat-1", "tmpl-1"));
 
             // Plugin instance creation fails
@@ -303,7 +303,7 @@ class EpistolaAdminServiceTest {
             // check-job-status has no templateId/catalogId — should not flag problems
             ObjectNode props = objectMapper.createObjectNode();
             props.put("requestIdVariable", "epistolaRequestId");
-            PluginProcessLink link = mockProcessLink("Activity_2", "check-job-status", props);
+            PluginProcessLink link = mockProcessLink("Activity_2", "epistola-check-job-status", props);
             mockPluginInstanceForLink(link);
 
             when(processLinkService.getProcessLinks(processDef.getId()))
@@ -313,7 +313,7 @@ class EpistolaAdminServiceTest {
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
 
             assertThat(entries).hasSize(1);
-            assertThat(entries.get(0).actionKey()).isEqualTo("check-job-status");
+            assertThat(entries.get(0).actionKey()).isEqualTo("epistola-check-job-status");
             assertThat(entries.get(0).problems()).isEmpty();
         }
 
@@ -322,7 +322,7 @@ class EpistolaAdminServiceTest {
             ProcessDefinition processDef = mockProcessDefinition("my-process", null);
             mockProcessDefinitionQuery(List.of(processDef));
 
-            PluginProcessLink link = mockProcessLink("Activity_1", "generate-document",
+            PluginProcessLink link = mockProcessLink("Activity_1", "epistola-generate-document",
                     createActionProps("cat-1", "tmpl-1"));
             mockPluginInstanceForLink(link);
 
@@ -341,7 +341,7 @@ class EpistolaAdminServiceTest {
             ProcessDefinition processDef = mockProcessDefinition("my-process", "My Process");
             mockProcessDefinitionQuery(List.of(processDef));
 
-            PluginProcessLink link = mockProcessLink("Activity_1", "generate-document",
+            PluginProcessLink link = mockProcessLink("Activity_1", "epistola-generate-document",
                     createActionProps("cat-1", "tmpl-1"));
             mockPluginInstanceForLink(link);
 
@@ -368,7 +368,7 @@ class EpistolaAdminServiceTest {
             actionProps.put("outputFormat", "PDF");
             actionProps.put("filename", "test.pdf");
 
-            PluginProcessLink link = mockProcessLink("Activity_1", "generate-document", actionProps);
+            PluginProcessLink link = mockProcessLink("Activity_1", "epistola-generate-document", actionProps);
             lenient().when(link.getId()).thenReturn(linkId);
 
             when(processLinkService.getProcessLink(linkId, PluginProcessLink.class)).thenReturn(link);
@@ -379,7 +379,7 @@ class EpistolaAdminServiceTest {
             assertThat(export.activityType()).isEqualTo("bpmn:ServiceTask:start");
             assertThat(export.processLinkType()).isEqualTo("plugin");
             assertThat(export.pluginConfigurationId()).isEqualTo("config-id-mock");
-            assertThat(export.pluginActionDefinitionKey()).isEqualTo("generate-document");
+            assertThat(export.pluginActionDefinitionKey()).isEqualTo("epistola-generate-document");
             assertThat(export.actionProperties().get("catalogId").asText()).isEqualTo("cat-1");
             assertThat(export.actionProperties().get("templateId").asText()).isEqualTo("tmpl-1");
             assertThat(export.actionProperties().get("outputFormat").asText()).isEqualTo("PDF");

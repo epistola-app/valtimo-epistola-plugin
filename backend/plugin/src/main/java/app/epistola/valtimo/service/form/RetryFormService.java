@@ -207,7 +207,7 @@ public class RetryFormService {
         return processLinkService.getProcessLinks(processDefinitionId).stream()
                 .filter(PluginProcessLink.class::isInstance)
                 .map(PluginProcessLink.class::cast)
-                .filter(link -> "generate-document".equals(link.getPluginActionDefinitionKey()))
+                .filter(link -> "epistola-generate-document".equals(link.getPluginActionDefinitionKey()))
                 .toList();
     }
 

@@ -48,7 +48,7 @@ import java.util.UUID;
 public class EpistolaAdminService {
 
     private static final Set<String> EPISTOLA_ACTION_KEYS = Set.of(
-            "generate-document", "check-job-status", "download-document"
+            "epistola-generate-document", "epistola-check-job-status", "epistola-download-document"
     );
 
     private final PluginService pluginService;
@@ -439,7 +439,7 @@ public class EpistolaAdminService {
         }
 
         var props = link.getActionProperties();
-        if ("generate-document".equals(link.getPluginActionDefinitionKey())) {
+        if ("epistola-generate-document".equals(link.getPluginActionDefinitionKey())) {
             if (!props.has("templateId") || props.get("templateId").asText().isBlank()) {
                 problems.add("No template configured");
             }

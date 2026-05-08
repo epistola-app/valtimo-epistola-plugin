@@ -218,7 +218,7 @@ public class EpistolaPlugin {
      * @param resultProcessVariable The name of the process variable to store the request ID in
      */
     @PluginAction(
-            key = "generate-document",
+            key = "epistola-generate-document",
             title = "Generate Document",
             description = "Submit a document generation request to Epistola. The request ID will be stored in the specified process variable.",
             activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
@@ -399,7 +399,7 @@ public class EpistolaPlugin {
      * @param errorMessageVariable    The name of the process variable to store any error message in (when failed)
      */
     @PluginAction(
-            key = "check-job-status",
+            key = "epistola-check-job-status",
             title = "Check Job Status",
             description = "Check the status of a document generation job. Stores status, document ID (if completed), and error message (if failed) in process variables.",
             activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
@@ -467,7 +467,7 @@ public class EpistolaPlugin {
      * @param contentVariable     The name of the process variable to store the document content (Base64 encoded)
      */
     @PluginAction(
-            key = "download-document",
+            key = "epistola-download-document",
             title = "Download Document",
             description = "Download a generated document from Epistola. Stores the document content as Base64 in the specified process variable.",
             activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}

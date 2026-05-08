@@ -76,7 +76,7 @@ import java.util.concurrent.atomic.AtomicReference;
 @RequiredArgsConstructor
 public class EpistolaProcessDefinitionValidator {
 
-    private static final String GENERATE_DOCUMENT_ACTION_KEY = "generate-document";
+    private static final String GENERATE_DOCUMENT_ACTION_KEY = "epistola-generate-document";
 
     private final RepositoryService repositoryService;
     private final ProcessLinkService processLinkService;

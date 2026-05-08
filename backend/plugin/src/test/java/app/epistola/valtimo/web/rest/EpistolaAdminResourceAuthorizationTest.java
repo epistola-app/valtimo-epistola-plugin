@@ -61,7 +61,7 @@ class EpistolaAdminResourceAuthorizationTest {
     void exportProcessLink_requiresEpistolaAdministrationManage() {
         var processLinkId = UUID.randomUUID();
         var export = new app.epistola.valtimo.web.rest.dto.ProcessLinkExport(
-                "activity-1", "userTask", "PLUGIN", "config-1", "generate-document", null);
+                "activity-1", "userTask", "PLUGIN", "config-1", "epistola-generate-document", null);
         when(adminService.exportProcessLink(processLinkId)).thenReturn(export);
 
         var response = resource.exportProcessLink(processLinkId);

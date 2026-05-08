@@ -217,7 +217,7 @@ class EpistolaProcessDefinitionValidatorTest {
         PluginProcessLink link = mock(PluginProcessLink.class);
         lenient().when(link.getId()).thenReturn(UUID.randomUUID());
         lenient().when(link.getActivityId()).thenReturn(activityId);
-        lenient().when(link.getPluginActionDefinitionKey()).thenReturn("generate-document");
+        lenient().when(link.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
         when(processLinkService.getProcessLinks(DEFINITION_ID)).thenReturn(List.<ProcessLink>of(link));
     }
 
