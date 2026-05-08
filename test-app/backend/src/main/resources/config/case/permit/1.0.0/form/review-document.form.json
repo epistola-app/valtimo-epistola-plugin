@@ -21,7 +21,7 @@
       "input": false,
       "label": "Bevestigingsbrief",
       "display": "both",
-      "documentIdVariable": "epistolaResult",
+      "documentVariable": "epistolaResult",
       "tenantIdVariable": "epistolaTenantId",
       "filename": "bevestigingsbrief.pdf"
     },

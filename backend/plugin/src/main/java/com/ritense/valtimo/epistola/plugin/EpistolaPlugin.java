@@ -460,9 +460,11 @@ public class EpistolaPlugin {
      * This action downloads a completed document from Epistola. The document must have
      * been successfully generated (status = COMPLETED) before it can be downloaded.
      *
-     * @param execution              The process execution context
-     * @param documentIdVariable     The name of the process variable containing the document ID
-     * @param contentVariable        The name of the process variable to store the document content (Base64 encoded)
+     * @param execution           The process execution context
+     * @param documentVariable    Name of the process variable that holds the result. May be a
+     *                            plain String document id (legacy) or a {@code Map<String,Object>}
+     *                            rich result with a {@code documentId} key (canonical).
+     * @param contentVariable     The name of the process variable to store the document content (Base64 encoded)
      */
     @PluginAction(
             key = "download-document",
@@ -472,12 +474,12 @@ public class EpistolaPlugin {
     )
     public void downloadDocument(
             DelegateExecution execution,
-            @PluginActionProperty String documentIdVariable,
+            @PluginActionProperty String documentVariable,
             @PluginActionProperty String contentVariable
     ) {
-        // Type-tolerant: documentIdVariable may hold a plain String (legacy scalar) or a
+        // Type-tolerant: documentVariable may hold a plain String (legacy scalar) or a
         // Map<String,Object> with a documentId key (canonical rich-result-object). Both work.
-        Object rawValue = execution.getVariable(documentIdVariable);
+        Object rawValue = execution.getVariable(documentVariable);
         String documentId;
         if (rawValue instanceof Map<?, ?> map) {
             Object docId = map.get(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID);
@@ -487,14 +489,14 @@ public class EpistolaPlugin {
         } else if (rawValue == null) {
             documentId = null;
         } else {
-            throw new IllegalArgumentException("Variable '" + documentIdVariable
+            throw new IllegalArgumentException("Variable '" + documentVariable
                     + "' must be a String or a Map with a '" + EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID
                     + "' key, got " + rawValue.getClass().getName());
         }
         log.info("Downloading document: {}", documentId);
 
         if (documentId == null || documentId.isBlank()) {
-            throw new IllegalArgumentException("Document ID variable '" + documentIdVariable + "' is null or empty");
+            throw new IllegalArgumentException("Document variable '" + documentVariable + "' is null or empty");
         }
 
         byte[] content = epistolaService.downloadDocument(baseUrl, apiKey, tenantId, documentId);

@@ -139,6 +139,9 @@ const epistolaPluginSpecification: PluginSpecification = {
         'Naam van de procesvariabele waarin de foutmelding wordt opgeslagen (bij fout)',
       // Download document action
       'download-document': 'Download Document',
+      documentVariable: 'Document Variabele',
+      documentVariableTooltip:
+        'Naam van de procesvariabele met het Epistola resultaat. Mag een String document ID zijn (legacy) of een rich-result object met een documentId-veld; de actie haalt het document ID eruit.',
       contentVariable: 'Inhoud Variabele',
       contentVariableTooltip:
         'Naam van de procesvariabele waarin de documentinhoud (Base64) wordt opgeslagen',
@@ -289,6 +292,9 @@ const epistolaPluginSpecification: PluginSpecification = {
         'Name of the process variable to store the error message in (when failed)',
       // Download document action
       'download-document': 'Download Document',
+      documentVariable: 'Document Variable',
+      documentVariableTooltip:
+        'Name of the process variable holding the Epistola result. May be a String document id (legacy) or a rich result object with a `documentId` key — the action extracts the document id from it.',
       contentVariable: 'Content Variable',
       contentVariableTooltip:
         'Name of the process variable to store the document content (Base64) in',

@@ -111,9 +111,10 @@ public class EpistolaGenerationResource {
      *
      * @param taskId               The Operaton user task ID providing the authorization context
      * @param caseDocumentId       The Valtimo case document UUID; must equal {@code task.processInstance.businessKey}
-     * @param documentIdVariable   Process-variable name holding the Epistola PDF id (default {@code epistolaResult}).
-     *                             Resolves either a plain String (legacy scalar) OR a {@code Map<String,Object>}
-     *                             with a {@code documentId} key (the canonical rich-result-object pattern).
+     * @param documentVariable     Process-variable name holding the Epistola result (default {@code epistolaResult}).
+     *                             Resolves either a plain String document id (legacy scalar) OR a
+     *                             {@code Map<String,Object>} with a {@code documentId} key (the canonical
+     *                             rich-result-object pattern).
      * @param tenantIdVariable     Process-variable name holding the Epistola tenant id (default {@code epistolaTenantId})
      * @param filename             Filename for the download (defaults to {@code document.pdf})
      * @param disposition          {@code attachment} (default) or {@code inline}
@@ -123,14 +124,14 @@ public class EpistolaGenerationResource {
     public ResponseEntity<byte[]> downloadDocument(
             @RequestParam("taskId") String taskId,
             @RequestParam("caseDocumentId") String caseDocumentId,
-            @RequestParam(value = "documentIdVariable", defaultValue = "epistolaResult") String documentIdVariable,
+            @RequestParam(value = "documentVariable", defaultValue = "epistolaResult") String documentVariable,
             @RequestParam(value = "tenantIdVariable", defaultValue = EpistolaProcessVariables.TENANT_ID) String tenantIdVariable,
             @RequestParam(value = "filename", defaultValue = "document.pdf") String filename,
             @RequestParam(value = "disposition", defaultValue = "attachment") String disposition
     ) {
         if (taskId == null || taskId.isBlank()
                 || caseDocumentId == null || caseDocumentId.isBlank()
-                || documentIdVariable == null || documentIdVariable.isBlank()
+                || documentVariable == null || documentVariable.isBlank()
                 || tenantIdVariable == null || tenantIdVariable.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
@@ -145,14 +146,14 @@ public class EpistolaGenerationResource {
             return ResponseEntity.notFound().build();
         }
 
-        Object documentIdValue = runtimeService.getVariable(task.getProcessInstanceId(), documentIdVariable);
+        Object documentValue = runtimeService.getVariable(task.getProcessInstanceId(), documentVariable);
         Object tenantIdValue = runtimeService.getVariable(task.getProcessInstanceId(), tenantIdVariable);
-        String documentId = resolveDocumentId(documentIdValue);
+        String documentId = resolveDocumentId(documentValue);
         String tenantId = tenantIdValue == null ? null : tenantIdValue.toString();
 
         if (documentId == null || documentId.isBlank() || tenantId == null || tenantId.isBlank()) {
-            log.debug("Download requested for task {} but documentIdVariable={} / tenantIdVariable={} not yet set",
-                    taskId, documentIdVariable, tenantIdVariable);
+            log.debug("Download requested for task {} but documentVariable={} / tenantIdVariable={} not yet set",
+                    taskId, documentVariable, tenantIdVariable);
             return ResponseEntity.status(404)
                     .body(null);
         }

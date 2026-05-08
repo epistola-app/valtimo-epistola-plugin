@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angu
 import { CommonModule } from '@angular/common';
 import { FunctionConfigurationComponent, PluginTranslatePipeModule } from '@valtimo/plugin';
 import { FormModule, FormOutput, InputModule } from '@valtimo/components';
-import { BehaviorSubject, combineLatest, Observable, Subscription, take } from 'rxjs';
+import { BehaviorSubject, combineLatest, Observable, of, Subscription, take } from 'rxjs';
 import { delay, startWith } from 'rxjs/operators';
 import { CheckJobStatusConfig } from '../../models';
 
@@ -29,10 +29,19 @@ export class CheckJobStatusConfigurationComponent
   private readonly formValue$ = new BehaviorSubject<CheckJobStatusConfig | null>(null);
   private readonly valid$ = new BehaviorSubject<boolean>(false);
 
+  /** Resolved synchronously before the v-form renders — see download-document-configuration for the why. */
+  resolvedPrefill: Partial<CheckJobStatusConfig> = {};
+  readonly prefillResolved$ = new BehaviorSubject<boolean>(false);
+
   safeDisabled$!: Observable<boolean>;
 
   ngOnInit(): void {
     this.safeDisabled$ = this.disabled$.pipe(startWith(true), delay(0));
+    const prefill$ = this.prefillConfiguration$ ?? of({} as CheckJobStatusConfig);
+    prefill$.pipe(take(1)).subscribe((prefill) => {
+      this.resolvedPrefill = prefill ?? {};
+      this.prefillResolved$.next(true);
+    });
     this.openSaveSubscription();
   }
 

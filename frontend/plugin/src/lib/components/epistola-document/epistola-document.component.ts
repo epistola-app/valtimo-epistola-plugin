@@ -52,8 +52,8 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
         <div class="design-section">
           <div class="design-label">Display</div>
           <div class="design-value">{{ display }}</div>
-          <div class="design-label">Document ID variable</div>
-          <div class="design-value">{{ documentIdVariable }}</div>
+          <div class="design-label">Document variable</div>
+          <div class="design-value">{{ documentVariable }}</div>
           <div class="design-label">Tenant ID variable</div>
           <div class="design-value">{{ tenantIdVariable }}</div>
         </div>
@@ -217,14 +217,14 @@ export class EpistolaDocumentComponent
   @Input() display: EpistolaDocumentDisplay = 'both';
 
   /**
-   * Process-variable name holding the Epistola PDF id. Default: `epistolaResult`.
+   * Process-variable name holding the Epistola result. Default: `epistolaResult`.
    *
    * Type-tolerant on the backend: if the named variable holds a rich result object
    * (`Map<String, Object>` written by `generate-document` and updated by the result
    * collector), the backend digs out the `documentId` key. If it holds a plain
-   * String (legacy / custom flow), the backend uses it as-is.
+   * String (custom flow that wrote a bare id), the backend uses it as-is.
    */
-  @Input() documentIdVariable = 'epistolaResult';
+  @Input() documentVariable = 'epistolaResult';
 
   /** Process-variable name holding the Epistola tenant id. Default: `epistolaTenantId`. */
   @Input() tenantIdVariable = 'epistolaTenantId';
@@ -338,7 +338,7 @@ export class EpistolaDocumentComponent
     return {
       taskId,
       caseDocumentId,
-      documentIdVariable: this.documentIdVariable,
+      documentVariable: this.documentVariable,
       tenantIdVariable: this.tenantIdVariable,
       filename: this.filename,
       disposition,

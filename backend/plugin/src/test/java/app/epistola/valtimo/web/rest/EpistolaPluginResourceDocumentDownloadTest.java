@@ -48,7 +48,7 @@ class EpistolaPluginResourceDocumentDownloadTest {
     private static final String TASK_ID = "task-123";
     private static final String PROCESS_INSTANCE_ID = "process-instance-1";
     private static final String CASE_DOCUMENT_ID = "case-doc-1";
-    private static final String DOC_ID_VAR = "epistolaDocumentId";
+    private static final String DOC_VAR = "epistolaResult";
     private static final String TENANT_ID_VAR = "epistolaTenantId";
 
     private PluginService pluginService;
@@ -87,7 +87,7 @@ class EpistolaPluginResourceDocumentDownloadTest {
 
     @Test
     void downloadDocument_streamsPdfWhenVariablesResolveAndTaskIsBound() {
-        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_ID_VAR)).thenReturn("doc-123");
+        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_VAR)).thenReturn("doc-123");
         when(runtimeService.getVariable(PROCESS_INSTANCE_ID, TENANT_ID_VAR)).thenReturn("tenant-a");
         EpistolaPlugin plugin = mockPlugin("https://api.epistola.app", "api-key", "tenant-a");
         registerPlugin(plugin);
@@ -96,7 +96,7 @@ class EpistolaPluginResourceDocumentDownloadTest {
                 .thenReturn(pdfContent);
 
         ResponseEntity<byte[]> response = resource.downloadDocument(
-                TASK_ID, CASE_DOCUMENT_ID, DOC_ID_VAR, TENANT_ID_VAR, "bevestigingsbrief.pdf", "attachment");
+                TASK_ID, CASE_DOCUMENT_ID, DOC_VAR, TENANT_ID_VAR, "bevestigingsbrief.pdf", "attachment");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(pdfContent);
@@ -107,13 +107,13 @@ class EpistolaPluginResourceDocumentDownloadTest {
 
     @Test
     void downloadDocument_setsInlineDispositionWhenRequested() {
-        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_ID_VAR)).thenReturn("doc-123");
+        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_VAR)).thenReturn("doc-123");
         when(runtimeService.getVariable(PROCESS_INSTANCE_ID, TENANT_ID_VAR)).thenReturn("tenant-a");
         registerPlugin(mockPlugin("https://api.epistola.app", "api-key", "tenant-a"));
         when(epistolaService.downloadDocument(any(), any(), any(), any())).thenReturn(new byte[]{0x25});
 
         ResponseEntity<byte[]> response = resource.downloadDocument(
-                TASK_ID, CASE_DOCUMENT_ID, DOC_ID_VAR, TENANT_ID_VAR, "preview.pdf", "inline");
+                TASK_ID, CASE_DOCUMENT_ID, DOC_VAR, TENANT_ID_VAR, "preview.pdf", "inline");
 
         assertThat(response.getHeaders().getContentDisposition())
                 .isEqualTo(ContentDisposition.inline().filename("preview.pdf").build());
@@ -161,35 +161,35 @@ class EpistolaPluginResourceDocumentDownloadTest {
 
     @Test
     void downloadDocument_returns404WhenDocumentIdVariableIsNull() {
-        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_ID_VAR)).thenReturn(null);
+        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_VAR)).thenReturn(null);
         when(runtimeService.getVariable(PROCESS_INSTANCE_ID, TENANT_ID_VAR)).thenReturn("tenant-a");
 
         ResponseEntity<byte[]> response = resource.downloadDocument(
-                TASK_ID, CASE_DOCUMENT_ID, DOC_ID_VAR, TENANT_ID_VAR, "out.pdf", "attachment");
+                TASK_ID, CASE_DOCUMENT_ID, DOC_VAR, TENANT_ID_VAR, "out.pdf", "attachment");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void downloadDocument_returns404WhenTenantIdVariableIsNull() {
-        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_ID_VAR)).thenReturn("doc-123");
+        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_VAR)).thenReturn("doc-123");
         when(runtimeService.getVariable(PROCESS_INSTANCE_ID, TENANT_ID_VAR)).thenReturn(null);
 
         ResponseEntity<byte[]> response = resource.downloadDocument(
-                TASK_ID, CASE_DOCUMENT_ID, DOC_ID_VAR, TENANT_ID_VAR, "out.pdf", "attachment");
+                TASK_ID, CASE_DOCUMENT_ID, DOC_VAR, TENANT_ID_VAR, "out.pdf", "attachment");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void downloadDocument_returns404WhenNoPluginConfigForResolvedTenant() {
-        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_ID_VAR)).thenReturn("doc-123");
+        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_VAR)).thenReturn("doc-123");
         when(runtimeService.getVariable(PROCESS_INSTANCE_ID, TENANT_ID_VAR)).thenReturn("ghost-tenant");
         when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
                 .thenReturn(Collections.emptyList());
 
         ResponseEntity<byte[]> response = resource.downloadDocument(
-                TASK_ID, CASE_DOCUMENT_ID, DOC_ID_VAR, TENANT_ID_VAR, "out.pdf", "attachment");
+                TASK_ID, CASE_DOCUMENT_ID, DOC_VAR, TENANT_ID_VAR, "out.pdf", "attachment");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
@@ -200,7 +200,7 @@ class EpistolaPluginResourceDocumentDownloadTest {
         // it has no such document (stale id from a wiped/deleted upstream record).
         // The controller must translate the upstream 404 into a clean 404 — never
         // bubble up the HttpClientErrorException as a 500.
-        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_ID_VAR)).thenReturn("stale-doc");
+        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_VAR)).thenReturn("stale-doc");
         when(runtimeService.getVariable(PROCESS_INSTANCE_ID, TENANT_ID_VAR)).thenReturn("tenant-a");
         registerPlugin(mockPlugin("https://api.epistola.app", "api-key", "tenant-a"));
         when(epistolaService.downloadDocument(any(), any(), any(), eq("stale-doc")))
@@ -208,7 +208,7 @@ class EpistolaPluginResourceDocumentDownloadTest {
                         HttpStatus.NOT_FOUND, "Not Found", HttpHeaders.EMPTY, new byte[0], null));
 
         ResponseEntity<byte[]> response = resource.downloadDocument(
-                TASK_ID, CASE_DOCUMENT_ID, DOC_ID_VAR, TENANT_ID_VAR, "out.pdf", "attachment");
+                TASK_ID, CASE_DOCUMENT_ID, DOC_VAR, TENANT_ID_VAR, "out.pdf", "attachment");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
@@ -216,19 +216,19 @@ class EpistolaPluginResourceDocumentDownloadTest {
     @Test
     void downloadDocument_returns403WhenCaseDocumentIdMismatchesBusinessKey() {
         assertThatThrownBy(() -> resource.downloadDocument(
-                TASK_ID, "other-case-doc", DOC_ID_VAR, TENANT_ID_VAR, "out.pdf", "attachment"))
+                TASK_ID, "other-case-doc", DOC_VAR, TENANT_ID_VAR, "out.pdf", "attachment"))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
     void downloadDocument_returns400WhenAnyRequiredParamMissing() {
-        assertThat(resource.downloadDocument("", CASE_DOCUMENT_ID, DOC_ID_VAR, TENANT_ID_VAR, "x", "attachment").getStatusCode())
+        assertThat(resource.downloadDocument("", CASE_DOCUMENT_ID, DOC_VAR, TENANT_ID_VAR, "x", "attachment").getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(resource.downloadDocument(TASK_ID, "", DOC_ID_VAR, TENANT_ID_VAR, "x", "attachment").getStatusCode())
+        assertThat(resource.downloadDocument(TASK_ID, "", DOC_VAR, TENANT_ID_VAR, "x", "attachment").getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(resource.downloadDocument(TASK_ID, CASE_DOCUMENT_ID, "", TENANT_ID_VAR, "x", "attachment").getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(resource.downloadDocument(TASK_ID, CASE_DOCUMENT_ID, DOC_ID_VAR, "", "x", "attachment").getStatusCode())
+        assertThat(resource.downloadDocument(TASK_ID, CASE_DOCUMENT_ID, DOC_VAR, "", "x", "attachment").getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
@@ -237,7 +237,7 @@ class EpistolaPluginResourceDocumentDownloadTest {
         when(operatonTaskService.findTaskById("missing")).thenThrow(new TaskNotFoundException("missing"));
 
         ResponseEntity<byte[]> response = resource.downloadDocument(
-                "missing", CASE_DOCUMENT_ID, DOC_ID_VAR, TENANT_ID_VAR, "out.pdf", "attachment");
+                "missing", CASE_DOCUMENT_ID, DOC_VAR, TENANT_ID_VAR, "out.pdf", "attachment");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
@@ -248,13 +248,13 @@ class EpistolaPluginResourceDocumentDownloadTest {
                 .when(authorizationService).requirePermission(any());
 
         assertThatThrownBy(() -> resource.downloadDocument(
-                TASK_ID, CASE_DOCUMENT_ID, DOC_ID_VAR, TENANT_ID_VAR, "out.pdf", "attachment"))
+                TASK_ID, CASE_DOCUMENT_ID, DOC_VAR, TENANT_ID_VAR, "out.pdf", "attachment"))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
     @Test
     void downloadDocument_selectsCorrectPluginAmongMultiple() {
-        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_ID_VAR)).thenReturn("doc-456");
+        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_VAR)).thenReturn("doc-456");
         when(runtimeService.getVariable(PROCESS_INSTANCE_ID, TENANT_ID_VAR)).thenReturn("tenant-b");
 
         EpistolaPlugin pluginA = mockPlugin("https://a.epistola.app", "key-a", "tenant-a");
@@ -270,7 +270,7 @@ class EpistolaPluginResourceDocumentDownloadTest {
         when(epistolaService.downloadDocument("https://b.epistola.app", "key-b", "tenant-b", "doc-456")).thenReturn(pdf);
 
         ResponseEntity<byte[]> response = resource.downloadDocument(
-                TASK_ID, CASE_DOCUMENT_ID, DOC_ID_VAR, TENANT_ID_VAR, "out.pdf", "attachment");
+                TASK_ID, CASE_DOCUMENT_ID, DOC_VAR, TENANT_ID_VAR, "out.pdf", "attachment");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(pdf);

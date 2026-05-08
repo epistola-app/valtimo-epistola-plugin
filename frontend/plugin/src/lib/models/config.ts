@@ -60,7 +60,13 @@ export interface CheckJobStatusConfig {
  * Specifies which process variables to read from and write to.
  */
 export interface DownloadDocumentConfig {
-  documentIdVariable: string;
+  /**
+   * Name of the process variable that holds the result. May be a plain
+   * String document id (legacy) or a `Map<String, Object>` rich result with
+   * a `documentId` key (canonical, written by `generate-document` and
+   * updated by the result collector). The action extracts the document id.
+   */
+  documentVariable: string;
   contentVariable: string;
 }
 
