@@ -2,7 +2,7 @@
   "display": "form",
   "components": [
     {
-      "key": "pv:epistolaErrorMessage",
+      "key": "pv:epistolaResult.errorMessage",
       "type": "textfield",
       "input": true,
       "label": "Error",

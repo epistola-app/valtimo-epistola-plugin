@@ -30,10 +30,12 @@ or handles the failure.
 
 ```
 [Service Task: generate-document]
-  -> sets epistolaJobPath = epistola:job:{tenantId}/{requestId}
+  -> sets epistolaJobPath and the configured resultProcessVariable
+     (default name epistolaResult, value {requestId, status: "PENDING", ...})
 -> [Message Catch Event: "EpistolaDocumentGenerated"]
-  -> receives epistolaStatus, epistolaDocumentId, epistolaErrorMessage
--> [Exclusive Gateway: epistolaStatus == "COMPLETED"?]
+  -> the result-collector has updated the rich object on the process instance
+     before the message wakes the catch event
+-> [Exclusive Gateway: epistolaResult.status == "COMPLETED"?]
   -> yes: [Service Task: download-document]
   -> no:  [failure handling]
 ```
@@ -44,13 +46,11 @@ reports a terminal result.
 
 ## Process Variables
 
-| Variable                                          | Set By                                 | Description                                                                                                                                                                                                                                                                                      |
-| ------------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `epistolaJobPath`                                 | `generate-document` action             | Composite job identifier: `epistola:job:{tenantId}/{requestId}`                                                                                                                                                                                                                                  |
-| `epistolaStatus`                                  | Correlation service                    | Catch-event pattern: job status (`COMPLETED` / `FAILED` / `CANCELLED`) — set on the catch-event execution                                                                                                                                                                                        |
-| `epistolaDocumentId`                              | Correlation service                    | Catch-event pattern: document ID when completed                                                                                                                                                                                                                                                  |
-| `epistolaErrorMessage`                            | Correlation service                    | Catch-event pattern: error message when failed                                                                                                                                                                                                                                                   |
-| `<resultProcessVariable>` (e.g. `epistolaResult`) | `generate-document` action + collector | **Variable pattern: rich result object.** Initial value at submit: `{requestId, status: "PENDING", documentId: null, errorMessage: null}`. The collector overwrites with terminal data when the result lands. Read in BPMN with `${epistolaResult.status}`, `${epistolaResult.documentId}`, etc. |
+| Variable                                          | Set By                                 | Description                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `epistolaJobPath`                                 | `generate-document` action             | Composite job identifier: `epistola:job:{tenantId}/{requestId}` — internal correlation key.                                                                                                                                                                                                                                                                                         |
+| `epistolaTenantId`                                | `generate-document` action             | Tenant id of the Epistola configuration that handled this request (handy for forms that build tenant-scoped URLs without parsing the composite jobPath).                                                                                                                                                                                                                            |
+| `<resultProcessVariable>` (e.g. `epistolaResult`) | `generate-document` action + collector | **Single source of truth for the result.** Rich `Map` shape: `{requestId, status, documentId, errorMessage}`. Initial value at submit time is `status: "PENDING"` plus the requestId; the collector updates the same variable in-place with terminal data (`COMPLETED` / `FAILED` / `CANCELLED`). Read in BPMN with `${epistolaResult.status}` etc. (JUEL dot-notation on a `Map`). |
 
 ## Two patterns: catch event or variable
 
@@ -62,16 +62,17 @@ coexist in the same process:
 Use when the process needs to wait for the result before continuing.
 
 ```
-[Service Task: generate-document]
+[Service Task: generate-document]   (resultProcessVariable: "epistolaResult")
 -> [Message Catch Event: "EpistolaDocumentGenerated"]
--> [Exclusive Gateway: epistolaStatus == "COMPLETED"?]
+-> [Exclusive Gateway: epistolaResult.status == "COMPLETED"?]
    -> yes: [Service Task: download-document]
    -> no:  [User Task: Corrigeer Documentgegevens]
 ```
 
-The catch event blocks until the collector correlates the message; downstream
-activities see `epistolaStatus`, `epistolaDocumentId`, `epistolaErrorMessage`
-on the catch-event execution.
+The catch event blocks until the collector correlates the message; the
+gateway downstream reads `${epistolaResult.status}`, `${epistolaResult.documentId}`,
+or `${epistolaResult.errorMessage}` from the rich object that the collector
+has already updated on the process-instance scope.
 
 ### Variable pattern (fire and forget; read later)
 

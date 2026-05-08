@@ -114,10 +114,10 @@ execution.setVariable("failCount", 0)
       <bpmn:sequenceFlow id="Flow_gen_error_to_fail" sourceRef="boundary-generate-error" targetRef="increment-fail" />
       <bpmn:sequenceFlow id="Flow_sub_to_check" sourceRef="wait-for-letter" targetRef="check-letter-status" />
       <bpmn:sequenceFlow id="Flow_letter_ok" name="Ja" sourceRef="check-letter-status" targetRef="download-letter">
-        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaStatus == 'COMPLETED'}</bpmn:conditionExpression>
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status == 'COMPLETED'}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
       <bpmn:sequenceFlow id="Flow_letter_fail" name="Nee" sourceRef="check-letter-status" targetRef="increment-fail">
-        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaStatus != 'COMPLETED'}</bpmn:conditionExpression>
+        <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status != 'COMPLETED'}</bpmn:conditionExpression>
       </bpmn:sequenceFlow>
       <bpmn:sequenceFlow id="Flow_to_inc_success" sourceRef="download-letter" targetRef="increment-success" />
       <bpmn:sequenceFlow id="Flow_to_sub_end_ok" sourceRef="increment-success" targetRef="sub-end-ok" />

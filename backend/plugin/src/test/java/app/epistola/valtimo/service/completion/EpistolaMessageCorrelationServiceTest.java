@@ -98,10 +98,14 @@ class EpistolaMessageCorrelationServiceTest {
         assertThat(count).isEqualTo(1);
         verify(correlationBuilder).processInstanceVariableEquals(
                 "epistolaJobPath", "epistola:job:tenant-a/req-123");
-        verify(correlationBuilder).setVariable("epistolaStatus", "COMPLETED");
-        verify(correlationBuilder).setVariable("epistolaDocumentId", "doc-456");
-        verify(correlationBuilder).setVariable("epistolaErrorMessage", null);
         verify(correlationBuilder).correlateAllWithResult();
+        // Note: result data (status / documentId / errorMessage) is no longer set as
+        // per-execution scalars on the correlation builder. updateResultVariable
+        // populates the rich object on the process-instance scope; that's the single
+        // source of truth.
+        verify(correlationBuilder, never()).setVariable(eq("epistolaStatus"), any());
+        verify(correlationBuilder, never()).setVariable(eq("epistolaDocumentId"), any());
+        verify(correlationBuilder, never()).setVariable(eq("epistolaErrorMessage"), any());
     }
 
     @Test
@@ -226,15 +230,20 @@ class EpistolaMessageCorrelationServiceTest {
     }
 
     @Test
-    void correlateCompletion_shouldPassErrorMessageForFailedJobs() {
+    void correlateCompletion_shouldUpdateRichObjectForFailedJobs() {
         when(correlationBuilder.correlateAllWithResult())
-                .thenReturn(List.of(mock(MessageCorrelationResult.class)));
+                .thenReturn(Collections.emptyList());
+        mockMatchingProcessInstance("pi-fail", "epistolaResult");
 
         service.correlateCompletion("tenant-a", "req-fail", "FAILED", null, "Template rendering error");
 
-        verify(correlationBuilder).setVariable("epistolaStatus", "FAILED");
-        verify(correlationBuilder).setVariable("epistolaDocumentId", null);
-        verify(correlationBuilder).setVariable("epistolaErrorMessage", "Template rendering error");
+        ArgumentCaptor<Object> valueCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(runtimeService).setVariable(eq("pi-fail"), eq("epistolaResult"), valueCaptor.capture());
+        @SuppressWarnings("unchecked")
+        Map<String, Object> map = (Map<String, Object>) valueCaptor.getValue();
+        assertThat(map).containsEntry("status", "FAILED");
+        assertThat(map).containsEntry("documentId", null);
+        assertThat(map).containsEntry("errorMessage", "Template rendering error");
     }
 
     @Nested

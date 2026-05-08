@@ -76,10 +76,10 @@
     <bpmn:sequenceFlow id="Flow_to_wait" sourceRef="generate-confirmation" targetRef="wait-for-generation" />
     <bpmn:sequenceFlow id="Flow_to_check" sourceRef="wait-for-generation" targetRef="check-status" />
     <bpmn:sequenceFlow id="Flow_completed" name="Ja" sourceRef="check-status" targetRef="download-confirmation">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaStatus == 'COMPLETED'}</bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status == 'COMPLETED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_not_completed" name="Nee" sourceRef="check-status" targetRef="retry-edit-data">
-      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaStatus != 'COMPLETED'}</bpmn:conditionExpression>
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status != 'COMPLETED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_retry_to_generate" sourceRef="retry-edit-data" targetRef="generate-confirmation" />
     <bpmn:sequenceFlow id="Flow_to_review" sourceRef="download-confirmation" targetRef="review-document" />

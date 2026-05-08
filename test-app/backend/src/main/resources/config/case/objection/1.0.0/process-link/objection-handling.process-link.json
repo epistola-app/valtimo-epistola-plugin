@@ -15,7 +15,7 @@
       "templateId": "ontvangstbevestiging-bezwaar",
       "outputFormat": "PDF",
       "filename": "ontvangstbevestiging.pdf",
-      "resultProcessVariable": "epistolaRequestId",
+      "resultProcessVariable": "epistolaResult",
       "dataMapping": "{\n  \"objector\": {\n    \"firstName\": $doc.objector.firstName,\n    \"lastName\": $doc.objector.lastName,\n    \"address\": {\n      \"street\": $doc.objector.address.street,\n      \"houseNumber\": $doc.objector.address.houseNumber,\n      \"postalCode\": $doc.objector.address.postalCode,\n      \"city\": $doc.objector.address.city\n    }\n  },\n  \"originalDecision\": {\n    \"reference\": $doc.originalDecision.reference,\n    \"date\": $doc.originalDecision.date,\n    \"subject\": $doc.originalDecision.subject\n  },\n  \"objection\": {\n    \"grounds\": $doc.objection.grounds,\n    \"receivedDate\": $doc.objection.receivedDate\n  }\n}",
       "catalogId": "municipality-demo"
     }
@@ -27,7 +27,7 @@
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
     "pluginActionDefinitionKey": "download-document",
     "actionProperties": {
-      "documentIdVariable": "epistolaDocumentId",
+      "documentIdVariable": "epistolaResult",
       "contentVariable": "ackDocumentContent"
     }
   },
@@ -47,7 +47,7 @@
       "templateId": "besluit-bezwaar",
       "outputFormat": "PDF",
       "filename": "\"besluit-\" & $pv.decision & \".pdf\"",
-      "resultProcessVariable": "epistolaRequestId",
+      "resultProcessVariable": "epistolaResult",
       "dataMapping": "{\n  \"objector\": {\n    \"firstName\": $doc.objector.firstName,\n    \"lastName\": $doc.objector.lastName,\n    \"address\": {\n      \"street\": $doc.objector.address.street,\n      \"houseNumber\": $doc.objector.address.houseNumber,\n      \"postalCode\": $doc.objector.address.postalCode,\n      \"city\": $doc.objector.address.city\n    }\n  },\n  \"originalDecision\": {\n    \"reference\": $doc.originalDecision.reference,\n    \"date\": $doc.originalDecision.date,\n    \"subject\": $doc.originalDecision.subject\n  },\n  \"decisionType\": $pv.decision,\n  \"decision\": $pv.decision,\n  \"motivation\": $pv.motivation\n}",
       "catalogId": "municipality-demo"
     }
@@ -59,7 +59,7 @@
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
     "pluginActionDefinitionKey": "download-document",
     "actionProperties": {
-      "documentIdVariable": "epistolaDocumentId",
+      "documentIdVariable": "epistolaResult",
       "contentVariable": "decisionDocumentContent"
     }
   }

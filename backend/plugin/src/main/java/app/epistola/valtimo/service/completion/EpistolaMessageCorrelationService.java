@@ -82,11 +82,11 @@ public class EpistolaMessageCorrelationService {
         updateResultVariable(jobPath, requestId, status, documentId, errorMessage);
 
         try {
+            // Result data is on the rich-object variable that updateResultVariable just wrote to;
+            // the catch-event subscriber reads it as ${<resultProcessVariable>.status} etc. We
+            // intentionally do not duplicate-set per-execution scalars here — single source of truth.
             List<MessageCorrelationResult> results = runtimeService.createMessageCorrelation(EpistolaProcessVariables.MESSAGE_NAME)
                     .processInstanceVariableEquals(JOB_PATH, jobPath)
-                    .setVariable(STATUS, status)
-                    .setVariable(DOCUMENT_ID, documentId)
-                    .setVariable(ERROR_MESSAGE, errorMessage)
                     .correlateAllWithResult();
 
             int count = results.size();

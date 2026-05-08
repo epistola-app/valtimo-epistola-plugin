@@ -16,15 +16,6 @@ public final class EpistolaProcessVariables {
     /** Prefix for the composite job path variable. */
     public static final String JOB_PATH_PREFIX = "epistola:job:";
 
-    /** Generation status set by the result collector (COMPLETED, FAILED, etc.). */
-    public static final String STATUS = "epistolaStatus";
-
-    /** Document ID set when generation completes successfully. */
-    public static final String DOCUMENT_ID = "epistolaDocumentId";
-
-    /** Error message set when generation fails. */
-    public static final String ERROR_MESSAGE = "epistolaErrorMessage";
-
     /** Tenant ID of the Epistola instance that handled the request. */
     public static final String TENANT_ID = "epistolaTenantId";
 

@@ -136,6 +136,30 @@ class EpistolaPluginResourceDocumentDownloadTest {
     }
 
     @Test
+    void downloadDocument_resolvesDocumentIdFromRichResultObject() {
+        // The configured documentIdVariable points at a rich result object (the canonical
+        // pattern after the resultProcessVariable shape change). The resolver digs out the
+        // "documentId" key.
+        java.util.Map<String, Object> richResult = new java.util.LinkedHashMap<>();
+        richResult.put("requestId", "req-123");
+        richResult.put("status", "COMPLETED");
+        richResult.put("documentId", "doc-from-map");
+        richResult.put("errorMessage", null);
+        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, "epistolaResult")).thenReturn(richResult);
+        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, TENANT_ID_VAR)).thenReturn("tenant-a");
+        registerPlugin(mockPlugin("https://api.epistola.app", "api-key", "tenant-a"));
+        byte[] pdf = new byte[]{0x25, 0x50, 0x44, 0x46};
+        when(epistolaService.downloadDocument("https://api.epistola.app", "api-key", "tenant-a", "doc-from-map"))
+                .thenReturn(pdf);
+
+        ResponseEntity<byte[]> response = resource.downloadDocument(
+                TASK_ID, CASE_DOCUMENT_ID, "epistolaResult", TENANT_ID_VAR, "out.pdf", "attachment");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo(pdf);
+    }
+
+    @Test
     void downloadDocument_returns404WhenDocumentIdVariableIsNull() {
         when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_ID_VAR)).thenReturn(null);
         when(runtimeService.getVariable(PROCESS_INSTANCE_ID, TENANT_ID_VAR)).thenReturn("tenant-a");

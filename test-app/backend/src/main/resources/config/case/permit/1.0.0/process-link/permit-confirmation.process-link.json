@@ -15,7 +15,7 @@
       "templateId": "bevestigingsbrief-vergunning",
       "outputFormat": "PDF",
       "filename": "bevestigingsbrief.pdf",
-      "resultProcessVariable": "epistolaRequestId",
+      "resultProcessVariable": "epistolaResult",
       "dataMapping": "{\n  \"applicant\": {\n    \"firstName\": $doc.applicant.firstName,\n    \"lastName\": $doc.applicant.lastName,\n    \"bsn\": $doc.applicant.bsn,\n    \"address\": {\n      \"street\": $doc.applicant.address.street,\n      \"houseNumber\": $doc.applicant.address.houseNumber,\n      \"postalCode\": $doc.applicant.address.postalCode,\n      \"city\": $doc.applicant.address.city\n    }\n  },\n  \"property\": {\n    \"address\": {\n      \"street\": $doc.property.address.street,\n      \"houseNumber\": $doc.property.address.houseNumber,\n      \"postalCode\": $doc.property.address.postalCode,\n      \"city\": $doc.property.address.city\n    },\n    \"kadastraalNummer\": $doc.property.kadastraalNummer\n  },\n  \"activities\": $doc.activities\n}",
       "catalogId": "municipality-demo"
     }
@@ -27,7 +27,7 @@
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
     "pluginActionDefinitionKey": "download-document",
     "actionProperties": {
-      "documentIdVariable": "epistolaDocumentId",
+      "documentIdVariable": "epistolaResult",
       "contentVariable": "documentContent"
     }
   },

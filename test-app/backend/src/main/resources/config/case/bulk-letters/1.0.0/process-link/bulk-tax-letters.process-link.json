@@ -15,7 +15,7 @@
       "templateId": "belastingbrief",
       "outputFormat": "PDF",
       "filename": "belastingbrief.pdf",
-      "resultProcessVariable": "epistolaRequestId",
+      "resultProcessVariable": "epistolaResult",
       "dataMapping": "{\n  \"name\": $pv.taxpayer.name,\n  \"address\": {\n    \"street\": $pv.taxpayer.address.street,\n    \"houseNumber\": $pv.taxpayer.address.houseNumber,\n    \"postalCode\": $pv.taxpayer.address.postalCode,\n    \"city\": $pv.taxpayer.address.city\n  },\n  \"bsn\": $pv.taxpayer.bsn,\n  \"taxAmount\": $pv.taxpayer.taxAmount\n}",
       "catalogId": "municipality-demo"
     }
@@ -27,7 +27,7 @@
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
     "pluginActionDefinitionKey": "download-document",
     "actionProperties": {
-      "documentIdVariable": "epistolaDocumentId",
+      "documentIdVariable": "epistolaResult",
       "contentVariable": "letterContent"
     }
   },

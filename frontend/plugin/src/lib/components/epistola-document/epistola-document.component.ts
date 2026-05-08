@@ -216,8 +216,15 @@ export class EpistolaDocumentComponent
   /** How to present the document. `both` (default) shows an inline panel with a download icon. */
   @Input() display: EpistolaDocumentDisplay = 'both';
 
-  /** Process-variable name holding the Epistola PDF id. Default: `epistolaDocumentId`. */
-  @Input() documentIdVariable = 'epistolaDocumentId';
+  /**
+   * Process-variable name holding the Epistola PDF id. Default: `epistolaResult`.
+   *
+   * Type-tolerant on the backend: if the named variable holds a rich result object
+   * (`Map<String, Object>` written by `generate-document` and updated by the result
+   * collector), the backend digs out the `documentId` key. If it holds a plain
+   * String (legacy / custom flow), the backend uses it as-is.
+   */
+  @Input() documentIdVariable = 'epistolaResult';
 
   /** Process-variable name holding the Epistola tenant id. Default: `epistolaTenantId`. */
   @Input() tenantIdVariable = 'epistolaTenantId';

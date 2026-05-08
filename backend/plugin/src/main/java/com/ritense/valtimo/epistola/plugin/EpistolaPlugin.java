@@ -335,10 +335,17 @@ public class EpistolaPlugin {
                     routingKey
             );
         } catch (Exception e) {
-            // Store error details so the retry flow can trigger
-            execution.setVariable(EpistolaProcessVariables.STATUS, "FAILED");
-            execution.setVariable(EpistolaProcessVariables.ERROR_MESSAGE,
+            // Submit-time failure: write a FAILED rich object on resultProcessVariable so
+            // downstream BPMN (or a Formio retry form) can read the error via
+            // ${<resultProcessVariable>.errorMessage} just like a post-submit failure.
+            Map<String, Object> failureData = new LinkedHashMap<>();
+            failureData.put(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID, null);
+            failureData.put(EpistolaProcessVariables.RESULT_KEY_STATUS, "FAILED");
+            failureData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
+            failureData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE,
                     "Document generation request failed: " + e.getMessage());
+            execution.setVariable(resultProcessVariable, failureData);
+            execution.setVariable(EpistolaProcessVariables.RESULT_VARIABLE_NAME, resultProcessVariable);
             throw new RuntimeException("Failed to submit document generation request to Epistola", e);
         }
 
@@ -468,7 +475,22 @@ public class EpistolaPlugin {
             @PluginActionProperty String documentIdVariable,
             @PluginActionProperty String contentVariable
     ) {
-        String documentId = (String) execution.getVariable(documentIdVariable);
+        // Type-tolerant: documentIdVariable may hold a plain String (legacy scalar) or a
+        // Map<String,Object> with a documentId key (canonical rich-result-object). Both work.
+        Object rawValue = execution.getVariable(documentIdVariable);
+        String documentId;
+        if (rawValue instanceof Map<?, ?> map) {
+            Object docId = map.get(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID);
+            documentId = docId == null ? null : docId.toString();
+        } else if (rawValue instanceof String str) {
+            documentId = str;
+        } else if (rawValue == null) {
+            documentId = null;
+        } else {
+            throw new IllegalArgumentException("Variable '" + documentIdVariable
+                    + "' must be a String or a Map with a '" + EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID
+                    + "' key, got " + rawValue.getClass().getName());
+        }
         log.info("Downloading document: {}", documentId);
 
         if (documentId == null || documentId.isBlank()) {

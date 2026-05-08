@@ -27,7 +27,7 @@
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
     "pluginActionDefinitionKey": "download-document",
     "actionProperties": {
-      "documentIdVariable": "epistolaDocumentId",
+      "documentIdVariable": "requestId1",
       "contentVariable": "doc1Content"
     }
   },
@@ -53,7 +53,7 @@
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
     "pluginActionDefinitionKey": "download-document",
     "actionProperties": {
-      "documentIdVariable": "epistolaDocumentId",
+      "documentIdVariable": "requestId2",
       "contentVariable": "doc2Content"
     }
   },
@@ -79,7 +79,7 @@
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
     "pluginActionDefinitionKey": "download-document",
     "actionProperties": {
-      "documentIdVariable": "epistolaDocumentId",
+      "documentIdVariable": "requestId3",
       "contentVariable": "doc3Content"
     }
   }

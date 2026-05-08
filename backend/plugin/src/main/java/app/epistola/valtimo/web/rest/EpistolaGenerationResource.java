@@ -111,7 +111,9 @@ public class EpistolaGenerationResource {
      *
      * @param taskId               The Operaton user task ID providing the authorization context
      * @param caseDocumentId       The Valtimo case document UUID; must equal {@code task.processInstance.businessKey}
-     * @param documentIdVariable   Process-variable name holding the Epistola PDF id (default {@code epistolaDocumentId})
+     * @param documentIdVariable   Process-variable name holding the Epistola PDF id (default {@code epistolaResult}).
+     *                             Resolves either a plain String (legacy scalar) OR a {@code Map<String,Object>}
+     *                             with a {@code documentId} key (the canonical rich-result-object pattern).
      * @param tenantIdVariable     Process-variable name holding the Epistola tenant id (default {@code epistolaTenantId})
      * @param filename             Filename for the download (defaults to {@code document.pdf})
      * @param disposition          {@code attachment} (default) or {@code inline}
@@ -121,7 +123,7 @@ public class EpistolaGenerationResource {
     public ResponseEntity<byte[]> downloadDocument(
             @RequestParam("taskId") String taskId,
             @RequestParam("caseDocumentId") String caseDocumentId,
-            @RequestParam(value = "documentIdVariable", defaultValue = EpistolaProcessVariables.DOCUMENT_ID) String documentIdVariable,
+            @RequestParam(value = "documentIdVariable", defaultValue = "epistolaResult") String documentIdVariable,
             @RequestParam(value = "tenantIdVariable", defaultValue = EpistolaProcessVariables.TENANT_ID) String tenantIdVariable,
             @RequestParam(value = "filename", defaultValue = "document.pdf") String filename,
             @RequestParam(value = "disposition", defaultValue = "attachment") String disposition
@@ -145,7 +147,7 @@ public class EpistolaGenerationResource {
 
         Object documentIdValue = runtimeService.getVariable(task.getProcessInstanceId(), documentIdVariable);
         Object tenantIdValue = runtimeService.getVariable(task.getProcessInstanceId(), tenantIdVariable);
-        String documentId = documentIdValue == null ? null : documentIdValue.toString();
+        String documentId = resolveDocumentId(documentIdValue);
         String tenantId = tenantIdValue == null ? null : tenantIdValue.toString();
 
         if (documentId == null || documentId.isBlank() || tenantId == null || tenantId.isBlank()) {
@@ -353,6 +355,29 @@ public class EpistolaGenerationResource {
             }
         }
         return null;
+    }
+
+    /**
+     * Resolve a document id from whatever a process variable holds. Two shapes are supported:
+     * <ul>
+     *   <li>String — the legacy scalar {@code epistolaDocumentId} (still used by anything that
+     *       writes a plain string into the configured variable).</li>
+     *   <li>{@code Map<String,Object>} with a {@code documentId} key — the canonical
+     *       rich-result-object pattern; the variable holds the full result and we dig out
+     *       {@code documentId}. Both the {@code generate-document} action and the result
+     *       collector write this shape.</li>
+     * </ul>
+     * Returns {@code null} if neither shape applies or the relevant value is null/blank.
+     */
+    private static String resolveDocumentId(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Map<?, ?> map) {
+            Object docId = map.get(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID);
+            return docId == null ? null : docId.toString();
+        }
+        return value.toString();
     }
 
     @SuppressWarnings("unchecked")
