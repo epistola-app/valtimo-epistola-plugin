@@ -141,10 +141,10 @@ pnpm format:check   # check only (used in CI)
 - **Full Epistola API integration** via `app.epistola.contract:client-spring3-restclient` (OpenAPI-generated client)
 - **3 plugin actions**: `generate-document`, `check-job-status`, `download-document`
 - **Async completion**: `EpistolaResultCollectorRunner` manages one contract `ResultCollector` per active plugin configuration and correlates results via `EpistolaMessageCorrelationService`
-- **Catalog sync**: Automatic import of classpath-based catalogs on startup (`EpistolaCatalogSyncService`)
+- **Catalog sync**: Automatic import of classpath-based catalogs on startup, plus a manual per-catalog force-redeploy from the admin page that bypasses the version-skip and `templateSyncEnabled` gate (`EpistolaCatalogSyncService`)
 - **Retry flow**: Dynamic Formio form generation for failed document retries (`RetryFormService`)
 - **Document preview**: Preview without creating generation jobs (`PreviewService`)
-- **Admin page**: Health checks, plugin usage overview, version info (`EpistolaAdminResource`)
+- **Admin page**: Health checks, plugin usage overview (with dangling catalog/template/variant reference detection), per-config classpath-catalog redeploy, running version + bundled CHANGELOG tab (`EpistolaAdminResource`)
 - **Variant selection**: 3 modes — default, explicit variantId, or attribute-based automatic selection
 - **Value resolution**: Data mappings are JSONata expressions evaluated with `$doc`, `$pv`, and `$case` context variables
 - **Security (PBAC)**: Three layers, see [Authorization](#authorization) below. User-task endpoints check `OperatonTask:VIEW`, admin endpoints check the custom `EpistolaAdministration:MANAGE` PBAC permission, and configurator endpoints stay HTTP-gated by `ROLE_ADMIN`.
@@ -204,10 +204,10 @@ BPMN `@PluginAction` methods (`generate-document`, `check-job-status`, `download
 - `EpistolaMessageCorrelationService` — BPMN message correlation
 - `PreviewService` — Document preview functionality
 - `RetryFormService` — Dynamic retry form generation
-- `EpistolaAdminService` — Health checks and usage overview
+- `EpistolaAdminService` — Health checks, usage overview, and process-link reference validation (dangling catalog/template/variant detection)
 - `EpistolaFormAutoDeployAspect` — Form auto-deployment aspect
 - `CatalogScanner` — Classpath catalog discovery
-- `EpistolaCatalogSyncService` — Catalog import with version tracking
+- `EpistolaCatalogSyncService` — Catalog import with version tracking, forced single-catalog redeploy, and classpath discovery
 - `NormalizeVariantAttributes` — Old vs new format normalization
 - `EpistolaPluginResource` (document download only)
 - **5 Playwright E2E suites**: Plugin configuration, generate-document, check-job-status, download-document

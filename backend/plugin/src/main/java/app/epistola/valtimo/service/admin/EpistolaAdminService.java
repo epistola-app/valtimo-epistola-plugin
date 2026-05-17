@@ -1,13 +1,20 @@
 package app.epistola.valtimo.service.admin;
 
+import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
+import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
+import app.epistola.valtimo.domain.TemplateInfo;
+import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.web.rest.dto.BpmnValidationViolation;
+import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
+import app.epistola.valtimo.web.rest.dto.ChangelogRelease;
+import app.epistola.valtimo.web.rest.dto.ClasspathCatalog;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
@@ -32,12 +39,17 @@ import org.operaton.bpm.engine.runtime.Execution;
 import org.operaton.bpm.model.bpmn.BpmnModelInstance;
 import org.operaton.bpm.model.bpmn.instance.FlowElement;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Service providing administrative information about the Epistola plugin:
@@ -51,6 +63,9 @@ public class EpistolaAdminService {
             "epistola-generate-document", "epistola-check-job-status", "epistola-download-document"
     );
 
+    /** Catalog import type — mirrors the value used by the startup sync trigger. */
+    private static final String CATALOG_SYNC_TYPE = "AUTHORED";
+
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
     private final EpistolaMessageCorrelationService correlationService;
@@ -59,6 +74,7 @@ public class EpistolaAdminService {
     private final RuntimeService runtimeService;
     private final ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
     private final EpistolaProcessDefinitionValidator processDefinitionValidator;
+    private final EpistolaCatalogSyncService catalogSyncService;
 
     /**
      * Latest BPMN race-safety violations as reported by the validator. Empty when
@@ -121,11 +137,35 @@ public class EpistolaAdminService {
     }
 
     /**
+     * The plugin's CHANGELOG, parsed into structured releases for the admin UI.
+     * The raw markdown is bundled into the jar at build time (classpath
+     * {@code epistola/CHANGELOG.md}). Returns an empty list rather than failing
+     * if it is absent or unparseable — the admin page treats it as non-critical.
+     */
+    public List<ChangelogRelease> getChangelog() {
+        return ChangelogParser.parse(readBundledChangelog());
+    }
+
+    private String readBundledChangelog() {
+        try (var in = getClass().getClassLoader().getResourceAsStream("epistola/CHANGELOG.md")) {
+            if (in == null) {
+                log.debug("epistola/CHANGELOG.md not found on classpath");
+                return null;
+            }
+            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            log.warn("Failed to read bundled CHANGELOG: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Scan all deployed process definitions for Epistola process links.
      * Reports each usage with basic problem detection.
      */
     public List<PluginUsageEntry> getPluginUsage() {
         List<PluginUsageEntry> entries = new ArrayList<>();
+        EpistolaReferenceCache refCache = new EpistolaReferenceCache();
 
         List<ProcessDefinition> processDefinitions = repositoryService.createProcessDefinitionQuery()
                 .latestVersion()
@@ -148,7 +188,7 @@ public class EpistolaAdminService {
             for (PluginProcessLink link : epistolaLinks) {
                 String activityName = resolveActivityName(processDef.getId(), link.getActivityId());
                 String configTitle = resolveConfigurationTitle(link.getPluginConfigurationId());
-                List<String> problems = detectProblems(link);
+                List<String> problems = detectProblems(link, refCache);
 
                 entries.add(new PluginUsageEntry(
                         link.getId().toString(),
@@ -358,6 +398,78 @@ public class EpistolaAdminService {
                 "No Epistola plugin configuration found for tenantId=" + tenantId);
     }
 
+    private PluginConfigEntry findConfigEntry(String configurationId) {
+        for (PluginConfigEntry entry : loadPluginConfigurations()) {
+            if (entry.config().getId().toString().equals(configurationId)) {
+                return entry;
+            }
+        }
+        throw new IllegalArgumentException(
+                "No Epistola plugin configuration found with id=" + configurationId);
+    }
+
+    /**
+     * List the classpath catalogs available to manually (re)deploy for a plugin
+     * configuration, each annotated with whether it currently exists in that
+     * configuration's Epistola installation. Existence is resolved live by querying
+     * Epistola (it exposes no catalog version, so this is presence, not a version
+     * match). If Epistola is unreachable the status is {@code UNKNOWN} — never
+     * falsely reported as missing.
+     */
+    public List<ClasspathCatalog> listClasspathCatalogs(String configurationId) {
+        EpistolaPlugin plugin = findConfigEntry(configurationId).plugin();
+        Optional<Set<String>> epistolaCatalogIds = fetchEpistolaCatalogIds(plugin);
+
+        return catalogSyncService.listClasspathCatalogs().stream()
+                .map(c -> new ClasspathCatalog(
+                        c.slug(),
+                        c.version(),
+                        epistolaCatalogIds
+                                .map(ids -> ids.contains(c.slug())
+                                        ? ClasspathCatalog.IN_EPISTOLA
+                                        : ClasspathCatalog.NOT_IN_EPISTOLA)
+                                .orElse(ClasspathCatalog.UNKNOWN)))
+                .toList();
+    }
+
+    private Optional<Set<String>> fetchEpistolaCatalogIds(EpistolaPlugin plugin) {
+        try {
+            return Optional.of(epistolaService
+                    .getCatalogs(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId())
+                    .stream().map(CatalogInfo::id).collect(Collectors.toSet()));
+        } catch (Exception e) {
+            log.debug("Could not list Epistola catalogs for existence check: {}", e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    /**
+     * Force-redeploy a single classpath catalog to the configuration's Epistola
+     * installation. Explicit operator action — runs regardless of the
+     * {@code templateSyncEnabled} plugin property (which only gates the automatic
+     * startup sync) and regardless of whether the catalog version changed.
+     */
+    public CatalogRedeployResult redeployCatalog(String configurationId, String slug) {
+        EpistolaPlugin plugin = findConfigEntry(configurationId).plugin();
+        EpistolaCatalogSyncService.RedeployOutcome outcome = catalogSyncService.redeployCatalog(
+                configurationId,
+                plugin.getBaseUrl(),
+                plugin.getApiKey(),
+                plugin.getTenantId(),
+                CATALOG_SYNC_TYPE,
+                slug);
+        return new CatalogRedeployResult(
+                outcome.slug(),
+                outcome.version(),
+                outcome.success(),
+                outcome.catalogKey(),
+                outcome.installed(),
+                outcome.updated(),
+                outcome.failed(),
+                outcome.total(),
+                outcome.errorMessage());
+    }
+
     private Map<String, String> buildTenantConfigTitleMap() {
         Map<String, String> result = new HashMap<>();
         for (PluginConfigEntry entry : loadPluginConfigurations()) {
@@ -428,11 +540,18 @@ public class EpistolaAdminService {
         return configurationId.toString();
     }
 
-    private List<String> detectProblems(PluginProcessLink link) {
+    /**
+     * Mirrors the frontend {@code isExpression()} rule in preview-utils.ts: a value
+     * is a JSONata expression (not a literal) if it contains any of {@code $ & ( { ? [}.
+     */
+    private static final Pattern JSONATA_MARKER = Pattern.compile("[$&({?\\[]");
+
+    private List<String> detectProblems(PluginProcessLink link, EpistolaReferenceCache refCache) {
         List<String> problems = new ArrayList<>();
 
+        EpistolaPlugin plugin;
         try {
-            pluginService.createInstance(link.getPluginConfigurationId());
+            plugin = (EpistolaPlugin) pluginService.createInstance(link.getPluginConfigurationId());
         } catch (Exception e) {
             problems.add("Plugin configuration not found or invalid: " + e.getMessage());
             return problems;
@@ -440,15 +559,135 @@ public class EpistolaAdminService {
 
         var props = link.getActionProperties();
         if ("epistola-generate-document".equals(link.getPluginActionDefinitionKey())) {
-            if (!props.has("templateId") || props.get("templateId").asText().isBlank()) {
+            String catalogId = textOrNull(props, "catalogId");
+            String templateId = textOrNull(props, "templateId");
+            String variantId = textOrNull(props, "variantId");
+
+            boolean catalogConfigured = catalogId != null && !catalogId.isBlank();
+            boolean templateConfigured = templateId != null && !templateId.isBlank();
+
+            if (!templateConfigured) {
                 problems.add("No template configured");
             }
-            if (!props.has("catalogId") || props.get("catalogId").asText().isBlank()) {
+            if (!catalogConfigured) {
                 problems.add("No catalog configured");
+            }
+
+            // Best-effort: verify the configured references still exist in the connected
+            // Epistola installation (e.g. a classpath catalog whose startup auto-deploy
+            // failed). Ordered catalog -> template -> variant, each gated on the previous
+            // existing so a missing catalog doesn't also report a misleading "template not
+            // found". When Epistola is unreachable the cache yields an empty Optional and
+            // the checks are skipped — never a false "does not exist" (reachability is the
+            // /health tab's job). variantId is only checked when it is a plain literal;
+            // a JSONata expression resolves at runtime and cannot be verified statically.
+            if (catalogConfigured && templateConfigured) {
+                String configId = link.getPluginConfigurationId().toString();
+
+                Optional<Set<String>> catalogIds = refCache.catalogIds(configId, plugin);
+                if (catalogIds.isPresent()) {
+                    if (!catalogIds.get().contains(catalogId)) {
+                        problems.add("Catalog '" + catalogId + "' does not exist in Epistola");
+                    } else {
+                        Optional<Set<String>> templateIds =
+                                refCache.templateIds(configId, catalogId, plugin);
+                        if (templateIds.isPresent()) {
+                            if (!templateIds.get().contains(templateId)) {
+                                problems.add("Template '" + templateId
+                                        + "' does not exist in catalog '" + catalogId + "'");
+                            } else if (isLiteralVariantId(variantId)) {
+                                Optional<Set<String>> variantIds =
+                                        refCache.variantIds(configId, catalogId, templateId, plugin);
+                                if (variantIds.isPresent() && !variantIds.get().contains(variantId)) {
+                                    problems.add("Variant '" + variantId
+                                            + "' does not exist for template '" + templateId + "'");
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
         return problems;
+    }
+
+    private static String textOrNull(JsonNode props, String field) {
+        return props != null && props.hasNonNull(field) ? props.get(field).asText() : null;
+    }
+
+    /**
+     * A {@code variantId} is a verifiable literal only when present, non-blank and free
+     * of JSONata markers. Absent/blank means default-variant mode (not a problem); a
+     * JSONata expression is resolved at runtime and silently skipped.
+     */
+    private static boolean isLiteralVariantId(String variantId) {
+        return variantId != null
+                && !variantId.isBlank()
+                && !JSONATA_MARKER.matcher(variantId).find();
+    }
+
+    /**
+     * Per-{@link #getPluginUsage()}-invocation memo of which catalog/template/variant
+     * ids exist in the connected Epistola installation. Created fresh per call so an
+     * admin refresh sees current state. A failed fetch is memoized as
+     * {@link Optional#empty()} so an unreachable config is not re-probed for every
+     * link (a plain nullable Set would not stick — {@code computeIfAbsent} does not
+     * store {@code null}). Non-static so it closes over {@code epistolaService}/{@code log}.
+     */
+    private final class EpistolaReferenceCache {
+
+        private final Map<String, Optional<Set<String>>> catalogIdsByConfig = new HashMap<>();
+        private final Map<String, Optional<Set<String>>> templateIdsByConfigCatalog = new HashMap<>();
+        private final Map<String, Optional<Set<String>>> variantIdsByConfigCatalogTemplate = new HashMap<>();
+
+        /** Present = the existing-id set; empty = lookup failed (caller must skip the check). */
+        Optional<Set<String>> catalogIds(String configId, EpistolaPlugin plugin) {
+            return catalogIdsByConfig.computeIfAbsent(configId, k -> {
+                try {
+                    return Optional.of(epistolaService
+                            .getCatalogs(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId())
+                            .stream().map(CatalogInfo::id).collect(Collectors.toSet()));
+                } catch (Exception e) {
+                    log.debug("Catalog existence check skipped for config {}: {}",
+                            configId, e.getMessage());
+                    return Optional.empty();
+                }
+            });
+        }
+
+        Optional<Set<String>> templateIds(String configId, String catalogId, EpistolaPlugin plugin) {
+            return templateIdsByConfigCatalog.computeIfAbsent(configId + '|' + catalogId, k -> {
+                try {
+                    return Optional.of(epistolaService
+                            .getTemplates(plugin.getBaseUrl(), plugin.getApiKey(),
+                                    plugin.getTenantId(), catalogId)
+                            .stream().map(TemplateInfo::id).collect(Collectors.toSet()));
+                } catch (Exception e) {
+                    log.debug("Template existence check skipped for config {} catalog {}: {}",
+                            configId, catalogId, e.getMessage());
+                    return Optional.empty();
+                }
+            });
+        }
+
+        Optional<Set<String>> variantIds(String configId, String catalogId,
+                                          String templateId, EpistolaPlugin plugin) {
+            return variantIdsByConfigCatalogTemplate.computeIfAbsent(
+                    configId + '|' + catalogId + '|' + templateId, k -> {
+                        try {
+                            return Optional.of(epistolaService
+                                    .getVariants(plugin.getBaseUrl(), plugin.getApiKey(),
+                                            plugin.getTenantId(), catalogId, templateId)
+                                    .stream().map(VariantInfo::id).collect(Collectors.toSet()));
+                        } catch (Exception e) {
+                            log.debug("Variant existence check skipped for config {} "
+                                    + "catalog {} template {}: {}",
+                                    configId, catalogId, templateId, e.getMessage());
+                            return Optional.empty();
+                        }
+                    });
+        }
     }
 
     private String getPluginVersion() {

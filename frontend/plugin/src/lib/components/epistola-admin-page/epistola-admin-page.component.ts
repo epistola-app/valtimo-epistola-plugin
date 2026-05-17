@@ -7,6 +7,9 @@ import { TagModule } from 'carbon-components-angular/tag';
 import { EpistolaAdminService } from '../../services/epistola-admin.service';
 import {
   BpmnValidationViolation,
+  CatalogRedeployResult,
+  ChangelogRelease,
+  ClasspathCatalog,
   ConnectionStatus,
   PendingJob,
   PluginUsageEntry,
@@ -39,15 +42,26 @@ interface ConfigurationCard {
 export class EpistolaAdminPageComponent implements OnInit {
   cards: ConfigurationCard[] = [];
   selectedCard: ConfigurationCard | null = null;
-  activeTab: 'actions' | 'pending' = 'actions';
-  overviewTab: 'configurations' | 'validations' = 'configurations';
+  activeTab: 'actions' | 'pending' | 'catalogs' = 'actions';
+  overviewTab: 'configurations' | 'validations' | 'changelog' = 'configurations';
   loading = false;
   pluginVersion: string | null = null;
+  changelog: ChangelogRelease[] | null = null;
+  changelogLoading = false;
   validationViolations: BpmnValidationViolation[] = [];
   reconcilingExecutionIds = new Set<string>();
   reconcileFeedback: {
     executionId: string;
     type: 'success' | 'pending' | 'error';
+    message: string;
+  } | null = null;
+
+  catalogs: ClasspathCatalog[] = [];
+  catalogsLoading = false;
+  redeployingSlugs = new Set<string>();
+  catalogFeedback: {
+    slug: string;
+    type: 'success' | 'error';
     message: string;
   } | null = null;
 
@@ -68,7 +82,7 @@ export class EpistolaAdminPageComponent implements OnInit {
   ngOnInit(): void {
     this.deepLinkConfigId = this.route.snapshot.queryParamMap.get('configurationId');
     const tab = this.route.snapshot.queryParamMap.get('tab');
-    if (tab === 'pending' || tab === 'actions') {
+    if (tab === 'pending' || tab === 'actions' || tab === 'catalogs') {
       this.activeTab = tab;
     }
     this.loadData();
@@ -79,21 +93,41 @@ export class EpistolaAdminPageComponent implements OnInit {
     this.selectedCard = card;
     this.activeTab = 'actions';
     this.updateUrl(card.configurationId, this.activeTab);
+    this.loadCatalogs(card.configurationId);
   }
 
   backToOverview(): void {
     this.selectedCard = null;
     this.activeTab = 'actions';
+    this.catalogs = [];
+    this.catalogFeedback = null;
     this.updateUrl(null, null);
   }
 
-  setActiveTab(tab: 'actions' | 'pending'): void {
+  setActiveTab(tab: 'actions' | 'pending' | 'catalogs'): void {
     this.activeTab = tab;
     this.updateUrl(this.selectedCard?.configurationId ?? null, tab);
   }
 
-  setOverviewTab(tab: 'configurations' | 'validations'): void {
+  setOverviewTab(tab: 'configurations' | 'validations' | 'changelog'): void {
     this.overviewTab = tab;
+    if (tab === 'changelog' && this.changelog === null && !this.changelogLoading) {
+      this.loadChangelog();
+    }
+  }
+
+  private loadChangelog(): void {
+    this.changelogLoading = true;
+    this.adminService.getChangelog().subscribe({
+      next: (releases) => {
+        this.changelog = releases;
+        this.changelogLoading = false;
+      },
+      error: () => {
+        this.changelog = [];
+        this.changelogLoading = false;
+      },
+    });
   }
 
   refresh(): void {
@@ -162,6 +196,71 @@ export class EpistolaAdminPageComponent implements OnInit {
 
   isReconciling(job: PendingJob): boolean {
     return this.reconcilingExecutionIds.has(job.executionId);
+  }
+
+  /**
+   * Load the classpath catalogs available to (re)deploy for the given
+   * configuration. Lazy — only called when a configuration is opened, not for
+   * every card in the overview.
+   */
+  private loadCatalogs(configurationId: string): void {
+    this.catalogsLoading = true;
+    this.catalogFeedback = null;
+    this.adminService.getClasspathCatalogs(configurationId).subscribe({
+      next: (catalogs) => {
+        this.catalogs = catalogs;
+        this.catalogsLoading = false;
+      },
+      error: () => {
+        this.catalogs = [];
+        this.catalogsLoading = false;
+      },
+    });
+  }
+
+  /**
+   * Force-redeploy a single classpath catalog to the selected configuration's
+   * Epistola installation. Explicit operator action — the backend bypasses the
+   * templateSyncEnabled gate and the version-skip check. Reloads the catalog
+   * list on success so the deployed version / up-to-date hint refreshes.
+   */
+  redeployCatalog(catalog: ClasspathCatalog): void {
+    if (!this.selectedCard || this.redeployingSlugs.has(catalog.slug)) {
+      return;
+    }
+    const configurationId = this.selectedCard.configurationId;
+    this.redeployingSlugs.add(catalog.slug);
+    this.catalogFeedback = null;
+
+    this.adminService.redeployCatalog(configurationId, catalog.slug).subscribe({
+      next: (result: CatalogRedeployResult) => {
+        this.redeployingSlugs.delete(catalog.slug);
+        this.catalogFeedback = {
+          slug: catalog.slug,
+          type: 'success',
+          message: `OK — installed ${result.installed}, updated ${result.updated}, failed ${result.failed} (of ${result.total})`,
+        };
+        this.loadCatalogs(configurationId);
+      },
+      error: (err) => {
+        this.redeployingSlugs.delete(catalog.slug);
+        const message =
+          err?.error?.errorMessage ??
+          err?.error?.detail ??
+          err?.error?.message ??
+          err?.message ??
+          'unknown error';
+        this.catalogFeedback = {
+          slug: catalog.slug,
+          type: 'error',
+          message,
+        };
+      },
+    });
+  }
+
+  isRedeploying(catalog: ClasspathCatalog): boolean {
+    return this.redeployingSlugs.has(catalog.slug);
   }
 
   private updateUrl(configurationId: string | null, tab: string | null): void {
@@ -262,6 +361,7 @@ export class EpistolaAdminPageComponent implements OnInit {
       const match = this.cards.find((c) => c.configurationId === this.deepLinkConfigId);
       if (match) {
         this.selectedCard = match;
+        this.loadCatalogs(match.configurationId);
       }
       this.deepLinkConfigId = null;
     }

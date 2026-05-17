@@ -23,6 +23,10 @@
       </cds-tag>
     </ng-template>
 
+    <ng-template #changelogHeading>
+      {{ 'epistolaAdminChangelog' | pluginTranslate: 'epistola' | async }}
+    </ng-template>
+
     <cds-tabs [cacheActive]="true" type="contained">
       <cds-tab
         [heading]="configurationsHeading"
@@ -152,6 +156,48 @@
           </table>
         </div>
       </cds-tab>
+
+      <cds-tab
+        [heading]="changelogHeading"
+        [active]="overviewTab === 'changelog'"
+        (selected)="setOverviewTab('changelog')"
+      >
+        <div class="d-flex align-items-center mt-3 mb-3">
+          <span class="text-muted me-2">{{
+            'epistolaAdminRunningVersion' | pluginTranslate: 'epistola' | async
+          }}</span>
+          <cds-tag size="sm" type="blue">v{{ pluginVersion || '—' }}</cds-tag>
+        </div>
+
+        <div *ngIf="changelogLoading" class="text-muted mb-3">
+          {{ 'epistolaAdminLoading' | pluginTranslate: 'epistola' | async }}
+        </div>
+
+        <div
+          *ngIf="!changelogLoading && changelog && changelog.length === 0"
+          class="text-muted mb-3"
+        >
+          {{ 'epistolaAdminNoChangelog' | pluginTranslate: 'epistola' | async }}
+        </div>
+
+        <div
+          *ngIf="!changelogLoading && changelog && changelog.length > 0"
+          class="epistola-changelog"
+        >
+          <section *ngFor="let release of changelog" class="changelog-release">
+            <div class="changelog-release__header">
+              <cds-tag size="sm" type="purple">{{ release.version }}</cds-tag>
+              <span *ngIf="release.date" class="text-muted ms-2">{{ release.date }}</span>
+            </div>
+            <div *ngFor="let section of release.sections" class="changelog-section">
+              <h6 class="changelog-section__title">{{ section.title }}</h6>
+              <ul class="changelog-section__items">
+                <li *ngFor="let item of section.items">{{ item }}</li>
+              </ul>
+            </div>
+          </section>
+        </div>
+      </cds-tab>
     </cds-tabs>
   </ng-container>
 
@@ -222,6 +268,11 @@
       >
         {{ selectedCard.pendingJobs.length }}
       </cds-tag>
+    </ng-template>
+
+    <ng-template #catalogsHeading>
+      {{ 'epistolaAdminCatalogs' | pluginTranslate: 'epistola' | async }}
+      <cds-tag size="sm" type="gray" class="ms-1">{{ catalogs.length }}</cds-tag>
     </ng-template>
 
     <cds-tabs [cacheActive]="true" type="contained">
@@ -347,6 +398,77 @@
                   [class.text-danger]="reconcileFeedback.type === 'error'"
                 >
                   {{ reconcileFeedback.message }}
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </cds-tab>
+
+      <cds-tab
+        [heading]="catalogsHeading"
+        [active]="activeTab === 'catalogs'"
+        (selected)="setActiveTab('catalogs')"
+      >
+        <p class="text-muted mt-3 mb-3">
+          {{ 'epistolaAdminCatalogsIntro' | pluginTranslate: 'epistola' | async }}
+        </p>
+
+        <div *ngIf="catalogsLoading" class="text-muted mb-3">
+          {{ 'epistolaAdminLoading' | pluginTranslate: 'epistola' | async }}
+        </div>
+
+        <div *ngIf="!catalogsLoading && catalogs.length === 0" class="text-muted mb-3">
+          {{ 'epistolaAdminNoCatalogs' | pluginTranslate: 'epistola' | async }}
+        </div>
+
+        <table *ngIf="!catalogsLoading && catalogs.length > 0" class="table table-striped">
+          <thead>
+            <tr>
+              <th>{{ 'epistolaAdminCatalogSlug' | pluginTranslate: 'epistola' | async }}</th>
+              <th>{{ 'epistolaAdminCatalogVersion' | pluginTranslate: 'epistola' | async }}</th>
+              <th>{{ 'epistolaAdminCatalogStatus' | pluginTranslate: 'epistola' | async }}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let catalog of catalogs">
+              <td>
+                <code>{{ catalog.slug }}</code>
+              </td>
+              <td>{{ catalog.version }}</td>
+              <td>
+                <cds-tag *ngIf="catalog.status === 'IN_EPISTOLA'" size="sm" type="green">
+                  {{ 'epistolaAdminCatalogInEpistola' | pluginTranslate: 'epistola' | async }}
+                </cds-tag>
+                <cds-tag *ngIf="catalog.status === 'NOT_IN_EPISTOLA'" size="sm" type="red">
+                  {{ 'epistolaAdminCatalogNotInEpistola' | pluginTranslate: 'epistola' | async }}
+                </cds-tag>
+                <cds-tag *ngIf="catalog.status === 'UNKNOWN'" size="sm" type="gray">
+                  {{ 'epistolaAdminCatalogStatusUnknown' | pluginTranslate: 'epistola' | async }}
+                </cds-tag>
+              </td>
+              <td class="text-end">
+                <button
+                  class="btn btn-sm btn-outline-primary"
+                  (click)="redeployCatalog(catalog)"
+                  [disabled]="isRedeploying(catalog)"
+                  [title]="'epistolaAdminRedeployTooltip' | pluginTranslate: 'epistola' | async"
+                >
+                  <span *ngIf="!isRedeploying(catalog)">
+                    {{ 'epistolaAdminRedeploy' | pluginTranslate: 'epistola' | async }}
+                  </span>
+                  <span *ngIf="isRedeploying(catalog)">
+                    {{ 'epistolaAdminRedeploying' | pluginTranslate: 'epistola' | async }}
+                  </span>
+                </button>
+                <div
+                  *ngIf="catalogFeedback && catalogFeedback.slug === catalog.slug"
+                  class="reconcile-feedback small mt-1"
+                  [class.text-success]="catalogFeedback.type === 'success'"
+                  [class.text-danger]="catalogFeedback.type === 'error'"
+                >
+                  {{ catalogFeedback.message }}
                 </div>
               </td>
             </tr>

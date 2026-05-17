@@ -17,6 +17,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -177,6 +178,75 @@ class EpistolaCatalogSyncServiceTest {
             EpistolaCatalogSyncService.SyncResult config2Result = syncService.syncCatalogs("config-2", BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
 
             assertThat(config2Result.successCount()).isGreaterThanOrEqualTo(1);
+        }
+    }
+
+    @Nested
+    class ForceRedeploy {
+
+        @Test
+        void forcesImportEvenWhenVersionMatches() {
+            // First sync populates the deployed-version for test-catalog.
+            when(epistolaService.importCatalog(anyString(), anyString(), anyString(),
+                    any(byte[].class), anyString()))
+                    .thenReturn(new EpistolaService.ImportCatalogResult(
+                            "test-catalog", "Test Catalog", 1, 0, 0, 1));
+            syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+
+            // A plain re-sync would now skip (version matches) — see SkipUnchangedCatalogs.
+            org.mockito.Mockito.reset(epistolaService);
+            when(epistolaService.importCatalog(eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
+                    any(byte[].class), eq(CATALOG_TYPE)))
+                    .thenReturn(new EpistolaService.ImportCatalogResult(
+                            "test-catalog", "Test Catalog", 0, 1, 0, 1));
+
+            EpistolaCatalogSyncService.RedeployOutcome outcome = syncService.redeployCatalog(
+                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE, "test-catalog");
+
+            assertThat(outcome.success()).isTrue();
+            assertThat(outcome.slug()).isEqualTo("test-catalog");
+            assertThat(outcome.updated()).isEqualTo(1);
+            // Forced — the version-skip check is bypassed, so import runs again.
+            verify(epistolaService).importCatalog(eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
+                    any(byte[].class), eq(CATALOG_TYPE));
+        }
+
+        @Test
+        void returnsFailureOutcomeWithoutThrowingWhenImportFails() {
+            when(epistolaService.importCatalog(anyString(), anyString(), anyString(),
+                    any(byte[].class), anyString()))
+                    .thenThrow(new RuntimeException("Epistola rejected the import"));
+
+            EpistolaCatalogSyncService.RedeployOutcome outcome = syncService.redeployCatalog(
+                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE, "test-catalog");
+
+            assertThat(outcome.success()).isFalse();
+            assertThat(outcome.slug()).isEqualTo("test-catalog");
+            assertThat(outcome.errorMessage()).contains("Epistola rejected the import");
+        }
+
+        @Test
+        void throwsForUnknownSlug() {
+            assertThatThrownBy(() -> syncService.redeployCatalog(
+                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE, "does-not-exist"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("No classpath catalog found with slug 'does-not-exist'");
+        }
+    }
+
+    @Nested
+    class ListClasspathCatalogs {
+
+        @Test
+        void returnsCatalogsFoundOnTheClasspath() {
+            var catalogs = syncService.listClasspathCatalogs();
+
+            assertThat(catalogs).isNotEmpty();
+            var testCatalog = catalogs.stream()
+                    .filter(c -> "test-catalog".equals(c.slug()))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("test-catalog not on classpath"));
+            assertThat(testCatalog.version()).isNotBlank();
         }
     }
 

@@ -4,6 +4,9 @@ import { ConfigService } from '@valtimo/shared';
 import { Observable } from 'rxjs';
 import {
   BpmnValidationViolation,
+  CatalogRedeployResult,
+  ChangelogRelease,
+  ClasspathCatalog,
   ConnectionStatus,
   PendingJob,
   PluginUsageEntry,
@@ -74,6 +77,38 @@ export class EpistolaAdminService {
    */
   getValidationViolations(): Observable<BpmnValidationViolation[]> {
     return this.http.get<BpmnValidationViolation[]>(`${this.apiEndpoint}/validations`);
+  }
+
+  /**
+   * List the classpath catalogs available to manually redeploy for a plugin
+   * configuration, each annotated with the version last deployed in this
+   * backend process.
+   */
+  getClasspathCatalogs(configurationId: string): Observable<ClasspathCatalog[]> {
+    return this.http.get<ClasspathCatalog[]>(
+      `${this.apiEndpoint}/configurations/${encodeURIComponent(configurationId)}/catalogs`,
+    );
+  }
+
+  /**
+   * Force-redeploy a single classpath catalog to the configuration's Epistola
+   * installation. Explicit operator action — bypasses the templateSyncEnabled
+   * gate and the version-skip check. Returns 200 with per-resource counts on
+   * success, or 502 (error callback, body carries `errorMessage`) on failure.
+   */
+  redeployCatalog(configurationId: string, slug: string): Observable<CatalogRedeployResult> {
+    return this.http.post<CatalogRedeployResult>(
+      `${this.apiEndpoint}/configurations/${encodeURIComponent(configurationId)}/catalogs/${encodeURIComponent(slug)}/redeploy`,
+      null,
+    );
+  }
+
+  /**
+   * Get the plugin CHANGELOG parsed (server-side) into structured releases for
+   * the admin Changelog tab — no markdown renderer needed on the client.
+   */
+  getChangelog(): Observable<ChangelogRelease[]> {
+    return this.http.get<ChangelogRelease[]>(`${this.apiEndpoint}/changelog`);
   }
 
   /**

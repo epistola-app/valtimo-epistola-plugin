@@ -107,6 +107,69 @@ public class EpistolaCatalogSyncService {
     }
 
     /**
+     * The catalogs currently present on the application classpath (slug + version).
+     * Whether each one actually exists in a given Epistola installation is resolved
+     * separately by querying Epistola — this method only reflects the build.
+     *
+     * @return Classpath catalogs (never null)
+     */
+    public List<CatalogScanner.CatalogOnClasspath> listClasspathCatalogs() {
+        return scanner.scan();
+    }
+
+    /**
+     * Force-redeploy a single classpath catalog to Epistola, bypassing the
+     * version-skip check that {@link #syncCatalogs} applies. This is the explicit
+     * manual admin action: it always pushes regardless of {@code templateSyncEnabled}
+     * (gating is the caller's concern) and regardless of whether the version changed.
+     * On success the in-memory deployed-version is updated so a later startup sync
+     * sees it as current.
+     *
+     * @param configId    The plugin configuration ID (for version tracking)
+     * @param baseUrl     The Epistola API base URL
+     * @param apiKey      The API key for authentication
+     * @param tenantId    The tenant ID in Epistola
+     * @param catalogType The catalog type passed to the import endpoint
+     * @param slug        The slug of the classpath catalog to redeploy
+     * @return Per-catalog outcome (never throws for an import failure — see
+     *         {@link RedeployOutcome#success()}); throws {@link IllegalArgumentException}
+     *         only when no classpath catalog has the given slug
+     */
+    public RedeployOutcome redeployCatalog(String configId, String baseUrl, String apiKey,
+                                           String tenantId, String catalogType, String slug) {
+        CatalogScanner.CatalogOnClasspath catalog = scanner.scan().stream()
+                .filter(c -> c.slug().equals(slug))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No classpath catalog found with slug '" + slug + "'"));
+
+        try {
+            byte[] zipBytes = buildCatalogZip(catalog);
+
+            EpistolaService.ImportCatalogResult result = epistolaService.importCatalog(
+                    baseUrl, apiKey, tenantId, zipBytes, catalogType);
+
+            deployedVersions
+                    .computeIfAbsent(configId, k -> new HashMap<>())
+                    .put(catalog.slug(), catalog.version());
+
+            log.info("Manual redeploy of catalog '{}' v{} to tenant '{}': "
+                            + "key={}, installed={}, updated={}, failed={}, total={}",
+                    catalog.slug(), catalog.version(), tenantId, result.catalogKey(),
+                    result.installed(), result.updated(), result.failed(), result.total());
+
+            return new RedeployOutcome(catalog.slug(), catalog.version(), true,
+                    result.catalogKey(), result.installed(), result.updated(),
+                    result.failed(), result.total(), null);
+        } catch (Exception e) {
+            log.error("Manual redeploy of catalog '{}' v{} failed: {}",
+                    catalog.slug(), catalog.version(), e.getMessage(), e);
+            return new RedeployOutcome(catalog.slug(), catalog.version(), false,
+                    null, 0, 0, 0, 0, e.getMessage());
+        }
+    }
+
+    /**
      * Build a ZIP archive from a catalog's classpath resources.
      * <p>
      * Includes:
@@ -215,4 +278,19 @@ public class EpistolaCatalogSyncService {
             return failCount == 0;
         }
     }
+
+    /**
+     * Outcome of a single {@link #redeployCatalog} call.
+     */
+    public record RedeployOutcome(
+            String slug,
+            String version,
+            boolean success,
+            String catalogKey,
+            int installed,
+            int updated,
+            int failed,
+            int total,
+            String errorMessage
+    ) {}
 }

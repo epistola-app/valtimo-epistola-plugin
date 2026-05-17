@@ -1,4 +1,6 @@
 package app.epistola.valtimo.service.admin;
+import app.epistola.valtimo.deploy.CatalogScanner;
+import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
 import app.epistola.valtimo.service.EpistolaService;
@@ -7,6 +9,10 @@ import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService
 import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
+import app.epistola.valtimo.domain.TemplateInfo;
+import app.epistola.valtimo.domain.VariantInfo;
+import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
+import app.epistola.valtimo.web.rest.dto.ClasspathCatalog;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
@@ -38,14 +44,19 @@ import org.operaton.bpm.model.bpmn.instance.FlowElement;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class EpistolaAdminServiceTest {
@@ -65,6 +76,7 @@ class EpistolaAdminServiceTest {
     private RuntimeService runtimeService;
     private ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
     private EpistolaProcessDefinitionValidator processDefinitionValidator;
+    private EpistolaCatalogSyncService catalogSyncService;
     private EpistolaAdminService adminService;
 
     @BeforeEach
@@ -77,9 +89,11 @@ class EpistolaAdminServiceTest {
         runtimeService = mock(RuntimeService.class);
         processDefinitionCaseDefinitionService = mock(ProcessDefinitionCaseDefinitionService.class);
         processDefinitionValidator = mock(EpistolaProcessDefinitionValidator.class);
+        catalogSyncService = mock(EpistolaCatalogSyncService.class);
         adminService = new EpistolaAdminService(
                 pluginService, epistolaService, correlationService, processLinkService, repositoryService,
-                runtimeService, processDefinitionCaseDefinitionService, processDefinitionValidator);
+                runtimeService, processDefinitionCaseDefinitionService, processDefinitionValidator,
+                catalogSyncService);
     }
 
     @Nested
@@ -166,6 +180,26 @@ class EpistolaAdminServiceTest {
     }
 
     @Nested
+    class GetChangelog {
+
+        @Test
+        void returnsBundledChangelogParsedIntoReleases() {
+            // processResources copies the repo CHANGELOG.md to epistola/CHANGELOG.md,
+            // which is on the test runtime classpath.
+            var releases = adminService.getChangelog();
+
+            assertThat(releases).isNotEmpty();
+            // Newest first; the repo CHANGELOG starts with the Unreleased block.
+            assertThat(releases.get(0).version()).isEqualTo("Unreleased");
+            assertThat(releases).anySatisfy(r -> {
+                assertThat(r.version()).isEqualTo("0.8.0");
+                assertThat(r.date()).isEqualTo("2026-05-08");
+                assertThat(r.sections()).isNotEmpty();
+            });
+        }
+    }
+
+    @Nested
     class GetPluginUsage {
 
         @Test
@@ -206,6 +240,12 @@ class EpistolaAdminServiceTest {
 
             // Mock configuration title resolution
             mockSinglePluginConfiguration();
+
+            // Configured catalog + template resolve in Epistola — no dangling references
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
 
@@ -329,6 +369,10 @@ class EpistolaAdminServiceTest {
             when(processLinkService.getProcessLinks(processDef.getId()))
                     .thenReturn(List.of(link));
             mockSinglePluginConfiguration();
+            // Reference checks are irrelevant here; treat Epistola as unreachable so
+            // they are skipped (graceful degradation — no false problems).
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenThrow(new RuntimeException("unreachable"));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
 
@@ -350,11 +394,243 @@ class EpistolaAdminServiceTest {
             // No BPMN model available
             when(repositoryService.getBpmnModelInstance(processDef.getId())).thenReturn(null);
             mockSinglePluginConfiguration();
+            // Reference checks are irrelevant here; treat Epistola as unreachable so
+            // they are skipped (graceful degradation — no false problems).
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenThrow(new RuntimeException("unreachable"));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
 
             assertThat(entries).hasSize(1);
             assertThat(entries.get(0).activityName()).isEqualTo("Activity_1");
+        }
+
+        @Test
+        void shouldDetectMissingCatalog() {
+            singleGenerateDocLink(createActionProps("cat-x", "tmpl-1"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries).hasSize(1);
+            assertThat(entries.get(0).problems())
+                    .contains("Catalog 'cat-x' does not exist in Epistola");
+            // Missing catalog short-circuits — no point probing templates.
+            verify(epistolaService, never())
+                    .getTemplates(anyString(), anyString(), anyString(), anyString());
+        }
+
+        @Test
+        void shouldDetectMissingTemplate() {
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-x"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems())
+                    .contains("Template 'tmpl-x' does not exist in catalog 'cat-1'");
+        }
+
+        @Test
+        void shouldDetectMissingVariant() {
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "nl"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
+            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1"))
+                    .thenReturn(List.of(new VariantInfo("formal", "tmpl-1", "Formal", Map.of())));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems())
+                    .contains("Variant 'nl' does not exist for template 'tmpl-1'");
+        }
+
+        @Test
+        void shouldSkipVariantCheckWhenVariantIsExpression() {
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "$pv.lang"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems()).isEmpty();
+            // A JSONata expression resolves at runtime — never statically verified.
+            verify(epistolaService, never())
+                    .getVariants(anyString(), anyString(), anyString(), anyString(), anyString());
+        }
+
+        @Test
+        void shouldNotFlagWhenEpistolaUnreachable() {
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "nl"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenThrow(new RuntimeException("Connection refused"));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            // No false "does not exist" — reachability is the /health tab's job.
+            assertThat(entries.get(0).problems()).isEmpty();
+            verify(epistolaService, never())
+                    .getTemplates(anyString(), anyString(), anyString(), anyString());
+            verify(epistolaService, never())
+                    .getVariants(anyString(), anyString(), anyString(), anyString(), anyString());
+        }
+
+        @Test
+        void shouldReportNoProblemsWhenAllReferencesPresent() {
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "nl"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
+            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1"))
+                    .thenReturn(List.of(new VariantInfo("nl", "tmpl-1", "Dutch", Map.of())));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems()).isEmpty();
+        }
+
+        @Test
+        void shouldOnlyFetchCatalogsOncePerScanAcrossLinks() {
+            ProcessDefinition pd1 = mockProcessDefinition("p1", "P1");
+            ProcessDefinition pd2 = mockProcessDefinition("p2", "P2");
+            mockProcessDefinitionQuery(List.of(pd1, pd2));
+
+            PluginProcessLink link1 = mockProcessLink("A1", "epistola-generate-document",
+                    createActionProps("cat-x", "tmpl-1"));
+            PluginProcessLink link2 = mockProcessLink("A2", "epistola-generate-document",
+                    createActionProps("cat-x", "tmpl-1"));
+            mockPluginInstanceForLink(link1);
+            mockPluginInstanceForLink(link2);
+            when(processLinkService.getProcessLinks(pd1.getId())).thenReturn(List.of(link1));
+            when(processLinkService.getProcessLinks(pd2.getId())).thenReturn(List.of(link2));
+            mockSinglePluginConfiguration();
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries).hasSize(2);
+            assertThat(entries).allSatisfy(e ->
+                    assertThat(e.problems()).contains("Catalog 'cat-x' does not exist in Epistola"));
+            // Per-invocation cache: one call serves both links on the same config.
+            verify(epistolaService, times(1)).getCatalogs(BASE_URL, API_KEY, TENANT_ID);
+        }
+
+        @Test
+        void shouldCacheNegativeFetchAcrossLinks() {
+            ProcessDefinition pd1 = mockProcessDefinition("p1", "P1");
+            ProcessDefinition pd2 = mockProcessDefinition("p2", "P2");
+            mockProcessDefinitionQuery(List.of(pd1, pd2));
+
+            PluginProcessLink link1 = mockProcessLink("A1", "epistola-generate-document",
+                    createActionProps("cat-1", "tmpl-1"));
+            PluginProcessLink link2 = mockProcessLink("A2", "epistola-generate-document",
+                    createActionProps("cat-1", "tmpl-1"));
+            mockPluginInstanceForLink(link1);
+            mockPluginInstanceForLink(link2);
+            when(processLinkService.getProcessLinks(pd1.getId())).thenReturn(List.of(link1));
+            when(processLinkService.getProcessLinks(pd2.getId())).thenReturn(List.of(link2));
+            mockSinglePluginConfiguration();
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenThrow(new RuntimeException("Connection refused"));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries).hasSize(2);
+            assertThat(entries).allSatisfy(e -> assertThat(e.problems()).isEmpty());
+            // Failed fetch is memoized (Optional.empty sentinel) — not re-probed per link.
+            verify(epistolaService, times(1)).getCatalogs(BASE_URL, API_KEY, TENANT_ID);
+        }
+    }
+
+    @Nested
+    class CatalogRedeploy {
+
+        @Test
+        void listsClasspathCatalogsWithLiveEpistolaExistence() {
+            PluginConfiguration config = mockPluginConfiguration(CONFIG_TITLE);
+            EpistolaPlugin plugin = mockPluginInstance(TENANT_ID);
+            when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
+                    .thenReturn(List.of(config));
+            when(pluginService.createInstance(config)).thenReturn(plugin);
+            String configId = config.getId().toString();
+
+            when(catalogSyncService.listClasspathCatalogs()).thenReturn(List.of(
+                    new CatalogScanner.CatalogOnClasspath("demo", "1.2.0", "config/epistola/catalogs/demo"),
+                    new CatalogScanner.CatalogOnClasspath("other", "2.0.0", "config/epistola/catalogs/other")));
+            // Epistola only has "demo".
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID)).thenReturn(List.of(
+                    new CatalogInfo("demo", "Demo", "default")));
+
+            List<ClasspathCatalog> result = adminService.listClasspathCatalogs(configId);
+
+            assertThat(result).hasSize(2);
+            assertThat(result.get(0).slug()).isEqualTo("demo");
+            assertThat(result.get(0).status()).isEqualTo(ClasspathCatalog.IN_EPISTOLA);
+            assertThat(result.get(1).slug()).isEqualTo("other");
+            assertThat(result.get(1).status()).isEqualTo(ClasspathCatalog.NOT_IN_EPISTOLA);
+        }
+
+        @Test
+        void marksCatalogsUnknownWhenEpistolaUnreachable() {
+            PluginConfiguration config = mockPluginConfiguration(CONFIG_TITLE);
+            EpistolaPlugin plugin = mockPluginInstance(TENANT_ID);
+            when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
+                    .thenReturn(List.of(config));
+            when(pluginService.createInstance(config)).thenReturn(plugin);
+            String configId = config.getId().toString();
+
+            when(catalogSyncService.listClasspathCatalogs()).thenReturn(List.of(
+                    new CatalogScanner.CatalogOnClasspath("demo", "1.2.0", "config/epistola/catalogs/demo")));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenThrow(new RuntimeException("Connection refused"));
+
+            List<ClasspathCatalog> result = adminService.listClasspathCatalogs(configId);
+
+            assertThat(result).hasSize(1);
+            // Never falsely "not in Epistola" when we simply couldn't reach it.
+            assertThat(result.get(0).status()).isEqualTo(ClasspathCatalog.UNKNOWN);
+        }
+
+        @Test
+        void redeployDelegatesToSyncServiceWithConfigCredentials() {
+            PluginConfiguration config = mockPluginConfiguration(CONFIG_TITLE);
+            EpistolaPlugin plugin = mockPluginInstance(TENANT_ID);
+            when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
+                    .thenReturn(List.of(config));
+            when(pluginService.createInstance(config)).thenReturn(plugin);
+            String configId = config.getId().toString();
+
+            when(catalogSyncService.redeployCatalog(eq(configId), eq(BASE_URL), eq(API_KEY),
+                    eq(TENANT_ID), anyString(), eq("demo")))
+                    .thenReturn(new EpistolaCatalogSyncService.RedeployOutcome(
+                            "demo", "1.2.0", true, "demo", 3, 1, 0, 4, null));
+
+            CatalogRedeployResult result = adminService.redeployCatalog(configId, "demo");
+
+            assertThat(result.success()).isTrue();
+            assertThat(result.slug()).isEqualTo("demo");
+            assertThat(result.installed()).isEqualTo(3);
+            assertThat(result.total()).isEqualTo(4);
+        }
+
+        @Test
+        void redeployRejectsUnknownConfiguration() {
+            when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
+                    .thenReturn(Collections.emptyList());
+
+            assertThatThrownBy(() -> adminService.redeployCatalog("nope", "demo"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("No Epistola plugin configuration found with id=nope");
         }
     }
 
@@ -656,13 +932,30 @@ class EpistolaAdminServiceTest {
         lenient().when(pluginService.createInstance(link.getPluginConfigurationId())).thenReturn(plugin);
     }
 
+    /** One latest process definition with a single epistola-generate-document link. */
+    private void singleGenerateDocLink(ObjectNode props) {
+        ProcessDefinition processDef = mockProcessDefinition("my-process", "My Process");
+        mockProcessDefinitionQuery(List.of(processDef));
+        PluginProcessLink link = mockProcessLink("Activity_1", "epistola-generate-document", props);
+        mockPluginInstanceForLink(link);
+        when(processLinkService.getProcessLinks(processDef.getId())).thenReturn(List.of(link));
+        mockSinglePluginConfiguration();
+    }
+
     private ObjectNode createActionProps(String catalogId, String templateId) {
+        return createActionProps(catalogId, templateId, null);
+    }
+
+    private ObjectNode createActionProps(String catalogId, String templateId, String variantId) {
         ObjectNode props = objectMapper.createObjectNode();
         if (catalogId != null) {
             props.put("catalogId", catalogId);
         }
         if (templateId != null) {
             props.put("templateId", templateId);
+        }
+        if (variantId != null) {
+            props.put("variantId", variantId);
         }
         return props;
     }

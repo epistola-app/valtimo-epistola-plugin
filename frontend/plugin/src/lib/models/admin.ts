@@ -68,6 +68,54 @@ export interface ReconcileResult {
 }
 
 /**
+ * A catalog discovered on the application classpath, with whether it currently
+ * exists in the connected Epistola installation. `status` is resolved live by
+ * querying Epistola at request time:
+ * - `IN_EPISTOLA` — a catalog with this slug exists in Epistola.
+ * - `NOT_IN_EPISTOLA` — Epistola was reached and has no such catalog (redeploy it).
+ * - `UNKNOWN` — Epistola could not be reached, so existence is undetermined.
+ */
+export interface ClasspathCatalog {
+  slug: string;
+  version: string;
+  status: 'IN_EPISTOLA' | 'NOT_IN_EPISTOLA' | 'UNKNOWN';
+}
+
+/**
+ * Outcome of a manual single-catalog redeploy. `success=false` carries the
+ * reason in `errorMessage`; the backend returns HTTP 502 in that case.
+ */
+export interface CatalogRedeployResult {
+  slug: string;
+  version: string;
+  success: boolean;
+  catalogKey: string | null;
+  installed: number;
+  updated: number;
+  failed: number;
+  total: number;
+  errorMessage: string | null;
+}
+
+/**
+ * A "Keep a Changelog" section within a release (e.g. "Added") and its items.
+ */
+export interface ChangelogSection {
+  title: string;
+  items: string[];
+}
+
+/**
+ * One release block from the bundled CHANGELOG, parsed server-side (newest
+ * first). `date` is null for the Unreleased block.
+ */
+export interface ChangelogRelease {
+  version: string;
+  date: string | null;
+  sections: ChangelogSection[];
+}
+
+/**
  * A BPMN race-safety violation reported by the backend's deployment validator.
  * `code` is one of the constants in
  * `app.epistola.valtimo.web.rest.dto.BpmnValidationViolation` (kept stable so
