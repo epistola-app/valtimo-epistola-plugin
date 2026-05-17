@@ -107,19 +107,14 @@ public class EpistolaCatalogSyncService {
     }
 
     /**
-     * List the catalogs found on the classpath, annotated with the version last
-     * successfully deployed for the given plugin configuration (in-memory, reset on
-     * restart — {@code deployedVersion} is {@code null} until a startup sync or a
-     * manual redeploy has run in this process).
+     * The catalogs currently present on the application classpath (slug + version).
+     * Whether each one actually exists in a given Epistola installation is resolved
+     * separately by querying Epistola — this method only reflects the build.
      *
-     * @param configId The plugin configuration ID (for version-tracking lookup)
-     * @return Discovered catalogs (never null)
+     * @return Classpath catalogs (never null)
      */
-    public List<DiscoveredCatalog> discoverCatalogs(String configId) {
-        Map<String, String> deployed = deployedVersions.getOrDefault(configId, Map.of());
-        return scanner.scan().stream()
-                .map(c -> new DiscoveredCatalog(c.slug(), c.version(), deployed.get(c.slug())))
-                .toList();
+    public List<CatalogScanner.CatalogOnClasspath> listClasspathCatalogs() {
+        return scanner.scan();
     }
 
     /**
@@ -283,16 +278,6 @@ public class EpistolaCatalogSyncService {
             return failCount == 0;
         }
     }
-
-    /**
-     * A catalog on the classpath plus the version last deployed for a configuration.
-     *
-     * @param slug            The catalog slug
-     * @param version         The version currently on the classpath
-     * @param deployedVersion The version last deployed in this process for the config,
-     *                        or {@code null} if not deployed since startup
-     */
-    public record DiscoveredCatalog(String slug, String version, String deployedVersion) {}
 
     /**
      * Outcome of a single {@link #redeployCatalog} call.

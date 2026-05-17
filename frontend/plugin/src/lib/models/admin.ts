@@ -68,16 +68,17 @@ export interface ReconcileResult {
 }
 
 /**
- * A catalog discovered on the application classpath, available to manually
- * redeploy to a plugin configuration's Epistola installation. `deployedVersion`
- * is tracked in memory per running backend instance (reset on restart), so
- * `upToDate` is a best-effort hint, not a guarantee.
+ * A catalog discovered on the application classpath, with whether it currently
+ * exists in the connected Epistola installation. `status` is resolved live by
+ * querying Epistola at request time:
+ * - `IN_EPISTOLA` — a catalog with this slug exists in Epistola.
+ * - `NOT_IN_EPISTOLA` — Epistola was reached and has no such catalog (redeploy it).
+ * - `UNKNOWN` — Epistola could not be reached, so existence is undetermined.
  */
 export interface ClasspathCatalog {
   slug: string;
   version: string;
-  deployedVersion: string | null;
-  upToDate: boolean;
+  status: 'IN_EPISTOLA' | 'NOT_IN_EPISTOLA' | 'UNKNOWN';
 }
 
 /**

@@ -1,4 +1,5 @@
 package app.epistola.valtimo.service.admin;
+import app.epistola.valtimo.deploy.CatalogScanner;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
@@ -535,7 +536,7 @@ class EpistolaAdminServiceTest {
     class CatalogRedeploy {
 
         @Test
-        void listsClasspathCatalogsForConfiguration() {
+        void listsClasspathCatalogsWithLiveEpistolaExistence() {
             PluginConfiguration config = mockPluginConfiguration(CONFIG_TITLE);
             EpistolaPlugin plugin = mockPluginInstance(TENANT_ID);
             when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
@@ -543,17 +544,41 @@ class EpistolaAdminServiceTest {
             when(pluginService.createInstance(config)).thenReturn(plugin);
             String configId = config.getId().toString();
 
-            when(catalogSyncService.discoverCatalogs(configId)).thenReturn(List.of(
-                    new EpistolaCatalogSyncService.DiscoveredCatalog("demo", "1.2.0", "1.2.0"),
-                    new EpistolaCatalogSyncService.DiscoveredCatalog("other", "2.0.0", null)));
+            when(catalogSyncService.listClasspathCatalogs()).thenReturn(List.of(
+                    new CatalogScanner.CatalogOnClasspath("demo", "1.2.0", "config/epistola/catalogs/demo"),
+                    new CatalogScanner.CatalogOnClasspath("other", "2.0.0", "config/epistola/catalogs/other")));
+            // Epistola only has "demo".
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID)).thenReturn(List.of(
+                    new CatalogInfo("demo", "Demo", "default")));
 
             List<ClasspathCatalog> result = adminService.listClasspathCatalogs(configId);
 
             assertThat(result).hasSize(2);
             assertThat(result.get(0).slug()).isEqualTo("demo");
-            assertThat(result.get(0).upToDate()).isTrue();
-            assertThat(result.get(1).upToDate()).isFalse();
-            assertThat(result.get(1).deployedVersion()).isNull();
+            assertThat(result.get(0).status()).isEqualTo(ClasspathCatalog.IN_EPISTOLA);
+            assertThat(result.get(1).slug()).isEqualTo("other");
+            assertThat(result.get(1).status()).isEqualTo(ClasspathCatalog.NOT_IN_EPISTOLA);
+        }
+
+        @Test
+        void marksCatalogsUnknownWhenEpistolaUnreachable() {
+            PluginConfiguration config = mockPluginConfiguration(CONFIG_TITLE);
+            EpistolaPlugin plugin = mockPluginInstance(TENANT_ID);
+            when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
+                    .thenReturn(List.of(config));
+            when(pluginService.createInstance(config)).thenReturn(plugin);
+            String configId = config.getId().toString();
+
+            when(catalogSyncService.listClasspathCatalogs()).thenReturn(List.of(
+                    new CatalogScanner.CatalogOnClasspath("demo", "1.2.0", "config/epistola/catalogs/demo")));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenThrow(new RuntimeException("Connection refused"));
+
+            List<ClasspathCatalog> result = adminService.listClasspathCatalogs(configId);
+
+            assertThat(result).hasSize(1);
+            // Never falsely "not in Epistola" when we simply couldn't reach it.
+            assertThat(result.get(0).status()).isEqualTo(ClasspathCatalog.UNKNOWN);
         }
 
         @Test

@@ -386,17 +386,37 @@ public class EpistolaAdminService {
 
     /**
      * List the classpath catalogs available to manually (re)deploy for a plugin
-     * configuration, annotated with the version last deployed in this process.
+     * configuration, each annotated with whether it currently exists in that
+     * configuration's Epistola installation. Existence is resolved live by querying
+     * Epistola (it exposes no catalog version, so this is presence, not a version
+     * match). If Epistola is unreachable the status is {@code UNKNOWN} — never
+     * falsely reported as missing.
      */
     public List<ClasspathCatalog> listClasspathCatalogs(String configurationId) {
-        findConfigEntry(configurationId); // validate the configuration exists (throws if not)
-        return catalogSyncService.discoverCatalogs(configurationId).stream()
+        EpistolaPlugin plugin = findConfigEntry(configurationId).plugin();
+        Optional<Set<String>> epistolaCatalogIds = fetchEpistolaCatalogIds(plugin);
+
+        return catalogSyncService.listClasspathCatalogs().stream()
                 .map(c -> new ClasspathCatalog(
                         c.slug(),
                         c.version(),
-                        c.deployedVersion(),
-                        c.version().equals(c.deployedVersion())))
+                        epistolaCatalogIds
+                                .map(ids -> ids.contains(c.slug())
+                                        ? ClasspathCatalog.IN_EPISTOLA
+                                        : ClasspathCatalog.NOT_IN_EPISTOLA)
+                                .orElse(ClasspathCatalog.UNKNOWN)))
                 .toList();
+    }
+
+    private Optional<Set<String>> fetchEpistolaCatalogIds(EpistolaPlugin plugin) {
+        try {
+            return Optional.of(epistolaService
+                    .getCatalogs(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId())
+                    .stream().map(CatalogInfo::id).collect(Collectors.toSet()));
+        } catch (Exception e) {
+            log.debug("Could not list Epistola catalogs for existence check: {}", e.getMessage());
+            return Optional.empty();
+        }
     }
 
     /**

@@ -235,36 +235,18 @@ class EpistolaCatalogSyncServiceTest {
     }
 
     @Nested
-    class DiscoverCatalogs {
+    class ListClasspathCatalogs {
 
         @Test
-        void listsClasspathCatalogsWithNoDeployedVersionInitially() {
-            var discovered = syncService.discoverCatalogs(CONFIG_ID);
+        void returnsCatalogsFoundOnTheClasspath() {
+            var catalogs = syncService.listClasspathCatalogs();
 
-            assertThat(discovered).isNotEmpty();
-            var testCatalog = discovered.stream()
+            assertThat(catalogs).isNotEmpty();
+            var testCatalog = catalogs.stream()
                     .filter(c -> "test-catalog".equals(c.slug()))
                     .findFirst()
-                    .orElseThrow(() -> new AssertionError("test-catalog not discovered"));
+                    .orElseThrow(() -> new AssertionError("test-catalog not on classpath"));
             assertThat(testCatalog.version()).isNotBlank();
-            assertThat(testCatalog.deployedVersion()).isNull();
-        }
-
-        @Test
-        void reflectsDeployedVersionAfterRedeploy() {
-            when(epistolaService.importCatalog(anyString(), anyString(), anyString(),
-                    any(byte[].class), anyString()))
-                    .thenReturn(new EpistolaService.ImportCatalogResult(
-                            "test-catalog", "Test Catalog", 1, 0, 0, 1));
-
-            syncService.redeployCatalog(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID,
-                    CATALOG_TYPE, "test-catalog");
-
-            var testCatalog = syncService.discoverCatalogs(CONFIG_ID).stream()
-                    .filter(c -> "test-catalog".equals(c.slug()))
-                    .findFirst()
-                    .orElseThrow(() -> new AssertionError("test-catalog not discovered"));
-            assertThat(testCatalog.deployedVersion()).isEqualTo(testCatalog.version());
         }
     }
 

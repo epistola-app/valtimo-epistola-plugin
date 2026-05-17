@@ -381,7 +381,7 @@
             <tr>
               <th>{{ 'epistolaAdminCatalogSlug' | pluginTranslate: 'epistola' | async }}</th>
               <th>{{ 'epistolaAdminCatalogVersion' | pluginTranslate: 'epistola' | async }}</th>
-              <th>{{ 'epistolaAdminCatalogDeployed' | pluginTranslate: 'epistola' | async }}</th>
+              <th>{{ 'epistolaAdminCatalogStatus' | pluginTranslate: 'epistola' | async }}</th>
               <th></th>
             </tr>
           </thead>
@@ -392,18 +392,14 @@
               </td>
               <td>{{ catalog.version }}</td>
               <td>
-                <cds-tag *ngIf="catalog.upToDate" size="sm" type="green">
-                  {{ 'epistolaAdminCatalogUpToDate' | pluginTranslate: 'epistola' | async }}
+                <cds-tag *ngIf="catalog.status === 'IN_EPISTOLA'" size="sm" type="green">
+                  {{ 'epistolaAdminCatalogInEpistola' | pluginTranslate: 'epistola' | async }}
                 </cds-tag>
-                <cds-tag *ngIf="!catalog.upToDate && catalog.deployedVersion" size="sm" type="blue">
-                  v{{ catalog.deployedVersion }}
+                <cds-tag *ngIf="catalog.status === 'NOT_IN_EPISTOLA'" size="sm" type="red">
+                  {{ 'epistolaAdminCatalogNotInEpistola' | pluginTranslate: 'epistola' | async }}
                 </cds-tag>
-                <cds-tag
-                  *ngIf="!catalog.upToDate && !catalog.deployedVersion"
-                  size="sm"
-                  type="gray"
-                >
-                  {{ 'epistolaAdminCatalogNotDeployed' | pluginTranslate: 'epistola' | async }}
+                <cds-tag *ngIf="catalog.status === 'UNKNOWN'" size="sm" type="gray">
+                  {{ 'epistolaAdminCatalogStatusUnknown' | pluginTranslate: 'epistola' | async }}
                 </cds-tag>
               </td>
               <td class="text-end">
