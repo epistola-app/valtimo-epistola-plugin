@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Dangling-reference detection in the admin usage overview** — the Epistola admin "usage" tab now flags `epistola-generate-document` process links whose configured `catalogId` / `templateId` / literal `variantId` no longer resolve in the connected Epistola installation (typical cause: a classpath catalog whose startup auto-deploy failed). Surfaced through the existing per-row `problems` list (red Carbon tags + `table-warning` rows + per-config problem count) — no new endpoint, DTO, or frontend code. Best-effort by design: only literal references are checked (a `variantId` written as a JSONata expression is resolved at runtime and skipped — the literal/expression rule mirrors the frontend `isExpression()` in `preview-utils.ts`); checks are ordered catalog → template → variant so a missing catalog doesn't also report a misleading "template not found"; and when Epistola is unreachable **no** false "does not exist" problems are emitted (reachability stays the `/health` tab's job). Reference lookups are memoized per usage-scan (`EpistolaReferenceCache`) so a many-link scan does not produce an N+1 Epistola API storm. Assumes the value stored on the link equals the Epistola-returned `*.id` (true today — the runtime action passes the same token as the API path parameter); pinned by unit tests so a future Epistola API change is caught.
+
 ## [0.8.0] - 2026-05-08
 
 ### Added

@@ -7,6 +7,8 @@ import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService
 import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
+import app.epistola.valtimo.domain.TemplateInfo;
+import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
@@ -38,14 +40,19 @@ import org.operaton.bpm.model.bpmn.instance.FlowElement;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class EpistolaAdminServiceTest {
@@ -207,6 +214,12 @@ class EpistolaAdminServiceTest {
             // Mock configuration title resolution
             mockSinglePluginConfiguration();
 
+            // Configured catalog + template resolve in Epistola — no dangling references
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
+
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
 
             assertThat(entries).hasSize(1);
@@ -329,6 +342,10 @@ class EpistolaAdminServiceTest {
             when(processLinkService.getProcessLinks(processDef.getId()))
                     .thenReturn(List.of(link));
             mockSinglePluginConfiguration();
+            // Reference checks are irrelevant here; treat Epistola as unreachable so
+            // they are skipped (graceful degradation — no false problems).
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenThrow(new RuntimeException("unreachable"));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
 
@@ -350,11 +367,161 @@ class EpistolaAdminServiceTest {
             // No BPMN model available
             when(repositoryService.getBpmnModelInstance(processDef.getId())).thenReturn(null);
             mockSinglePluginConfiguration();
+            // Reference checks are irrelevant here; treat Epistola as unreachable so
+            // they are skipped (graceful degradation — no false problems).
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenThrow(new RuntimeException("unreachable"));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
 
             assertThat(entries).hasSize(1);
             assertThat(entries.get(0).activityName()).isEqualTo("Activity_1");
+        }
+
+        @Test
+        void shouldDetectMissingCatalog() {
+            singleGenerateDocLink(createActionProps("cat-x", "tmpl-1"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries).hasSize(1);
+            assertThat(entries.get(0).problems())
+                    .contains("Catalog 'cat-x' does not exist in Epistola");
+            // Missing catalog short-circuits — no point probing templates.
+            verify(epistolaService, never())
+                    .getTemplates(anyString(), anyString(), anyString(), anyString());
+        }
+
+        @Test
+        void shouldDetectMissingTemplate() {
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-x"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems())
+                    .contains("Template 'tmpl-x' does not exist in catalog 'cat-1'");
+        }
+
+        @Test
+        void shouldDetectMissingVariant() {
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "nl"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
+            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1"))
+                    .thenReturn(List.of(new VariantInfo("formal", "tmpl-1", "Formal", Map.of())));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems())
+                    .contains("Variant 'nl' does not exist for template 'tmpl-1'");
+        }
+
+        @Test
+        void shouldSkipVariantCheckWhenVariantIsExpression() {
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "$pv.lang"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems()).isEmpty();
+            // A JSONata expression resolves at runtime — never statically verified.
+            verify(epistolaService, never())
+                    .getVariants(anyString(), anyString(), anyString(), anyString(), anyString());
+        }
+
+        @Test
+        void shouldNotFlagWhenEpistolaUnreachable() {
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "nl"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenThrow(new RuntimeException("Connection refused"));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            // No false "does not exist" — reachability is the /health tab's job.
+            assertThat(entries.get(0).problems()).isEmpty();
+            verify(epistolaService, never())
+                    .getTemplates(anyString(), anyString(), anyString(), anyString());
+            verify(epistolaService, never())
+                    .getVariants(anyString(), anyString(), anyString(), anyString(), anyString());
+        }
+
+        @Test
+        void shouldReportNoProblemsWhenAllReferencesPresent() {
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "nl"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
+            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1"))
+                    .thenReturn(List.of(new VariantInfo("nl", "tmpl-1", "Dutch", Map.of())));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems()).isEmpty();
+        }
+
+        @Test
+        void shouldOnlyFetchCatalogsOncePerScanAcrossLinks() {
+            ProcessDefinition pd1 = mockProcessDefinition("p1", "P1");
+            ProcessDefinition pd2 = mockProcessDefinition("p2", "P2");
+            mockProcessDefinitionQuery(List.of(pd1, pd2));
+
+            PluginProcessLink link1 = mockProcessLink("A1", "epistola-generate-document",
+                    createActionProps("cat-x", "tmpl-1"));
+            PluginProcessLink link2 = mockProcessLink("A2", "epistola-generate-document",
+                    createActionProps("cat-x", "tmpl-1"));
+            mockPluginInstanceForLink(link1);
+            mockPluginInstanceForLink(link2);
+            when(processLinkService.getProcessLinks(pd1.getId())).thenReturn(List.of(link1));
+            when(processLinkService.getProcessLinks(pd2.getId())).thenReturn(List.of(link2));
+            mockSinglePluginConfiguration();
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries).hasSize(2);
+            assertThat(entries).allSatisfy(e ->
+                    assertThat(e.problems()).contains("Catalog 'cat-x' does not exist in Epistola"));
+            // Per-invocation cache: one call serves both links on the same config.
+            verify(epistolaService, times(1)).getCatalogs(BASE_URL, API_KEY, TENANT_ID);
+        }
+
+        @Test
+        void shouldCacheNegativeFetchAcrossLinks() {
+            ProcessDefinition pd1 = mockProcessDefinition("p1", "P1");
+            ProcessDefinition pd2 = mockProcessDefinition("p2", "P2");
+            mockProcessDefinitionQuery(List.of(pd1, pd2));
+
+            PluginProcessLink link1 = mockProcessLink("A1", "epistola-generate-document",
+                    createActionProps("cat-1", "tmpl-1"));
+            PluginProcessLink link2 = mockProcessLink("A2", "epistola-generate-document",
+                    createActionProps("cat-1", "tmpl-1"));
+            mockPluginInstanceForLink(link1);
+            mockPluginInstanceForLink(link2);
+            when(processLinkService.getProcessLinks(pd1.getId())).thenReturn(List.of(link1));
+            when(processLinkService.getProcessLinks(pd2.getId())).thenReturn(List.of(link2));
+            mockSinglePluginConfiguration();
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenThrow(new RuntimeException("Connection refused"));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries).hasSize(2);
+            assertThat(entries).allSatisfy(e -> assertThat(e.problems()).isEmpty());
+            // Failed fetch is memoized (Optional.empty sentinel) — not re-probed per link.
+            verify(epistolaService, times(1)).getCatalogs(BASE_URL, API_KEY, TENANT_ID);
         }
     }
 
@@ -656,13 +823,30 @@ class EpistolaAdminServiceTest {
         lenient().when(pluginService.createInstance(link.getPluginConfigurationId())).thenReturn(plugin);
     }
 
+    /** One latest process definition with a single epistola-generate-document link. */
+    private void singleGenerateDocLink(ObjectNode props) {
+        ProcessDefinition processDef = mockProcessDefinition("my-process", "My Process");
+        mockProcessDefinitionQuery(List.of(processDef));
+        PluginProcessLink link = mockProcessLink("Activity_1", "epistola-generate-document", props);
+        mockPluginInstanceForLink(link);
+        when(processLinkService.getProcessLinks(processDef.getId())).thenReturn(List.of(link));
+        mockSinglePluginConfiguration();
+    }
+
     private ObjectNode createActionProps(String catalogId, String templateId) {
+        return createActionProps(catalogId, templateId, null);
+    }
+
+    private ObjectNode createActionProps(String catalogId, String templateId, String variantId) {
         ObjectNode props = objectMapper.createObjectNode();
         if (catalogId != null) {
             props.put("catalogId", catalogId);
         }
         if (templateId != null) {
             props.put("templateId", templateId);
+        }
+        if (variantId != null) {
+            props.put("variantId", variantId);
         }
         return props;
     }

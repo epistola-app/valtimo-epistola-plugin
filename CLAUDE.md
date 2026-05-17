@@ -204,7 +204,7 @@ BPMN `@PluginAction` methods (`generate-document`, `check-job-status`, `download
 - `EpistolaMessageCorrelationService` — BPMN message correlation
 - `PreviewService` — Document preview functionality
 - `RetryFormService` — Dynamic retry form generation
-- `EpistolaAdminService` — Health checks and usage overview
+- `EpistolaAdminService` — Health checks, usage overview, and process-link reference validation (dangling catalog/template/variant detection)
 - `EpistolaFormAutoDeployAspect` — Form auto-deployment aspect
 - `CatalogScanner` — Classpath catalog discovery
 - `EpistolaCatalogSyncService` — Catalog import with version tracking
