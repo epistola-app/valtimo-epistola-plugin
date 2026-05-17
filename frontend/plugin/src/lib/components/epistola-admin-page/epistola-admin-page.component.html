@@ -173,11 +173,30 @@
           {{ 'epistolaAdminLoading' | pluginTranslate: 'epistola' | async }}
         </div>
 
-        <div *ngIf="!changelogLoading && !changelog" class="text-muted mb-3">
+        <div
+          *ngIf="!changelogLoading && changelog && changelog.length === 0"
+          class="text-muted mb-3"
+        >
           {{ 'epistolaAdminNoChangelog' | pluginTranslate: 'epistola' | async }}
         </div>
 
-        <pre *ngIf="!changelogLoading && changelog" class="epistola-changelog">{{ changelog }}</pre>
+        <div
+          *ngIf="!changelogLoading && changelog && changelog.length > 0"
+          class="epistola-changelog"
+        >
+          <section *ngFor="let release of changelog" class="changelog-release">
+            <div class="changelog-release__header">
+              <cds-tag size="sm" type="purple">{{ release.version }}</cds-tag>
+              <span *ngIf="release.date" class="text-muted ms-2">{{ release.date }}</span>
+            </div>
+            <div *ngFor="let section of release.sections" class="changelog-section">
+              <h6 class="changelog-section__title">{{ section.title }}</h6>
+              <ul class="changelog-section__items">
+                <li *ngFor="let item of section.items">{{ item }}</li>
+              </ul>
+            </div>
+          </section>
+        </div>
       </cds-tab>
     </cds-tabs>
   </ng-container>

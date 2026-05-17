@@ -13,6 +13,7 @@ import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.web.rest.dto.BpmnValidationViolation;
 import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
+import app.epistola.valtimo.web.rest.dto.ChangelogRelease;
 import app.epistola.valtimo.web.rest.dto.ClasspathCatalog;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
@@ -136,21 +137,25 @@ public class EpistolaAdminService {
     }
 
     /**
-     * The plugin's CHANGELOG, bundled into the jar at build time
-     * (classpath {@code epistola/CHANGELOG.md}). Returns a friendly placeholder
-     * rather than failing if it is not on the classpath (e.g. an unusual
-     * repackaging) — the admin page treats it as non-critical content.
+     * The plugin's CHANGELOG, parsed into structured releases for the admin UI.
+     * The raw markdown is bundled into the jar at build time (classpath
+     * {@code epistola/CHANGELOG.md}). Returns an empty list rather than failing
+     * if it is absent or unparseable — the admin page treats it as non-critical.
      */
-    public String getChangelog() {
+    public List<ChangelogRelease> getChangelog() {
+        return ChangelogParser.parse(readBundledChangelog());
+    }
+
+    private String readBundledChangelog() {
         try (var in = getClass().getClassLoader().getResourceAsStream("epistola/CHANGELOG.md")) {
             if (in == null) {
                 log.debug("epistola/CHANGELOG.md not found on classpath");
-                return "# Changelog\n\nChangelog is not available in this build.";
+                return null;
             }
             return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
         } catch (Exception e) {
             log.warn("Failed to read bundled CHANGELOG: {}", e.getMessage());
-            return "# Changelog\n\nChangelog could not be read: " + e.getMessage();
+            return null;
         }
     }
 

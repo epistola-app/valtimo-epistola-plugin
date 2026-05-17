@@ -183,13 +183,19 @@ class EpistolaAdminServiceTest {
     class GetChangelog {
 
         @Test
-        void returnsBundledChangelogMarkdown() {
+        void returnsBundledChangelogParsedIntoReleases() {
             // processResources copies the repo CHANGELOG.md to epistola/CHANGELOG.md,
             // which is on the test runtime classpath.
-            String changelog = adminService.getChangelog();
+            var releases = adminService.getChangelog();
 
-            assertThat(changelog).contains("# Changelog");
-            assertThat(changelog).doesNotContain("not available in this build");
+            assertThat(releases).isNotEmpty();
+            // Newest first; the repo CHANGELOG starts with the Unreleased block.
+            assertThat(releases.get(0).version()).isEqualTo("Unreleased");
+            assertThat(releases).anySatisfy(r -> {
+                assertThat(r.version()).isEqualTo("0.8.0");
+                assertThat(r.date()).isEqualTo("2026-05-08");
+                assertThat(r.sections()).isNotEmpty();
+            });
         }
     }
 

@@ -98,6 +98,24 @@ export interface CatalogRedeployResult {
 }
 
 /**
+ * A "Keep a Changelog" section within a release (e.g. "Added") and its items.
+ */
+export interface ChangelogSection {
+  title: string;
+  items: string[];
+}
+
+/**
+ * One release block from the bundled CHANGELOG, parsed server-side (newest
+ * first). `date` is null for the Unreleased block.
+ */
+export interface ChangelogRelease {
+  version: string;
+  date: string | null;
+  sections: ChangelogSection[];
+}
+
+/**
  * A BPMN race-safety violation reported by the backend's deployment validator.
  * `code` is one of the constants in
  * `app.epistola.valtimo.web.rest.dto.BpmnValidationViolation` (kept stable so

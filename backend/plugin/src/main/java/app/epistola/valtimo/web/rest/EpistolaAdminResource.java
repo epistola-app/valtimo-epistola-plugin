@@ -5,6 +5,7 @@ import app.epistola.valtimo.authorization.EpistolaAdministrationActionProvider;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
 import app.epistola.valtimo.web.rest.dto.BpmnValidationViolation;
 import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
+import app.epistola.valtimo.web.rest.dto.ChangelogRelease;
 import app.epistola.valtimo.web.rest.dto.ClasspathCatalog;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
@@ -70,11 +71,12 @@ public class EpistolaAdminResource {
     }
 
     /**
-     * Get the plugin CHANGELOG (markdown) bundled into the running jar, so the
-     * admin page can show what changed in the running plugin version.
+     * Get the plugin CHANGELOG, parsed from the markdown bundled into the running
+     * jar into structured releases so the admin page can render it without a
+     * markdown renderer.
      */
-    @GetMapping(value = "/changelog", produces = "text/markdown;charset=UTF-8")
-    public ResponseEntity<String> getChangelog() {
+    @GetMapping("/changelog")
+    public ResponseEntity<List<ChangelogRelease>> getChangelog() {
         requireManagePermission();
         log.debug("Fetching plugin changelog");
         return ResponseEntity.ok(adminService.getChangelog());

@@ -5,6 +5,7 @@ import { Observable } from 'rxjs';
 import {
   BpmnValidationViolation,
   CatalogRedeployResult,
+  ChangelogRelease,
   ClasspathCatalog,
   ConnectionStatus,
   PendingJob,
@@ -103,11 +104,11 @@ export class EpistolaAdminService {
   }
 
   /**
-   * Get the plugin CHANGELOG (raw markdown) bundled into the running backend
-   * jar. Rendered as preformatted text in the admin Changelog tab.
+   * Get the plugin CHANGELOG parsed (server-side) into structured releases for
+   * the admin Changelog tab — no markdown renderer needed on the client.
    */
-  getChangelog(): Observable<string> {
-    return this.http.get(`${this.apiEndpoint}/changelog`, { responseType: 'text' });
+  getChangelog(): Observable<ChangelogRelease[]> {
+    return this.http.get<ChangelogRelease[]>(`${this.apiEndpoint}/changelog`);
   }
 
   /**

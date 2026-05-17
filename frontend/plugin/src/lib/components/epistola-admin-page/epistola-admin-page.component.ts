@@ -8,6 +8,7 @@ import { EpistolaAdminService } from '../../services/epistola-admin.service';
 import {
   BpmnValidationViolation,
   CatalogRedeployResult,
+  ChangelogRelease,
   ClasspathCatalog,
   ConnectionStatus,
   PendingJob,
@@ -45,7 +46,7 @@ export class EpistolaAdminPageComponent implements OnInit {
   overviewTab: 'configurations' | 'validations' | 'changelog' = 'configurations';
   loading = false;
   pluginVersion: string | null = null;
-  changelog: string | null = null;
+  changelog: ChangelogRelease[] | null = null;
   changelogLoading = false;
   validationViolations: BpmnValidationViolation[] = [];
   reconcilingExecutionIds = new Set<string>();
@@ -118,12 +119,12 @@ export class EpistolaAdminPageComponent implements OnInit {
   private loadChangelog(): void {
     this.changelogLoading = true;
     this.adminService.getChangelog().subscribe({
-      next: (md) => {
-        this.changelog = md;
+      next: (releases) => {
+        this.changelog = releases;
         this.changelogLoading = false;
       },
       error: () => {
-        this.changelog = '';
+        this.changelog = [];
         this.changelogLoading = false;
       },
     });

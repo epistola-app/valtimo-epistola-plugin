@@ -154,14 +154,47 @@
   .epistola-changelog {
     max-height: 60vh;
     overflow: auto;
-    padding: 1rem;
-    margin: 0;
-    background: #f4f4f4;
+    padding: 0.5rem 1rem;
     border: 1px solid #dee2e6;
     border-radius: 4px;
-    font-size: 0.8125rem;
-    line-height: 1.45;
-    white-space: pre-wrap;
-    word-break: break-word;
+
+    .changelog-release {
+      padding: 0.75rem 0;
+
+      & + .changelog-release {
+        border-top: 1px solid #eee;
+      }
+
+      &__header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+    }
+
+    .changelog-section {
+      margin: 0.25rem 0 0.75rem;
+
+      &__title {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        color: #6f6f6f;
+        margin-bottom: 0.25rem;
+      }
+
+      &__items {
+        margin: 0;
+        padding-left: 1.25rem;
+        font-size: 0.8125rem;
+        line-height: 1.5;
+
+        li {
+          margin-bottom: 0.25rem;
+          word-break: break-word;
+        }
+      }
+    }
   }
 }
