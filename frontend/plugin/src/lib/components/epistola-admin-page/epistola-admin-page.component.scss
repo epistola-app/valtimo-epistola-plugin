@@ -150,4 +150,18 @@
     padding: 1rem 0;
     border-bottom: 1px solid #dee2e6;
   }
+
+  .epistola-changelog {
+    max-height: 60vh;
+    overflow: auto;
+    padding: 1rem;
+    margin: 0;
+    background: #f4f4f4;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
 }

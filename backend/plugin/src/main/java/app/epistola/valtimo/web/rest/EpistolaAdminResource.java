@@ -70,6 +70,17 @@ public class EpistolaAdminResource {
     }
 
     /**
+     * Get the plugin CHANGELOG (markdown) bundled into the running jar, so the
+     * admin page can show what changed in the running plugin version.
+     */
+    @GetMapping(value = "/changelog", produces = "text/markdown;charset=UTF-8")
+    public ResponseEntity<String> getChangelog() {
+        requireManagePermission();
+        log.debug("Fetching plugin changelog");
+        return ResponseEntity.ok(adminService.getChangelog());
+    }
+
+    /**
      * Get an overview of all Epistola plugin usages across process definitions.
      */
     @GetMapping("/usage")

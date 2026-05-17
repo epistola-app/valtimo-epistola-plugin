@@ -42,9 +42,11 @@ export class EpistolaAdminPageComponent implements OnInit {
   cards: ConfigurationCard[] = [];
   selectedCard: ConfigurationCard | null = null;
   activeTab: 'actions' | 'pending' | 'catalogs' = 'actions';
-  overviewTab: 'configurations' | 'validations' = 'configurations';
+  overviewTab: 'configurations' | 'validations' | 'changelog' = 'configurations';
   loading = false;
   pluginVersion: string | null = null;
+  changelog: string | null = null;
+  changelogLoading = false;
   validationViolations: BpmnValidationViolation[] = [];
   reconcilingExecutionIds = new Set<string>();
   reconcileFeedback: {
@@ -106,8 +108,25 @@ export class EpistolaAdminPageComponent implements OnInit {
     this.updateUrl(this.selectedCard?.configurationId ?? null, tab);
   }
 
-  setOverviewTab(tab: 'configurations' | 'validations'): void {
+  setOverviewTab(tab: 'configurations' | 'validations' | 'changelog'): void {
     this.overviewTab = tab;
+    if (tab === 'changelog' && this.changelog === null && !this.changelogLoading) {
+      this.loadChangelog();
+    }
+  }
+
+  private loadChangelog(): void {
+    this.changelogLoading = true;
+    this.adminService.getChangelog().subscribe({
+      next: (md) => {
+        this.changelog = md;
+        this.changelogLoading = false;
+      },
+      error: () => {
+        this.changelog = '';
+        this.changelogLoading = false;
+      },
+    });
   }
 
   refresh(): void {

@@ -103,6 +103,14 @@ export class EpistolaAdminService {
   }
 
   /**
+   * Get the plugin CHANGELOG (raw markdown) bundled into the running backend
+   * jar. Rendered as preformatted text in the admin Changelog tab.
+   */
+  getChangelog(): Observable<string> {
+    return this.http.get(`${this.apiEndpoint}/changelog`, { responseType: 'text' });
+  }
+
+  /**
    * Export a single process link as a .process-link.json file.
    */
   exportProcessLink(processLinkId: string): Observable<Blob> {

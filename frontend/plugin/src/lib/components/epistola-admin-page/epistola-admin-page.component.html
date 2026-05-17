@@ -23,6 +23,10 @@
       </cds-tag>
     </ng-template>
 
+    <ng-template #changelogHeading>
+      {{ 'epistolaAdminChangelog' | pluginTranslate: 'epistola' | async }}
+    </ng-template>
+
     <cds-tabs [cacheActive]="true" type="contained">
       <cds-tab
         [heading]="configurationsHeading"
@@ -151,6 +155,29 @@
             </tbody>
           </table>
         </div>
+      </cds-tab>
+
+      <cds-tab
+        [heading]="changelogHeading"
+        [active]="overviewTab === 'changelog'"
+        (selected)="setOverviewTab('changelog')"
+      >
+        <div class="d-flex align-items-center mt-3 mb-3">
+          <span class="text-muted me-2">{{
+            'epistolaAdminRunningVersion' | pluginTranslate: 'epistola' | async
+          }}</span>
+          <cds-tag size="sm" type="blue">v{{ pluginVersion || '—' }}</cds-tag>
+        </div>
+
+        <div *ngIf="changelogLoading" class="text-muted mb-3">
+          {{ 'epistolaAdminLoading' | pluginTranslate: 'epistola' | async }}
+        </div>
+
+        <div *ngIf="!changelogLoading && !changelog" class="text-muted mb-3">
+          {{ 'epistolaAdminNoChangelog' | pluginTranslate: 'epistola' | async }}
+        </div>
+
+        <pre *ngIf="!changelogLoading && changelog" class="epistola-changelog">{{ changelog }}</pre>
       </cds-tab>
     </cds-tabs>
   </ng-container>

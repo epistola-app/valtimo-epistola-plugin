@@ -196,6 +196,9 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminRedeploying: 'Bezig...',
       epistolaAdminRedeployTooltip:
         'Bouw deze catalogus opnieuw vanaf het classpath en stuur hem geforceerd naar Epistola, ongeacht de versie of de templateSyncEnabled-instelling.',
+      epistolaAdminChangelog: 'Changelog',
+      epistolaAdminRunningVersion: 'Actieve plugin-versie:',
+      epistolaAdminNoChangelog: 'Geen changelog beschikbaar in deze build.',
     },
     en: {
       title: 'Epistola Document Suite',
@@ -363,6 +366,9 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminRedeploying: 'Redeploying...',
       epistolaAdminRedeployTooltip:
         'Rebuild this catalog from the classpath and force-push it to Epistola, regardless of version or the templateSyncEnabled setting.',
+      epistolaAdminChangelog: 'Changelog',
+      epistolaAdminRunningVersion: 'Running plugin version:',
+      epistolaAdminNoChangelog: 'No changelog available in this build.',
     },
   },
 };

@@ -136,6 +136,25 @@ public class EpistolaAdminService {
     }
 
     /**
+     * The plugin's CHANGELOG, bundled into the jar at build time
+     * (classpath {@code epistola/CHANGELOG.md}). Returns a friendly placeholder
+     * rather than failing if it is not on the classpath (e.g. an unusual
+     * repackaging) — the admin page treats it as non-critical content.
+     */
+    public String getChangelog() {
+        try (var in = getClass().getClassLoader().getResourceAsStream("epistola/CHANGELOG.md")) {
+            if (in == null) {
+                log.debug("epistola/CHANGELOG.md not found on classpath");
+                return "# Changelog\n\nChangelog is not available in this build.";
+            }
+            return new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            log.warn("Failed to read bundled CHANGELOG: {}", e.getMessage());
+            return "# Changelog\n\nChangelog could not be read: " + e.getMessage();
+        }
+    }
+
+    /**
      * Scan all deployed process definitions for Epistola process links.
      * Reports each usage with basic problem detection.
      */

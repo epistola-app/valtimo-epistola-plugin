@@ -86,6 +86,14 @@ tasks.withType<JavaCompile> {
     options.compilerArgs.add("-parameters")
 }
 
+// Bundle the repo CHANGELOG into the plugin jar so the admin page can serve it
+// at runtime (classpath: epistola/CHANGELOG.md).
+tasks.processResources {
+    from(rootProject.file("CHANGELOG.md")) {
+        into("epistola")
+    }
+}
+
 tasks.test {
     // Don't fail if there are no tests yet
     failOnNoDiscoveredTests.set(false)

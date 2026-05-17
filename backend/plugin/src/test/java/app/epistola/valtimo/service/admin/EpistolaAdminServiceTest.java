@@ -180,6 +180,20 @@ class EpistolaAdminServiceTest {
     }
 
     @Nested
+    class GetChangelog {
+
+        @Test
+        void returnsBundledChangelogMarkdown() {
+            // processResources copies the repo CHANGELOG.md to epistola/CHANGELOG.md,
+            // which is on the test runtime classpath.
+            String changelog = adminService.getChangelog();
+
+            assertThat(changelog).contains("# Changelog");
+            assertThat(changelog).doesNotContain("not available in this build");
+        }
+    }
+
+    @Nested
     class GetPluginUsage {
 
         @Test
