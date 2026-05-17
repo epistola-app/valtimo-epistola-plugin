@@ -4,6 +4,8 @@ import app.epistola.valtimo.authorization.EpistolaAdministration;
 import app.epistola.valtimo.authorization.EpistolaAdministrationActionProvider;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
 import app.epistola.valtimo.web.rest.dto.BpmnValidationViolation;
+import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
+import app.epistola.valtimo.web.rest.dto.ClasspathCatalog;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
@@ -119,6 +121,36 @@ public class EpistolaAdminResource {
         log.info("Manual reconcile requested for execution {}", executionId);
         ReconcileResult result = adminService.reconcile(executionId);
         HttpStatus status = result.correlated() ? HttpStatus.OK : HttpStatus.CONFLICT;
+        return ResponseEntity.status(status).body(result);
+    }
+
+    /**
+     * List the classpath catalogs available to manually redeploy for a plugin
+     * configuration, each annotated with the version last deployed in this process.
+     * Returns 400 (via Valtimo's global advice) when the configuration id is unknown.
+     */
+    @GetMapping("/configurations/{configurationId}/catalogs")
+    public ResponseEntity<List<ClasspathCatalog>> listClasspathCatalogs(
+            @PathVariable String configurationId) {
+        requireManagePermission();
+        log.debug("Listing classpath catalogs for configuration {}", configurationId);
+        return ResponseEntity.ok(adminService.listClasspathCatalogs(configurationId));
+    }
+
+    /**
+     * Force-redeploy a single classpath catalog to the configuration's Epistola
+     * installation. Explicit operator action — bypasses the {@code templateSyncEnabled}
+     * gate and the version-skip check. Returns 200 with the per-resource counts on
+     * success, 502 (with the same body, carrying {@code errorMessage}) when the import
+     * failed, or 400 when the configuration id or catalog slug is unknown.
+     */
+    @PostMapping("/configurations/{configurationId}/catalogs/{slug}/redeploy")
+    public ResponseEntity<CatalogRedeployResult> redeployCatalog(
+            @PathVariable String configurationId, @PathVariable String slug) {
+        requireManagePermission();
+        log.info("Manual catalog redeploy requested: configuration={}, slug={}", configurationId, slug);
+        CatalogRedeployResult result = adminService.redeployCatalog(configurationId, slug);
+        HttpStatus status = result.success() ? HttpStatus.OK : HttpStatus.BAD_GATEWAY;
         return ResponseEntity.status(status).body(result);
     }
 

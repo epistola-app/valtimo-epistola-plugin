@@ -213,10 +213,12 @@ public class EpistolaPluginAutoConfiguration {
             RepositoryService repositoryService,
             RuntimeService runtimeService,
             ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService,
-            EpistolaProcessDefinitionValidator processDefinitionValidator
+            EpistolaProcessDefinitionValidator processDefinitionValidator,
+            EpistolaCatalogSyncService catalogSyncService
     ) {
         return new EpistolaAdminService(pluginService, epistolaService, correlationService, processLinkService,
-                repositoryService, runtimeService, processDefinitionCaseDefinitionService, processDefinitionValidator);
+                repositoryService, runtimeService, processDefinitionCaseDefinitionService, processDefinitionValidator,
+                catalogSyncService);
     }
 
     @Bean

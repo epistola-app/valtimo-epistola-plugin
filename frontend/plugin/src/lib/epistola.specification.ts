@@ -182,6 +182,19 @@ const epistolaPluginSpecification: PluginSpecification = {
         'In deze procesdefinities is de grens tussen de generate-document service task en de EpistolaDocumentGenerated catch event niet synchroon. Resultaten kunnen verloren gaan; gebruik in dat geval de Hersynchroniseer-knop in de Wachtende taken-tab.',
       epistolaAdminValidationCode: 'Code',
       epistolaAdminValidationMessage: 'Bericht',
+      epistolaAdminCatalogs: 'Catalogi',
+      epistolaAdminCatalogsIntro:
+        'Catalogi op het classpath van de applicatie. Deze worden bij het opstarten automatisch uitgerold; gebruik Opnieuw uitrollen om een catalogus handmatig (geforceerd) naar deze Epistola-omgeving te sturen, bijvoorbeeld als de automatische uitrol is mislukt.',
+      epistolaAdminNoCatalogs: 'Geen catalogi gevonden op het classpath.',
+      epistolaAdminCatalogSlug: 'Slug',
+      epistolaAdminCatalogVersion: 'Versie',
+      epistolaAdminCatalogDeployed: 'Uitgerold',
+      epistolaAdminCatalogUpToDate: 'Actueel',
+      epistolaAdminCatalogNotDeployed: 'Nog niet uitgerold',
+      epistolaAdminRedeploy: 'Opnieuw uitrollen',
+      epistolaAdminRedeploying: 'Bezig...',
+      epistolaAdminRedeployTooltip:
+        'Bouw deze catalogus opnieuw vanaf het classpath en stuur hem geforceerd naar Epistola, ongeacht de versie of de templateSyncEnabled-instelling.',
     },
     en: {
       title: 'Epistola Document Suite',
@@ -335,6 +348,19 @@ const epistolaPluginSpecification: PluginSpecification = {
         'These process definitions have a non-synchronous boundary between the generate-document service task and the EpistolaDocumentGenerated catch event. Results can be missed; use the Reconcile button on the Pending Jobs tab to recover.',
       epistolaAdminValidationCode: 'Code',
       epistolaAdminValidationMessage: 'Message',
+      epistolaAdminCatalogs: 'Catalogs',
+      epistolaAdminCatalogsIntro:
+        'Catalogs on the application classpath. These are deployed automatically on startup; use Redeploy to manually (force) push one to this Epistola installation — for example when the automatic startup deploy failed.',
+      epistolaAdminNoCatalogs: 'No catalogs found on the classpath.',
+      epistolaAdminCatalogSlug: 'Slug',
+      epistolaAdminCatalogVersion: 'Version',
+      epistolaAdminCatalogDeployed: 'Deployed',
+      epistolaAdminCatalogUpToDate: 'Up to date',
+      epistolaAdminCatalogNotDeployed: 'Not deployed yet',
+      epistolaAdminRedeploy: 'Redeploy',
+      epistolaAdminRedeploying: 'Redeploying...',
+      epistolaAdminRedeployTooltip:
+        'Rebuild this catalog from the classpath and force-push it to Epistola, regardless of version or the templateSyncEnabled setting.',
     },
   },
 };

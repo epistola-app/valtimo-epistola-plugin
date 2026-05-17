@@ -107,6 +107,74 @@ public class EpistolaCatalogSyncService {
     }
 
     /**
+     * List the catalogs found on the classpath, annotated with the version last
+     * successfully deployed for the given plugin configuration (in-memory, reset on
+     * restart — {@code deployedVersion} is {@code null} until a startup sync or a
+     * manual redeploy has run in this process).
+     *
+     * @param configId The plugin configuration ID (for version-tracking lookup)
+     * @return Discovered catalogs (never null)
+     */
+    public List<DiscoveredCatalog> discoverCatalogs(String configId) {
+        Map<String, String> deployed = deployedVersions.getOrDefault(configId, Map.of());
+        return scanner.scan().stream()
+                .map(c -> new DiscoveredCatalog(c.slug(), c.version(), deployed.get(c.slug())))
+                .toList();
+    }
+
+    /**
+     * Force-redeploy a single classpath catalog to Epistola, bypassing the
+     * version-skip check that {@link #syncCatalogs} applies. This is the explicit
+     * manual admin action: it always pushes regardless of {@code templateSyncEnabled}
+     * (gating is the caller's concern) and regardless of whether the version changed.
+     * On success the in-memory deployed-version is updated so a later startup sync
+     * sees it as current.
+     *
+     * @param configId    The plugin configuration ID (for version tracking)
+     * @param baseUrl     The Epistola API base URL
+     * @param apiKey      The API key for authentication
+     * @param tenantId    The tenant ID in Epistola
+     * @param catalogType The catalog type passed to the import endpoint
+     * @param slug        The slug of the classpath catalog to redeploy
+     * @return Per-catalog outcome (never throws for an import failure — see
+     *         {@link RedeployOutcome#success()}); throws {@link IllegalArgumentException}
+     *         only when no classpath catalog has the given slug
+     */
+    public RedeployOutcome redeployCatalog(String configId, String baseUrl, String apiKey,
+                                           String tenantId, String catalogType, String slug) {
+        CatalogScanner.CatalogOnClasspath catalog = scanner.scan().stream()
+                .filter(c -> c.slug().equals(slug))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No classpath catalog found with slug '" + slug + "'"));
+
+        try {
+            byte[] zipBytes = buildCatalogZip(catalog);
+
+            EpistolaService.ImportCatalogResult result = epistolaService.importCatalog(
+                    baseUrl, apiKey, tenantId, zipBytes, catalogType);
+
+            deployedVersions
+                    .computeIfAbsent(configId, k -> new HashMap<>())
+                    .put(catalog.slug(), catalog.version());
+
+            log.info("Manual redeploy of catalog '{}' v{} to tenant '{}': "
+                            + "key={}, installed={}, updated={}, failed={}, total={}",
+                    catalog.slug(), catalog.version(), tenantId, result.catalogKey(),
+                    result.installed(), result.updated(), result.failed(), result.total());
+
+            return new RedeployOutcome(catalog.slug(), catalog.version(), true,
+                    result.catalogKey(), result.installed(), result.updated(),
+                    result.failed(), result.total(), null);
+        } catch (Exception e) {
+            log.error("Manual redeploy of catalog '{}' v{} failed: {}",
+                    catalog.slug(), catalog.version(), e.getMessage(), e);
+            return new RedeployOutcome(catalog.slug(), catalog.version(), false,
+                    null, 0, 0, 0, 0, e.getMessage());
+        }
+    }
+
+    /**
      * Build a ZIP archive from a catalog's classpath resources.
      * <p>
      * Includes:
@@ -215,4 +283,29 @@ public class EpistolaCatalogSyncService {
             return failCount == 0;
         }
     }
+
+    /**
+     * A catalog on the classpath plus the version last deployed for a configuration.
+     *
+     * @param slug            The catalog slug
+     * @param version         The version currently on the classpath
+     * @param deployedVersion The version last deployed in this process for the config,
+     *                        or {@code null} if not deployed since startup
+     */
+    public record DiscoveredCatalog(String slug, String version, String deployedVersion) {}
+
+    /**
+     * Outcome of a single {@link #redeployCatalog} call.
+     */
+    public record RedeployOutcome(
+            String slug,
+            String version,
+            boolean success,
+            String catalogKey,
+            int installed,
+            int updated,
+            int failed,
+            int total,
+            String errorMessage
+    ) {}
 }

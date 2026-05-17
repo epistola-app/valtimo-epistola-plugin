@@ -1,5 +1,6 @@
 package app.epistola.valtimo.service.admin;
 
+import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.domain.GenerationJobDetail;
@@ -11,6 +12,8 @@ import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService
 
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.web.rest.dto.BpmnValidationViolation;
+import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
+import app.epistola.valtimo.web.rest.dto.ClasspathCatalog;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
@@ -59,6 +62,9 @@ public class EpistolaAdminService {
             "epistola-generate-document", "epistola-check-job-status", "epistola-download-document"
     );
 
+    /** Catalog import type — mirrors the value used by the startup sync trigger. */
+    private static final String CATALOG_SYNC_TYPE = "AUTHORED";
+
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
     private final EpistolaMessageCorrelationService correlationService;
@@ -67,6 +73,7 @@ public class EpistolaAdminService {
     private final RuntimeService runtimeService;
     private final ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
     private final EpistolaProcessDefinitionValidator processDefinitionValidator;
+    private final EpistolaCatalogSyncService catalogSyncService;
 
     /**
      * Latest BPMN race-safety violations as reported by the validator. Empty when
@@ -365,6 +372,58 @@ public class EpistolaAdminService {
         }
         throw new IllegalArgumentException(
                 "No Epistola plugin configuration found for tenantId=" + tenantId);
+    }
+
+    private PluginConfigEntry findConfigEntry(String configurationId) {
+        for (PluginConfigEntry entry : loadPluginConfigurations()) {
+            if (entry.config().getId().toString().equals(configurationId)) {
+                return entry;
+            }
+        }
+        throw new IllegalArgumentException(
+                "No Epistola plugin configuration found with id=" + configurationId);
+    }
+
+    /**
+     * List the classpath catalogs available to manually (re)deploy for a plugin
+     * configuration, annotated with the version last deployed in this process.
+     */
+    public List<ClasspathCatalog> listClasspathCatalogs(String configurationId) {
+        findConfigEntry(configurationId); // validate the configuration exists (throws if not)
+        return catalogSyncService.discoverCatalogs(configurationId).stream()
+                .map(c -> new ClasspathCatalog(
+                        c.slug(),
+                        c.version(),
+                        c.deployedVersion(),
+                        c.version().equals(c.deployedVersion())))
+                .toList();
+    }
+
+    /**
+     * Force-redeploy a single classpath catalog to the configuration's Epistola
+     * installation. Explicit operator action — runs regardless of the
+     * {@code templateSyncEnabled} plugin property (which only gates the automatic
+     * startup sync) and regardless of whether the catalog version changed.
+     */
+    public CatalogRedeployResult redeployCatalog(String configurationId, String slug) {
+        EpistolaPlugin plugin = findConfigEntry(configurationId).plugin();
+        EpistolaCatalogSyncService.RedeployOutcome outcome = catalogSyncService.redeployCatalog(
+                configurationId,
+                plugin.getBaseUrl(),
+                plugin.getApiKey(),
+                plugin.getTenantId(),
+                CATALOG_SYNC_TYPE,
+                slug);
+        return new CatalogRedeployResult(
+                outcome.slug(),
+                outcome.version(),
+                outcome.success(),
+                outcome.catalogKey(),
+                outcome.installed(),
+                outcome.updated(),
+                outcome.failed(),
+                outcome.total(),
+                outcome.errorMessage());
     }
 
     private Map<String, String> buildTenantConfigTitleMap() {

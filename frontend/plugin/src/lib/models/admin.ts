@@ -68,6 +68,35 @@ export interface ReconcileResult {
 }
 
 /**
+ * A catalog discovered on the application classpath, available to manually
+ * redeploy to a plugin configuration's Epistola installation. `deployedVersion`
+ * is tracked in memory per running backend instance (reset on restart), so
+ * `upToDate` is a best-effort hint, not a guarantee.
+ */
+export interface ClasspathCatalog {
+  slug: string;
+  version: string;
+  deployedVersion: string | null;
+  upToDate: boolean;
+}
+
+/**
+ * Outcome of a manual single-catalog redeploy. `success=false` carries the
+ * reason in `errorMessage`; the backend returns HTTP 502 in that case.
+ */
+export interface CatalogRedeployResult {
+  slug: string;
+  version: string;
+  success: boolean;
+  catalogKey: string | null;
+  installed: number;
+  updated: number;
+  failed: number;
+  total: number;
+  errorMessage: string | null;
+}
+
+/**
  * A BPMN race-safety violation reported by the backend's deployment validator.
  * `code` is one of the constants in
  * `app.epistola.valtimo.web.rest.dto.BpmnValidationViolation` (kept stable so

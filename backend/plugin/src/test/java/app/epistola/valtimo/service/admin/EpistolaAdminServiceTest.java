@@ -1,4 +1,5 @@
 package app.epistola.valtimo.service.admin;
+import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
 import app.epistola.valtimo.service.EpistolaService;
@@ -9,6 +10,8 @@ import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
+import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
+import app.epistola.valtimo.web.rest.dto.ClasspathCatalog;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
@@ -72,6 +75,7 @@ class EpistolaAdminServiceTest {
     private RuntimeService runtimeService;
     private ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
     private EpistolaProcessDefinitionValidator processDefinitionValidator;
+    private EpistolaCatalogSyncService catalogSyncService;
     private EpistolaAdminService adminService;
 
     @BeforeEach
@@ -84,9 +88,11 @@ class EpistolaAdminServiceTest {
         runtimeService = mock(RuntimeService.class);
         processDefinitionCaseDefinitionService = mock(ProcessDefinitionCaseDefinitionService.class);
         processDefinitionValidator = mock(EpistolaProcessDefinitionValidator.class);
+        catalogSyncService = mock(EpistolaCatalogSyncService.class);
         adminService = new EpistolaAdminService(
                 pluginService, epistolaService, correlationService, processLinkService, repositoryService,
-                runtimeService, processDefinitionCaseDefinitionService, processDefinitionValidator);
+                runtimeService, processDefinitionCaseDefinitionService, processDefinitionValidator,
+                catalogSyncService);
     }
 
     @Nested
@@ -522,6 +528,64 @@ class EpistolaAdminServiceTest {
             assertThat(entries).allSatisfy(e -> assertThat(e.problems()).isEmpty());
             // Failed fetch is memoized (Optional.empty sentinel) — not re-probed per link.
             verify(epistolaService, times(1)).getCatalogs(BASE_URL, API_KEY, TENANT_ID);
+        }
+    }
+
+    @Nested
+    class CatalogRedeploy {
+
+        @Test
+        void listsClasspathCatalogsForConfiguration() {
+            PluginConfiguration config = mockPluginConfiguration(CONFIG_TITLE);
+            EpistolaPlugin plugin = mockPluginInstance(TENANT_ID);
+            when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
+                    .thenReturn(List.of(config));
+            when(pluginService.createInstance(config)).thenReturn(plugin);
+            String configId = config.getId().toString();
+
+            when(catalogSyncService.discoverCatalogs(configId)).thenReturn(List.of(
+                    new EpistolaCatalogSyncService.DiscoveredCatalog("demo", "1.2.0", "1.2.0"),
+                    new EpistolaCatalogSyncService.DiscoveredCatalog("other", "2.0.0", null)));
+
+            List<ClasspathCatalog> result = adminService.listClasspathCatalogs(configId);
+
+            assertThat(result).hasSize(2);
+            assertThat(result.get(0).slug()).isEqualTo("demo");
+            assertThat(result.get(0).upToDate()).isTrue();
+            assertThat(result.get(1).upToDate()).isFalse();
+            assertThat(result.get(1).deployedVersion()).isNull();
+        }
+
+        @Test
+        void redeployDelegatesToSyncServiceWithConfigCredentials() {
+            PluginConfiguration config = mockPluginConfiguration(CONFIG_TITLE);
+            EpistolaPlugin plugin = mockPluginInstance(TENANT_ID);
+            when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
+                    .thenReturn(List.of(config));
+            when(pluginService.createInstance(config)).thenReturn(plugin);
+            String configId = config.getId().toString();
+
+            when(catalogSyncService.redeployCatalog(eq(configId), eq(BASE_URL), eq(API_KEY),
+                    eq(TENANT_ID), anyString(), eq("demo")))
+                    .thenReturn(new EpistolaCatalogSyncService.RedeployOutcome(
+                            "demo", "1.2.0", true, "demo", 3, 1, 0, 4, null));
+
+            CatalogRedeployResult result = adminService.redeployCatalog(configId, "demo");
+
+            assertThat(result.success()).isTrue();
+            assertThat(result.slug()).isEqualTo("demo");
+            assertThat(result.installed()).isEqualTo(3);
+            assertThat(result.total()).isEqualTo(4);
+        }
+
+        @Test
+        void redeployRejectsUnknownConfiguration() {
+            when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
+                    .thenReturn(Collections.emptyList());
+
+            assertThatThrownBy(() -> adminService.redeployCatalog("nope", "demo"))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("No Epistola plugin configuration found with id=nope");
         }
     }
 
