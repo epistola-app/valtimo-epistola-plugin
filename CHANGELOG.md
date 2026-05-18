@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Admin page always showed the running plugin version as `vdevelopment`** — even in released/production builds. `EpistolaAdminService.getPluginVersion()` reads `Implementation-Version` from the jar manifest, but the backend `jar` task never wrote that attribute, so the lookup returned `null` in every build and fell back to `"development"`. The `jar` task now populates `Implementation-Title` / `Implementation-Version` from the Gradle project version (release builds pass `-Pversion=<x.y.z>`), and the fallback also treats Gradle's `unspecified` default as `development` so plain local builds keep the friendly label instead of showing `vunspecified`.
+
 ## [0.9.0] - 2026-05-18
 
 ### Added

@@ -691,8 +691,15 @@ public class EpistolaAdminService {
     }
 
     private String getPluginVersion() {
+        // Implementation-Version is set on the jar manifest by the build (see
+        // backend/plugin/build.gradle.kts). It is only meaningful for versioned
+        // (release) builds; plain local builds leave Gradle's "unspecified"
+        // default, which we surface as "development".
         String version = EpistolaAdminService.class.getPackage().getImplementationVersion();
-        return version != null ? version : "development";
+        if (version == null || version.isBlank() || "unspecified".equals(version)) {
+            return "development";
+        }
+        return version;
     }
 
     private record PluginConfigEntry(PluginConfiguration config, EpistolaPlugin plugin) {}

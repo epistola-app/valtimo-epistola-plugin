@@ -86,6 +86,18 @@ tasks.withType<JavaCompile> {
     options.compilerArgs.add("-parameters")
 }
 
+// Populate the jar manifest so EpistolaAdminService.getPluginVersion() can read
+// Implementation-Version at runtime. Without this Gradle emits no version
+// attribute and the admin page always falls back to "development".
+tasks.jar {
+    manifest {
+        attributes(
+            "Implementation-Title" to "Epistola Valtimo Plugin",
+            "Implementation-Version" to project.version,
+        )
+    }
+}
+
 // Bundle the repo CHANGELOG into the plugin jar so the admin page can serve it
 // at runtime (classpath: epistola/CHANGELOG.md).
 tasks.processResources {
