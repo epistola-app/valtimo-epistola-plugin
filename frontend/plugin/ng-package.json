@@ -14,6 +14,7 @@
     "@valtimo/security",
     "@valtimo/shared",
     "@ngx-translate/core",
+    "jsonata",
     "rxjs",
     "tslib"
   ]
