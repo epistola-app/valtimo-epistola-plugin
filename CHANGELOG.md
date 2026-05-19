@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-05-19
+
 ### Fixed
 
 - **Image build of consumer apps failed with a missing `jsonata` module.** The published `@epistola.app/valtimo-plugin` package only declared `jsonata` as a _peer_ dependency (an earlier attempted fix), but the plugin's compiled code imports `jsonata` at runtime (`jsonata-converter.ts`, `jsonata-editor.component.ts`). Peer dependencies are not reliably auto-installed in a host app / Docker image build, so the consuming Valtimo app ended up without `jsonata` and the build broke. `jsonata` is a leaf utility with no shared-singleton constraint (unlike Angular / `@valtimo/*`, which are legitimately peers), so it is now a regular `dependency` and is installed transitively by any package manager. Also added to ng-packagr's `allowedNonPeerDependencies` so the library build keeps it external (same handling as `tslib`).
