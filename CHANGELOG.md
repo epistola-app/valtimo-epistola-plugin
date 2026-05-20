@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.2] - 2026-05-20
+
 ### Fixed
 
 - **Configurator-installed hosts loaded the plugin without its menu, HTTP interceptor, or Formio components.** `EpistolaPluginModule` declared the menu service, `EpistolaTaskContextInterceptor`, and the `ENVIRONMENT_INITIALIZER` that registers the `epistola-document` / `epistola-retry-form` / `epistola-document-preview` / override-builder / process-link-selector Formio components only inside `forRoot()`. The Valtimo Configurator's generated `AppModule` emits `imports: [EpistolaPluginModule]` (no `.forRoot()` call — confirmed against `valtimo-platform/notify-nl-plugin` and `valtimo-platform/freemarker-plugin`, both of which have plain-class modules with no `forRoot`), so none of those providers activated. Providers are now declared at module level, and `forRoot()` is kept as a no-op passthrough so the existing README setup keeps working. `EPISTOLA_ENABLED` gating is unchanged — the `isEpistolaEnabled()` short-circuit still runs inside the initializer, so disabling the plugin still hides every surface it claimed to hide. **Import only at the application root**: the interceptor uses `multi: true`, so importing the module into a lazy/feature module in addition to `AppModule` would fire it twice per request.
