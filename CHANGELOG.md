@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Keycloak `groups` claim now contains full hierarchical group paths.** The `epistola-suite` client's Group Membership protocol mapper in `docker/keycloak/valtimo-realm.json` had `full.path: "false"`, so the JWT emitted bare role names (e.g. `tenant-manager`) instead of the full paths Epistola Suite's `GroupMembershipParser` requires (e.g. `/epistola/platform/tenant-manager`). On a fresh demo Keycloak deploy, users in `/epistola/platform/tenant-manager` and other platform/tenant groups gained no effective permissions until an operator manually patched the realm. Flipped to `"true"`.
+- **`service-account-epistola-suite` granted `realm-management:manage-clients`.** Epistola Suite now auto-provisions its own Group Membership mapper when `keycloakAdmin.ensureGroups=true` (Epistola Suite ≥ 0.22.0), which requires this realm-management role. The other three existing roles (`manage-users`, `view-users`, `query-users`) are kept for the group-management pathway.
+
+### Caveat
+
+Keycloak realm imports only run on first realm creation. Existing demo deployments (e.g. the test cluster) are not automatically migrated by changes to this file — the test cluster has already been patched manually via the Keycloak admin UI. A clean re-deploy of the demo Keycloak (e.g. PVC wiped) would apply the new settings from scratch.
+
 ## [0.9.2] - 2026-05-20
 
 ### Fixed

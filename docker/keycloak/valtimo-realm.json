@@ -192,7 +192,7 @@
       "enabled": true,
       "serviceAccountClientId": "epistola-suite",
       "clientRoles": {
-        "realm-management": ["manage-users", "view-users", "query-users"]
+        "realm-management": ["manage-users", "view-users", "query-users", "manage-clients"]
       }
     }
   ],
@@ -243,7 +243,7 @@
           "protocolMapper": "oidc-group-membership-mapper",
           "consentRequired": false,
           "config": {
-            "full.path": "false",
+            "full.path": "true",
             "id.token.claim": "true",
             "access.token.claim": "true",
             "claim.name": "groups",
