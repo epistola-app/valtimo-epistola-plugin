@@ -59,35 +59,37 @@ import { registerEpistolaProcessLinkSelectorComponent } from './components/proce
     EpistolaDocumentPreviewComponent,
     EpistolaAdminPageComponent,
   ],
-  providers: [EpistolaPluginService, EpistolaAdminService],
+  providers: [
+    EpistolaPluginService,
+    EpistolaAdminService,
+    EpistolaMenuService,
+    {
+      provide: HTTP_INTERCEPTORS,
+      useClass: EpistolaTaskContextInterceptor,
+      multi: true,
+    },
+    {
+      provide: ENVIRONMENT_INITIALIZER,
+      multi: true,
+      useValue: () => {
+        if (!isEpistolaEnabled()) return;
+        const injector = inject(Injector);
+        registerEpistolaDocumentComponent(injector);
+        registerEpistolaRetryFormComponent(injector);
+        registerEpistolaOverrideBuilderComponent(injector);
+        registerEpistolaProcessLinkSelectorComponent(injector);
+        registerEpistolaDocumentPreviewComponent(injector);
+        // Eagerly create EpistolaMenuService to trigger menu registration
+        inject(EpistolaMenuService);
+      },
+    },
+  ],
 })
 export class EpistolaPluginModule {
+  // Kept for back-compat with hosts that follow the README's `forRoot()`
+  // setup. The providers above are now module-level so `imports: [EpistolaPluginModule]`
+  // (what the Valtimo Configurator emits) wires everything on its own.
   static forRoot(): ModuleWithProviders<EpistolaPluginModule> {
-    return {
-      ngModule: EpistolaPluginModule,
-      providers: [
-        EpistolaMenuService,
-        {
-          provide: HTTP_INTERCEPTORS,
-          useClass: EpistolaTaskContextInterceptor,
-          multi: true,
-        },
-        {
-          provide: ENVIRONMENT_INITIALIZER,
-          multi: true,
-          useValue: () => {
-            if (!isEpistolaEnabled()) return;
-            const injector = inject(Injector);
-            registerEpistolaDocumentComponent(injector);
-            registerEpistolaRetryFormComponent(injector);
-            registerEpistolaOverrideBuilderComponent(injector);
-            registerEpistolaProcessLinkSelectorComponent(injector);
-            registerEpistolaDocumentPreviewComponent(injector);
-            // Eagerly create EpistolaMenuService to trigger menu registration
-            inject(EpistolaMenuService);
-          },
-        },
-      ],
-    };
+    return { ngModule: EpistolaPluginModule };
   }
 }

@@ -67,6 +67,10 @@ import { PLUGINS_TOKEN } from "@valtimo/plugin";
 export class AppModule {}
 ```
 
+`EpistolaPluginModule.forRoot()` and the plain `EpistolaPluginModule` are equivalent — the providers (menu, HTTP interceptor, Formio component registrations) live on the module itself so the Valtimo Configurator's plain `imports: [EpistolaPluginModule]` works the same way. `forRoot()` is kept for back-compat with this snippet.
+
+> **Import at the application root only.** The plugin registers `EpistolaTaskContextInterceptor` with `multi: true`. Importing `EpistolaPluginModule` into a lazy or feature module in addition to `AppModule` would register the interceptor twice and fire it twice per request.
+
 ## Required configuration
 
 There are two configuration layers — application-wide settings (in `application.yml`) and per-instance settings (created in the Valtimo console under **Admin → Plugins → Epistola Document Suite**).
