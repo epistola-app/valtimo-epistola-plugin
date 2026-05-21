@@ -15,7 +15,14 @@ import {
   PluginConfigurationData,
   PluginTranslatePipeModule,
 } from '@valtimo/plugin';
-import { FormModule, FormOutput, InputModule, SelectItem, SelectModule } from '@valtimo/components';
+import {
+  FormModule,
+  FormOutput,
+  InputModule,
+  SelectedValue,
+  SelectItem,
+  SelectModule,
+} from '@valtimo/components';
 import { CaseManagementParams, ManagementContext } from '@valtimo/shared';
 import { ProcessLinkStateService } from '@valtimo/process-link';
 import { BehaviorSubject, combineLatest, merge, Observable, of, Subject, Subscription } from 'rxjs';
@@ -104,13 +111,21 @@ export class GenerateDocumentConfigurationComponent
   readonly selectedCatalogId$ = new BehaviorSubject<string>('');
   /** Composite ID: "catalogId/templateId" */
   readonly selectedTemplateId$ = new BehaviorSubject<string>('');
-  readonly selectedVariantId$ = new BehaviorSubject<string>('');
 
   variantSelectionMode: VariantSelectionMode = 'explicit';
   variantIdExpressionMode = false;
   variantIdExpression = '';
+  /**
+   * Plain-mode variant id. Tracked outside `<v-form>` because the explicit
+   * variant `<v-select>` lives inside `<div class="field-with-fx">`, and
+   * v-form's `@ContentChildren(SelectComponent)` query only sees direct
+   * children (Angular defaults `descendants: false`).
+   */
+  variantIdValue = '';
   filenameExpressionMode = false;
   filenameExpression = '';
+  /** Plain-mode filename. Tracked outside `<v-form>` for the same reason as `variantIdValue`. */
+  filenameValue = '';
   variantAttributeEntries: {
     key: string;
     value: string;
@@ -123,7 +138,6 @@ export class GenerateDocumentConfigurationComponent
   processVariables: string[] = [];
   expressionFunctions: ExpressionFunctionInfo[] = [];
   variableSuggestions: VariableSuggestions | null = null;
-  requiredFieldsStatus: { mapped: number; total: number } = { mapped: 0, total: 0 };
   prefillDataMapping: Record<string, any> = {};
   validationErrors$ = new BehaviorSubject<JsonataFieldError[]>([]);
 
@@ -168,17 +182,13 @@ export class GenerateDocumentConfigurationComponent
     if (formValue.catalogId && formValue.catalogId !== this.selectedCatalogId$.getValue()) {
       this.selectedCatalogId$.next(formValue.catalogId);
       this.selectedTemplateId$.next('');
-      this.selectedVariantId$.next('');
+      this.variantIdValue = '';
     }
 
     // templateId from v-select is the template ID within the selected catalog
     if (formValue.templateId && formValue.templateId !== this.selectedTemplateId$.getValue()) {
       this.selectedTemplateId$.next(formValue.templateId);
-      this.selectedVariantId$.next('');
-    }
-
-    if (formValue.variantId && formValue.variantId !== this.selectedVariantId$.getValue()) {
-      this.selectedVariantId$.next(formValue.variantId);
+      this.variantIdValue = '';
     }
 
     this.handleValid(formValue);
@@ -186,18 +196,29 @@ export class GenerateDocumentConfigurationComponent
 
   onDataMappingChange(expression: string): void {
     this.dataMapping$.next(expression);
-    const currentFormValue = this.formValue$.getValue();
-    if (currentFormValue) {
-      this.handleValid(currentFormValue);
-    }
+    this.revalidate();
   }
 
-  onRequiredFieldsStatusChange(status: { mapped: number; total: number }): void {
-    this.requiredFieldsStatus = status;
-    const currentFormValue = this.formValue$.getValue();
-    if (currentFormValue) {
-      this.handleValid(currentFormValue);
-    }
+  onFilenameValueChange(value: string | undefined): void {
+    this.filenameValue = value ?? '';
+    this.revalidate();
+  }
+
+  onVariantIdValueChange(value: SelectedValue | undefined): void {
+    // v-select is single-select here, so SelectedValue narrows to string | number;
+    // our variant ids are always strings — coerce defensively.
+    this.variantIdValue = value == null || Array.isArray(value) ? '' : String(value);
+    this.revalidate();
+  }
+
+  toggleFilenameExpressionMode(): void {
+    this.filenameExpressionMode = !this.filenameExpressionMode;
+    this.revalidate();
+  }
+
+  toggleVariantIdExpressionMode(): void {
+    this.variantIdExpressionMode = !this.variantIdExpressionMode;
+    this.revalidate();
   }
 
   onVariantSelectionModeChange(mode: VariantSelectionMode): void {
@@ -503,14 +524,18 @@ export class GenerateDocumentConfigurationComponent
             this.variantIdExpressionMode = true;
             this.variantIdExpression = config.variantId;
           } else {
-            this.selectedVariantId$.next(config.variantId);
+            this.variantIdValue = config.variantId;
           }
         }
 
         // Detect expression mode for filename
-        if (config.filename && isExpression(config.filename)) {
-          this.filenameExpressionMode = true;
-          this.filenameExpression = config.filename;
+        if (config.filename) {
+          if (isExpression(config.filename)) {
+            this.filenameExpressionMode = true;
+            this.filenameExpression = config.filename;
+          } else {
+            this.filenameValue = config.filename;
+          }
         }
 
         // Apply dataMapping prefill (JSONata expression string)
@@ -568,11 +593,15 @@ export class GenerateDocumentConfigurationComponent
   }
 
   private handleValid(formValue: Partial<GenerateDocumentConfig & { catalogId: string }>): void {
+    const filenameProvided = this.filenameExpressionMode
+      ? !!this.filenameExpression?.trim()
+      : !!this.filenameValue?.trim();
+
     const baseComplete = !!(
       this.selectedCatalogId$.getValue() &&
       formValue?.templateId &&
       formValue?.outputFormat &&
-      formValue?.filename &&
+      filenameProvided &&
       formValue?.resultProcessVariable
     );
 
@@ -581,11 +610,7 @@ export class GenerateDocumentConfigurationComponent
       variantValid = this.variantAttributeEntries.every((e) => !!e.key && !!e.value);
     }
 
-    const requiredFieldsMapped =
-      this.requiredFieldsStatus.total === 0 ||
-      this.requiredFieldsStatus.mapped === this.requiredFieldsStatus.total;
-
-    const valid = baseComplete && variantValid && requiredFieldsMapped;
+    const valid = baseComplete && variantValid;
     this.valid$.next(valid);
     this.valid.emit(valid);
   }
@@ -605,7 +630,7 @@ export class GenerateDocumentConfigurationComponent
               environmentId: formValue.environmentId || undefined,
               dataMapping: dataMapping,
               outputFormat: formValue.outputFormat as 'PDF' | 'HTML',
-              filename: this.filenameExpressionMode ? this.filenameExpression : formValue.filename!,
+              filename: this.filenameExpressionMode ? this.filenameExpression : this.filenameValue,
               correlationId: formValue.correlationId || undefined,
               resultProcessVariable: formValue.resultProcessVariable!,
             };
@@ -613,7 +638,7 @@ export class GenerateDocumentConfigurationComponent
             if (this.variantSelectionMode === 'explicit') {
               config.variantId = this.variantIdExpressionMode
                 ? this.variantIdExpression
-                : formValue.variantId!;
+                : this.variantIdValue;
             } else {
               config.variantAttributes = this.variantAttributeEntries
                 .filter((e) => e.key && e.value)

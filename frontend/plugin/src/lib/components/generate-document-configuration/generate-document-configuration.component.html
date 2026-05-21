@@ -81,15 +81,21 @@
   </div>
 
   <!-- Explicit variant selection (dropdown or expression) -->
+  <!--
+    The v-select / v-input here is intentionally NOT named into the v-form: v-form's
+    @ContentChildren queries default to descendants:false and would skip anything nested
+    in this `field-with-fx` wrapper. The value is tracked via (selectedChange)/(valueChange)
+    on the component, see variantIdValue / filenameValue.
+  -->
   <div *ngIf="variantSelectionMode === 'explicit'" class="field-with-fx">
     <v-select
       *ngIf="!variantIdExpressionMode"
-      name="variantId"
       [title]="'variantId' | pluginTranslate: pluginId | async"
       [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
       [margin]="true"
       [items]="obs.variants.data"
-      [defaultSelectionId]="obs.prefill?.variantId"
+      [defaultSelectionId]="variantIdValue"
+      (selectedChange)="onVariantIdValueChange($event)"
       [disabled]="obs.disabled || obs.variants.loading || !obs.selectedTemplateId"
       [required]="false"
       [loading]="obs.variants.loading"
@@ -109,7 +115,7 @@
     <button
       type="button"
       class="fx-toggle"
-      (click)="variantIdExpressionMode = !variantIdExpressionMode"
+      (click)="toggleVariantIdExpressionMode()"
       [disabled]="obs.disabled"
       [title]="variantIdExpressionMode ? 'Switch to dropdown' : 'Switch to expression'"
     >
@@ -251,11 +257,11 @@
   <div class="field-with-fx">
     <v-input
       *ngIf="!filenameExpressionMode"
-      name="filename"
       [title]="'filename' | pluginTranslate: pluginId | async"
       [tooltip]="'filenameTooltip' | pluginTranslate: pluginId | async"
       [margin]="true"
-      [defaultValue]="obs.prefill?.filename"
+      [defaultValue]="filenameValue"
+      (valueChange)="onFilenameValueChange($event)"
       [disabled]="obs.disabled"
       [required]="true"
     >
@@ -274,7 +280,7 @@
     <button
       type="button"
       class="fx-toggle"
-      (click)="filenameExpressionMode = !filenameExpressionMode"
+      (click)="toggleFilenameExpressionMode()"
       [disabled]="obs.disabled"
       [title]="filenameExpressionMode ? 'Switch to plain input' : 'Switch to expression'"
     >
