@@ -287,6 +287,9 @@ public class EpistolaServiceImpl implements EpistolaService {
             if (catalogType != null && !catalogType.isBlank()) {
                 body.add("catalogType", catalogType);
             }
+            // The server's Kotlin signature treats authoredMode as non-null even though the spec
+            // documents it as optional with default MERGE — leaving it off NPEs the import.
+            body.add("authoredMode", "MERGE");
 
             String responseJson = apiClientFactory.createRestClient(baseUrl, apiKey)
                     .post()

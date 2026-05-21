@@ -303,6 +303,7 @@ public class EpistolaPlugin {
                         .map(attr -> new VariantSelectionAttribute(
                                 attr.key(),
                                 jsonataMappingService.evaluateScalar(buildEvalCtx(execution, attr.value())),
+                                null,
                                 attr.required()))
                         .toList()
                 : null;

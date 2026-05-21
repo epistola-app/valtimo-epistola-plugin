@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Bumped `app.epistola.contract:client-spring3-restclient` 0.3.0 → 0.6.0.** Tracks the latest catalog protocol (code lists, fonts, release fingerprints, stencil `version`, `importCatalog.authoredMode`, `ImportCatalogResponse.aborted`). All additions are either additive or only apply to resource types this plugin doesn't ship (`stencil`, `font`, `codeList`), so existing `schemaVersion: 2` classpath catalogs — including the test-app's `municipality-demo` — remain valid wire input to a 0.6.0 server with no migration.
+
 ### Fixed
 
+- **Catalog import NPE'd on Epistola Suite ≥ 0.5.3.** The server's `importCatalog` signature treats `authoredMode` as non-nullable Kotlin (even though the OpenAPI spec documents it as optional with default `MERGE`), so leaving the field off the multipart body produced `NullPointerException: Parameter specified as non-null is null: parameter authoredMode` on every startup sync and admin redeploy. `EpistolaServiceImpl.importCatalog` now always sends `authoredMode=MERGE`, which matches what the spec says the default would have been — no behaviour change for callers, no new plugin-config knob.
 - **Keycloak `groups` claim now contains full hierarchical group paths.** The `epistola-suite` client's Group Membership protocol mapper in `docker/keycloak/valtimo-realm.json` had `full.path: "false"`, so the JWT emitted bare role names (e.g. `tenant-manager`) instead of the full paths Epistola Suite's `GroupMembershipParser` requires (e.g. `/epistola/platform/tenant-manager`). On a fresh demo Keycloak deploy, users in `/epistola/platform/tenant-manager` and other platform/tenant groups gained no effective permissions until an operator manually patched the realm. Flipped to `"true"`.
 - **`service-account-epistola-suite` granted `realm-management:manage-clients`.** Epistola Suite now auto-provisions its own Group Membership mapper when `keycloakAdmin.ensureGroups=true` (Epistola Suite ≥ 0.22.0), which requires this realm-management role. The other three existing roles (`manage-users`, `view-users`, `query-users`) are kept for the group-management pathway.
 
