@@ -112,6 +112,16 @@ export class GenerateDocumentConfigurationComponent
   /** Composite ID: "catalogId/templateId" */
   readonly selectedTemplateId$ = new BehaviorSubject<string>('');
 
+  /**
+   * Force-clears the templateId v-select. Triggered when the catalog changes —
+   * v-select's `setDefaultSelection` ignores empty-string defaults, so binding
+   * `[defaultSelectionId]=""` does NOT reset the dropdown. The `clearSelectionSubject$`
+   * input is the supported escape hatch.
+   */
+  readonly clearTemplateId$ = new Subject<void>();
+  /** Same pattern for the explicit-mode variantId v-select. */
+  readonly clearVariantId$ = new Subject<void>();
+
   variantSelectionMode: VariantSelectionMode = 'explicit';
   variantIdExpressionMode = false;
   variantIdExpression = '';
@@ -178,17 +188,25 @@ export class GenerateDocumentConfigurationComponent
     >;
     this.formValue$.next(formValue);
 
-    // When catalog changes, reset template and variant selection
+    // When catalog changes, reset template and variant selection.
+    // The clear$ subjects force-clear the v-selects' internal `selected$` state —
+    // without them the dropdown keeps the previous id and the next v-form emission
+    // re-applies it under the new catalog, causing 404s when the template doesn't exist
+    // in the newly selected catalog.
     if (formValue.catalogId && formValue.catalogId !== this.selectedCatalogId$.getValue()) {
       this.selectedCatalogId$.next(formValue.catalogId);
       this.selectedTemplateId$.next('');
       this.variantIdValue = '';
+      this.clearTemplateId$.next();
+      this.clearVariantId$.next();
+      return;
     }
 
     // templateId from v-select is the template ID within the selected catalog
     if (formValue.templateId && formValue.templateId !== this.selectedTemplateId$.getValue()) {
       this.selectedTemplateId$.next(formValue.templateId);
       this.variantIdValue = '';
+      this.clearVariantId$.next();
     }
 
     this.handleValid(formValue);
