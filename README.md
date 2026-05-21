@@ -53,7 +53,7 @@ import { EpistolaPluginModule, epistolaPluginSpecification } from "@epistola.app
 import { PLUGINS_TOKEN } from "@valtimo/plugin";
 
 @NgModule({
-  imports: [EpistolaPluginModule.forRoot()],
+  imports: [EpistolaPluginModule],
   providers: [
     {
       provide: PLUGINS_TOKEN,
@@ -67,7 +67,15 @@ import { PLUGINS_TOKEN } from "@valtimo/plugin";
 export class AppModule {}
 ```
 
-`EpistolaPluginModule.forRoot()` and the plain `EpistolaPluginModule` are equivalent — the providers (menu, HTTP interceptor, Formio component registrations) live on the module itself so the Valtimo Configurator's plain `imports: [EpistolaPluginModule]` works the same way. `forRoot()` is kept for back-compat with this snippet.
+The plain `EpistolaPluginModule` and `EpistolaPluginModule.forRoot()` are equivalent — the providers (menu, HTTP interceptor, Formio component registrations) live on the module itself, so the Valtimo Configurator's plain `imports: [EpistolaPluginModule]` works the same way. If you prefer the explicit `forRoot()` form (matching how some other Valtimo plugins are documented), it is still supported:
+
+```typescript
+@NgModule({
+  imports: [EpistolaPluginModule.forRoot()],
+  // …
+})
+export class AppModule {}
+```
 
 > **Import at the application root only.** The plugin registers `EpistolaTaskContextInterceptor` with `multi: true`. Importing `EpistolaPluginModule` into a lazy or feature module in addition to `AppModule` would register the interceptor twice and fire it twice per request.
 
@@ -125,7 +133,7 @@ A common deployment shape is to enable Epistola on test but keep it dark on prod
 
 Set both `false` per environment for a fully invisible plugin. The frontend flag is read at runtime from `window['env']['epistolaEnabled']`, populated by `envsubst` against `assets/config.template.js` at container start (the standard Valtimo runtime-config pattern). Same image, different env vars per environment.
 
-Host app wiring does not change for optional loading. Keep `EpistolaPluginModule.forRoot()` in `imports` and keep `epistolaPluginSpecification` in the normal `PLUGINS_TOKEN` array, as shown in the setup snippet above. The plugin library reads the flag at runtime and hides its own surfaces when disabled.
+Host app wiring does not change for optional loading. Keep `EpistolaPluginModule` (or `EpistolaPluginModule.forRoot()`) in `imports` and keep `epistolaPluginSpecification` in the normal `PLUGINS_TOKEN` array, as shown in the setup snippet above. The plugin library reads the flag at runtime and hides its own surfaces when disabled.
 
 When the flag is `false`, the plugin's frontend surfaces stay hidden — no admin menu entry, no admin page, no plugin configuration picker entry, and no process-link action types appear.
 

@@ -139,7 +139,7 @@ export function tabsFactory() {
     DocumentenApiPluginModule,
     ZakenApiPluginModule,
     CatalogiApiPluginModule,
-    EpistolaPluginModule.forRoot(),
+    EpistolaPluginModule,
     ObjectModule,
     ObjectManagementModule,
     DisplayWidgetTypesModule,
