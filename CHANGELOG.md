@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.3] - 2026-05-21
+
 ### Changed
 
 - **Bumped `app.epistola.contract:client-spring3-restclient` 0.3.0 → 0.6.0.** Tracks the latest catalog protocol (code lists, fonts, release fingerprints, stencil `version`, `importCatalog.authoredMode`, `ImportCatalogResponse.aborted`). All additions are either additive or only apply to resource types this plugin doesn't ship (`stencil`, `font`, `codeList`), so existing `schemaVersion: 2` classpath catalogs — including the test-app's `municipality-demo` — remain valid wire input to a 0.6.0 server with no migration.
