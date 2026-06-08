@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { ConfigService } from '@valtimo/shared';
 import { Observable } from 'rxjs';
 import {
-  BpmnValidationViolation,
+  BpmnValidationReport,
   CatalogRedeployResult,
   ChangelogRelease,
   ClasspathCatalog,
@@ -72,11 +72,12 @@ export class EpistolaAdminService {
   }
 
   /**
-   * Get the latest BPMN race-safety validation violations across deployed
-   * process definitions. Empty list = healthy.
+   * Get the latest BPMN race-safety validation report across deployed process
+   * definitions: the violations (empty = healthy) plus when it was last checked
+   * and how often it refreshes.
    */
-  getValidationViolations(): Observable<BpmnValidationViolation[]> {
-    return this.http.get<BpmnValidationViolation[]>(`${this.apiEndpoint}/validations`);
+  getValidationReport(): Observable<BpmnValidationReport> {
+    return this.http.get<BpmnValidationReport>(`${this.apiEndpoint}/validations`);
   }
 
   /**

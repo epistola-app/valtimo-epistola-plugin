@@ -20,29 +20,34 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class EpistolaProcessDefinitionValidatorTest {
 
     private static final String PROCESS_KEY = "permit-confirmation";
     private static final String DEFINITION_ID = "permit-confirmation:1:abc";
+    private static final long INTERVAL_MS = 600_000L;
 
     private RepositoryService repositoryService;
     private ProcessLinkService processLinkService;
+    private ProcessDefinitionQuery query;
     private EpistolaProcessDefinitionValidator validator;
 
     @BeforeEach
     void setUp() {
         repositoryService = mock(RepositoryService.class);
         processLinkService = mock(ProcessLinkService.class);
-        validator = new EpistolaProcessDefinitionValidator(repositoryService, processLinkService);
+        validator = new EpistolaProcessDefinitionValidator(
+                repositoryService, processLinkService, INTERVAL_MS);
 
         ProcessDefinition def = mock(ProcessDefinition.class);
         lenient().when(def.getId()).thenReturn(DEFINITION_ID);
         lenient().when(def.getKey()).thenReturn(PROCESS_KEY);
         lenient().when(def.getName()).thenReturn("Permit Confirmation");
 
-        ProcessDefinitionQuery query = mock(ProcessDefinitionQuery.class);
+        query = mock(ProcessDefinitionQuery.class);
         lenient().when(repositoryService.createProcessDefinitionQuery()).thenReturn(query);
         lenient().when(query.latestVersion()).thenReturn(query);
         lenient().when(query.list()).thenReturn(List.of(def));
@@ -207,6 +212,70 @@ class EpistolaProcessDefinitionValidatorTest {
         validator.scan();
 
         assertThat(validator.getViolations()).isEmpty();
+    }
+
+    @Test
+    void lastCheckedAt_isNullBeforeFirstScan_andSetAfterwards() {
+        assertThat(validator.getLastCheckedAt()).isNull();
+        assertThat(validator.getRefreshIntervalMs()).isEqualTo(INTERVAL_MS);
+
+        installBpmn(simpleModel("EpistolaDocumentGenerated"));
+        installLink("generate-confirmation");
+        validator.scan();
+
+        assertThat(validator.getLastCheckedAt()).isNotNull();
+    }
+
+    @Test
+    void unchangedVersionAndLinks_parsesBpmnModelOnceAcrossScans() {
+        installBpmn(simpleModel("EpistolaDocumentGenerated"));
+        installLink("generate-confirmation");
+
+        validator.scan();
+        validator.scan();
+
+        // Second scan is a cache hit — the expensive model parse must not run again.
+        verify(repositoryService, times(1)).getBpmnModelInstance(DEFINITION_ID);
+    }
+
+    @Test
+    void newDeployedVersion_reparsesUnderNewDefinitionId() {
+        installBpmn(simpleModel("EpistolaDocumentGenerated"));
+        installLink("generate-confirmation");
+        validator.scan();
+
+        // Redeploy: latestVersion() now returns a new version with a fresh id.
+        String newId = "permit-confirmation:2:def";
+        ProcessDefinition def2 = mock(ProcessDefinition.class);
+        lenient().when(def2.getId()).thenReturn(newId);
+        lenient().when(def2.getKey()).thenReturn(PROCESS_KEY);
+        lenient().when(def2.getName()).thenReturn("Permit Confirmation");
+        when(query.list()).thenReturn(List.of(def2));
+        when(repositoryService.getBpmnModelInstance(newId))
+                .thenReturn(simpleModel("EpistolaDocumentGenerated"));
+        PluginProcessLink link = mock(PluginProcessLink.class);
+        lenient().when(link.getId()).thenReturn(UUID.randomUUID());
+        lenient().when(link.getActivityId()).thenReturn("generate-confirmation");
+        lenient().when(link.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
+        when(processLinkService.getProcessLinks(newId)).thenReturn(List.<ProcessLink>of(link));
+
+        validator.scan();
+
+        verify(repositoryService, times(1)).getBpmnModelInstance(newId);
+    }
+
+    @Test
+    void changedLinksOnSameVersion_reparsesBpmnModel() {
+        installBpmn(simpleModel("EpistolaDocumentGenerated"));
+        installLink("generate-confirmation");
+        validator.scan();
+
+        // Same deployed version id, but the generate-document links changed — the cached
+        // result is no longer valid, so the model is re-parsed.
+        installLink("some-other-activity");
+        validator.scan();
+
+        verify(repositoryService, times(2)).getBpmnModelInstance(DEFINITION_ID);
     }
 
     private void installBpmn(BpmnModelInstance model) {

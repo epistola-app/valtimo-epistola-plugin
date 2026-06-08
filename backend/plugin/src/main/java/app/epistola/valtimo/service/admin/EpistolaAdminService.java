@@ -11,7 +11,7 @@ import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
-import app.epistola.valtimo.web.rest.dto.BpmnValidationViolation;
+import app.epistola.valtimo.web.rest.dto.BpmnValidationReport;
 import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
 import app.epistola.valtimo.web.rest.dto.ChangelogRelease;
 import app.epistola.valtimo.web.rest.dto.ClasspathCatalog;
@@ -77,12 +77,17 @@ public class EpistolaAdminService {
     private final EpistolaCatalogSyncService catalogSyncService;
 
     /**
-     * Latest BPMN race-safety violations as reported by the validator. Empty when
-     * everything's well-formed (the desired steady state). Cheap to call — backed
-     * by an in-memory snapshot the validator updates on its scheduled tick.
+     * Latest BPMN race-safety validation report: the violation snapshot (empty when
+     * everything's well-formed — the desired steady state) plus the last-checked
+     * timestamp and scan cadence so the admin UI can convey freshness. Cheap to call —
+     * backed by an in-memory snapshot the validator updates on its scheduled tick.
      */
-    public List<BpmnValidationViolation> getValidationViolations() {
-        return processDefinitionValidator.getViolations();
+    public BpmnValidationReport getValidationReport() {
+        return new BpmnValidationReport(
+                processDefinitionValidator.getLastCheckedAt(),
+                processDefinitionValidator.getRefreshIntervalMs(),
+                processDefinitionValidator.getViolations()
+        );
     }
 
     /**

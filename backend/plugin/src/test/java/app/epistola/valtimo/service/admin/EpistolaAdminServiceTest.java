@@ -11,6 +11,8 @@ import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
+import app.epistola.valtimo.web.rest.dto.BpmnValidationReport;
+import app.epistola.valtimo.web.rest.dto.BpmnValidationViolation;
 import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
 import app.epistola.valtimo.web.rest.dto.ClasspathCatalog;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
@@ -42,6 +44,7 @@ import org.operaton.bpm.engine.runtime.ExecutionQuery;
 import org.operaton.bpm.model.bpmn.BpmnModelInstance;
 import org.operaton.bpm.model.bpmn.instance.FlowElement;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -867,6 +870,39 @@ class EpistolaAdminServiceTest {
 
             when(runtimeService.getVariable(executionId, "epistolaJobPath"))
                     .thenReturn("epistola:job:" + tenantSlashRequest);
+        }
+    }
+
+    @Nested
+    class GetValidationReport {
+
+        @Test
+        void composesReportFromValidatorState() {
+            Instant lastChecked = Instant.parse("2026-06-08T10:15:30Z");
+            BpmnValidationViolation violation = new BpmnValidationViolation(
+                    "permit-confirmation", "Permit Confirmation", "generate-confirmation",
+                    BpmnValidationViolation.CODE_ASYNC_BEFORE_ON_CATCH_EVENT, "boom");
+            when(processDefinitionValidator.getLastCheckedAt()).thenReturn(lastChecked);
+            when(processDefinitionValidator.getRefreshIntervalMs()).thenReturn(600_000L);
+            when(processDefinitionValidator.getViolations()).thenReturn(List.of(violation));
+
+            BpmnValidationReport report = adminService.getValidationReport();
+
+            assertThat(report.lastCheckedAt()).isEqualTo(lastChecked);
+            assertThat(report.refreshIntervalMs()).isEqualTo(600_000L);
+            assertThat(report.violations()).containsExactly(violation);
+        }
+
+        @Test
+        void nullLastCheckedBeforeFirstScan() {
+            when(processDefinitionValidator.getLastCheckedAt()).thenReturn(null);
+            when(processDefinitionValidator.getRefreshIntervalMs()).thenReturn(600_000L);
+            when(processDefinitionValidator.getViolations()).thenReturn(List.of());
+
+            BpmnValidationReport report = adminService.getValidationReport();
+
+            assertThat(report.lastCheckedAt()).isNull();
+            assertThat(report.violations()).isEmpty();
         }
     }
 

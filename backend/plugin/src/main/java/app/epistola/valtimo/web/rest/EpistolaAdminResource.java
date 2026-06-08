@@ -3,7 +3,7 @@ package app.epistola.valtimo.web.rest;
 import app.epistola.valtimo.authorization.EpistolaAdministration;
 import app.epistola.valtimo.authorization.EpistolaAdministrationActionProvider;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
-import app.epistola.valtimo.web.rest.dto.BpmnValidationViolation;
+import app.epistola.valtimo.web.rest.dto.BpmnValidationReport;
 import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
 import app.epistola.valtimo.web.rest.dto.ChangelogRelease;
 import app.epistola.valtimo.web.rest.dto.ClasspathCatalog;
@@ -103,16 +103,18 @@ public class EpistolaAdminResource {
     }
 
     /**
-     * Get the latest BPMN race-safety validation violations across all deployed
-     * process definitions. Empty list = healthy. The frontend uses this to show a
-     * warning badge on the admin page when any deployed process definition violates
-     * the rule that {@code generate-document} must flow synchronously into the
-     * {@code EpistolaDocumentGenerated} catch event.
+     * Get the latest BPMN race-safety validation report across all deployed process
+     * definitions: the violation snapshot (empty = healthy) plus when it was last
+     * checked and how often it refreshes. The frontend uses this to show a warning
+     * badge when any deployed process definition violates the rule that
+     * {@code generate-document} must flow synchronously into the
+     * {@code EpistolaDocumentGenerated} catch event, and to convey result freshness.
+     * Only the latest deployed version of each process definition is inspected.
      */
     @GetMapping("/validations")
-    public ResponseEntity<List<BpmnValidationViolation>> getValidationViolations() {
+    public ResponseEntity<BpmnValidationReport> getValidationReport() {
         requireManagePermission();
-        return ResponseEntity.ok(adminService.getValidationViolations());
+        return ResponseEntity.ok(adminService.getValidationReport());
     }
 
     /**

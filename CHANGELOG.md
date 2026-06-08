@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The BPMN validation admin tab now shows when it last ran, how often it refreshes, and what it covers.** The `/admin/validations` endpoint returns a `BpmnValidationReport` (last-checked timestamp + scan interval + violations) instead of a bare violation list, and the tab renders a "Last checked …" line, an "automatically re-checked roughly every N min" note (N derived from the configured `epistola.validator.interval-ms`), and a caveat that only the **latest** deployed version of each process definition is checked — older versions with running instances may have problems that aren't shown. The validator now records a `lastCheckedAt` timestamp on every scan (null until the first scan completes after startup).
+- **The BPMN race-safety validator no longer re-parses unchanged processes on every 10-minute tick.** Results are cached per deployed process-definition version, keyed by the version-specific `ProcessDefinition.getId()` plus a signature of its `generate-document` process links. A deployed version's BPMN is immutable, so a cache entry can only go stale when a new version is deployed (new id) or its generate-document links change — both invalidate the entry and trigger a fresh parse; everything else reuses the cached result.
+
 ## [0.9.4] - 2026-06-08
 
 ### Fixed

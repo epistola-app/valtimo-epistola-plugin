@@ -24,12 +24,15 @@ import org.operaton.bpm.model.bpmn.instance.ServiceTask;
 import org.operaton.bpm.model.bpmn.instance.UserTask;
 import org.springframework.scheduling.annotation.Scheduled;
 
+import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -70,7 +73,10 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <p>Scanning runs on a fixed-delay schedule (default 10 minutes) with a small initial
  * delay so the BPMN engine is ready by the first tick. The result is a point-in-time
- * snapshot stored in an {@link AtomicReference} for lock-free reads.
+ * snapshot stored in an {@link AtomicReference} for lock-free reads, alongside the
+ * {@link #getLastCheckedAt() last-checked timestamp}. Per deployed version, results are
+ * cached and only recomputed when a new version is deployed or its {@code generate-document}
+ * links change, so an unchanged process is not re-parsed every tick.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -81,18 +87,49 @@ public class EpistolaProcessDefinitionValidator {
     private final RepositoryService repositoryService;
     private final ProcessLinkService processLinkService;
 
+    /** The validator's own scan cadence, surfaced to the admin UI. */
+    private final long refreshIntervalMs;
+
     private final AtomicReference<List<BpmnValidationViolation>> violations =
             new AtomicReference<>(Collections.emptyList());
+
+    /** When the last scan finished, or {@code null} if no scan has run yet. */
+    private final AtomicReference<Instant> lastCheckedAt = new AtomicReference<>(null);
+
+    /**
+     * Per-version result cache keyed by {@link ProcessDefinition#getId()} (the
+     * deployment-specific id that changes on every new deployment). A deployed
+     * version's BPMN is immutable, so its violations can only change if the set of
+     * {@code generate-document} links changes — captured by {@link CachedResult#linkSignature()}.
+     * Reused across scans to skip the expensive BPMN model parse + forward-graph walk.
+     * Rebuilt every scan so ids no longer in the latest set are evicted.
+     */
+    private Map<String, CachedResult> cache = Map.of();
 
     public List<BpmnValidationViolation> getViolations() {
         return violations.get();
     }
+
+    /** When the last scan finished, or {@code null} if no scan has run yet. */
+    public Instant getLastCheckedAt() {
+        return lastCheckedAt.get();
+    }
+
+    /** The fixed-delay scan interval in milliseconds. */
+    public long getRefreshIntervalMs() {
+        return refreshIntervalMs;
+    }
+
+    /** Cached validation outcome for one deployed process-definition version. */
+    private record CachedResult(List<String> linkSignature, List<BpmnValidationViolation> violations) {}
 
     @Scheduled(
             initialDelayString = "${epistola.validator.initial-delay-ms:30000}",
             fixedDelayString = "${epistola.validator.interval-ms:600000}"
     )
     public void scan() {
+        Map<String, CachedResult> previous = cache;
+        Map<String, CachedResult> next = new HashMap<>();
         List<BpmnValidationViolation> found = new ArrayList<>();
         try {
             List<ProcessDefinition> definitions = repositoryService.createProcessDefinitionQuery()
@@ -100,7 +137,18 @@ public class EpistolaProcessDefinitionValidator {
                     .list();
             for (ProcessDefinition definition : definitions) {
                 try {
-                    found.addAll(validate(definition));
+                    List<PluginProcessLink> links = generateDocumentLinks(definition);
+                    List<String> signature = links.stream()
+                            .map(PluginProcessLink::getActivityId)
+                            .sorted()
+                            .toList();
+                    CachedResult cached = previous.get(definition.getId());
+                    List<BpmnValidationViolation> result = (cached != null
+                            && cached.linkSignature().equals(signature))
+                            ? cached.violations()
+                            : validate(definition, links);
+                    next.put(definition.getId(), new CachedResult(signature, result));
+                    found.addAll(result);
                 } catch (Exception e) {
                     log.debug("Skipped validation for process definition {}: {}",
                             definition.getId(), e.getMessage());
@@ -111,7 +159,9 @@ public class EpistolaProcessDefinitionValidator {
             return;
         }
 
+        cache = next;
         violations.set(Collections.unmodifiableList(found));
+        lastCheckedAt.set(Instant.now());
         if (!found.isEmpty()) {
             log.warn("Epistola race-safety validation found {} violation(s):", found.size());
             for (BpmnValidationViolation v : found) {
@@ -123,12 +173,16 @@ public class EpistolaProcessDefinitionValidator {
         }
     }
 
-    private List<BpmnValidationViolation> validate(ProcessDefinition definition) {
-        List<PluginProcessLink> links = processLinkService.getProcessLinks(definition.getId()).stream()
+    /** The {@code generate-document} plugin process links bound to this definition version. */
+    private List<PluginProcessLink> generateDocumentLinks(ProcessDefinition definition) {
+        return processLinkService.getProcessLinks(definition.getId()).stream()
                 .filter(PluginProcessLink.class::isInstance)
                 .map(PluginProcessLink.class::cast)
                 .filter(link -> GENERATE_DOCUMENT_ACTION_KEY.equals(link.getPluginActionDefinitionKey()))
                 .toList();
+    }
+
+    private List<BpmnValidationViolation> validate(ProcessDefinition definition, List<PluginProcessLink> links) {
         if (links.isEmpty()) {
             return List.of();
         }

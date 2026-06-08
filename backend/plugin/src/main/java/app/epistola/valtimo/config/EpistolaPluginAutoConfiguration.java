@@ -34,6 +34,7 @@ import org.operaton.bpm.engine.HistoryService;
 import org.operaton.bpm.engine.RepositoryService;
 import org.operaton.bpm.engine.RuntimeService;
 import org.operaton.bpm.engine.TaskService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -225,9 +226,11 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(EpistolaProcessDefinitionValidator.class)
     public EpistolaProcessDefinitionValidator epistolaProcessDefinitionValidator(
             RepositoryService repositoryService,
-            ProcessLinkService processLinkService
+            ProcessLinkService processLinkService,
+            @Value("${epistola.validator.interval-ms:600000}") long validatorIntervalMs
     ) {
-        return new EpistolaProcessDefinitionValidator(repositoryService, processLinkService);
+        return new EpistolaProcessDefinitionValidator(
+                repositoryService, processLinkService, validatorIntervalMs);
     }
 
     @Bean

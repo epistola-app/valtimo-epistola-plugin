@@ -182,6 +182,11 @@ const epistolaPluginSpecification: PluginSpecification = {
         'In deze procesdefinities is de grens tussen de generate-document service task en de EpistolaDocumentGenerated catch event niet synchroon. Resultaten kunnen verloren gaan; gebruik in dat geval de Hersynchroniseer-knop in de Wachtende taken-tab.',
       epistolaAdminValidationCode: 'Code',
       epistolaAdminValidationMessage: 'Bericht',
+      epistolaAdminValidationLastChecked: 'Laatst gecontroleerd',
+      epistolaAdminValidationNotYetRun: 'nog niet uitgevoerd',
+      epistolaAdminValidationAutoRefresh: 'automatisch opnieuw gecontroleerd, ongeveer elke',
+      epistolaAdminValidationLatestVersionNote:
+        'Alleen de meest recente versie van elke procesdefinitie wordt gecontroleerd; oudere versies met nog lopende instanties kunnen problemen hebben die hier niet worden getoond.',
       epistolaAdminCatalogs: 'Catalogi',
       epistolaAdminCatalogsIntro:
         'Catalogi op het classpath van de applicatie. Deze worden bij het opstarten automatisch uitgerold; gebruik Opnieuw uitrollen om een catalogus handmatig (geforceerd) naar deze Epistola-omgeving te sturen, bijvoorbeeld als de automatische uitrol is mislukt.',
@@ -352,6 +357,11 @@ const epistolaPluginSpecification: PluginSpecification = {
         'These process definitions have a non-synchronous boundary between the generate-document service task and the EpistolaDocumentGenerated catch event. Results can be missed; use the Reconcile button on the Pending Jobs tab to recover.',
       epistolaAdminValidationCode: 'Code',
       epistolaAdminValidationMessage: 'Message',
+      epistolaAdminValidationLastChecked: 'Last checked',
+      epistolaAdminValidationNotYetRun: 'not yet run',
+      epistolaAdminValidationAutoRefresh: 'automatically re-checked roughly every',
+      epistolaAdminValidationLatestVersionNote:
+        "Only the latest deployed version of each process definition is checked; older versions with running instances may have problems that aren't shown here.",
       epistolaAdminCatalogs: 'Catalogs',
       epistolaAdminCatalogsIntro:
         'Catalogs on the application classpath. These are deployed automatically on startup; use Redeploy to manually (force) push one to this Epistola installation — for example when the automatic startup deploy failed.',
