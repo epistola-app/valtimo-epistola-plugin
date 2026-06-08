@@ -28,6 +28,7 @@ class EpistolaProcessDefinitionValidatorTest {
 
     private static final String PROCESS_KEY = "permit-confirmation";
     private static final String DEFINITION_ID = "permit-confirmation:1:abc";
+    private static final String EVERY_10_MIN_CRON = "0 */10 * * * *";
     private static final long INTERVAL_MS = 600_000L;
 
     private RepositoryService repositoryService;
@@ -40,7 +41,7 @@ class EpistolaProcessDefinitionValidatorTest {
         repositoryService = mock(RepositoryService.class);
         processLinkService = mock(ProcessLinkService.class);
         validator = new EpistolaProcessDefinitionValidator(
-                repositoryService, processLinkService, INTERVAL_MS);
+                repositoryService, processLinkService, EVERY_10_MIN_CRON, "UTC");
 
         ProcessDefinition def = mock(ProcessDefinition.class);
         lenient().when(def.getId()).thenReturn(DEFINITION_ID);
@@ -222,6 +223,30 @@ class EpistolaProcessDefinitionValidatorTest {
         installBpmn(simpleModel("EpistolaDocumentGenerated"));
         installLink("generate-confirmation");
         validator.scan();
+
+        assertThat(validator.getLastCheckedAt()).isNotNull();
+    }
+
+    @Test
+    void refreshIntervalMs_isDerivedFromTheCronSchedule() {
+        EpistolaProcessDefinitionValidator fiveMin = new EpistolaProcessDefinitionValidator(
+                repositoryService, processLinkService, "0 */5 * * * *", "UTC");
+        assertThat(fiveMin.getRefreshIntervalMs()).isEqualTo(300_000L);
+    }
+
+    @Test
+    void invalidCron_fallsBackToTenMinutes() {
+        EpistolaProcessDefinitionValidator bad = new EpistolaProcessDefinitionValidator(
+                repositoryService, processLinkService, "not-a-cron", "UTC");
+        assertThat(bad.getRefreshIntervalMs()).isEqualTo(INTERVAL_MS);
+    }
+
+    @Test
+    void scanOnStartup_runsAScanImmediately() {
+        installBpmn(simpleModel("EpistolaDocumentGenerated"));
+        installLink("generate-confirmation");
+
+        validator.scanOnStartup();
 
         assertThat(validator.getLastCheckedAt()).isNotNull();
     }

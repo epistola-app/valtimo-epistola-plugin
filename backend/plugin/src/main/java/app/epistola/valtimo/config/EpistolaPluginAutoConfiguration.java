@@ -227,10 +227,11 @@ public class EpistolaPluginAutoConfiguration {
     public EpistolaProcessDefinitionValidator epistolaProcessDefinitionValidator(
             RepositoryService repositoryService,
             ProcessLinkService processLinkService,
-            @Value("${epistola.validator.interval-ms:600000}") long validatorIntervalMs
+            @Value("${epistola.validator.cron:0 */10 * * * *}") String validatorCron,
+            @Value("${epistola.validator.zone:UTC}") String validatorZone
     ) {
         return new EpistolaProcessDefinitionValidator(
-                repositoryService, processLinkService, validatorIntervalMs);
+                repositoryService, processLinkService, validatorCron, validatorZone);
     }
 
     @Bean
