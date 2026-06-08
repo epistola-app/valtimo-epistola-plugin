@@ -6,6 +6,7 @@ import com.ritense.processlink.domain.ProcessLink;
 import com.ritense.processlink.service.ProcessLinkService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.operaton.bpm.engine.RepositoryService;
 import org.operaton.bpm.engine.repository.ProcessDefinition;
 import org.operaton.bpm.engine.repository.ProcessDefinitionQuery;
@@ -13,36 +14,48 @@ import org.operaton.bpm.model.bpmn.Bpmn;
 import org.operaton.bpm.model.bpmn.BpmnModelInstance;
 import org.operaton.bpm.model.bpmn.instance.IntermediateCatchEvent;
 import org.operaton.bpm.model.bpmn.instance.ServiceTask;
+import org.springframework.scheduling.TaskScheduler;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class EpistolaProcessDefinitionValidatorTest {
 
     private static final String PROCESS_KEY = "permit-confirmation";
     private static final String DEFINITION_ID = "permit-confirmation:1:abc";
+    private static final String EVERY_10_MIN_CRON = "0 */10 * * * *";
+    private static final long INTERVAL_MS = 600_000L;
 
     private RepositoryService repositoryService;
     private ProcessLinkService processLinkService;
+    private TaskScheduler taskScheduler;
+    private ProcessDefinitionQuery query;
     private EpistolaProcessDefinitionValidator validator;
 
     @BeforeEach
     void setUp() {
         repositoryService = mock(RepositoryService.class);
         processLinkService = mock(ProcessLinkService.class);
-        validator = new EpistolaProcessDefinitionValidator(repositoryService, processLinkService);
+        taskScheduler = mock(TaskScheduler.class);
+        validator = new EpistolaProcessDefinitionValidator(
+                repositoryService, processLinkService, taskScheduler, EVERY_10_MIN_CRON, "UTC");
 
         ProcessDefinition def = mock(ProcessDefinition.class);
         lenient().when(def.getId()).thenReturn(DEFINITION_ID);
         lenient().when(def.getKey()).thenReturn(PROCESS_KEY);
         lenient().when(def.getName()).thenReturn("Permit Confirmation");
 
-        ProcessDefinitionQuery query = mock(ProcessDefinitionQuery.class);
+        query = mock(ProcessDefinitionQuery.class);
         lenient().when(repositoryService.createProcessDefinitionQuery()).thenReturn(query);
         lenient().when(query.latestVersion()).thenReturn(query);
         lenient().when(query.list()).thenReturn(List.of(def));
@@ -207,6 +220,122 @@ class EpistolaProcessDefinitionValidatorTest {
         validator.scan();
 
         assertThat(validator.getViolations()).isEmpty();
+    }
+
+    @Test
+    void lastCheckedAt_isNullBeforeFirstScan_andSetAfterwards() {
+        assertThat(validator.getLastCheckedAt()).isNull();
+        assertThat(validator.getRefreshIntervalMs()).isEqualTo(INTERVAL_MS);
+
+        installBpmn(simpleModel("EpistolaDocumentGenerated"));
+        installLink("generate-confirmation");
+        validator.scan();
+
+        assertThat(validator.getLastCheckedAt()).isNotNull();
+    }
+
+    @Test
+    void refreshIntervalMs_isDerivedFromTheCronSchedule() {
+        EpistolaProcessDefinitionValidator fiveMin = new EpistolaProcessDefinitionValidator(
+                repositoryService, processLinkService, taskScheduler, "0 */5 * * * *", "UTC");
+        assertThat(fiveMin.getRefreshIntervalMs()).isEqualTo(300_000L);
+    }
+
+    @Test
+    void invalidCron_fallsBackToTenMinutes() {
+        EpistolaProcessDefinitionValidator bad = new EpistolaProcessDefinitionValidator(
+                repositoryService, processLinkService, taskScheduler, "not-a-cron", "UTC");
+        assertThat(bad.getRefreshIntervalMs()).isEqualTo(INTERVAL_MS);
+    }
+
+    @Test
+    void scanOnStartup_runsAScanImmediatelyWithoutJitter() {
+        installBpmn(simpleModel("EpistolaDocumentGenerated"));
+        installLink("generate-confirmation");
+
+        validator.scanOnStartup();
+
+        assertThat(validator.getLastCheckedAt()).isNotNull();
+        verifyNoInteractions(taskScheduler);
+    }
+
+    @Test
+    void nextJitterMs_isWithinOneToTwentyFiveSeconds() {
+        for (int i = 0; i < 1000; i++) {
+            assertThat(validator.nextJitterMs()).isBetween(1_000L, 25_000L);
+        }
+    }
+
+    @Test
+    void scheduledScan_defersTheScanViaTheSchedulerWithJitter() {
+        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+        ArgumentCaptor<Instant> runAt = ArgumentCaptor.forClass(Instant.class);
+        Instant before = Instant.now();
+
+        validator.scheduledScan();
+
+        // The cron tick does not scan inline — it schedules the work 1–25s out.
+        verify(taskScheduler).schedule(task.capture(), runAt.capture());
+        long delayMs = Duration.between(before, runAt.getValue()).toMillis();
+        assertThat(delayMs).isBetween(1_000L, 26_000L);
+
+        // Running the deferred task performs the actual scan.
+        installBpmn(simpleModel("EpistolaDocumentGenerated"));
+        installLink("generate-confirmation");
+        task.getValue().run();
+        assertThat(validator.getLastCheckedAt()).isNotNull();
+    }
+
+    @Test
+    void unchangedVersionAndLinks_parsesBpmnModelOnceAcrossScans() {
+        installBpmn(simpleModel("EpistolaDocumentGenerated"));
+        installLink("generate-confirmation");
+
+        validator.scan();
+        validator.scan();
+
+        // Second scan is a cache hit — the expensive model parse must not run again.
+        verify(repositoryService, times(1)).getBpmnModelInstance(DEFINITION_ID);
+    }
+
+    @Test
+    void newDeployedVersion_reparsesUnderNewDefinitionId() {
+        installBpmn(simpleModel("EpistolaDocumentGenerated"));
+        installLink("generate-confirmation");
+        validator.scan();
+
+        // Redeploy: latestVersion() now returns a new version with a fresh id.
+        String newId = "permit-confirmation:2:def";
+        ProcessDefinition def2 = mock(ProcessDefinition.class);
+        lenient().when(def2.getId()).thenReturn(newId);
+        lenient().when(def2.getKey()).thenReturn(PROCESS_KEY);
+        lenient().when(def2.getName()).thenReturn("Permit Confirmation");
+        when(query.list()).thenReturn(List.of(def2));
+        when(repositoryService.getBpmnModelInstance(newId))
+                .thenReturn(simpleModel("EpistolaDocumentGenerated"));
+        PluginProcessLink link = mock(PluginProcessLink.class);
+        lenient().when(link.getId()).thenReturn(UUID.randomUUID());
+        lenient().when(link.getActivityId()).thenReturn("generate-confirmation");
+        lenient().when(link.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
+        when(processLinkService.getProcessLinks(newId)).thenReturn(List.<ProcessLink>of(link));
+
+        validator.scan();
+
+        verify(repositoryService, times(1)).getBpmnModelInstance(newId);
+    }
+
+    @Test
+    void changedLinksOnSameVersion_reparsesBpmnModel() {
+        installBpmn(simpleModel("EpistolaDocumentGenerated"));
+        installLink("generate-confirmation");
+        validator.scan();
+
+        // Same deployed version id, but the generate-document links changed — the cached
+        // result is no longer valid, so the model is re-parsed.
+        installLink("some-other-activity");
+        validator.scan();
+
+        verify(repositoryService, times(2)).getBpmnModelInstance(DEFINITION_ID);
     }
 
     private void installBpmn(BpmnModelInstance model) {

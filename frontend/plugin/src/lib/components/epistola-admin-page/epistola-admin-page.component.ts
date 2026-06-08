@@ -6,6 +6,7 @@ import { TabsModule } from 'carbon-components-angular/tabs';
 import { TagModule } from 'carbon-components-angular/tag';
 import { EpistolaAdminService } from '../../services/epistola-admin.service';
 import {
+  BpmnValidationReport,
   BpmnValidationViolation,
   CatalogRedeployResult,
   ChangelogRelease,
@@ -48,7 +49,7 @@ export class EpistolaAdminPageComponent implements OnInit {
   pluginVersion: string | null = null;
   changelog: ChangelogRelease[] | null = null;
   changelogLoading = false;
-  validationViolations: BpmnValidationViolation[] = [];
+  validationReport: BpmnValidationReport | null = null;
   reconcilingExecutionIds = new Set<string>();
   reconcileFeedback: {
     executionId: string;
@@ -78,6 +79,16 @@ export class EpistolaAdminPageComponent implements OnInit {
     private readonly route: ActivatedRoute,
     private readonly router: Router,
   ) {}
+
+  /** Violations from the latest report (empty when healthy or not yet loaded). */
+  get validationViolations(): BpmnValidationViolation[] {
+    return this.validationReport?.violations ?? [];
+  }
+
+  /** Scan cadence in whole minutes, for the "refreshes every N min" note. */
+  get refreshIntervalMinutes(): number {
+    return Math.round((this.validationReport?.refreshIntervalMs ?? 600000) / 60000);
+  }
 
   ngOnInit(): void {
     this.deepLinkConfigId = this.route.snapshot.queryParamMap.get('configurationId');
@@ -319,14 +330,14 @@ export class EpistolaAdminPageComponent implements OnInit {
       },
     });
 
-    // Validation violations are independent of cards — load alongside but don't
-    // gate the loading flag on them.
-    this.adminService.getValidationViolations().subscribe({
-      next: (violations) => {
-        this.validationViolations = violations;
+    // Validation report is independent of cards — load alongside but don't
+    // gate the loading flag on it.
+    this.adminService.getValidationReport().subscribe({
+      next: (report) => {
+        this.validationReport = report;
       },
       error: () => {
-        this.validationViolations = [];
+        this.validationReport = null;
       },
     });
   }

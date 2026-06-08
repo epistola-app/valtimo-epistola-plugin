@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The BPMN validation admin tab now shows when it last ran, how often it refreshes, and what it covers.** The `/admin/validations` endpoint returns a `BpmnValidationReport` (last-checked timestamp + scan interval + violations) instead of a bare violation list, and the tab renders a "Last checked …" line, an "automatically re-checked roughly every N min" note (N derived from the configured cron schedule), and a caveat that only the **latest** deployed version of each process definition is checked — older versions with running instances may have problems that aren't shown. The validator now records a `lastCheckedAt` timestamp on every scan (null until the first scan completes after startup).
+- **The BPMN validator now scans on a wall-clock cron schedule instead of a per-instance fixed delay, so scans stay aligned across cluster nodes.** Previously each node ran on a `fixedDelay` timer anchored to its own startup, so nodes drifted apart. It now uses `@Scheduled(cron = "${epistola.validator.cron:0 */10 * * * *}", zone = "${epistola.validator.zone:UTC}")` — every node fires on the same boundary (e.g. `:00`, `:10`, …), keeping scans within a minute of each other (NTP-synced clocks assumed). To avoid all nodes hitting the engine/DB at the same instant, each node then defers the actual scan by a small random 1–25s jitter, scheduled via the shared Spring `TaskScheduler` (not slept, so no scheduler thread is blocked). A one-shot scan on `ApplicationReadyEvent` still populates a freshly (re)started node immediately rather than waiting for the next boundary. Replaces the old `epistola.validator.interval-ms` / `epistola.validator.initial-delay-ms` properties.
+- **The BPMN race-safety validator no longer re-parses unchanged processes on every 10-minute tick.** Results are cached per deployed process-definition version, keyed by the version-specific `ProcessDefinition.getId()` plus a signature of its `generate-document` process links. A deployed version's BPMN is immutable, so a cache entry can only go stale when a new version is deployed (new id) or its generate-document links change — both invalidate the entry and trigger a fresh parse; everything else reuses the cached result.
+
 ## [0.9.4] - 2026-06-08
 
 ### Fixed

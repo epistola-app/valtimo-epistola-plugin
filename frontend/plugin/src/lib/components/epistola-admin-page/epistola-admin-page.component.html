@@ -117,6 +117,23 @@
         [active]="overviewTab === 'validations'"
         (selected)="setOverviewTab('validations')"
       >
+        <div class="text-muted small mt-3">
+          <div>
+            {{ 'epistolaAdminValidationLastChecked' | pluginTranslate: 'epistola' | async }}:
+            <ng-container *ngIf="validationReport?.lastCheckedAt; else notYetRun">
+              {{ validationReport?.lastCheckedAt | date: 'medium' }}
+            </ng-container>
+            <ng-template #notYetRun>
+              {{ 'epistolaAdminValidationNotYetRun' | pluginTranslate: 'epistola' | async }}
+            </ng-template>
+            · {{ 'epistolaAdminValidationAutoRefresh' | pluginTranslate: 'epistola' | async }}
+            {{ refreshIntervalMinutes }} min.
+          </div>
+          <div>
+            {{ 'epistolaAdminValidationLatestVersionNote' | pluginTranslate: 'epistola' | async }}
+          </div>
+        </div>
+
         <div *ngIf="validationViolations.length === 0" class="text-muted mt-3 mb-3">
           {{ 'epistolaAdminNoValidations' | pluginTranslate: 'epistola' | async }}
         </div>

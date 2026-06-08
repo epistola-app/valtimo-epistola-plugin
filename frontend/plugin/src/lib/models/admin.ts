@@ -128,3 +128,16 @@ export interface BpmnValidationViolation {
   code: string;
   message: string;
 }
+
+/**
+ * The BPMN race-safety validation report from `GET /admin/validations`.
+ * `lastCheckedAt` is an ISO-8601 timestamp of the last completed scan, or `null`
+ * if no scan has run yet. `refreshIntervalMs` is the validator's scan cadence, used
+ * to tell the operator how often the result refreshes. Only the latest deployed
+ * version of each process definition is inspected.
+ */
+export interface BpmnValidationReport {
+  lastCheckedAt: string | null;
+  refreshIntervalMs: number;
+  violations: BpmnValidationViolation[];
+}
