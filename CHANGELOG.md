@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The "Process Link" selector in the Document Preview Formio component settings was always empty.** The `epistola-process-link-selector` loads its options from `GET /admin/usage` and then keeps only the generate-document links, but it filtered on `actionKey === 'generate-document'` while the backend serializes the prefixed plugin action definition key `epistola-generate-document` (the value in `EpistolaAdminService.EPISTOLA_ACTION_KEYS`). The filter matched nothing, so the dropdown offered no process links to select. The action key is now a shared constant `GENERATE_DOCUMENT_ACTION_KEY` (`process-link-selector.util.ts`) used by both the component and its tests — the spec previously re-implemented the filter with the same wrong string, so it passed against data that never occurs in production.
+
 ## [0.9.3] - 2026-05-21
 
 ### Changed

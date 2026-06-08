@@ -5,6 +5,7 @@
  * (key parsing, selection encoding) without importing the Angular component.
  */
 import { PluginUsageEntry } from '../../models';
+import { filterGenerateDocumentEntries } from './process-link-selector.util';
 
 interface ProcessLinkSelection {
   processDefinitionKey: string;
@@ -18,7 +19,7 @@ function makeEntry(overrides: Partial<PluginUsageEntry> = {}): PluginUsageEntry 
     processDefinitionName: 'My Process',
     activityId: 'task1',
     activityName: 'Task 1',
-    actionKey: 'generate-document',
+    actionKey: 'epistola-generate-document',
     configurationId: 'cfg-1',
     configurationTitle: 'Config 1',
     problems: [],
@@ -41,11 +42,6 @@ function parseSelection(key: string): ProcessLinkSelection | null {
 /** Mirrors the component's restore logic */
 function selectionToKey(value: ProcessLinkSelection): string {
   return `${value.processDefinitionKey}::${value.sourceActivityId}`;
-}
-
-/** Mirrors the component's filter logic */
-function filterGenerateDocumentEntries(entries: PluginUsageEntry[]): PluginUsageEntry[] {
-  return entries.filter((e) => e.actionKey === 'generate-document');
 }
 
 describe('process-link-selector', () => {
@@ -104,10 +100,10 @@ describe('process-link-selector', () => {
   describe('filterGenerateDocumentEntries()', () => {
     it('should keep only generate-document entries', () => {
       const entries = [
-        makeEntry({ actionKey: 'generate-document', activityId: 'gen' }),
-        makeEntry({ actionKey: 'check-job-status', activityId: 'check' }),
-        makeEntry({ actionKey: 'download-document', activityId: 'dl' }),
-        makeEntry({ actionKey: 'generate-document', activityId: 'gen2' }),
+        makeEntry({ actionKey: 'epistola-generate-document', activityId: 'gen' }),
+        makeEntry({ actionKey: 'epistola-check-job-status', activityId: 'check' }),
+        makeEntry({ actionKey: 'epistola-download-document', activityId: 'dl' }),
+        makeEntry({ actionKey: 'epistola-generate-document', activityId: 'gen2' }),
       ];
       const filtered = filterGenerateDocumentEntries(entries);
       expect(filtered).toHaveLength(2);
@@ -115,8 +111,13 @@ describe('process-link-selector', () => {
       expect(filtered[1].activityId).toBe('gen2');
     });
 
+    it('should not match the un-prefixed action key', () => {
+      const entries = [makeEntry({ actionKey: 'generate-document', activityId: 'gen' })];
+      expect(filterGenerateDocumentEntries(entries)).toHaveLength(0);
+    });
+
     it('should return empty for no matches', () => {
-      const entries = [makeEntry({ actionKey: 'check-job-status' })];
+      const entries = [makeEntry({ actionKey: 'epistola-check-job-status' })];
       expect(filterGenerateDocumentEntries(entries)).toHaveLength(0);
     });
 
