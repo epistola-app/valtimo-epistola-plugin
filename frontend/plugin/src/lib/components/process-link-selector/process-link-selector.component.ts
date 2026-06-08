@@ -15,6 +15,7 @@ import { FormioCustomComponent } from '@valtimo/components';
 import { EpistolaAdminService } from '../../services';
 import { PluginUsageEntry } from '../../models';
 import { Subscription } from 'rxjs';
+import { filterGenerateDocumentEntries } from './process-link-selector.util';
 
 export interface ProcessLinkSelection {
   processDefinitionKey: string;
@@ -131,7 +132,7 @@ export class EpistolaProcessLinkSelectorComponent
 
     this.loadSubscription = this.adminService.getPluginUsage().subscribe({
       next: (entries) => {
-        this.filteredEntries = entries.filter((e) => e.actionKey === 'generate-document');
+        this.filteredEntries = filterGenerateDocumentEntries(entries);
         this.loading = false;
 
         // Restore selection from value
