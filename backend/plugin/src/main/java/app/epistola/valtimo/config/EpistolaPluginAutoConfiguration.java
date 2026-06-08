@@ -40,6 +40,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.List;
@@ -227,11 +228,12 @@ public class EpistolaPluginAutoConfiguration {
     public EpistolaProcessDefinitionValidator epistolaProcessDefinitionValidator(
             RepositoryService repositoryService,
             ProcessLinkService processLinkService,
+            TaskScheduler taskScheduler,
             @Value("${epistola.validator.cron:0 */10 * * * *}") String validatorCron,
             @Value("${epistola.validator.zone:UTC}") String validatorZone
     ) {
         return new EpistolaProcessDefinitionValidator(
-                repositoryService, processLinkService, validatorCron, validatorZone);
+                repositoryService, processLinkService, taskScheduler, validatorCron, validatorZone);
     }
 
     @Bean

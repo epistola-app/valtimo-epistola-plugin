@@ -6,6 +6,7 @@ import com.ritense.processlink.domain.ProcessLink;
 import com.ritense.processlink.service.ProcessLinkService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.operaton.bpm.engine.RepositoryService;
 import org.operaton.bpm.engine.repository.ProcessDefinition;
 import org.operaton.bpm.engine.repository.ProcessDefinitionQuery;
@@ -13,7 +14,10 @@ import org.operaton.bpm.model.bpmn.Bpmn;
 import org.operaton.bpm.model.bpmn.BpmnModelInstance;
 import org.operaton.bpm.model.bpmn.instance.IntermediateCatchEvent;
 import org.operaton.bpm.model.bpmn.instance.ServiceTask;
+import org.springframework.scheduling.TaskScheduler;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -22,6 +26,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class EpistolaProcessDefinitionValidatorTest {
@@ -33,6 +38,7 @@ class EpistolaProcessDefinitionValidatorTest {
 
     private RepositoryService repositoryService;
     private ProcessLinkService processLinkService;
+    private TaskScheduler taskScheduler;
     private ProcessDefinitionQuery query;
     private EpistolaProcessDefinitionValidator validator;
 
@@ -40,8 +46,9 @@ class EpistolaProcessDefinitionValidatorTest {
     void setUp() {
         repositoryService = mock(RepositoryService.class);
         processLinkService = mock(ProcessLinkService.class);
+        taskScheduler = mock(TaskScheduler.class);
         validator = new EpistolaProcessDefinitionValidator(
-                repositoryService, processLinkService, EVERY_10_MIN_CRON, "UTC");
+                repositoryService, processLinkService, taskScheduler, EVERY_10_MIN_CRON, "UTC");
 
         ProcessDefinition def = mock(ProcessDefinition.class);
         lenient().when(def.getId()).thenReturn(DEFINITION_ID);
@@ -230,24 +237,52 @@ class EpistolaProcessDefinitionValidatorTest {
     @Test
     void refreshIntervalMs_isDerivedFromTheCronSchedule() {
         EpistolaProcessDefinitionValidator fiveMin = new EpistolaProcessDefinitionValidator(
-                repositoryService, processLinkService, "0 */5 * * * *", "UTC");
+                repositoryService, processLinkService, taskScheduler, "0 */5 * * * *", "UTC");
         assertThat(fiveMin.getRefreshIntervalMs()).isEqualTo(300_000L);
     }
 
     @Test
     void invalidCron_fallsBackToTenMinutes() {
         EpistolaProcessDefinitionValidator bad = new EpistolaProcessDefinitionValidator(
-                repositoryService, processLinkService, "not-a-cron", "UTC");
+                repositoryService, processLinkService, taskScheduler, "not-a-cron", "UTC");
         assertThat(bad.getRefreshIntervalMs()).isEqualTo(INTERVAL_MS);
     }
 
     @Test
-    void scanOnStartup_runsAScanImmediately() {
+    void scanOnStartup_runsAScanImmediatelyWithoutJitter() {
         installBpmn(simpleModel("EpistolaDocumentGenerated"));
         installLink("generate-confirmation");
 
         validator.scanOnStartup();
 
+        assertThat(validator.getLastCheckedAt()).isNotNull();
+        verifyNoInteractions(taskScheduler);
+    }
+
+    @Test
+    void nextJitterMs_isWithinOneToTwentyFiveSeconds() {
+        for (int i = 0; i < 1000; i++) {
+            assertThat(validator.nextJitterMs()).isBetween(1_000L, 25_000L);
+        }
+    }
+
+    @Test
+    void scheduledScan_defersTheScanViaTheSchedulerWithJitter() {
+        ArgumentCaptor<Runnable> task = ArgumentCaptor.forClass(Runnable.class);
+        ArgumentCaptor<Instant> runAt = ArgumentCaptor.forClass(Instant.class);
+        Instant before = Instant.now();
+
+        validator.scheduledScan();
+
+        // The cron tick does not scan inline — it schedules the work 1–25s out.
+        verify(taskScheduler).schedule(task.capture(), runAt.capture());
+        long delayMs = Duration.between(before, runAt.getValue()).toMillis();
+        assertThat(delayMs).isBetween(1_000L, 26_000L);
+
+        // Running the deferred task performs the actual scan.
+        installBpmn(simpleModel("EpistolaDocumentGenerated"));
+        installLink("generate-confirmation");
+        task.getValue().run();
         assertThat(validator.getLastCheckedAt()).isNotNull();
     }
 

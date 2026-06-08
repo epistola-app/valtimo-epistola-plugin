@@ -23,6 +23,7 @@ import org.operaton.bpm.model.bpmn.instance.ServiceTask;
 import org.operaton.bpm.model.bpmn.instance.UserTask;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.scheduling.support.CronExpression;
 
@@ -39,6 +40,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -80,8 +82,10 @@ import java.util.concurrent.atomic.AtomicReference;
  * 10 minutes on the wall clock) rather than a per-instance fixed delay, so in a clustered
  * deployment every node fires at the same clock boundary and the scans stay aligned within a
  * minute of each other (NTP-synced clocks assumed) instead of drifting by each node's startup
- * offset. An additional one-shot scan runs on {@link ApplicationReadyEvent} so a freshly
- * (re)started node populates immediately rather than waiting for the next cron boundary.
+ * offset. To avoid every node hitting the engine/DB at the same instant, each node then defers
+ * the actual scan by a small random 1–25s jitter (scheduled, not slept, so the shared task
+ * scheduler thread stays free). An additional one-shot scan runs on {@link ApplicationReadyEvent}
+ * so a freshly (re)started node populates immediately rather than waiting for the next boundary.
  * The result is a point-in-time snapshot stored in an {@link AtomicReference} for lock-free
  * reads, alongside the {@link #getLastCheckedAt() last-checked timestamp}. Per deployed version,
  * results are cached and only recomputed when a new version is deployed or its
@@ -92,6 +96,10 @@ public class EpistolaProcessDefinitionValidator {
 
     private static final String GENERATE_DOCUMENT_ACTION_KEY = "epistola-generate-document";
     private static final long FALLBACK_INTERVAL_MS = 600_000L;
+
+    /** Random per-node delay applied after the aligned cron tick, to de-synchronise the herd. */
+    private static final long MIN_JITTER_MS = 1_000L;
+    private static final long MAX_JITTER_MS = 25_000L;
 
     private final RepositoryService repositoryService;
     private final ProcessLinkService processLinkService;
@@ -118,14 +126,19 @@ public class EpistolaProcessDefinitionValidator {
      */
     private Map<String, CachedResult> cache = Map.of();
 
+    /** Spring's shared scheduler, used to defer the jittered scan without blocking a thread. */
+    private final TaskScheduler taskScheduler;
+
     public EpistolaProcessDefinitionValidator(
             RepositoryService repositoryService,
             ProcessLinkService processLinkService,
+            TaskScheduler taskScheduler,
             String cron,
             String zone
     ) {
         this.repositoryService = repositoryService;
         this.processLinkService = processLinkService;
+        this.taskScheduler = taskScheduler;
         this.refreshIntervalMs = estimateIntervalMs(cron, zone);
     }
 
@@ -171,8 +184,8 @@ public class EpistolaProcessDefinitionValidator {
 
     /**
      * One-shot scan once the context is ready, so a freshly (re)started node populates its
-     * snapshot immediately instead of showing nothing until the first cron boundary. The
-     * periodic, cluster-aligned scans are driven by the cron schedule on {@link #scan()}.
+     * snapshot immediately instead of showing nothing until the first cron boundary. Runs
+     * without jitter — the alignment/herd concern only applies to the periodic cron ticks.
      */
     @EventListener(ApplicationReadyEvent.class)
     public void scanOnStartup() {
@@ -180,14 +193,31 @@ public class EpistolaProcessDefinitionValidator {
     }
 
     /**
-     * Cron-scheduled scan. Using a wall-clock cron (not a per-instance fixed delay) keeps the
-     * scans aligned across cluster nodes — every node fires on the same boundary. {@code zone}
-     * defaults to UTC so alignment holds regardless of each node's local timezone.
+     * Cron entry point. Using a wall-clock cron (not a per-instance fixed delay) keeps the scans
+     * aligned across cluster nodes — every node fires on the same boundary; {@code zone} defaults
+     * to UTC so alignment holds regardless of each node's local timezone. The actual scan is then
+     * deferred by a small random {@value #MIN_JITTER_MS}–{@value #MAX_JITTER_MS} ms jitter so the
+     * nodes don't all hit the engine/DB at the same instant (still within a minute of each other).
+     * Deferring via {@link TaskScheduler#schedule} rather than sleeping keeps the scheduler thread
+     * free during the wait.
      */
     @Scheduled(
             cron = "${epistola.validator.cron:0 */10 * * * *}",
             zone = "${epistola.validator.zone:UTC}"
     )
+    public void scheduledScan() {
+        taskScheduler.schedule(this::scan, Instant.now().plusMillis(nextJitterMs()));
+    }
+
+    /** A random jitter in {@code [MIN_JITTER_MS, MAX_JITTER_MS]} milliseconds. */
+    long nextJitterMs() {
+        return ThreadLocalRandom.current().nextLong(MIN_JITTER_MS, MAX_JITTER_MS + 1);
+    }
+
+    /**
+     * Run the validation scan now. Cluster-aligned periodic ticks reach this via
+     * {@link #scheduledScan()} (with jitter); startup reaches it via {@link #scanOnStartup()}.
+     */
     public synchronized void scan() {
         Map<String, CachedResult> previous = cache;
         Map<String, CachedResult> next = new HashMap<>();
