@@ -125,6 +125,14 @@ Add an entry under `## [Unreleased]` (Keep-a-Changelog prose style, matching exi
 
 > **Upgraded Valtimo from `<current>` to `<target>` (backend + frontend).** Also bumped Spring Boot `…` and Gradle `…` to match. <One line per migration step applied / breaking change handled.>
 
+## Step 7b — Update COMPATIBILITY.md
+
+Update the Valtimo compatibility matrix in `COMPATIBILITY.md`:
+
+- Set the **tested-against** version on the current/top row to `<target>`, or add a new row if this bump corresponds to a new plugin-version baseline.
+- Revisit the **compatible range** column in light of the changelog reviewed in step 3: widen it if the plugin is expected to keep working across more 13.x versions, or narrow it if a confirmed incompatibility was found. The range is a judgement — do not just copy the pin.
+- Keep the two-form convention (backend `X.Y.Z.RELEASE`, frontend `X.Y.Z`).
+
 ## Step 8 — Format & verify gates
 
 Run the full gate set from `CLAUDE.md`:

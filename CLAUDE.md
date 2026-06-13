@@ -115,6 +115,17 @@ docker/            # Docker compose for local dependencies
   - **Frontend**: `EPISTOLA_ENABLED=false` (container env var, substituted into `assets/config.js` via the Dockerfile entrypoint, defaults to `true`). The plugin library reads `window['env']['epistolaEnabled']` at runtime via the exported `isEpistolaEnabled()` helper. `EpistolaPluginModule.forRoot()` stays unconditional in the host's `imports`; its `ENVIRONMENT_INITIALIZER` short-circuits when disabled, the `/epistola` route guard redirects to `/`, and `epistolaPluginSpecification.pluginId` stops matching the backend `epistola` definition. Keep `PLUGINS_TOKEN` static (`useValue`) in host apps; do not push optional-loading conditionals into installer-facing app-module wiring.
   - Set both flags `false` per environment to fully hide the plugin (no admin menu, no admin page, no plugin picker entry, no process-link action types). On environments where the plugin was previously active, remove existing plugin configurations and process links **before** disabling — otherwise stored references remain in the database and will surface stale entries that fail on API calls if the plugin is re-enabled.
 
+## Valtimo compatibility
+
+This plugin pins a single Valtimo version (the `valtimo` key in `gradle/libs.versions.toml`, with the frontend `@valtimo/*` packages matched), but it is meant to work across a _range_ of Valtimo versions. Which versions each release supports is recorded in [COMPATIBILITY.md](COMPATIBILITY.md); the `update-valtimo` skill (`.claude/skills/update-valtimo/`) drives version bumps and the changelog-impact review.
+
+**Write code that is ideally backward- and forward-compatible with Valtimo.** Aim to keep the plugin working across as wide a range of Valtimo versions as is reasonable, not just the one currently pinned:
+
+- Prefer Valtimo's stable, public APIs over internal/experimental ones; avoid depending on implementation details that may change between minor versions.
+- Don't gratuitously adopt brand-new Valtimo APIs that would drop backward compatibility unless there's a clear benefit — and when you do, note the raised floor in `COMPATIBILITY.md`.
+- Guard against fields/endpoints that may be absent in older or newer Valtimo versions (tolerant parsing, null-safety, feature checks) rather than assuming one exact shape.
+- When a change narrows or widens the supported range, update `COMPATIBILITY.md` to record it.
+
 ## Testing
 
 **All tests and checks must pass before pushing:**
