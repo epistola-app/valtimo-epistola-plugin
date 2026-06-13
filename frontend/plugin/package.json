@@ -30,10 +30,10 @@
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
-    "@valtimo/components": "13.21.0",
-    "@valtimo/plugin": "13.21.0",
-    "@valtimo/process-link": "13.21.0",
-    "@valtimo/shared": "13.21.0",
+    "@valtimo/components": "13.32.0",
+    "@valtimo/plugin": "13.32.0",
+    "@valtimo/process-link": "13.32.0",
+    "@valtimo/shared": "13.32.0",
     "jest": "^30.3.0",
     "ng-packagr": "^19.0.0",
     "ts-jest": "^29.4.9"

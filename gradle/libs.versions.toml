@@ -1,6 +1,6 @@
 [versions]
 # Dependencies
-valtimo = "13.21.0.RELEASE"
+valtimo = "13.32.0.RELEASE"
 epistola-client = "0.6.0"
 lombok = "1.18.42"
 jsonata = "0.9.9"
@@ -10,7 +10,7 @@ netty-resolver-dns-macos = "4.2.0.Final"
 mockito-kotlin = "5.4.0"
 
 # Plugins
-spring-boot = "3.5.12"
+spring-boot = "3.5.14"
 spring-dependency-management = "1.1.7"
 kotlin = "2.0.21"
 node-gradle = "7.1.0"
