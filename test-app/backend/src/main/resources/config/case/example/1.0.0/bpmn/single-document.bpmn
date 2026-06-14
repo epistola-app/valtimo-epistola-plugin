@@ -24,7 +24,7 @@
       <bpmn:incoming>Flow_1x2dibs</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="Flow_0nqt7u2" sourceRef="wait-for-generation" targetRef="Event_1y3ssks" />
-    <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wait for generation">
+    <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wait for generation" camunda:asyncAfter="true">
       <bpmn:incoming>Flow_1l49nmw</bpmn:incoming>
       <bpmn:outgoing>Flow_0nqt7u2</bpmn:outgoing>
       <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_EpistolaDocumentGenerated" />

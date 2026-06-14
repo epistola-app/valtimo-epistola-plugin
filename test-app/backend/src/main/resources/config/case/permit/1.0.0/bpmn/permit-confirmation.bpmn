@@ -27,7 +27,7 @@
     </bpmn:serviceTask>
 
     <!-- Wait for generation to complete -->
-    <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wacht op generatie">
+    <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wacht op generatie" camunda:asyncAfter="true">
       <bpmn:incoming>Flow_to_wait</bpmn:incoming>
       <bpmn:outgoing>Flow_to_check</bpmn:outgoing>
       <bpmn:messageEventDefinition id="MessageDef_wait" messageRef="Message_EpistolaDocumentGenerated" />

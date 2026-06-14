@@ -33,7 +33,7 @@
       <bpmn:incoming>Flow_fork_to_a</bpmn:incoming>
       <bpmn:outgoing>Flow_a_to_wait</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:intermediateCatchEvent id="wait-doc1" name="Wacht op besluit">
+    <bpmn:intermediateCatchEvent id="wait-doc1" name="Wacht op besluit" camunda:asyncAfter="true">
       <bpmn:incoming>Flow_a_to_wait</bpmn:incoming>
       <bpmn:outgoing>Flow_a_to_download</bpmn:outgoing>
       <bpmn:messageEventDefinition id="MessageDef_doc1" messageRef="Message_EpistolaDocumentGenerated" />
@@ -48,7 +48,7 @@
       <bpmn:incoming>Flow_fork_to_b</bpmn:incoming>
       <bpmn:outgoing>Flow_b_to_wait</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:intermediateCatchEvent id="wait-doc2" name="Wacht op overzicht">
+    <bpmn:intermediateCatchEvent id="wait-doc2" name="Wacht op overzicht" camunda:asyncAfter="true">
       <bpmn:incoming>Flow_b_to_wait</bpmn:incoming>
       <bpmn:outgoing>Flow_b_to_download</bpmn:outgoing>
       <bpmn:messageEventDefinition id="MessageDef_doc2" messageRef="Message_EpistolaDocumentGenerated" />
@@ -63,7 +63,7 @@
       <bpmn:incoming>Flow_fork_to_c</bpmn:incoming>
       <bpmn:outgoing>Flow_c_to_wait</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:intermediateCatchEvent id="wait-doc3" name="Wacht op bijlage">
+    <bpmn:intermediateCatchEvent id="wait-doc3" name="Wacht op bijlage" camunda:asyncAfter="true">
       <bpmn:incoming>Flow_c_to_wait</bpmn:incoming>
       <bpmn:outgoing>Flow_c_to_download</bpmn:outgoing>
       <bpmn:messageEventDefinition id="MessageDef_doc3" messageRef="Message_EpistolaDocumentGenerated" />
