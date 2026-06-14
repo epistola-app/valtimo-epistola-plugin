@@ -1,10 +1,15 @@
 package com.ritense.valtimo.epistola.plugin;
 
+import app.epistola.valtimo.domain.DocumentStorageTarget;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
+import app.epistola.valtimo.service.download.DocumentStorageStrategy;
+import app.epistola.valtimo.service.download.ProcessVariableStorageStrategy;
+import app.epistola.valtimo.service.download.TemporaryResourceStorageStrategy;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.document.service.DocumentService;
+import com.ritense.resource.service.TemporaryResourceStorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -12,26 +17,29 @@ import org.operaton.bpm.engine.delegate.DelegateExecution;
 import org.operaton.bpm.engine.variable.value.BytesValue;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.InputStream;
+import java.util.EnumMap;
+import java.util.Map;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit tests for {@link EpistolaPlugin#downloadDocument} storage behaviour.
+ * Unit tests for {@link EpistolaPlugin#downloadDocument} across {@link DocumentStorageTarget}s.
  *
- * <p>Regression guard for two failures:
- * <ul>
- *   <li>The {@code varchar(4000)} overflow — the action must store the document as a byte-array
- *       backed Operaton variable, never as a String. A Base64 String of any real document overflows
- *       Operaton's variable column and rolls back the surrounding transaction (e.g. the message
- *       correlation that resumed the process), leaving the intermediate catch event uncompleted.</li>
- *   <li>The task-open serialization error — a {@code FileValue} exposes its value as a
- *       {@code ByteArrayInputStream} that Jackson cannot serialize when Valtimo renders the user
- *       task's variables. A {@code byte[]} ({@link BytesValue}) serializes cleanly as Base64.</li>
- * </ul>
+ * <p>See {@code docs/adr/0001-download-document-content-storage.md}. The default
+ * {@code TEMPORARY_RESOURCE} strategy stores the PDF in temporary resource storage and writes only a
+ * small resource id; the {@code PROCESS_VARIABLE} strategy stores raw bytes inline. The
+ * action validates the per-target output variable and strategy availability before downloading.
  */
 class EpistolaPluginDownloadDocumentTest {
 
@@ -39,62 +47,109 @@ class EpistolaPluginDownloadDocumentTest {
     private static final String API_KEY = "api-key";
     private static final String TENANT_ID = "demo";
     private static final String DOCUMENT_VARIABLE = "epistolaResult";
+    private static final String RESOURCE_ID_VARIABLE = "documentResourceId";
     private static final String CONTENT_VARIABLE = "documentContent";
     private static final String DOCUMENT_ID = "doc-123";
 
     private EpistolaService epistolaService;
-    private EpistolaPlugin plugin;
+    private TemporaryResourceStorageService temporaryResourceStorageService;
     private DelegateExecution execution;
 
     @BeforeEach
     void setUp() {
         epistolaService = mock(EpistolaService.class);
-        plugin = new EpistolaPlugin(
-                epistolaService,
-                mock(ObjectMapper.class),
-                mock(JsonataMappingService.class),
-                mock(DocumentService.class),
-                mock(EpistolaResultCollectorRunner.class));
-        ReflectionTestUtils.setField(plugin, "baseUrl", BASE_URL);
-        ReflectionTestUtils.setField(plugin, "apiKey", API_KEY);
-        ReflectionTestUtils.setField(plugin, "tenantId", TENANT_ID);
-
+        temporaryResourceStorageService = mock(TemporaryResourceStorageService.class);
         execution = mock(DelegateExecution.class);
         when(execution.getVariable(DOCUMENT_VARIABLE)).thenReturn(DOCUMENT_ID);
     }
 
+    private EpistolaPlugin pluginWith(Map<DocumentStorageTarget, DocumentStorageStrategy> strategies) {
+        EpistolaPlugin plugin = new EpistolaPlugin(
+                epistolaService,
+                mock(ObjectMapper.class),
+                mock(JsonataMappingService.class),
+                mock(DocumentService.class),
+                mock(EpistolaResultCollectorRunner.class),
+                strategies);
+        ReflectionTestUtils.setField(plugin, "baseUrl", BASE_URL);
+        ReflectionTestUtils.setField(plugin, "apiKey", API_KEY);
+        ReflectionTestUtils.setField(plugin, "tenantId", TENANT_ID);
+        return plugin;
+    }
+
+    private EpistolaPlugin pluginWithAllStrategies() {
+        Map<DocumentStorageTarget, DocumentStorageStrategy> strategies = new EnumMap<>(DocumentStorageTarget.class);
+        strategies.put(DocumentStorageTarget.TEMPORARY_RESOURCE,
+                new TemporaryResourceStorageStrategy(temporaryResourceStorageService));
+        strategies.put(DocumentStorageTarget.PROCESS_VARIABLE, new ProcessVariableStorageStrategy());
+        return pluginWith(strategies);
+    }
+
     @Test
-    void downloadDocument_storesPdfBytesAsByteVariableNotString() {
+    void temporaryResource_isTheDefaultAndStoresOnlyTheResourceId() throws Exception {
         byte[] pdf = new byte[]{0x25, 0x50, 0x44, 0x46, 0x2d}; // %PDF-
         when(epistolaService.downloadDocument(BASE_URL, API_KEY, TENANT_ID, DOCUMENT_ID)).thenReturn(pdf);
+        when(temporaryResourceStorageService.store(any(InputStream.class), anyMap())).thenReturn("res-1");
 
-        plugin.downloadDocument(execution, DOCUMENT_VARIABLE, CONTENT_VARIABLE);
+        // storageTarget = null exercises the default (TEMPORARY_RESOURCE).
+        pluginWithAllStrategies().downloadDocument(execution, DOCUMENT_VARIABLE, null, RESOURCE_ID_VARIABLE, null);
 
-        assertThat(captureStoredValue().getValue()).isEqualTo(pdf);
+        ArgumentCaptor<InputStream> streamCaptor = ArgumentCaptor.forClass(InputStream.class);
+        verify(temporaryResourceStorageService).store(streamCaptor.capture(), anyMap());
+        assertThat(streamCaptor.getValue().readAllBytes()).isEqualTo(pdf);
+        verify(execution).setVariable(RESOURCE_ID_VARIABLE, "res-1");
     }
 
     @Test
-    void downloadDocument_handlesDocumentLargerThanVarcharLimitWithoutThrowing() {
-        // 8 KB of bytes — its Base64 form (~10.9 KB) would blow past Operaton's varchar(4000)
-        // string-variable column. As a byte variable it is stored in the byte-array table instead.
-        byte[] largePdf = new byte[8192];
-        for (int i = 0; i < largePdf.length; i++) {
-            largePdf[i] = (byte) (i % 256);
-        }
+    void temporaryResource_handlesDocumentLargerThanVarcharLimit() {
+        byte[] largePdf = new byte[8192]; // Base64 ~10.9 KB — would overflow varchar(4000) as a String var
         when(epistolaService.downloadDocument(BASE_URL, API_KEY, TENANT_ID, DOCUMENT_ID)).thenReturn(largePdf);
+        when(temporaryResourceStorageService.store(any(InputStream.class), anyMap())).thenReturn("res-2");
 
-        assertThatCode(() -> plugin.downloadDocument(execution, DOCUMENT_VARIABLE, CONTENT_VARIABLE))
+        assertThatCode(() -> pluginWithAllStrategies().downloadDocument(
+                execution, DOCUMENT_VARIABLE, DocumentStorageTarget.TEMPORARY_RESOURCE, RESOURCE_ID_VARIABLE, null))
                 .doesNotThrowAnyException();
 
-        assertThat(captureStoredValue().getValue()).isEqualTo(largePdf);
+        verify(execution).setVariable(RESOURCE_ID_VARIABLE, "res-2");
     }
 
-    private BytesValue captureStoredValue() {
+    @Test
+    void processVariable_storesInlineBytesAndDoesNotTouchResourceStorage() {
+        byte[] pdf = new byte[]{0x25, 0x50, 0x44, 0x46};
+        when(epistolaService.downloadDocument(BASE_URL, API_KEY, TENANT_ID, DOCUMENT_ID)).thenReturn(pdf);
+
+        pluginWithAllStrategies().downloadDocument(
+                execution, DOCUMENT_VARIABLE, DocumentStorageTarget.PROCESS_VARIABLE, null, CONTENT_VARIABLE);
+
         ArgumentCaptor<Object> valueCaptor = ArgumentCaptor.forClass(Object.class);
         verify(execution).setVariable(eq(CONTENT_VARIABLE), valueCaptor.capture());
         assertThat(valueCaptor.getValue())
-                .as("download-document must store a byte variable, not a String")
+                .as("PROCESS_VARIABLE must store a byte variable, not a String")
                 .isInstanceOf(BytesValue.class);
-        return (BytesValue) valueCaptor.getValue();
+        assertThat(((BytesValue) valueCaptor.getValue()).getValue()).isEqualTo(pdf);
+        verifyNoInteractions(temporaryResourceStorageService);
+    }
+
+    @Test
+    void failsFast_whenOutputVariableForTargetIsNotConfigured() {
+        // TEMPORARY_RESOURCE selected but resourceIdVariable blank — should not even download.
+        assertThatThrownBy(() -> pluginWithAllStrategies().downloadDocument(
+                execution, DOCUMENT_VARIABLE, DocumentStorageTarget.TEMPORARY_RESOURCE, "  ", CONTENT_VARIABLE))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("output variable");
+        verifyNoInteractions(epistolaService);
+    }
+
+    @Test
+    void failsFast_whenSelectedTargetStrategyIsUnavailable() {
+        // Environment without temporary resource storage: only the process-variable strategy is registered.
+        Map<DocumentStorageTarget, DocumentStorageStrategy> onlyInline = new EnumMap<>(DocumentStorageTarget.class);
+        onlyInline.put(DocumentStorageTarget.PROCESS_VARIABLE, new ProcessVariableStorageStrategy());
+
+        assertThatThrownBy(() -> pluginWith(onlyInline).downloadDocument(
+                execution, DOCUMENT_VARIABLE, DocumentStorageTarget.TEMPORARY_RESOURCE, RESOURCE_ID_VARIABLE, null))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("not available");
+        verifyNoInteractions(epistolaService);
     }
 }

@@ -28,7 +28,8 @@
     "pluginActionDefinitionKey": "epistola-download-document",
     "actionProperties": {
       "documentVariable": "requestId1",
-      "contentVariable": "doc1Content"
+      "storageTarget": "TEMPORARY_RESOURCE",
+      "resourceIdVariable": "doc1ResourceId"
     }
   },
   {
@@ -54,7 +55,8 @@
     "pluginActionDefinitionKey": "epistola-download-document",
     "actionProperties": {
       "documentVariable": "requestId2",
-      "contentVariable": "doc2Content"
+      "storageTarget": "TEMPORARY_RESOURCE",
+      "resourceIdVariable": "doc2ResourceId"
     }
   },
   {
@@ -80,7 +82,8 @@
     "pluginActionDefinitionKey": "epistola-download-document",
     "actionProperties": {
       "documentVariable": "requestId3",
-      "contentVariable": "doc3Content"
+      "storageTarget": "TEMPORARY_RESOURCE",
+      "resourceIdVariable": "doc3ResourceId"
     }
   }
 ]

@@ -27,7 +27,7 @@ Two facts shape the durable answer:
 - **No `varchar(4000)` limit.**
 - **Durability matched to the deployment** — including surviving long-lived human tasks, restarts, and cluster nodes when the customer needs it.
 - **Composes with what the customer already has** (notably the Documenten API plugin) rather than re-implementing it.
-- **Backward compatibility** with existing `contentVariable` process-links.
+- **Clear, target-specific configuration.** The output variable a process-link configures should match the chosen target (a resource id vs inline bytes). Backward compatibility with the old single `contentVariable` is explicitly **not** required (pre-1.0; no external consumers depend on it).
 
 ## Decision outcome
 
@@ -35,11 +35,11 @@ A _download_ action must download — i.e. it always **materializes** the bytes 
 
 **Introduce a `storageTarget` action property** that selects _where_ the materialized PDF goes. Each target only touches the backend it needs and fails clearly if that backend is absent; none is a hard dependency. The `documentId` is always retained, so re-download from Epistola is the universal recovery path within Epistola's retention window.
 
-| `storageTarget`                | Writes to the variable    | Backend needed                                  | When to use                                                                                                                                                        |
-| ------------------------------ | ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `temporary-resource` (default) | a **temp resource id**    | `temporary-resource-storage` (ubiquitous)       | The bridge to ZGW (`store-temp-document`) and any temp consumer. Small id, no leak. Re-downloadable from Epistola if the ~60 min TTL passes before it is consumed. |
-| `durable-resource`             | a **durable resource id** | a `ResourceService` backend (S3 / shared local) | Non-ZGW apps that still want the bytes durably in Valtimo across long waits.                                                                                       |
-| `process-variable`             | inline `byte[]`           | none                                            | **Deprecated.** Small documents only; leaks into the task response and (as a String) hits the `varchar(4000)` limit. Kept for backward compatibility.              |
+| `storageTarget`                | Writes to the variable    | Backend needed                                  | When to use                                                                                                                                                                                           |
+| ------------------------------ | ------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `temporary-resource` (default) | a **temp resource id**    | `temporary-resource-storage` (ubiquitous)       | The bridge to ZGW (`store-temp-document`) and any temp consumer. Small id, no leak. Re-downloadable from Epistola if the ~60 min TTL passes before it is consumed.                                    |
+| `durable-resource`             | a **durable resource id** | a `ResourceService` backend (S3 / shared local) | Non-ZGW apps that still want the bytes durably in Valtimo across long waits.                                                                                                                          |
+| `process-variable`             | inline `byte[]`           | none                                            | Supported, not default. Small / non-sensitive documents — the bytes are serialized into the task response and persist in process state. (`byte[]`, not a String, to avoid the `varchar(4000)` limit.) |
 
 ### How ZGW / Documenten API fits (composition, not a target)
 
@@ -58,11 +58,11 @@ If nothing in the process needs the bytes materialized — e.g. a user task just
 ## Phasing
 
 1. **Done (PR #52, merged):** `asyncAfter` on the `EpistolaDocumentGenerated` catch events (correct regardless of storage) + interim inline `byte[]` storage that unblocks generation. Flagged in code/CHANGELOG as interim, governed by this ADR.
-2. **This work:** add the `storageTarget` property; implement **`temporary-resource` (new default)** and keep **`process-variable` (deprecated)**. Backend action + frontend configurator + tests + update the demo `*.process-link.json` and `docs/use-cases.md` to show the temp-resource → `store-temp-document` recipe.
+2. **This work:** add the `storageTarget` property; implement **`temporary-resource` (new default)** and keep **`process-variable`** as a supported non-default option (with caveats). Backend action + frontend configurator + tests + update the demo `*.process-link.json` and `docs/use-cases.md` to show the temp-resource → `store-temp-document` recipe.
 3. **Later, on demand:** implement `durable-resource` when a concrete non-ZGW durability use case appears.
 
 ## Consequences
 
-- **Positive:** no required infra; default keeps private bytes out of the task payload and out of the `varchar` limit; ZGW reached by composition with the platform plugin; durable option available when needed; inline path preserved (deprecated) for back-compat; `documentId` retained as a universal re-download fallback.
-- **Negative / cost:** a configurable strategy is more surface to build, document, and test. Changing the default from inline to `temporary-resource` changes what `contentVariable` holds (a resource id, not Base64) — call out in release notes; existing process-links that relied on inline Base64 must set `storageTarget = process-variable` explicitly or migrate to the temp-resource → ZGW recipe.
+- **Positive:** no required infra; default keeps private bytes out of the task payload and out of the `varchar` limit; ZGW reached by composition with the platform plugin; durable option available when needed; inline path kept as a supported option for small documents; `documentId` retained as a universal re-download fallback.
+- **Negative / cost:** a configurable strategy is more surface to build, document, and test. The action now has target-specific output variables (`resourceIdVariable` for `temporary-resource`, `contentVariable` for `process-variable`) and a new default — existing process-links must be updated to the new shape (no back-compat shim; the demo links were migrated in this change).
 - **Follow-up:** frontend `download-document` configurator gains a `storageTarget` selector; `EpistolaPluginDownloadDocumentTest` extended per target; consider a `fileName`/metadata property so `store-temp-document` gets a sensible filename.

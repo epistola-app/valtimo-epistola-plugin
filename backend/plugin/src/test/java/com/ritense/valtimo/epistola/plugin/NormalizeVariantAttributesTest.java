@@ -30,7 +30,8 @@ class NormalizeVariantAttributesTest {
                 mock(ObjectMapper.class),
                 mock(JsonataMappingService.class),
                 mock(com.ritense.document.service.DocumentService.class),
-                mock(EpistolaResultCollectorRunner.class)
+                mock(EpistolaResultCollectorRunner.class),
+                java.util.Map.of()
         );
     }
 

@@ -142,9 +142,15 @@ const epistolaPluginSpecification: PluginSpecification = {
       documentVariable: 'Document Variabele',
       documentVariableTooltip:
         'Naam van de procesvariabele met het Epistola resultaat. Mag een String document ID zijn (legacy) of een rich-result object met een documentId-veld; de actie haalt het document ID eruit.',
+      storageTarget: 'Opslagdoel',
+      storageTargetTooltip:
+        'Waar het gedownloade PDF wordt opgeslagen. "Tijdelijke resource-opslag" (aanbevolen) zet alleen een resource-id in de variabele — geschikt om door te geven aan documenten-api:store-temp-document. "Procesvariabele" zet de ruwe bytes inline in de variabele (alleen voor kleine, niet-gevoelige documenten; deze worden in de taakrespons meegestuurd).',
+      resourceIdVariable: 'Resource-ID Variabele',
+      resourceIdVariableTooltip:
+        'Naam van de procesvariabele waarin het tijdelijke resource-id wordt opgeslagen (geef deze door aan documenten-api:store-temp-document).',
       contentVariable: 'Inhoud Variabele',
       contentVariableTooltip:
-        'Naam van de procesvariabele waarin de documentinhoud (Base64) wordt opgeslagen',
+        'Naam van de procesvariabele waarin de ruwe PDF-bytes inline worden opgeslagen (alleen voor kleine, niet-gevoelige documenten).',
       // Admin page
       epistolaAdminOverview: 'Overzicht',
       epistolaAdminRefresh: 'Vernieuwen',
@@ -317,9 +323,15 @@ const epistolaPluginSpecification: PluginSpecification = {
       documentVariable: 'Document Variable',
       documentVariableTooltip:
         'Name of the process variable holding the Epistola result. May be a String document id (legacy) or a rich result object with a `documentId` key — the action extracts the document id from it.',
+      storageTarget: 'Storage Target',
+      storageTargetTooltip:
+        'Where the downloaded PDF is stored. "Temporary resource storage" (recommended) writes only a resource id to the variable — ready to hand to documenten-api:store-temp-document. "Process variable" writes the raw bytes inline (small, non-sensitive documents only; they are included in the task response).',
+      resourceIdVariable: 'Resource ID Variable',
+      resourceIdVariableTooltip:
+        'Name of the process variable to store the temporary resource id in (hand this to documenten-api:store-temp-document).',
       contentVariable: 'Content Variable',
       contentVariableTooltip:
-        'Name of the process variable to store the document content (Base64) in',
+        'Name of the process variable to store the raw PDF bytes inline in (small, non-sensitive documents only).',
       // Admin page
       epistolaAdminOverview: 'Overview',
       epistolaAdminRefresh: 'Refresh',
