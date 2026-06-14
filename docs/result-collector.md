@@ -123,14 +123,21 @@ EpistolaPlugin#generateDocument(execution, …):
                 body: {…, "routingKey": "3:abc-123"}    // omitted if null
               returns: {requestId, status}
 
-  execution.setVariable(resultProcessVariable, requestId)
-  execution.setVariable(JOB_PATH, "epistola:job:" + tenantId + "/" + requestId)
+  execution.setVariable(resultProcessVariable, {requestId, status: "PENDING", …})
+  // Correlation keys are uniquely named so parallel branches never clobber each
+  // other (see async.md "Parallel generation"): one keyed by THIS activity, one
+  // keyed by the jobPath value (a locator → result-variable name).
+  jobPath = "epistola:job:" + tenantId + "/" + requestId
+  execution.setVariable(activityId + "_epistolaJobPath", jobPath)
+  execution.setVariable(jobPath, resultProcessVariable)
 ```
 
 The service task then completes; the BPMN engine moves to the next activity,
 which (per the recommended pattern in [async.md](async.md)) is a Message
-Intermediate Catch Event subscribing on `EpistolaDocumentGenerated`. The
-process suspends there.
+Intermediate Catch Event subscribing on `EpistolaDocumentGenerated`. As the
+branch enters that catch event, the plugin's parse listener pins the branch's
+jobPath as the execution-local `epistolaWaitFor` token on the subscription
+execution. The process suspends there.
 
 ## Receiving a result and correlating
 
@@ -144,11 +151,15 @@ handleResult(tenantId, result):
     tenantId, result.requestId, result.status, result.documentId, result.error)
       ↓
       jobPath = "epistola:job:" + tenantId + "/" + requestId
-      runtimeService.createMessageCorrelation("EpistolaDocumentGenerated")
-        .processInstanceVariableEquals(JOB_PATH, jobPath)
-        .setVariable(STATUS, …) .setVariable(DOCUMENT_ID, …) .setVariable(ERROR_MESSAGE, …)
-        .correlateAllWithResult()
-      → BPMN message catch fires, process advances
+      // Match the waiting subscription by its OWN pinned epistolaWaitFor token —
+      // a single indexed query, independent of the execution-tree shape. Then wake
+      // it by id — never a broadcast correlateAll that would wake sibling branches.
+      for execution in executions with an EpistolaDocumentGenerated subscription
+                       where execution.epistolaWaitFor (local) == jobPath:
+        resultVar = value of the locator variable named jobPath
+        runtimeService.setVariable(execution.id, resultVar, richResult)
+        runtimeService.messageEventReceived("EpistolaDocumentGenerated", execution.id)
+      → BPMN message catch fires for exactly that branch, process advances
 
   ON EXCEPTION: log.warn and return normally.
     Critical: re-throwing would skip the contract helper's ack and replay this
@@ -383,14 +394,13 @@ T5   tx commit  ← only now is the subscription visible to other connections
 ```
 
 The collector poll, on a separate connection, can only correlate the result
-**after** T5 (because `processInstanceVariableEquals` reads committed state).
-But the suite can produce the result any time after T1.
+**after** T5 (because the subscription query reads committed state). But the
+suite can produce the result any time after T1.
 
 If `T_result_available` < T5, and our collector polls between those moments,
-`correlateAllWithResult()` finds zero subscriptions, throws
-`MismatchingMessageCorrelationException`, which we catch and treat as "no
-waiting execution; ack and move on." **The result is silently dropped, the
-BPMN process hangs forever.**
+`correlateCompletion` finds zero matching subscriptions, logs a WARN, and treats
+it as "no waiting execution; ack and move on." **The result is silently dropped,
+the BPMN process hangs forever.**
 
 **How likely is this in practice?**
 

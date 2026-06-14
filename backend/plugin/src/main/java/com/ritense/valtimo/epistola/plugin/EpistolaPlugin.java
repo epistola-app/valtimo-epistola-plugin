@@ -351,7 +351,6 @@ public class EpistolaPlugin {
             failureData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE,
                     "Document generation request failed: " + e.getMessage());
             execution.setVariable(resultProcessVariable, failureData);
-            execution.setVariable(EpistolaProcessVariables.RESULT_VARIABLE_NAME, resultProcessVariable);
             throw new RuntimeException("Failed to submit document generation request to Epistola", e);
         }
 
@@ -367,19 +366,24 @@ public class EpistolaPlugin {
         resultData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE, null);
         execution.setVariable(resultProcessVariable, resultData);
 
-        // Companion variable: the *name* of resultProcessVariable on this instance,
-        // so the result collector knows where to write the updated rich object later.
-        execution.setVariable(EpistolaProcessVariables.RESULT_VARIABLE_NAME, resultProcessVariable);
-
         // Store tenantId as a standalone process variable so it can be used in forms
-        // (e.g. for building document download URLs without parsing the composite jobPath)
+        // (e.g. for building document download URLs without parsing the composite jobPath).
+        // Global: identical across branches, read at process-instance scope by the download endpoint.
         execution.setVariable(EpistolaProcessVariables.TENANT_ID, tenantId);
 
-        // Store a single composite job path that encodes both tenantId and requestId.
-        // This avoids scoping issues where separate variables might not both be visible
-        // to the polling consumer's execution.
+        // Per-branch correlation state, written so parallel branches never clobber each other (a
+        // single shared epistolaJobPath is overwritten by concurrent branches — the original
+        // parallel-correlation bug). Two uniquely-named, process-scoped variables:
+        //  1. <activityId>_epistolaJobPath = jobPath — keyed by THIS generate activity, so the
+        //     EpistolaDocumentGenerated catch-event parse listener (which knows its source activity)
+        //     can read the jobPath back and pin it as the catch event's correlation token (WAIT_FOR).
+        //  2. <jobPath> = resultProcessVariable — a locator keyed by the (globally unique) jobPath
+        //     value, so the result collector can resolve the result-variable name (and process
+        //     instance) from just the completed job. See EpistolaMessageCorrelationService.
+        String activityId = execution.getCurrentActivityId();
         String jobPath = EpistolaMessageCorrelationService.buildJobPath(tenantId, result.getRequestId());
-        execution.setVariable(EpistolaProcessVariables.JOB_PATH, jobPath);
+        execution.setVariable(EpistolaProcessVariables.activityJobPathVariable(activityId), jobPath);
+        execution.setVariable(jobPath, resultProcessVariable);
 
         // Hint the collector to look for the result soon — if it's currently
         // backed off into idle mode, this brings the next poll forward to

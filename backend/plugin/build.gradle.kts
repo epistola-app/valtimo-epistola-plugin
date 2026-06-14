@@ -73,6 +73,8 @@ dependencies {
     testImplementation(libs.valtimo.test.utils.common)
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    // In-memory DB for the standalone Operaton engine used by the correlation integration test
+    testImplementation("com.h2database:h2")
 
     // Testcontainers
     testImplementation(libs.testcontainers)

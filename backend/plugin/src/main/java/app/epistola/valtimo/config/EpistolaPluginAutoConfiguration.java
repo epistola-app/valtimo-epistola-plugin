@@ -7,6 +7,7 @@ import app.epistola.valtimo.deploy.CatalogScanner;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
+import app.epistola.valtimo.deployment.EpistolaProcessEnginePlugin;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.expression.functions.FormatDateFunction;
@@ -60,6 +61,12 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(EpistolaApiClientFactory.class)
     public EpistolaApiClientFactory epistolaApiClientFactory() {
         return new EpistolaApiClientFactory();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaProcessEnginePlugin.class)
+    public EpistolaProcessEnginePlugin epistolaProcessEnginePlugin() {
+        return new EpistolaProcessEnginePlugin();
     }
 
     @Bean

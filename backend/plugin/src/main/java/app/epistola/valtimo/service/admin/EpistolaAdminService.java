@@ -251,11 +251,11 @@ public class EpistolaAdminService {
         for (Execution execution : waitingExecutions) {
             try {
                 String jobPath = (String) runtimeService.getVariable(
-                        execution.getId(), EpistolaProcessVariables.JOB_PATH);
+                        execution.getId(), EpistolaProcessVariables.WAIT_FOR);
 
                 if (jobPath == null) {
                     log.debug("Execution {} has no {} variable, skipping",
-                            execution.getId(), EpistolaProcessVariables.JOB_PATH);
+                            execution.getId(), EpistolaProcessVariables.WAIT_FOR);
                     continue;
                 }
 
@@ -303,7 +303,7 @@ public class EpistolaAdminService {
      * Manual recovery for a stuck Epistola catch event.
      *
      * <p>Looks up the execution by id, validates that it still has an active
-     * {@code EpistolaDocumentGenerated} subscription, reads its {@code epistolaJobPath},
+     * {@code EpistolaDocumentGenerated} subscription, reads its {@code epistolaWaitFor} jobPath,
      * fetches the current job status from Epistola, and runs message correlation
      * if the job is in a terminal state. This is the way out when the natural
      * collector→correlate path missed the original message — typically a narrow
@@ -335,12 +335,12 @@ public class EpistolaAdminService {
         }
 
         String jobPath = (String) runtimeService.getVariable(
-                execution.getId(), EpistolaProcessVariables.JOB_PATH);
+                execution.getId(), EpistolaProcessVariables.WAIT_FOR);
         if (jobPath == null) {
             // Execution exists and has the subscription but lost the variable somehow;
             // we can't reconstruct (tenantId, requestId) without it.
             throw new IllegalArgumentException(
-                    "Execution " + executionId + " has no " + EpistolaProcessVariables.JOB_PATH + " variable");
+                    "Execution " + executionId + " has no " + EpistolaProcessVariables.WAIT_FOR + " variable");
         }
 
         String[] parts = EpistolaMessageCorrelationService.parseJobPath(jobPath);

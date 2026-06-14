@@ -30,7 +30,7 @@ or handles the failure.
 
 ```
 [Service Task: generate-document]
-  -> sets epistolaJobPath and the configured resultProcessVariable
+  -> sets its correlation keys and the configured resultProcessVariable
      (default name epistolaResult, value {requestId, status: "PENDING", ...})
 -> [Message Catch Event: "EpistolaDocumentGenerated"]
   -> the result-collector has updated the rich object on the process instance
@@ -48,7 +48,8 @@ reports a terminal result.
 
 | Variable                                          | Set By                                 | Description                                                                                                                                                                                                                                                                                                                                                                         |
 | ------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `epistolaJobPath`                                 | `generate-document` action             | Composite job identifier: `epistola:job:{tenantId}/{requestId}` — internal correlation key.                                                                                                                                                                                                                                                                                         |
+| `<activityId>_epistolaJobPath`                    | `generate-document` action             | Composite job identifier `epistola:job:{tenantId}/{requestId}` — internal correlation key, in a variable **named after the generate activity** so parallel branches never overwrite each other. The plugin also writes a locator variable named by the jobPath (value = result-variable name). See [Parallel generation](#parallel-generation).                                     |
+| `epistolaWaitFor`                                 | catch-event listener (auto) / author   | Execution-local token pinned on each waiting `EpistolaDocumentGenerated` catch event = the jobPath it waits for. The collector correlates a completion by matching this, waking exactly that branch. Auto-populated; an author may set it (e.g. a `camunda:inputParameter`) to override.                                                                                            |
 | `epistolaTenantId`                                | `generate-document` action             | Tenant id of the Epistola configuration that handled this request (handy for forms that build tenant-scoped URLs without parsing the composite jobPath).                                                                                                                                                                                                                            |
 | `<resultProcessVariable>` (e.g. `epistolaResult`) | `generate-document` action + collector | **Single source of truth for the result.** Rich `Map` shape: `{requestId, status, documentId, errorMessage}`. Initial value at submit time is `status: "PENDING"` plus the requestId; the collector updates the same variable in-place with terminal data (`COMPLETED` / `FAILED` / `CANCELLED`). Read in BPMN with `${epistolaResult.status}` etc. (JUEL dot-notation on a `Map`). |
 
@@ -114,9 +115,11 @@ Configure the BPMN message catch event with:
 
 - **Message name**: `EpistolaDocumentGenerated`
 
-No listener or script task is needed. `generate-document` sets `epistolaJobPath`
-automatically, and the correlation service uses that value to wake the matching
-execution.
+No listener or script task is needed. The plugin attaches a start listener to the
+catch event automatically (via its parse listener) that pins the branch's
+`epistolaWaitFor` correlation token, and the collector uses that token to wake the
+matching execution. See [Parallel generation](#parallel-generation) for the details
+and the override hook.
 
 ## Current Architecture
 
@@ -181,20 +184,69 @@ epistola:
 The `check-job-status` action still exists for explicit status checks, but the
 recommended process model is generate -> message catch -> download.
 
+## Parallel generation
+
+A single case can generate several documents at once — e.g. a subsidy dossier
+that fans `generate-document` out across the branches of a parallel gateway and
+joins afterwards. Each branch correlates **independently**: a completion result
+wakes exactly the branch that submitted it and updates exactly that branch's
+result variable, never its siblings.
+
+Two rules make this work; one is on you, one is handled by the plugin:
+
+1. **Give each parallel branch its own `resultProcessVariable` name.** The result
+   variable is a normal (process-instance-scoped) variable; two branches sharing a
+   name would clobber each other. Configure distinct names per branch — e.g.
+   `resultDoc1`, `resultDoc2`, `resultDoc3` — and read each one in its own
+   downstream gateway/Formio component. (Inside a multi-instance subprocess the
+   same name is fine — each iteration has its own variable scope.)
+
+2. **The plugin makes correlation per-branch automatically — independent of the
+   execution-tree shape.** Operaton does not guarantee where a service task runs in
+   the execution tree (it may run on the concurrent branch execution or on an
+   ephemeral child of it), so the correlation key must not depend on that. Two
+   pieces handle it:
+   - `generate-document` writes its jobPath to a variable **named after its own
+     activity** — `<activityId>_epistolaJobPath` (e.g. `generate-doc1_epistolaJobPath`).
+     A uniquely-named variable is never clobbered by sibling branches. It also writes
+     a locator (a variable named by the jobPath whose value is the result-variable
+     name) so a completion can resolve the result variable from `(tenantId, requestId)`.
+   - A BPMN parse listener (`EpistolaCatchEventTokenParseListener`, registered via a
+     `ProcessEnginePlugin`) attaches a start listener to every
+     `EpistolaDocumentGenerated` catch event. When the branch subscribes, the listener
+     pins that branch's jobPath as the execution-local `epistolaWaitFor` token **on the
+     catch event's own (subscription) execution**, reading it from the
+     `<activityId>_epistolaJobPath` of the generating service task that flows into it.
+     You can override by setting `epistolaWaitFor` yourself (e.g. a
+     `camunda:inputParameter`); the listener never overwrites an existing value.
+
+When a result lands, `correlateCompletion` matches the waiting subscription with a
+single indexed query — `messageEventSubscriptionName(EpistolaDocumentGenerated)`
+**and** `variableValueEquals(epistolaWaitFor, jobPath)` — updates that branch's
+result variable, and triggers **only that execution** by id
+(`runtimeService.messageEventReceived(message, executionId)`) — never a broadcast
+`correlateAll` that would wake every branch.
+
+This is verified end-to-end against a real engine by
+`EpistolaParallelCorrelationIntegrationTest` (parallel gateway, multi-instance,
+sequential, and override cases — all with `asyncAfter` catch events).
+
 ## Race-safety: keep the boundary synchronous
 
 The result-collector runs on its own thread and polls Epistola continuously.
-When a result lands, it calls `runtimeService.createMessageCorrelation(...)
-.processInstanceVariableEquals(epistolaJobPath, ...).correlateAllWithResult()`.
-For that to find the waiting BPMN execution, **both** the `epistolaJobPath`
-variable and the `EpistolaDocumentGenerated` subscription must already be
-committed to the database.
+When a result lands, `correlateCompletion` looks up the waiting
+`EpistolaDocumentGenerated` subscription whose own `epistolaWaitFor` token matches
+the completed job and triggers it by id
+(`runtimeService.messageEventReceived(message, executionId)`). For that to find
+the waiting BPMN execution, **both** the pinned `epistolaWaitFor` token and the
+`EpistolaDocumentGenerated` subscription must already be committed to the
+database.
 
-The plugin sets the variable inside the `generate-document` action; the engine
-creates the subscription when it advances to the catch event. Both happen in
-the same Operaton command context — i.e. the same transaction that commits at
-the end of the engine step. So as long as the boundary between the service
-task and the catch event is **synchronous**, the variable, the subscription,
+The plugin writes the jobPath inside the `generate-document` action; the engine
+creates the subscription and pins `epistolaWaitFor` when it advances to the catch
+event. All happen in the same Operaton command context — i.e. the same
+transaction that commits at the end of the engine step. So as long as the boundary
+between the service task and the catch event is **synchronous**, the variable, the subscription,
 and the engine commit happen as one atomic operation, and the collector cannot
 observe one without the other.
 
@@ -204,8 +256,8 @@ transactions: the first commits with the variable set but **without** the
 subscription, then a job-executor scan (default ~30s) starts a second
 transaction that creates the subscription. During that window, a result
 landing in Epistola triggers a correlation that finds the variable but no
-subscription — `correlateAll` matches 0 executions, the result is acked, the
-cursor advances, and the catch event waits forever.
+subscription — `correlateCompletion` matches 0 executions, the result is acked,
+the cursor advances, and the catch event waits forever.
 
 **Don't put async boundaries between `generate-document` and the
 `EpistolaDocumentGenerated` catch event.** The plugin enforces this at runtime:
@@ -224,7 +276,7 @@ switch to the **Pending Jobs** tab. Each row is a process instance whose catch
 event is still subscribed to `EpistolaDocumentGenerated`. Click **Reconcile**
 on the affected row:
 
-1. The plugin reads the `epistolaJobPath` variable on the execution.
+1. The plugin reads the `epistolaWaitFor` token on the execution.
 2. It calls Epistola's `GET /jobs/{requestId}` for the current status.
 3. If the job is in a terminal state (`COMPLETED` / `FAILED` / `CANCELLED`),
    it runs the same correlation the result-collector would have run, so the

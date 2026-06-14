@@ -425,7 +425,7 @@ The `pv:taxpayers` process variable is a JSON array provided at start:
 
 ### Design considerations
 
-**Multi-instance + message correlation**: Each subprocess instance gets its own `epistolaJobPath` process variable (encoding both tenant and request ID), so the result collector can correlate each completion independently. The `correlateAllWithResult()` call in `EpistolaMessageCorrelationService` handles multiple matching executions safely.
+**Multi-instance / parallel + message correlation**: Each instance (multi-instance iteration or parallel-gateway branch) gets its own correlation key — `generate-document` writes the jobPath to a variable named after its activity (`<activityId>_epistolaJobPath`, uniquely named so branches never clobber it), and the plugin pins it as an `epistolaWaitFor` token on each waiting catch event. The result collector then wakes exactly the right branch. Give each parallel-gateway branch its own `resultProcessVariable` name so the rich results don't clobber one another (a multi-instance subprocess can reuse one name — each iteration has its own scope). See [async.md → Parallel generation](async.md#parallel-generation).
 
 **Result-collector efficiency**: The plugin runs a single long-running `ResultCollector` per Epistola configuration that streams completed/failed results from `POST /generation/collect`. With 1000 concurrent waiting instances, this is _one_ HTTP connection per Epistola tenant draining the result queue — not 1000 status polls per tenant per cycle. See [async.md](async.md) for details.
 

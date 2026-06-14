@@ -5,24 +5,37 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.MismatchingMessageCorrelationException;
 import org.operaton.bpm.engine.RuntimeService;
-import org.operaton.bpm.engine.runtime.MessageCorrelationResult;
-import org.operaton.bpm.engine.runtime.ProcessInstance;
+import org.operaton.bpm.engine.runtime.Execution;
+import org.operaton.bpm.engine.runtime.VariableInstance;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static app.epistola.valtimo.domain.EpistolaProcessVariables.*;
+import static app.epistola.valtimo.domain.EpistolaProcessVariables.MESSAGE_NAME;
+import static app.epistola.valtimo.domain.EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID;
+import static app.epistola.valtimo.domain.EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE;
+import static app.epistola.valtimo.domain.EpistolaProcessVariables.RESULT_KEY_REQUEST_ID;
+import static app.epistola.valtimo.domain.EpistolaProcessVariables.RESULT_KEY_STATUS;
+import static app.epistola.valtimo.domain.EpistolaProcessVariables.WAIT_FOR;
 
 /**
- * Shared service for correlating BPMN messages when Epistola document generation completes.
+ * Correlates BPMN messages when Epistola document generation completes.
  * <p>
- * Each result the {@link EpistolaResultCollectorRunner} pulls from
- * {@code POST /generation/collect} is dispatched here, which uses
- * {@code processInstanceVariableEquals} on the {@link EpistolaProcessVariables#JOB_PATH}
- * composite variable to wake up the matching BPMN execution. The single composite
- * variable encoding ({@code epistola:job:{tenantId}/{requestId}}) ensures both
- * tenant and request id are always stored and retrieved atomically.
+ * Each result the {@link EpistolaResultCollectorRunner} pulls from {@code POST /generation/collect} is
+ * dispatched here. Correlation is <strong>per branch</strong> and independent of the execution-tree
+ * shape:
+ * <ul>
+ *   <li>Each waiting {@code EpistolaDocumentGenerated} catch event carries its own job's composite
+ *       jobPath pinned as an execution-local {@link EpistolaProcessVariables#WAIT_FOR} variable on its
+ *       own (subscription) execution — set by the catch-event parse listener, or by a process author
+ *       as an override. We match the subscription with a single indexed query
+ *       ({@code messageEventSubscriptionName + variableValueEquals(WAIT_FOR, jobPath)}) and wake it by
+ *       id, so a result wakes exactly the branch that submitted it — never its siblings.</li>
+ *   <li>The result-variable <em>name</em> (and process instance, for the variable-pattern fallback) is
+ *       resolved from a locator variable {@code generate-document} writes whose <em>name</em> is the
+ *       jobPath itself (globally unique → no clobber) and whose value is the result-variable name.</li>
+ * </ul>
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -62,97 +75,109 @@ public class EpistolaMessageCorrelationService {
     }
 
     /**
-     * Correlate a completion event with all waiting process instances.
+     * Correlate a generation completion with the waiting branch.
      *
      * @param tenantId     The Epistola tenant ID
      * @param requestId    The Epistola request ID
      * @param status       The job status (COMPLETED, FAILED, CANCELLED)
      * @param documentId   The document ID (null if not completed)
      * @param errorMessage The error message (null if not failed)
-     * @return The number of process instances that were correlated
+     * @return The number of catch-event subscriptions woken (0 for the variable pattern, even when the
+     *         result variable was updated)
      */
     public int correlateCompletion(String tenantId, String requestId, String status,
                                    String documentId, String errorMessage) {
         String jobPath = buildJobPath(tenantId, requestId);
+        Map<String, Object> resultData = buildResult(requestId, status, documentId, errorMessage);
 
-        // Update the rich-object result variable on every matching process instance,
-        // independent of whether a catch-event subscription is waiting. Users on the
-        // variable pattern (no catch event) read these fields via JUEL later.
-        // Catch-event users get the same fields populated AND the message correlation.
-        updateResultVariable(jobPath, requestId, status, documentId, errorMessage);
+        // The result-variable name to update, resolved from the jobPath-named locator (see
+        // generate-document). May be null if the job is unknown to this engine (e.g. already ended).
+        String resultVariableName = resolveResultVariableName(jobPath);
 
-        try {
-            // Result data is on the rich-object variable that updateResultVariable just wrote to;
-            // the catch-event subscriber reads it as ${<resultProcessVariable>.status} etc. We
-            // intentionally do not duplicate-set per-execution scalars here — single source of truth.
-            List<MessageCorrelationResult> results = runtimeService.createMessageCorrelation(EpistolaProcessVariables.MESSAGE_NAME)
-                    .processInstanceVariableEquals(JOB_PATH, jobPath)
-                    .correlateAllWithResult();
+        // Match the waiting catch event(s) by their own pinned WAIT_FOR token — a single indexed
+        // query, independent of where the executions sit in the tree.
+        List<Execution> waiting = runtimeService.createExecutionQuery()
+                .messageEventSubscriptionName(MESSAGE_NAME)
+                .variableValueEquals(WAIT_FOR, jobPath)
+                .list();
 
-            int count = results.size();
-            if (count > 0) {
-                log.info("Correlated message {} for jobPath={}: {} instance(s)", EpistolaProcessVariables.MESSAGE_NAME, jobPath, count);
-            } else {
-                // Silent 0-match: the result was delivered from Epistola and acked, but no BPMN
-                // subscription matched. Most common cause is a transactional race where the
-                // result lands and the collector polls before the engine has committed the
-                // catch-event subscription — typically widened by an async boundary between
-                // the generate-document service task and the EpistolaDocumentGenerated catch
-                // event. WARN, not DEBUG: this should be a dead log line in healthy systems.
-                log.warn("Correlated 0 instances for jobPath={} (status={}); event acked but no waiting subscription. "
-                                + "If this recurs, check the BPMN for asyncBefore/asyncAfter between the generate-document "
-                                + "service task and the {} catch event.",
-                        jobPath, status, EpistolaProcessVariables.MESSAGE_NAME);
+        int correlated = 0;
+        for (Execution execution : waiting) {
+            if (resultVariableName != null) {
+                // Set on the subscription execution: engine scope-bubbling lands it at the right scope
+                // (process instance for a parallel gateway, the instance scope for multi-instance).
+                runtimeService.setVariable(execution.getId(), resultVariableName, resultData);
             }
-            return count;
-        } catch (MismatchingMessageCorrelationException e) {
-            log.warn("Correlated 0 instances for jobPath={} (status={}); MismatchingMessageCorrelationException — "
-                            + "no waiting subscription. Same diagnosis as the empty-result path applies.",
-                    jobPath, status);
-            return 0;
+            try {
+                runtimeService.messageEventReceived(MESSAGE_NAME, execution.getId());
+                correlated++;
+            } catch (MismatchingMessageCorrelationException e) {
+                log.debug("Execution {} no longer has a {} subscription (jobPath={}): {}",
+                        execution.getId(), MESSAGE_NAME, jobPath, e.getMessage());
+            }
         }
+
+        if (correlated > 0) {
+            log.info("Correlated message {} for jobPath={}: {} execution(s)", MESSAGE_NAME, jobPath, correlated);
+            return correlated;
+        }
+
+        // No waiting catch-event subscription. Normal for the "variable pattern" (no catch event; the
+        // process reads ${var.status} via JUEL later) — still update the result variable in place.
+        int updated = updateResultVariableWithoutSubscription(jobPath, resultData);
+        if (updated == 0) {
+            log.warn("Correlated 0 executions for jobPath={} (status={}); event acked but no waiting "
+                    + "subscription and no matching job found.", jobPath, status);
+        } else {
+            log.info("Updated result variable for jobPath={} (status={}) without a catch-event "
+                    + "subscription ({} instance(s); variable pattern).", jobPath, status, updated);
+        }
+        return 0;
+    }
+
+    private Map<String, Object> buildResult(String requestId, String status, String documentId, String errorMessage) {
+        Map<String, Object> resultData = new LinkedHashMap<>();
+        resultData.put(RESULT_KEY_REQUEST_ID, requestId);
+        resultData.put(RESULT_KEY_STATUS, status);
+        resultData.put(RESULT_KEY_DOCUMENT_ID, documentId);
+        resultData.put(RESULT_KEY_ERROR_MESSAGE, errorMessage);
+        return resultData;
     }
 
     /**
-     * Update the rich-object result variable on every process instance that's
-     * waiting on this jobPath. The variable's name is read from the
-     * {@link EpistolaProcessVariables#RESULT_VARIABLE_NAME} companion variable that
-     * {@code generate-document} sets at submit time. No-op when no instance matches
-     * (e.g. result acked by a previous backend run, or process instance already ended).
-     *
-     * <p>Runs in its own implicit transaction (separate from the message correlation
-     * call below), via {@link RuntimeService#setVariable}. That's intentional: the
-     * variable update is independent of catch-event subscription state.
+     * The result-variable name for this job, read from the locator variable whose <em>name</em> is the
+     * jobPath (written by {@code generate-document}; globally unique → exactly one). Null if unknown.
      */
-    private void updateResultVariable(String jobPath, String requestId, String status,
-                                       String documentId, String errorMessage) {
-        List<ProcessInstance> matches = runtimeService.createProcessInstanceQuery()
-                .variableValueEquals(JOB_PATH, jobPath)
-                .list();
-        if (matches.isEmpty()) {
-            return;
-        }
+    private String resolveResultVariableName(String jobPath) {
+        return runtimeService.createVariableInstanceQuery()
+                .variableName(jobPath)
+                .list().stream()
+                .map(VariableInstance::getValue)
+                .filter(String.class::isInstance)
+                .map(String.class::cast)
+                .filter(name -> !name.isBlank())
+                .findFirst()
+                .orElse(null);
+    }
 
-        for (ProcessInstance pi : matches) {
+    /**
+     * Fallback for the variable pattern (no catch event): update the result variable on the process
+     * instance(s) holding this job's locator. Returns the number of instances updated.
+     */
+    private int updateResultVariableWithoutSubscription(String jobPath, Map<String, Object> resultData) {
+        int updated = 0;
+        for (VariableInstance locator : runtimeService.createVariableInstanceQuery().variableName(jobPath).list()) {
+            if (!(locator.getValue() instanceof String resultVariableName) || resultVariableName.isBlank()) {
+                continue;
+            }
             try {
-                Object varNameObj = runtimeService.getVariable(pi.getId(), RESULT_VARIABLE_NAME);
-                if (!(varNameObj instanceof String varName) || varName.isBlank()) {
-                    log.debug("Process instance {} matches jobPath={} but has no {} companion variable; "
-                                    + "skipping rich-object update (catch-event correlation will still run).",
-                            pi.getId(), jobPath, RESULT_VARIABLE_NAME);
-                    continue;
-                }
-
-                Map<String, Object> resultData = new LinkedHashMap<>();
-                resultData.put(RESULT_KEY_REQUEST_ID, requestId);
-                resultData.put(RESULT_KEY_STATUS, status);
-                resultData.put(RESULT_KEY_DOCUMENT_ID, documentId);
-                resultData.put(RESULT_KEY_ERROR_MESSAGE, errorMessage);
-                runtimeService.setVariable(pi.getId(), varName, resultData);
+                runtimeService.setVariable(locator.getProcessInstanceId(), resultVariableName, resultData);
+                updated++;
             } catch (Exception e) {
                 log.warn("Failed to update result variable for process instance {} (jobPath={}): {}",
-                        pi.getId(), jobPath, e.getMessage());
+                        locator.getProcessInstanceId(), jobPath, e.getMessage());
             }
         }
+        return updated;
     }
 }
