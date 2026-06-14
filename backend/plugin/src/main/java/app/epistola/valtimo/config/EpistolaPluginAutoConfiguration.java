@@ -17,8 +17,6 @@ import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
 import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.download.DocumentStorageStrategy;
-import app.epistola.valtimo.service.download.ProcessVariableStorageStrategy;
-import app.epistola.valtimo.service.download.TemporaryResourceStorageStrategy;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
 import app.epistola.valtimo.service.form.FormioFormGenerator;
@@ -33,7 +31,6 @@ import com.ritense.plugin.service.PluginService;
 import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
 import com.ritense.processlink.service.ProcessLinkService;
 import com.ritense.resource.autoconfigure.TemporaryResourceStorageAutoConfiguration;
-import com.ritense.resource.service.TemporaryResourceStorageService;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.HistoryService;
 import org.operaton.bpm.engine.RepositoryService;
@@ -41,11 +38,11 @@ import org.operaton.bpm.engine.RuntimeService;
 import org.operaton.bpm.engine.TaskService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -56,6 +53,7 @@ import java.util.List;
 @ConditionalOnProperty(name = "epistola.enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(EpistolaProperties.class)
 @EnableScheduling
+@Import(EpistolaDownloadStorageConfiguration.class)
 public class EpistolaPluginAutoConfiguration {
 
     @Bean
@@ -118,31 +116,6 @@ public class EpistolaPluginAutoConfiguration {
         return new EpistolaPluginFactory(pluginService, epistolaService,
                 objectMapper, jsonataMappingService, documentService, resultCollectorRunner,
                 storageStrategies);
-    }
-
-    /**
-     * Inline {@code byte[]} storage for {@code download-document}. Always available (no backend);
-     * a supported non-default option for small/non-sensitive documents — see
-     * {@code docs/adr/0001-download-document-content-storage.md}.
-     */
-    @Bean
-    @ConditionalOnMissingBean(ProcessVariableStorageStrategy.class)
-    public ProcessVariableStorageStrategy processVariableStorageStrategy() {
-        return new ProcessVariableStorageStrategy();
-    }
-
-    /**
-     * Temporary-resource storage for {@code download-document} (the default target). Only registered
-     * when {@code TemporaryResourceStorageService} is on the context, so the plugin imposes no hard
-     * dependency on it; selecting {@code TEMPORARY_RESOURCE} without it fails with a clear error.
-     */
-    @Bean
-    @ConditionalOnBean(TemporaryResourceStorageService.class)
-    @ConditionalOnMissingBean(TemporaryResourceStorageStrategy.class)
-    public TemporaryResourceStorageStrategy temporaryResourceStorageStrategy(
-            TemporaryResourceStorageService temporaryResourceStorageService
-    ) {
-        return new TemporaryResourceStorageStrategy(temporaryResourceStorageService);
     }
 
     @Bean

@@ -5,6 +5,11 @@ import { FormModule, FormOutput, InputModule, SelectItem, SelectModule } from '@
 import { BehaviorSubject, combineLatest, Observable, of, Subscription, take } from 'rxjs';
 import { delay, startWith } from 'rxjs/operators';
 import { DownloadDocumentConfig } from '../../models';
+import {
+  DEFAULT_STORAGE_TARGET,
+  isDownloadDocumentConfigValid,
+  resolveStorageTarget,
+} from './download-document-config.util';
 
 @Component({
   selector: 'epistola-download-document-configuration',
@@ -48,7 +53,7 @@ export class DownloadDocumentConfigurationComponent
     { id: 'TEMPORARY_RESOURCE', text: 'Temporary resource storage' },
     { id: 'PROCESS_VARIABLE', text: 'Process variable (inline bytes)' },
   ];
-  readonly defaultStorageTarget = 'TEMPORARY_RESOURCE';
+  readonly defaultStorageTarget = DEFAULT_STORAGE_TARGET;
 
   /** Drives which output-variable field is shown (resource id vs inline content). */
   readonly selectedTarget$ = new BehaviorSubject<string>(this.defaultStorageTarget);
@@ -58,7 +63,7 @@ export class DownloadDocumentConfigurationComponent
     const prefill$ = this.prefillConfiguration$ ?? of({} as DownloadDocumentConfig);
     prefill$.pipe(take(1)).subscribe((prefill) => {
       this.resolvedPrefill = prefill ?? {};
-      this.selectedTarget$.next(this.resolvedPrefill.storageTarget ?? this.defaultStorageTarget);
+      this.selectedTarget$.next(resolveStorageTarget(this.resolvedPrefill.storageTarget));
       this.prefillResolved$.next(true);
     });
     this.openSaveSubscription();
@@ -78,12 +83,7 @@ export class DownloadDocumentConfigurationComponent
   }
 
   private handleValid(formValue: DownloadDocumentConfig): void {
-    const target = formValue?.storageTarget ?? this.defaultStorageTarget;
-    const outputSet =
-      target === 'PROCESS_VARIABLE'
-        ? !!formValue?.contentVariable
-        : !!formValue?.resourceIdVariable;
-    const valid = !!(formValue?.documentVariable && target && outputSet);
+    const valid = isDownloadDocumentConfigValid(formValue);
     this.valid$.next(valid);
     this.valid.emit(valid);
   }

@@ -72,6 +72,8 @@ dependencies {
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.valtimo.test.utils.common)
     testImplementation(libs.junit.jupiter)
+    // In-memory DB for the standalone Operaton engine used by the download-flow integration test
+    testImplementation("com.h2database:h2")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // Testcontainers
