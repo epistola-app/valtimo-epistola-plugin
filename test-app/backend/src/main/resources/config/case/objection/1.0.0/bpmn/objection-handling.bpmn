@@ -32,7 +32,7 @@
                                   camunda:errorCodeVariable="errorCode" camunda:errorMessageVariable="errorMessage" />
     </bpmn:boundaryEvent>
 
-    <bpmn:intermediateCatchEvent id="wait-for-ack" name="Wacht op ontvangstbevestiging">
+    <bpmn:intermediateCatchEvent id="wait-for-ack" name="Wacht op ontvangstbevestiging" camunda:asyncAfter="true">
       <bpmn:incoming>Flow_to_wait_ack</bpmn:incoming>
       <bpmn:outgoing>Flow_to_check_ack</bpmn:outgoing>
       <bpmn:messageEventDefinition id="MessageDef_ack" messageRef="Message_EpistolaDocumentGenerated" />
@@ -63,7 +63,7 @@
       <bpmn:outgoing>Flow_to_wait_decision</bpmn:outgoing>
     </bpmn:serviceTask>
 
-    <bpmn:intermediateCatchEvent id="wait-for-decision" name="Wacht op besluit">
+    <bpmn:intermediateCatchEvent id="wait-for-decision" name="Wacht op besluit" camunda:asyncAfter="true">
       <bpmn:incoming>Flow_to_wait_decision</bpmn:incoming>
       <bpmn:outgoing>Flow_to_check_decision</bpmn:outgoing>
       <bpmn:messageEventDefinition id="MessageDef_decision" messageRef="Message_EpistolaDocumentGenerated" />

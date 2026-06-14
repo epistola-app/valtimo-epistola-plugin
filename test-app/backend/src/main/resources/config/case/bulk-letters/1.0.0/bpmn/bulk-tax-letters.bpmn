@@ -58,7 +58,7 @@ execution.setVariable("failCount", 0)
         <bpmn:errorEventDefinition id="ErrorDef_gen" errorRef="Error_EpistolaDocumentError" />
       </bpmn:boundaryEvent>
 
-      <bpmn:intermediateCatchEvent id="wait-for-letter" name="Wacht op brief">
+      <bpmn:intermediateCatchEvent id="wait-for-letter" name="Wacht op brief" camunda:asyncAfter="true">
         <bpmn:incoming>Flow_sub_to_wait</bpmn:incoming>
         <bpmn:outgoing>Flow_sub_to_check</bpmn:outgoing>
         <bpmn:messageEventDefinition id="MessageDef_letter" messageRef="Message_EpistolaDocumentGenerated" />
