@@ -1,4 +1,0 @@
-{
-  "changesetId": "epistola-test-roles-v1",
-  "roles": ["ROLE_USER", "ROLE_ADMIN"]
-}

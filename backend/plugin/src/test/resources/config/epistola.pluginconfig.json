@@ -4,9 +4,7 @@
     "title": "Epistola Document Suite",
     "pluginDefinitionKey": "epistola",
     "properties": {
-      "baseUrl": "http://localhost:4010",
-      "apiKey": "test-api-key",
-      "tenantId": "demo"
+      "tenantId": "tenantId"
     }
   }
 ]

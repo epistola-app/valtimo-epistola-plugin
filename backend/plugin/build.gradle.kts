@@ -69,10 +69,6 @@ dependencies {
     testImplementation(libs.valtimo.form)
     testImplementation(libs.valtimo.importer)
     testImplementation(libs.valtimo.temporary.resource.storage)
-    // Needed only so the full Valtimo Spring context boots in @SpringBootTest integration tests:
-    // process-document's ProcessDocumentInstanceRepository has a JPQL entity-join to
-    // BuildingBlockInstance (defined here), which fails to validate if the entity is absent.
-    testImplementation(libs.valtimo.building.block)
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.valtimo.test.utils.common)
     testImplementation(libs.junit.jupiter)

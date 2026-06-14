@@ -44,7 +44,6 @@ valtimo-test-utils-common = { module = "com.ritense.valtimo:test-utils-common" }
 valtimo-local-document-generation = { module = "com.ritense.valtimo:local-document-generation" }
 valtimo-local-resource = { module = "com.ritense.valtimo:local-resource" }
 valtimo-temporary-resource-storage = { module = "com.ritense.valtimo:temporary-resource-storage" }
-valtimo-building-block = { module = "com.ritense.valtimo:building-block" }
 valtimo-local-mail = { module = "com.ritense.valtimo:local-mail" }
 valtimo-milestones = { module = "com.ritense.valtimo:milestones" }
 valtimo-object-management = { module = "com.ritense.valtimo:object-management" }
