@@ -508,6 +508,11 @@ public class EpistolaPlugin {
 
         byte[] content = epistolaService.downloadDocument(baseUrl, apiKey, tenantId, documentId);
 
+        // INTERIM storage strategy — see docs/adr/0001-download-document-content-storage.md.
+        // This byte[] still serializes into the task-detail response and is not durable for
+        // long-lived processes; the long-term plan is a configurable target defaulting to
+        // fetching from Epistola on demand.
+        //
         // Store the raw PDF bytes as a "bytes" variable. Two constraints drive this:
         //  1. Operaton keeps String variables in a varchar(4000) column
         //     (ACT_RU_VARIABLE/ACT_HI_VARINST.TEXT_); a Base64 document would overflow it and roll
