@@ -266,7 +266,15 @@ logs a WARN per violation, and surfaces them via `GET
 /api/v1/plugin/epistola/admin/validations`. The admin page shows a banner
 listing the offending activities.
 
-If a stuck catch event slips through anyway, recover it manually from the
+As a safety net, the plugin also **self-heals** this case: the catch event's
+behaviour is wrapped so that, on entry, it checks whether its job's result has
+already arrived (the result variable is already terminal) and, if so, continues
+immediately instead of subscribing and stalling. So even an async boundary that
+slips past the validator won't strand the process. (The normal synchronous flow
+is unaffected — the result is still `PENDING` on entry, so it subscribes and waits
+as usual.)
+
+If a catch event still ends up stuck, recover it manually from the
 admin page's Pending Jobs tab — see [Recovering a stuck catch event](#recovering-a-stuck-catch-event).
 
 ## Recovering a stuck catch event

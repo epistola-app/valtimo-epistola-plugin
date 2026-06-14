@@ -183,6 +183,34 @@ class EpistolaParallelCorrelationIntegrationTest {
             </bpmn:definitions>
             """;
 
+    /** Async boundary BEFORE the catch event: lets a result arrive before the branch subscribes. */
+    private static final String ASYNC_BOUNDARY_BPMN = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                              xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                              targetNamespace="http://bpmn.io/schema/bpmn" id="defs_async">
+              <bpmn:message id="msg_async" name="EpistolaDocumentGenerated" />
+              <bpmn:process id="async-generation" isExecutable="true" camunda:historyTimeToLive="P1D">
+                <bpmn:startEvent id="a_start"><bpmn:outgoing>aq1</bpmn:outgoing></bpmn:startEvent>
+                <bpmn:sequenceFlow id="aq1" sourceRef="a_start" targetRef="submit-async" />
+                <bpmn:serviceTask id="submit-async" camunda:class="app.epistola.valtimo.service.completion.EpistolaParallelCorrelationIntegrationTest$SubmitDelegate">
+                  <bpmn:extensionElements><camunda:inputOutput>
+                    <camunda:inputParameter name="testRequestId">req-async</camunda:inputParameter>
+                    <camunda:inputParameter name="testResultVar">resultAsync</camunda:inputParameter>
+                  </camunda:inputOutput></bpmn:extensionElements>
+                  <bpmn:incoming>aq1</bpmn:incoming><bpmn:outgoing>aq2</bpmn:outgoing>
+                </bpmn:serviceTask>
+                <bpmn:sequenceFlow id="aq2" sourceRef="submit-async" targetRef="wait-async" />
+                <bpmn:intermediateCatchEvent id="wait-async" camunda:asyncBefore="true">
+                  <bpmn:incoming>aq2</bpmn:incoming><bpmn:outgoing>aq3</bpmn:outgoing>
+                  <bpmn:messageEventDefinition messageRef="msg_async" />
+                </bpmn:intermediateCatchEvent>
+                <bpmn:sequenceFlow id="aq3" sourceRef="wait-async" targetRef="a_end" />
+                <bpmn:endEvent id="a_end"><bpmn:incoming>aq3</bpmn:incoming></bpmn:endEvent>
+              </bpmn:process>
+            </bpmn:definitions>
+            """;
+
     private ProcessEngine processEngine;
     private RuntimeService runtimeService;
     private ManagementService managementService;
@@ -206,6 +234,7 @@ class EpistolaParallelCorrelationIntegrationTest {
                 .addString("mi.bpmn", MULTI_INSTANCE_BPMN)
                 .addString("sequential.bpmn", SEQUENTIAL_BPMN)
                 .addString("override.bpmn", OVERRIDE_BPMN)
+                .addString("async.bpmn", ASYNC_BOUNDARY_BPMN)
                 .deploy();
     }
 
@@ -283,6 +312,27 @@ class EpistolaParallelCorrelationIntegrationTest {
                 .as("auto job must not match an overridden catch event").isZero();
         assertThat(correlationService.correlateCompletion(TENANT, "req-override", "COMPLETED", "doc-ovr", null))
                 .as("the overridden token wakes the catch event").isEqualTo(1);
+    }
+
+    @Test
+    void resultArrivingBeforeTheCatchEventSubscribesDoesNotStall() {
+        // asyncBefore on the catch event: after submit, the process parks at the async job and the
+        // catch event has NOT subscribed yet — the window where a fast result would otherwise be lost.
+        ProcessInstance pi = runtimeService.startProcessInstanceByKey("async-generation");
+        assertThat(messageSubscriptionCount(pi.getId()))
+                .as("catch event has not subscribed yet (parked at async boundary)").isZero();
+
+        // Result lands before the subscription exists: no subscription to wake, result var updated.
+        assertThat(correlationService.correlateCompletion(TENANT, "req-async", "COMPLETED", "doc-async", null))
+                .isZero();
+
+        // Now the branch advances into the catch event. Self-heal: it sees the terminal result on
+        // entry and continues instead of subscribing and stalling forever.
+        executeAllJobs();
+
+        assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(pi.getId()).singleResult())
+                .as("self-heal completed the catch event instead of stalling").isNull();
+        assertThat(documentIdOf(historicValue(pi.getId(), "resultAsync"))).isEqualTo("doc-async");
     }
 
     @Test

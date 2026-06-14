@@ -7,6 +7,7 @@ import org.operaton.bpm.engine.delegate.ExecutionListener;
 import org.operaton.bpm.engine.impl.bpmn.parser.BpmnParseListener;
 import org.operaton.bpm.engine.impl.persistence.entity.ProcessDefinitionEntity;
 import org.operaton.bpm.engine.impl.pvm.PvmActivity;
+import org.operaton.bpm.engine.impl.pvm.delegate.ActivityBehavior;
 import org.operaton.bpm.engine.impl.pvm.PvmTransition;
 import org.operaton.bpm.engine.impl.pvm.process.ActivityImpl;
 import org.operaton.bpm.engine.impl.util.xml.Element;
@@ -58,6 +59,7 @@ public class EpistolaCatchEventTokenParseListener implements BpmnParseListener {
                 String sourceActivityId = findSourceServiceTask(activity);
                 if (sourceActivityId != null) {
                     activity.addListener(ExecutionListener.EVENTNAME_START, new PinWaitTokenListener(sourceActivityId));
+                    wrapWithSelfHealing(activity);
                 }
             }
             // Recurse into embedded subprocesses / multi-instance bodies.
@@ -90,6 +92,18 @@ public class EpistolaCatchEventTokenParseListener implements BpmnParseListener {
             // Any other node type (task, event, subprocess, …) breaks this path.
         }
         return null;
+    }
+
+    /**
+     * Wrap the catch event's behavior so it self-heals against a result that arrived before it
+     * subscribed (see {@link EpistolaSelfHealingCatchBehavior}). Idempotent: re-parsing an already
+     * wrapped definition does not double-wrap.
+     */
+    private static void wrapWithSelfHealing(ActivityImpl activity) {
+        ActivityBehavior current = activity.getActivityBehavior();
+        if (!(current instanceof EpistolaSelfHealingCatchBehavior)) {
+            activity.setActivityBehavior(new EpistolaSelfHealingCatchBehavior(current));
+        }
     }
 
     private static void enqueuePredecessors(PvmActivity activity, Deque<PvmActivity> queue) {

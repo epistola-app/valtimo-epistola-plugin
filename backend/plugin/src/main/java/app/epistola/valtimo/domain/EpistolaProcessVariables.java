@@ -60,4 +60,9 @@ public final class EpistolaProcessVariables {
 
     /** Result-object key for the failure message (set on FAILED, null otherwise). */
     public static final String RESULT_KEY_ERROR_MESSAGE = "errorMessage";
+
+    /** Whether a result-object {@code status} value is terminal (the generation has finished). */
+    public static boolean isTerminalStatus(Object status) {
+        return "COMPLETED".equals(status) || "FAILED".equals(status) || "CANCELLED".equals(status);
+    }
 }
