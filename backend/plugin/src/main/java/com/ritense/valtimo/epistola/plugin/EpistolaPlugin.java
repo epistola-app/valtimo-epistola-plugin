@@ -18,8 +18,6 @@ import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 import org.operaton.bpm.engine.variable.Variables;
-import org.operaton.bpm.engine.variable.value.FileValue;
-import org.springframework.http.MediaType;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -469,15 +467,16 @@ public class EpistolaPlugin {
      *                            plain String document id (legacy) or a {@code Map<String,Object>}
      *                            rich result with a {@code documentId} key (canonical).
      * @param contentVariable     The name of the process variable to store the document content. The
-     *                            raw PDF bytes are stored as an Operaton {@link FileValue} (backed by
-     *                            the byte-array table), not as a String — a Base64 string would
+     *                            raw PDF bytes are stored as an Operaton {@code bytes} variable (backed
+     *                            by the byte-array table), not as a String — a Base64 string would
      *                            overflow Operaton's {@code varchar(4000)} variable column for any
-     *                            real-sized document.
+     *                            real-sized document. Valtimo serializes the variable to the frontend
+     *                            as a Base64 string (Jackson's default {@code byte[]} encoding).
      */
     @PluginAction(
             key = "epistola-download-document",
             title = "Download Document",
-            description = "Download a generated document from Epistola. Stores the raw PDF bytes as a file variable in the specified process variable.",
+            description = "Download a generated document from Epistola. Stores the raw PDF bytes as a byte variable in the specified process variable.",
             activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
     )
     public void downloadDocument(
@@ -509,16 +508,17 @@ public class EpistolaPlugin {
 
         byte[] content = epistolaService.downloadDocument(baseUrl, apiKey, tenantId, documentId);
 
-        // Store the raw PDF bytes as a file variable. Operaton keeps String variables in a
-        // varchar(4000) column (ACT_RU_VARIABLE/ACT_HI_VARINST.TEXT_); a Base64 document would
-        // overflow it and roll back the surrounding transaction (e.g. the message correlation
-        // that resumed the process). File/byte variables are stored in the byte-array table and
-        // have no such limit.
-        FileValue fileValue = Variables.fileValue(documentId + ".pdf")
-                .file(content)
-                .mimeType(MediaType.APPLICATION_PDF_VALUE)
-                .create();
-        execution.setVariable(contentVariable, fileValue);
+        // Store the raw PDF bytes as a "bytes" variable. Two constraints drive this:
+        //  1. Operaton keeps String variables in a varchar(4000) column
+        //     (ACT_RU_VARIABLE/ACT_HI_VARINST.TEXT_); a Base64 document would overflow it and roll
+        //     back the surrounding transaction (e.g. the message correlation that resumed the
+        //     process). Byte variables live in the byte-array table and have no such limit.
+        //  2. Valtimo serializes every process variable to JSON when a user task is opened. A
+        //     FileValue exposes its value as a ByteArrayInputStream, which Jackson cannot serialize
+        //     ("No serializer found for ByteArrayInputStream"). A raw byte[] serializes cleanly as a
+        //     Base64 string, so downstream consumers still receive Base64 — matching the original
+        //     contract without the varchar limit.
+        execution.setVariable(contentVariable, Variables.byteArrayValue(content));
 
         log.info("Document {} downloaded successfully ({} bytes)", documentId, content.length);
     }
