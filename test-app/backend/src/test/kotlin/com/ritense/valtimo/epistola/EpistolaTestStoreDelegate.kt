@@ -10,7 +10,6 @@ import org.operaton.bpm.engine.delegate.JavaDelegate
  * Base64 would exceed Operaton's varchar(4000)) via the real [ProcessVariableStorageStrategy].
  */
 class EpistolaTestStoreDelegate : JavaDelegate {
-
     override fun execute(execution: DelegateExecution) {
         val content = ByteArray(8192) { (it % 256).toByte() }
         ProcessVariableStorageStrategy().store(execution, "test-doc", content, OUTPUT_VARIABLE)

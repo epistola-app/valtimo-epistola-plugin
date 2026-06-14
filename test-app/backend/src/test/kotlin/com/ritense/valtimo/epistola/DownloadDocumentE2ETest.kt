@@ -54,7 +54,6 @@ import java.time.Duration
 @SpringBootTest(classes = [Application::class])
 @ActiveProfiles("test")
 class DownloadDocumentE2ETest {
-
     @MockitoBean
     lateinit var epistolaService: EpistolaService
 
@@ -80,9 +79,12 @@ class DownloadDocumentE2ETest {
 
     @BeforeEach
     fun deploy() {
-        deploymentId = repositoryService.createDeployment()
-            .addString("epistola-download-flow-test.bpmn", BPMN)
-            .deploy().id
+        deploymentId =
+            repositoryService
+                .createDeployment()
+                .addString("epistola-download-flow-test.bpmn", BPMN)
+                .deploy()
+                .id
     }
 
     @AfterEach
@@ -104,8 +106,13 @@ class DownloadDocumentE2ETest {
         val execution = mock<DelegateExecution>()
         whenever(execution.getVariable(DOCUMENT_VARIABLE)).thenReturn("doc-1")
 
-        plugin.downloadDocument(execution, DOCUMENT_VARIABLE,
-            DocumentStorageTarget.TEMPORARY_RESOURCE, "documentResourceId", null)
+        plugin.downloadDocument(
+            execution,
+            DOCUMENT_VARIABLE,
+            DocumentStorageTarget.TEMPORARY_RESOURCE,
+            "documentResourceId",
+            null,
+        )
 
         val captor = argumentCaptor<Any>()
         verify(execution).setVariable(eq("documentResourceId"), captor.capture())
@@ -121,8 +128,13 @@ class DownloadDocumentE2ETest {
         val execution = mock<DelegateExecution>()
         whenever(execution.getVariable(DOCUMENT_VARIABLE)).thenReturn("doc-1")
 
-        plugin.downloadDocument(execution, DOCUMENT_VARIABLE,
-            DocumentStorageTarget.PROCESS_VARIABLE, null, "documentContent")
+        plugin.downloadDocument(
+            execution,
+            DOCUMENT_VARIABLE,
+            DocumentStorageTarget.PROCESS_VARIABLE,
+            null,
+            "documentContent",
+        )
 
         val captor = argumentCaptor<Any>()
         verify(execution).setVariable(eq("documentContent"), captor.capture())
@@ -137,8 +149,13 @@ class DownloadDocumentE2ETest {
         whenever(execution.getVariable(DOCUMENT_VARIABLE)).thenReturn("doc-1")
 
         assertThatThrownBy {
-            plugin.downloadDocument(execution, DOCUMENT_VARIABLE,
-                DocumentStorageTarget.TEMPORARY_RESOURCE, "  ", "documentContent")
+            plugin.downloadDocument(
+                execution,
+                DOCUMENT_VARIABLE,
+                DocumentStorageTarget.TEMPORARY_RESOURCE,
+                "  ",
+                "documentContent",
+            )
         }.isInstanceOf(IllegalArgumentException::class.java).hasMessageContaining("output variable")
     }
 
@@ -166,20 +183,27 @@ class DownloadDocumentE2ETest {
     }
 
     private fun messageSubscriptionExists(processInstanceId: String): Boolean =
-        runtimeService.createEventSubscriptionQuery()
-            .processInstanceId(processInstanceId).eventName(MESSAGE).count() > 0
+        runtimeService
+            .createEventSubscriptionQuery()
+            .processInstanceId(processInstanceId)
+            .eventName(MESSAGE)
+            .count() > 0
 
     private fun storedValue(processInstanceId: String): Any? =
-        historyService.createHistoricVariableInstanceQuery()
-            .processInstanceId(processInstanceId).variableName(EpistolaTestStoreDelegate.OUTPUT_VARIABLE)
-            .singleResult()?.value
+        historyService
+            .createHistoricVariableInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .variableName(EpistolaTestStoreDelegate.OUTPUT_VARIABLE)
+            .singleResult()
+            ?.value
 
     companion object {
         private const val PROCESS_KEY = "epistola-download-flow-test"
         private const val MESSAGE = "EpistolaDocumentGenerated"
         private const val DOCUMENT_VARIABLE = "epistolaResult"
 
-        private val BPMN = """
+        private val BPMN =
+            """
             <?xml version="1.0" encoding="UTF-8"?>
             <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
                               xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
@@ -202,21 +226,22 @@ class DownloadDocumentE2ETest {
                 <bpmn:endEvent id="end"><bpmn:incoming>f3</bpmn:incoming></bpmn:endEvent>
               </bpmn:process>
             </bpmn:definitions>
-        """.trimIndent()
+            """.trimIndent()
 
         @JvmStatic
         private val postgres = PostgreSQLContainer("postgres:16-alpine").apply { start() }
 
         @JvmStatic
-        private val keycloak = GenericContainer<Nothing>(DockerImageName.parse("quay.io/keycloak/keycloak:26.1"))
-            .apply {
-                withExposedPorts(8080)
-                withEnv("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
-                withEnv("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
-                withCommand("start-dev")
-                waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(3)))
-                start()
-            }
+        private val keycloak =
+            GenericContainer<Nothing>(DockerImageName.parse("quay.io/keycloak/keycloak:26.1"))
+                .apply {
+                    withExposedPorts(8080)
+                    withEnv("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
+                    withEnv("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
+                    withCommand("start-dev")
+                    waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(3)))
+                    start()
+                }
 
         @JvmStatic
         @DynamicPropertySource
