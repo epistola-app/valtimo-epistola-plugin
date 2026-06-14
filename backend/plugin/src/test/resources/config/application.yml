@@ -34,6 +34,12 @@ camunda:
       properties:
         enforceHistoryTimeToLive: false
 
+# Shared across all @SpringBootTest integration tests (single context): the result collector would
+# otherwise start a background thread polling a non-existent Epistola for every booted context.
+epistola:
+  result-collector:
+    enabled: false
+
 spring-actuator:
   username: test
   password: test

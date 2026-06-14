@@ -16,6 +16,7 @@
 
 package app.epistola.valtimo;
 
+import app.epistola.valtimo.service.EpistolaService;
 import com.ritense.testutilscommon.junit.extension.LiquibaseRunnerExtension;
 import com.ritense.valtimo.contract.authentication.UserManagementService;
 import com.ritense.valtimo.contract.mail.MailSender;
@@ -36,5 +37,13 @@ public abstract class BaseIntegrationTest {
 
     @MockitoBean
     protected MailSender mailSender;
+
+    /**
+     * Mocked so integration tests can exercise the real {@code download-document} plugin action
+     * (resolved via {@code PluginService}) without calling a real Epistola server. Shared here so all
+     * integration tests use a single cached application context.
+     */
+    @MockitoBean
+    protected EpistolaService epistolaService;
 
 }
