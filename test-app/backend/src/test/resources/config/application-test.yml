@@ -1,0 +1,45 @@
+# Test profile for integration tests that boot the full Valtimo app. Datasource and the OAuth
+# issuer-uri come from Testcontainers (Postgres + Keycloak) via @DynamicPropertySource — Valtimo's
+# KeycloakAutoConfiguration resolves the OIDC issuer eagerly at startup, so a reachable issuer is
+# required to boot. Tests use spring-security-test (mock JWTs) for authenticated calls, so no real
+# login happens. Epistola and RabbitMQ are pointed at dummy values and never reached.
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Lazy: only fetched on real token validation, which tests avoid (mock JWTs).
+          jwk-set-uri: http://localhost:1/certs
+      client:
+        # provider.*.issuer-uri is supplied by @DynamicPropertySource (the Keycloak container).
+        registration:
+          keycloakjwt:
+            client-id: test-client
+            authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
+            scope: openid
+          keycloakapi:
+            client-id: test-client
+            client-secret: test-secret
+            authorization-grant-type: client_credentials
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+
+valtimo:
+  app:
+    hostname: localhost
+  plugin:
+    encryption-secret: "abcdefghijklmnop"
+
+epistola:
+  base-url: http://localhost:1/api
+  result-collector:
+    enabled: false
+
+operaton:
+  bpm:
+    admin-user:
+      password: admin

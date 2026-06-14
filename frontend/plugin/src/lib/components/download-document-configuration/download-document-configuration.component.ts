@@ -1,17 +1,22 @@
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FunctionConfigurationComponent, PluginTranslatePipeModule } from '@valtimo/plugin';
-import { FormModule, FormOutput, InputModule } from '@valtimo/components';
+import { FormModule, FormOutput, InputModule, SelectItem, SelectModule } from '@valtimo/components';
 import { BehaviorSubject, combineLatest, Observable, of, Subscription, take } from 'rxjs';
 import { delay, startWith } from 'rxjs/operators';
 import { DownloadDocumentConfig } from '../../models';
+import {
+  DEFAULT_STORAGE_TARGET,
+  isDownloadDocumentConfigValid,
+  resolveStorageTarget,
+} from './download-document-config.util';
 
 @Component({
   selector: 'epistola-download-document-configuration',
   templateUrl: './download-document-configuration.component.html',
   styleUrls: ['./download-document-configuration.component.scss'],
   standalone: true,
-  imports: [CommonModule, PluginTranslatePipeModule, FormModule, InputModule],
+  imports: [CommonModule, PluginTranslatePipeModule, FormModule, InputModule, SelectModule],
 })
 export class DownloadDocumentConfigurationComponent
   implements FunctionConfigurationComponent, OnInit, OnDestroy
@@ -39,11 +44,26 @@ export class DownloadDocumentConfigurationComponent
 
   safeDisabled$!: Observable<boolean>;
 
+  /**
+   * Static option set for the storage target. Values match the backend
+   * {@code DocumentStorageTarget} enum constants; labels are explained further via the
+   * translated field title/tooltip.
+   */
+  readonly storageTargetOptions: SelectItem[] = [
+    { id: 'TEMPORARY_RESOURCE', text: 'Temporary resource storage' },
+    { id: 'PROCESS_VARIABLE', text: 'Process variable (inline bytes)' },
+  ];
+  readonly defaultStorageTarget = DEFAULT_STORAGE_TARGET;
+
+  /** Drives which output-variable field is shown (resource id vs inline content). */
+  readonly selectedTarget$ = new BehaviorSubject<string>(this.defaultStorageTarget);
+
   ngOnInit(): void {
     this.safeDisabled$ = this.disabled$.pipe(startWith(true), delay(0));
     const prefill$ = this.prefillConfiguration$ ?? of({} as DownloadDocumentConfig);
     prefill$.pipe(take(1)).subscribe((prefill) => {
       this.resolvedPrefill = prefill ?? {};
+      this.selectedTarget$.next(resolveStorageTarget(this.resolvedPrefill.storageTarget));
       this.prefillResolved$.next(true);
     });
     this.openSaveSubscription();
@@ -55,12 +75,15 @@ export class DownloadDocumentConfigurationComponent
 
   formValueChange(formOutput: FormOutput): void {
     const formValue = formOutput as unknown as DownloadDocumentConfig;
+    if (formValue?.storageTarget) {
+      this.selectedTarget$.next(formValue.storageTarget);
+    }
     this.formValue$.next(formValue);
     this.handleValid(formValue);
   }
 
   private handleValid(formValue: DownloadDocumentConfig): void {
-    const valid = !!(formValue?.documentVariable && formValue?.contentVariable);
+    const valid = isDownloadDocumentConfigValid(formValue);
     this.valid$.next(valid);
     this.valid.emit(valid);
   }

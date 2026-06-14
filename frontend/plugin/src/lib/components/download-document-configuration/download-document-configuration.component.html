@@ -10,7 +10,32 @@
   >
   </v-input>
 
+  <v-select
+    name="storageTarget"
+    [title]="'storageTarget' | pluginTranslate: pluginId | async"
+    [tooltip]="'storageTargetTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [items]="storageTargetOptions"
+    [defaultSelectionId]="resolvedPrefill?.storageTarget || defaultStorageTarget"
+    [disabled]="safeDisabled$ | async"
+    [required]="true"
+  >
+  </v-select>
+
   <v-input
+    *ngIf="(selectedTarget$ | async) === 'TEMPORARY_RESOURCE'"
+    name="resourceIdVariable"
+    [title]="'resourceIdVariable' | pluginTranslate: pluginId | async"
+    [tooltip]="'resourceIdVariableTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="resolvedPrefill?.resourceIdVariable"
+    [disabled]="safeDisabled$ | async"
+    [required]="true"
+  >
+  </v-input>
+
+  <v-input
+    *ngIf="(selectedTarget$ | async) === 'PROCESS_VARIABLE'"
     name="contentVariable"
     [title]="'contentVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'contentVariableTooltip' | pluginTranslate: pluginId | async"

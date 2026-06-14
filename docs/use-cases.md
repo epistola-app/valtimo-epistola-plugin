@@ -85,12 +85,15 @@ Exclusive Gateway: epistolaStatus == "COMPLETED"?
 Service Task: "Download Confirmation Letter"
   │  Action: download-document
   │  Parameters:
-  │    documentIdVariable: "epistolaDocumentId"
-  │    contentVariable:    "documentContent"
+  │    documentVariable:   "epistolaResult"
+  │    storageTarget:      "TEMPORARY_RESOURCE"  (default)
+  │    resourceIdVariable: "documentResourceId"
+  │  (to persist durably, chain documenten-api:store-temp-document with
+  │   localDocumentLocation = documentResourceId)
   ▼
 User Task: "Controleer bevestigingsbrief"
   │  Form shows document metadata + download button
-  │  (Base64 from pv:documentContent rendered as PDF download)
+  │  (PDF streamed on demand via GET /documents/download)
   ▼
 End Event
 ```
@@ -157,15 +160,15 @@ End Event
 
 ### What this demonstrates
 
-| Capability            | How it's shown                                                      |
-| --------------------- | ------------------------------------------------------------------- |
-| Nested object mapping | `$doc.applicant.address.street` resolves through 2 levels           |
-| Array mapping         | `activities` forwards the document array into the template payload  |
-| Environment override  | Action-level `environmentId` overrides the plugin default           |
-| Variant selection     | Specific variant chosen for the formal letter style                 |
-| Async completion      | Message Catch Event waits for the result collector to correlate     |
-| Download + review     | `download-document` stores Base64 in pv, user task renders download |
-| Error handling        | Boundary error events on both generate and receive tasks            |
+| Capability            | How it's shown                                                            |
+| --------------------- | ------------------------------------------------------------------------- |
+| Nested object mapping | `$doc.applicant.address.street` resolves through 2 levels                 |
+| Array mapping         | `activities` forwards the document array into the template payload        |
+| Environment override  | Action-level `environmentId` overrides the plugin default                 |
+| Variant selection     | Specific variant chosen for the formal letter style                       |
+| Async completion      | Message Catch Event waits for the result collector to correlate           |
+| Download + review     | `download-document` stores a temp resource id, user task renders download |
+| Error handling        | Boundary error events on both generate and receive tasks                  |
 
 ---
 
@@ -221,11 +224,14 @@ Message Catch Event: "EpistolaDocumentGenerated"
   ▼
 Service Task: "Download Ontvangstbevestiging"
   │  Action: download-document
-  │  documentIdVariable: "epistolaDocumentId"
-  │  contentVariable:    "ackDocumentContent"
+  │  documentVariable:   "epistolaResult"
+  │  storageTarget:      "TEMPORARY_RESOURCE"
+  │  resourceIdVariable: "ackResourceId"
   ▼
 Service Task: "Store on case"                    ◄── Valtimo documents tab
-  │  (stores Base64 PDF as case resource)
+  │  Action: documenten-api:store-temp-document
+  │  localDocumentLocation: "ackResourceId"  (the temp resource id)
+  │  → stores the PDF durably in the Documenten API
   ▼
 User Task: "Beoordeel bezwaar"
   │  Form fields:
@@ -249,8 +255,9 @@ Message Catch Event: "EpistolaDocumentGenerated"
   ▼
 Service Task: "Download Besluit"
   │  Action: download-document
-  │  documentIdVariable: "epistolaDocumentId"
-  │  contentVariable:    "decisionDocumentContent"
+  │  documentVariable:   "epistolaResult"
+  │  storageTarget:      "TEMPORARY_RESOURCE"
+  │  resourceIdVariable: "decisionResourceId"
   ▼
 Service Task: "Store on case"
   │  (stores decision letter as case resource)

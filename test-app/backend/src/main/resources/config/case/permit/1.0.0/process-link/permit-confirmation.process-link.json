@@ -28,7 +28,8 @@
     "pluginActionDefinitionKey": "epistola-download-document",
     "actionProperties": {
       "documentVariable": "epistolaResult",
-      "contentVariable": "documentContent"
+      "storageTarget": "TEMPORARY_RESOURCE",
+      "resourceIdVariable": "documentResourceId"
     }
   },
   {

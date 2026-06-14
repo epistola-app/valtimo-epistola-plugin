@@ -131,8 +131,13 @@ This plugin pins a single Valtimo version (the `valtimo` key in `gradle/libs.ver
 **All tests and checks must pass before pushing:**
 
 ```bash
-# Backend tests
+# Backend plugin tests (unit + slice; fast, no Docker)
 ./gradlew :backend:plugin:test
+
+# Full end-to-end app tests (boots the real test-app with Testcontainers
+# Postgres + Keycloak — Docker required). Plugin-only logic lives in the
+# plugin module above; tests that need the whole Valtimo application go here.
+./gradlew :test-app:backend:test
 
 # Frontend tests (Jest unit tests)
 cd frontend/plugin && pnpm test

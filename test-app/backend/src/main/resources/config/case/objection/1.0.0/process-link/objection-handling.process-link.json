@@ -28,7 +28,8 @@
     "pluginActionDefinitionKey": "epistola-download-document",
     "actionProperties": {
       "documentVariable": "epistolaResult",
-      "contentVariable": "ackDocumentContent"
+      "storageTarget": "TEMPORARY_RESOURCE",
+      "resourceIdVariable": "ackResourceId"
     }
   },
   {
@@ -60,7 +61,8 @@
     "pluginActionDefinitionKey": "epistola-download-document",
     "actionProperties": {
       "documentVariable": "epistolaResult",
-      "contentVariable": "decisionDocumentContent"
+      "storageTarget": "TEMPORARY_RESOURCE",
+      "resourceIdVariable": "decisionResourceId"
     }
   }
 ]

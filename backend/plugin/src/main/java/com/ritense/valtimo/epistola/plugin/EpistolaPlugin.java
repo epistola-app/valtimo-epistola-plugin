@@ -1,6 +1,7 @@
 package com.ritense.valtimo.epistola.plugin;
 
 import app.epistola.client.model.VariantSelectionAttribute;
+import app.epistola.valtimo.domain.DocumentStorageTarget;
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
@@ -8,6 +9,7 @@ import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
+import app.epistola.valtimo.service.download.DocumentStorageStrategy;
 
 import app.epistola.valtimo.service.EpistolaService;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -17,7 +19,6 @@ import com.ritense.plugin.domain.EventType;
 import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
-import org.operaton.bpm.engine.variable.Variables;
 
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -48,19 +49,22 @@ public class EpistolaPlugin {
     private final JsonataMappingService jsonataMappingService;
     private final com.ritense.document.service.DocumentService documentService;
     private final EpistolaResultCollectorRunner resultCollectorRunner;
+    private final Map<DocumentStorageTarget, DocumentStorageStrategy> storageStrategies;
 
     public EpistolaPlugin(
             EpistolaService epistolaService,
             ObjectMapper objectMapper,
             JsonataMappingService jsonataMappingService,
             com.ritense.document.service.DocumentService documentService,
-            EpistolaResultCollectorRunner resultCollectorRunner
+            EpistolaResultCollectorRunner resultCollectorRunner,
+            Map<DocumentStorageTarget, DocumentStorageStrategy> storageStrategies
     ) {
         this.epistolaService = epistolaService;
         this.objectMapper = objectMapper;
         this.jsonataMappingService = jsonataMappingService;
         this.documentService = documentService;
         this.resultCollectorRunner = resultCollectorRunner;
+        this.storageStrategies = storageStrategies;
     }
 
     /**
@@ -457,31 +461,34 @@ public class EpistolaPlugin {
     }
 
     /**
-     * Download a generated document.
+     * Download a generated document and materialize it for the rest of the process.
      * <p>
-     * This action downloads a completed document from Epistola. The document must have
-     * been successfully generated (status = COMPLETED) before it can be downloaded.
+     * The document must have been successfully generated (status = COMPLETED) before it can be
+     * downloaded. Where the bytes are materialized is selected by {@code storageTarget}; see
+     * {@code docs/adr/0001-download-document-content-storage.md}.
      *
      * @param execution           The process execution context
      * @param documentVariable    Name of the process variable that holds the result. May be a
      *                            plain String document id (legacy) or a {@code Map<String,Object>}
      *                            rich result with a {@code documentId} key (canonical).
-     * @param contentVariable     The name of the process variable to store the document content. The
-     *                            raw PDF bytes are stored as an Operaton {@code bytes} variable (backed
-     *                            by the byte-array table), not as a String — a Base64 string would
-     *                            overflow Operaton's {@code varchar(4000)} variable column for any
-     *                            real-sized document. Valtimo serializes the variable to the frontend
-     *                            as a Base64 string (Jackson's default {@code byte[]} encoding).
+     * @param storageTarget       Where to materialize the PDF. Optional; defaults to
+     *                            {@link DocumentStorageTarget#TEMPORARY_RESOURCE}.
+     * @param resourceIdVariable  Output variable for {@code TEMPORARY_RESOURCE}: receives the temporary
+     *                            resource id (hand this to {@code documenten-api:store-temp-document}).
+     * @param contentVariable     Output variable for {@code PROCESS_VARIABLE}: receives the raw PDF
+     *                            bytes inline (small/non-sensitive documents).
      */
     @PluginAction(
             key = "epistola-download-document",
             title = "Download Document",
-            description = "Download a generated document from Epistola. Stores the raw PDF bytes as a byte variable in the specified process variable.",
+            description = "Download a generated document from Epistola. By default stores it in temporary resource storage and writes the resource id to the configured variable (ready to hand to documenten-api:store-temp-document).",
             activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
     )
     public void downloadDocument(
             DelegateExecution execution,
             @PluginActionProperty String documentVariable,
+            @PluginActionProperty DocumentStorageTarget storageTarget,
+            @PluginActionProperty String resourceIdVariable,
             @PluginActionProperty String contentVariable
     ) {
         // Type-tolerant: documentVariable may hold a plain String (legacy scalar) or a
@@ -506,26 +513,27 @@ public class EpistolaPlugin {
             throw new IllegalArgumentException("Document variable '" + documentVariable + "' is null or empty");
         }
 
+        // Resolve the target + its output variable before downloading, so misconfiguration fails
+        // fast — see docs/adr/0001-download-document-content-storage.md.
+        DocumentStorageTarget target = storageTarget != null ? storageTarget : DocumentStorageTarget.TEMPORARY_RESOURCE;
+        String outputVariable = switch (target) {
+            case TEMPORARY_RESOURCE -> resourceIdVariable;
+            case PROCESS_VARIABLE -> contentVariable;
+        };
+        if (outputVariable == null || outputVariable.isBlank()) {
+            throw new IllegalArgumentException("download-document: no output variable configured for storageTarget " + target);
+        }
+        DocumentStorageStrategy strategy = storageStrategies.get(target);
+        if (strategy == null) {
+            throw new IllegalStateException("download-document: storageTarget " + target
+                    + " is not available — its backend is not configured in this environment");
+        }
+
         byte[] content = epistolaService.downloadDocument(baseUrl, apiKey, tenantId, documentId);
+        strategy.store(execution, documentId, content, outputVariable);
 
-        // INTERIM storage strategy — see docs/adr/0001-download-document-content-storage.md.
-        // This byte[] still serializes into the task-detail response and is not durable for
-        // long-lived processes; the long-term plan is a configurable target defaulting to
-        // fetching from Epistola on demand.
-        //
-        // Store the raw PDF bytes as a "bytes" variable. Two constraints drive this:
-        //  1. Operaton keeps String variables in a varchar(4000) column
-        //     (ACT_RU_VARIABLE/ACT_HI_VARINST.TEXT_); a Base64 document would overflow it and roll
-        //     back the surrounding transaction (e.g. the message correlation that resumed the
-        //     process). Byte variables live in the byte-array table and have no such limit.
-        //  2. Valtimo serializes every process variable to JSON when a user task is opened. A
-        //     FileValue exposes its value as a ByteArrayInputStream, which Jackson cannot serialize
-        //     ("No serializer found for ByteArrayInputStream"). A raw byte[] serializes cleanly as a
-        //     Base64 string, so downstream consumers still receive Base64 — matching the original
-        //     contract without the varchar limit.
-        execution.setVariable(contentVariable, Variables.byteArrayValue(content));
-
-        log.info("Document {} downloaded successfully ({} bytes)", documentId, content.length);
+        log.info("Document {} downloaded successfully ({} bytes, target={}, outputVariable={})",
+                documentId, content.length, target, outputVariable);
     }
 
     /**

@@ -16,6 +16,7 @@ import app.epistola.valtimo.service.admin.EpistolaAdminService;
 import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
 import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
+import app.epistola.valtimo.service.download.DocumentStorageStrategy;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
 import app.epistola.valtimo.service.form.FormioFormGenerator;
@@ -29,6 +30,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
 import com.ritense.processlink.service.ProcessLinkService;
+import com.ritense.resource.autoconfigure.TemporaryResourceStorageAutoConfiguration;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.HistoryService;
 import org.operaton.bpm.engine.RepositoryService;
@@ -40,16 +42,18 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.List;
 
 @Slf4j
-@AutoConfiguration
+@AutoConfiguration(after = TemporaryResourceStorageAutoConfiguration.class)
 @ConditionalOnProperty(name = "epistola.enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(EpistolaProperties.class)
 @EnableScheduling
+@Import(EpistolaDownloadStorageConfiguration.class)
 public class EpistolaPluginAutoConfiguration {
 
     @Bean
@@ -106,10 +110,12 @@ public class EpistolaPluginAutoConfiguration {
             ObjectMapper objectMapper,
             JsonataMappingService jsonataMappingService,
             com.ritense.document.service.DocumentService documentService,
-            EpistolaResultCollectorRunner resultCollectorRunner
+            EpistolaResultCollectorRunner resultCollectorRunner,
+            List<DocumentStorageStrategy> storageStrategies
     ) {
         return new EpistolaPluginFactory(pluginService, epistolaService,
-                objectMapper, jsonataMappingService, documentService, resultCollectorRunner);
+                objectMapper, jsonataMappingService, documentService, resultCollectorRunner,
+                storageStrategies);
     }
 
     @Bean

@@ -48,6 +48,7 @@ dependencies {
     compileOnly(libs.valtimo.process.document)
     compileOnly(libs.valtimo.form)
     compileOnly(libs.valtimo.importer)
+    compileOnly(libs.valtimo.temporary.resource.storage)
     compileOnly(libs.spring.boot.starter.aop)
     compileOnly(libs.spring.boot.starter.security)
 
@@ -67,6 +68,7 @@ dependencies {
     testImplementation(libs.valtimo.process.document)
     testImplementation(libs.valtimo.form)
     testImplementation(libs.valtimo.importer)
+    testImplementation(libs.valtimo.temporary.resource.storage)
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.valtimo.test.utils.common)
     testImplementation(libs.junit.jupiter)

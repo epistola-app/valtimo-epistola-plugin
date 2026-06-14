@@ -67,7 +67,22 @@ export interface DownloadDocumentConfig {
    * updated by the result collector). The action extracts the document id.
    */
   documentVariable: string;
-  contentVariable: string;
+  /**
+   * Where the downloaded PDF is materialized (see
+   * `docs/adr/0001-download-document-content-storage.md`). Defaults to `TEMPORARY_RESOURCE`. The
+   * output variable used depends on this choice: `resourceIdVariable` or `contentVariable`.
+   */
+  storageTarget?: 'TEMPORARY_RESOURCE' | 'PROCESS_VARIABLE';
+  /**
+   * Output for `TEMPORARY_RESOURCE`: the process variable that receives the temporary resource id
+   * (ready to hand to `documenten-api:store-temp-document`).
+   */
+  resourceIdVariable?: string;
+  /**
+   * Output for `PROCESS_VARIABLE`: the process variable that receives the raw PDF bytes inline
+   * (best for small, non-sensitive documents).
+   */
+  contentVariable?: string;
 }
 
 export interface VariableSuggestions {
