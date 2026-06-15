@@ -29,7 +29,7 @@ public class EpistolaCatalogSyncTrigger {
 
     @EventListener(ApplicationReadyEvent.class)
     public void onApplicationReady() {
-        log.info("Application ready — checking for Epistola catalog sync configurations");
+        log.debug("Application ready — checking for Epistola catalog sync configurations");
 
         try {
             @SuppressWarnings("unchecked")
@@ -57,7 +57,7 @@ public class EpistolaCatalogSyncTrigger {
                     );
 
                     if (result.totalCatalogs() == 0) {
-                        log.info("No catalogs found on classpath for '{}'", config.getTitle());
+                        log.debug("No catalogs found on classpath for '{}'", config.getTitle());
                     } else if (result.isFullySuccessful()) {
                         log.info("Catalog sync completed for '{}': {}/{} catalogs synced successfully",
                                 config.getTitle(), result.successCount(), result.totalCatalogs());

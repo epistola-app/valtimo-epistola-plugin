@@ -85,7 +85,7 @@ public class EpistolaFormAutoDeployAspect {
                 return; // resource missing, already logged at first load attempt
             }
             deploymentService.deploy(RETRY_FORM_NAME, formJson, caseDefId, false);
-            log.info("Auto-deployed {} form for case {}", RETRY_FORM_NAME, caseDefId);
+            log.debug("Auto-deployed {} form for case {}", RETRY_FORM_NAME, caseDefId);
         } catch (Exception e) {
             log.error("Failed to auto-deploy {} form for case {}", RETRY_FORM_NAME, caseDefId, e);
         }

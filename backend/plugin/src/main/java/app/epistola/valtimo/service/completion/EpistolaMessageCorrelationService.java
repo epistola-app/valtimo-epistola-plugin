@@ -119,7 +119,7 @@ public class EpistolaMessageCorrelationService {
         }
 
         if (correlated > 0) {
-            log.info("Correlated message {} for jobPath={}: {} execution(s)", MESSAGE_NAME, jobPath, correlated);
+            log.debug("Correlated message {} for jobPath={}: {} execution(s)", MESSAGE_NAME, jobPath, correlated);
             return correlated;
         }
 
@@ -130,7 +130,7 @@ public class EpistolaMessageCorrelationService {
             log.warn("Correlated 0 executions for jobPath={} (status={}); event acked but no waiting "
                     + "subscription and no matching job found.", jobPath, status);
         } else {
-            log.info("Updated result variable for jobPath={} (status={}) without a catch-event "
+            log.debug("Updated result variable for jobPath={} (status={}) without a catch-event "
                     + "subscription ({} instance(s); variable pattern).", jobPath, status, updated);
         }
         return 0;

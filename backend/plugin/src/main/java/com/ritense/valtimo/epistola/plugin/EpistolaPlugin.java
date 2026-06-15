@@ -241,7 +241,7 @@ public class EpistolaPlugin {
             @PluginActionProperty String correlationId,
             @PluginActionProperty String resultProcessVariable
     ) {
-        log.info("Starting document generation: catalogId={}, templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
+        log.debug("Starting document generation: catalogId={}, templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
                 catalogId, templateId, variantId, variantAttributes, outputFormat, filename);
 
         // Normalize variant attributes from either old (Map<String, String>) or new (List<Map>) format
@@ -260,14 +260,14 @@ public class EpistolaPlugin {
         String editedDataJson = rawEditedData instanceof String s ? s : null;
         boolean isRetry = editedDataJson != null && !editedDataJson.isBlank();
 
-        log.info("generate-document retry check: variable='{}', exists={}, isRetry={}, type={}, value={}",
+        log.debug("generate-document retry check: variable='{}', exists={}, isRetry={}, type={}, value={}",
                 EpistolaProcessVariables.EDITED_DATA, rawEditedData != null, isRetry,
                 rawEditedData != null ? rawEditedData.getClass().getSimpleName() : "null",
                 editedDataJson != null ? editedDataJson.substring(0, Math.min(200, editedDataJson.length())) : "null");
 
         Map<String, Object> resolvedData;
         if (isRetry) {
-            log.info("Retry detected: using edited data from '{}' process variable", EpistolaProcessVariables.EDITED_DATA);
+            log.debug("Retry detected: using edited data from '{}' process variable", EpistolaProcessVariables.EDITED_DATA);
             try {
                 resolvedData = objectMapper.readValue(editedDataJson, MAP_TYPE);
             } catch (Exception e) {
@@ -391,7 +391,7 @@ public class EpistolaPlugin {
         // inside the contract collector: no-op when polling fast.
         resultCollectorRunner.kickFor(baseUrl, apiKey, tenantId);
 
-        log.info("Document generation request submitted. jobPath={}, resultVar={}",
+        log.debug("Document generation request submitted. jobPath={}, resultVar={}",
                 jobPath, resultProcessVariable);
     }
 
@@ -438,7 +438,7 @@ public class EpistolaPlugin {
                     + "' must be a String or a Map with a '" + EpistolaProcessVariables.RESULT_KEY_REQUEST_ID
                     + "' key, got " + rawValue.getClass().getName());
         }
-        log.info("Checking job status for requestId: {}", requestId);
+        log.debug("Checking job status for requestId: {}", requestId);
 
         if (requestId == null || requestId.isBlank()) {
             throw new IllegalArgumentException("Request ID variable '" + requestIdVariable + "' is null or empty");
@@ -459,7 +459,7 @@ public class EpistolaPlugin {
             execution.setVariable(errorMessageVariable, jobDetail.getErrorMessage());
         }
 
-        log.info("Job status for requestId {}: status={}, documentId={}, errorMessage={}",
+        log.debug("Job status for requestId {}: status={}, documentId={}, errorMessage={}",
                 requestId, jobDetail.getStatus(), jobDetail.getDocumentId(), jobDetail.getErrorMessage());
     }
 
@@ -510,7 +510,7 @@ public class EpistolaPlugin {
                     + "' must be a String or a Map with a '" + EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID
                     + "' key, got " + rawValue.getClass().getName());
         }
-        log.info("Downloading document: {}", documentId);
+        log.debug("Downloading document: {}", documentId);
 
         if (documentId == null || documentId.isBlank()) {
             throw new IllegalArgumentException("Document variable '" + documentVariable + "' is null or empty");
@@ -535,7 +535,7 @@ public class EpistolaPlugin {
         byte[] content = epistolaService.downloadDocument(baseUrl, apiKey, tenantId, documentId);
         strategy.store(execution, documentId, content, outputVariable);
 
-        log.info("Document {} downloaded successfully ({} bytes, target={}, outputVariable={})",
+        log.debug("Document {} downloaded successfully ({} bytes, target={}, outputVariable={})",
                 documentId, content.length, target, outputVariable);
     }
 

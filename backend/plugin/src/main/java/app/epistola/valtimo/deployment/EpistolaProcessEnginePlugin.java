@@ -28,6 +28,6 @@ public class EpistolaProcessEnginePlugin extends AbstractProcessEnginePlugin {
             configuration.setCustomPostBPMNParseListeners(listeners);
         }
         listeners.add(catchEventParseListener);
-        log.info("Registered EpistolaCatchEventParseListener (auto-wires EpistolaDocumentGenerated catch events)");
+        log.debug("Registered EpistolaCatchEventParseListener (auto-wires EpistolaDocumentGenerated catch events)");
     }
 }

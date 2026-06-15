@@ -90,7 +90,7 @@ public class CatalogScanner {
             }
         }
 
-        log.info("Found {} catalogs on classpath", catalogs.size());
+        log.debug("Found {} catalogs on classpath", catalogs.size());
         return catalogs;
     }
 

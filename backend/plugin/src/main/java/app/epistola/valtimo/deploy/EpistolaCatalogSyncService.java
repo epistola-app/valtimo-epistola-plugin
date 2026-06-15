@@ -56,7 +56,7 @@ public class EpistolaCatalogSyncService {
         List<CatalogScanner.CatalogOnClasspath> allCatalogs = scanner.scan();
 
         if (allCatalogs.isEmpty()) {
-            log.info("No catalogs found on classpath, nothing to sync");
+            log.debug("No catalogs found on classpath, nothing to sync");
             return new SyncResult(0, 0, 0);
         }
 
@@ -70,7 +70,7 @@ public class EpistolaCatalogSyncService {
                 .toList();
 
         if (changedCatalogs.isEmpty()) {
-            log.info("All {} catalogs are up-to-date, nothing to sync", allCatalogs.size());
+            log.debug("All {} catalogs are up-to-date, nothing to sync", allCatalogs.size());
             return new SyncResult(allCatalogs.size(), 0, 0);
         }
 

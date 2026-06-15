@@ -50,7 +50,7 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     @Override
     public List<CatalogInfo> getCatalogs(String baseUrl, String apiKey, String tenantId) {
-        log.info("Fetching catalogs for tenant: {}", tenantId);
+        log.debug("Fetching catalogs for tenant: {}", tenantId);
         try {
             var response = apiClientFactory.createCatalogsApi(baseUrl, apiKey)
                     .listCatalogs(tenantId);
@@ -70,7 +70,7 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     @Override
     public List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId, String catalogId) {
-        log.info("Fetching templates for tenant: {}, catalog: {}", tenantId, catalogId);
+        log.debug("Fetching templates for tenant: {}, catalog: {}", tenantId, catalogId);
         try {
             TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
             TemplateListResponse response = templatesApi.listTemplates(tenantId, catalogId, null);
@@ -90,7 +90,7 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     @Override
     public TemplateDetails getTemplateDetails(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId) {
-        log.info("Fetching template details for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
+        log.debug("Fetching template details for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
         try {
             TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
             TemplateDto response = templatesApi.getTemplate(tenantId, catalogId, templateId);
@@ -110,7 +110,7 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     @Override
     public List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId, String catalogId) {
-        log.info("Fetching attribute definitions for tenant: {}, catalog: {}", tenantId, catalogId);
+        log.debug("Fetching attribute definitions for tenant: {}, catalog: {}", tenantId, catalogId);
         try {
             AttributesApi attributesApi = apiClientFactory.createAttributesApi(baseUrl, apiKey);
             var response = attributesApi.listAttributes(tenantId, catalogId);
@@ -130,7 +130,7 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     @Override
     public List<EnvironmentInfo> getEnvironments(String baseUrl, String apiKey, String tenantId) {
-        log.info("Fetching environments for tenant: {}", tenantId);
+        log.debug("Fetching environments for tenant: {}", tenantId);
         try {
             EnvironmentsApi environmentsApi = apiClientFactory.createEnvironmentsApi(baseUrl, apiKey);
             EnvironmentListResponse response = environmentsApi.listEnvironments(tenantId);
@@ -150,7 +150,7 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     @Override
     public List<VariantInfo> getVariants(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId) {
-        log.info("Fetching variants for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
+        log.debug("Fetching variants for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
         try {
             VariantsApi variantsApi = apiClientFactory.createVariantsApi(baseUrl, apiKey);
             VariantListResponse response = variantsApi.listVariants(tenantId, catalogId, templateId);
@@ -184,7 +184,7 @@ public class EpistolaServiceImpl implements EpistolaService {
             String correlationId,
             String routingKey
     ) {
-        log.info("Submitting document generation request: tenantId={}, templateId={}, variantId={}, attributes={}, format={}, filename={}, routingKey={}",
+        log.debug("Submitting document generation request: tenantId={}, templateId={}, variantId={}, attributes={}, format={}, filename={}, routingKey={}",
                 tenantId, templateId, variantId, variantAttributes, format, filename, routingKey);
         log.debug("Template data: {}", data);
 
@@ -209,7 +209,7 @@ public class EpistolaServiceImpl implements EpistolaService {
 
             GenerationJobResponse response = generationApi.generateDocument(tenantId, request);
 
-            log.info("Document generation request submitted: requestId={}, status={}",
+            log.debug("Document generation request submitted: requestId={}, status={}",
                     response.getRequestId(), response.getStatus());
 
             return GenerationJobResult.builder()
@@ -224,7 +224,7 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     @Override
     public GenerationJobDetail getJobStatus(String baseUrl, String apiKey, String tenantId, String requestId) {
-        log.info("Fetching job status for tenant: {}, requestId: {}", tenantId, requestId);
+        log.debug("Fetching job status for tenant: {}, requestId: {}", tenantId, requestId);
         try {
             GenerationApi generationApi = apiClientFactory.createGenerationApi(baseUrl, apiKey);
             UUID requestUuid = UUID.fromString(requestId);
@@ -245,7 +245,7 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     @Override
     public byte[] downloadDocument(String baseUrl, String apiKey, String tenantId, String documentId) {
-        log.info("Downloading document for tenant: {}, documentId: {}", tenantId, documentId);
+        log.debug("Downloading document for tenant: {}, documentId: {}", tenantId, documentId);
         try {
             // Use RestClient directly instead of the generated client, because the generated
             // client returns java.io.File which requires an HttpMessageConverter for
@@ -261,7 +261,7 @@ public class EpistolaServiceImpl implements EpistolaService {
                 throw new EpistolaApiException("Downloaded document is empty: " + documentId);
             }
 
-            log.info("Downloaded document {} ({} bytes)", documentId, content.length);
+            log.debug("Downloaded document {} ({} bytes)", documentId, content.length);
             return content;
         } catch (EpistolaApiException e) {
             throw e;
@@ -325,7 +325,7 @@ public class EpistolaServiceImpl implements EpistolaService {
             String catalogId, String templateId, String variantId, String environmentId,
             Map<String, Object> data
     ) {
-        log.info("Previewing document for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
+        log.debug("Previewing document for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
         try {
             var requestBody = new java.util.LinkedHashMap<String, Object>();
             requestBody.put("catalogId", catalogId);
@@ -348,7 +348,7 @@ public class EpistolaServiceImpl implements EpistolaService {
                 throw new EpistolaApiException("Preview returned empty content");
             }
 
-            log.info("Preview generated for tenant: {}, template: {}", tenantId, templateId);
+            log.debug("Preview generated for tenant: {}, template: {}", tenantId, templateId);
             return new java.io.ByteArrayInputStream(content);
         } catch (EpistolaApiException e) {
             throw e;
