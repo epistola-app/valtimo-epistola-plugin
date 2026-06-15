@@ -6,6 +6,9 @@ build/
 bin/
 out/
 
+# Kotlin compiler daemon session markers (transient build artifacts)
+.kotlin/
+
 # IntelliJ IDEA
 .idea
 .idea/modules.xml

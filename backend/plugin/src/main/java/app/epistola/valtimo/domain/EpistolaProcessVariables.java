@@ -10,10 +10,7 @@ public final class EpistolaProcessVariables {
 
     private EpistolaProcessVariables() {}
 
-    /** Composite key encoding tenantId + requestId. Format: {@code epistola:job:{tenantId}/{requestId}} */
-    public static final String JOB_PATH = "epistolaJobPath";
-
-    /** Prefix for the composite job path variable. */
+    /** Prefix for the composite job path: {@code epistola:job:{tenantId}/{requestId}}. */
     public static final String JOB_PATH_PREFIX = "epistola:job:";
 
     /** Tenant ID of the Epistola instance that handled the request. */
@@ -29,16 +26,24 @@ public final class EpistolaProcessVariables {
     public static final String MESSAGE_NAME = "EpistolaDocumentGenerated";
 
     /**
-     * Internal companion variable: the *name* of the user-configured result process
-     * variable (i.e. the value of {@code resultProcessVariable} from the process-link).
-     * Set by {@code generate-document} at submit time so the result collector knows
-     * where to write the rich result object on the matching process instance later.
-     * Hardcoded; not exposed in user-facing docs.
+     * Execution-local variable pinned on a waiting {@code EpistolaDocumentGenerated} catch event,
+     * holding the composite jobPath of the generation it is waiting for. The result collector
+     * correlates a completion by matching this value, so a result wakes exactly that branch's catch
+     * event — independent of the execution-tree shape. Populated declaratively by a
+     * {@code camunda:inputParameter} on the catch event ({@code ${<resultVar>.jobPath}}); a process
+     * author may point it elsewhere to override.
      */
-    public static final String RESULT_VARIABLE_NAME = "epistolaResultVariableName";
+    public static final String WAIT_FOR = "epistolaWaitFor";
 
     /** Result-object key for the Epistola request id (UUID string). */
     public static final String RESULT_KEY_REQUEST_ID = "requestId";
+
+    /**
+     * Result-object key for the composite jobPath ({@code epistola:job:{tenantId}/{requestId}}).
+     * Exposed inside the rich result so a catch event can pin its correlation token declaratively
+     * with {@code ${<resultVar>.jobPath}}.
+     */
+    public static final String RESULT_KEY_JOB_PATH = "jobPath";
 
     /** Result-object key for the current job status (PENDING / IN_PROGRESS / COMPLETED / FAILED / CANCELLED). */
     public static final String RESULT_KEY_STATUS = "status";
@@ -48,4 +53,9 @@ public final class EpistolaProcessVariables {
 
     /** Result-object key for the failure message (set on FAILED, null otherwise). */
     public static final String RESULT_KEY_ERROR_MESSAGE = "errorMessage";
+
+    /** Whether a result-object {@code status} value is terminal (the generation has finished). */
+    public static boolean isTerminalStatus(Object status) {
+        return "COMPLETED".equals(status) || "FAILED".equals(status) || "CANCELLED".equals(status);
+    }
 }

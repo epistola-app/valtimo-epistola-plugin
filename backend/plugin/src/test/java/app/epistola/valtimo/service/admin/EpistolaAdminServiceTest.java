@@ -704,7 +704,7 @@ class EpistolaAdminServiceTest {
             when(query.messageEventSubscriptionName("EpistolaDocumentGenerated")).thenReturn(query);
             when(query.list()).thenReturn(List.of(execution));
 
-            when(runtimeService.getVariable("exec-1", "epistolaJobPath"))
+            when(runtimeService.getVariable("exec-1", "epistolaWaitFor"))
                     .thenReturn("epistola:job:test-tenant/req-123");
             when(runtimeService.getActiveActivityIds("exec-1"))
                     .thenReturn(List.of("waitForDocument"));
@@ -743,7 +743,7 @@ class EpistolaAdminServiceTest {
             when(query.messageEventSubscriptionName("EpistolaDocumentGenerated")).thenReturn(query);
             when(query.list()).thenReturn(List.of(execution));
 
-            when(runtimeService.getVariable("exec-1", "epistolaJobPath")).thenReturn(null);
+            when(runtimeService.getVariable("exec-1", "epistolaWaitFor")).thenReturn(null);
 
             List<PendingJob> jobs = adminService.getPendingJobs();
 
@@ -826,11 +826,11 @@ class EpistolaAdminServiceTest {
             when(query.executionId("exec-1")).thenReturn(query);
             when(query.messageEventSubscriptionName("EpistolaDocumentGenerated")).thenReturn(query);
             when(query.singleResult()).thenReturn(execution);
-            when(runtimeService.getVariable("exec-1", "epistolaJobPath")).thenReturn(null);
+            when(runtimeService.getVariable("exec-1", "epistolaWaitFor")).thenReturn(null);
 
             assertThatThrownBy(() -> adminService.reconcile("exec-1"))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("epistolaJobPath");
+                    .hasMessageContaining("epistolaWaitFor");
         }
 
         @Test
@@ -868,7 +868,7 @@ class EpistolaAdminServiceTest {
             when(query.messageEventSubscriptionName("EpistolaDocumentGenerated")).thenReturn(query);
             when(query.singleResult()).thenReturn(execution);
 
-            when(runtimeService.getVariable(executionId, "epistolaJobPath"))
+            when(runtimeService.getVariable(executionId, "epistolaWaitFor"))
                     .thenReturn("epistola:job:" + tenantSlashRequest);
         }
     }

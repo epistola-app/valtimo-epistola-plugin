@@ -2,6 +2,7 @@ package com.ritense.valtimo.epistola
 
 import app.epistola.valtimo.domain.DocumentStorageTarget
 import app.epistola.valtimo.service.EpistolaService
+import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService
 import app.epistola.valtimo.service.download.DocumentStorageStrategy
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.ritense.plugin.domain.PluginConfiguration
@@ -74,6 +75,9 @@ class DownloadDocumentE2ETest {
 
     @Autowired
     lateinit var objectMapper: ObjectMapper
+
+    @Autowired
+    lateinit var correlationService: EpistolaMessageCorrelationService
 
     private var deploymentId: String? = null
 
@@ -176,6 +180,43 @@ class DownloadDocumentE2ETest {
         objectMapper.writeValueAsString(value) // serializes cleanly (regression)
     }
 
+    @Test
+    fun `parallel branches each correlate to their own result, independently`() {
+        val deployment =
+            repositoryService.createDeployment().addString("epistola-parallel-test.bpmn", PARALLEL_BPMN).deploy()
+        try {
+            val pi = runtimeService.startProcessInstanceByKey(PARALLEL_PROCESS_KEY)
+
+            // Both parallel branches reach their own catch event.
+            await().atMost(Duration.ofSeconds(20)).untilAsserted {
+                assertThat(messageSubscriptionCount(pi.id)).isEqualTo(2)
+            }
+
+            // Correlate ONLY branch A's result — must wake exactly that branch.
+            assertThat(correlationService.correlateCompletion("demo", "req-a", "COMPLETED", "doc-a", null))
+                .isEqualTo(1)
+            await().atMost(Duration.ofSeconds(20)).untilAsserted {
+                assertThat(messageSubscriptionCount(pi.id)).isEqualTo(1) // only branch B still waits
+            }
+            assertThat(documentIdOf(runtimeService.getVariable(pi.id, "resultA"))).isEqualTo("doc-a")
+            assertThat(documentIdOf(runtimeService.getVariable(pi.id, "resultB")))
+                .`as`("branch B must NOT be affected by branch A's result")
+                .isNull()
+
+            // Correlate branch B — process completes; B got its own document.
+            assertThat(correlationService.correlateCompletion("demo", "req-b", "COMPLETED", "doc-b", null))
+                .isEqualTo(1)
+            await().atMost(Duration.ofSeconds(20)).untilAsserted {
+                assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(pi.id).singleResult())
+                    .isNull()
+            }
+            assertThat(documentIdOf(historicValue(pi.id, "resultB"))).isEqualTo("doc-b")
+            assertThat(documentIdOf(historicValue(pi.id, "resultA"))).isEqualTo("doc-a")
+        } finally {
+            repositoryService.deleteDeployment(deployment.id, true)
+        }
+    }
+
     private fun resolvePlugin(): EpistolaPlugin {
         val configurations = pluginService.findPluginConfigurations(EpistolaPlugin::class.java) { true }
         assertThat(configurations).isNotEmpty()
@@ -197,8 +238,29 @@ class DownloadDocumentE2ETest {
             .singleResult()
             ?.value
 
+    private fun messageSubscriptionCount(processInstanceId: String): Long =
+        runtimeService
+            .createEventSubscriptionQuery()
+            .processInstanceId(processInstanceId)
+            .eventName(MESSAGE)
+            .count()
+
+    private fun historicValue(
+        processInstanceId: String,
+        variableName: String,
+    ): Any? =
+        historyService
+            .createHistoricVariableInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .variableName(variableName)
+            .singleResult()
+            ?.value
+
+    private fun documentIdOf(richResult: Any?): Any? = (richResult as? Map<*, *>)?.get("documentId")
+
     companion object {
         private const val PROCESS_KEY = "epistola-download-flow-test"
+        private const val PARALLEL_PROCESS_KEY = "epistola-parallel-test"
         private const val MESSAGE = "EpistolaDocumentGenerated"
         private const val DOCUMENT_VARIABLE = "epistolaResult"
 
@@ -228,6 +290,77 @@ class DownloadDocumentE2ETest {
             </bpmn:definitions>
             """.trimIndent()
 
+        // Two parallel branches, each: submit (sets the activity-named jobPath + result var) →
+        // its own EpistolaDocumentGenerated catch event (asyncAfter, auto-pinned epistolaWaitFor)
+        // → join → end.
+        private val PARALLEL_BPMN =
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                              xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                              targetNamespace="http://bpmn.io/schema/bpmn" id="defs_par_test">
+              <bpmn:message id="msg_docgen" name="EpistolaDocumentGenerated" />
+              <bpmn:process id="epistola-parallel-test" isExecutable="true" camunda:historyTimeToLive="P1D">
+                <bpmn:startEvent id="start"><bpmn:outgoing>f_s</bpmn:outgoing></bpmn:startEvent>
+                <bpmn:sequenceFlow id="f_s" sourceRef="start" targetRef="fork" />
+                <bpmn:parallelGateway id="fork">
+                  <bpmn:incoming>f_s</bpmn:incoming>
+                  <bpmn:outgoing>f_a1</bpmn:outgoing>
+                  <bpmn:outgoing>f_b1</bpmn:outgoing>
+                </bpmn:parallelGateway>
+                <bpmn:sequenceFlow id="f_a1" sourceRef="fork" targetRef="submitA" />
+                <bpmn:serviceTask id="submitA" name="Submit A" camunda:class="com.ritense.valtimo.epistola.EpistolaTestSubmitDelegate">
+                  <bpmn:extensionElements>
+                    <camunda:inputOutput>
+                      <camunda:inputParameter name="testRequestId">req-a</camunda:inputParameter>
+                      <camunda:inputParameter name="testResultVar">resultA</camunda:inputParameter>
+                    </camunda:inputOutput>
+                  </bpmn:extensionElements>
+                  <bpmn:incoming>f_a1</bpmn:incoming>
+                  <bpmn:outgoing>f_a2</bpmn:outgoing>
+                </bpmn:serviceTask>
+                <bpmn:sequenceFlow id="f_a2" sourceRef="submitA" targetRef="waitA" />
+                <bpmn:intermediateCatchEvent id="waitA" name="Wait A" camunda:asyncAfter="true">
+                  <bpmn:extensionElements><camunda:inputOutput>
+                    <camunda:inputParameter name="epistolaWaitFor">${'$'}{resultA.jobPath}</camunda:inputParameter>
+                  </camunda:inputOutput></bpmn:extensionElements>
+                  <bpmn:incoming>f_a2</bpmn:incoming>
+                  <bpmn:outgoing>f_a3</bpmn:outgoing>
+                  <bpmn:messageEventDefinition id="med_a" messageRef="msg_docgen" />
+                </bpmn:intermediateCatchEvent>
+                <bpmn:sequenceFlow id="f_a3" sourceRef="waitA" targetRef="join" />
+                <bpmn:sequenceFlow id="f_b1" sourceRef="fork" targetRef="submitB" />
+                <bpmn:serviceTask id="submitB" name="Submit B" camunda:class="com.ritense.valtimo.epistola.EpistolaTestSubmitDelegate">
+                  <bpmn:extensionElements>
+                    <camunda:inputOutput>
+                      <camunda:inputParameter name="testRequestId">req-b</camunda:inputParameter>
+                      <camunda:inputParameter name="testResultVar">resultB</camunda:inputParameter>
+                    </camunda:inputOutput>
+                  </bpmn:extensionElements>
+                  <bpmn:incoming>f_b1</bpmn:incoming>
+                  <bpmn:outgoing>f_b2</bpmn:outgoing>
+                </bpmn:serviceTask>
+                <bpmn:sequenceFlow id="f_b2" sourceRef="submitB" targetRef="waitB" />
+                <bpmn:intermediateCatchEvent id="waitB" name="Wait B" camunda:asyncAfter="true">
+                  <bpmn:extensionElements><camunda:inputOutput>
+                    <camunda:inputParameter name="epistolaWaitFor">${'$'}{resultB.jobPath}</camunda:inputParameter>
+                  </camunda:inputOutput></bpmn:extensionElements>
+                  <bpmn:incoming>f_b2</bpmn:incoming>
+                  <bpmn:outgoing>f_b3</bpmn:outgoing>
+                  <bpmn:messageEventDefinition id="med_b" messageRef="msg_docgen" />
+                </bpmn:intermediateCatchEvent>
+                <bpmn:sequenceFlow id="f_b3" sourceRef="waitB" targetRef="join" />
+                <bpmn:parallelGateway id="join">
+                  <bpmn:incoming>f_a3</bpmn:incoming>
+                  <bpmn:incoming>f_b3</bpmn:incoming>
+                  <bpmn:outgoing>f_e</bpmn:outgoing>
+                </bpmn:parallelGateway>
+                <bpmn:sequenceFlow id="f_e" sourceRef="join" targetRef="end" />
+                <bpmn:endEvent id="end"><bpmn:incoming>f_e</bpmn:incoming></bpmn:endEvent>
+              </bpmn:process>
+            </bpmn:definitions>
+            """.trimIndent()
+
         @JvmStatic
         private val postgres = PostgreSQLContainer("postgres:16-alpine").apply { start() }
 
@@ -239,7 +372,9 @@ class DownloadDocumentE2ETest {
                     withEnv("KC_BOOTSTRAP_ADMIN_USERNAME", "admin")
                     withEnv("KC_BOOTSTRAP_ADMIN_PASSWORD", "admin")
                     withCommand("start-dev")
-                    waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(3)))
+                    // Log-based readiness: robust under podman where host→container port/HTTP probing
+                    // is flaky. Keycloak logs "… started in Ns. Listening on: http://0.0.0.0:8080".
+                    waitingFor(Wait.forLogMessage(".*Listening on:.*", 1).withStartupTimeout(Duration.ofMinutes(3)))
                     start()
                 }
 

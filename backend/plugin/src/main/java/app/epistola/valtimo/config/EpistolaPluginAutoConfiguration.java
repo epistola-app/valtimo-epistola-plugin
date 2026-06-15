@@ -6,7 +6,11 @@ import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.deploy.CatalogScanner;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger;
+import app.epistola.valtimo.deployment.EpistolaCatchEventLinkResolver;
+import app.epistola.valtimo.deployment.EpistolaCatchEventParseListener;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
+import app.epistola.valtimo.deployment.EpistolaProcessEnginePlugin;
+import app.epistola.valtimo.service.completion.EpistolaCatchEventStartListener;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.expression.functions.FormatDateFunction;
@@ -43,6 +47,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -60,6 +65,51 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(EpistolaApiClientFactory.class)
     public EpistolaApiClientFactory epistolaApiClientFactory() {
         return new EpistolaApiClientFactory();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaCatchEventLinkResolver.class)
+    public EpistolaCatchEventLinkResolver epistolaCatchEventLinkResolver(
+            RepositoryService repositoryService,
+            ProcessLinkService processLinkService
+    ) {
+        return new EpistolaCatchEventLinkResolver(repositoryService, processLinkService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaCatchEventStartListener.class)
+    public EpistolaCatchEventStartListener epistolaCatchEventStartListener(
+            // @Lazy breaks the startup cycle: this listener is reached (via the parse listener) from
+            // the ProcessEnginePlugin that builds the engine, but its collaborators depend on engine
+            // beans (RepositoryService/RuntimeService) and the ProcessLinkService graph. They are only
+            // needed at runtime (catch-event entry), so inject lazy proxies and resolve on first use.
+            @Lazy EpistolaCatchEventLinkResolver linkResolver,
+            @Lazy EpistolaMessageCorrelationService correlationService
+    ) {
+        return new EpistolaCatchEventStartListener(linkResolver, correlationService);
+    }
+
+    // The parse listener + process-engine plugin are the plugin's only use of Operaton's
+    // sanctioned-but-internal engine SPI. They're gated behind a dedicated sub-flag (nested under the
+    // global epistola.enabled gate) so operators can disable just the engine integration — falling back
+    // to declarative epistolaWaitFor input mappings — without disabling the whole plugin, e.g. if a
+    // future Operaton bump breaks the SPI.
+    @Bean
+    @ConditionalOnMissingBean(EpistolaCatchEventParseListener.class)
+    @ConditionalOnProperty(name = "epistola.catch-event-auto-wiring.enabled", havingValue = "true", matchIfMissing = true)
+    public EpistolaCatchEventParseListener epistolaCatchEventParseListener(
+            EpistolaCatchEventStartListener catchEventStartListener
+    ) {
+        return new EpistolaCatchEventParseListener(catchEventStartListener);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaProcessEnginePlugin.class)
+    @ConditionalOnProperty(name = "epistola.catch-event-auto-wiring.enabled", havingValue = "true", matchIfMissing = true)
+    public EpistolaProcessEnginePlugin epistolaProcessEnginePlugin(
+            EpistolaCatchEventParseListener catchEventParseListener
+    ) {
+        return new EpistolaProcessEnginePlugin(catchEventParseListener);
     }
 
     @Bean

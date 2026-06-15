@@ -286,6 +286,10 @@ public class EpistolaProcessDefinitionValidator {
         String displayName = definition.getName() != null ? definition.getName() : definition.getKey();
         List<BpmnValidationViolation> result = new ArrayList<>();
 
+        // catch-event id -> the generate-document service-task ids that reach it, to detect ambiguous
+        // pairings (two+ generate-documents flowing into one catch event the auto-wiring can't tell apart).
+        Map<String, List<String>> sourcesByCatchEvent = new HashMap<>();
+
         for (PluginProcessLink link : links) {
             String activityId = link.getActivityId();
             ServiceTask serviceTask = model.getModelElementById(activityId) instanceof ServiceTask st ? st : null;
@@ -299,6 +303,8 @@ public class EpistolaProcessDefinitionValidator {
                 // Race exposure is N/A. Validator stays silent.
                 continue;
             }
+
+            sourcesByCatchEvent.computeIfAbsent(reachableCatchEvent.getId(), k -> new ArrayList<>()).add(activityId);
 
             // Platform-injected asyncAfter check: signature is expression="${null}"
             // AND asyncAfter=true AND no other handler (class/type/delegateExpression).
@@ -329,6 +335,23 @@ public class EpistolaProcessDefinitionValidator {
             }
         }
 
+        // Ambiguous pairing: more than one generate-document reaches the same catch event. The
+        // auto-wiring can only pin one result variable's jobPath there, so completions may correlate
+        // to the wrong branch (the resolver keeps only the last pairing). Flag once per catch event.
+        for (Map.Entry<String, List<String>> entry : sourcesByCatchEvent.entrySet()) {
+            List<String> sources = entry.getValue();
+            if (sources.size() > 1) {
+                List<String> sorted = sources.stream().sorted().toList();
+                result.add(violation(definition.getKey(), displayName, entry.getKey(),
+                        BpmnValidationViolation.CODE_AMBIGUOUS_CATCH_EVENT,
+                        "generate-document tasks " + sorted + " all flow into this "
+                                + EpistolaProcessVariables.MESSAGE_NAME + " catch event — the auto-wiring "
+                                + "can only pin one result variable to it, so completions may correlate to the "
+                                + "wrong branch. Give each branch its own catch event, or set a distinct "
+                                + "epistolaWaitFor camunda:inputParameter on each catch event to disambiguate."));
+            }
+        }
+
         return result;
     }
 
@@ -341,7 +364,7 @@ public class EpistolaProcessDefinitionValidator {
      * gateway can lead to our catch event, it counts. Conservative on purpose: we'd
      * rather warn on a path that's unreachable at runtime than silently miss a real race.
      */
-    private static IntermediateCatchEvent findReachableEpistolaCatchEvent(ServiceTask start) {
+    static IntermediateCatchEvent findReachableEpistolaCatchEvent(ServiceTask start) {
         Set<String> visited = new HashSet<>();
         Deque<FlowNode> queue = new ArrayDeque<>();
         for (SequenceFlow sf : start.getOutgoing()) {
@@ -396,7 +419,7 @@ public class EpistolaProcessDefinitionValidator {
                 && task.getOperatonDelegateExpression() == null;
     }
 
-    private static boolean matchesEpistolaMessage(CatchEvent catchEvent) {
+    static boolean matchesEpistolaMessage(CatchEvent catchEvent) {
         for (EventDefinition def : catchEvent.getEventDefinitions()) {
             if (def instanceof MessageEventDefinition med) {
                 Message message = med.getMessage();
