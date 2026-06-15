@@ -89,8 +89,7 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
           this.component.processDefinitionKey || '';
         this._customAngularElement['sourceActivityId'] = this.component.sourceActivityId || '';
         // Forward the server-prefilled task id (epistola-task: value resolver) so the
-        // component authorizes against the exact task in every Valtimo task-open flow,
-        // not just the direct-open flow the HTTP interceptor can observe.
+        // component authorizes against the exact task in every Valtimo task-open flow.
         const prefilledTaskId = readPrefilledTaskId(this.root);
         if (prefilledTaskId) {
           this._customAngularElement['taskInstanceId'] = prefilledTaskId;

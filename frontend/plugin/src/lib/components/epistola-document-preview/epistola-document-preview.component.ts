@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { Subscription } from 'rxjs';
-import { EpistolaPluginService, EpistolaTaskContextService } from '../../services';
+import { EpistolaPluginService } from '../../services';
 import { shouldLoadPreview } from './preview-utils';
 
 @Component({
@@ -223,8 +223,7 @@ export class EpistolaDocumentPreviewComponent
   @Input() overrideMapping?: Record<string, any>;
   /**
    * Task id forwarded by the Formio wrapper from the server-prefilled form
-   * ({@code epistola-task:id} value resolver). Preferred over the HTTP-interceptor
-   * fallback because it is populated in every Valtimo task-open flow.
+   * ({@code epistola-task:id} value resolver), populated in every Valtimo task-open flow.
    */
   @Input() taskInstanceId?: string | null;
 
@@ -241,16 +240,15 @@ export class EpistolaDocumentPreviewComponent
     private readonly sanitizer: DomSanitizer,
     private readonly formIoStateService: FormIoStateService,
     private readonly cdr: ChangeDetectorRef,
-    private readonly taskContext: EpistolaTaskContextService,
   ) {}
 
   /**
-   * Resolve the active task id from {@link EpistolaTaskContextService}, populated
-   * by {@code EpistolaTaskContextInterceptor} on the canonical Valtimo task-open
-   * call. Returns null when used outside a task context (e.g. Formio builder).
+   * The active task id, forwarded by the Formio wrapper from the server-prefilled
+   * form ({@code epistola-task:id} value resolver). Null outside a task context
+   * (e.g. Formio builder), in which case the component fails closed.
    */
   private get currentTaskId(): string | null {
-    return this.taskInstanceId ?? this.taskContext.taskInstanceId;
+    return this.taskInstanceId ?? null;
   }
 
   get overrideMappingScopes(): string[] {

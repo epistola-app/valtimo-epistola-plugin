@@ -15,7 +15,7 @@ import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { FormioModule } from '@formio/angular';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, switchMap } from 'rxjs/operators';
-import { EpistolaPluginService, EpistolaTaskContextService } from '../../services';
+import { EpistolaPluginService } from '../../services';
 
 @Component({
   standalone: true,
@@ -145,8 +145,7 @@ export class EpistolaRetryFormComponent
   @Input() sourceActivityId?: string;
   /**
    * Task id forwarded by the Formio wrapper from the server-prefilled form
-   * ({@code epistola-task:id} value resolver). Preferred over the HTTP-interceptor
-   * fallback because it is populated in every Valtimo task-open flow.
+   * ({@code epistola-task:id} value resolver), populated in every Valtimo task-open flow.
    */
   @Input() taskInstanceId?: string | null;
 
@@ -176,7 +175,6 @@ export class EpistolaRetryFormComponent
     private readonly formIoStateService: FormIoStateService,
     private readonly cdr: ChangeDetectorRef,
     private readonly sanitizer: DomSanitizer,
-    private readonly taskContext: EpistolaTaskContextService,
   ) {
     // Debounce preview calls
     this.previewSubscription = this.previewSubject.pipe(debounceTime(1500)).subscribe((data) => {
@@ -219,7 +217,7 @@ export class EpistolaRetryFormComponent
     const processInstanceId = this.formIoStateService.processInstanceId;
     if (!documentId || !processInstanceId) return;
 
-    const taskId = this.taskInstanceId ?? this.taskContext.taskInstanceId;
+    const taskId = this.taskInstanceId ?? null;
     if (!taskId) {
       this.previewError = 'Preview is only available from within a user task.';
       this.cdr.markForCheck();
@@ -285,7 +283,7 @@ export class EpistolaRetryFormComponent
       return;
     }
 
-    const taskId = this.taskInstanceId ?? this.taskContext.taskInstanceId;
+    const taskId = this.taskInstanceId ?? null;
     if (!taskId) {
       this.error = 'Retry form is only available from within a user task.';
       this.loading = false;

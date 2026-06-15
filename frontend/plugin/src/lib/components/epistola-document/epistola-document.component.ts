@@ -12,11 +12,7 @@ import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { Subscription } from 'rxjs';
-import {
-  DownloadDocumentRequest,
-  EpistolaPluginService,
-  EpistolaTaskContextService,
-} from '../../services';
+import { DownloadDocumentRequest, EpistolaPluginService } from '../../services';
 
 export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
 
@@ -234,8 +230,7 @@ export class EpistolaDocumentComponent
 
   /**
    * Task id forwarded by the Formio wrapper from the server-prefilled form
-   * ({@code epistola-task:id} value resolver). Preferred over the HTTP-interceptor
-   * fallback because it is populated in every Valtimo task-open flow.
+   * ({@code epistola-task:id} value resolver), populated in every Valtimo task-open flow.
    */
   @Input() taskInstanceId?: string | null;
 
@@ -255,7 +250,6 @@ export class EpistolaDocumentComponent
     private readonly epistolaPluginService: EpistolaPluginService,
     private readonly sanitizer: DomSanitizer,
     private readonly formIoStateService: FormIoStateService,
-    private readonly taskContext: EpistolaTaskContextService,
     private readonly cdr: ChangeDetectorRef,
   ) {}
 
@@ -335,7 +329,7 @@ export class EpistolaDocumentComponent
   }
 
   private buildRequest(disposition: 'inline' | 'attachment'): DownloadDocumentRequest | null {
-    const taskId = this.taskInstanceId ?? this.taskContext.taskInstanceId;
+    const taskId = this.taskInstanceId ?? null;
     const caseDocumentId = this.formIoStateService.documentId;
     if (!taskId || !caseDocumentId) {
       this.error = 'Document is alleen beschikbaar binnen een taak.';

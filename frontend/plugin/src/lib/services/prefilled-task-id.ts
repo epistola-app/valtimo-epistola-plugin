@@ -5,14 +5,15 @@
  *
  * <p>Background: the Epistola Formio components need the id of the user task whose form
  * they're rendered in, to authorize their backend requests ({@code OperatonTask:VIEW}).
- * The HTTP interceptor ({@link EpistolaTaskContextService}) only captures it in the
- * direct task-open flow — the task-list / case-detail flow bulk-fetches process links and
- * never fires the per-task {@code GET /api/v2/process-link/task/{id}} call it sniffs.
+ * Valtimo exposes no service that carries the task id to a custom Formio component at
+ * runtime, and earlier URL-sniffing only worked in the direct task-open flow (the
+ * task-list / case-detail flow bulk-fetches process links and never fires the per-task
+ * call).
  *
  * <p>Form prefill, however, runs server-side in every flow. A form field with
  * {@code properties.sourceKey = "epistola-task:id"} is filled with the task id at prefill
- * time; this helper reads it back from the Formio root — robustly, regardless of how the
- * task was opened.
+ * time (by the backend {@code EpistolaTaskValueResolverFactory}); this helper reads it back
+ * from the Formio root — robustly, regardless of how the task was opened.
  */
 
 /** The value-resolver source key that yields the current task id at prefill time. */

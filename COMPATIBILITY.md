@@ -48,8 +48,8 @@ across the supported range: the public value-resolver SPI, and `PrefillFormServi
 `OperatonTask` as the resolver's `VariableScope` when prefilling a task form (so the resolver can read
 the task id/executionId/taskDefinitionKey). Both the per-task and bulk process-link endpoints prefill
 through the same path, so this works regardless of how the task was opened. If a future Valtimo changes
-the prefill scope, only `EpistolaTaskValueResolverFactory` is affected; the components still fall back
-to the `EpistolaTaskContextInterceptor` for the direct task-open flow.
+the prefill scope or the value-resolver SPI, `EpistolaTaskValueResolverFactory` (and the embedded
+carrier the components ship) is the single place to adjust.
 
 ## How to update this file
 

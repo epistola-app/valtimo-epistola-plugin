@@ -24,7 +24,7 @@ export function registerEpistolaDocumentComponent(injector: Injector): void {
 
   // Extend the base class to forward the server-prefilled task id (epistola-task: value
   // resolver) to the Angular element, so the download authorizes against the exact task in
-  // every Valtimo task-open flow — not just the direct-open flow the HTTP interceptor observes.
+  // every Valtimo task-open flow.
   const Formio = (window as any).Formio;
   const BaseComponent = Formio?.Components?.components?.[EPISTOLA_DOCUMENT_OPTIONS.type];
   if (!BaseComponent) {
