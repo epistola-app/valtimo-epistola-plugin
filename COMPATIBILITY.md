@@ -39,6 +39,18 @@ If a future Operaton breaks the SPI, set `epistola.catch-event-auto-wiring.enabl
 declarative `epistolaWaitFor` mapping — no need to disable the whole plugin. This is a sub-flag of the
 global `epistola.enabled` gate.
 
+## Form-prefill dependency (task-context delivery)
+
+The Formio components (preview, download, retry-form) obtain the active user task id via a plugin
+`ValueResolverFactory` (`com.ritense.valueresolver.ValueResolverFactory`, prefix `epistola-task:`)
+that runs during Valtimo's server-side form prefill. This relies on two stable behaviours present
+across the supported range: the public value-resolver SPI, and `PrefillFormService` passing the
+`OperatonTask` as the resolver's `VariableScope` when prefilling a task form (so the resolver can read
+the task id/executionId/taskDefinitionKey). Both the per-task and bulk process-link endpoints prefill
+through the same path, so this works regardless of how the task was opened. If a future Valtimo changes
+the prefill scope, only `EpistolaTaskValueResolverFactory` is affected; the components still fall back
+to the `EpistolaTaskContextInterceptor` for the direct task-open flow.
+
 ## How to update this file
 
 This matrix is **maintained by hand** — the "compatible range" column is a deliberate judgement and cannot be generated from the version pin.

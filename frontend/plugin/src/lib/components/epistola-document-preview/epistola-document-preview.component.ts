@@ -221,6 +221,12 @@ export class EpistolaDocumentPreviewComponent
   @Input() processDefinitionKey?: string;
   @Input() sourceActivityId?: string;
   @Input() overrideMapping?: Record<string, any>;
+  /**
+   * Task id forwarded by the Formio wrapper from the server-prefilled form
+   * ({@code epistola-task:id} value resolver). Preferred over the HTTP-interceptor
+   * fallback because it is populated in every Valtimo task-open flow.
+   */
+  @Input() taskInstanceId?: string | null;
 
   loading = false;
   error: string | null = null;
@@ -244,7 +250,7 @@ export class EpistolaDocumentPreviewComponent
    * call. Returns null when used outside a task context (e.g. Formio builder).
    */
   private get currentTaskId(): string | null {
-    return this.taskContext.taskInstanceId;
+    return this.taskInstanceId ?? this.taskContext.taskInstanceId;
   }
 
   get overrideMappingScopes(): string[] {

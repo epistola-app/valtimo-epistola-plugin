@@ -26,6 +26,7 @@ import app.epistola.valtimo.service.EpistolaServiceImpl;
 import app.epistola.valtimo.service.form.FormioFormGenerator;
 import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.form.RetryFormService;
+import app.epistola.valtimo.valueresolver.EpistolaTaskValueResolverFactory;
 import app.epistola.valtimo.web.rest.EpistolaAdminResource;
 import app.epistola.valtimo.web.rest.EpistolaGenerationResource;
 import app.epistola.valtimo.web.rest.EpistolaTemplateResource;
@@ -116,6 +117,16 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(EpistolaService.class)
     public EpistolaService epistolaService(EpistolaApiClientFactory apiClientFactory) {
         return new EpistolaServiceImpl(apiClientFactory);
+    }
+
+    // Exposes the current user task's id to a form at server-side prefill time (prefix
+    // 'epistola-task:'). This is how the Formio components obtain the task id in every Valtimo
+    // task-open flow — including the task-list/case-detail flow that never fires the per-task
+    // process-link GET the frontend interceptor relies on. See EpistolaTaskValueResolverFactory.
+    @Bean
+    @ConditionalOnMissingBean(EpistolaTaskValueResolverFactory.class)
+    public EpistolaTaskValueResolverFactory epistolaTaskValueResolverFactory() {
+        return new EpistolaTaskValueResolverFactory();
     }
 
     @Bean

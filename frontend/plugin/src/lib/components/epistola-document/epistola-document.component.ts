@@ -232,6 +232,13 @@ export class EpistolaDocumentComponent
   /** Filename used for the download disposition. */
   @Input() filename = 'document.pdf';
 
+  /**
+   * Task id forwarded by the Formio wrapper from the server-prefilled form
+   * ({@code epistola-task:id} value resolver). Preferred over the HTTP-interceptor
+   * fallback because it is populated in every Valtimo task-open flow.
+   */
+  @Input() taskInstanceId?: string | null;
+
   loading = false;
   downloading = false;
   error: string | null = null;
@@ -328,7 +335,7 @@ export class EpistolaDocumentComponent
   }
 
   private buildRequest(disposition: 'inline' | 'attachment'): DownloadDocumentRequest | null {
-    const taskId = this.taskContext.taskInstanceId;
+    const taskId = this.taskInstanceId ?? this.taskContext.taskInstanceId;
     const caseDocumentId = this.formIoStateService.documentId;
     if (!taskId || !caseDocumentId) {
       this.error = 'Document is alleen beschikbaar binnen een taak.';

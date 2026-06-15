@@ -2,6 +2,16 @@
   "display": "form",
   "components": [
     {
+      "type": "hidden",
+      "key": "epistolaTaskInstanceId",
+      "input": true,
+      "label": "Epistola Task Id",
+      "persistent": false,
+      "properties": {
+        "sourceKey": "epistola-task:id"
+      }
+    },
+    {
       "key": "pv:decision",
       "type": "select",
       "input": true,
