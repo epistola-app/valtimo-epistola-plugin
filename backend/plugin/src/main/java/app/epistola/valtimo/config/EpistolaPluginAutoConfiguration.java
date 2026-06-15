@@ -47,6 +47,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableScheduling;
 
@@ -78,8 +79,12 @@ public class EpistolaPluginAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(EpistolaCatchEventStartListener.class)
     public EpistolaCatchEventStartListener epistolaCatchEventStartListener(
-            EpistolaCatchEventLinkResolver linkResolver,
-            EpistolaMessageCorrelationService correlationService
+            // @Lazy breaks the startup cycle: this listener is reached (via the parse listener) from
+            // the ProcessEnginePlugin that builds the engine, but its collaborators depend on engine
+            // beans (RepositoryService/RuntimeService) and the ProcessLinkService graph. They are only
+            // needed at runtime (catch-event entry), so inject lazy proxies and resolve on first use.
+            @Lazy EpistolaCatchEventLinkResolver linkResolver,
+            @Lazy EpistolaMessageCorrelationService correlationService
     ) {
         return new EpistolaCatchEventStartListener(linkResolver, correlationService);
     }
