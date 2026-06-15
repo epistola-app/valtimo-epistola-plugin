@@ -123,21 +123,20 @@ EpistolaPlugin#generateDocument(execution, …):
                 body: {…, "routingKey": "3:abc-123"}    // omitted if null
               returns: {requestId, status}
 
-  execution.setVariable(resultProcessVariable, {requestId, status: "PENDING", …})
-  // Correlation keys are uniquely named so parallel branches never clobber each
-  // other (see async.md "Parallel generation"): one keyed by THIS activity, one
-  // keyed by the jobPath value (a locator → result-variable name).
   jobPath = "epistola:job:" + tenantId + "/" + requestId
-  execution.setVariable(activityId + "_epistolaJobPath", jobPath)
+  // jobPath travels inside the rich result so the catch event can pin its token via
+  // ${<resultVar>.jobPath}; the locator (variable NAMED by the jobPath) lets the
+  // collector resolve the result variable from (tenantId, requestId). See async.md.
+  execution.setVariable(resultProcessVariable, {requestId, status: "PENDING", …, jobPath})
   execution.setVariable(jobPath, resultProcessVariable)
 ```
 
 The service task then completes; the BPMN engine moves to the next activity,
 which (per the recommended pattern in [async.md](async.md)) is a Message
 Intermediate Catch Event subscribing on `EpistolaDocumentGenerated`. As the
-branch enters that catch event, the plugin's parse listener pins the branch's
-jobPath as the execution-local `epistolaWaitFor` token on the subscription
-execution. The process suspends there.
+branch enters that catch event, a plugin-attached start listener pins the branch's
+jobPath (from `${<resultVar>.jobPath}`) as the execution-local `epistolaWaitFor`
+token on the subscription execution. The process suspends there.
 
 ## Receiving a result and correlating
 

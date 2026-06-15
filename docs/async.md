@@ -46,12 +46,12 @@ reports a terminal result.
 
 ## Process Variables
 
-| Variable                                          | Set By                                 | Description                                                                                                                                                                                                                                                                                                                                                                         |
-| ------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<activityId>_epistolaJobPath`                    | `generate-document` action             | Composite job identifier `epistola:job:{tenantId}/{requestId}` — internal correlation key, in a variable **named after the generate activity** so parallel branches never overwrite each other. The plugin also writes a locator variable named by the jobPath (value = result-variable name). See [Parallel generation](#parallel-generation).                                     |
-| `epistolaWaitFor`                                 | catch-event listener (auto) / author   | Execution-local token pinned on each waiting `EpistolaDocumentGenerated` catch event = the jobPath it waits for. The collector correlates a completion by matching this, waking exactly that branch. Auto-populated; an author may set it (e.g. a `camunda:inputParameter`) to override.                                                                                            |
-| `epistolaTenantId`                                | `generate-document` action             | Tenant id of the Epistola configuration that handled this request (handy for forms that build tenant-scoped URLs without parsing the composite jobPath).                                                                                                                                                                                                                            |
-| `<resultProcessVariable>` (e.g. `epistolaResult`) | `generate-document` action + collector | **Single source of truth for the result.** Rich `Map` shape: `{requestId, status, documentId, errorMessage}`. Initial value at submit time is `status: "PENDING"` plus the requestId; the collector updates the same variable in-place with terminal data (`COMPLETED` / `FAILED` / `CANCELLED`). Read in BPMN with `${epistolaResult.status}` etc. (JUEL dot-notation on a `Map`). |
+| Variable                                          | Set By                                 | Description                                                                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `epistolaWaitFor`                                 | catch-event listener (auto) / author   | Execution-local token pinned on each waiting `EpistolaDocumentGenerated` catch event = the jobPath it waits for. The collector correlates a completion by matching this, waking exactly that branch. Auto-populated by the plugin; an author may set it (`camunda:inputParameter` `${<resultVar>.jobPath}`) to override. See [Parallel generation](#parallel-generation).                                |
+| `epistolaTenantId`                                | `generate-document` action             | Tenant id of the Epistola configuration that handled this request (handy for forms that build tenant-scoped URLs without parsing the composite jobPath).                                                                                                                                                                                                                                                 |
+| `<resultProcessVariable>` (e.g. `epistolaResult`) | `generate-document` action + collector | **Single source of truth for the result.** Rich `Map` shape: `{requestId, status, documentId, errorMessage, jobPath}`. Initial value at submit time is `status: "PENDING"` plus the requestId and jobPath; the collector updates the same variable in-place with terminal data (`COMPLETED` / `FAILED` / `CANCELLED`). Read in BPMN with `${epistolaResult.status}` etc. (JUEL dot-notation on a `Map`). |
+| `<jobPath>` (e.g. `epistola:job:demo/abc`)        | `generate-document` action             | Locator variable whose **name** is the jobPath and value is the result-variable name; lets the collector resolve the result variable from `(tenantId, requestId)`. Internal.                                                                                                                                                                                                                             |
 
 ## Two patterns: catch event or variable
 
@@ -202,23 +202,25 @@ Two rules make this work; one is on you, one is handled by the plugin:
    same name is fine — each iteration has its own variable scope.)
 
 2. **The plugin makes correlation per-branch automatically — independent of the
-   execution-tree shape.** Operaton does not guarantee where a service task runs in
-   the execution tree (it may run on the concurrent branch execution or on an
-   ephemeral child of it), so the correlation key must not depend on that. Two
-   pieces handle it:
-   - `generate-document` writes its jobPath to a variable **named after its own
-     activity** — `<activityId>_epistolaJobPath` (e.g. `generate-doc1_epistolaJobPath`).
-     A uniquely-named variable is never clobbered by sibling branches. It also writes
-     a locator (a variable named by the jobPath whose value is the result-variable
-     name) so a completion can resolve the result variable from `(tenantId, requestId)`.
-   - A BPMN parse listener (`EpistolaCatchEventTokenParseListener`, registered via a
-     `ProcessEnginePlugin`) attaches a start listener to every
-     `EpistolaDocumentGenerated` catch event. When the branch subscribes, the listener
-     pins that branch's jobPath as the execution-local `epistolaWaitFor` token **on the
-     catch event's own (subscription) execution**, reading it from the
-     `<activityId>_epistolaJobPath` of the generating service task that flows into it.
-     You can override by setting `epistolaWaitFor` yourself (e.g. a
-     `camunda:inputParameter`); the listener never overwrites an existing value.
+   execution-tree shape.** Each waiting `EpistolaDocumentGenerated` catch event carries
+   its own job's composite jobPath, pinned as the execution-local `epistolaWaitFor`
+   variable **on the catch event's own (subscription) execution**. Because the key
+   lives on the subscription execution itself, correlation never depends on where the
+   service task ran in the tree (Operaton doesn't guarantee that). How it gets there:
+   - `generate-document` puts `jobPath` inside the rich result object
+     (`{requestId, status, …, jobPath}`) and also writes a small locator variable
+     (named by the jobPath, value = the result-variable name) so a completion can
+     resolve the result variable from just `(tenantId, requestId)`.
+   - The plugin **auto-attaches** a start listener to every `EpistolaDocumentGenerated`
+     catch event (`EpistolaCatchEventStartListener`, wired by a one-line parse-listener
+     SPI registration). On entry it reads the generating branch's
+     `${<resultVar>.jobPath}` and pins it as `epistolaWaitFor`. **No per-catch-event
+     configuration is needed.**
+   - **Override:** set the input mapping yourself when auto-resolution can't pick the
+     right source (e.g. several generate-document tasks reach one catch event):
+     `<camunda:inputParameter name="epistolaWaitFor">${epistolaResult.jobPath}</camunda:inputParameter>`.
+     The plugin never overwrites a value you set. (See `single-document.bpmn` and
+     `objection-handling.bpmn` in the test-app for worked examples.)
 
 When a result lands, `correlateCompletion` matches the waiting subscription with a
 single indexed query — `messageEventSubscriptionName(EpistolaDocumentGenerated)`
@@ -266,13 +268,13 @@ logs a WARN per violation, and surfaces them via `GET
 /api/v1/plugin/epistola/admin/validations`. The admin page shows a banner
 listing the offending activities.
 
-As a safety net, the plugin also **self-heals** this case: the catch event's
-behaviour is wrapped so that, on entry, it checks whether its job's result has
-already arrived (the result variable is already terminal) and, if so, continues
-immediately instead of subscribing and stalling. So even an async boundary that
-slips past the validator won't strand the process. (The normal synchronous flow
-is unaffected — the result is still `PENDING` on entry, so it subscribes and waits
-as usual.)
+As a safety net, the plugin also **self-heals** this case: the start listener it
+attaches to each catch event registers an after-commit callback; once the
+subscription is committed, the plugin checks whether the job's result has already
+arrived (the result variable is terminal) and, if so, delivers the message so the
+branch continues instead of stalling. So even an async boundary that slips past the
+validator won't strand the process. (The normal synchronous flow is unaffected — the
+result is still `PENDING`, so the callback is a no-op.)
 
 If a catch event still ends up stuck, recover it manually from the
 admin page's Pending Jobs tab — see [Recovering a stuck catch event](#recovering-a-stuck-catch-event).

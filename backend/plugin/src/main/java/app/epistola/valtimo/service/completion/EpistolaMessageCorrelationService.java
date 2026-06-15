@@ -15,6 +15,7 @@ import java.util.Map;
 import static app.epistola.valtimo.domain.EpistolaProcessVariables.MESSAGE_NAME;
 import static app.epistola.valtimo.domain.EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID;
 import static app.epistola.valtimo.domain.EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE;
+import static app.epistola.valtimo.domain.EpistolaProcessVariables.RESULT_KEY_JOB_PATH;
 import static app.epistola.valtimo.domain.EpistolaProcessVariables.RESULT_KEY_REQUEST_ID;
 import static app.epistola.valtimo.domain.EpistolaProcessVariables.RESULT_KEY_STATUS;
 import static app.epistola.valtimo.domain.EpistolaProcessVariables.WAIT_FOR;
@@ -88,7 +89,7 @@ public class EpistolaMessageCorrelationService {
     public int correlateCompletion(String tenantId, String requestId, String status,
                                    String documentId, String errorMessage) {
         String jobPath = buildJobPath(tenantId, requestId);
-        Map<String, Object> resultData = buildResult(requestId, status, documentId, errorMessage);
+        Map<String, Object> resultData = buildResult(requestId, status, documentId, errorMessage, jobPath);
 
         // The result-variable name to update, resolved from the jobPath-named locator (see
         // generate-document). May be null if the job is unknown to this engine (e.g. already ended).
@@ -135,12 +136,53 @@ public class EpistolaMessageCorrelationService {
         return 0;
     }
 
-    private Map<String, Object> buildResult(String requestId, String status, String documentId, String errorMessage) {
+    /**
+     * Self-heal a catch event whose generation result arrived <em>before</em> it subscribed — only
+     * possible when an async boundary precedes the catch event (advised against; flagged by the
+     * validator). Called from the catch event's start execution listener via an after-commit callback,
+     * by which point the subscription is committed and the result variable has been updated in place by
+     * the collector. Reads the pinned {@link EpistolaProcessVariables#WAIT_FOR} token, resolves the
+     * result variable, and if its status is already terminal delivers the message so the branch
+     * continues instead of stalling. In the normal synchronous flow the result is still {@code PENDING}
+     * here, so this is a no-op.
+     *
+     * @param executionId the subscribing catch-event execution
+     * @return {@code true} if the catch event was woken
+     */
+    public boolean selfHeal(String executionId) {
+        if (!(runtimeService.getVariableLocal(executionId, WAIT_FOR) instanceof String jobPath) || jobPath.isBlank()) {
+            return false; // not an Epistola catch event, or no correlation token pinned
+        }
+        String resultVariableName = resolveResultVariableName(jobPath);
+        if (resultVariableName == null) {
+            return false;
+        }
+        if (!(runtimeService.getVariable(executionId, resultVariableName) instanceof Map<?, ?> result)
+                || !EpistolaProcessVariables.isTerminalStatus(result.get(RESULT_KEY_STATUS))) {
+            return false; // result not (yet) terminal — wait normally
+        }
+        try {
+            runtimeService.messageEventReceived(MESSAGE_NAME, executionId);
+            log.info("Self-healed catch event execution {} (jobPath={}): result already present on subscribe",
+                    executionId, jobPath);
+            return true;
+        } catch (MismatchingMessageCorrelationException e) {
+            log.debug("Self-heal: execution {} no longer waiting on {} (jobPath={}): {}",
+                    executionId, MESSAGE_NAME, jobPath, e.getMessage());
+            return false;
+        }
+    }
+
+    private Map<String, Object> buildResult(String requestId, String status, String documentId, String errorMessage,
+                                            String jobPath) {
         Map<String, Object> resultData = new LinkedHashMap<>();
         resultData.put(RESULT_KEY_REQUEST_ID, requestId);
         resultData.put(RESULT_KEY_STATUS, status);
         resultData.put(RESULT_KEY_DOCUMENT_ID, documentId);
         resultData.put(RESULT_KEY_ERROR_MESSAGE, errorMessage);
+        // Preserve jobPath so a catch event that subscribes AFTER the result landed can still pin its
+        // ${<resultVar>.jobPath} token (the self-heal path); also keeps the rich object shape stable.
+        resultData.put(RESULT_KEY_JOB_PATH, jobPath);
         return resultData;
     }
 

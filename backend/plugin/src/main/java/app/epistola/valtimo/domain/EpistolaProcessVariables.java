@@ -29,28 +29,21 @@ public final class EpistolaProcessVariables {
      * Execution-local variable pinned on a waiting {@code EpistolaDocumentGenerated} catch event,
      * holding the composite jobPath of the generation it is waiting for. The result collector
      * correlates a completion by matching this value, so a result wakes exactly that branch's catch
-     * event — independent of the execution-tree shape. Auto-populated by the catch-event parse
-     * listener; a process author may set it explicitly (via a {@code camunda:inputParameter}) to
-     * override the auto-resolution.
+     * event — independent of the execution-tree shape. Populated declaratively by a
+     * {@code camunda:inputParameter} on the catch event ({@code ${<resultVar>.jobPath}}); a process
+     * author may point it elsewhere to override.
      */
     public static final String WAIT_FOR = "epistolaWaitFor";
 
-    /** Suffix for the per-activity jobPath variable: {@code <generateActivityId> + this}. */
-    public static final String ACTIVITY_JOB_PATH_SUFFIX = "_epistolaJobPath";
-
-    /**
-     * The process variable holding the jobPath written by the {@code generate-document} at the given
-     * activity. Named after the activity so parallel branches never clobber each other's value
-     * (a single shared {@code epistolaJobPath} is overwritten by concurrent branches — the original
-     * parallel-correlation bug). The catch-event parse listener reads this (it knows its source
-     * generate activity) to pin {@link #WAIT_FOR} on the waiting catch event.
-     */
-    public static String activityJobPathVariable(String generateActivityId) {
-        return generateActivityId + ACTIVITY_JOB_PATH_SUFFIX;
-    }
-
     /** Result-object key for the Epistola request id (UUID string). */
     public static final String RESULT_KEY_REQUEST_ID = "requestId";
+
+    /**
+     * Result-object key for the composite jobPath ({@code epistola:job:{tenantId}/{requestId}}).
+     * Exposed inside the rich result so a catch event can pin its correlation token declaratively
+     * with {@code ${<resultVar>.jobPath}}.
+     */
+    public static final String RESULT_KEY_JOB_PATH = "jobPath";
 
     /** Result-object key for the current job status (PENDING / IN_PROGRESS / COMPLETED / FAILED / CANCELLED). */
     public static final String RESULT_KEY_STATUS = "status";

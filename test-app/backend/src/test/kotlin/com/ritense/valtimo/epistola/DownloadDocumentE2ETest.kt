@@ -321,6 +321,9 @@ class DownloadDocumentE2ETest {
                 </bpmn:serviceTask>
                 <bpmn:sequenceFlow id="f_a2" sourceRef="submitA" targetRef="waitA" />
                 <bpmn:intermediateCatchEvent id="waitA" name="Wait A" camunda:asyncAfter="true">
+                  <bpmn:extensionElements><camunda:inputOutput>
+                    <camunda:inputParameter name="epistolaWaitFor">${'$'}{resultA.jobPath}</camunda:inputParameter>
+                  </camunda:inputOutput></bpmn:extensionElements>
                   <bpmn:incoming>f_a2</bpmn:incoming>
                   <bpmn:outgoing>f_a3</bpmn:outgoing>
                   <bpmn:messageEventDefinition id="med_a" messageRef="msg_docgen" />
@@ -339,6 +342,9 @@ class DownloadDocumentE2ETest {
                 </bpmn:serviceTask>
                 <bpmn:sequenceFlow id="f_b2" sourceRef="submitB" targetRef="waitB" />
                 <bpmn:intermediateCatchEvent id="waitB" name="Wait B" camunda:asyncAfter="true">
+                  <bpmn:extensionElements><camunda:inputOutput>
+                    <camunda:inputParameter name="epistolaWaitFor">${'$'}{resultB.jobPath}</camunda:inputParameter>
+                  </camunda:inputOutput></bpmn:extensionElements>
                   <bpmn:incoming>f_b2</bpmn:incoming>
                   <bpmn:outgoing>f_b3</bpmn:outgoing>
                   <bpmn:messageEventDefinition id="med_b" messageRef="msg_docgen" />

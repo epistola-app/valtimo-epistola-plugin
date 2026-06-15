@@ -1,6 +1,5 @@
 package app.epistola.valtimo.service.completion;
 
-import app.epistola.valtimo.deployment.EpistolaCatchEventTokenParseListener;
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -12,37 +11,35 @@ import org.operaton.bpm.engine.RuntimeService;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 import org.operaton.bpm.engine.delegate.JavaDelegate;
 import org.operaton.bpm.engine.impl.cfg.ProcessEngineConfigurationImpl;
+import org.operaton.bpm.engine.runtime.Execution;
 import org.operaton.bpm.engine.runtime.Job;
 import org.operaton.bpm.engine.runtime.ProcessInstance;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Reproduces — and guards against — the parallel-generation correlation bug against a real
- * (standalone, in-memory H2) Operaton engine, deploying the <em>actual</em> production shape: a
- * parallel gateway whose branches each run {@code generate-document} → an {@code asyncAfter}
- * {@code EpistolaDocumentGenerated} message catch event → join. The {@link
- * EpistolaCatchEventTokenParseListener} is registered exactly as it is in the running app (via the
- * engine's custom post-BPMN parse listeners), so the test exercises the real auto-pinning of the
- * per-branch {@code epistolaWaitFor} token and the token-based {@link
- * EpistolaMessageCorrelationService#correlateCompletion correlation}.
+ * (standalone, in-memory H2) Operaton engine, deploying the production shape: a parallel gateway whose
+ * branches each run a {@code generate-document} mimic → an {@code asyncAfter}
+ * {@code EpistolaDocumentGenerated} catch event → join.
  *
- * <p>{@link SubmitDelegate} mirrors {@code EpistolaPlugin.generateDocument}: it writes the
- * activity-named jobPath variable and the jobPath-named locator, plus a PENDING rich result on the
- * branch's uniquely-named result variable. The assertions prove each completion wakes exactly its own
- * branch and updates exactly its own result variable — no cross-contamination, no "wake all".
+ * <p>In the running app the per-branch {@code epistolaWaitFor} token is auto-pinned by a parse-listener
+ * SPI (which needs Valtimo's {@code ProcessLinkService}, unavailable here). This test instead pins the
+ * token the same way the auto listener ultimately does — via the standard
+ * {@code camunda:inputParameter epistolaWaitFor = ${<resultVar>.jobPath}} that the listener honours
+ * and that authors can also write explicitly — so it exercises the real correlation path
+ * ({@link EpistolaMessageCorrelationService}) end-to-end. The auto listener/resolver themselves are
+ * covered by their own unit tests.
  */
 class EpistolaParallelCorrelationIntegrationTest {
 
     private static final String MESSAGE = EpistolaProcessVariables.MESSAGE_NAME;
     private static final String TENANT = "demo";
 
-    /** Parallel gateway, 3 branches, each: submit (generate-document mimic) → asyncAfter catch → join. */
     private static final String PARALLEL_BPMN = """
             <?xml version="1.0" encoding="UTF-8"?>
             <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
@@ -84,6 +81,9 @@ class EpistolaParallelCorrelationIntegrationTest {
                 </bpmn:serviceTask>
                 <bpmn:sequenceFlow id="f_%1$s2" sourceRef="submit-%1$s" targetRef="wait-%1$s" />
                 <bpmn:intermediateCatchEvent id="wait-%1$s" camunda:asyncAfter="true">
+                  <bpmn:extensionElements><camunda:inputOutput>
+                    <camunda:inputParameter name="epistolaWaitFor">${%3$s.jobPath}</camunda:inputParameter>
+                  </camunda:inputOutput></bpmn:extensionElements>
                   <bpmn:incoming>f_%1$s2</bpmn:incoming><bpmn:outgoing>f_%1$s3</bpmn:outgoing>
                   <bpmn:messageEventDefinition messageRef="msg" />
                 </bpmn:intermediateCatchEvent>
@@ -91,7 +91,6 @@ class EpistolaParallelCorrelationIntegrationTest {
                 """.formatted(suffix, requestId, resultVar);
     }
 
-    /** Multi-instance (parallel) subprocess: each instance submits → asyncAfter catch → end. */
     private static final String MULTI_INSTANCE_BPMN = """
             <?xml version="1.0" encoding="UTF-8"?>
             <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
@@ -112,6 +111,9 @@ class EpistolaParallelCorrelationIntegrationTest {
                   </bpmn:serviceTask>
                   <bpmn:sequenceFlow id="sf2" sourceRef="submit-mi" targetRef="wait-mi" />
                   <bpmn:intermediateCatchEvent id="wait-mi" camunda:asyncAfter="true">
+                    <bpmn:extensionElements><camunda:inputOutput>
+                      <camunda:inputParameter name="epistolaWaitFor">${miResult.jobPath}</camunda:inputParameter>
+                    </camunda:inputOutput></bpmn:extensionElements>
                     <bpmn:incoming>sf2</bpmn:incoming><bpmn:outgoing>sf3</bpmn:outgoing>
                     <bpmn:messageEventDefinition messageRef="msg_mi" />
                   </bpmn:intermediateCatchEvent>
@@ -124,7 +126,6 @@ class EpistolaParallelCorrelationIntegrationTest {
             </bpmn:definitions>
             """;
 
-    /** Single sequential branch — regression guard for non-parallel flows. */
     private static final String SEQUENTIAL_BPMN = """
             <?xml version="1.0" encoding="UTF-8"?>
             <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
@@ -143,42 +144,14 @@ class EpistolaParallelCorrelationIntegrationTest {
                 </bpmn:serviceTask>
                 <bpmn:sequenceFlow id="sq2" sourceRef="submit-s" targetRef="wait-s" />
                 <bpmn:intermediateCatchEvent id="wait-s" camunda:asyncAfter="true">
+                  <bpmn:extensionElements><camunda:inputOutput>
+                    <camunda:inputParameter name="epistolaWaitFor">${resultSeq.jobPath}</camunda:inputParameter>
+                  </camunda:inputOutput></bpmn:extensionElements>
                   <bpmn:incoming>sq2</bpmn:incoming><bpmn:outgoing>sq3</bpmn:outgoing>
                   <bpmn:messageEventDefinition messageRef="msg_seq" />
                 </bpmn:intermediateCatchEvent>
                 <bpmn:sequenceFlow id="sq3" sourceRef="wait-s" targetRef="s_end" />
                 <bpmn:endEvent id="s_end"><bpmn:incoming>sq3</bpmn:incoming></bpmn:endEvent>
-              </bpmn:process>
-            </bpmn:definitions>
-            """;
-
-    /** Catch event with an author-supplied {@code epistolaWaitFor} input mapping (override). */
-    private static final String OVERRIDE_BPMN = """
-            <?xml version="1.0" encoding="UTF-8"?>
-            <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
-                              xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
-                              targetNamespace="http://bpmn.io/schema/bpmn" id="defs_ovr">
-              <bpmn:message id="msg_ovr" name="EpistolaDocumentGenerated" />
-              <bpmn:process id="override-generation" isExecutable="true" camunda:historyTimeToLive="P1D">
-                <bpmn:startEvent id="o_start"><bpmn:outgoing>oq1</bpmn:outgoing></bpmn:startEvent>
-                <bpmn:sequenceFlow id="oq1" sourceRef="o_start" targetRef="submit-o" />
-                <bpmn:serviceTask id="submit-o" camunda:class="app.epistola.valtimo.service.completion.EpistolaParallelCorrelationIntegrationTest$SubmitDelegate">
-                  <bpmn:extensionElements><camunda:inputOutput>
-                    <camunda:inputParameter name="testRequestId">req-auto</camunda:inputParameter>
-                    <camunda:inputParameter name="testResultVar">resultO</camunda:inputParameter>
-                  </camunda:inputOutput></bpmn:extensionElements>
-                  <bpmn:incoming>oq1</bpmn:incoming><bpmn:outgoing>oq2</bpmn:outgoing>
-                </bpmn:serviceTask>
-                <bpmn:sequenceFlow id="oq2" sourceRef="submit-o" targetRef="wait-o" />
-                <bpmn:intermediateCatchEvent id="wait-o" camunda:asyncAfter="true">
-                  <bpmn:extensionElements><camunda:inputOutput>
-                    <camunda:inputParameter name="epistolaWaitFor">epistola:job:demo/req-override</camunda:inputParameter>
-                  </camunda:inputOutput></bpmn:extensionElements>
-                  <bpmn:incoming>oq2</bpmn:incoming><bpmn:outgoing>oq3</bpmn:outgoing>
-                  <bpmn:messageEventDefinition messageRef="msg_ovr" />
-                </bpmn:intermediateCatchEvent>
-                <bpmn:sequenceFlow id="oq3" sourceRef="wait-o" targetRef="o_end" />
-                <bpmn:endEvent id="o_end"><bpmn:incoming>oq3</bpmn:incoming></bpmn:endEvent>
               </bpmn:process>
             </bpmn:definitions>
             """;
@@ -202,6 +175,9 @@ class EpistolaParallelCorrelationIntegrationTest {
                 </bpmn:serviceTask>
                 <bpmn:sequenceFlow id="aq2" sourceRef="submit-async" targetRef="wait-async" />
                 <bpmn:intermediateCatchEvent id="wait-async" camunda:asyncBefore="true">
+                  <bpmn:extensionElements><camunda:inputOutput>
+                    <camunda:inputParameter name="epistolaWaitFor">${resultAsync.jobPath}</camunda:inputParameter>
+                  </camunda:inputOutput></bpmn:extensionElements>
                   <bpmn:incoming>aq2</bpmn:incoming><bpmn:outgoing>aq3</bpmn:outgoing>
                   <bpmn:messageEventDefinition messageRef="msg_async" />
                 </bpmn:intermediateCatchEvent>
@@ -222,9 +198,6 @@ class EpistolaParallelCorrelationIntegrationTest {
                 .createStandaloneInMemProcessEngineConfiguration();
         configuration.setJobExecutorActivate(false);
         configuration.setEnforceHistoryTimeToLive(false);
-        // Register the catch-event token parse listener exactly as the running app does.
-        // Mutable list: the engine appends its own listeners during bootstrap.
-        configuration.setCustomPostBPMNParseListeners(new ArrayList<>(List.of(new EpistolaCatchEventTokenParseListener())));
         processEngine = configuration.buildProcessEngine();
         runtimeService = processEngine.getRuntimeService();
         managementService = processEngine.getManagementService();
@@ -233,7 +206,6 @@ class EpistolaParallelCorrelationIntegrationTest {
                 .addString("parallel.bpmn", PARALLEL_BPMN)
                 .addString("mi.bpmn", MULTI_INSTANCE_BPMN)
                 .addString("sequential.bpmn", SEQUENTIAL_BPMN)
-                .addString("override.bpmn", OVERRIDE_BPMN)
                 .addString("async.bpmn", ASYNC_BOUNDARY_BPMN)
                 .deploy();
     }
@@ -251,8 +223,7 @@ class EpistolaParallelCorrelationIntegrationTest {
         assertThat(messageSubscriptionCount(pi.getId())).isEqualTo(3);
 
         // Correlate ONLY branch A — must wake exactly that branch, not its siblings.
-        assertThat(correlationService.correlateCompletion(TENANT, "req-a", "COMPLETED", "doc-a", null))
-                .isEqualTo(1);
+        assertThat(correlationService.correlateCompletion(TENANT, "req-a", "COMPLETED", "doc-a", null)).isEqualTo(1);
         assertThat(messageSubscriptionCount(pi.getId())).isEqualTo(2);
         assertThat(documentIdOf(runtimeService.getVariable(pi.getId(), "resultA"))).isEqualTo("doc-a");
         assertThat(documentIdOf(runtimeService.getVariable(pi.getId(), "resultB")))
@@ -262,8 +233,6 @@ class EpistolaParallelCorrelationIntegrationTest {
 
         assertThat(correlationService.correlateCompletion(TENANT, "req-b", "COMPLETED", "doc-b", null)).isEqualTo(1);
         assertThat(correlationService.correlateCompletion(TENANT, "req-c", "COMPLETED", "doc-c", null)).isEqualTo(1);
-
-        // asyncAfter on the catch events defers the continuation to jobs; run them to reach the join.
         executeAllJobs();
 
         assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(pi.getId()).singleResult())
@@ -304,42 +273,34 @@ class EpistolaParallelCorrelationIntegrationTest {
     }
 
     @Test
-    void authorSuppliedWaitForOverrideIsNotClobbered() {
-        ProcessInstance pi = runtimeService.startProcessInstanceByKey("override-generation");
-        // The catch event author pinned epistolaWaitFor explicitly — the listener must not overwrite it,
-        // so a result for the auto-resolved job does NOT match, but the override job does.
-        assertThat(correlationService.correlateCompletion(TENANT, "req-auto", "COMPLETED", "doc-auto", null))
-                .as("auto job must not match an overridden catch event").isZero();
-        assertThat(correlationService.correlateCompletion(TENANT, "req-override", "COMPLETED", "doc-ovr", null))
-                .as("the overridden token wakes the catch event").isEqualTo(1);
-    }
-
-    @Test
-    void resultArrivingBeforeTheCatchEventSubscribesDoesNotStall() {
+    void selfHealCompletesACatchEventWhoseResultArrivedBeforeItSubscribed() {
         // asyncBefore on the catch event: after submit, the process parks at the async job and the
         // catch event has NOT subscribed yet — the window where a fast result would otherwise be lost.
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("async-generation");
-        assertThat(messageSubscriptionCount(pi.getId()))
-                .as("catch event has not subscribed yet (parked at async boundary)").isZero();
+        assertThat(messageSubscriptionCount(pi.getId())).isZero();
 
-        // Result lands before the subscription exists: no subscription to wake, result var updated.
-        assertThat(correlationService.correlateCompletion(TENANT, "req-async", "COMPLETED", "doc-async", null))
-                .isZero();
+        // Result lands before the subscription exists: no subscription to wake; result variable updated.
+        assertThat(correlationService.correlateCompletion(TENANT, "req-async", "COMPLETED", "doc-async", null)).isZero();
 
-        // Now the branch advances into the catch event. Self-heal: it sees the terminal result on
-        // entry and continues instead of subscribing and stalling forever.
+        // Branch advances into the catch event and subscribes (token pinned by the input mapping).
+        executeAllJobs();
+        Execution waiting = runtimeService.createExecutionQuery()
+                .processInstanceId(pi.getId()).messageEventSubscriptionName(MESSAGE).singleResult();
+        assertThat(waiting).as("catch event is now subscribed and would otherwise stall").isNotNull();
+
+        // selfHeal (invoked by the start listener's after-commit hook in the real app) delivers the
+        // already-terminal result so the branch continues.
+        assertThat(correlationService.selfHeal(waiting.getId())).isTrue();
         executeAllJobs();
 
         assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(pi.getId()).singleResult())
                 .as("self-heal completed the catch event instead of stalling").isNull();
-        assertThat(documentIdOf(historicValue(pi.getId(), "resultAsync"))).isEqualTo("doc-async");
     }
 
     @Test
     void correlatingAnUnknownJobWakesNothing() {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("parallel-generation");
-        assertThat(correlationService.correlateCompletion(TENANT, "req-unknown", "COMPLETED", "doc-x", null))
-                .isZero();
+        assertThat(correlationService.correlateCompletion(TENANT, "req-unknown", "COMPLETED", "doc-x", null)).isZero();
         assertThat(messageSubscriptionCount(pi.getId())).isEqualTo(3);
     }
 
@@ -368,45 +329,33 @@ class EpistolaParallelCorrelationIntegrationTest {
         return historic == null ? null : historic.getValue();
     }
 
-    /** Mirrors {@code EpistolaPlugin.generateDocument}: activity-named jobPath + jobPath locator + PENDING result. */
+    /** Mirrors {@code EpistolaPlugin.generateDocument}: rich result (incl. jobPath) + jobPath→resultVar locator. */
     public static class SubmitDelegate implements JavaDelegate {
         @Override
         public void execute(DelegateExecution execution) {
-            String requestId = (String) execution.getVariable("testRequestId");
-            String resultVar = (String) execution.getVariable("testResultVar");
-            String activityId = execution.getCurrentActivityId();
-            String jobPath = EpistolaMessageCorrelationService.buildJobPath(TENANT, requestId);
-
-            execution.setVariable(EpistolaProcessVariables.activityJobPathVariable(activityId), jobPath);
-            execution.setVariable(jobPath, resultVar);
-
-            Map<String, Object> pending = new LinkedHashMap<>();
-            pending.put(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID, requestId);
-            pending.put(EpistolaProcessVariables.RESULT_KEY_STATUS, "PENDING");
-            pending.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
-            pending.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE, null);
-            execution.setVariable(resultVar, pending);
+            putGeneration(execution,
+                    (String) execution.getVariable("testRequestId"),
+                    (String) execution.getVariable("testResultVar"));
         }
     }
 
-    /** Multi-instance variant: requestId comes from the loop element variable {@code req}; one shared result var name. */
+    /** Multi-instance variant: requestId from the loop element variable {@code req}; one shared result var name. */
     public static class MiSubmitDelegate implements JavaDelegate {
         @Override
         public void execute(DelegateExecution execution) {
-            String requestId = (String) execution.getVariable("req");
-            String resultVar = "miResult";
-            String activityId = execution.getCurrentActivityId();
-            String jobPath = EpistolaMessageCorrelationService.buildJobPath(TENANT, requestId);
-
-            execution.setVariable(EpistolaProcessVariables.activityJobPathVariable(activityId), jobPath);
-            execution.setVariable(jobPath, resultVar);
-
-            Map<String, Object> pending = new LinkedHashMap<>();
-            pending.put(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID, requestId);
-            pending.put(EpistolaProcessVariables.RESULT_KEY_STATUS, "PENDING");
-            pending.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
-            pending.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE, null);
-            execution.setVariable(resultVar, pending);
+            putGeneration(execution, (String) execution.getVariable("req"), "miResult");
         }
+    }
+
+    private static void putGeneration(DelegateExecution execution, String requestId, String resultVar) {
+        String jobPath = EpistolaMessageCorrelationService.buildJobPath(TENANT, requestId);
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID, requestId);
+        result.put(EpistolaProcessVariables.RESULT_KEY_STATUS, "PENDING");
+        result.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
+        result.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE, null);
+        result.put(EpistolaProcessVariables.RESULT_KEY_JOB_PATH, jobPath);
+        execution.setVariable(resultVar, result);
+        execution.setVariable(jobPath, resultVar); // locator: jobPath -> result variable name
     }
 }

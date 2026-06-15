@@ -1,5 +1,6 @@
 package app.epistola.valtimo.deployment;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.impl.bpmn.parser.BpmnParseListener;
 import org.operaton.bpm.engine.impl.cfg.AbstractProcessEnginePlugin;
@@ -9,14 +10,15 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Registers Epistola's BPMN parse customisations on the process engine. Exposed as a Spring bean so
- * Valtimo/Operaton's Spring Boot integration collects it and applies it during engine bootstrap.
- *
- * <p>Currently adds {@link EpistolaCatchEventTokenParseListener}, which attaches the per-branch
- * correlation-token wiring to {@code EpistolaDocumentGenerated} catch events.
+ * Registers {@link EpistolaCatchEventParseListener} on the process engine via Camunda's sanctioned
+ * {@code ProcessEnginePlugin} SPI. Exposed as a Spring bean so Valtimo/Operaton's Spring Boot
+ * integration collects and applies it during engine bootstrap.
  */
 @Slf4j
+@RequiredArgsConstructor
 public class EpistolaProcessEnginePlugin extends AbstractProcessEnginePlugin {
+
+    private final EpistolaCatchEventParseListener catchEventParseListener;
 
     @Override
     public void preInit(ProcessEngineConfigurationImpl configuration) {
@@ -25,7 +27,7 @@ public class EpistolaProcessEnginePlugin extends AbstractProcessEnginePlugin {
             listeners = new ArrayList<>();
             configuration.setCustomPostBPMNParseListeners(listeners);
         }
-        listeners.add(new EpistolaCatchEventTokenParseListener());
-        log.info("Registered EpistolaCatchEventTokenParseListener as a custom post-BPMN parse listener");
+        listeners.add(catchEventParseListener);
+        log.info("Registered EpistolaCatchEventParseListener (auto-wires EpistolaDocumentGenerated catch events)");
     }
 }

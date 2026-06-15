@@ -359,11 +359,18 @@ public class EpistolaPlugin {
         // read individual fields via JUEL: ${var.status}, ${var.documentId}, etc.
         // Pre-populated with status=PENDING so downstream BPMN can react immediately
         // (e.g. a "result not yet available" branch).
+        // The composite jobPath (tenantId + requestId) is the per-branch correlation key. It is
+        // included in the rich result so a catch event can pin its correlation token declaratively
+        // with ${<resultVar>.jobPath} (no engine internals needed) — see the EpistolaDocumentGenerated
+        // catch event pattern in docs/async.md.
+        String jobPath = EpistolaMessageCorrelationService.buildJobPath(tenantId, result.getRequestId());
+
         Map<String, Object> resultData = new LinkedHashMap<>();
         resultData.put(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID, result.getRequestId());
         resultData.put(EpistolaProcessVariables.RESULT_KEY_STATUS, "PENDING");
         resultData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
         resultData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE, null);
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_JOB_PATH, jobPath);
         execution.setVariable(resultProcessVariable, resultData);
 
         // Store tenantId as a standalone process variable so it can be used in forms
@@ -371,18 +378,10 @@ public class EpistolaPlugin {
         // Global: identical across branches, read at process-instance scope by the download endpoint.
         execution.setVariable(EpistolaProcessVariables.TENANT_ID, tenantId);
 
-        // Per-branch correlation state, written so parallel branches never clobber each other (a
-        // single shared epistolaJobPath is overwritten by concurrent branches — the original
-        // parallel-correlation bug). Two uniquely-named, process-scoped variables:
-        //  1. <activityId>_epistolaJobPath = jobPath — keyed by THIS generate activity, so the
-        //     EpistolaDocumentGenerated catch-event parse listener (which knows its source activity)
-        //     can read the jobPath back and pin it as the catch event's correlation token (WAIT_FOR).
-        //  2. <jobPath> = resultProcessVariable — a locator keyed by the (globally unique) jobPath
-        //     value, so the result collector can resolve the result-variable name (and process
-        //     instance) from just the completed job. See EpistolaMessageCorrelationService.
-        String activityId = execution.getCurrentActivityId();
-        String jobPath = EpistolaMessageCorrelationService.buildJobPath(tenantId, result.getRequestId());
-        execution.setVariable(EpistolaProcessVariables.activityJobPathVariable(activityId), jobPath);
+        // Locator keyed by the (globally unique) jobPath value, value = the result-variable name, so
+        // the result collector can resolve the result variable (and process instance) from just the
+        // completed job — including the variable pattern with no catch event. Unique name → parallel
+        // branches never clobber it. See EpistolaMessageCorrelationService.
         execution.setVariable(jobPath, resultProcessVariable);
 
         // Hint the collector to look for the result soon — if it's currently

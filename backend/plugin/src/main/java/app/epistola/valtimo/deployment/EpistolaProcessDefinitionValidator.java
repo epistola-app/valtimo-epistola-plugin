@@ -341,7 +341,7 @@ public class EpistolaProcessDefinitionValidator {
      * gateway can lead to our catch event, it counts. Conservative on purpose: we'd
      * rather warn on a path that's unreachable at runtime than silently miss a real race.
      */
-    private static IntermediateCatchEvent findReachableEpistolaCatchEvent(ServiceTask start) {
+    static IntermediateCatchEvent findReachableEpistolaCatchEvent(ServiceTask start) {
         Set<String> visited = new HashSet<>();
         Deque<FlowNode> queue = new ArrayDeque<>();
         for (SequenceFlow sf : start.getOutgoing()) {

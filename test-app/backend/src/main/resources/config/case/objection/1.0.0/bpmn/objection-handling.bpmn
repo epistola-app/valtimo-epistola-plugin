@@ -33,6 +33,13 @@
     </bpmn:boundaryEvent>
 
     <bpmn:intermediateCatchEvent id="wait-for-ack" name="Wacht op ontvangstbevestiging" camunda:asyncAfter="true">
+      <!-- EXAMPLE of the optional explicit override (this branch); the decision catch event below is
+           left auto-wired to show both forms coexisting. See single-document.bpmn for the rationale. -->
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="epistolaWaitFor">${epistolaResult.jobPath}</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_to_wait_ack</bpmn:incoming>
       <bpmn:outgoing>Flow_to_check_ack</bpmn:outgoing>
       <bpmn:messageEventDefinition id="MessageDef_ack" messageRef="Message_EpistolaDocumentGenerated" />

@@ -6,8 +6,11 @@ import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.deploy.CatalogScanner;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger;
+import app.epistola.valtimo.deployment.EpistolaCatchEventLinkResolver;
+import app.epistola.valtimo.deployment.EpistolaCatchEventParseListener;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.deployment.EpistolaProcessEnginePlugin;
+import app.epistola.valtimo.service.completion.EpistolaCatchEventStartListener;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.expression.functions.FormatDateFunction;
@@ -64,9 +67,37 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(EpistolaCatchEventLinkResolver.class)
+    public EpistolaCatchEventLinkResolver epistolaCatchEventLinkResolver(
+            RepositoryService repositoryService,
+            ProcessLinkService processLinkService
+    ) {
+        return new EpistolaCatchEventLinkResolver(repositoryService, processLinkService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaCatchEventStartListener.class)
+    public EpistolaCatchEventStartListener epistolaCatchEventStartListener(
+            EpistolaCatchEventLinkResolver linkResolver,
+            EpistolaMessageCorrelationService correlationService
+    ) {
+        return new EpistolaCatchEventStartListener(linkResolver, correlationService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EpistolaCatchEventParseListener.class)
+    public EpistolaCatchEventParseListener epistolaCatchEventParseListener(
+            EpistolaCatchEventStartListener catchEventStartListener
+    ) {
+        return new EpistolaCatchEventParseListener(catchEventStartListener);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(EpistolaProcessEnginePlugin.class)
-    public EpistolaProcessEnginePlugin epistolaProcessEnginePlugin() {
-        return new EpistolaProcessEnginePlugin();
+    public EpistolaProcessEnginePlugin epistolaProcessEnginePlugin(
+            EpistolaCatchEventParseListener catchEventParseListener
+    ) {
+        return new EpistolaProcessEnginePlugin(catchEventParseListener);
     }
 
     @Bean

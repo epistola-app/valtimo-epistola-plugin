@@ -25,6 +25,16 @@
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="Flow_0nqt7u2" sourceRef="wait-for-generation" targetRef="Event_1y3ssks" />
     <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wait for generation" camunda:asyncAfter="true">
+      <!-- OPTIONAL / EXAMPLE: the plugin auto-wires correlation for EpistolaDocumentGenerated catch
+           events, so this input mapping is normally unnecessary. It is shown here as the explicit
+           override form: it pins the job this catch event waits for, taken from the generate-document
+           result variable's jobPath. Use it when auto-resolution is ambiguous (e.g. several
+           generate-document tasks reach one catch event). The plugin never overwrites a value you set. -->
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="epistolaWaitFor">${epistolaResult.jobPath}</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
       <bpmn:incoming>Flow_1l49nmw</bpmn:incoming>
       <bpmn:outgoing>Flow_0nqt7u2</bpmn:outgoing>
       <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_EpistolaDocumentGenerated" />
