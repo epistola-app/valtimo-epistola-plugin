@@ -53,8 +53,17 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
   class PreviewWithOverrides extends BasePreviewComponent {
     private _debounceTimer: any = null;
     private _changeListenerAttached = false;
+    private _changeHandler: (() => void) | null = null;
+    private _destroyed = false;
 
     attach(element: HTMLElement) {
+      // Formio detaches and re-attaches components on every redraw — not only at
+      // teardown — so a re-attach means the component is alive again. Clear the
+      // destroyed flag here; it only stays set when detach() is the final call
+      // (genuine teardown, e.g. task completion), which is what suppresses the
+      // post-submit preview.
+      this._destroyed = false;
+
       // Bidirectional sync between processLinkSelection object and separate properties.
       // The editForm uses processLinkSelection (single field), while the component
       // config and Angular inputs use processDefinitionKey + sourceActivityId.
@@ -80,30 +89,57 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
       // Listen to form changes and compute input overrides from the mapping
       if (this.root && this.component?.overrideMapping && !this._changeListenerAttached) {
         this._changeListenerAttached = true;
-        this.root.on('change', () => {
-          this._computeAndSetOverrides();
-        });
-        // Compute initial value
-        this._computeAndSetOverrides();
+        this._changeHandler = () => this._computeAndSetOverrides();
+        this.root.on('change', this._changeHandler);
+        // Compute the initial overrides immediately (no debounce) so a pre-filled
+        // form paints its preview without the 1.5s delay.
+        this._computeAndSetOverrides(true);
       }
 
       return result;
     }
 
-    private _computeAndSetOverrides() {
+    // Tear down the change listener and any pending debounce so a preview is never
+    // fired after the form is unmounted (e.g. on task completion). Without this the
+    // 1.5s debounce can outlive submit and POST /preview with reset/incomplete data,
+    // which Epistola rejects with a 400.
+    detach() {
+      this._destroyed = true;
+      if (this._debounceTimer) {
+        clearTimeout(this._debounceTimer);
+        this._debounceTimer = null;
+      }
+      if (this._changeHandler && this.root?.off) {
+        this.root.off('change', this._changeHandler);
+        this._changeHandler = null;
+      }
+      this._changeListenerAttached = false;
+      return super.detach();
+    }
+
+    private _computeAndSetOverrides(immediate = false) {
       if (this._debounceTimer) {
         clearTimeout(this._debounceTimer);
       }
-      this._debounceTimer = setTimeout(() => {
-        const mapping = this.component?.overrideMapping;
-        const formData = this.root?.data;
-        if (mapping && formData) {
-          const overrides = computeInputOverrides(mapping, formData);
-          if (Object.keys(overrides).length > 0) {
-            this.setValue(overrides);
+      this._debounceTimer = setTimeout(
+        () => {
+          // Skip if the form is being/has been submitted or the component is gone —
+          // those previews would run with incomplete/reset data and 400 from Epistola.
+          if (this._destroyed || this.root?.submitting || this.root?.submitted) {
+            return;
           }
-        }
-      }, 1500);
+          const mapping = this.component?.overrideMapping;
+          const formData = this.root?.data;
+          if (!mapping || !formData) {
+            return;
+          }
+          const overrides = computeInputOverrides(mapping, formData);
+          // Push null when there's nothing usable yet so the component reverts to
+          // its "complete the form" placeholder instead of keeping a stale preview.
+          this.setValue(Object.keys(overrides).length > 0 ? overrides : null);
+        },
+        immediate ? 0 : 1500,
+      );
     }
   }
 

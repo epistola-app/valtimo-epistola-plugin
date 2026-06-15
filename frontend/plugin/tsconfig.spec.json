@@ -6,7 +6,7 @@
     "esModuleInterop": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "dom"],
     "types": ["jest"],
     "strict": false
   },

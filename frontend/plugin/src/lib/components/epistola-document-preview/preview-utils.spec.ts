@@ -2,6 +2,9 @@ import {
   expandDotNotation,
   computeInputOverrides,
   isExpression,
+  isOverrideDriven,
+  hasUsableOverrides,
+  shouldLoadPreview,
   FORM_REF_PREFIX,
 } from './preview-utils';
 
@@ -69,6 +72,44 @@ describe('preview-utils', () => {
     it('should overwrite non-object intermediate values', () => {
       // If "a" is first set to a scalar, then "a.b" tries to nest, it overwrites
       expect(expandDotNotation({ a: 'scalar', 'a.b': 2 })).toEqual({ a: { b: 2 } });
+    });
+  });
+
+  describe('isOverrideDriven', () => {
+    it('is true for a non-empty mapping', () => {
+      expect(isOverrideDriven({ doc: { name: 'form:nameField' } })).toBe(true);
+    });
+
+    it('is false for an empty mapping, null, or undefined', () => {
+      expect(isOverrideDriven({})).toBe(false);
+      expect(isOverrideDriven(null)).toBe(false);
+      expect(isOverrideDriven(undefined)).toBe(false);
+    });
+  });
+
+  describe('hasUsableOverrides', () => {
+    it('is true when overrides contain data', () => {
+      expect(hasUsableOverrides({ doc: { name: 'Alice' } })).toBe(true);
+    });
+
+    it('is false for empty object, null, or undefined', () => {
+      expect(hasUsableOverrides({})).toBe(false);
+      expect(hasUsableOverrides(null)).toBe(false);
+      expect(hasUsableOverrides(undefined)).toBe(false);
+    });
+  });
+
+  describe('shouldLoadPreview', () => {
+    it('always loads a preview that has no override mapping (base-data driven)', () => {
+      expect(shouldLoadPreview(undefined, null)).toBe(true);
+      expect(shouldLoadPreview({}, null)).toBe(true);
+    });
+
+    it('waits for overrides when the preview is override-driven', () => {
+      const mapping = { doc: { name: 'form:nameField' } };
+      expect(shouldLoadPreview(mapping, null)).toBe(false);
+      expect(shouldLoadPreview(mapping, {})).toBe(false);
+      expect(shouldLoadPreview(mapping, { doc: { name: 'Alice' } })).toBe(true);
     });
   });
 
