@@ -5,6 +5,7 @@ import com.ritense.valtimo.contract.case_.CaseDefinitionId;
 import com.ritense.valtimo.operaton.domain.OperatonTask;
 import com.ritense.valueresolver.ValueResolverFactory;
 import com.ritense.valueresolver.ValueResolverOption;
+import com.ritense.valueresolver.ValueResolverPropertyKey;
 import kotlin.Unit;
 import org.operaton.bpm.engine.delegate.VariableScope;
 
@@ -89,8 +90,20 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
         return requestedValue -> null;
     }
 
+    /**
+     * Property-map entry point used by {@code ValueResolverService.resolveValues(processInstanceId,
+     * variableScope, keys)} — the path Valtimo's form prefill actually takes. The Kotlin interface's
+     * default would route this back to {@link #createResolver(String, VariableScope)}, but a Java
+     * implementor must do it explicitly (Kotlin interface defaults aren't inherited in Java). Without
+     * this, the prefill receives a null resolver and the carrier field never gets the task id.
+     */
     @Override
     public Function<String, Object> createResolver(Map<String, ?> properties) {
+        Object processInstanceId = properties.get(ValueResolverPropertyKey.PROCESS_INSTANCE_ID);
+        Object variableScope = properties.get(ValueResolverPropertyKey.VARIABLE_SCOPE);
+        if (processInstanceId instanceof String pid && variableScope instanceof VariableScope scope) {
+            return createResolver(pid, scope);
+        }
         return requestedValue -> null;
     }
 

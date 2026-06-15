@@ -5,6 +5,7 @@ import com.ritense.valtimo.operaton.domain.OperatonTask;
 import org.junit.jupiter.api.Test;
 import org.operaton.bpm.engine.delegate.VariableScope;
 
+import java.util.Map;
 import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -36,6 +37,20 @@ class EpistolaTaskValueResolverFactoryTest {
         assertThat(resolver.apply("taskDefinitionKey")).isEqualTo("approveDocument");
         assertThat(resolver.apply("processInstanceId")).isEqualTo("pi-7");
         assertThat(resolver.apply("executionId")).isEqualTo("exec-99");
+    }
+
+    @Test
+    void resolvesViaThePropertyMapPath() {
+        // This is the path Valtimo's form prefill actually uses:
+        // resolveValues(pid, scope, keys) -> createResolver(properties map). A Java factory must route
+        // it back to the (pid, scope) resolver itself; if it doesn't, the carrier field stays empty.
+        OperatonTask task = mock(OperatonTask.class);
+        when(task.getId()).thenReturn("task-123");
+
+        Function<String, Object> resolver =
+                factory.createResolver(Map.of("processInstanceId", "pi-7", "variableScope", task));
+
+        assertThat(resolver.apply("id")).isEqualTo("task-123");
     }
 
     @Test
