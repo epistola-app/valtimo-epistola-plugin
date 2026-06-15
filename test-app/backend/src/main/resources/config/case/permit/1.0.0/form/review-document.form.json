@@ -2,16 +2,6 @@
   "display": "form",
   "components": [
     {
-      "type": "hidden",
-      "key": "epistolaTaskInstanceId",
-      "input": true,
-      "label": "Epistola Task Id",
-      "persistent": false,
-      "properties": {
-        "sourceKey": "epistola-task:id"
-      }
-    },
-    {
       "type": "epistola-document",
       "key": "document",
       "input": false,
@@ -19,7 +9,19 @@
       "display": "both",
       "documentVariable": "epistolaResult",
       "tenantIdVariable": "epistolaTenantId",
-      "filename": "bevestigingsbrief.pdf"
+      "filename": "bevestigingsbrief.pdf",
+      "components": [
+        {
+          "type": "hidden",
+          "key": "epistolaTaskInstanceId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola-task:id"
+          }
+        }
+      ]
     },
     {
       "key": "info",

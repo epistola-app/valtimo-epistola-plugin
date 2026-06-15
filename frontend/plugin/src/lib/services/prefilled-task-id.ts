@@ -22,6 +22,25 @@ export const PREFILLED_TASK_ID_SOURCE_KEY = 'epistola-task:id';
 export const PREFILLED_TASK_ID_DATA_KEY = 'epistolaTaskInstanceId';
 
 /**
+ * Hidden Formio child component that carries the prefilled task id. It is embedded as a
+ * nested component inside each Epistola task component's schema, so dropping that component
+ * brings the carrier with it — the form author never adds a separate field. Valtimo's
+ * server-side prefill fills its {@code defaultValue} from the {@code epistola-task:id}
+ * value resolver; {@link readPrefilledTaskId} reads it back from the form definition.
+ *
+ * {@code persistent: false} keeps the value out of the submission, so the task id never
+ * lands in the case document / process variables.
+ */
+export const PREFILLED_TASK_ID_CARRIER = {
+  type: 'hidden',
+  key: PREFILLED_TASK_ID_DATA_KEY,
+  input: true,
+  persistent: false,
+  label: 'Epistola Task Id',
+  properties: { sourceKey: PREFILLED_TASK_ID_SOURCE_KEY },
+};
+
+/**
  * Reads the prefilled task id from a Formio webform/wizard root, or null when absent.
  *
  * Looks in two places, in order:

@@ -72,24 +72,23 @@ Backend (EpistolaGenerationResource):
 PDF blob → either inline <object> render or anchor.click() download
 ```
 
-Angular Elements bootstrap their own injector tree, so a custom Formio component cannot look up Valtimo's task component via DI, and Valtimo exposes no service carrying the task id to a form at runtime. The component therefore learns the active `taskInstanceId` from **server-side form prefill** (primary, works in every task-open flow) with the HTTP interceptor as a secondary fallback for the direct task-open flow — see [Form setup](#form-setup-required) and [Authorization → Frontend implications](authorization.md#frontend-implications).
+Angular Elements bootstrap their own injector tree, so a custom Formio component cannot look up Valtimo's task component via DI, and Valtimo exposes no service carrying the task id to a form at runtime. The component therefore learns the active `taskInstanceId` from **server-side form prefill** (primary, works in every task-open flow) with the HTTP interceptor as a secondary fallback for the direct task-open flow — see [Task-id carrier](#task-id-carrier) and [Authorization → Frontend implications](authorization.md#frontend-implications).
 
-### Form setup (required)
+### Task-id carrier
 
-For the task id to reach the component, the form that hosts `epistola-document` (or `epistola-document-preview`) must contain a hidden **carrier field** whose `sourceKey` is the `epistola-task:` value resolver:
+No extra form setup is needed: each Epistola task component ships a hidden **carrier child** in its own schema (defined once in `prefilled-task-id.ts` as `PREFILLED_TASK_ID_CARRIER`), so dropping the component is enough — there is no separate field for the author to add. The carrier looks like:
 
 ```json
 {
   "type": "hidden",
   "key": "epistolaTaskInstanceId",
   "input": true,
-  "label": "Epistola Task Id",
   "persistent": false,
   "properties": { "sourceKey": "epistola-task:id" }
 }
 ```
 
-Valtimo prefills this field with the current task id when the form is opened — in both the direct task-open flow and the task-list/case-detail flow — and the component reads it back. `persistent: false` keeps the value out of the submission so it never lands in the case document. The bundled retry form already includes this field; add it once to any form that hosts the preview or download component. Without it, the component falls back to the HTTP interceptor, which only captures the task id in the direct task-open flow.
+Valtimo's server-side prefill recurses into the component's nested `components` and fills this child's `defaultValue` with the current task id (via the `epistola-task:` value resolver) — in both the direct task-open flow and the task-list/case-detail flow. The Formio wrapper reads it back with `readPrefilledTaskId` (which deep-scans the prefilled form definition) and forwards it to the Angular component. `persistent: false` keeps the value out of the submission, so the task id never lands in the case document. If the carrier is ever absent (e.g. a hand-authored form that strips it), the component falls back to the HTTP interceptor, which captures the task id only in the direct task-open flow.
 
 ### Display modes side-by-side
 

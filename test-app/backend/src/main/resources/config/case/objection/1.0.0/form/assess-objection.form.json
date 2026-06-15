@@ -2,16 +2,6 @@
   "display": "form",
   "components": [
     {
-      "type": "hidden",
-      "key": "epistolaTaskInstanceId",
-      "input": true,
-      "label": "Epistola Task Id",
-      "persistent": false,
-      "properties": {
-        "sourceKey": "epistola-task:id"
-      }
-    },
-    {
       "key": "pv:decision",
       "type": "select",
       "input": true,
@@ -47,7 +37,19 @@
           "motivation": "form:pv:motivation",
           "decision": "form:pv:decision"
         }
-      }
+      },
+      "components": [
+        {
+          "type": "hidden",
+          "key": "epistolaTaskInstanceId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola-task:id"
+          }
+        }
+      ]
     },
     {
       "key": "submit",

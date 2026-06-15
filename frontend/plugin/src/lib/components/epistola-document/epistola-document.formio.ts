@@ -1,7 +1,7 @@
 import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
 import { EpistolaDocumentComponent } from './epistola-document.component';
-import { readPrefilledTaskId } from '../../services/prefilled-task-id';
+import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/prefilled-task-id';
 
 export const EPISTOLA_DOCUMENT_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-document',
@@ -11,6 +11,9 @@ export const EPISTOLA_DOCUMENT_OPTIONS: FormioCustomComponentInfo = {
   icon: 'file-pdf-o',
   emptyValue: null,
   fieldOptions: ['label', 'display', 'documentVariable', 'tenantIdVariable', 'filename'],
+  // Embed the hidden task-id carrier so dropping this component is enough — no separate
+  // field for the author to add. Valtimo prefills it server-side via the epistola-task: resolver.
+  schema: { components: [PREFILLED_TASK_ID_CARRIER] },
 };
 
 export function registerEpistolaDocumentComponent(injector: Injector): void {

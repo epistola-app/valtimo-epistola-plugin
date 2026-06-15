@@ -1,7 +1,7 @@
 import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
 import { EpistolaRetryFormComponent } from './epistola-retry-form.component';
-import { readPrefilledTaskId } from '../../services/prefilled-task-id';
+import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/prefilled-task-id';
 
 export const EPISTOLA_RETRY_FORM_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-retry-form',
@@ -11,6 +11,9 @@ export const EPISTOLA_RETRY_FORM_OPTIONS: FormioCustomComponentInfo = {
   icon: 'refresh',
   emptyValue: null,
   fieldOptions: ['sourceActivityId', 'label'], // sourceActivityId is optional (set via BPMN input parameter)
+  // Embed the hidden task-id carrier so dropping this component is enough — no separate
+  // field for the author to add. Valtimo prefills it server-side via the epistola-task: resolver.
+  schema: { components: [PREFILLED_TASK_ID_CARRIER] },
 };
 
 export function registerEpistolaRetryFormComponent(injector: Injector): void {

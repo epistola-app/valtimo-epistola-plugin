@@ -2,16 +2,6 @@
   "display": "form",
   "components": [
     {
-      "type": "hidden",
-      "key": "epistolaTaskInstanceId",
-      "input": true,
-      "label": "Epistola Task Id",
-      "persistent": false,
-      "properties": {
-        "sourceKey": "epistola-task:id"
-      }
-    },
-    {
       "key": "pv:epistolaResult.errorMessage",
       "type": "textfield",
       "input": true,
@@ -22,7 +12,19 @@
       "type": "epistola-retry-form",
       "key": "pv:epistolaEditedData",
       "input": true,
-      "label": "Document Data"
+      "label": "Document Data",
+      "components": [
+        {
+          "type": "hidden",
+          "key": "epistolaTaskInstanceId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola-task:id"
+          }
+        }
+      ]
     },
     {
       "key": "submit",
