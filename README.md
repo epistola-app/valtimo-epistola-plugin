@@ -71,7 +71,7 @@ import { PLUGINS_TOKEN } from "@valtimo/plugin";
 export class AppModule {}
 ```
 
-The plain `EpistolaPluginModule` and `EpistolaPluginModule.forRoot()` are equivalent — the providers (menu, HTTP interceptor, Formio component registrations) live on the module itself, so the Valtimo Configurator's plain `imports: [EpistolaPluginModule]` works the same way. If you prefer the explicit `forRoot()` form (matching how some other Valtimo plugins are documented), it is still supported:
+The plain `EpistolaPluginModule` and `EpistolaPluginModule.forRoot()` are equivalent — the providers (menu service and the Formio component registrations) live on the module itself, so the Valtimo Configurator's plain `imports: [EpistolaPluginModule]` works the same way. If you prefer the explicit `forRoot()` form (matching how some other Valtimo plugins are documented), it is still supported:
 
 ```typescript
 @NgModule({
@@ -81,7 +81,7 @@ The plain `EpistolaPluginModule` and `EpistolaPluginModule.forRoot()` are equiva
 export class AppModule {}
 ```
 
-> **Import at the application root only.** The plugin registers `EpistolaTaskContextInterceptor` with `multi: true`. Importing `EpistolaPluginModule` into a lazy or feature module in addition to `AppModule` would register the interceptor twice and fire it twice per request.
+> **Import at the application root only.** The module registers an `ENVIRONMENT_INITIALIZER` (Formio component registration) and the menu service. Importing `EpistolaPluginModule` into a lazy or feature module in addition to `AppModule` would run that initialization twice (e.g. duplicate menu entries).
 
 ## Required configuration
 
