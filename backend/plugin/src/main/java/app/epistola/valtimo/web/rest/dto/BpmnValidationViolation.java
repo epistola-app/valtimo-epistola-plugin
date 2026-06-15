@@ -36,4 +36,14 @@ public record BpmnValidationViolation(
      * platform-injected asyncAfter. Remediation: remove asyncBefore on the catch event.
      */
     public static final String CODE_ASYNC_BEFORE_ON_CATCH_EVENT = "ASYNC_BEFORE_ON_CATCH_EVENT";
+
+    /**
+     * Two or more {@code generate-document} service tasks flow into the <em>same</em>
+     * {@code EpistolaDocumentGenerated} catch event. The auto-wiring pins exactly one result
+     * variable's jobPath to that catch event, so completions can correlate to the wrong branch
+     * (and the resolver silently keeps only the last pairing). Remediation: give each branch its
+     * own catch event, or disambiguate by setting a distinct {@code epistolaWaitFor}
+     * {@code camunda:inputParameter} on each catch event.
+     */
+    public static final String CODE_AMBIGUOUS_CATCH_EVENT = "AMBIGUOUS_CATCH_EVENT";
 }

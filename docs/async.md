@@ -183,7 +183,14 @@ epistola:
     reconcile-interval-ms: 60000 # check plugin configuration drift
     kick-interval-ms: 3000 # wake an idle collector after submit
     backoff-multiplier: 3.0 # idle backoff multiplier
+  catch-event-auto-wiring:
+    enabled: true # auto-wire EpistolaDocumentGenerated catch events via the engine SPI
 ```
+
+`catch-event-auto-wiring.enabled` (default `true`) is an escape hatch: set it to `false` to drop the
+engine-SPI integration (the `ProcessEnginePlugin` + `BpmnParseListener`) without disabling the whole
+plugin — useful if a future Operaton version breaks the SPI. Correlation then still works for any catch
+event that declares the `epistolaWaitFor` `camunda:inputParameter` mapping explicitly.
 
 The `check-job-status` action still exists for explicit status checks, but the
 recommended process model is generate -> message catch -> download.
@@ -270,7 +277,10 @@ the cursor advances, and the catch event waits forever.
 `EpistolaProcessDefinitionValidator` scans every deployed process definition,
 logs a WARN per violation, and surfaces them via `GET
 /api/v1/plugin/epistola/admin/validations`. The admin page shows a banner
-listing the offending activities.
+listing the offending activities. The same validator also flags **ambiguous
+pairings** (`AMBIGUOUS_CATCH_EVENT`) — two or more `generate-document` tasks
+flowing into one catch event, which the auto-wiring can't disambiguate; fix by
+giving each branch its own catch event or a distinct `epistolaWaitFor` mapping.
 
 As a safety net, the plugin also **self-heals** this case: the start listener it
 attaches to each catch event registers an after-commit callback; once the

@@ -120,11 +120,17 @@ public class EpistolaMessageCorrelationService {
 
         if (correlated > 0) {
             log.debug("Correlated message {} for jobPath={}: {} execution(s)", MESSAGE_NAME, jobPath, correlated);
+            removeLocatorIfTerminal(jobPath, status);
             return correlated;
         }
 
         // No waiting catch-event subscription. Normal for the "variable pattern" (no catch event; the
-        // process reads ${var.status} via JUEL later) — still update the result variable in place.
+        // process reads ${var.status} via JUEL later) — still update the result variable in place. We do
+        // NOT remove the locator here: this same path is hit in the async-boundary race where a catch
+        // event subscribes just after the result lands and then self-heals — and selfHeal() needs the
+        // locator to resolve the result variable. (Genuine variable-pattern processes keep one locator
+        // per generation; that pattern is typically low-volume, and the catch-event pattern — the
+        // high-volume one — is cleaned up above.)
         int updated = updateResultVariableWithoutSubscription(jobPath, resultData);
         if (updated == 0) {
             log.warn("Correlated 0 executions for jobPath={} (status={}); event acked but no waiting "
@@ -134,6 +140,26 @@ public class EpistolaMessageCorrelationService {
                     + "subscription ({} instance(s); variable pattern).", jobPath, status, updated);
         }
         return 0;
+    }
+
+    /**
+     * Once a catch-event-pattern generation has been woken with a terminal status, the jobPath-named
+     * locator variable has done its job (the result variable is updated and the branch correlated), so
+     * remove it to avoid accumulating one variable per generation on long-lived/high-volume process
+     * instances. No-op for non-terminal statuses or when no locator exists.
+     */
+    private void removeLocatorIfTerminal(String jobPath, String status) {
+        if (!EpistolaProcessVariables.isTerminalStatus(status)) {
+            return;
+        }
+        for (VariableInstance locator : runtimeService.createVariableInstanceQuery().variableName(jobPath).list()) {
+            try {
+                runtimeService.removeVariable(locator.getProcessInstanceId(), jobPath);
+            } catch (Exception e) {
+                log.debug("Could not remove locator variable {} on process instance {}: {}",
+                        jobPath, locator.getProcessInstanceId(), e.getMessage());
+            }
+        }
     }
 
     /**

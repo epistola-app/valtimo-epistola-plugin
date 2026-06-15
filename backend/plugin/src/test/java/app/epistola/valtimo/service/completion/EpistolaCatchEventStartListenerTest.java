@@ -9,6 +9,7 @@ import org.operaton.bpm.engine.delegate.DelegateExecution;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -73,6 +74,15 @@ class EpistolaCatchEventStartListenerTest {
 
         verify(execution, never()).setVariableLocal(eq(EpistolaProcessVariables.WAIT_FOR), any());
         verify(execution, never()).getVariable(any());
+    }
+
+    @Test
+    void swallowsExceptionsSoItNeverBreaksCatchEventEntry() {
+        // This listener fires on EVERY message catch event in the app; a failure must never propagate
+        // and break an unrelated process's catch-event entry.
+        when(resolver.resultVariableFor(DEF_ID, CATCH_ACTIVITY)).thenThrow(new RuntimeException("boom"));
+
+        assertThatCode(() -> listener.notify(execution)).doesNotThrowAnyException();
     }
 
     @Test

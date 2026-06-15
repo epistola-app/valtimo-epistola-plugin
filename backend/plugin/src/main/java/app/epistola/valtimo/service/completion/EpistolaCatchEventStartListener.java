@@ -40,14 +40,24 @@ public class EpistolaCatchEventStartListener implements ExecutionListener {
 
     @Override
     public void notify(DelegateExecution execution) {
-        String resultVariableName =
-                linkResolver.resultVariableFor(execution.getProcessDefinitionId(), execution.getCurrentActivityId());
-        if (resultVariableName == null) {
-            return; // not an Epistola generate-document → catch event pattern
-        }
+        // This listener is attached to EVERY message catch event in the whole application (Epistola or
+        // not), so a failure here must never break an unrelated process's catch-event entry. Swallow and
+        // log: the worst case degrades to "token not auto-pinned" (visible via this WARN, the validator,
+        // and the admin reconcile) rather than a broken engine transaction.
+        try {
+            String resultVariableName =
+                    linkResolver.resultVariableFor(execution.getProcessDefinitionId(), execution.getCurrentActivityId());
+            if (resultVariableName == null) {
+                return; // not an Epistola generate-document → catch event pattern
+            }
 
-        pinWaitToken(execution, resultVariableName);
-        armSelfHeal(execution.getId());
+            pinWaitToken(execution, resultVariableName);
+            armSelfHeal(execution.getId());
+        } catch (Exception e) {
+            log.warn("Epistola catch-event auto-wiring failed for execution {} (activity {}); continuing "
+                            + "without an auto-pinned token: {}",
+                    execution.getId(), execution.getCurrentActivityId(), e.getMessage());
+        }
     }
 
     /** Pin the branch's jobPath as {@link EpistolaProcessVariables#WAIT_FOR}, unless already set (author override). */

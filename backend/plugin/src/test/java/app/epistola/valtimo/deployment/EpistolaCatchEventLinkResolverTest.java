@@ -88,6 +88,19 @@ class EpistolaCatchEventLinkResolverTest {
         assertThat(resolver.resultVariableFor(DEF_ID, "wait-doc1")).isNull();
     }
 
+    @Test
+    void doesNotCacheAnEmptyMappingWhenTheModelHasEpistolaCatchEvents() {
+        // Process links not loaded yet (deployment/restart ordering): the model HAS an Epistola catch
+        // event but the pairing can't be built. This must NOT poison the cache.
+        when(processLinkService.getProcessLinks(DEF_ID)).thenReturn(List.of());
+        assertThat(resolver.resultVariableFor(DEF_ID, "wait-doc1")).isNull();
+
+        // Links become available — a later call must re-resolve rather than serve a cached empty result.
+        PluginProcessLink link = generateDocumentLink("generate-doc1", "requestId1");
+        when(processLinkService.getProcessLinks(DEF_ID)).thenReturn(List.<ProcessLink>of(link));
+        assertThat(resolver.resultVariableFor(DEF_ID, "wait-doc1")).isEqualTo("requestId1");
+    }
+
     private PluginProcessLink generateDocumentLink(String activityId, String resultProcessVariable) {
         ObjectNode props = JsonNodeFactory.instance.objectNode();
         props.put("resultProcessVariable", resultProcessVariable);

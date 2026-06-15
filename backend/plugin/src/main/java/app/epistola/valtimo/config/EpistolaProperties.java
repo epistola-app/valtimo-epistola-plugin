@@ -20,6 +20,20 @@ public class EpistolaProperties {
 
     private final ResultCollector resultCollector = new ResultCollector();
     private final RetryForm retryForm = new RetryForm();
+    private final CatchEventAutoWiring catchEventAutoWiring = new CatchEventAutoWiring();
+
+    @Data
+    public static class CatchEventAutoWiring {
+
+        /**
+         * Whether the plugin auto-wires {@code EpistolaDocumentGenerated} catch events via Operaton's
+         * process-engine parse SPI (a {@code ProcessEnginePlugin} + {@code BpmnParseListener}). Default
+         * true. Set to false to disable the engine-SPI integration entirely — an escape hatch should a
+         * future Operaton version break the SPI. Correlation then still works for any catch event that
+         * declares the {@code epistolaWaitFor} {@code camunda:inputParameter} mapping explicitly.
+         */
+        private boolean enabled = true;
+    }
 
     @Data
     public static class RetryForm {

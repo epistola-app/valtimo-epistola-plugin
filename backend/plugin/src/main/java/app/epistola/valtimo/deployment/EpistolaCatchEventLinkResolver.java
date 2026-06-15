@@ -22,6 +22,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * {@code generate-document} process link, find its reachable catch event and map that catch event's id
  * to the link's {@code resultProcessVariable}. Results are cached per process-definition id (a deployed
  * version is immutable).
+ *
+ * <p><b>Cache only trustworthy results.</b> An empty mapping is cached only when the model genuinely has
+ * no {@code EpistolaDocumentGenerated} catch event (definitively non-Epistola). If the model contains
+ * Epistola catch events but the mapping came back empty — e.g. the process links aren't loaded yet, or
+ * the BPMN model was momentarily unreadable — the result is treated as "not ready" and is
+ * <em>not</em> cached, so a later call retries instead of poisoning the definition until restart.
  */
 @RequiredArgsConstructor
 public class EpistolaCatchEventLinkResolver {
@@ -44,19 +50,30 @@ public class EpistolaCatchEventLinkResolver {
         if (processDefinitionId == null || catchEventActivityId == null) {
             return null;
         }
-        return cache.computeIfAbsent(processDefinitionId, this::buildMapping).get(catchEventActivityId);
+        Map<String, String> mapping = cache.get(processDefinitionId);
+        if (mapping == null) {
+            Mapping built = buildMapping(processDefinitionId);
+            if (built.cacheable()) {
+                cache.putIfAbsent(processDefinitionId, built.mapping());
+            }
+            mapping = built.mapping();
+        }
+        return mapping.get(catchEventActivityId);
     }
 
-    private Map<String, String> buildMapping(String processDefinitionId) {
+    /** A built mapping plus whether it's safe to cache (see class doc — never cache a "not ready" result). */
+    private record Mapping(Map<String, String> mapping, boolean cacheable) {}
+
+    private Mapping buildMapping(String processDefinitionId) {
         Map<String, String> mapping = new HashMap<>();
         BpmnModelInstance model;
         try {
             model = repositoryService.getBpmnModelInstance(processDefinitionId);
         } catch (Exception e) {
-            return mapping; // definition gone / unreadable — nothing to resolve
+            return new Mapping(mapping, false); // unreadable — retry later, don't poison the cache
         }
         if (model == null) {
-            return mapping;
+            return new Mapping(mapping, false);
         }
         for (PluginProcessLink link : generateDocumentLinks(processDefinitionId)) {
             if (!(model.getModelElementById(link.getActivityId()) instanceof ServiceTask serviceTask)) {
@@ -69,7 +86,20 @@ public class EpistolaCatchEventLinkResolver {
                 mapping.put(catchEvent.getId(), resultVariable);
             }
         }
-        return mapping;
+        // Cacheable when we have a confident answer: a resolved mapping, or a model that genuinely has
+        // no Epistola catch event. An empty mapping for a model that DOES have Epistola catch events
+        // means the pairing isn't resolvable yet (process links not loaded) — don't cache it.
+        boolean cacheable = !mapping.isEmpty() || !hasEpistolaCatchEvent(model);
+        return new Mapping(mapping, cacheable);
+    }
+
+    private static boolean hasEpistolaCatchEvent(BpmnModelInstance model) {
+        for (IntermediateCatchEvent ice : model.getModelElementsByType(IntermediateCatchEvent.class)) {
+            if (EpistolaProcessDefinitionValidator.matchesEpistolaMessage(ice)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private java.util.List<PluginProcessLink> generateDocumentLinks(String processDefinitionId) {

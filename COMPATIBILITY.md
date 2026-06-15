@@ -34,6 +34,11 @@ Operaton changes this SPI, only those two small classes are affected; the declar
 (`camunda:inputParameter epistolaWaitFor = ${<resultVar>.jobPath}`) keeps correlation working without
 the auto-wiring.
 
+If a future Operaton breaks the SPI, set `epistola.catch-event-auto-wiring.enabled=false` (default
+`true`) to drop the `ProcessEnginePlugin` + `BpmnParseListener` beans entirely and fall back to the
+declarative `epistolaWaitFor` mapping — no need to disable the whole plugin. This is a sub-flag of the
+global `epistola.enabled` gate.
+
 ## How to update this file
 
 This matrix is **maintained by hand** — the "compatible range" column is a deliberate judgement and cannot be generated from the version pin.

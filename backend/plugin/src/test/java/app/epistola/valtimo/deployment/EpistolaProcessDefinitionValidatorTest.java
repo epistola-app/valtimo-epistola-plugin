@@ -18,6 +18,7 @@ import org.springframework.scheduling.TaskScheduler;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 
@@ -213,6 +214,34 @@ class EpistolaProcessDefinitionValidatorTest {
     }
 
     @Test
+    void twoGenerateDocumentsReachingTheSameCatchEvent_isFlaggedAsAmbiguous() {
+        // fork → gen-a → merge → wait ; fork → gen-b → merge → wait. Both generate-documents
+        // forward-reach the same catch event, which the auto-wiring cannot disambiguate.
+        BpmnModelInstance model = Bpmn.createExecutableProcess(PROCESS_KEY)
+                .startEvent("start")
+                .parallelGateway("fork")
+                .serviceTask("gen-a")
+                .parallelGateway("merge")
+                .intermediateCatchEvent("wait-for-generation")
+                .message("EpistolaDocumentGenerated")
+                .endEvent("end")
+                .moveToNode("fork")
+                .serviceTask("gen-b")
+                .connectTo("merge")
+                .done();
+        installBpmn(model);
+        installLinks("gen-a", "gen-b");
+
+        validator.scan();
+
+        assertThat(validator.getViolations()).singleElement().satisfies(v -> {
+            assertThat(v.code()).isEqualTo(BpmnValidationViolation.CODE_AMBIGUOUS_CATCH_EVENT);
+            assertThat(v.activityId()).isEqualTo("wait-for-generation");
+            assertThat(v.message()).contains("gen-a").contains("gen-b");
+        });
+    }
+
+    @Test
     void noMatchingLink_skipsModel() {
         installBpmn(simpleModel("EpistolaDocumentGenerated"));
         when(processLinkService.getProcessLinks(DEFINITION_ID)).thenReturn(List.<ProcessLink>of());
@@ -348,6 +377,17 @@ class EpistolaProcessDefinitionValidatorTest {
         lenient().when(link.getActivityId()).thenReturn(activityId);
         lenient().when(link.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
         when(processLinkService.getProcessLinks(DEFINITION_ID)).thenReturn(List.<ProcessLink>of(link));
+    }
+
+    private void installLinks(String... activityIds) {
+        List<ProcessLink> links = Arrays.stream(activityIds).map(activityId -> {
+            PluginProcessLink link = mock(PluginProcessLink.class);
+            lenient().when(link.getId()).thenReturn(UUID.randomUUID());
+            lenient().when(link.getActivityId()).thenReturn(activityId);
+            lenient().when(link.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
+            return (ProcessLink) link;
+        }).toList();
+        when(processLinkService.getProcessLinks(DEFINITION_ID)).thenReturn(links);
     }
 
     private static BpmnModelInstance simpleModel(String messageName) {

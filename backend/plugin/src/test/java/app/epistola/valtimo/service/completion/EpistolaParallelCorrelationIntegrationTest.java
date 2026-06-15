@@ -298,6 +298,21 @@ class EpistolaParallelCorrelationIntegrationTest {
     }
 
     @Test
+    void terminalCorrelationRemovesTheJobPathLocatorVariable() {
+        ProcessInstance pi = runtimeService.startProcessInstanceByKey("parallel-generation");
+        String jobPathA = EpistolaMessageCorrelationService.buildJobPath(TENANT, "req-a");
+        assertThat(locatorCount(pi.getId(), jobPathA)).as("locator present while the job is in flight").isEqualTo(1);
+
+        correlationService.correlateCompletion(TENANT, "req-a", "COMPLETED", "doc-a", null);
+
+        assertThat(locatorCount(pi.getId(), jobPathA))
+                .as("locator removed once the job reached a terminal status").isZero();
+        // Sibling branches' locators are untouched.
+        assertThat(locatorCount(pi.getId(), EpistolaMessageCorrelationService.buildJobPath(TENANT, "req-b")))
+                .isEqualTo(1);
+    }
+
+    @Test
     void correlatingAnUnknownJobWakesNothing() {
         ProcessInstance pi = runtimeService.startProcessInstanceByKey("parallel-generation");
         assertThat(correlationService.correlateCompletion(TENANT, "req-unknown", "COMPLETED", "doc-x", null)).isZero();
@@ -317,6 +332,11 @@ class EpistolaParallelCorrelationIntegrationTest {
     private long messageSubscriptionCount(String processInstanceId) {
         return runtimeService.createEventSubscriptionQuery()
                 .processInstanceId(processInstanceId).eventName(MESSAGE).count();
+    }
+
+    private long locatorCount(String processInstanceId, String jobPath) {
+        return runtimeService.createVariableInstanceQuery()
+                .processInstanceIdIn(processInstanceId).variableName(jobPath).count();
     }
 
     private Object documentIdOf(Object richResult) {

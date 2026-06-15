@@ -89,8 +89,14 @@ public class EpistolaPluginAutoConfiguration {
         return new EpistolaCatchEventStartListener(linkResolver, correlationService);
     }
 
+    // The parse listener + process-engine plugin are the plugin's only use of Operaton's
+    // sanctioned-but-internal engine SPI. They're gated behind a dedicated sub-flag (nested under the
+    // global epistola.enabled gate) so operators can disable just the engine integration — falling back
+    // to declarative epistolaWaitFor input mappings — without disabling the whole plugin, e.g. if a
+    // future Operaton bump breaks the SPI.
     @Bean
     @ConditionalOnMissingBean(EpistolaCatchEventParseListener.class)
+    @ConditionalOnProperty(name = "epistola.catch-event-auto-wiring.enabled", havingValue = "true", matchIfMissing = true)
     public EpistolaCatchEventParseListener epistolaCatchEventParseListener(
             EpistolaCatchEventStartListener catchEventStartListener
     ) {
@@ -99,6 +105,7 @@ public class EpistolaPluginAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EpistolaProcessEnginePlugin.class)
+    @ConditionalOnProperty(name = "epistola.catch-event-auto-wiring.enabled", havingValue = "true", matchIfMissing = true)
     public EpistolaProcessEnginePlugin epistolaProcessEnginePlugin(
             EpistolaCatchEventParseListener catchEventParseListener
     ) {

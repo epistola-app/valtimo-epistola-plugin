@@ -39,6 +39,11 @@ Read in BPMN with JUEL dot-notation: `${epistolaResult.status}`, `${epistolaResu
 > result-variable → jobPath (so the catch event self-identifies); the locator is jobPath →
 > result-variable (so the collector resolves back). Both are needed because the two sides start from
 > different keys.
+>
+> The locator is **removed** once a catch-event-pattern branch is woken with a terminal status, so it
+> doesn't accumulate (one per generation) on long-lived/high-volume instances. Pure variable-pattern
+> processes (no catch event) keep their locator — that pattern is typically low-volume, and removing it
+> there would break the async-boundary self-heal that relies on it.
 
 ## 3. Standalone helpers
 
