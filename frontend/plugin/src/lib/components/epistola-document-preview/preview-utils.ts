@@ -31,6 +31,43 @@ export function expandDotNotation(flat: Record<string, any>): Record<string, any
 }
 
 /**
+ * A preview is "override-driven" when it has a non-empty override mapping: its
+ * input data comes from the form via the mapping, so it must wait for that data
+ * before it can render. Previews without a mapping load straight from the base
+ * doc/case data.
+ */
+export function isOverrideDriven(mapping?: OverrideMapping | null): boolean {
+  return !!mapping && Object.keys(mapping).length > 0;
+}
+
+/**
+ * Whether the computed input overrides carry any usable data yet.
+ */
+export function hasUsableOverrides(overrides?: Record<string, any> | null): boolean {
+  return !!overrides && Object.keys(overrides).length > 0;
+}
+
+/**
+ * Decide whether a preview request should fire given the configured override
+ * mapping and the currently computed overrides.
+ *
+ * - Override-driven previews only load once the mapped form data is present;
+ *   before that they show a "complete the form" placeholder and fire nothing
+ *   (avoids a doomed request that Epistola rejects with a 400 for missing
+ *   required fields).
+ * - Previews without a mapping always load (base data is the whole input).
+ */
+export function shouldLoadPreview(
+  mapping?: OverrideMapping | null,
+  overrides?: Record<string, any> | null,
+): boolean {
+  if (isOverrideDriven(mapping)) {
+    return hasUsableOverrides(overrides);
+  }
+  return true;
+}
+
+/**
  * Given an override mapping (scope -> { inputPath -> "form:<componentKey>" })
  * and form data, produce the inputOverrides object for the backend.
  * The "form:" prefix identifies form field references; the remainder is the Formio component key.

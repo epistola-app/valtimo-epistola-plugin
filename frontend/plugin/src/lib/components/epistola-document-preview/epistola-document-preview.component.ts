@@ -14,6 +14,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { Subscription } from 'rxjs';
 import { EpistolaPluginService, EpistolaTaskContextService } from '../../services';
+import { shouldLoadPreview } from './preview-utils';
 
 @Component({
   standalone: true,
@@ -274,13 +275,13 @@ export class EpistolaDocumentPreviewComponent
         return;
       }
 
-      this.loadPreview();
+      this.triggerPreview();
       return;
     }
 
     // React to value changes (input overrides from the Formio wrapper).
     if (changes['value']) {
-      this.loadPreview();
+      this.triggerPreview();
     }
   }
 
@@ -290,7 +291,30 @@ export class EpistolaDocumentPreviewComponent
   }
 
   refresh(): void {
+    this.triggerPreview();
+  }
+
+  /**
+   * Load the preview only when there is enough data for it. Override-driven
+   * previews (those with an override mapping) wait until the mapped form data
+   * has been computed; until then they show a placeholder rather than firing a
+   * request that Epistola would reject with a 400 for missing required fields.
+   */
+  private triggerPreview(): void {
+    if (!shouldLoadPreview(this.overrideMapping, this.value)) {
+      this.showWaitingForInput();
+      return;
+    }
     this.loadPreview();
+  }
+
+  private showWaitingForInput(): void {
+    this.revokeBlobUrl();
+    this.previewSubscription?.unsubscribe();
+    this.previewUrl = null;
+    this.loading = false;
+    this.error = 'Complete the form to generate a preview.';
+    this.cdr.markForCheck();
   }
 
   /**
