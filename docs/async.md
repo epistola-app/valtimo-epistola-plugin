@@ -46,6 +46,10 @@ reports a terminal result.
 
 ## Process Variables
 
+> This table covers the async/correlation flow. For the **complete** variable reference — the rich
+> result keys, the retry and polling variables, the `download-document` outputs, and what was removed
+> in the parallel-correlation redesign — see [process-variables.md](process-variables.md).
+
 | Variable                                          | Set By                                 | Description                                                                                                                                                                                                                                                                                                                                                                                              |
 | ------------------------------------------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `epistolaWaitFor`                                 | catch-event listener (auto) / author   | Execution-local token pinned on each waiting `EpistolaDocumentGenerated` catch event = the jobPath it waits for. The collector correlates a completion by matching this, waking exactly that branch. Auto-populated by the plugin; an author may set it (`camunda:inputParameter` `${<resultVar>.jobPath}`) to override. See [Parallel generation](#parallel-generation).                                |
