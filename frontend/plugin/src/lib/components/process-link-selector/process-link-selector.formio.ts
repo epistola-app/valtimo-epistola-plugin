@@ -1,6 +1,7 @@
 import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
 import { EpistolaProcessLinkSelectorComponent } from './process-link-selector.component';
+import { hideFormioComponentFromBuilder } from '../formio-builder-utils';
 
 export const EPISTOLA_PROCESS_LINK_SELECTOR_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-process-link-selector',
@@ -19,5 +20,7 @@ export function registerEpistolaProcessLinkSelectorComponent(injector: Injector)
       EpistolaProcessLinkSelectorComponent,
       injector,
     );
+    // Internal editForm widget — not a standalone form field. Hide it from the builder palette.
+    hideFormioComponentFromBuilder(EPISTOLA_PROCESS_LINK_SELECTOR_OPTIONS.type);
   }
 }

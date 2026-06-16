@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Internal Formio components are no longer offered in the form builder's component palette.** `epistola-override-builder` and `epistola-process-link-selector` are editForm-only widgets (they render inside the document-preview component's settings), and `epistola-retry-form` is part of the plugin's auto-deployed retry form — none are meant to be dropped onto a form directly. They're now hidden from the palette (`hideFormioComponentFromBuilder` overrides their static `builderInfo` to `false`); they still render wherever already present and inside editForms. The author-facing `epistola-document` and `epistola-document-preview` remain available.
+
 - **Hardened the parallel-correlation auto-wiring and made it respect the disable flags.** Follow-up to the parallel `generate-document` fix, addressing risks found in review:
   - **Disable safety**: when `epistola.enabled=false` the engine SPI is never registered and none of the catch-event/correlation beans exist (they all live inside the conditional auto-configuration) — now covered by `EpistolaCatchEventAutoWiringConfigTest`.
   - **New escape-hatch sub-flag** `epistola.catch-event-auto-wiring.enabled` (default `true`): drops only the `ProcessEnginePlugin` + `BpmnParseListener` beans so correlation falls back to declarative `epistolaWaitFor` mappings, without disabling the whole plugin — recovery path if a future Operaton breaks the SPI.
