@@ -283,8 +283,13 @@ export class EpistolaDocumentPreviewComponent
       return;
     }
 
-    // React to value changes (input overrides from the Formio wrapper).
-    if (changes['value']) {
+    if (this.designMode) return;
+
+    // React to input-override changes, and to the task id arriving late: the Formio
+    // wrapper sets taskInstanceId after attach, so it can land after the first render —
+    // re-run the preview once it does, instead of leaving the "only available from
+    // within a user task" message until a manual refresh.
+    if (changes['value'] || changes['taskInstanceId']) {
       this.triggerPreview();
     }
   }

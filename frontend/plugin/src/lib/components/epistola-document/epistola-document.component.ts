@@ -4,9 +4,10 @@ import {
   Component,
   EventEmitter,
   Input,
+  OnChanges,
   OnDestroy,
-  OnInit,
   Output,
+  SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -201,7 +202,7 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
   ],
 })
 export class EpistolaDocumentComponent
-  implements FormioCustomComponent<unknown>, OnInit, OnDestroy
+  implements FormioCustomComponent<unknown>, OnChanges, OnDestroy
 {
   @Input() value: unknown;
   @Output() valueChange = new EventEmitter<unknown>();
@@ -253,11 +254,15 @@ export class EpistolaDocumentComponent
     private readonly cdr: ChangeDetectorRef,
   ) {}
 
-  ngOnInit(): void {
-    if (this.designMode) {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (this.designMode || this.display === 'button') {
       return;
     }
-    if (this.display !== 'button') {
+    // The Formio wrapper sets taskInstanceId around attach, so it can arrive after the
+    // first change — (re)load the inline document once it's available instead of leaving
+    // the "Document is alleen beschikbaar binnen een taak" message until a manual refresh.
+    // (For display="button" the download() click reads the task id on demand.)
+    if (changes['taskInstanceId'] && this.taskInstanceId) {
       this.loadInline();
     }
   }

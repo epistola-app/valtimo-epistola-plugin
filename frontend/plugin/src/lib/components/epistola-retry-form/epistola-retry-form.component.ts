@@ -184,6 +184,13 @@ export class EpistolaRetryFormComponent
     if (!this.loaded) {
       this.loaded = true;
       this.loadForm();
+      return;
+    }
+    // The Formio wrapper sets taskInstanceId after attach, so it can land after the
+    // first render — if the form failed to load for lack of a task id, retry once it
+    // arrives instead of leaving the "only available from within a user task" message.
+    if (changes['taskInstanceId'] && this.taskInstanceId && !this.formDefinition) {
+      this.loadForm();
     }
   }
 

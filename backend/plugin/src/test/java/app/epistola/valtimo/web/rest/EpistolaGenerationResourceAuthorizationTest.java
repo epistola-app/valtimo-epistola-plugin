@@ -109,11 +109,15 @@ class EpistolaGenerationResourceAuthorizationTest {
     }
 
     @Test
-    void preview_returns400WhenSourceActivityIdMissing() {
-        var request = new PreviewRequest(TASK_ID, null, null, null);
+    void preview_allowsBlankSourceActivityId_forAutoDiscovery() {
+        // sourceActivityId is optional — PreviewService auto-discovers the generate-document
+        // link when it is blank (used by the retry form's embedded preview).
+        when(previewService.generatePreview(any(PreviewRequest.class), eq(DOCUMENT_ID), eq(PROCESS_INSTANCE_ID)))
+                .thenReturn(new java.io.ByteArrayInputStream(new byte[]{0x25, 0x50, 0x44, 0x46}));
 
-        assertThat(resource.previewDocument(request).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+        var response = resource.previewDocument(new PreviewRequest(TASK_ID, null, null, null));
+
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
     }
 
     @Test

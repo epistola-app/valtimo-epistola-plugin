@@ -248,10 +248,8 @@ public class EpistolaGenerationResource {
             return ResponseEntity.badRequest().body(
                     Map.of("error", "taskId is required"));
         }
-        if (request.sourceActivityId() == null || request.sourceActivityId().isBlank()) {
-            return ResponseEntity.badRequest().body(
-                    Map.of("error", "sourceActivityId is required"));
-        }
+        // sourceActivityId is optional: when blank, PreviewService auto-discovers the single
+        // generate-document link (and errors AMBIGUOUS_ACTIVITY if there is more than one).
 
         OperatonTask task;
         try {

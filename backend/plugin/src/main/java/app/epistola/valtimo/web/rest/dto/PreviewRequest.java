@@ -12,7 +12,8 @@ import java.util.Map;
  *
  * @param taskId           The Operaton user task ID providing the authorization context.
  *                         Required: the caller must have {@code OperatonTask:VIEW} on this task.
- * @param sourceActivityId The BPMN activity ID of the generate-document service task (required)
+ * @param sourceActivityId The BPMN activity ID of the generate-document service task. Optional:
+ *                         when blank, the single generate-document link is auto-discovered.
  * @param overrides        Optional data overrides (deep-merged with resolved data after mapping, overrides win)
  * @param inputOverrides   Optional input-level overrides applied before JSONata evaluation.
  *                         Structure: {@code {"doc": {...}, "pv": {...}}}. Values under "doc" are
