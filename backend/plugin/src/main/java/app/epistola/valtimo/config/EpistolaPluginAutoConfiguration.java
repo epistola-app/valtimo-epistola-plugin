@@ -10,6 +10,7 @@ import app.epistola.valtimo.deployment.EpistolaCatchEventLinkResolver;
 import app.epistola.valtimo.deployment.EpistolaCatchEventParseListener;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.deployment.EpistolaProcessEnginePlugin;
+import app.epistola.valtimo.service.admin.EpistolaFormCarrierRepairService;
 import app.epistola.valtimo.service.completion.EpistolaCatchEventStartListener;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
@@ -307,9 +308,10 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(EpistolaAdminResource.class)
     public EpistolaAdminResource epistolaAdminResource(
             EpistolaAdminService adminService,
-            com.ritense.authorization.AuthorizationService authorizationService
+            com.ritense.authorization.AuthorizationService authorizationService,
+            EpistolaFormCarrierRepairService formCarrierRepairService
     ) {
-        return new EpistolaAdminResource(adminService, authorizationService);
+        return new EpistolaAdminResource(adminService, authorizationService, formCarrierRepairService);
     }
 
     @Bean
@@ -386,5 +388,16 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaProperties properties
     ) {
         return new EpistolaFormAutoDeployAspect(formDeploymentService, properties);
+    }
+
+    // TEMPORARY (remove in 1.0.0): admin-page detection + repair of forms authored before the task-id
+    // carrier was embedded in the components' schema. See EpistolaFormCarrierRepairService.
+    @Bean
+    @ConditionalOnMissingBean(EpistolaFormCarrierRepairService.class)
+    public EpistolaFormCarrierRepairService epistolaFormCarrierRepairService(
+            com.ritense.form.repository.FormDefinitionRepository formDefinitionRepository,
+            ObjectMapper objectMapper
+    ) {
+        return new EpistolaFormCarrierRepairService(formDefinitionRepository, objectMapper);
     }
 }

@@ -8,6 +8,9 @@ import {
   ChangelogRelease,
   ClasspathCatalog,
   ConnectionStatus,
+  FormCarrierIssue,
+  FormCarrierRepairResult,
+  FormCarrierRepairSummary,
   PendingJob,
   PluginUsageEntry,
   ReconcileResult,
@@ -119,5 +122,28 @@ export class EpistolaAdminService {
     return this.http.get(`${this.apiEndpoint}/export/${encodeURIComponent(processLinkId)}`, {
       responseType: 'blob',
     });
+  }
+
+  // ---- TEMPORARY (removed in 1.0.0): task-id carrier detection + repair ----
+
+  /** Forms whose Epistola components are missing the task-id carrier. */
+  getFormCarrierIssues(): Observable<FormCarrierIssue[]> {
+    return this.http.get<FormCarrierIssue[]>(`${this.apiEndpoint}/forms/carrier-issues`);
+  }
+
+  /** Inject the task-id carrier into a single form's Epistola components. */
+  repairFormCarrier(formId: string): Observable<FormCarrierRepairResult> {
+    return this.http.post<FormCarrierRepairResult>(
+      `${this.apiEndpoint}/forms/${encodeURIComponent(formId)}/repair-carrier`,
+      null,
+    );
+  }
+
+  /** Repair every flagged form. */
+  repairAllFormCarriers(): Observable<FormCarrierRepairSummary> {
+    return this.http.post<FormCarrierRepairSummary>(
+      `${this.apiEndpoint}/forms/repair-carrier`,
+      null,
+    );
   }
 }

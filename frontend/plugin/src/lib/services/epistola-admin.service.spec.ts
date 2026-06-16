@@ -11,13 +11,14 @@ import type { ConnectionStatus, PendingJob, PluginUsageEntry, VersionInfo } from
 
 describe('EpistolaAdminService', () => {
   let service: any;
-  let httpClient: { get: jest.Mock };
+  let httpClient: { get: jest.Mock; post: jest.Mock };
 
   const API_BASE = 'http://localhost:8080/api/v1/plugin/epistola/admin';
 
   beforeEach(() => {
     httpClient = {
       get: jest.fn(),
+      post: jest.fn(),
     };
     const configService = {
       config: {
@@ -36,7 +37,59 @@ describe('EpistolaAdminService', () => {
       getPendingJobs: () => httpClient.get(`${API_BASE}/pending`),
       exportProcessLink: (id: string) =>
         httpClient.get(`${API_BASE}/export/${encodeURIComponent(id)}`, { responseType: 'blob' }),
+      getFormCarrierIssues: () => httpClient.get(`${API_BASE}/forms/carrier-issues`),
+      repairFormCarrier: (id: string) =>
+        httpClient.post(`${API_BASE}/forms/${encodeURIComponent(id)}/repair-carrier`, null),
+      repairAllFormCarriers: () => httpClient.post(`${API_BASE}/forms/repair-carrier`, null),
     };
+  });
+
+  describe('form carrier repair (temporary, removed in 1.0.0)', () => {
+    it('getFormCarrierIssues calls GET /forms/carrier-issues', (done) => {
+      const issues = [{ formId: 'f1', name: 'assess', missingComponents: 1, readOnly: false }];
+      httpClient.get.mockReturnValue(of(issues));
+      service.getFormCarrierIssues().subscribe((result: unknown) => {
+        expect(result).toEqual(issues);
+        expect(httpClient.get).toHaveBeenCalledWith(`${API_BASE}/forms/carrier-issues`);
+        done();
+      });
+    });
+
+    it('repairFormCarrier POSTs to /forms/{id}/repair-carrier with null body', (done) => {
+      const res = {
+        formId: 'f1',
+        name: 'assess',
+        success: true,
+        componentsPatched: 1,
+        errorMessage: null,
+      };
+      httpClient.post.mockReturnValue(of(res));
+      service.repairFormCarrier('f1').subscribe((result: unknown) => {
+        expect(result).toEqual(res);
+        expect(httpClient.post).toHaveBeenCalledWith(`${API_BASE}/forms/f1/repair-carrier`, null);
+        done();
+      });
+    });
+
+    it('repairAllFormCarriers POSTs to /forms/repair-carrier with null body', (done) => {
+      const summary = { formsRepaired: 2, componentsPatched: 3, failed: 0 };
+      httpClient.post.mockReturnValue(of(summary));
+      service.repairAllFormCarriers().subscribe((result: unknown) => {
+        expect(result).toEqual(summary);
+        expect(httpClient.post).toHaveBeenCalledWith(`${API_BASE}/forms/repair-carrier`, null);
+        done();
+      });
+    });
+
+    it('propagates errors from repairFormCarrier', (done) => {
+      httpClient.post.mockReturnValue(throwError(() => new Error('boom')));
+      service.repairFormCarrier('f1').subscribe({
+        error: (err: Error) => {
+          expect(err.message).toBe('boom');
+          done();
+        },
+      });
+    });
   });
 
   describe('getConnectionStatus', () => {
