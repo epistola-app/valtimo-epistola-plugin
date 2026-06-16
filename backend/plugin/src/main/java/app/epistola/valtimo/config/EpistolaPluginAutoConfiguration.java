@@ -10,7 +10,7 @@ import app.epistola.valtimo.deployment.EpistolaCatchEventLinkResolver;
 import app.epistola.valtimo.deployment.EpistolaCatchEventParseListener;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.deployment.EpistolaProcessEnginePlugin;
-import app.epistola.valtimo.service.admin.EpistolaFormCarrierRepairService;
+import app.epistola.valtimo.service.admin.EpistolaFormCarrierRepairService; // TEMPORARY (remove in 1.0.0)
 import app.epistola.valtimo.service.completion.EpistolaCatchEventStartListener;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
@@ -309,6 +309,7 @@ public class EpistolaPluginAutoConfiguration {
     public EpistolaAdminResource epistolaAdminResource(
             EpistolaAdminService adminService,
             com.ritense.authorization.AuthorizationService authorizationService,
+            // TEMPORARY (remove in 1.0.0): drop this arg with the carrier-repair feature.
             EpistolaFormCarrierRepairService formCarrierRepairService
     ) {
         return new EpistolaAdminResource(adminService, authorizationService, formCarrierRepairService);

@@ -210,6 +210,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminChangelog: 'Changelog',
       epistolaAdminRunningVersion: 'Actieve plugin-versie:',
       epistolaAdminNoChangelog: 'Geen changelog beschikbaar in deze build.',
+      // TEMPORARY (remove in 1.0.0): task-id carrier repair (admin "Forms" tab)
       epistolaAdminForms: 'Formulieren',
       epistolaAdminFormsIntro:
         'Formulieren met een Epistola-component dat het verborgen task-id veld mist. Zonder dat veld werkt het voorbeeld/downloaden/opnieuw genereren niet in elke taak-openflow. Herstel voegt het veld toe.',
@@ -405,6 +406,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminChangelog: 'Changelog',
       epistolaAdminRunningVersion: 'Running plugin version:',
       epistolaAdminNoChangelog: 'No changelog available in this build.',
+      // TEMPORARY (remove in 1.0.0): task-id carrier repair (admin "Forms" tab)
       epistolaAdminForms: 'Forms',
       epistolaAdminFormsIntro:
         'Forms with an Epistola component that is missing the hidden task-id field. Without it, preview/download/retry do not work in every task-open flow. Repair adds the field.',

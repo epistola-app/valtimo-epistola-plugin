@@ -45,6 +45,7 @@ export class EpistolaAdminPageComponent implements OnInit {
   cards: ConfigurationCard[] = [];
   selectedCard: ConfigurationCard | null = null;
   activeTab: 'actions' | 'pending' | 'catalogs' = 'actions';
+  // NOTE: the 'forms' tab is TEMPORARY (remove in 1.0.0) — see the carrier-repair block below.
   overviewTab: 'configurations' | 'validations' | 'changelog' | 'forms' = 'configurations';
   loading = false;
   pluginVersion: string | null = null;
@@ -132,6 +133,7 @@ export class EpistolaAdminPageComponent implements OnInit {
     this.updateUrl(this.selectedCard?.configurationId ?? null, tab);
   }
 
+  // 'forms' is TEMPORARY (remove in 1.0.0).
   setOverviewTab(tab: 'configurations' | 'validations' | 'changelog' | 'forms'): void {
     this.overviewTab = tab;
     if (tab === 'changelog' && this.changelog === null && !this.changelogLoading) {

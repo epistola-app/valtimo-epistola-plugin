@@ -55,6 +55,25 @@ class EpistolaAdminResourceAuthorizationTest {
     }
 
     @Test
+    void repairFormCarrier_mapsResultToHttpStatus() {
+        UUID id = UUID.randomUUID();
+
+        when(formCarrierRepairService.repair(id)).thenReturn(
+                new EpistolaFormCarrierRepairService.FormCarrierRepairResult(id.toString(), "ok", true, 1, null));
+        assertThat(resource.repairFormCarrier(id).getStatusCode().value()).isEqualTo(200);
+
+        when(formCarrierRepairService.repair(id)).thenReturn(
+                new EpistolaFormCarrierRepairService.FormCarrierRepairResult(
+                        id.toString(), null, false, 0, "Form not found"));
+        assertThat(resource.repairFormCarrier(id).getStatusCode().value()).isEqualTo(404);
+
+        when(formCarrierRepairService.repair(id)).thenReturn(
+                new EpistolaFormCarrierRepairService.FormCarrierRepairResult(
+                        id.toString(), "boom", false, 0, "disk on fire"));
+        assertThat(resource.repairFormCarrier(id).getStatusCode().value()).isEqualTo(502);
+    }
+
+    @Test
     void everyEndpoint_requiresEpistolaAdministrationManage() {
         when(adminService.checkConnections()).thenReturn(List.of());
         when(adminService.getPluginUsage()).thenReturn(List.of());

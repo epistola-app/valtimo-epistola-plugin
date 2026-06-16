@@ -80,7 +80,7 @@ No extra form setup is needed: each Epistola task component ships a hidden **car
 ```json
 {
   "type": "hidden",
-  "key": "epistolaTaskInstanceId",
+  "key": "epistolaTaskId",
   "input": true,
   "persistent": false,
   "properties": { "sourceKey": "epistola:taskId" }

@@ -9,6 +9,7 @@ import com.ritense.form.domain.FormIoFormDefinition;
 import com.ritense.form.repository.FormDefinitionRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
@@ -19,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -28,7 +30,7 @@ class EpistolaFormCarrierRepairServiceTest {
             "{\"components\":[{\"type\":\"epistola-document-preview\",\"key\":\"preview\",\"input\":false}]}";
     private static final String PREVIEW_WITH_CARRIER =
             "{\"components\":[{\"type\":\"epistola-document-preview\",\"key\":\"preview\",\"input\":false,"
-                    + "\"components\":[{\"type\":\"hidden\",\"key\":\"epistolaTaskInstanceId\",\"input\":true,"
+                    + "\"components\":[{\"type\":\"hidden\",\"key\":\"epistolaTaskId\",\"input\":true,"
                     + "\"persistent\":false,\"properties\":{\"sourceKey\":\"epistola:taskId\"}}]}]}";
     private static final String NESTED_IN_PANEL =
             "{\"components\":[{\"type\":\"panel\",\"key\":\"p\",\"components\":["
@@ -95,6 +97,25 @@ class EpistolaFormCarrierRepairServiceTest {
         assertThat(issues.get(0).readOnly()).isFalse();
     }
 
+    @Test
+    void findIssuesPagesThroughEveryForm() {
+        FormIoFormDefinition firstPage =
+                new FormIoFormDefinition(UUID.randomUUID(), "page-0-form", PREVIEW_NO_CARRIER, null, false);
+        FormIoFormDefinition secondPage =
+                new FormIoFormDefinition(UUID.randomUUID(), "page-1-form", NESTED_IN_PANEL, null, false);
+        FormDefinitionRepository repo = mock(FormDefinitionRepository.class);
+        // Two pages: first reports hasNext()==true (total exceeds page size), second is the last.
+        when(repo.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(firstPage), PageRequest.of(0, 50), 60))
+                .thenReturn(new PageImpl<>(List.of(secondPage), PageRequest.of(1, 50), 60));
+
+        List<FormCarrierIssue> issues = service(repo).findIssues();
+
+        assertThat(issues).extracting(FormCarrierIssue::name)
+                .containsExactlyInAnyOrder("page-0-form", "page-1-form");
+        verify(repo, times(2)).findAll(any(Pageable.class));
+    }
+
     // ---- repair ----
 
     @Test
@@ -111,6 +132,24 @@ class EpistolaFormCarrierRepairServiceTest {
         assertThat(result.componentsPatched()).isEqualTo(1);
         verify(repo).save(form);
         assertThat(EpistolaFormCarrierRepairService.hasCarrier(form.getFormDefinition())).isTrue();
+    }
+
+    @Test
+    void repairWorksOnReadOnlyForms() {
+        // Classpath-deployed forms are read-only; repair goes through the entity's writing API
+        // (isWriting/changeDefinition/doneWriting) + save, bypassing the read-only guard.
+        UUID id = UUID.randomUUID();
+        FormIoFormDefinition readOnly =
+                new FormIoFormDefinition(id, "assess-objection", PREVIEW_NO_CARRIER, null, true);
+        FormDefinitionRepository repo = mock(FormDefinitionRepository.class);
+        when(repo.findById(id)).thenReturn(Optional.of(readOnly));
+
+        FormCarrierRepairResult result = service(repo).repair(id);
+
+        assertThat(result.success()).isTrue();
+        assertThat(result.componentsPatched()).isEqualTo(1);
+        verify(repo).save(readOnly);
+        assertThat(EpistolaFormCarrierRepairService.hasCarrier(readOnly.getFormDefinition())).isTrue();
     }
 
     @Test

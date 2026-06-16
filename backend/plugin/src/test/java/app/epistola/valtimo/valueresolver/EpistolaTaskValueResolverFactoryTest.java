@@ -28,15 +28,18 @@ class EpistolaTaskValueResolverFactoryTest {
         OperatonTask task = mock(OperatonTask.class);
         when(task.getId()).thenReturn("task-123");
         when(task.getTaskDefinitionKey()).thenReturn("approveDocument");
-        when(task.getProcessInstanceId()).thenReturn("pi-7");
         when(task.getExecution()).thenReturn(execution);
 
         Function<String, Object> resolver = factory.createResolver("pi-7", task);
 
         assertThat(resolver.apply("taskId")).isEqualTo("task-123");
         assertThat(resolver.apply("taskDefinitionKey")).isEqualTo("approveDocument");
-        assertThat(resolver.apply("processInstanceId")).isEqualTo("pi-7");
         assertThat(resolver.apply("executionId")).isEqualTo("exec-99");
+    }
+
+    @Test
+    void sourceKeyMatchesPrefixAndTaskKey() {
+        assertThat(EpistolaTaskValueResolverFactory.SOURCE_KEY).isEqualTo("epistola:taskId");
     }
 
     @Test

@@ -7,7 +7,7 @@ import {
 describe('prefilled-task-id', () => {
   it('exposes the conventional source/data keys', () => {
     expect(PREFILLED_TASK_ID_SOURCE_KEY).toBe('epistola:taskId');
-    expect(PREFILLED_TASK_ID_DATA_KEY).toBe('epistolaTaskInstanceId');
+    expect(PREFILLED_TASK_ID_DATA_KEY).toBe('epistolaTaskId');
   });
 
   it('returns null for a missing root', () => {
@@ -21,7 +21,7 @@ describe('prefilled-task-id', () => {
         components: [
           {
             type: 'hidden',
-            key: 'epistolaTaskInstanceId',
+            key: 'epistolaTaskId',
             properties: { sourceKey: 'epistola:taskId' },
             defaultValue: 'task-abc',
           },
@@ -55,7 +55,7 @@ describe('prefilled-task-id', () => {
   it('falls back to submission data when the form scan finds nothing', () => {
     const root = {
       form: { components: [{ type: 'textfield', key: 'other' }] },
-      data: { epistolaTaskInstanceId: 'task-from-data' },
+      data: { epistolaTaskId: 'task-from-data' },
     };
     expect(readPrefilledTaskId(root)).toBe('task-from-data');
   });
@@ -65,7 +65,7 @@ describe('prefilled-task-id', () => {
       form: {
         components: [{ properties: { sourceKey: 'epistola:taskId' }, defaultValue: 'task-form' }],
       },
-      data: { epistolaTaskInstanceId: 'task-data' },
+      data: { epistolaTaskId: 'task-data' },
     };
     expect(readPrefilledTaskId(root)).toBe('task-form');
   });
@@ -73,7 +73,7 @@ describe('prefilled-task-id', () => {
   it('ignores an empty-string default value and falls through', () => {
     const root = {
       form: { components: [{ properties: { sourceKey: 'epistola:taskId' }, defaultValue: '' }] },
-      data: { epistolaTaskInstanceId: 'task-data' },
+      data: { epistolaTaskId: 'task-data' },
     };
     expect(readPrefilledTaskId(root)).toBe('task-data');
   });

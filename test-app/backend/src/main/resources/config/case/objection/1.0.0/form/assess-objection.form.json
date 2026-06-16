@@ -41,7 +41,7 @@
       "components": [
         {
           "type": "hidden",
-          "key": "epistolaTaskInstanceId",
+          "key": "epistolaTaskId",
           "input": true,
           "label": "Epistola Task Id",
           "persistent": false,

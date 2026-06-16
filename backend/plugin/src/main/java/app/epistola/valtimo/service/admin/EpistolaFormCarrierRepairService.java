@@ -1,5 +1,6 @@
 package app.epistola.valtimo.service.admin;
 
+import app.epistola.valtimo.valueresolver.EpistolaTaskValueResolverFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -43,8 +44,10 @@ public class EpistolaFormCarrierRepairService {
     private static final String COMPONENTS_FIELD = "components";
     private static final String PROPERTIES_FIELD = "properties";
     private static final String SOURCE_KEY_FIELD = "sourceKey";
-    private static final String SOURCE_KEY = "epistola:taskId";
-    private static final String CARRIER_KEY = "epistolaTaskInstanceId";
+    // Single source of truth for the prefix:key — mirrors the frontend PREFILLED_TASK_ID_SOURCE_KEY.
+    private static final String SOURCE_KEY = EpistolaTaskValueResolverFactory.SOURCE_KEY;
+    // Formio field key of the carrier — mirrors the frontend PREFILLED_TASK_ID_DATA_KEY.
+    private static final String CARRIER_KEY = "epistolaTaskId";
     private static final int PAGE_SIZE = 50;
 
     private final FormDefinitionRepository formDefinitionRepository;

@@ -34,18 +34,20 @@ import java.util.function.Function;
  * {@code properties.sourceKey = "epistola:taskId"} is prefilled with the task id and the component
  * reads it back from the form data — robustly, in every Valtimo task-open flow.
  *
- * <p>Supported keys: {@code taskId}, {@code executionId}, {@code taskDefinitionKey},
- * {@code processInstanceId}. Outside a task context (no {@code OperatonTask} scope) the resolver
- * returns {@code null}, so non-task forms simply leave the field empty.
+ * <p>Supported keys: {@code taskId}, {@code executionId}, {@code taskDefinitionKey}. Outside a task
+ * context (no {@code OperatonTask} scope) the resolver returns {@code null}, so non-task forms simply
+ * leave the field empty.
  */
 public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
 
     public static final String PREFIX = "epistola";
 
-    static final String KEY_ID = "taskId";
+    static final String KEY_TASK_ID = "taskId";
     static final String KEY_EXECUTION_ID = "executionId";
     static final String KEY_TASK_DEFINITION_KEY = "taskDefinitionKey";
-    static final String KEY_PROCESS_INSTANCE_ID = "processInstanceId";
+
+    /** The carrier field's {@code sourceKey} ({@value}); the single source of truth for the prefix:key. */
+    public static final String SOURCE_KEY = PREFIX + ":" + KEY_TASK_ID;
 
     @Override
     public String supportedPrefix() {
@@ -61,9 +63,8 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
                 return null;
             }
             return switch (requestedValue) {
-                case KEY_ID -> task.getId();
+                case KEY_TASK_ID -> task.getId();
                 case KEY_TASK_DEFINITION_KEY -> task.getTaskDefinitionKey();
-                case KEY_PROCESS_INSTANCE_ID -> task.getProcessInstanceId();
                 case KEY_EXECUTION_ID -> resolveExecutionId(task);
                 default -> null;
             };
@@ -75,7 +76,7 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
             return task.getExecution() != null ? task.getExecution().getId() : null;
         } catch (Exception e) {
             // getExecution() is a convenience that may not be populated in every context; the task id
-            // (KEY_ID) is the value we actually rely on, so fail soft here.
+            // (KEY_TASK_ID) is the value we actually rely on, so fail soft here.
             return null;
         }
     }

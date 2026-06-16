@@ -20,7 +20,7 @@
 export const PREFILLED_TASK_ID_SOURCE_KEY = 'epistola:taskId';
 
 /** Conventional key of the hidden carrier field that holds the prefilled task id. */
-export const PREFILLED_TASK_ID_DATA_KEY = 'epistolaTaskInstanceId';
+export const PREFILLED_TASK_ID_DATA_KEY = 'epistolaTaskId';
 
 /**
  * Hidden Formio child component that carries the prefilled task id. It is embedded as a
