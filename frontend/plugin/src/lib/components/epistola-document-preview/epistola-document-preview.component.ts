@@ -327,26 +327,14 @@ export class EpistolaDocumentPreviewComponent
    * the task's process instance and case document, so all three ids must match.
    */
   private loadPreview(): void {
-    const documentId = this.formIoStateService.documentId;
-    if (!documentId) {
-      this.error = 'Could not determine document ID from context.';
-      this.cdr.markForCheck();
-      return;
-    }
-
     if (!this.sourceActivityId) {
       this.error = 'Preview is not configured: set the source activity on the form component.';
       this.cdr.markForCheck();
       return;
     }
 
-    const processInstanceId = this.formIoStateService.processInstanceId;
-    if (!processInstanceId) {
-      this.error = 'Preview is only available from within a running process.';
-      this.cdr.markForCheck();
-      return;
-    }
-
+    // The backend derives the process instance and case document from the task, so the
+    // task id is the only runtime context the request carries.
     const taskId = this.currentTaskId;
     if (!taskId) {
       this.error = 'Preview is only available from within a user task.';
@@ -363,9 +351,6 @@ export class EpistolaDocumentPreviewComponent
     this.previewSubscription = this.epistolaPluginService
       .previewToBlob({
         taskId,
-        documentId,
-        processDefinitionKey: this.processDefinitionKey || null,
-        processInstanceId,
         sourceActivityId: this.sourceActivityId,
         inputOverrides: this.value || null,
         overrides: null,

@@ -18,18 +18,15 @@ import {
 
 /**
  * Body of a {@link EpistolaPluginService.previewToBlob} call. Mirrors the
- * backend {@code PreviewRequest} record. {@code processInstanceId},
- * {@code processDefinitionKey} and {@code sourceActivityId} together identify
- * the {@code generate-document} process link being previewed; {@code overrides}
- * and {@code inputOverrides} let the caller substitute data before the
- * JSONata mapping runs.
+ * backend {@code PreviewRequest} record. The backend derives the process
+ * instance and case document from the authorized task, so only {@code taskId}
+ * and {@code sourceActivityId} (which identifies the {@code generate-document}
+ * process link) are sent; {@code overrides} and {@code inputOverrides} let the
+ * caller substitute data before the JSONata mapping runs.
  */
 export interface PreviewBlobRequest {
   taskId: string;
-  documentId: string;
-  processDefinitionKey?: string | null;
   sourceActivityId?: string | null;
-  processInstanceId?: string | null;
   inputOverrides?: Record<string, unknown> | null;
   overrides?: Record<string, unknown> | null;
 }
@@ -181,18 +178,13 @@ export class EpistolaPluginService {
   /**
    * Get a dynamically generated Formio form for retrying a failed document generation.
    *
+   * The backend derives the process instance and case document from the authorized task,
+   * so only the task id (and optionally the source activity) is sent.
+   *
    * @param taskId Operaton user task id (required — backend authorizes via OperatonTask:VIEW)
    */
-  getRetryForm(
-    taskId: string,
-    processInstanceId: string,
-    documentId?: string,
-    sourceActivityId?: string,
-  ): Observable<any> {
-    const params: Record<string, string> = { taskId, processInstanceId };
-    if (documentId) {
-      params['documentId'] = documentId;
-    }
+  getRetryForm(taskId: string, sourceActivityId?: string): Observable<any> {
+    const params: Record<string, string> = { taskId };
     if (sourceActivityId) {
       params['sourceActivityId'] = sourceActivityId;
     }
