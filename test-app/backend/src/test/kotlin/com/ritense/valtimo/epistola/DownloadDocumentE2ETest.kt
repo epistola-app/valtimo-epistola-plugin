@@ -231,9 +231,9 @@ class DownloadDocumentE2ETest {
     }
 
     @Test
-    fun `epistola-task value resolver yields the active task's identity from the task scope`() {
+    fun `epistola value resolver yields the active task's identity from the task scope`() {
         // This is how the Formio components obtain the task id in every task-open flow: a hidden
-        // carrier field with sourceKey 'epistola-task:id' is prefilled server-side, where Valtimo
+        // carrier field with sourceKey 'epistola:taskId' is prefilled server-side, where Valtimo
         // passes the OperatonTask as the resolver's VariableScope. Verify the resolver against the
         // real application context + a real active user task.
         val deployment =
@@ -249,13 +249,13 @@ class DownloadDocumentE2ETest {
                     valueResolverService.resolveValues(
                         pi.id,
                         operatonTask,
-                        listOf("epistola-task:id", "epistola-task:taskDefinitionKey", "epistola-task:executionId"),
+                        listOf("epistola:taskId", "epistola:taskDefinitionKey", "epistola:executionId"),
                     )
                 }
 
-            assertThat(resolved["epistola-task:id"]).isEqualTo(task.id)
-            assertThat(resolved["epistola-task:taskDefinitionKey"]).isEqualTo("reviewTask")
-            assertThat(resolved["epistola-task:executionId"]).isEqualTo(task.executionId)
+            assertThat(resolved["epistola:taskId"]).isEqualTo(task.id)
+            assertThat(resolved["epistola:taskDefinitionKey"]).isEqualTo("reviewTask")
+            assertThat(resolved["epistola:executionId"]).isEqualTo(task.executionId)
         } finally {
             repositoryService.deleteDeployment(deployment.id, true)
         }
@@ -309,7 +309,7 @@ class DownloadDocumentE2ETest {
         private const val MESSAGE = "EpistolaDocumentGenerated"
         private const val DOCUMENT_VARIABLE = "epistolaResult"
 
-        // Minimal process that parks on a user task, so the epistola-task: value resolver can be
+        // Minimal process that parks on a user task, so the epistola: value resolver can be
         // exercised against a real OperatonTask scope.
         private val USER_TASK_BPMN =
             """

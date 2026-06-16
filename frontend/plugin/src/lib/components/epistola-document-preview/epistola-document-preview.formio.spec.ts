@@ -103,10 +103,10 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
 
   it('forwards the server-prefilled task id to the Angular element on attach', () => {
     const { inst, root } = createInstance({});
-    // Carrier hidden field prefilled by the epistola-task: value resolver.
+    // Carrier hidden field prefilled by the epistola: value resolver.
     (root as any).form = {
       components: [
-        { properties: { sourceKey: 'epistola-task:id' }, defaultValue: 'task-from-prefill' },
+        { properties: { sourceKey: 'epistola:taskId' }, defaultValue: 'task-from-prefill' },
       ],
     };
     inst._customAngularElement = {};

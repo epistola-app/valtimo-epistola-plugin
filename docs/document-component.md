@@ -46,7 +46,7 @@ The component **does not** take a raw `documentId` or `tenantId` value. The back
 User opens a task form containing <epistola-document>
   ↓
 Server-side form prefill fills the hidden carrier field
-  (properties.sourceKey: "epistola-task:id" → EpistolaTaskValueResolverFactory)
+  (properties.sourceKey: "epistola:taskId" → EpistolaTaskValueResolverFactory)
   → form data carries the active taskId, in every task-open flow
   ↓
 Component reads:
@@ -83,11 +83,11 @@ No extra form setup is needed: each Epistola task component ships a hidden **car
   "key": "epistolaTaskInstanceId",
   "input": true,
   "persistent": false,
-  "properties": { "sourceKey": "epistola-task:id" }
+  "properties": { "sourceKey": "epistola:taskId" }
 }
 ```
 
-Valtimo's server-side prefill recurses into the component's nested `components` and fills this child's `defaultValue` with the current task id (via the `epistola-task:` value resolver) — in both the direct task-open flow and the task-list/case-detail flow. The Formio wrapper reads it back with `readPrefilledTaskId` (which deep-scans the prefilled form definition) and forwards it to the Angular component. `persistent: false` keeps the value out of the submission, so the task id never lands in the case document.
+Valtimo's server-side prefill recurses into the component's nested `components` and fills this child's `defaultValue` with the current task id (via the `epistola:` value resolver) — in both the direct task-open flow and the task-list/case-detail flow. The Formio wrapper reads it back with `readPrefilledTaskId` (which deep-scans the prefilled form definition) and forwards it to the Angular component. `persistent: false` keeps the value out of the submission, so the task id never lands in the case document.
 
 Forms authored **before** the carrier was embedded don't have it. The admin page's **Forms** tab (transitional, removed in 1.0.0) lists those forms and offers a per-form / "repair all" button that injects the carrier (`EpistolaFormCarrierRepairService`). Repair sticks for form-management-authored forms; classpath-deployed forms are reconciled to their source on the next boot (shown as "read-only"), so for those add the carrier to the source — re-drop the component, which ships the embedded carrier. If the carrier is absent at runtime, the component fails closed.
 

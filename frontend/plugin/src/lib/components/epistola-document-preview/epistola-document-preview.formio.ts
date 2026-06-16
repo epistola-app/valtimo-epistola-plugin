@@ -13,7 +13,7 @@ export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
   emptyValue: null,
   fieldOptions: ['label', 'processDefinitionKey', 'sourceActivityId', 'overrideMapping'],
   // Embed the hidden task-id carrier so dropping this component is enough — no separate
-  // field for the author to add. Valtimo prefills it server-side via the epistola-task: resolver.
+  // field for the author to add. Valtimo prefills it server-side via the epistola: resolver.
   schema: { components: [PREFILLED_TASK_ID_CARRIER] },
   editForm: () => ({
     components: [
@@ -88,7 +88,7 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
         this._customAngularElement['processDefinitionKey'] =
           this.component.processDefinitionKey || '';
         this._customAngularElement['sourceActivityId'] = this.component.sourceActivityId || '';
-        // Forward the server-prefilled task id (epistola-task: value resolver) so the
+        // Forward the server-prefilled task id (epistola: value resolver) so the
         // component authorizes against the exact task in every Valtimo task-open flow.
         const prefilledTaskId = readPrefilledTaskId(this.root);
         if (prefilledTaskId) {

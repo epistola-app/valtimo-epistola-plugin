@@ -145,7 +145,7 @@ export class EpistolaRetryFormComponent
   @Input() sourceActivityId?: string;
   /**
    * Task id forwarded by the Formio wrapper from the server-prefilled form
-   * ({@code epistola-task:id} value resolver), populated in every Valtimo task-open flow.
+   * ({@code epistola:taskId} value resolver), populated in every Valtimo task-open flow.
    */
   @Input() taskInstanceId?: string | null;
 

@@ -121,7 +121,7 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     // Exposes the current user task's id to a form at server-side prefill time (prefix
-    // 'epistola-task:'). This is how the Formio components obtain the task id in every Valtimo
+    // 'epistola:'). This is how the Formio components obtain the task id in every Valtimo
     // task-open flow — including the task-list/case-detail flow that never fires the per-task
     // process-link GET the frontend interceptor relies on. See EpistolaTaskValueResolverFactory.
     @Bean

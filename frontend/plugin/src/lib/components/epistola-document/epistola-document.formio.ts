@@ -12,7 +12,7 @@ export const EPISTOLA_DOCUMENT_OPTIONS: FormioCustomComponentInfo = {
   emptyValue: null,
   fieldOptions: ['label', 'display', 'documentVariable', 'tenantIdVariable', 'filename'],
   // Embed the hidden task-id carrier so dropping this component is enough — no separate
-  // field for the author to add. Valtimo prefills it server-side via the epistola-task: resolver.
+  // field for the author to add. Valtimo prefills it server-side via the epistola: resolver.
   schema: { components: [PREFILLED_TASK_ID_CARRIER] },
 };
 
@@ -22,7 +22,7 @@ export function registerEpistolaDocumentComponent(injector: Injector): void {
   }
   registerCustomFormioComponent(EPISTOLA_DOCUMENT_OPTIONS, EpistolaDocumentComponent, injector);
 
-  // Extend the base class to forward the server-prefilled task id (epistola-task: value
+  // Extend the base class to forward the server-prefilled task id (epistola: value
   // resolver) to the Angular element, so the download authorizes against the exact task in
   // every Valtimo task-open flow.
   const Formio = (window as any).Formio;

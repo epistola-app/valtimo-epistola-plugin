@@ -17,7 +17,7 @@ import java.util.function.Function;
 
 /**
  * Value resolver that exposes the <b>current user task's</b> identity to a Valtimo form at
- * server-side prefill time, under the {@code epistola-task:} prefix.
+ * server-side prefill time, under the {@code epistola:} prefix.
  *
  * <p>Why this exists: the Epistola Formio components (document preview, download, retry-form) need the
  * id of the user task whose form they're rendered in, so the backend can authorize their requests
@@ -31,18 +31,18 @@ import java.util.function.Function;
  * <p>During task-form prefill Valtimo passes the {@link OperatonTask} itself as the
  * {@link VariableScope} to {@link #createResolver(String, VariableScope)} (see
  * {@code PrefillFormService.prefillValueResolverFields}). So a form field with
- * {@code properties.sourceKey = "epistola-task:id"} is prefilled with the task id and the component
+ * {@code properties.sourceKey = "epistola:taskId"} is prefilled with the task id and the component
  * reads it back from the form data — robustly, in every Valtimo task-open flow.
  *
- * <p>Supported keys: {@code id}, {@code executionId}, {@code taskDefinitionKey},
+ * <p>Supported keys: {@code taskId}, {@code executionId}, {@code taskDefinitionKey},
  * {@code processInstanceId}. Outside a task context (no {@code OperatonTask} scope) the resolver
  * returns {@code null}, so non-task forms simply leave the field empty.
  */
 public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
 
-    public static final String PREFIX = "epistola-task";
+    public static final String PREFIX = "epistola";
 
-    static final String KEY_ID = "id";
+    static final String KEY_ID = "taskId";
     static final String KEY_EXECUTION_ID = "executionId";
     static final String KEY_TASK_DEFINITION_KEY = "taskDefinitionKey";
     static final String KEY_PROCESS_INSTANCE_ID = "processInstanceId";
@@ -54,7 +54,7 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
 
     @Override
     public Function<String, Object> createResolver(String processInstanceId, VariableScope variableScope) {
-        // The prefix ('epistola-task:') is already stripped; we receive e.g. "id".
+        // The prefix ('epistola:') is already stripped; we receive e.g. "taskId".
         return requestedValue -> {
             if (!(variableScope instanceof OperatonTask task)) {
                 // Not a task context (e.g. a start form). Nothing to resolve.
@@ -109,7 +109,7 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
 
     @Override
     public Function<String, Unit> createValidator(String documentDefinitionName) {
-        // Any 'epistola-task:<key>' reference is considered valid; resolution is null-safe at runtime.
+        // Any 'epistola:<key>' reference is considered valid; resolution is null-safe at runtime.
         return requestedValue -> Unit.INSTANCE;
     }
 

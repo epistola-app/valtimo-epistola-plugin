@@ -18,7 +18,7 @@ class EpistolaTaskValueResolverFactoryTest {
 
     @Test
     void supportsTheEpistolaTaskPrefix() {
-        assertThat(factory.supportedPrefix()).isEqualTo("epistola-task");
+        assertThat(factory.supportedPrefix()).isEqualTo("epistola");
     }
 
     @Test
@@ -33,7 +33,7 @@ class EpistolaTaskValueResolverFactoryTest {
 
         Function<String, Object> resolver = factory.createResolver("pi-7", task);
 
-        assertThat(resolver.apply("id")).isEqualTo("task-123");
+        assertThat(resolver.apply("taskId")).isEqualTo("task-123");
         assertThat(resolver.apply("taskDefinitionKey")).isEqualTo("approveDocument");
         assertThat(resolver.apply("processInstanceId")).isEqualTo("pi-7");
         assertThat(resolver.apply("executionId")).isEqualTo("exec-99");
@@ -50,7 +50,7 @@ class EpistolaTaskValueResolverFactoryTest {
         Function<String, Object> resolver =
                 factory.createResolver(Map.of("processInstanceId", "pi-7", "variableScope", task));
 
-        assertThat(resolver.apply("id")).isEqualTo("task-123");
+        assertThat(resolver.apply("taskId")).isEqualTo("task-123");
     }
 
     @Test
@@ -80,7 +80,7 @@ class EpistolaTaskValueResolverFactoryTest {
 
         Function<String, Object> resolver = factory.createResolver("pi-7", nonTaskScope);
 
-        assertThat(resolver.apply("id")).isNull();
+        assertThat(resolver.apply("taskId")).isNull();
         assertThat(resolver.apply("taskDefinitionKey")).isNull();
     }
 
@@ -89,12 +89,12 @@ class EpistolaTaskValueResolverFactoryTest {
         // No task/process context — nothing to resolve, but must not throw.
         Function<String, Object> resolver = factory.createResolver("document-id");
 
-        assertThat(resolver.apply("id")).isNull();
+        assertThat(resolver.apply("taskId")).isNull();
     }
 
     @Test
     void validatorAcceptsAnyKey() {
-        assertThat(factory.createValidator("some-document-definition").apply("id"))
+        assertThat(factory.createValidator("some-document-definition").apply("taskId"))
                 .isEqualTo(kotlin.Unit.INSTANCE);
     }
 }

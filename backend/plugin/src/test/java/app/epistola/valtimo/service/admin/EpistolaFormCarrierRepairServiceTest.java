@@ -29,7 +29,7 @@ class EpistolaFormCarrierRepairServiceTest {
     private static final String PREVIEW_WITH_CARRIER =
             "{\"components\":[{\"type\":\"epistola-document-preview\",\"key\":\"preview\",\"input\":false,"
                     + "\"components\":[{\"type\":\"hidden\",\"key\":\"epistolaTaskInstanceId\",\"input\":true,"
-                    + "\"persistent\":false,\"properties\":{\"sourceKey\":\"epistola-task:id\"}}]}]}";
+                    + "\"persistent\":false,\"properties\":{\"sourceKey\":\"epistola:taskId\"}}]}]}";
     private static final String NESTED_IN_PANEL =
             "{\"components\":[{\"type\":\"panel\",\"key\":\"p\",\"components\":["
                     + "{\"type\":\"epistola-document\",\"key\":\"doc\",\"input\":false}]}]}";

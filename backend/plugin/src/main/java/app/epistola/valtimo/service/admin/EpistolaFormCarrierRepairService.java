@@ -21,7 +21,7 @@ import java.util.UUID;
  * <p>Detects and repairs forms authored <i>before</i> the Epistola task-id carrier was embedded in the
  * components' Formio schema. Such a form has an {@code epistola-document-preview} / {@code epistola-document}
  * / {@code epistola-retry-form} component but no carrier (a hidden field with
- * {@code properties.sourceKey = "epistola-task:id"}), so form prefill has nothing to fill and the component
+ * {@code properties.sourceKey = "epistola:taskId"}), so form prefill has nothing to fill and the component
  * fails with "… only available from within a user task".
  *
  * <p>Surfaced on the admin page: {@link #findIssues()} lists the affected forms and {@link #repair(UUID)}
@@ -43,7 +43,7 @@ public class EpistolaFormCarrierRepairService {
     private static final String COMPONENTS_FIELD = "components";
     private static final String PROPERTIES_FIELD = "properties";
     private static final String SOURCE_KEY_FIELD = "sourceKey";
-    private static final String SOURCE_KEY = "epistola-task:id";
+    private static final String SOURCE_KEY = "epistola:taskId";
     private static final String CARRIER_KEY = "epistolaTaskInstanceId";
     private static final int PAGE_SIZE = 50;
 

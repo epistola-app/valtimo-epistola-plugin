@@ -46,7 +46,7 @@
           "label": "Epistola Task Id",
           "persistent": false,
           "properties": {
-            "sourceKey": "epistola-task:id"
+            "sourceKey": "epistola:taskId"
           }
         }
       ]
