@@ -11,11 +11,11 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
+import { FormioCustomComponent } from '@valtimo/components';
 import { FormioModule } from '@formio/angular';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, switchMap } from 'rxjs/operators';
-import { EpistolaPluginService, EpistolaTaskContextService } from '../../services';
+import { EpistolaPluginService } from '../../services';
 
 @Component({
   standalone: true,
@@ -143,6 +143,11 @@ export class EpistolaRetryFormComponent
   @Input() disabled = false;
   @Input() label = 'Document Data';
   @Input() sourceActivityId?: string;
+  /**
+   * Task id forwarded by the Formio wrapper from the server-prefilled form
+   * ({@code epistola:taskId} value resolver), populated in every Valtimo task-open flow.
+   */
+  @Input() taskInstanceId?: string | null;
 
   formDefinition: any;
   submission: any;
@@ -158,7 +163,6 @@ export class EpistolaRetryFormComponent
   private previewSubject = new Subject<any>();
   private currentBlobUrl: string | null = null;
   private resolvedSourceActivityId?: string;
-  private processDefinitionKey?: string;
 
   formOptions: any = {
     noAlerts: true,
@@ -167,10 +171,8 @@ export class EpistolaRetryFormComponent
 
   constructor(
     private readonly epistolaPluginService: EpistolaPluginService,
-    private readonly formIoStateService: FormIoStateService,
     private readonly cdr: ChangeDetectorRef,
     private readonly sanitizer: DomSanitizer,
-    private readonly taskContext: EpistolaTaskContextService,
   ) {
     // Debounce preview calls
     this.previewSubscription = this.previewSubject.pipe(debounceTime(1500)).subscribe((data) => {
@@ -181,6 +183,13 @@ export class EpistolaRetryFormComponent
   ngOnChanges(changes: SimpleChanges): void {
     if (!this.loaded) {
       this.loaded = true;
+      this.loadForm();
+      return;
+    }
+    // The Formio wrapper sets taskInstanceId after attach, so it can land after the
+    // first render — if the form failed to load for lack of a task id, retry once it
+    // arrives instead of leaving the "only available from within a user task" message.
+    if (changes['taskInstanceId'] && this.taskInstanceId && !this.formDefinition) {
       this.loadForm();
     }
   }
@@ -209,11 +218,8 @@ export class EpistolaRetryFormComponent
   }
 
   private loadPreview(formData: any): void {
-    const documentId = this.formIoStateService.documentId;
-    const processInstanceId = this.formIoStateService.processInstanceId;
-    if (!documentId || !processInstanceId) return;
-
-    const taskId = this.taskContext.taskInstanceId;
+    // The backend derives the process instance and case document from the task.
+    const taskId = this.taskInstanceId ?? null;
     if (!taskId) {
       this.previewError = 'Preview is only available from within a user task.';
       this.cdr.markForCheck();
@@ -233,8 +239,6 @@ export class EpistolaRetryFormComponent
     this.epistolaPluginService
       .previewToBlob({
         taskId,
-        documentId,
-        processInstanceId,
         sourceActivityId: this.sourceActivityId || null,
         overrides: formData,
       })
@@ -270,16 +274,8 @@ export class EpistolaRetryFormComponent
   }
 
   private loadForm(): void {
-    const processInstanceId = this.formIoStateService.processInstanceId;
-    const documentId = this.formIoStateService.documentId;
-    if (!processInstanceId) {
-      this.error = 'Could not determine process instance ID.';
-      this.loading = false;
-      this.cdr.markForCheck();
-      return;
-    }
-
-    const taskId = this.taskContext.taskInstanceId;
+    // The backend derives the process instance and case document from the task.
+    const taskId = this.taskInstanceId ?? null;
     if (!taskId) {
       this.error = 'Retry form is only available from within a user task.';
       this.loading = false;
@@ -288,7 +284,7 @@ export class EpistolaRetryFormComponent
     }
 
     this.loadSubscription = this.epistolaPluginService
-      .getRetryForm(taskId, processInstanceId, documentId ?? undefined, this.sourceActivityId)
+      .getRetryForm(taskId, this.sourceActivityId)
       .subscribe({
         next: (form) => {
           this.formDefinition = form;

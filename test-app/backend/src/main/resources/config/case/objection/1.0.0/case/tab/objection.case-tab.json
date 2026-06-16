@@ -1,5 +1,12 @@
 [
   {
+    "key": "algemeen",
+    "name": "Algemeen",
+    "type": "standard",
+    "contentKey": "summary",
+    "showTasks": true
+  },
+  {
     "key": "progress",
     "name": null,
     "type": "standard",

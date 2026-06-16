@@ -191,33 +191,31 @@ public class EpistolaGenerationResource {
     /**
      * Get a dynamically generated Formio form for retrying a failed document generation.
      *
-     * <p>Requires {@code OperatonTask:VIEW} on the supplied {@code taskId} AND that the
-     * supplied {@code processInstanceId} matches the task's process instance AND that
-     * the supplied {@code documentId} matches the task's case document (process business key).
+     * <p>Requires {@code OperatonTask:VIEW} on the supplied {@code taskId}. The process
+     * instance and case document the form is built against are derived from that task —
+     * not supplied by the caller — so they cannot be forged.
      *
      * @param taskId            The Operaton user task ID providing the authorization context
-     * @param processInstanceId The process instance ID containing the original generate-document
-     * @param documentId        The Valtimo document ID (used to resolve doc: expressions)
      * @param sourceActivityId  The BPMN activity ID of the original generate-document service task (optional)
      * @return A Formio form definition with prefilled values
      */
     @GetMapping("/retry-form")
     public ResponseEntity<ObjectNode> getRetryForm(
             @RequestParam("taskId") String taskId,
-            @RequestParam("processInstanceId") String processInstanceId,
-            @RequestParam("documentId") String documentId,
             @RequestParam(value = "sourceActivityId", required = false) String sourceActivityId
     ) {
-        if (taskId == null || taskId.isBlank()
-                || processInstanceId == null || processInstanceId.isBlank()
-                || documentId == null || documentId.isBlank()) {
+        if (taskId == null || taskId.isBlank()) {
             return ResponseEntity.badRequest().build();
         }
+        OperatonTask task;
         try {
-            requireTaskBoundTo(taskId, processInstanceId, documentId);
+            task = requireTaskViewable(taskId);
         } catch (TaskNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
+        // Derive the document and process-instance context from the authorized task itself.
+        String documentId = caseDocumentIdOf(task);
+        String processInstanceId = task.getProcessInstanceId();
 
         try {
             ObjectNode form = retryFormService.generateRetryForm(processInstanceId, documentId, sourceActivityId);
@@ -237,36 +235,35 @@ public class EpistolaGenerationResource {
      * <p>Resolves the data mapping, merges with optional overrides, and calls Epistola's
      * preview API to render a PDF without creating a generation job.
      *
-     * <p>Requires {@code OperatonTask:VIEW} on {@link PreviewRequest#taskId()} AND that
-     * {@link PreviewRequest#processInstanceId()} matches the task's process instance AND
-     * that {@link PreviewRequest#documentId()} matches the task's case document
-     * (process business key).
+     * <p>Requires {@code OperatonTask:VIEW} on {@link PreviewRequest#taskId()}. The process
+     * instance and case document used to resolve the data mapping are derived from that task —
+     * not supplied by the caller — so they cannot be forged.
      *
-     * @param request The preview request with task context, document context, and optional overrides
+     * @param request The preview request: task context, the source activity, and optional overrides
      * @return Rendered PDF (inline) or error details
      */
     @PostMapping("/preview")
     public ResponseEntity<?> previewDocument(@RequestBody PreviewRequest request) {
-        if (request.documentId() == null || request.documentId().isBlank()) {
-            return ResponseEntity.badRequest().body(
-                    Map.of("error", "documentId is required"));
-        }
         if (request.taskId() == null || request.taskId().isBlank()) {
             return ResponseEntity.badRequest().body(
                     Map.of("error", "taskId is required"));
         }
-        if (request.processInstanceId() == null || request.processInstanceId().isBlank()) {
-            return ResponseEntity.badRequest().body(
-                    Map.of("error", "processInstanceId is required"));
-        }
+        // sourceActivityId is optional: when blank, PreviewService auto-discovers the single
+        // generate-document link (and errors AMBIGUOUS_ACTIVITY if there is more than one).
+
+        OperatonTask task;
         try {
-            requireTaskBoundTo(request.taskId(), request.processInstanceId(), request.documentId());
+            task = requireTaskViewable(request.taskId());
         } catch (TaskNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
+        // Derive the document and process-instance context from the authorized task itself —
+        // never trust the client to supply them (so there is nothing to forge or cross-check).
+        String documentId = caseDocumentIdOf(task);
+        String processInstanceId = task.getProcessInstanceId();
 
         try {
-            java.io.InputStream pdfStream = previewService.generatePreview(request);
+            java.io.InputStream pdfStream = previewService.generatePreview(request, documentId, processInstanceId);
 
             var resource = new org.springframework.core.io.InputStreamResource(pdfStream);
             HttpHeaders headers = new HttpHeaders();
@@ -310,12 +307,7 @@ public class EpistolaGenerationResource {
      *                          must equal {@code task.getProcessInstance().getBusinessKey()}.
      */
     private OperatonTask requireTaskBoundTo(String taskId, String processInstanceId, String documentId) {
-        OperatonTask task = operatonTaskService.findTaskById(taskId);
-        authorizationService.requirePermission(
-                new EntityAuthorizationRequest<>(
-                        OperatonTask.class,
-                        OperatonTaskActionProvider.VIEW,
-                        List.of(task)));
+        OperatonTask task = requireTaskViewable(taskId);
 
         String taskProcessInstanceId = task.getProcessInstanceId();
         if (processInstanceId != null && !processInstanceId.equals(taskProcessInstanceId)) {
@@ -333,6 +325,33 @@ public class EpistolaGenerationResource {
             throw new AccessDeniedException("Request documentId does not match task's case");
         }
         return task;
+    }
+
+    /**
+     * Resolve the task and require {@code OperatonTask:VIEW} on it, returning the task.
+     *
+     * <p>The authorization gate on its own — used by endpoints (preview, retry-form) that
+     * <i>derive</i> the process instance and case document from the task itself rather than
+     * accepting them on the wire, so there is nothing client-supplied left to cross-check.
+     * {@code OperatonTaskService.findTaskById} also performs the {@code VIEW} check, but we
+     * issue an explicit {@code requirePermission} so the intent and the thrown
+     * {@link AccessDeniedException} are obvious in tests.
+     *
+     * @param taskId Operaton user task id; required.
+     */
+    private OperatonTask requireTaskViewable(String taskId) {
+        OperatonTask task = operatonTaskService.findTaskById(taskId);
+        authorizationService.requirePermission(
+                new EntityAuthorizationRequest<>(
+                        OperatonTask.class,
+                        OperatonTaskActionProvider.VIEW,
+                        List.of(task)));
+        return task;
+    }
+
+    /** The Valtimo case-document UUID a task operates on (its process-instance business key). */
+    private String caseDocumentIdOf(OperatonTask task) {
+        return task.getProcessInstance() != null ? task.getProcessInstance().getBusinessKey() : null;
     }
 
     /**

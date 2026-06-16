@@ -5,10 +5,13 @@ import app.epistola.valtimo.service.EpistolaService
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService
 import app.epistola.valtimo.service.download.DocumentStorageStrategy
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.ritense.authorization.AuthorizationContext.Companion.runWithoutAuthorization
 import com.ritense.plugin.domain.PluginConfiguration
 import com.ritense.plugin.service.PluginService
 import com.ritense.valtimo.Application
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin
+import com.ritense.valtimo.service.OperatonTaskService
+import com.ritense.valueresolver.ValueResolverService
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.awaitility.Awaitility.await
@@ -24,6 +27,7 @@ import org.mockito.kotlin.whenever
 import org.operaton.bpm.engine.HistoryService
 import org.operaton.bpm.engine.RepositoryService
 import org.operaton.bpm.engine.RuntimeService
+import org.operaton.bpm.engine.TaskService
 import org.operaton.bpm.engine.delegate.DelegateExecution
 import org.operaton.bpm.engine.variable.value.BytesValue
 import org.springframework.beans.factory.annotation.Autowired
@@ -78,6 +82,15 @@ class DownloadDocumentE2ETest {
 
     @Autowired
     lateinit var correlationService: EpistolaMessageCorrelationService
+
+    @Autowired
+    lateinit var valueResolverService: ValueResolverService
+
+    @Autowired
+    lateinit var operatonTaskService: OperatonTaskService
+
+    @Autowired
+    lateinit var engineTaskService: TaskService
 
     private var deploymentId: String? = null
 
@@ -217,6 +230,37 @@ class DownloadDocumentE2ETest {
         }
     }
 
+    @Test
+    fun `epistola value resolver yields the active task's identity from the task scope`() {
+        // This is how the Formio components obtain the task id in every task-open flow: a hidden
+        // carrier field with sourceKey 'epistola:taskId' is prefilled server-side, where Valtimo
+        // passes the OperatonTask as the resolver's VariableScope. Verify the resolver against the
+        // real application context + a real active user task.
+        val deployment =
+            repositoryService.createDeployment().addString("epistola-usertask-test.bpmn", USER_TASK_BPMN).deploy()
+        try {
+            val pi = runtimeService.startProcessInstanceByKey(USER_TASK_PROCESS_KEY)
+            val task = engineTaskService.createTaskQuery().processInstanceId(pi.id).singleResult()
+            assertThat(task).isNotNull
+
+            val resolved =
+                runWithoutAuthorization {
+                    val operatonTask = operatonTaskService.findTaskById(task.id)
+                    valueResolverService.resolveValues(
+                        pi.id,
+                        operatonTask,
+                        listOf("epistola:taskId", "epistola:taskDefinitionKey", "epistola:executionId"),
+                    )
+                }
+
+            assertThat(resolved["epistola:taskId"]).isEqualTo(task.id)
+            assertThat(resolved["epistola:taskDefinitionKey"]).isEqualTo("reviewTask")
+            assertThat(resolved["epistola:executionId"]).isEqualTo(task.executionId)
+        } finally {
+            repositoryService.deleteDeployment(deployment.id, true)
+        }
+    }
+
     private fun resolvePlugin(): EpistolaPlugin {
         val configurations = pluginService.findPluginConfigurations(EpistolaPlugin::class.java) { true }
         assertThat(configurations).isNotEmpty()
@@ -261,8 +305,30 @@ class DownloadDocumentE2ETest {
     companion object {
         private const val PROCESS_KEY = "epistola-download-flow-test"
         private const val PARALLEL_PROCESS_KEY = "epistola-parallel-test"
+        private const val USER_TASK_PROCESS_KEY = "epistola-usertask-test"
         private const val MESSAGE = "EpistolaDocumentGenerated"
         private const val DOCUMENT_VARIABLE = "epistolaResult"
+
+        // Minimal process that parks on a user task, so the epistola: value resolver can be
+        // exercised against a real OperatonTask scope.
+        private val USER_TASK_BPMN =
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                              xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                              targetNamespace="http://bpmn.io/schema/bpmn" id="defs_ut_test">
+              <bpmn:process id="epistola-usertask-test" isExecutable="true" camunda:historyTimeToLive="P1D">
+                <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
+                <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="reviewTask" />
+                <bpmn:userTask id="reviewTask" name="Review">
+                  <bpmn:incoming>f1</bpmn:incoming>
+                  <bpmn:outgoing>f2</bpmn:outgoing>
+                </bpmn:userTask>
+                <bpmn:sequenceFlow id="f2" sourceRef="reviewTask" targetRef="end" />
+                <bpmn:endEvent id="end"><bpmn:incoming>f2</bpmn:incoming></bpmn:endEvent>
+              </bpmn:process>
+            </bpmn:definitions>
+            """.trimIndent()
 
         private val BPMN =
             """

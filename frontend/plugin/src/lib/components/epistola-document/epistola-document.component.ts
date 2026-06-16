@@ -4,19 +4,16 @@ import {
   Component,
   EventEmitter,
   Input,
+  OnChanges,
   OnDestroy,
-  OnInit,
   Output,
+  SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { Subscription } from 'rxjs';
-import {
-  DownloadDocumentRequest,
-  EpistolaPluginService,
-  EpistolaTaskContextService,
-} from '../../services';
+import { DownloadDocumentRequest, EpistolaPluginService } from '../../services';
 
 export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
 
@@ -205,7 +202,7 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
   ],
 })
 export class EpistolaDocumentComponent
-  implements FormioCustomComponent<unknown>, OnInit, OnDestroy
+  implements FormioCustomComponent<unknown>, OnChanges, OnDestroy
 {
   @Input() value: unknown;
   @Output() valueChange = new EventEmitter<unknown>();
@@ -232,6 +229,12 @@ export class EpistolaDocumentComponent
   /** Filename used for the download disposition. */
   @Input() filename = 'document.pdf';
 
+  /**
+   * Task id forwarded by the Formio wrapper from the server-prefilled form
+   * ({@code epistola:taskId} value resolver), populated in every Valtimo task-open flow.
+   */
+  @Input() taskInstanceId?: string | null;
+
   loading = false;
   downloading = false;
   error: string | null = null;
@@ -248,15 +251,18 @@ export class EpistolaDocumentComponent
     private readonly epistolaPluginService: EpistolaPluginService,
     private readonly sanitizer: DomSanitizer,
     private readonly formIoStateService: FormIoStateService,
-    private readonly taskContext: EpistolaTaskContextService,
     private readonly cdr: ChangeDetectorRef,
   ) {}
 
-  ngOnInit(): void {
-    if (this.designMode) {
+  ngOnChanges(changes: SimpleChanges): void {
+    if (this.designMode || this.display === 'button') {
       return;
     }
-    if (this.display !== 'button') {
+    // The Formio wrapper sets taskInstanceId around attach, so it can arrive after the
+    // first change — (re)load the inline document once it's available instead of leaving
+    // the "Document is alleen beschikbaar binnen een taak" message until a manual refresh.
+    // (For display="button" the download() click reads the task id on demand.)
+    if (changes['taskInstanceId'] && this.taskInstanceId) {
       this.loadInline();
     }
   }
@@ -328,7 +334,7 @@ export class EpistolaDocumentComponent
   }
 
   private buildRequest(disposition: 'inline' | 'attachment'): DownloadDocumentRequest | null {
-    const taskId = this.taskContext.taskInstanceId;
+    const taskId = this.taskInstanceId ?? null;
     const caseDocumentId = this.formIoStateService.documentId;
     if (!taskId || !caseDocumentId) {
       this.error = 'Document is alleen beschikbaar binnen een taak.';

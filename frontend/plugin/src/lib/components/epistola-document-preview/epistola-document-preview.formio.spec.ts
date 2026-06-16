@@ -101,6 +101,30 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     expect(components[TYPE]).toBe(registeredClass);
   });
 
+  it('forwards the server-prefilled task id to the Angular element on attach', () => {
+    const { inst, root } = createInstance({});
+    // Carrier hidden field prefilled by the epistola: value resolver.
+    (root as any).form = {
+      components: [
+        { properties: { sourceKey: 'epistola:taskId' }, defaultValue: 'task-from-prefill' },
+      ],
+    };
+    inst._customAngularElement = {};
+
+    inst.attach({});
+
+    expect(inst._customAngularElement.taskInstanceId).toBe('task-from-prefill');
+  });
+
+  it('leaves taskInstanceId unset when the form carries no prefilled task id', () => {
+    const { inst } = createInstance({});
+    inst._customAngularElement = {};
+
+    inst.attach({});
+
+    expect(inst._customAngularElement.taskInstanceId).toBeUndefined();
+  });
+
   it('schedules a debounced preview on change and pushes computed overrides', () => {
     const { inst, root, handlers } = createInstance({
       overrideMapping: { doc: { name: 'form:nameField' } },

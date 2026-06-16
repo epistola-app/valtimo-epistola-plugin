@@ -12,6 +12,7 @@ import {
   ChangelogRelease,
   ClasspathCatalog,
   ConnectionStatus,
+  FormCarrierIssue,
   PendingJob,
   PluginUsageEntry,
 } from '../../models';
@@ -44,7 +45,8 @@ export class EpistolaAdminPageComponent implements OnInit {
   cards: ConfigurationCard[] = [];
   selectedCard: ConfigurationCard | null = null;
   activeTab: 'actions' | 'pending' | 'catalogs' = 'actions';
-  overviewTab: 'configurations' | 'validations' | 'changelog' = 'configurations';
+  // NOTE: the 'forms' tab is TEMPORARY (remove in 1.0.0) — see the carrier-repair block below.
+  overviewTab: 'configurations' | 'validations' | 'changelog' | 'forms' = 'configurations';
   loading = false;
   pluginVersion: string | null = null;
   changelog: ChangelogRelease[] | null = null;
@@ -62,6 +64,17 @@ export class EpistolaAdminPageComponent implements OnInit {
   redeployingSlugs = new Set<string>();
   catalogFeedback: {
     slug: string;
+    type: 'success' | 'error';
+    message: string;
+  } | null = null;
+
+  // TEMPORARY (removed in 1.0.0): task-id carrier detection + repair.
+  formIssues: FormCarrierIssue[] | null = null;
+  formIssuesLoading = false;
+  repairingFormIds = new Set<string>();
+  repairingAll = false;
+  formFeedback: {
+    formId: string;
     type: 'success' | 'error';
     message: string;
   } | null = null;
@@ -120,11 +133,87 @@ export class EpistolaAdminPageComponent implements OnInit {
     this.updateUrl(this.selectedCard?.configurationId ?? null, tab);
   }
 
-  setOverviewTab(tab: 'configurations' | 'validations' | 'changelog'): void {
+  // 'forms' is TEMPORARY (remove in 1.0.0).
+  setOverviewTab(tab: 'configurations' | 'validations' | 'changelog' | 'forms'): void {
     this.overviewTab = tab;
     if (tab === 'changelog' && this.changelog === null && !this.changelogLoading) {
       this.loadChangelog();
     }
+    if (tab === 'forms' && this.formIssues === null && !this.formIssuesLoading) {
+      this.loadFormIssues();
+    }
+  }
+
+  // ---- TEMPORARY (removed in 1.0.0): task-id carrier detection + repair ----
+
+  private loadFormIssues(): void {
+    this.formIssuesLoading = true;
+    this.formFeedback = null;
+    this.adminService.getFormCarrierIssues().subscribe({
+      next: (issues) => {
+        this.formIssues = issues;
+        this.formIssuesLoading = false;
+      },
+      error: () => {
+        this.formIssues = [];
+        this.formIssuesLoading = false;
+      },
+    });
+  }
+
+  isRepairingForm(issue: FormCarrierIssue): boolean {
+    return this.repairingFormIds.has(issue.formId);
+  }
+
+  repairForm(issue: FormCarrierIssue): void {
+    if (this.repairingFormIds.has(issue.formId)) {
+      return;
+    }
+    this.repairingFormIds.add(issue.formId);
+    this.formFeedback = null;
+    this.adminService.repairFormCarrier(issue.formId).subscribe({
+      next: (result) => {
+        this.repairingFormIds.delete(issue.formId);
+        this.formFeedback = {
+          formId: issue.formId,
+          type: 'success',
+          message: `OK — ${result.componentsPatched} component(s) patched`,
+        };
+        this.loadFormIssues();
+      },
+      error: (err) => {
+        this.repairingFormIds.delete(issue.formId);
+        const message =
+          err?.error?.errorMessage ?? err?.error?.message ?? err?.message ?? 'unknown error';
+        this.formFeedback = { formId: issue.formId, type: 'error', message };
+      },
+    });
+  }
+
+  repairAllForms(): void {
+    if (this.repairingAll) {
+      return;
+    }
+    this.repairingAll = true;
+    this.formFeedback = null;
+    this.adminService.repairAllFormCarriers().subscribe({
+      next: (summary) => {
+        this.repairingAll = false;
+        this.formFeedback = {
+          formId: 'all',
+          type: summary.failed > 0 ? 'error' : 'success',
+          message: `Repaired ${summary.formsRepaired} form(s), ${summary.componentsPatched} component(s)${
+            summary.failed > 0 ? `, ${summary.failed} failed` : ''
+          }`,
+        };
+        this.loadFormIssues();
+      },
+      error: (err) => {
+        this.repairingAll = false;
+        const message = err?.error?.message ?? err?.message ?? 'unknown error';
+        this.formFeedback = { formId: 'all', type: 'error', message };
+      },
+    });
   }
 
   private loadChangelog(): void {

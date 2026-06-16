@@ -13,7 +13,7 @@ import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { Subscription } from 'rxjs';
-import { EpistolaPluginService, EpistolaTaskContextService } from '../../services';
+import { EpistolaPluginService } from '../../services';
 import { shouldLoadPreview } from './preview-utils';
 
 @Component({
@@ -221,6 +221,11 @@ export class EpistolaDocumentPreviewComponent
   @Input() processDefinitionKey?: string;
   @Input() sourceActivityId?: string;
   @Input() overrideMapping?: Record<string, any>;
+  /**
+   * Task id forwarded by the Formio wrapper from the server-prefilled form
+   * ({@code epistola:taskId} value resolver), populated in every Valtimo task-open flow.
+   */
+  @Input() taskInstanceId?: string | null;
 
   loading = false;
   error: string | null = null;
@@ -235,16 +240,15 @@ export class EpistolaDocumentPreviewComponent
     private readonly sanitizer: DomSanitizer,
     private readonly formIoStateService: FormIoStateService,
     private readonly cdr: ChangeDetectorRef,
-    private readonly taskContext: EpistolaTaskContextService,
   ) {}
 
   /**
-   * Resolve the active task id from {@link EpistolaTaskContextService}, populated
-   * by {@code EpistolaTaskContextInterceptor} on the canonical Valtimo task-open
-   * call. Returns null when used outside a task context (e.g. Formio builder).
+   * The active task id, forwarded by the Formio wrapper from the server-prefilled
+   * form ({@code epistola:taskId} value resolver). Null outside a task context
+   * (e.g. Formio builder), in which case the component fails closed.
    */
   private get currentTaskId(): string | null {
-    return this.taskContext.taskInstanceId;
+    return this.taskInstanceId ?? null;
   }
 
   get overrideMappingScopes(): string[] {
@@ -279,8 +283,13 @@ export class EpistolaDocumentPreviewComponent
       return;
     }
 
-    // React to value changes (input overrides from the Formio wrapper).
-    if (changes['value']) {
+    if (this.designMode) return;
+
+    // React to input-override changes, and to the task id arriving late: the Formio
+    // wrapper sets taskInstanceId after attach, so it can land after the first render —
+    // re-run the preview once it does, instead of leaving the "only available from
+    // within a user task" message until a manual refresh.
+    if (changes['value'] || changes['taskInstanceId']) {
       this.triggerPreview();
     }
   }
@@ -323,26 +332,14 @@ export class EpistolaDocumentPreviewComponent
    * the task's process instance and case document, so all three ids must match.
    */
   private loadPreview(): void {
-    const documentId = this.formIoStateService.documentId;
-    if (!documentId) {
-      this.error = 'Could not determine document ID from context.';
-      this.cdr.markForCheck();
-      return;
-    }
-
     if (!this.sourceActivityId) {
       this.error = 'Preview is not configured: set the source activity on the form component.';
       this.cdr.markForCheck();
       return;
     }
 
-    const processInstanceId = this.formIoStateService.processInstanceId;
-    if (!processInstanceId) {
-      this.error = 'Preview is only available from within a running process.';
-      this.cdr.markForCheck();
-      return;
-    }
-
+    // The backend derives the process instance and case document from the task, so the
+    // task id is the only runtime context the request carries.
     const taskId = this.currentTaskId;
     if (!taskId) {
       this.error = 'Preview is only available from within a user task.';
@@ -359,9 +356,6 @@ export class EpistolaDocumentPreviewComponent
     this.previewSubscription = this.epistolaPluginService
       .previewToBlob({
         taskId,
-        documentId,
-        processDefinitionKey: this.processDefinitionKey || null,
-        processInstanceId,
         sourceActivityId: this.sourceActivityId,
         inputOverrides: this.value || null,
         overrides: null,

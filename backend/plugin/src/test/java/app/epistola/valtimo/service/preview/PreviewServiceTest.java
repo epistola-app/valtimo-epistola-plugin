@@ -171,11 +171,10 @@ class PreviewServiceTest {
 
         @Test
         void missingProcessInstanceId_throwsMissingContext() {
-            PreviewRequest request = new PreviewRequest(
-                    "task-id-test", "doc-123", null, "activity-1", null, null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", "activity-1", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
-                    () -> previewService.generatePreview(request));
+                    () -> previewService.generatePreview(request, "doc-123", null));
 
             assertEquals(PreviewException.Reason.MISSING_CONTEXT, ex.getReason());
         }
@@ -184,28 +183,12 @@ class PreviewServiceTest {
         void processInstanceNotFound_throwsProcessNotFound() {
             mockProcessInstanceNotFound("instance-1");
 
-            PreviewRequest request = new PreviewRequest(
-                    "task-id-test", "doc-123", null, "activity-1", "instance-1", null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", "activity-1", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
-                    () -> previewService.generatePreview(request));
+                    () -> previewService.generatePreview(request, "doc-123", "instance-1"));
 
             assertEquals(PreviewException.Reason.PROCESS_NOT_FOUND, ex.getReason());
-        }
-
-        @Test
-        void processDefinitionKeyMismatch_throwsProcessNotFound() {
-            mockProcessInstance("instance-1", "other-process:1:abc");
-
-            PreviewRequest request = new PreviewRequest(
-                    "task-id-test", "doc-123", "my-process", "activity-1", "instance-1", null, null);
-
-            PreviewException ex = assertThrows(PreviewException.class,
-                    () -> previewService.generatePreview(request));
-
-            assertEquals(PreviewException.Reason.PROCESS_NOT_FOUND, ex.getReason());
-            assertTrue(ex.getMessage().contains("other-process"));
-            assertTrue(ex.getMessage().contains("my-process"));
         }
 
         @Test
@@ -214,11 +197,10 @@ class PreviewServiceTest {
             when(processLinkService.getProcessLinks("my-process:1:abc", "activity-1"))
                     .thenReturn(List.of());
 
-            PreviewRequest request = new PreviewRequest(
-                    "task-id-test", "doc-123", "my-process", "activity-1", "instance-1", null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", "activity-1", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
-                    () -> previewService.generatePreview(request));
+                    () -> previewService.generatePreview(request, "doc-123", "instance-1"));
 
             assertEquals(PreviewException.Reason.LINK_NOT_FOUND, ex.getReason());
         }
@@ -238,11 +220,10 @@ class PreviewServiceTest {
             when(processLinkService.getProcessLinks("my-process:1:abc"))
                     .thenReturn(List.of(link1, link2));
 
-            PreviewRequest request = new PreviewRequest(
-                    "task-id-test", "doc-123", null, null, "instance-1", null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
-                    () -> previewService.generatePreview(request));
+                    () -> previewService.generatePreview(request, "doc-123", "instance-1"));
 
             assertEquals(PreviewException.Reason.AMBIGUOUS_ACTIVITY, ex.getReason());
             assertTrue(ex.getMessage().contains("task-1"));
@@ -282,11 +263,10 @@ class PreviewServiceTest {
                     anyString(), any(), anyString(), any()))
                     .thenThrow(new RuntimeException("Connection refused"));
 
-            PreviewRequest request = new PreviewRequest(
-                    "task-id-test", "doc-123", null, null, "instance-1", null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
-                    () -> previewService.generatePreview(request));
+                    () -> previewService.generatePreview(request, "doc-123", "instance-1"));
 
             assertEquals(PreviewException.Reason.RENDER_FAILED, ex.getReason());
             assertTrue(ex.getMessage().contains("Connection refused"));
@@ -340,10 +320,9 @@ class PreviewServiceTest {
             Map<String, Map<String, Object>> inputOverrides = new HashMap<>();
             inputOverrides.put("doc", Map.of("name", "override"));
 
-            PreviewRequest request = new PreviewRequest(
-                    "task-id-test", "doc-123", null, null, "instance-1", null, inputOverrides);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null, inputOverrides);
 
-            previewService.generatePreview(request);
+            previewService.generatePreview(request, "doc-123", "instance-1");
 
             verify(jsonataMappingService).evaluate(evaluationContextCaptor.capture());
             EvaluationContext ctx = evaluationContextCaptor.getValue();
@@ -364,10 +343,9 @@ class PreviewServiceTest {
             Map<String, Map<String, Object>> inputOverrides = new HashMap<>();
             inputOverrides.put("pv", Map.of("status", "approved"));
 
-            PreviewRequest request = new PreviewRequest(
-                    "task-id-test", "doc-123", null, null, "instance-1", null, inputOverrides);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null, inputOverrides);
 
-            previewService.generatePreview(request);
+            previewService.generatePreview(request, "doc-123", "instance-1");
 
             verify(jsonataMappingService).evaluate(evaluationContextCaptor.capture());
             EvaluationContext ctx = evaluationContextCaptor.getValue();
@@ -384,10 +362,9 @@ class PreviewServiceTest {
             when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
                     .thenReturn(new LinkedHashMap<>());
 
-            PreviewRequest request = new PreviewRequest(
-                    "task-id-test", "doc-123", null, null, "instance-1", null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
 
-            previewService.generatePreview(request);
+            previewService.generatePreview(request, "doc-123", "instance-1");
 
             verify(jsonataMappingService).evaluate(evaluationContextCaptor.capture());
             EvaluationContext ctx = evaluationContextCaptor.getValue();
@@ -411,10 +388,9 @@ class PreviewServiceTest {
             when(jsonataMappingService.evaluateScalar(any(EvaluationContext.class)))
                     .thenReturn("letter-formal");
 
-            PreviewRequest request = new PreviewRequest(
-                    "task-id-test", "doc-123", null, null, "instance-1", null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
 
-            previewService.generatePreview(request);
+            previewService.generatePreview(request, "doc-123", "instance-1");
 
             // Verify that the variantId passed to epistolaService.previewDocument() is the
             // dynamically evaluated result, not the raw expression string "$pv.letterType"
@@ -444,10 +420,9 @@ class PreviewServiceTest {
             // Output overrides (post-JSONata) — should override the address field
             Map<String, Object> outputOverrides = Map.of("address", "overridden-address");
 
-            PreviewRequest request = new PreviewRequest(
-                    "task-id-test", "doc-123", null, null, "instance-1", outputOverrides, inputOverrides);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, outputOverrides, inputOverrides);
 
-            previewService.generatePreview(request);
+            previewService.generatePreview(request, "doc-123", "instance-1");
 
             // Verify input overrides were applied (doc resolver wraps with OverlayMap)
             verify(jsonataMappingService).evaluate(evaluationContextCaptor.capture());

@@ -2,6 +2,7 @@ import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
 import { EpistolaDocumentPreviewComponent } from './epistola-document-preview.component';
 import { computeInputOverrides } from './preview-utils';
+import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/prefilled-task-id';
 
 export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-document-preview',
@@ -11,6 +12,9 @@ export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
   icon: 'file-pdf-o',
   emptyValue: null,
   fieldOptions: ['label', 'processDefinitionKey', 'sourceActivityId', 'overrideMapping'],
+  // Embed the hidden task-id carrier so dropping this component is enough — no separate
+  // field for the author to add. Valtimo prefills it server-side via the epistola: resolver.
+  schema: { components: [PREFILLED_TASK_ID_CARRIER] },
   editForm: () => ({
     components: [
       {
@@ -84,6 +88,12 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
         this._customAngularElement['processDefinitionKey'] =
           this.component.processDefinitionKey || '';
         this._customAngularElement['sourceActivityId'] = this.component.sourceActivityId || '';
+        // Forward the server-prefilled task id (epistola: value resolver) so the
+        // component authorizes against the exact task in every Valtimo task-open flow.
+        const prefilledTaskId = readPrefilledTaskId(this.root);
+        if (prefilledTaskId) {
+          this._customAngularElement['taskInstanceId'] = prefilledTaskId;
+        }
       }
 
       // Listen to form changes and compute input overrides from the mapping

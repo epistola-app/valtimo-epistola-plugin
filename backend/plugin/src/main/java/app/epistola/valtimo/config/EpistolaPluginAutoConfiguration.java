@@ -10,6 +10,7 @@ import app.epistola.valtimo.deployment.EpistolaCatchEventLinkResolver;
 import app.epistola.valtimo.deployment.EpistolaCatchEventParseListener;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.deployment.EpistolaProcessEnginePlugin;
+import app.epistola.valtimo.service.admin.EpistolaFormCarrierRepairService; // TEMPORARY (remove in 1.0.0)
 import app.epistola.valtimo.service.completion.EpistolaCatchEventStartListener;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
@@ -26,6 +27,7 @@ import app.epistola.valtimo.service.EpistolaServiceImpl;
 import app.epistola.valtimo.service.form.FormioFormGenerator;
 import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.form.RetryFormService;
+import app.epistola.valtimo.valueresolver.EpistolaTaskValueResolverFactory;
 import app.epistola.valtimo.web.rest.EpistolaAdminResource;
 import app.epistola.valtimo.web.rest.EpistolaGenerationResource;
 import app.epistola.valtimo.web.rest.EpistolaTemplateResource;
@@ -116,6 +118,16 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(EpistolaService.class)
     public EpistolaService epistolaService(EpistolaApiClientFactory apiClientFactory) {
         return new EpistolaServiceImpl(apiClientFactory);
+    }
+
+    // Exposes the current user task's id to a form at server-side prefill time (prefix
+    // 'epistola:'). This is how the Formio components obtain the task id in every Valtimo
+    // task-open flow — including the task-list/case-detail flow that never fires the per-task
+    // process-link GET the frontend interceptor relies on. See EpistolaTaskValueResolverFactory.
+    @Bean
+    @ConditionalOnMissingBean(EpistolaTaskValueResolverFactory.class)
+    public EpistolaTaskValueResolverFactory epistolaTaskValueResolverFactory() {
+        return new EpistolaTaskValueResolverFactory();
     }
 
     @Bean
@@ -296,9 +308,11 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(EpistolaAdminResource.class)
     public EpistolaAdminResource epistolaAdminResource(
             EpistolaAdminService adminService,
-            com.ritense.authorization.AuthorizationService authorizationService
+            com.ritense.authorization.AuthorizationService authorizationService,
+            // TEMPORARY (remove in 1.0.0): drop this arg with the carrier-repair feature.
+            EpistolaFormCarrierRepairService formCarrierRepairService
     ) {
-        return new EpistolaAdminResource(adminService, authorizationService);
+        return new EpistolaAdminResource(adminService, authorizationService, formCarrierRepairService);
     }
 
     @Bean
@@ -375,5 +389,16 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaProperties properties
     ) {
         return new EpistolaFormAutoDeployAspect(formDeploymentService, properties);
+    }
+
+    // TEMPORARY (remove in 1.0.0): admin-page detection + repair of forms authored before the task-id
+    // carrier was embedded in the components' schema. See EpistolaFormCarrierRepairService.
+    @Bean
+    @ConditionalOnMissingBean(EpistolaFormCarrierRepairService.class)
+    public EpistolaFormCarrierRepairService epistolaFormCarrierRepairService(
+            com.ritense.form.repository.FormDefinitionRepository formDefinitionRepository,
+            ObjectMapper objectMapper
+    ) {
+        return new EpistolaFormCarrierRepairService(formDefinitionRepository, objectMapper);
     }
 }

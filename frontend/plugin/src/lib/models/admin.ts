@@ -141,3 +141,32 @@ export interface BpmnValidationReport {
   refreshIntervalMs: number;
   violations: BpmnValidationViolation[];
 }
+
+/**
+ * TEMPORARY (removed in 1.0.0). A form whose Epistola components are missing the
+ * task-id carrier field — surfaced on the admin page so it can be repaired.
+ * `readOnly` flags classpath-deployed forms (a repair there is reverted on the next
+ * boot; fix the source instead).
+ */
+export interface FormCarrierIssue {
+  formId: string;
+  name: string;
+  missingComponents: number;
+  readOnly: boolean;
+}
+
+/** TEMPORARY (removed in 1.0.0). Outcome of repairing one form's carrier. */
+export interface FormCarrierRepairResult {
+  formId: string;
+  name: string | null;
+  success: boolean;
+  componentsPatched: number;
+  errorMessage: string | null;
+}
+
+/** TEMPORARY (removed in 1.0.0). Aggregate outcome of repairing all flagged forms. */
+export interface FormCarrierRepairSummary {
+  formsRepaired: number;
+  componentsPatched: number;
+  failed: number;
+}

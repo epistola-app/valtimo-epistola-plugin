@@ -3,6 +3,7 @@ package app.epistola.valtimo.web.rest;
 import app.epistola.valtimo.authorization.EpistolaAdministration;
 import app.epistola.valtimo.authorization.EpistolaAdministrationActionProvider;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
+import app.epistola.valtimo.service.admin.EpistolaFormCarrierRepairService;
 import app.epistola.valtimo.web.rest.dto.BpmnValidationReport;
 import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
 import app.epistola.valtimo.web.rest.dto.ChangelogRelease;
@@ -49,6 +50,8 @@ public class EpistolaAdminResource {
 
     private final EpistolaAdminService adminService;
     private final AuthorizationService authorizationService;
+    // TEMPORARY (remove in 1.0.0): detect/repair forms missing the task-id carrier.
+    private final EpistolaFormCarrierRepairService formCarrierRepairService;
 
     /**
      * Check connectivity to Epistola for all plugin configurations.
@@ -183,6 +186,45 @@ public class EpistolaAdminResource {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         ContentDisposition.attachment().filename(filename).build().toString())
                 .body(export);
+    }
+
+    // ---- TEMPORARY (remove in 1.0.0): task-id carrier detection + repair ----
+
+    /**
+     * Lists forms whose Epistola components are missing the task-id carrier field.
+     */
+    @GetMapping("/forms/carrier-issues")
+    public ResponseEntity<List<EpistolaFormCarrierRepairService.FormCarrierIssue>> formCarrierIssues() {
+        requireManagePermission();
+        return ResponseEntity.ok(formCarrierRepairService.findIssues());
+    }
+
+    /**
+     * Injects the task-id carrier into a single form's Epistola components. 200 on success,
+     * 404 when the form does not exist, 502 when the repair fails.
+     */
+    @PostMapping("/forms/{formId}/repair-carrier")
+    public ResponseEntity<EpistolaFormCarrierRepairService.FormCarrierRepairResult> repairFormCarrier(
+            @PathVariable UUID formId) {
+        requireManagePermission();
+        log.info("Manual form carrier repair requested: form={}", formId);
+        EpistolaFormCarrierRepairService.FormCarrierRepairResult result = formCarrierRepairService.repair(formId);
+        if (result.success()) {
+            return ResponseEntity.ok(result);
+        }
+        HttpStatus status = "Form not found".equals(result.errorMessage())
+                ? HttpStatus.NOT_FOUND : HttpStatus.BAD_GATEWAY;
+        return ResponseEntity.status(status).body(result);
+    }
+
+    /**
+     * Repairs every form returned by {@link #formCarrierIssues()}.
+     */
+    @PostMapping("/forms/repair-carrier")
+    public ResponseEntity<EpistolaFormCarrierRepairService.FormCarrierRepairSummary> repairAllFormCarriers() {
+        requireManagePermission();
+        log.info("Manual form carrier repair-all requested");
+        return ResponseEntity.ok(formCarrierRepairService.repairAll());
     }
 
     private void requireManagePermission() {

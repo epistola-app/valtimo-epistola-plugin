@@ -43,12 +43,16 @@ public class PreviewService {
     /**
      * Generate a document preview.
      *
-     * @param request The preview request with document context and optional overrides
+     * @param request           The preview request (source activity + optional overrides)
+     * @param documentId        The Valtimo case-document UUID, derived server-side from the task,
+     *                          used to populate the {@code $doc} JSONata context
+     * @param processInstanceId The process instance, derived server-side from the task, used to
+     *                          resolve the process link and populate the {@code $pv} JSONata context
      * @return PDF bytes as an InputStream
      * @throws PreviewException if the preview cannot be generated
      */
-    public InputStream generatePreview(PreviewRequest request) {
-        String processDefinitionId = resolveProcessDefinitionId(request);
+    public InputStream generatePreview(PreviewRequest request, String documentId, String processInstanceId) {
+        String processDefinitionId = resolveProcessDefinitionId(processInstanceId);
         PluginProcessLink processLink = resolveProcessLink(processDefinitionId, request.sourceActivityId());
 
         String catalogId = extractCatalogId(processLink);
@@ -67,23 +71,23 @@ public class PreviewService {
                     Map<String, Object> doc = loadDocumentContent(docId);
                     return docOverrides != null ? new OverlayMap(docOverrides, doc) : doc;
                 })
-                .documentId(request.documentId());
+                .documentId(documentId);
 
         // Add process variable resolver (with override fallback)
-        if (pvOverrides != null || request.processInstanceId() != null) {
+        if (pvOverrides != null || processInstanceId != null) {
             evalCtxBuilder.processVariableResolver(name -> {
                 if (pvOverrides != null && pvOverrides.containsKey(name)) {
                     return pvOverrides.get(name);
                 }
-                if (request.processInstanceId() != null) {
-                    return runtimeService.getVariable(request.processInstanceId(), name);
+                if (processInstanceId != null) {
+                    return runtimeService.getVariable(processInstanceId, name);
                 }
                 return null;
             });
             // Enumeration ($keys($pv), $pv.*): overlay overrides on top of process variables
             evalCtxBuilder.processVariableEnumerator(() -> {
-                Map<String, Object> base = request.processInstanceId() != null
-                        ? runtimeService.getVariables(request.processInstanceId())
+                Map<String, Object> base = processInstanceId != null
+                        ? runtimeService.getVariables(processInstanceId)
                         : Map.of();
                 return pvOverrides != null ? new OverlayMap(pvOverrides, base) : base;
             });
@@ -119,31 +123,19 @@ public class PreviewService {
         }
     }
 
-    private String resolveProcessDefinitionId(PreviewRequest request) {
-        if (request.processInstanceId() == null) {
+    private String resolveProcessDefinitionId(String processInstanceId) {
+        if (processInstanceId == null) {
             throw new PreviewException(PreviewException.Reason.MISSING_CONTEXT,
                     "processInstanceId is required for preview");
         }
         var processInstance = runtimeService.createProcessInstanceQuery()
-                .processInstanceId(request.processInstanceId())
+                .processInstanceId(processInstanceId)
                 .singleResult();
         if (processInstance == null) {
             throw new PreviewException(PreviewException.Reason.PROCESS_NOT_FOUND,
-                    "Process instance not found: " + request.processInstanceId());
+                    "Process instance not found: " + processInstanceId);
         }
-        String processDefinitionId = processInstance.getProcessDefinitionId();
-
-        // If processDefinitionKey is provided, verify it matches
-        if (request.processDefinitionKey() != null) {
-            String actualKey = processDefinitionId.split(":")[0];
-            if (!actualKey.equals(request.processDefinitionKey())) {
-                throw new PreviewException(PreviewException.Reason.PROCESS_NOT_FOUND,
-                        "Process instance " + request.processInstanceId()
-                                + " belongs to '" + actualKey
-                                + "', not '" + request.processDefinitionKey() + "'");
-            }
-        }
-        return processDefinitionId;
+        return processInstance.getProcessDefinitionId();
     }
 
     private PluginProcessLink resolveProcessLink(String processDefinitionId, String sourceActivityId) {

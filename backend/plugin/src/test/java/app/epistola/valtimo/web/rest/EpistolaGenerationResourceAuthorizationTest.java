@@ -15,32 +15,32 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Verifies the authorization contract for the user-task-bound endpoints
- * (preview, retry-form):
+ * Verifies the authorization contract for the user-task-bound endpoints (preview, retry-form).
  *
- * <ul>
- *   <li>{@code OperatonTask:VIEW} on the supplied {@code taskId}.</li>
- *   <li>The supplied {@code processInstanceId} matches the task's process instance.</li>
- *   <li>The supplied {@code documentId} matches the task's process business key
- *       (the Valtimo case document UUID).</li>
- * </ul>
+ * <p>Both require {@code OperatonTask:VIEW} on the supplied {@code taskId} and derive the process
+ * instance + case document <i>from that task</i> — the caller never supplies them, so there is no
+ * forgery vector to cross-check. These tests assert: the {@code VIEW} permission is required; the
+ * derived ids are what the service is called with; missing {@code taskId}/{@code sourceActivityId}
+ * → 400; an unknown task → 404; a denied permission propagates as 403.
  */
 class EpistolaGenerationResourceAuthorizationTest {
 
     private static final String TASK_ID = "task-789";
     private static final String PROCESS_INSTANCE_ID = "process-instance-1";
     private static final String DOCUMENT_ID = "doc-1";
+    private static final String SOURCE_ACTIVITY_ID = "activity-1";
 
     private AuthorizationService authorizationService;
     private OperatonTaskService operatonTaskService;
@@ -76,13 +76,14 @@ class EpistolaGenerationResourceAuthorizationTest {
     }
 
     private PreviewRequest validPreviewRequest() {
-        return new PreviewRequest(
-                TASK_ID, DOCUMENT_ID, "process-key", "activity-1", PROCESS_INSTANCE_ID, null, null);
+        return new PreviewRequest(TASK_ID, SOURCE_ACTIVITY_ID, null, null);
     }
 
+    // ---- preview ----
+
     @Test
-    void preview_succeedsWhenTaskBindingMatches() throws Exception {
-        when(previewService.generatePreview(org.mockito.ArgumentMatchers.any(PreviewRequest.class)))
+    void preview_requiresViewAndDerivesContextFromTask() throws Exception {
+        when(previewService.generatePreview(any(PreviewRequest.class), eq(DOCUMENT_ID), eq(PROCESS_INSTANCE_ID)))
                 .thenReturn(new java.io.ByteArrayInputStream(new byte[]{0x25, 0x50, 0x44, 0x46})); // %PDF
 
         var response = resource.previewDocument(validPreviewRequest());
@@ -95,66 +96,34 @@ class EpistolaGenerationResourceAuthorizationTest {
         assertThat(request.getEntities()).hasSize(1);
         assertThat(request.getEntities().get(0)).isSameAs(task);
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-    }
-
-    @Test
-    void preview_returns403WhenProcessInstanceIdDoesNotMatchTask() {
-        var request = new PreviewRequest(
-                TASK_ID, DOCUMENT_ID, "process-key", "activity-1", "other-process-instance", null, null);
-
-        assertThatThrownBy(() -> resource.previewDocument(request))
-                .isInstanceOf(AccessDeniedException.class);
-    }
-
-    @Test
-    void preview_returns403WhenDocumentIdDoesNotMatchTaskBusinessKey() {
-        var request = new PreviewRequest(
-                TASK_ID, "other-doc", "process-key", "activity-1", PROCESS_INSTANCE_ID, null, null);
-
-        assertThatThrownBy(() -> resource.previewDocument(request))
-                .isInstanceOf(AccessDeniedException.class);
-    }
-
-    @Test
-    void preview_returns403WhenTaskBusinessKeyIsNull() {
-        when(processInstance.getBusinessKey()).thenReturn(null);
-
-        assertThatThrownBy(() -> resource.previewDocument(validPreviewRequest()))
-                .isInstanceOf(AccessDeniedException.class);
+        // The service is called with the task-derived document + process instance, not wire values.
+        verify(previewService).generatePreview(any(PreviewRequest.class), eq(DOCUMENT_ID), eq(PROCESS_INSTANCE_ID));
     }
 
     @Test
     void preview_returns400WhenTaskIdMissing() {
-        var request = new PreviewRequest(
-                null, DOCUMENT_ID, "process-key", "activity-1", PROCESS_INSTANCE_ID, null, null);
+        var request = new PreviewRequest(null, SOURCE_ACTIVITY_ID, null, null);
 
         assertThat(resource.previewDocument(request).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test
-    void preview_returns400WhenDocumentIdMissing() {
-        var request = new PreviewRequest(
-                TASK_ID, null, "process-key", "activity-1", PROCESS_INSTANCE_ID, null, null);
+    void preview_allowsBlankSourceActivityId_forAutoDiscovery() {
+        // sourceActivityId is optional — PreviewService auto-discovers the generate-document
+        // link when it is blank (used by the retry form's embedded preview).
+        when(previewService.generatePreview(any(PreviewRequest.class), eq(DOCUMENT_ID), eq(PROCESS_INSTANCE_ID)))
+                .thenReturn(new java.io.ByteArrayInputStream(new byte[]{0x25, 0x50, 0x44, 0x46}));
 
-        assertThat(resource.previewDocument(request).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
-    }
+        var response = resource.previewDocument(new PreviewRequest(TASK_ID, null, null, null));
 
-    @Test
-    void preview_returns400WhenProcessInstanceIdMissing() {
-        var request = new PreviewRequest(
-                TASK_ID, DOCUMENT_ID, "process-key", "activity-1", null, null, null);
-
-        assertThat(resource.previewDocument(request).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
     }
 
     @Test
     void preview_returns404WhenTaskNotFound() {
         when(operatonTaskService.findTaskById("missing")).thenThrow(new TaskNotFoundException("missing"));
-        var request = new PreviewRequest(
-                "missing", DOCUMENT_ID, "process-key", "activity-1", PROCESS_INSTANCE_ID, null, null);
+        var request = new PreviewRequest("missing", SOURCE_ACTIVITY_ID, null, null);
 
         assertThat(resource.previewDocument(request).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
@@ -163,18 +132,20 @@ class EpistolaGenerationResourceAuthorizationTest {
     @Test
     void preview_propagatesAccessDeniedAs403() {
         doThrow(new AccessDeniedException("nope"))
-                .when(authorizationService).requirePermission(org.mockito.ArgumentMatchers.any());
+                .when(authorizationService).requirePermission(any());
 
         assertThatThrownBy(() -> resource.previewDocument(validPreviewRequest()))
                 .isInstanceOf(AccessDeniedException.class);
     }
 
+    // ---- retry-form ----
+
     @Test
-    void retryForm_succeedsWhenTaskBindingMatches() {
+    void retryForm_requiresViewAndDerivesContextFromTask() {
         when(retryFormService.generateRetryForm(PROCESS_INSTANCE_ID, DOCUMENT_ID, null))
                 .thenReturn(new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode());
 
-        var response = resource.getRetryForm(TASK_ID, PROCESS_INSTANCE_ID, DOCUMENT_ID, null);
+        var response = resource.getRetryForm(TASK_ID, null);
 
         var captor = ArgumentCaptor.forClass(AuthorizationRequest.class);
         verify(authorizationService).requirePermission(captor.capture());
@@ -182,29 +153,13 @@ class EpistolaGenerationResourceAuthorizationTest {
         assertThat(request.getResourceType()).isEqualTo(OperatonTask.class);
         assertThat(request.getAction()).isEqualTo(OperatonTaskActionProvider.VIEW);
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        // Built against the task-derived process instance + case document.
+        verify(retryFormService).generateRetryForm(PROCESS_INSTANCE_ID, DOCUMENT_ID, null);
     }
 
     @Test
-    void retryForm_returns403WhenProcessInstanceIdDoesNotMatchTask() {
-        assertThatThrownBy(() ->
-                resource.getRetryForm(TASK_ID, "other-process-instance", DOCUMENT_ID, null))
-                .isInstanceOf(AccessDeniedException.class);
-    }
-
-    @Test
-    void retryForm_returns403WhenDocumentIdDoesNotMatchTaskBusinessKey() {
-        assertThatThrownBy(() ->
-                resource.getRetryForm(TASK_ID, PROCESS_INSTANCE_ID, "other-doc", null))
-                .isInstanceOf(AccessDeniedException.class);
-    }
-
-    @Test
-    void retryForm_returns400WhenAnyParamMissing() {
-        assertThat(resource.getRetryForm("", PROCESS_INSTANCE_ID, DOCUMENT_ID, null).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(resource.getRetryForm(TASK_ID, "", DOCUMENT_ID, null).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(resource.getRetryForm(TASK_ID, PROCESS_INSTANCE_ID, "", null).getStatusCode())
+    void retryForm_returns400WhenTaskIdMissing() {
+        assertThat(resource.getRetryForm("", null).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
@@ -212,7 +167,16 @@ class EpistolaGenerationResourceAuthorizationTest {
     void retryForm_returns404WhenTaskNotFound() {
         when(operatonTaskService.findTaskById("missing")).thenThrow(new TaskNotFoundException("missing"));
 
-        assertThat(resource.getRetryForm("missing", PROCESS_INSTANCE_ID, DOCUMENT_ID, null).getStatusCode())
+        assertThat(resource.getRetryForm("missing", null).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void retryForm_propagatesAccessDeniedAs403() {
+        doThrow(new AccessDeniedException("nope"))
+                .when(authorizationService).requirePermission(any());
+
+        assertThatThrownBy(() -> resource.getRetryForm(TASK_ID, null))
+                .isInstanceOf(AccessDeniedException.class);
     }
 }

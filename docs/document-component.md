@@ -45,12 +45,12 @@ The component **does not** take a raw `documentId` or `tenantId` value. The back
 ```
 User opens a task form containing <epistola-document>
   ↓
-EpistolaTaskContextInterceptor sniffs the task-open URL
-  GET /api/v2/process-link/task/{taskId}
-  → publishes taskId on EpistolaTaskContextService
+Server-side form prefill fills the hidden carrier field
+  (properties.sourceKey: "epistola:taskId" → EpistolaTaskValueResolverFactory)
+  → form data carries the active taskId, in every task-open flow
   ↓
 Component reads:
-  - taskId         ← EpistolaTaskContextService
+  - taskId         ← prefilled form (readPrefilledTaskId)
   - caseDocumentId ← FormIoStateService.documentId
   ↓
 GET /api/v1/plugin/epistola/documents/download
@@ -71,7 +71,25 @@ Backend (EpistolaGenerationResource):
 PDF blob → either inline <object> render or anchor.click() download
 ```
 
-The interceptor is registered globally via the plugin module and is the only way the component knows the active `taskInstanceId` — Angular Elements bootstrap their own injector tree, so direct DI lookup of Valtimo's task component is not possible from inside a custom Formio component.
+Angular Elements bootstrap their own injector tree, so a custom Formio component cannot look up Valtimo's task component via DI, and Valtimo exposes no service carrying the task id to a form at runtime. The component therefore learns the active `taskInstanceId` from **server-side form prefill**, which works in every task-open flow — see [Task-id carrier](#task-id-carrier) and [Authorization → Frontend implications](authorization.md#frontend-implications).
+
+### Task-id carrier
+
+No extra form setup is needed: each Epistola task component ships a hidden **carrier child** in its own schema (defined once in `prefilled-task-id.ts` as `PREFILLED_TASK_ID_CARRIER`), so dropping the component is enough — there is no separate field for the author to add. The carrier looks like:
+
+```json
+{
+  "type": "hidden",
+  "key": "epistolaTaskId",
+  "input": true,
+  "persistent": false,
+  "properties": { "sourceKey": "epistola:taskId" }
+}
+```
+
+Valtimo's server-side prefill recurses into the component's nested `components` and fills this child's `defaultValue` with the current task id (via the `epistola:` value resolver) — in both the direct task-open flow and the task-list/case-detail flow. The Formio wrapper reads it back with `readPrefilledTaskId` (which deep-scans the prefilled form definition) and forwards it to the Angular component. `persistent: false` keeps the value out of the submission, so the task id never lands in the case document.
+
+Forms authored **before** the carrier was embedded don't have it. The admin page's **Forms** tab (transitional, removed in 1.0.0) lists those forms and offers a per-form / "repair all" button that injects the carrier (`EpistolaFormCarrierRepairService`). Repair sticks for form-management-authored forms; classpath-deployed forms are reconciled to their source on the next boot (shown as "read-only"), so for those add the carrier to the source — re-drop the component, which ships the embedded carrier. If the carrier is absent at runtime, the component fails closed.
 
 ### Display modes side-by-side
 
@@ -109,13 +127,12 @@ The 0.8 endpoint reshape also matters: the old `GET /api/v1/plugin/epistola/docu
 
 ### Frontend
 
-| Class                            | File                                               | Role                                                                  |
-| -------------------------------- | -------------------------------------------------- | --------------------------------------------------------------------- |
-| `EpistolaDocumentComponent`      | `epistola-document/epistola-document.component.ts` | Angular component — one of three display modes                        |
-| `epistola-document.formio.ts`    | `epistola-document/epistola-document.formio.ts`    | Formio registration + `editForm`                                      |
-| `EpistolaTaskContextService`     | `services/epistola-task-context.service.ts`        | `BehaviorSubject<string \| null>` holding the active `taskInstanceId` |
-| `EpistolaTaskContextInterceptor` | `services/epistola-task-context.interceptor.ts`    | Sniffs `/api/v2/process-link/task/{taskId}`, populates the service    |
-| `EpistolaPluginService`          | `services/epistola-plugin.service.ts`              | `downloadDocumentBlob(...)` — the single backend entry point          |
+| Class                         | File                                               | Role                                                         |
+| ----------------------------- | -------------------------------------------------- | ------------------------------------------------------------ |
+| `EpistolaDocumentComponent`   | `epistola-document/epistola-document.component.ts` | Angular component — one of three display modes               |
+| `epistola-document.formio.ts` | `epistola-document/epistola-document.formio.ts`    | Formio registration + `editForm` + embedded task-id carrier  |
+| `readPrefilledTaskId`         | `services/prefilled-task-id.ts`                    | Reads the task id from the server-prefilled carrier field    |
+| `EpistolaPluginService`       | `services/epistola-plugin.service.ts`              | `downloadDocumentBlob(...)` — the single backend entry point |
 
 ### Backend
 

@@ -37,7 +37,19 @@
           "motivation": "form:pv:motivation",
           "decision": "form:pv:decision"
         }
-      }
+      },
+      "components": [
+        {
+          "type": "hidden",
+          "key": "epistolaTaskId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola:taskId"
+          }
+        }
+      ]
     },
     {
       "key": "submit",

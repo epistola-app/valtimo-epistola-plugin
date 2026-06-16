@@ -3,6 +3,7 @@ package app.epistola.valtimo.web.rest;
 import app.epistola.valtimo.authorization.EpistolaAdministration;
 import app.epistola.valtimo.authorization.EpistolaAdministrationActionProvider;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
+import app.epistola.valtimo.service.admin.EpistolaFormCarrierRepairService;
 import com.ritense.authorization.AuthorizationService;
 import com.ritense.authorization.request.AuthorizationRequest;
 import com.ritense.authorization.request.EntityAuthorizationRequest;
@@ -27,13 +28,49 @@ class EpistolaAdminResourceAuthorizationTest {
 
     private AuthorizationService authorizationService;
     private EpistolaAdminService adminService;
+    private EpistolaFormCarrierRepairService formCarrierRepairService;
     private EpistolaAdminResource resource;
 
     @BeforeEach
     void setUp() {
         authorizationService = mock(AuthorizationService.class);
         adminService = mock(EpistolaAdminService.class);
-        resource = new EpistolaAdminResource(adminService, authorizationService);
+        formCarrierRepairService = mock(EpistolaFormCarrierRepairService.class);
+        resource = new EpistolaAdminResource(adminService, authorizationService, formCarrierRepairService);
+    }
+
+    @Test
+    void formCarrierEndpoints_requireEpistolaAdministrationManage() {
+        when(formCarrierRepairService.findIssues()).thenReturn(List.of());
+        when(formCarrierRepairService.repair(any())).thenReturn(
+                new EpistolaFormCarrierRepairService.FormCarrierRepairResult("f", "n", true, 0, null));
+        when(formCarrierRepairService.repairAll()).thenReturn(
+                new EpistolaFormCarrierRepairService.FormCarrierRepairSummary(0, 0, 0));
+
+        resource.formCarrierIssues();
+        resource.repairFormCarrier(UUID.randomUUID());
+        resource.repairAllFormCarriers();
+
+        verify(authorizationService, times(3)).requirePermission(any());
+    }
+
+    @Test
+    void repairFormCarrier_mapsResultToHttpStatus() {
+        UUID id = UUID.randomUUID();
+
+        when(formCarrierRepairService.repair(id)).thenReturn(
+                new EpistolaFormCarrierRepairService.FormCarrierRepairResult(id.toString(), "ok", true, 1, null));
+        assertThat(resource.repairFormCarrier(id).getStatusCode().value()).isEqualTo(200);
+
+        when(formCarrierRepairService.repair(id)).thenReturn(
+                new EpistolaFormCarrierRepairService.FormCarrierRepairResult(
+                        id.toString(), null, false, 0, "Form not found"));
+        assertThat(resource.repairFormCarrier(id).getStatusCode().value()).isEqualTo(404);
+
+        when(formCarrierRepairService.repair(id)).thenReturn(
+                new EpistolaFormCarrierRepairService.FormCarrierRepairResult(
+                        id.toString(), "boom", false, 0, "disk on fire"));
+        assertThat(resource.repairFormCarrier(id).getStatusCode().value()).isEqualTo(502);
     }
 
     @Test
