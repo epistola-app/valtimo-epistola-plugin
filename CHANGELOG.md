@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-06-16
+
 ### Changed
 
 - **The `POST /preview` and `GET /retry-form` endpoints now take only `taskId` (+ the component's `sourceActivityId`); the backend derives the process instance and case document from the authorized task.** Previously the Formio client sent `processInstanceId` + `documentId` (preview also a `processDefinitionKey`) and the backend cross-checked that they belonged to the task — a check that only existed because the client was trusted to supply them. Both values are deterministic from the task (`processInstanceId = task.getProcessInstanceId()`, `documentId = task.getProcessInstance().getBusinessKey()`), so they are now resolved server-side, mirroring the existing `GET /documents/download` pattern. The wire no longer carries forgeable ids and the cross-checks are gone; authorization is unchanged (`OperatonTask:VIEW` on the task remains the gate), and it is not slower (the task lookup already happened). Internal-only endpoints called solely by this plugin's own components, shipped together with the backend — **no host action required**.
