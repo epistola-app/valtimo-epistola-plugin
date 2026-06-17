@@ -32,12 +32,7 @@
       "label": "Voorbeeld Besluitbrief",
       "processDefinitionKey": "objection-handling",
       "sourceActivityId": "generate-decision",
-      "overrideMapping": {
-        "pv": {
-          "motivation": "form:pv:motivation",
-          "decision": "form:pv:decision"
-        }
-      },
+      "overrideMapping": "{\n  \"pv\": {\n    \"motivation\": $form.`pv:motivation`,\n    \"decision\": $form.`pv:decision`\n  }\n}",
       "components": [
         {
           "type": "hidden",

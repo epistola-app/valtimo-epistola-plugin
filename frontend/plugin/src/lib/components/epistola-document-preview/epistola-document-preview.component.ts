@@ -15,6 +15,10 @@ import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { Subscription } from 'rxjs';
 import { EpistolaPluginService } from '../../services';
 import { shouldLoadPreview } from './preview-utils';
+import {
+  isLegacyOverrideMapping,
+  legacyOverrideToJsonata,
+} from '../override-builder/legacy-override-converter';
 
 @Component({
   standalone: true,
@@ -34,16 +38,9 @@ import { shouldLoadPreview } from './preview-utils';
           <div class="design-label">Activity</div>
           <div class="design-value">{{ sourceActivityId }}</div>
         </div>
-        <div class="design-section" *ngIf="overrideMapping">
-          <div class="design-label">Input Overrides</div>
-          <div *ngFor="let scope of overrideMappingScopes" class="design-mapping">
-            <div *ngFor="let entry of overrideMappingEntries(scope)" class="design-entry">
-              <span class="design-scope">{{ scope }}</span
-              >.{{ entry.path }}
-              <i class="mdi mdi-arrow-left"></i>
-              <span class="design-field">{{ entry.field }}</span>
-            </div>
-          </div>
+        <div class="design-section" *ngIf="overrideExpression">
+          <div class="design-label">Input Overrides ($form)</div>
+          <pre class="design-expression">{{ overrideExpression }}</pre>
         </div>
         <div *ngIf="!sourceActivityId" class="design-unconfigured">
           Auto-discover mode (no process link configured)
@@ -182,25 +179,16 @@ import { shouldLoadPreview } from './preview-utils';
         color: #212529;
         margin-bottom: 0.25rem;
       }
-      .design-mapping {
-        margin-top: 0.25rem;
-      }
-      .design-entry {
+      .design-expression {
         font-family: monospace;
         font-size: 0.8rem;
-        color: #495057;
-        padding: 0.15rem 0;
-      }
-      .design-scope {
-        color: #0d6efd;
-      }
-      .design-field {
-        color: #198754;
-      }
-      .design-entry i {
-        font-size: 0.7rem;
-        margin: 0 0.25rem;
-        color: #adb5bd;
+        color: #212529;
+        background: #eef0f2;
+        border-radius: 4px;
+        padding: 0.5rem;
+        margin: 0.25rem 0 0;
+        white-space: pre-wrap;
+        word-break: break-word;
       }
       .design-unconfigured {
         color: #6c757d;
@@ -220,7 +208,11 @@ export class EpistolaDocumentPreviewComponent
   @Input() label = 'Document Preview';
   @Input() processDefinitionKey?: string;
   @Input() sourceActivityId?: string;
-  @Input() overrideMapping?: Record<string, any>;
+  /**
+   * The override mapping: a JSONata expression string over `$form`, or — for
+   * not-yet-re-saved forms — the legacy `form:`-ref object.
+   */
+  @Input() overrideMapping?: string | Record<string, any>;
   /**
    * Task id forwarded by the Formio wrapper from the server-prefilled form
    * ({@code epistola:taskId} value resolver), populated in every Valtimo task-open flow.
@@ -251,14 +243,14 @@ export class EpistolaDocumentPreviewComponent
     return this.taskInstanceId ?? null;
   }
 
-  get overrideMappingScopes(): string[] {
-    return this.overrideMapping ? Object.keys(this.overrideMapping) : [];
-  }
-
-  overrideMappingEntries(scope: string): { path: string; field: string }[] {
-    const fields = this.overrideMapping?.[scope];
-    if (!fields || typeof fields !== 'object') return [];
-    return Object.entries(fields).map(([path, field]) => ({ path, field: String(field) }));
+  /**
+   * The override mapping as a JSONata expression for the design-mode summary.
+   * Legacy `form:`-ref objects are converted on the fly for display.
+   */
+  get overrideExpression(): string {
+    const mapping = this.overrideMapping;
+    if (!mapping) return '';
+    return isLegacyOverrideMapping(mapping) ? legacyOverrideToJsonata(mapping) : String(mapping);
   }
 
   ngOnChanges(changes: SimpleChanges): void {

@@ -11,6 +11,7 @@ import app.epistola.valtimo.deployment.EpistolaCatchEventParseListener;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.deployment.EpistolaProcessEnginePlugin;
 import app.epistola.valtimo.service.admin.EpistolaFormCarrierRepairService; // TEMPORARY (remove in 1.0.0)
+import app.epistola.valtimo.service.admin.EpistolaLegacyOverrideScanService; // TEMPORARY
 import app.epistola.valtimo.service.completion.EpistolaCatchEventStartListener;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
@@ -310,9 +311,12 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaAdminService adminService,
             com.ritense.authorization.AuthorizationService authorizationService,
             // TEMPORARY (remove in 1.0.0): drop this arg with the carrier-repair feature.
-            EpistolaFormCarrierRepairService formCarrierRepairService
+            EpistolaFormCarrierRepairService formCarrierRepairService,
+            // TEMPORARY: drop with the legacy override-format scan.
+            EpistolaLegacyOverrideScanService legacyOverrideScanService
     ) {
-        return new EpistolaAdminResource(adminService, authorizationService, formCarrierRepairService);
+        return new EpistolaAdminResource(
+                adminService, authorizationService, formCarrierRepairService, legacyOverrideScanService);
     }
 
     @Bean
@@ -400,5 +404,15 @@ public class EpistolaPluginAutoConfiguration {
             ObjectMapper objectMapper
     ) {
         return new EpistolaFormCarrierRepairService(formDefinitionRepository, objectMapper);
+    }
+
+    // TEMPORARY: admin-page detection of forms still using the legacy override-mapping object
+    // format. See EpistolaLegacyOverrideScanService.
+    @Bean
+    @ConditionalOnMissingBean(EpistolaLegacyOverrideScanService.class)
+    public EpistolaLegacyOverrideScanService epistolaLegacyOverrideScanService(
+            com.ritense.form.repository.FormDefinitionRepository formDefinitionRepository
+    ) {
+        return new EpistolaLegacyOverrideScanService(formDefinitionRepository);
     }
 }

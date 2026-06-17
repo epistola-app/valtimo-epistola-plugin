@@ -33,15 +33,18 @@ A dropdown listing all `generate-document` process links across deployed process
 
 ### Input Overrides (optional)
 
-A table-based builder for mapping form fields to template input variables. Each row has:
+A mapping from the live form fields onto the `doc`/`pv` inputs the data mapping will read,
+authored as a **JSONata expression over `$form`** (the form's component values). The expression
+produces a `{ doc, pv }` overlay that is applied before the generate-document data mapping runs,
+so the preview mirrors what generation will produce.
 
-| Column     | Description                                                                 |
-| ---------- | --------------------------------------------------------------------------- |
-| Scope      | `doc` (document content) or `pv` (process variable)                         |
-| Input Path | The path in the input variable to override (e.g., `motivation`)             |
-| Form Field | Dropdown of form fields by label — stores a `form:<componentKey>` reference |
+The builder has two modes:
 
-Toggle **Advanced** mode to edit the mapping as raw JSON.
+- **Simple** — a `Scope / Input Path / Form Field` table (Scope is `doc` or `pv`; Form Field is a
+  dropdown by label). The table serializes to JSONata under the hood.
+- **Advanced** — the JSONata editor (with `$form` autocomplete), for transforms the table can't
+  express (concatenation, conditionals, functions). A richer expression locks the builder into
+  advanced mode.
 
 #### Example: objection decision preview
 
@@ -54,28 +57,27 @@ The assess-objection form has two fields (`pv:decision`, `pv:motivation`) and a 
   "label": "Voorbeeld Besluitbrief",
   "processDefinitionKey": "objection-handling",
   "sourceActivityId": "generate-decision-gegrond",
-  "overrideMapping": {
-    "pv": {
-      "motivation": "form:pv:motivation",
-      "decision": "form:pv:decision"
-    }
-  }
+  "overrideMapping": "{ \"pv\": { \"motivation\": $form.`pv:motivation`, \"decision\": $form.`pv:decision` } }"
 }
 ```
 
-When the user types in the Motivatie field, the preview regenerates after ~1.5 seconds with the new value.
+Form field keys that aren't bare identifiers (e.g. `pv:motivation`) are backtick-quoted so JSONata
+reads them as a single property. When the user types in the Motivatie field, the preview regenerates
+after ~1.5 seconds with the new value.
+
+> **Legacy format.** Forms authored before this change store `overrideMapping` as an object of
+> `"form:<componentKey>"` references (e.g. `{ "pv": { "motivation": "form:pv:motivation" } }`). These
+> keep working — the frontend converts them to JSONata on the fly — and persist in the new format the
+> next time the form is saved in the builder. The admin page's **Forms** tab lists forms still on the
+> legacy format (`GET /admin/forms/legacy-override`).
 
 ## How it works
 
 ### Override mapping format
 
-Values use a `form:` prefix to reference Formio components:
-
-```
-"form:<componentKey>"
-```
-
-The `form:` prefix identifies this as a form field reference. At runtime, the component key (e.g., `pv:motivation`) is used to read the current value from the form's data.
+The mapping is a JSONata expression evaluated against a single binding, `$form` (the form's
+component values), that returns a `{ doc, pv }` object. A `$form.<key>` reference resolves to the
+live value of that form component (and is omitted from the overlay when the field is empty/unset).
 
 ### Runtime flow
 
@@ -84,10 +86,10 @@ Form field changes
   ↓
 Formio wrapper (root.on('change')) — debounced 1500ms
   ↓
-computeInputOverrides(overrideMapping, formData)
-  - strips form: prefix → gets component key
-  - reads formData[componentKey] → gets current value
-  - expands dot-notation paths into nested objects
+computeInputOverrides(overrideMapping, formData)  [async]
+  - evaluates the JSONata expression with $form = formData
+    (legacy form:-ref objects are converted to JSONata first)
+  - keeps only doc/pv scopes that resolved at least one field
   ↓
 Sets value on Angular component
   ↓
@@ -123,7 +125,7 @@ For nested access, when both overlay and base have a Map for the same key, a rec
 In the Formio builder (no runtime context), the component shows a configuration summary instead of an empty preview panel:
 
 - Process definition key and activity ID
-- Override mapping entries (scope, path, form field reference)
+- The override mapping JSONata expression (legacy objects shown as their converted JSONata)
 
 ## Architecture
 
@@ -137,10 +139,10 @@ In the Formio builder (no runtime context), the component shows a configuration 
 
 ### Frontend
 
-| Component                              | File                                  | Role                                                                    |
-| -------------------------------------- | ------------------------------------- | ----------------------------------------------------------------------- |
-| `EpistolaDocumentPreviewComponent`     | `epistola-document-preview/`          | Angular component — auto-discover and configured modes                  |
-| `EpistolaProcessLinkSelectorComponent` | `process-link-selector/`              | Dropdown of generate-document process links                             |
-| `EpistolaOverrideBuilderComponent`     | `override-builder/`                   | Table builder + advanced JSON for override mapping                      |
-| Preview Formio registration            | `epistola-document-preview.formio.ts` | Extended Formio class with `root.on('change')` listener and `editForm`  |
-| Override builder Formio registration   | `override-builder.formio.ts`          | Extended Formio class that extracts form fields from `options.editForm` |
+| Component                              | File                                  | Role                                                                      |
+| -------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------- |
+| `EpistolaDocumentPreviewComponent`     | `epistola-document-preview/`          | Angular component — auto-discover and configured modes                    |
+| `EpistolaProcessLinkSelectorComponent` | `process-link-selector/`              | Dropdown of generate-document process links                               |
+| `EpistolaOverrideBuilderComponent`     | `override-builder/`                   | Simple table + advanced JSONata editor (`$form`) for the override mapping |
+| Preview Formio registration            | `epistola-document-preview.formio.ts` | Extended Formio class with `root.on('change')` listener and `editForm`    |
+| Override builder Formio registration   | `override-builder.formio.ts`          | Extended Formio class that extracts form fields from `options.editForm`   |

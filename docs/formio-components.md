@@ -75,7 +75,10 @@ and shows an embedded live preview (`POST /preview`) of the corrected document.
 ### `epistola-override-builder` — Input-override mapping (editForm-only)
 
 A builder-UI widget used **inside the preview component's `editForm`**. Lets the author map form field
-values onto the preview's input overrides (`{doc, pv}`). Hidden from the palette; not a form field.
+values onto the preview's input overrides (`{doc, pv}`), authored as a **JSONata expression over
+`$form`** (simple table or advanced editor). Hidden from the palette; not a form field. Legacy
+`form:`-ref object mappings are converted to JSONata on load. See
+[document-preview.md](document-preview.md).
 
 ### `epistola-process-link-selector` — Process-link picker (editForm-only)
 

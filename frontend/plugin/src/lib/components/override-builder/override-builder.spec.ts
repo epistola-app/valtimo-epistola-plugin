@@ -1,295 +1,142 @@
 /**
- * Tests for the override-builder component logic.
- *
- * Since the component is an Angular component with DI (ChangeDetectorRef),
- * we test the core conversion logic by reproducing the pure functions
- * (rowsToMapping, mappingToRows) that are private methods on the component.
- * This validates the mapping format and conversion correctness.
+ * Tests for the override builder's pure conversion logic: the simple-table <-> JSONata
+ * serializer/parser ({@link override-jsonata}) and the legacy object -> JSONata migration
+ * shim ({@link legacy-override-converter}).
  */
-import { OverrideMapping } from './override-builder.component';
+import {
+  OverrideRow,
+  isRoundTrippable,
+  parseOverrideJsonata,
+  serializeOverrideRows,
+} from './override-jsonata';
+import { legacyOverrideToJsonata, isLegacyOverrideMapping } from './legacy-override-converter';
 
-const FORM_REF_PREFIX = 'form:';
+import * as _jsonata from 'jsonata';
+const jsonata = (_jsonata as any).default || _jsonata;
 
-interface OverrideRow {
-  scope: 'doc' | 'pv';
-  inputPath: string;
-  formFieldKey: string;
-}
-
-/** Mirrors EpistolaOverrideBuilderComponent.rowsToMapping */
-function rowsToMapping(rows: OverrideRow[]): OverrideMapping {
-  const mapping: OverrideMapping = {};
-  for (const row of rows) {
-    if (row.inputPath && row.formFieldKey) {
-      if (!mapping[row.scope]) {
-        mapping[row.scope] = {};
-      }
-      mapping[row.scope][row.inputPath] = FORM_REF_PREFIX + row.formFieldKey;
-    }
-  }
-  return mapping;
-}
-
-/** Mirrors EpistolaOverrideBuilderComponent.mappingToRows */
-function mappingToRows(mapping: OverrideMapping): OverrideRow[] {
-  const rows: OverrideRow[] = [];
-  for (const [scope, fields] of Object.entries(mapping)) {
-    if (scope === 'doc' || scope === 'pv') {
-      for (const [path, ref] of Object.entries(fields)) {
-        const formFieldKey = String(ref).startsWith(FORM_REF_PREFIX)
-          ? String(ref).substring(FORM_REF_PREFIX.length)
-          : String(ref);
-        rows.push({ scope, inputPath: path, formFieldKey });
-      }
-    }
-  }
-  return rows;
-}
-
-describe('override-builder', () => {
-  describe('rowsToMapping', () => {
-    it('should add form: prefix to formFieldKey values', () => {
+describe('override-jsonata', () => {
+  describe('serializeOverrideRows', () => {
+    it('renders a $form reference grouped by scope', () => {
       const rows: OverrideRow[] = [{ scope: 'doc', inputPath: 'name', formFieldKey: 'nameField' }];
-
-      const result = rowsToMapping(rows);
-      expect(result).toEqual({ doc: { name: 'form:nameField' } });
+      expect(serializeOverrideRows(rows)).toBe(
+        '{\n  "doc": {\n    "name": $form.nameField\n  }\n}',
+      );
     });
 
-    it('should group rows by scope', () => {
+    it('backtick-quotes form keys that are not bare identifiers', () => {
       const rows: OverrideRow[] = [
-        { scope: 'doc', inputPath: 'name', formFieldKey: 'nameField' },
-        { scope: 'pv', inputPath: 'status', formFieldKey: 'statusField' },
-        { scope: 'doc', inputPath: 'email', formFieldKey: 'emailField' },
-      ];
-
-      const result = rowsToMapping(rows);
-      expect(result).toEqual({
-        doc: { name: 'form:nameField', email: 'form:emailField' },
-        pv: { status: 'form:statusField' },
-      });
-    });
-
-    it('should skip rows with empty inputPath', () => {
-      const rows: OverrideRow[] = [
-        { scope: 'doc', inputPath: '', formFieldKey: 'nameField' },
-        { scope: 'doc', inputPath: 'email', formFieldKey: 'emailField' },
-      ];
-
-      const result = rowsToMapping(rows);
-      expect(result).toEqual({ doc: { email: 'form:emailField' } });
-    });
-
-    it('should skip rows with empty formFieldKey', () => {
-      const rows: OverrideRow[] = [
-        { scope: 'doc', inputPath: 'name', formFieldKey: '' },
-        { scope: 'doc', inputPath: 'email', formFieldKey: 'emailField' },
-      ];
-
-      const result = rowsToMapping(rows);
-      expect(result).toEqual({ doc: { email: 'form:emailField' } });
-    });
-
-    it('should skip rows where both inputPath and formFieldKey are empty', () => {
-      const rows: OverrideRow[] = [{ scope: 'doc', inputPath: '', formFieldKey: '' }];
-
-      const result = rowsToMapping(rows);
-      expect(result).toEqual({});
-    });
-
-    it('should return empty object for empty rows array', () => {
-      expect(rowsToMapping([])).toEqual({});
-    });
-
-    it('should handle dot-notation in inputPath', () => {
-      const rows: OverrideRow[] = [
-        { scope: 'doc', inputPath: 'beslissing.tekst', formFieldKey: 'motivationField' },
-      ];
-
-      const result = rowsToMapping(rows);
-      expect(result).toEqual({ doc: { 'beslissing.tekst': 'form:motivationField' } });
-    });
-  });
-
-  describe('mappingToRows', () => {
-    it('should strip form: prefix from values', () => {
-      const mapping: OverrideMapping = { doc: { name: 'form:nameField' } };
-
-      const rows = mappingToRows(mapping);
-      expect(rows).toEqual([{ scope: 'doc', inputPath: 'name', formFieldKey: 'nameField' }]);
-    });
-
-    it('should handle legacy values without form: prefix', () => {
-      const mapping: OverrideMapping = { doc: { name: 'legacyKey' } };
-
-      const rows = mappingToRows(mapping);
-      expect(rows).toEqual([{ scope: 'doc', inputPath: 'name', formFieldKey: 'legacyKey' }]);
-    });
-
-    it('should parse multiple scopes', () => {
-      const mapping: OverrideMapping = {
-        doc: { name: 'form:nameField' },
-        pv: { status: 'form:statusField' },
-      };
-
-      const rows = mappingToRows(mapping);
-      expect(rows).toHaveLength(2);
-      expect(rows).toContainEqual({
-        scope: 'doc',
-        inputPath: 'name',
-        formFieldKey: 'nameField',
-      });
-      expect(rows).toContainEqual({
-        scope: 'pv',
-        inputPath: 'status',
-        formFieldKey: 'statusField',
-      });
-    });
-
-    it('should ignore unknown scopes', () => {
-      const mapping: OverrideMapping = {
-        doc: { name: 'form:nameField' },
-        case: { owner: 'form:ownerField' },
-      };
-
-      const rows = mappingToRows(mapping);
-      expect(rows).toHaveLength(1);
-      expect(rows[0].scope).toBe('doc');
-    });
-
-    it('should return empty array for empty mapping', () => {
-      expect(mappingToRows({})).toEqual([]);
-    });
-  });
-
-  describe('round-trip', () => {
-    it('should preserve data through mapping -> rows -> mapping', () => {
-      const original: OverrideMapping = {
-        doc: { name: 'form:nameField', 'address.street': 'form:streetField' },
-        pv: { motivation: 'form:pv:motivation' },
-      };
-
-      const rows = mappingToRows(original);
-      const regenerated = rowsToMapping(rows);
-      expect(regenerated).toEqual(original);
-    });
-
-    it('should preserve data through rows -> mapping -> rows', () => {
-      const original: OverrideRow[] = [
-        { scope: 'doc', inputPath: 'name', formFieldKey: 'nameField' },
-        { scope: 'pv', inputPath: 'status', formFieldKey: 'statusField' },
-      ];
-
-      const mapping = rowsToMapping(original);
-      const regenerated = mappingToRows(mapping);
-      expect(regenerated).toEqual(original);
-    });
-  });
-
-  describe('toggleMode (simple <-> advanced)', () => {
-    it('should convert rows to JSON when switching to advanced mode', () => {
-      const rows: OverrideRow[] = [{ scope: 'doc', inputPath: 'name', formFieldKey: 'nameField' }];
-
-      const mapping = rowsToMapping(rows);
-      const jsonText = Object.keys(mapping).length > 0 ? JSON.stringify(mapping, null, 2) : '';
-
-      expect(jsonText).toBe(JSON.stringify({ doc: { name: 'form:nameField' } }, null, 2));
-    });
-
-    it('should produce empty string when all rows are empty', () => {
-      const rows: OverrideRow[] = [{ scope: 'doc', inputPath: '', formFieldKey: '' }];
-
-      const mapping = rowsToMapping(rows);
-      const jsonText = Object.keys(mapping).length > 0 ? JSON.stringify(mapping, null, 2) : '';
-
-      expect(jsonText).toBe('');
-    });
-
-    it('should parse JSON back to rows when switching to simple mode', () => {
-      const jsonText = '{ "pv": { "motivation": "form:pv:motivation" } }';
-
-      const parsed = JSON.parse(jsonText);
-      const rows = mappingToRows(parsed);
-
-      expect(rows).toEqual([
         { scope: 'pv', inputPath: 'motivation', formFieldKey: 'pv:motivation' },
+      ];
+      expect(serializeOverrideRows(rows)).toContain('$form.`pv:motivation`');
+    });
+
+    it('expands dot-notation input paths into nested objects', () => {
+      const rows: OverrideRow[] = [
+        { scope: 'doc', inputPath: 'address.street', formFieldKey: 'streetField' },
+        { scope: 'doc', inputPath: 'address.city', formFieldKey: 'cityField' },
+      ];
+      const expr = serializeOverrideRows(rows);
+      expect(expr).toContain('"address": {');
+      expect(expr).toContain('"street": $form.streetField');
+      expect(expr).toContain('"city": $form.cityField');
+    });
+
+    it('skips rows with an empty path or field', () => {
+      const rows: OverrideRow[] = [
+        { scope: 'doc', inputPath: '', formFieldKey: 'x' },
+        { scope: 'doc', inputPath: 'y', formFieldKey: '' },
+      ];
+      expect(serializeOverrideRows(rows)).toBe('');
+    });
+
+    it('returns an empty string for no rows', () => {
+      expect(serializeOverrideRows([])).toBe('');
+    });
+  });
+
+  describe('parseOverrideJsonata', () => {
+    it('round-trips a serialized expression back to rows', () => {
+      const rows: OverrideRow[] = [
+        { scope: 'doc', inputPath: 'name', formFieldKey: 'nameField' },
+        { scope: 'pv', inputPath: 'motivation', formFieldKey: 'pv:motivation' },
+      ];
+      const expr = serializeOverrideRows(rows);
+      expect(parseOverrideJsonata(expr)).toEqual(rows);
+    });
+
+    it('rebuilds dot-notation paths from nested objects', () => {
+      const expr = '{ "doc": { "address": { "street": $form.streetField } } }';
+      expect(parseOverrideJsonata(expr)).toEqual([
+        { scope: 'doc', inputPath: 'address.street', formFieldKey: 'streetField' },
       ]);
     });
-  });
 
-  describe('onJsonChange', () => {
-    it('should parse valid JSON and produce a mapping', () => {
-      const text = '{ "doc": { "name": "form:nameField" } }';
-      const parsed = JSON.parse(text);
-      expect(parsed).toEqual({ doc: { name: 'form:nameField' } });
+    it('returns [] for an empty expression', () => {
+      expect(parseOverrideJsonata('')).toEqual([]);
+      expect(parseOverrideJsonata('   ')).toEqual([]);
     });
 
-    it('should detect invalid JSON', () => {
-      let jsonError: string | null = null;
-      try {
-        JSON.parse('{ invalid }');
-      } catch {
-        jsonError = 'Invalid JSON';
-      }
-      expect(jsonError).toBe('Invalid JSON');
+    it('returns null for non-$form leaves (not representable in the simple table)', () => {
+      expect(parseOverrideJsonata('{ "doc": { "name": $form.a & $form.b } }')).toBeNull();
+      expect(parseOverrideJsonata('{ "doc": { "name": $doc.x } }')).toBeNull();
     });
 
-    it('should treat empty string as null value', () => {
-      const text = '';
-      const trimmed = text.trim();
-      const value = trimmed ? JSON.parse(trimmed) : null;
-      expect(value).toBeNull();
+    it('returns null for scopes other than doc/pv', () => {
+      expect(parseOverrideJsonata('{ "case": { "x": $form.y } }')).toBeNull();
     });
 
-    it('should treat whitespace-only string as null value', () => {
-      const text = '   ';
-      const trimmed = text.trim();
-      const value = trimmed ? JSON.parse(trimmed) : null;
-      expect(value).toBeNull();
+    it('returns null for invalid JSONata', () => {
+      expect(parseOverrideJsonata('{ not valid ::')).toBeNull();
     });
   });
 
-  describe('addRow / removeRow', () => {
-    it('addRow should append a default row', () => {
-      const rows: OverrideRow[] = [];
-      rows.push({ scope: 'doc', inputPath: '', formFieldKey: '' });
-
-      expect(rows).toHaveLength(1);
-      expect(rows[0]).toEqual({ scope: 'doc', inputPath: '', formFieldKey: '' });
+  describe('isRoundTrippable', () => {
+    it('is true for a simple $form mapping and false for a transform', () => {
+      expect(isRoundTrippable('{ "doc": { "name": $form.x } }')).toBe(true);
+      expect(isRoundTrippable('{ "doc": { "name": $uppercase($form.x) } }')).toBe(false);
     });
+  });
+});
 
-    it('removeRow should remove the row at the given index', () => {
-      const rows: OverrideRow[] = [
-        { scope: 'doc', inputPath: 'name', formFieldKey: 'nameField' },
-        { scope: 'pv', inputPath: 'status', formFieldKey: 'statusField' },
-        { scope: 'doc', inputPath: 'email', formFieldKey: 'emailField' },
-      ];
-
-      rows.splice(1, 1); // remove index 1
-
-      expect(rows).toHaveLength(2);
-      expect(rows[0].inputPath).toBe('name');
-      expect(rows[1].inputPath).toBe('email');
+describe('legacy-override-converter', () => {
+  describe('isLegacyOverrideMapping', () => {
+    it('detects the legacy object format vs the new string format', () => {
+      expect(isLegacyOverrideMapping({ doc: { name: 'form:x' } })).toBe(true);
+      expect(isLegacyOverrideMapping('{ "doc": { "name": $form.x } }')).toBe(false);
+      expect(isLegacyOverrideMapping(null)).toBe(false);
+      expect(isLegacyOverrideMapping(undefined)).toBe(false);
     });
   });
 
-  describe('emitChange', () => {
-    it('should produce null when all rows are empty', () => {
-      const rows: OverrideRow[] = [
-        { scope: 'doc', inputPath: '', formFieldKey: '' },
-        { scope: 'pv', inputPath: '', formFieldKey: '' },
-      ];
-
-      const mapping = rowsToMapping(rows);
-      const value = Object.keys(mapping).length > 0 ? mapping : null;
-      expect(value).toBeNull();
+  describe('legacyOverrideToJsonata', () => {
+    it('converts a legacy mapping to an equivalent JSONata expression', () => {
+      const expr = legacyOverrideToJsonata({ doc: { name: 'form:nameField' } });
+      expect(expr).toBe('{\n  "doc": {\n    "name": $form.nameField\n  }\n}');
     });
 
-    it('should produce mapping when rows have data', () => {
-      const rows: OverrideRow[] = [{ scope: 'doc', inputPath: 'name', formFieldKey: 'nameField' }];
+    it('strips the form: prefix and backtick-quotes special keys', () => {
+      const expr = legacyOverrideToJsonata({ pv: { motivation: 'form:pv:motivation' } });
+      expect(expr).toContain('$form.`pv:motivation`');
+    });
 
-      const mapping = rowsToMapping(rows);
-      const value = Object.keys(mapping).length > 0 ? mapping : null;
-      expect(value).toEqual({ doc: { name: 'form:nameField' } });
+    it('ignores scopes other than doc/pv', () => {
+      const expr = legacyOverrideToJsonata({
+        doc: { name: 'form:nameField' },
+        case: { owner: 'form:ownerField' },
+      });
+      expect(expr).not.toContain('owner');
+    });
+
+    it('produces an expression that evaluates to the same overlay the legacy resolver did', async () => {
+      const expr = legacyOverrideToJsonata({
+        doc: { name: 'form:nameField' },
+        pv: { motivation: 'form:pv:motivation' },
+      });
+      const result = await jsonata(expr).evaluate(
+        {},
+        { form: { nameField: 'Alice', 'pv:motivation': 'because' } },
+      );
+      expect(result).toEqual({ doc: { name: 'Alice' }, pv: { motivation: 'because' } });
     });
   });
 });

@@ -11,6 +11,7 @@ import {
   FormCarrierIssue,
   FormCarrierRepairResult,
   FormCarrierRepairSummary,
+  LegacyOverrideForm,
   PendingJob,
   PluginUsageEntry,
   ReconcileResult,
@@ -145,5 +146,12 @@ export class EpistolaAdminService {
       `${this.apiEndpoint}/forms/repair-carrier`,
       null,
     );
+  }
+
+  // ---- TEMPORARY: legacy override-mapping format detection ----
+
+  /** Forms whose preview components still use the legacy override-mapping object format. */
+  getLegacyOverrideForms(): Observable<LegacyOverrideForm[]> {
+    return this.http.get<LegacyOverrideForm[]>(`${this.apiEndpoint}/forms/legacy-override`);
   }
 }

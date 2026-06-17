@@ -148,6 +148,8 @@ export class GenerateDocumentConfigurationComponent
   processVariables: string[] = [];
   expressionFunctions: ExpressionFunctionInfo[] = [];
   variableSuggestions: VariableSuggestions | null = null;
+  /** Context variables for the JSONata editor's autocomplete ($doc/$pv/$case). */
+  editorContextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
   prefillDataMapping: Record<string, any> = {};
   validationErrors$ = new BehaviorSubject<JsonataFieldError[]>([]);
 
@@ -606,6 +608,12 @@ export class GenerateDocumentConfigurationComponent
       )
       .subscribe((suggestions) => {
         this.variableSuggestions = suggestions;
+        // `$case` is a valid (currently-empty) binding — keep it offered.
+        this.editorContextVariables = {
+          doc: suggestions.doc || [],
+          pv: suggestions.pv || [],
+          case: [],
+        };
         this.cdr.markForCheck();
       });
   }

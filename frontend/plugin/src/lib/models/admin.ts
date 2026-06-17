@@ -155,6 +155,20 @@ export interface FormCarrierIssue {
   readOnly: boolean;
 }
 
+/**
+ * TEMPORARY. A form whose `epistola-document-preview` components still use the legacy
+ * override-mapping object format (`{ scope: { path: "form:key" } }`) instead of the new
+ * JSONata string over `$form`. Surfaced on the admin page so it can be re-saved in the
+ * form builder, which migrates it. `readOnly` flags classpath-deployed forms (migrate
+ * the source instead).
+ */
+export interface LegacyOverrideForm {
+  formId: string;
+  name: string;
+  legacyComponents: number;
+  readOnly: boolean;
+}
+
 /** TEMPORARY (removed in 1.0.0). Outcome of repairing one form's carrier. */
 export interface FormCarrierRepairResult {
   formId: string;

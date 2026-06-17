@@ -76,11 +76,17 @@ describe('preview-utils', () => {
   });
 
   describe('isOverrideDriven', () => {
-    it('is true for a non-empty mapping', () => {
+    it('is true for a non-empty JSONata string mapping', () => {
+      expect(isOverrideDriven('{ "doc": { "name": $form.x } }')).toBe(true);
+    });
+
+    it('is true for a non-empty legacy object mapping', () => {
       expect(isOverrideDriven({ doc: { name: 'form:nameField' } })).toBe(true);
     });
 
-    it('is false for an empty mapping, null, or undefined', () => {
+    it('is false for an empty string, empty object, null, or undefined', () => {
+      expect(isOverrideDriven('')).toBe(false);
+      expect(isOverrideDriven('   ')).toBe(false);
       expect(isOverrideDriven({})).toBe(false);
       expect(isOverrideDriven(null)).toBe(false);
       expect(isOverrideDriven(undefined)).toBe(false);
@@ -119,119 +125,107 @@ describe('preview-utils', () => {
     });
   });
 
-  describe('computeInputOverrides', () => {
-    it('should resolve form: references from formData', () => {
-      const mapping = { pv: { motivation: 'form:pv:motivation' } };
+  describe('computeInputOverrides — JSONata string mapping', () => {
+    it('evaluates a $form expression into a {doc,pv} overlay', async () => {
+      const mapping = '{ "pv": { "motivation": $form.`pv:motivation` } }';
       const formData = { 'pv:motivation': 'test value' };
 
-      const result = computeInputOverrides(mapping, formData);
-      expect(result).toEqual({ pv: { motivation: 'test value' } });
+      expect(await computeInputOverrides(mapping, formData)).toEqual({
+        pv: { motivation: 'test value' },
+      });
     });
 
-    it('should handle both doc and pv scopes', () => {
-      const mapping = {
-        doc: { name: 'form:doc:name' },
-        pv: { status: 'form:pv:status' },
-      };
-      const formData = { 'doc:name': 'Alice', 'pv:status': 'approved' };
+    it('supports transforms on form values (concat)', async () => {
+      const mapping = `{ "doc": { "naam": $form.voornaam & ' ' & $form.achternaam } }`;
+      const formData = { voornaam: 'Ada', achternaam: 'Lovelace' };
 
-      const result = computeInputOverrides(mapping, formData);
-      expect(result).toEqual({
+      expect(await computeInputOverrides(mapping, formData)).toEqual({
+        doc: { naam: 'Ada Lovelace' },
+      });
+    });
+
+    it('omits scopes with no resolved fields', async () => {
+      const mapping = '{ "doc": { "name": $form.missing } }';
+      expect(await computeInputOverrides(mapping, {})).toEqual({});
+    });
+
+    it('keeps falsy but defined form values', async () => {
+      const mapping = '{ "doc": { "t": $form.t, "n": $form.n, "f": $form.f } }';
+      const formData = { t: '', n: 0, f: false };
+      expect(await computeInputOverrides(mapping, formData)).toEqual({
+        doc: { t: '', n: 0, f: false },
+      });
+    });
+
+    it('drops scopes other than doc/pv', async () => {
+      const mapping = '{ "doc": { "x": $form.x }, "case": { "y": $form.y } }';
+      const result = await computeInputOverrides(mapping, { x: 'a', y: 'b' });
+      expect(result).toEqual({ doc: { x: 'a' } });
+    });
+
+    it('returns {} for a malformed expression', async () => {
+      expect(await computeInputOverrides('{ not valid ::', { x: 1 })).toEqual({});
+    });
+
+    it('returns {} for an empty/blank mapping', async () => {
+      expect(await computeInputOverrides('', { x: 1 })).toEqual({});
+      expect(await computeInputOverrides(null, { x: 1 })).toEqual({});
+    });
+  });
+
+  describe('computeInputOverrides — legacy object mapping (backward compat)', () => {
+    it('resolves legacy form: references', async () => {
+      const mapping = { pv: { motivation: 'form:pv:motivation' } };
+      const formData = { 'pv:motivation': 'test value' };
+      expect(await computeInputOverrides(mapping, formData)).toEqual({
+        pv: { motivation: 'test value' },
+      });
+    });
+
+    it('handles both doc and pv scopes', async () => {
+      const mapping = { doc: { name: 'form:doc:name' }, pv: { status: 'form:pv:status' } };
+      const formData = { 'doc:name': 'Alice', 'pv:status': 'approved' };
+      expect(await computeInputOverrides(mapping, formData)).toEqual({
         doc: { name: 'Alice' },
         pv: { status: 'approved' },
       });
     });
 
-    it('should skip undefined form values (field not filled in yet)', () => {
-      const mapping = {
-        doc: { name: 'form:nameField', email: 'form:emailField' },
-      };
-      const formData = { nameField: 'Alice' }; // emailField not present
-
-      const result = computeInputOverrides(mapping, formData);
-      expect(result).toEqual({ doc: { name: 'Alice' } });
+    it('skips undefined form values (field not filled in yet)', async () => {
+      const mapping = { doc: { name: 'form:nameField', email: 'form:emailField' } };
+      const formData = { nameField: 'Alice' };
+      expect(await computeInputOverrides(mapping, formData)).toEqual({ doc: { name: 'Alice' } });
     });
 
-    it('should return empty object when no overrides match', () => {
-      const mapping = { doc: { name: 'form:missingField' } };
-      const formData = {};
-
-      const result = computeInputOverrides(mapping, formData);
-      expect(result).toEqual({});
-    });
-
-    it('should handle values without form: prefix (backward compat)', () => {
+    it('handles values without the form: prefix', async () => {
       const mapping = { doc: { name: 'legacyFieldKey' } };
       const formData = { legacyFieldKey: 'legacy value' };
-
-      const result = computeInputOverrides(mapping, formData);
-      expect(result).toEqual({ doc: { name: 'legacy value' } });
+      expect(await computeInputOverrides(mapping, formData)).toEqual({
+        doc: { name: 'legacy value' },
+      });
     });
 
-    it('should expand dot-notation in input paths', () => {
+    it('expands dot-notation input paths into nested objects', async () => {
       const mapping = { doc: { 'beslissing.tekst': 'form:field1' } };
       const formData = { field1: 'my decision text' };
-
-      const result = computeInputOverrides(mapping, formData);
-      expect(result).toEqual({ doc: { beslissing: { tekst: 'my decision text' } } });
+      expect(await computeInputOverrides(mapping, formData)).toEqual({
+        doc: { beslissing: { tekst: 'my decision text' } },
+      });
     });
 
-    it('should skip invalid scope names (not doc or pv)', () => {
+    it('drops scopes other than doc/pv', async () => {
       const mapping = {
         doc: { name: 'form:nameField' },
         case: { owner: 'form:ownerField' },
         custom: { foo: 'form:fooField' },
       };
       const formData = { nameField: 'Alice', ownerField: 'Bob', fooField: 'bar' };
-
-      const result = computeInputOverrides(mapping, formData);
+      const result = await computeInputOverrides(mapping, formData);
       expect(result).toEqual({ doc: { name: 'Alice' } });
-      expect(result).not.toHaveProperty('case');
-      expect(result).not.toHaveProperty('custom');
     });
 
-    it('should return empty object for empty mapping', () => {
-      const result = computeInputOverrides({}, { someField: 'value' });
-      expect(result).toEqual({});
-    });
-
-    it('should handle multiple fields in the same scope', () => {
-      const mapping = {
-        doc: {
-          'address.street': 'form:streetField',
-          'address.city': 'form:cityField',
-          name: 'form:nameField',
-        },
-      };
-      const formData = {
-        streetField: 'Main St',
-        cityField: 'Amsterdam',
-        nameField: 'Alice',
-      };
-
-      const result = computeInputOverrides(mapping, formData);
-      expect(result).toEqual({
-        doc: {
-          address: { street: 'Main St', city: 'Amsterdam' },
-          name: 'Alice',
-        },
-      });
-    });
-
-    it('should handle falsy but defined form values (empty string, 0, false)', () => {
-      const mapping = {
-        doc: {
-          text: 'form:textField',
-          count: 'form:countField',
-          active: 'form:activeField',
-        },
-      };
-      const formData = { textField: '', countField: 0, activeField: false };
-
-      const result = computeInputOverrides(mapping, formData);
-      expect(result).toEqual({
-        doc: { text: '', count: 0, active: false },
-      });
+    it('returns {} for an empty mapping', async () => {
+      expect(await computeInputOverrides({}, { someField: 'value' })).toEqual({});
     });
   });
 });

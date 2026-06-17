@@ -4,6 +4,7 @@ import app.epistola.valtimo.authorization.EpistolaAdministration;
 import app.epistola.valtimo.authorization.EpistolaAdministrationActionProvider;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
 import app.epistola.valtimo.service.admin.EpistolaFormCarrierRepairService;
+import app.epistola.valtimo.service.admin.EpistolaLegacyOverrideScanService;
 import app.epistola.valtimo.web.rest.dto.BpmnValidationReport;
 import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
 import app.epistola.valtimo.web.rest.dto.ChangelogRelease;
@@ -52,6 +53,8 @@ public class EpistolaAdminResource {
     private final AuthorizationService authorizationService;
     // TEMPORARY (remove in 1.0.0): detect/repair forms missing the task-id carrier.
     private final EpistolaFormCarrierRepairService formCarrierRepairService;
+    // TEMPORARY: detect forms still using the legacy override-mapping object format.
+    private final EpistolaLegacyOverrideScanService legacyOverrideScanService;
 
     /**
      * Check connectivity to Epistola for all plugin configurations.
@@ -225,6 +228,16 @@ public class EpistolaAdminResource {
         requireManagePermission();
         log.info("Manual form carrier repair-all requested");
         return ResponseEntity.ok(formCarrierRepairService.repairAll());
+    }
+
+    /**
+     * Lists forms whose {@code epistola-document-preview} components still use the legacy
+     * override-mapping object format (re-save the form in the builder to migrate it).
+     */
+    @GetMapping("/forms/legacy-override")
+    public ResponseEntity<List<EpistolaLegacyOverrideScanService.LegacyOverrideForm>> legacyOverrideForms() {
+        requireManagePermission();
+        return ResponseEntity.ok(legacyOverrideScanService.findLegacyForms());
     }
 
     private void requireManagePermission() {

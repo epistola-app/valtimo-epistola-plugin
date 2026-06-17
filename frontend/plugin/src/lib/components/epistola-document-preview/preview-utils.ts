@@ -1,6 +1,19 @@
-import { OverrideMapping } from '../override-builder/override-builder.component';
+import * as _jsonata from 'jsonata';
+import {
+  isLegacyOverrideMapping,
+  legacyOverrideToJsonata,
+} from '../override-builder/legacy-override-converter';
 
-export const FORM_REF_PREFIX = 'form:';
+const jsonata = (_jsonata as any).default || _jsonata;
+
+/** Re-exported for backward compatibility with existing imports/tests. */
+export { FORM_REF_PREFIX } from '../override-builder/legacy-override-converter';
+
+/**
+ * An override mapping is either the new JSONata expression **string** (over
+ * `$form`) or — for not-yet-re-saved forms — the legacy `form:`-ref **object**.
+ */
+export type OverrideMappingValue = string | Record<string, any> | null | undefined;
 
 /**
  * Detect if a string value is a JSONata expression (vs a plain literal).
@@ -36,8 +49,10 @@ export function expandDotNotation(flat: Record<string, any>): Record<string, any
  * before it can render. Previews without a mapping load straight from the base
  * doc/case data.
  */
-export function isOverrideDriven(mapping?: OverrideMapping | null): boolean {
-  return !!mapping && Object.keys(mapping).length > 0;
+export function isOverrideDriven(mapping?: OverrideMappingValue): boolean {
+  if (!mapping) return false;
+  if (typeof mapping === 'string') return mapping.trim().length > 0;
+  return Object.keys(mapping).length > 0;
 }
 
 /**
@@ -58,7 +73,7 @@ export function hasUsableOverrides(overrides?: Record<string, any> | null): bool
  * - Previews without a mapping always load (base data is the whole input).
  */
 export function shouldLoadPreview(
-  mapping?: OverrideMapping | null,
+  mapping?: OverrideMappingValue,
   overrides?: Record<string, any> | null,
 ): boolean {
   if (isOverrideDriven(mapping)) {
@@ -68,29 +83,45 @@ export function shouldLoadPreview(
 }
 
 /**
- * Given an override mapping (scope -> { inputPath -> "form:<componentKey>" })
- * and form data, produce the inputOverrides object for the backend.
- * The "form:" prefix identifies form field references; the remainder is the Formio component key.
+ * Given an override mapping and the live form data, produce the inputOverrides
+ * object (`{ doc, pv }`) the backend overlays onto the real document / process
+ * variables before the data mapping runs.
+ *
+ * The mapping is a JSONata expression over `$form`; legacy `form:`-ref objects
+ * are converted on the fly via {@link legacyOverrideToJsonata}. Evaluation is
+ * asynchronous because `jsonata().evaluate()` returns a Promise. Only `doc` and
+ * `pv` scopes (with at least one resolved field) are kept — matching what the
+ * backend consumes.
  */
-export function computeInputOverrides(
-  mapping: OverrideMapping,
+export async function computeInputOverrides(
+  mapping: OverrideMappingValue,
   formData: Record<string, any>,
-): Record<string, any> {
+): Promise<Record<string, any>> {
+  if (!mapping) {
+    return {};
+  }
+  const expression = isLegacyOverrideMapping(mapping)
+    ? legacyOverrideToJsonata(mapping)
+    : String(mapping);
+  if (!expression.trim()) {
+    return {};
+  }
+
+  let evaluated: any;
+  try {
+    evaluated = await jsonata(expression).evaluate({}, { form: formData ?? {} });
+  } catch {
+    return {};
+  }
+  if (!evaluated || typeof evaluated !== 'object' || Array.isArray(evaluated)) {
+    return {};
+  }
+
   const result: Record<string, any> = {};
-  for (const [scope, fields] of Object.entries(mapping)) {
-    if (scope !== 'doc' && scope !== 'pv') continue;
-    const flatOverrides: Record<string, any> = {};
-    for (const [inputPath, ref] of Object.entries(fields)) {
-      const formFieldKey = String(ref).startsWith(FORM_REF_PREFIX)
-        ? String(ref).substring(FORM_REF_PREFIX.length)
-        : String(ref);
-      const value = formData[formFieldKey];
-      if (value !== undefined) {
-        flatOverrides[inputPath] = value;
-      }
-    }
-    if (Object.keys(flatOverrides).length > 0) {
-      result[scope] = expandDotNotation(flatOverrides);
+  for (const scope of ['doc', 'pv']) {
+    const value = evaluated[scope];
+    if (value && typeof value === 'object' && Object.keys(value).length > 0) {
+      result[scope] = value;
     }
   }
   return result;
