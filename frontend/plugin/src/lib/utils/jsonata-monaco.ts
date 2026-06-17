@@ -1,11 +1,16 @@
-import { ExpressionFunctionInfo, VariableSuggestions } from '../models';
+import { ExpressionFunctionInfo } from '../models';
 
 /**
  * Shared state for the JSONata completion provider.
  * Updated by the editor component when suggestions/functions change.
  */
 export const jsonataCompletionData = {
-  suggestions: null as VariableSuggestions | null,
+  // Context variables in scope, keyed by name (without the `$`), each mapping to
+  // its known field/path suggestions. The completion provider derives both the
+  // `$`-variable list and the `$<name>.` field list from this — adding a new
+  // context variable needs no provider change, just another key here.
+  // e.g. { doc: ['name', 'address.street'], pv: ['amount'], form: ['voornaam'] }
+  variables: {} as Record<string, string[]>,
   functions: [] as ExpressionFunctionInfo[],
 };
 
@@ -107,8 +112,9 @@ export function registerJsonataLanguage(monaco: any): void {
 
       // After "$" — suggest variables and functions
       if (textUntilPosition.endsWith('$')) {
+        // Variables are whatever the host put in scope (doc/pv/case/form/…).
         suggestions.push(
-          ...['doc', 'pv', 'case'].map((v) => ({
+          ...Object.keys(jsonataCompletionData.variables).map((v) => ({
             label: `$${v}`,
             kind: CompletionItemKind.Variable,
             insertText: v,
@@ -167,28 +173,20 @@ export function registerJsonataLanguage(monaco: any): void {
         }
       }
 
-      // After "$doc." — suggest document paths
-      if (/\$doc\.\s*$/.test(textUntilPosition) || /\$doc\.[a-zA-Z_]*$/.test(textUntilPosition)) {
-        const docPaths = jsonataCompletionData.suggestions?.doc || [];
-        for (const path of docPaths) {
+      // After "$<name>." — suggest that variable's fields. The variable name is
+      // captured generically, so doc/pv/case/form/… all work from one branch.
+      const fieldMatch = textUntilPosition.match(/\$([a-zA-Z_]\w*)\.[a-zA-Z_]*$/);
+      if (fieldMatch) {
+        const fields = jsonataCompletionData.variables[fieldMatch[1]] || [];
+        for (const field of fields) {
           suggestions.push({
-            label: path,
+            label: field,
             kind: CompletionItemKind.Field,
-            insertText: path,
-            detail: 'Document field',
-          });
-        }
-      }
-
-      // After "$pv." — suggest process variables
-      if (/\$pv\.\s*$/.test(textUntilPosition) || /\$pv\.[a-zA-Z_]*$/.test(textUntilPosition)) {
-        const pvNames = jsonataCompletionData.suggestions?.pv || [];
-        for (const name of pvNames) {
-          suggestions.push({
-            label: name,
-            kind: CompletionItemKind.Variable,
-            insertText: name,
-            detail: 'Process variable',
+            // Path-style suggestions (doc/pv: `a.b`, `a[].b`) insert as-is; keys
+            // with characters invalid in a bare JSONata name (e.g. "pv:motivation")
+            // are backtick-quoted so they resolve as a single property.
+            insertText: /[^A-Za-z0-9_.[\]]/.test(field) ? '`' + field + '`' : field,
+            detail: `$${fieldMatch[1]} field`,
           });
         }
       }

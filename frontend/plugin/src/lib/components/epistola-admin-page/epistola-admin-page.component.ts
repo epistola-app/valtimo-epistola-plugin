@@ -13,6 +13,7 @@ import {
   ClasspathCatalog,
   ConnectionStatus,
   FormCarrierIssue,
+  LegacyOverrideForm,
   PendingJob,
   PluginUsageEntry,
 } from '../../models';
@@ -79,6 +80,10 @@ export class EpistolaAdminPageComponent implements OnInit {
     message: string;
   } | null = null;
 
+  // TEMPORARY: forms still using the legacy override-mapping object format.
+  legacyOverrideForms: LegacyOverrideForm[] | null = null;
+  legacyOverrideLoading = false;
+
   private connectionStatuses: ConnectionStatus[] = [];
   private usageEntries: PluginUsageEntry[] = [];
   private pendingJobs: PendingJob[] = [];
@@ -101,6 +106,16 @@ export class EpistolaAdminPageComponent implements OnInit {
   /** Scan cadence in whole minutes, for the "refreshes every N min" note. */
   get refreshIntervalMinutes(): number {
     return Math.round((this.validationReport?.refreshIntervalMs ?? 600000) / 60000);
+  }
+
+  /** Combined "forms needing attention" count for the tab badge (carrier + legacy override). */
+  get formsAttentionCount(): number {
+    return (this.formIssues?.length ?? 0) + (this.legacyOverrideForms?.length ?? 0);
+  }
+
+  /** Whether the forms tab has loaded at least one of its two scans. */
+  get formsScanLoaded(): boolean {
+    return this.formIssues !== null || this.legacyOverrideForms !== null;
   }
 
   ngOnInit(): void {
@@ -142,6 +157,25 @@ export class EpistolaAdminPageComponent implements OnInit {
     if (tab === 'forms' && this.formIssues === null && !this.formIssuesLoading) {
       this.loadFormIssues();
     }
+    if (tab === 'forms' && this.legacyOverrideForms === null && !this.legacyOverrideLoading) {
+      this.loadLegacyOverrideForms();
+    }
+  }
+
+  // ---- TEMPORARY: legacy override-mapping format detection ----
+
+  private loadLegacyOverrideForms(): void {
+    this.legacyOverrideLoading = true;
+    this.adminService.getLegacyOverrideForms().subscribe({
+      next: (forms) => {
+        this.legacyOverrideForms = forms;
+        this.legacyOverrideLoading = false;
+      },
+      error: () => {
+        this.legacyOverrideForms = [];
+        this.legacyOverrideLoading = false;
+      },
+    });
   }
 
   // ---- TEMPORARY (removed in 1.0.0): task-id carrier detection + repair ----

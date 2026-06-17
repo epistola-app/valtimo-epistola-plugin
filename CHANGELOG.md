@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The document-preview "Input Overrides" mapping is now a JSONata expression over a new `$form` variable, replacing the bespoke `form:`-ref format.** Authors map live form fields onto the `{ doc, pv }` preview overlay the same way they author the generate-document data mapping — one JSONata model, with `$form` autocomplete in the editor — and can now transform form values (concatenate, conditionals, functions) instead of only forwarding them verbatim. The overlay still mirrors what generation reads, so preview ≡ generation is unchanged; `$form` is bound **only** during the client-side override evaluation (it is never introduced into the generation-time context, where there is no live form), so there are **no backend changes** — `PreviewService` still consumes the same `{ doc, pv }` wire shape. The simple table and advanced editor both produce JSONata. **Backward compatible**: forms still storing the legacy `{ scope: { path: "form:key" } }` object keep rendering (the frontend converts them on the fly via a self-contained, removable shim) and persist in the new format the next time they're saved in the builder — no form-schema migration.
+- **The admin "Forms" tab now lists forms still using the legacy override-mapping object format.** A new read-only scan (`GET /admin/forms/legacy-override`, `EpistolaAdministration:MANAGE`) walks every form definition for `epistola-document-preview` components whose `overrideMapping` is an object, so operators can see which forms need a one-time re-save to migrate. The tab's count badge reflects carrier issues + legacy-override forms combined.
+- **The JSONata editor's autocomplete is now driven by a single `contextVariables` map instead of per-variable inputs.** The Monaco completion provider derives both the `$`-variable list and `$<name>.` field suggestions generically from one `Record<string, string[]>` (`{ doc, pv, case }` for the data mapping, `{ form }` for the override builder), so adding a context variable no longer needs a new editor input or a hardcoded provider branch.
+
 ## [0.10.0] - 2026-06-16
 
 ### Changed

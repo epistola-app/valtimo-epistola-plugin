@@ -11,7 +11,7 @@ import { CommonModule } from '@angular/common';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { EditorModule } from '@valtimo/components';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
-import { ExpressionFunctionInfo, VariableSuggestions } from '../../models';
+import { ExpressionFunctionInfo } from '../../models';
 import { jsonataCompletionData, registerJsonataLanguage } from '../../utils/jsonata-monaco';
 
 import * as _jsonata from 'jsonata';
@@ -34,7 +34,7 @@ const jsonata = (_jsonata as any).default || _jsonata;
       <div class="jsonata-editor__footer">
         <span *ngIf="error" class="jsonata-editor__error">{{ error }}</span>
         <span *ngIf="!error && expression" class="jsonata-editor__valid">&#x2713;</span>
-        <span class="jsonata-editor__variables">$doc · $pv · $case</span>
+        <span class="jsonata-editor__variables">{{ variablesHint }}</span>
       </div>
     </div>
   `,
@@ -64,8 +64,16 @@ const jsonata = (_jsonata as any).default || _jsonata;
 export class JsonataEditorComponent implements OnChanges, OnDestroy {
   @Input() expression: string = '';
   @Input() disabled: boolean = false;
-  @Input() suggestions: VariableSuggestions | null = null;
+  /**
+   * Context variables in scope, keyed by name (without `$`), each mapping to its
+   * field/path suggestions — e.g. `{ doc: [...], pv: [...] }` for the data
+   * mapping, `{ form: [...] }` for the override builder. Drives both the
+   * `$`-variable list and `$<name>.` field completion.
+   */
+  @Input() contextVariables: Record<string, string[]> = {};
   @Input() functions: ExpressionFunctionInfo[] = [];
+  /** Footer hint listing the context variables in scope. */
+  @Input() variablesHint: string = '$doc · $pv · $case';
   @Output() expressionChange = new EventEmitter<string>();
   @Output() validChange = new EventEmitter<boolean>();
 
@@ -101,8 +109,8 @@ export class JsonataEditorComponent implements OnChanges, OnDestroy {
       this.editorModel = { value: this.expression || '', language: 'jsonata' };
       this.validate$.next(this.expression);
     }
-    if (changes['suggestions']) {
-      jsonataCompletionData.suggestions = this.suggestions;
+    if (changes['contextVariables']) {
+      jsonataCompletionData.variables = this.contextVariables || {};
     }
     if (changes['functions']) {
       jsonataCompletionData.functions = this.functions;
@@ -133,7 +141,7 @@ export class JsonataEditorComponent implements OnChanges, OnDestroy {
     if (m) {
       registerJsonataLanguage(m);
       this.languageRegistered = true;
-      jsonataCompletionData.suggestions = this.suggestions;
+      jsonataCompletionData.variables = this.contextVariables || {};
       jsonataCompletionData.functions = this.functions;
     }
   }

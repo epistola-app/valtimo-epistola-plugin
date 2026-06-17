@@ -225,6 +225,13 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminRepairTooltip:
         'Voeg het verborgen task-id veld toe aan alle Epistola-componenten in dit formulier.',
       epistolaAdminNoFormIssues: 'Geen formulieren met een ontbrekend task-id veld gevonden.',
+      // TEMPORARY: legacy override-mapping format detection (admin "Forms" tab)
+      epistolaAdminLegacyOverrideTitle: 'Verouderd invoer-override formaat',
+      epistolaAdminLegacyOverrideIntro:
+        'Formulieren waarvan een document-voorbeeldcomponent de invoer-overrides nog als object opslaat ("form:"-verwijzingen) in plaats van als JSONata-expressie over $form. Ze blijven werken, maar worden pas naar het nieuwe formaat omgezet als je het formulier opnieuw opslaat in de formulierbouwer.',
+      epistolaAdminLegacyOverrideComponents: 'Verouderde componenten',
+      epistolaAdminNoLegacyOverride:
+        'Geen formulieren met het verouderde override-formaat gevonden.',
     },
     en: {
       title: 'Epistola Document Suite',
@@ -421,6 +428,12 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminRepairTooltip:
         'Add the hidden task-id field to all Epistola components in this form.',
       epistolaAdminNoFormIssues: 'No forms with a missing task-id field found.',
+      // TEMPORARY: legacy override-mapping format detection (admin "Forms" tab)
+      epistolaAdminLegacyOverrideTitle: 'Legacy input-override format',
+      epistolaAdminLegacyOverrideIntro:
+        'Forms whose document-preview component still stores input overrides as an object ("form:" references) instead of a JSONata expression over $form. They keep working, but only migrate to the new format once you re-save the form in the form builder.',
+      epistolaAdminLegacyOverrideComponents: 'Legacy components',
+      epistolaAdminNoLegacyOverride: 'No forms using the legacy override format found.',
     },
   },
 };

@@ -355,7 +355,7 @@
     *ngIf="mappingMode === 'advanced'"
     [expression]="dataMapping$ | async"
     [disabled]="!!(disabled$ | async)"
-    [suggestions]="variableSuggestions"
+    [contextVariables]="editorContextVariables"
     [functions]="expressionFunctions"
     (expressionChange)="onDataMappingChange($event)"
   ></epistola-jsonata-editor>

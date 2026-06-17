@@ -132,7 +132,7 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
         clearTimeout(this._debounceTimer);
       }
       this._debounceTimer = setTimeout(
-        () => {
+        async () => {
           // Skip if the form is being/has been submitted or the component is gone —
           // those previews would run with incomplete/reset data and 400 from Epistola.
           if (this._destroyed || this.root?.submitting || this.root?.submitted) {
@@ -143,7 +143,13 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
           if (!mapping || !formData) {
             return;
           }
-          const overrides = computeInputOverrides(mapping, formData);
+          // computeInputOverrides evaluates a JSONata expression (async). Re-check
+          // the submit/teardown guards after the await — they can flip while the
+          // promise is in flight.
+          const overrides = await computeInputOverrides(mapping, formData);
+          if (this._destroyed || this.root?.submitting || this.root?.submitted) {
+            return;
+          }
           // Push null when there's nothing usable yet so the component reverts to
           // its "complete the form" placeholder instead of keeping a stale preview.
           this.setValue(Object.keys(overrides).length > 0 ? overrides : null);

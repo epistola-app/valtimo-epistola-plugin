@@ -9,14 +9,9 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FormioCustomComponent } from '@valtimo/components';
-
-const FORM_REF_PREFIX = 'form:';
-
-interface OverrideRow {
-  scope: 'doc' | 'pv';
-  inputPath: string;
-  formFieldKey: string;
-}
+import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
+import { OverrideRow, parseOverrideJsonata, serializeOverrideRows } from './override-jsonata';
+import { isLegacyOverrideMapping, legacyOverrideToJsonata } from './legacy-override-converter';
 
 export interface FormFieldOption {
   key: string;
@@ -24,24 +19,62 @@ export interface FormFieldOption {
 }
 
 /**
- * Override mapping format: scope → { inputPath → "form:<componentKey>" }
- * The "form:" prefix identifies this as a reference to a Formio component.
+ * Override mapping value: a JSONata expression (over `$form`) that produces the
+ * `{ doc, pv }` overlay applied during preview. Legacy form definitions may
+ * still carry the old `{ scope: { inputPath: "form:key" } }` object; it is
+ * converted to JSONata on load (see {@link legacyOverrideToJsonata}).
  */
 export type OverrideMapping = Record<string, Record<string, string>>;
 
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, JsonataEditorComponent],
   selector: 'epistola-override-builder-component',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="override-builder">
       <div class="builder-header">
         <span class="builder-label">{{ label || 'Input Overrides' }}</span>
-        <button type="button" class="mode-toggle" (click)="toggleMode()">
+        <button
+          type="button"
+          class="mode-toggle"
+          [disabled]="simpleUnavailable && !advancedMode"
+          (click)="toggleMode()"
+        >
           {{ advancedMode ? 'Simple' : 'Advanced' }}
         </button>
       </div>
+
+      <!-- Inline guidance for the author -->
+      <p class="builder-intro">
+        Make the preview reflect what the user is typing — <em>before</em> they submit — by feeding
+        live form values into the document inputs.
+      </p>
+      <details class="builder-help">
+        <summary>When should I map a field?</summary>
+        <ul>
+          <li>
+            <strong>Map</strong> a field when its value ends up in the generated document — i.e. the
+            template's data mapping reads that <code>doc</code>/<code>pv</code> path. The preview
+            then updates live as the field is filled in.
+          </li>
+          <li>
+            <strong>Don't map</strong> fields that don't affect the document, or values that are
+            already saved on the case/process before this task — those are read from the real data
+            automatically.
+          </li>
+          <li>
+            Overriding a path the template never reads has <strong>no effect</strong> on the
+            preview.
+          </li>
+        </ul>
+        <p class="builder-help__how">
+          <strong>How it works:</strong> <code>$form</code> holds the current form values; the
+          mapping returns a <code>{{ '{' }} doc, pv {{ '}' }}</code> overlay used
+          <strong>only for the preview</strong>. The actual document is always generated from the
+          real saved data after the form is submitted.
+        </p>
+      </details>
 
       <!-- Simple mode: table -->
       <div *ngIf="!advancedMode" class="builder-table">
@@ -92,16 +125,21 @@ export type OverrideMapping = Record<string, Record<string, string>>;
         </button>
       </div>
 
-      <!-- Advanced mode: JSON editor -->
+      <!-- Advanced mode: JSONata editor over $form -->
       <div *ngIf="advancedMode" class="builder-advanced">
-        <textarea
-          class="json-editor"
-          [ngModel]="jsonText"
-          (ngModelChange)="onJsonChange($event)"
-          placeholder='{ "pv": { "motivation": "form:pv:motivation" } }'
-          rows="6"
-        ></textarea>
-        <div *ngIf="jsonError" class="json-error">{{ jsonError }}</div>
+        <div *ngIf="simpleUnavailable" class="advanced-note">
+          This expression is too rich for the simple table — edit it here.
+        </div>
+        <epistola-jsonata-editor
+          [expression]="expression"
+          [contextVariables]="{ form: formFieldKeys }"
+          variablesHint="$form"
+          (expressionChange)="onExpressionChange($event)"
+        ></epistola-jsonata-editor>
+        <div class="advanced-hint">
+          Map form fields onto a <code>{{ '{' }} doc, pv {{ '}' }}</code> overlay, e.g.
+          <code>{{ exampleExpression }}</code>
+        </div>
       </div>
     </div>
   `,
@@ -124,6 +162,40 @@ export type OverrideMapping = Record<string, Record<string, string>>;
         font-size: 0.85rem;
         color: #495057;
       }
+      .builder-intro {
+        font-size: 0.78rem;
+        color: #495057;
+        margin: 0 0 0.4rem;
+        line-height: 1.4;
+      }
+      .builder-help {
+        margin: 0 0 0.6rem;
+        font-size: 0.76rem;
+        color: #6c757d;
+      }
+      .builder-help > summary {
+        cursor: pointer;
+        color: #0d6efd;
+        font-size: 0.76rem;
+        user-select: none;
+      }
+      .builder-help ul {
+        margin: 0.35rem 0 0.35rem 0;
+        padding-left: 1.1rem;
+        line-height: 1.45;
+      }
+      .builder-help li {
+        margin-bottom: 0.2rem;
+      }
+      .builder-help__how {
+        margin: 0.35rem 0 0;
+        line-height: 1.45;
+      }
+      .builder-help code {
+        background: #eef0f2;
+        border-radius: 3px;
+        padding: 0 0.2rem;
+      }
       .mode-toggle {
         background: none;
         border: 1px solid #6c757d;
@@ -133,8 +205,12 @@ export type OverrideMapping = Record<string, Record<string, string>>;
         font-size: 0.75rem;
         cursor: pointer;
       }
-      .mode-toggle:hover {
+      .mode-toggle:hover:not(:disabled) {
         background: #e9ecef;
+      }
+      .mode-toggle:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
       }
       .table-header {
         display: flex;
@@ -201,27 +277,31 @@ export type OverrideMapping = Record<string, Record<string, string>>;
         background: #e9ecef;
         border-color: #495057;
       }
-      .json-editor {
-        width: 100%;
-        border: 1px solid #ced4da;
-        border-radius: 4px;
-        padding: 0.5rem;
-        font-family: monospace;
-        font-size: 0.8rem;
-        resize: vertical;
-        background: white;
-      }
-      .json-error {
-        color: #dc3545;
+      .advanced-note {
+        color: #b54708;
         font-size: 0.75rem;
-        margin-top: 0.25rem;
+        margin-bottom: 0.4rem;
+      }
+      .advanced-hint {
+        color: #6c757d;
+        font-size: 0.72rem;
+        margin-top: 0.35rem;
+        line-height: 1.4;
+      }
+      .advanced-hint code {
+        background: #eef0f2;
+        border-radius: 3px;
+        padding: 0 0.2rem;
+        font-size: 0.95em;
       }
     `,
   ],
 })
-export class EpistolaOverrideBuilderComponent implements FormioCustomComponent<OverrideMapping | null> {
-  @Input() value!: OverrideMapping | null;
-  @Output() valueChange = new EventEmitter<OverrideMapping | null>();
+export class EpistolaOverrideBuilderComponent implements FormioCustomComponent<
+  string | OverrideMapping | null
+> {
+  @Input() value!: string | OverrideMapping | null;
+  @Output() valueChange = new EventEmitter<string | OverrideMapping | null>();
 
   @Input() disabled = false;
   @Input() label = 'Input Overrides';
@@ -229,36 +309,52 @@ export class EpistolaOverrideBuilderComponent implements FormioCustomComponent<O
 
   rows: OverrideRow[] = [];
   advancedMode = false;
-  jsonText = '';
-  jsonError: string | null = null;
+  /** True when the current expression can't be represented by the simple table. */
+  simpleUnavailable = false;
+  expression = '';
+
+  readonly exampleExpression = '{ "doc": { "naam": $form.voornaam & \' \' & $form.achternaam } }';
 
   private initialized = false;
 
   constructor(private readonly cdr: ChangeDetectorRef) {}
 
+  get formFieldKeys(): string[] {
+    return this.availableFields.map((f) => f.key);
+  }
+
   ngOnChanges(): void {
-    if (!this.initialized && this.value) {
+    if (!this.initialized && this.value != null) {
       this.initialized = true;
-      this.rows = this.mappingToRows(this.value);
-      this.jsonText = JSON.stringify(this.value, null, 2);
+
+      // Migrate a legacy object value to JSONata once, and persist it upward so
+      // the form is saved in the new format. Everything below works on a string.
+      if (isLegacyOverrideMapping(this.value)) {
+        this.expression = legacyOverrideToJsonata(this.value);
+        this.value = this.expression || null;
+        this.valueChange.emit(this.value as string | null);
+      } else {
+        this.expression = String(this.value);
+      }
+
+      this.loadFromExpression(this.expression);
     }
     this.cdr.markForCheck();
   }
 
   toggleMode(): void {
-    this.advancedMode = !this.advancedMode;
     if (this.advancedMode) {
-      const mapping = this.rowsToMapping();
-      this.jsonText = Object.keys(mapping).length > 0 ? JSON.stringify(mapping, null, 2) : '';
-      this.jsonError = null;
-    } else {
-      try {
-        const parsed = this.jsonText.trim() ? JSON.parse(this.jsonText) : {};
-        this.rows = this.mappingToRows(parsed);
-        this.jsonError = null;
-      } catch {
-        // Keep current rows if JSON is invalid
+      // Advanced -> simple: only possible when the expression round-trips.
+      const parsed = parseOverrideJsonata(this.expression);
+      if (parsed === null) {
+        this.simpleUnavailable = true;
+        return;
       }
+      this.rows = parsed;
+      this.simpleUnavailable = false;
+      this.advancedMode = false;
+    } else {
+      this.advancedMode = true;
     }
   }
 
@@ -271,55 +367,35 @@ export class EpistolaOverrideBuilderComponent implements FormioCustomComponent<O
     this.emitChange();
   }
 
+  /** Simple-table change: serialize rows back to a JSONata expression. */
   emitChange(): void {
-    const mapping = this.rowsToMapping();
-    this.value = Object.keys(mapping).length > 0 ? mapping : null;
-    this.valueChange.emit(this.value);
+    this.expression = serializeOverrideRows(this.rows);
+    this.emit(this.expression);
   }
 
-  onJsonChange(text: string): void {
-    this.jsonText = text;
-    if (!text.trim()) {
-      this.jsonError = null;
-      this.value = null;
-      this.valueChange.emit(null);
-      return;
-    }
-    try {
-      const parsed = JSON.parse(text);
-      this.jsonError = null;
-      this.value = parsed;
-      this.valueChange.emit(parsed);
-    } catch (e) {
-      this.jsonError = 'Invalid JSON';
+  /** Advanced-editor change. */
+  onExpressionChange(expr: string): void {
+    this.expression = expr;
+    this.simpleUnavailable = parseOverrideJsonata(expr) === null;
+    this.emit(expr);
+  }
+
+  private loadFromExpression(expression: string): void {
+    const parsed = parseOverrideJsonata(expression);
+    if (parsed === null) {
+      // Richer than the simple table can show — start in advanced mode.
+      this.simpleUnavailable = true;
+      this.advancedMode = true;
+      this.rows = [];
+    } else {
+      this.simpleUnavailable = false;
+      this.rows = parsed;
     }
   }
 
-  private rowsToMapping(): OverrideMapping {
-    const mapping: OverrideMapping = {};
-    for (const row of this.rows) {
-      if (row.inputPath && row.formFieldKey) {
-        if (!mapping[row.scope]) {
-          mapping[row.scope] = {};
-        }
-        mapping[row.scope][row.inputPath] = FORM_REF_PREFIX + row.formFieldKey;
-      }
-    }
-    return mapping;
-  }
-
-  private mappingToRows(mapping: OverrideMapping): OverrideRow[] {
-    const rows: OverrideRow[] = [];
-    for (const [scope, fields] of Object.entries(mapping)) {
-      if (scope === 'doc' || scope === 'pv') {
-        for (const [path, ref] of Object.entries(fields)) {
-          const formFieldKey = String(ref).startsWith(FORM_REF_PREFIX)
-            ? String(ref).substring(FORM_REF_PREFIX.length)
-            : String(ref);
-          rows.push({ scope, inputPath: path, formFieldKey });
-        }
-      }
-    }
-    return rows;
+  private emit(expression: string): void {
+    const next = expression && expression.trim() ? expression : null;
+    this.value = next;
+    this.valueChange.emit(next);
   }
 }

@@ -4,6 +4,7 @@ import app.epistola.valtimo.authorization.EpistolaAdministration;
 import app.epistola.valtimo.authorization.EpistolaAdministrationActionProvider;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
 import app.epistola.valtimo.service.admin.EpistolaFormCarrierRepairService;
+import app.epistola.valtimo.service.admin.EpistolaLegacyOverrideScanService;
 import com.ritense.authorization.AuthorizationService;
 import com.ritense.authorization.request.AuthorizationRequest;
 import com.ritense.authorization.request.EntityAuthorizationRequest;
@@ -29,6 +30,7 @@ class EpistolaAdminResourceAuthorizationTest {
     private AuthorizationService authorizationService;
     private EpistolaAdminService adminService;
     private EpistolaFormCarrierRepairService formCarrierRepairService;
+    private EpistolaLegacyOverrideScanService legacyOverrideScanService;
     private EpistolaAdminResource resource;
 
     @BeforeEach
@@ -36,7 +38,18 @@ class EpistolaAdminResourceAuthorizationTest {
         authorizationService = mock(AuthorizationService.class);
         adminService = mock(EpistolaAdminService.class);
         formCarrierRepairService = mock(EpistolaFormCarrierRepairService.class);
-        resource = new EpistolaAdminResource(adminService, authorizationService, formCarrierRepairService);
+        legacyOverrideScanService = mock(EpistolaLegacyOverrideScanService.class);
+        resource = new EpistolaAdminResource(
+                adminService, authorizationService, formCarrierRepairService, legacyOverrideScanService);
+    }
+
+    @Test
+    void legacyOverrideForms_requireEpistolaAdministrationManage() {
+        when(legacyOverrideScanService.findLegacyForms()).thenReturn(List.of());
+
+        resource.legacyOverrideForms();
+
+        verify(authorizationService).requirePermission(any());
     }
 
     @Test

@@ -125,7 +125,7 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     expect(inst._customAngularElement.taskInstanceId).toBeUndefined();
   });
 
-  it('schedules a debounced preview on change and pushes computed overrides', () => {
+  it('schedules a debounced preview on change and pushes computed overrides', async () => {
     const { inst, root, handlers } = createInstance({
       overrideMapping: { doc: { name: 'form:nameField' } },
       data: { nameField: 'Alice' },
@@ -137,18 +137,18 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     expect(root.on).toHaveBeenCalledWith('change', expect.any(Function));
 
     // ...and the initial compute (scheduled by attach) fires after the debounce.
-    jest.advanceTimersByTime(1500);
+    await jest.advanceTimersByTimeAsync(1500);
     expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
 
     // A subsequent change re-computes from the latest form data.
     inst.setValue.mockClear();
     root.data = { nameField: 'Bob' };
     handlers['change']();
-    jest.advanceTimersByTime(1500);
+    await jest.advanceTimersByTimeAsync(1500);
     expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Bob' } });
   });
 
-  it('fires the initial override compute immediately (no 1.5s debounce)', () => {
+  it('fires the initial override compute immediately (no 1.5s debounce)', async () => {
     const { inst } = createInstance({
       overrideMapping: { doc: { name: 'form:nameField' } },
       data: { nameField: 'Alice' },
@@ -157,11 +157,11 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     inst.attach({});
 
     // The initial compute is scheduled at 0ms, so it runs without waiting 1.5s.
-    jest.advanceTimersByTime(0);
+    await jest.advanceTimersByTimeAsync(0);
     expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
   });
 
-  it('pushes null when the form has no usable mapped data (reverts to placeholder)', () => {
+  it('pushes null when the form has no usable mapped data (reverts to placeholder)', async () => {
     const { inst } = createInstance({
       overrideMapping: { doc: { name: 'form:nameField' } },
       data: {}, // nameField not filled in
@@ -169,11 +169,11 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
 
     inst.attach({});
 
-    jest.advanceTimersByTime(1500);
+    await jest.advanceTimersByTimeAsync(1500);
     expect(inst.setValue).toHaveBeenCalledWith(null);
   });
 
-  it('cancels a pending debounce and removes the change listener on detach', () => {
+  it('cancels a pending debounce and removes the change listener on detach', async () => {
     const { inst, root } = createInstance({
       overrideMapping: { doc: { name: 'form:nameField' } },
       data: { nameField: 'Alice' },
@@ -183,12 +183,12 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
 
     inst.detach();
 
-    jest.advanceTimersByTime(1500);
+    await jest.advanceTimersByTimeAsync(1500);
     expect(inst.setValue).not.toHaveBeenCalled();
     expect(root.off).toHaveBeenCalledWith('change', expect.any(Function));
   });
 
-  it('resumes firing previews after a Formio redraw (detach then re-attach)', () => {
+  it('resumes firing previews after a Formio redraw (detach then re-attach)', async () => {
     const { inst, root } = createInstance({
       overrideMapping: { doc: { name: 'form:nameField' } },
       data: { nameField: 'Alice' },
@@ -200,12 +200,12 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     inst.detach();
     inst.attach({});
 
-    jest.advanceTimersByTime(1500);
+    await jest.advanceTimersByTimeAsync(1500);
     expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
     expect(root.on).toHaveBeenCalledTimes(2); // listener re-registered on re-attach
   });
 
-  it('does not fire a preview while the form is submitting', () => {
+  it('does not fire a preview while the form is submitting', async () => {
     const { inst, root } = createInstance({
       overrideMapping: { doc: { name: 'form:nameField' } },
       data: { nameField: 'Alice' },
@@ -214,11 +214,11 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     inst.attach({}); // schedules the initial compute
     root.submitting = true;
 
-    jest.advanceTimersByTime(1500);
+    await jest.advanceTimersByTimeAsync(1500);
     expect(inst.setValue).not.toHaveBeenCalled();
   });
 
-  it('does not fire a preview once the form has been submitted', () => {
+  it('does not fire a preview once the form has been submitted', async () => {
     const { inst, root } = createInstance({
       overrideMapping: { doc: { name: 'form:nameField' } },
       data: { nameField: 'Alice' },
@@ -227,7 +227,7 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     inst.attach({}); // schedules the initial compute
     root.submitted = true;
 
-    jest.advanceTimersByTime(1500);
+    await jest.advanceTimersByTimeAsync(1500);
     expect(inst.setValue).not.toHaveBeenCalled();
   });
 });
