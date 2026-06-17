@@ -10,5 +10,29 @@
     "canInitializeDocument": false,
     "startableByUser": true,
     "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "single-document-event-gateway",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "single-document-receive-task",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "single-document-async",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "parallel-documents",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
   }
 ]

@@ -242,7 +242,72 @@ result variable, and triggers **only that execution** by id
 
 This is verified end-to-end against a real engine by
 `EpistolaParallelCorrelationIntegrationTest` (parallel gateway, multi-instance,
-sequential, and override cases — all with `asyncAfter` catch events).
+sequential, and override cases — all with `asyncAfter` catch events). For a runnable
+example, see `parallel-documents.bpmn` in the test-app `example` case: a parallel gateway
+generates two documents on separate branches, each with its own `resultProcessVariable`
+(`resultA` / `resultB`) and round catch event, joining once both complete.
+
+## Adding a timeout (event gateway / boundary timer)
+
+The default wait (a round `EpistolaDocumentGenerated` catch event) blocks until the
+document is generated, however long that takes. When you want to bound the wait and
+fail — or branch — if generation runs long, two example processes in the test-app's
+`example` case bundle show the patterns:
+
+**Event-based gateway racing message vs. timer** —
+`single-document-event-gateway.bpmn`. After `generate-document`, an event-based gateway
+forks into the `EpistolaDocumentGenerated` message catch event and a `PT30M` timer catch
+event. Whichever fires first wins; the timer branch routes to an Error End Event that
+throws `EpistolaGenerationTimeout`.
+
+⚠️ **Auto-wiring does NOT work behind an event-based gateway** — and neither does an
+`epistolaWaitFor` mapping placed on the catch event. The execution waits _at the gateway_,
+so the catch event is not entered (its start listener / input mapping never runs) until
+the message has already been delivered — but the collector can only deliver the message if
+`epistolaWaitFor` is _already_ pinned on the waiting execution. That chicken-and-egg makes
+the completion fall through to the variable-pattern path, the gateway keeps waiting, and
+the timer eventually fires. **Fix: pin the token upstream on the `generate-document`
+output**, so it sits on the execution that holds the subscription before the result can
+arrive:
+
+```xml
+<bpmn:serviceTask id="generate-document" ...>
+  <bpmn:extensionElements>
+    <camunda:inputOutput>
+      <camunda:outputParameter name="epistolaWaitFor">${epistolaResult.jobPath}</camunda:outputParameter>
+    </camunda:inputOutput>
+  </bpmn:extensionElements>
+  ...
+</bpmn:serviceTask>
+```
+
+**Receive task with an interrupting boundary timer** —
+`single-document-receive-task.bpmn`. Here the wait is a `bpmn:receiveTask` (the
+task-shaped equivalent of the round catch event) referencing the same
+`EpistolaDocumentGenerated` message, with an interrupting (`cancelActivity="true"`)
+`PT30M` boundary timer that cancels the task and throws `EpistolaGenerationTimeout`.
+**A receive task is _not_ auto-wired** — the plugin's parse listener only attaches to
+round intermediate message catch events — so the `epistolaWaitFor` correlation token
+**must** be pinned explicitly on the receive task:
+
+```xml
+<bpmn:receiveTask id="wait-for-generation" name="Wait for generation"
+                  messageRef="Message_EpistolaDocumentGenerated">
+  <bpmn:extensionElements>
+    <camunda:inputOutput>
+      <camunda:inputParameter name="epistolaWaitFor">${epistolaResult.jobPath}</camunda:inputParameter>
+    </camunda:inputOutput>
+  </bpmn:extensionElements>
+  ...
+</bpmn:receiveTask>
+```
+
+Correlation otherwise works identically — the receive task creates the same
+`EpistolaDocumentGenerated` subscription that `correlateCompletion` matches on. The same
+race-safety rule applies (below): keep the boundary between `generate-document` and the
+wait synchronous. Note that receive tasks don't get the self-heal callback that round
+catch events do, so the synchronous boundary is the only thing guarding the
+result-before-subscription race — don't add an async boundary before the receive task.
 
 ## Race-safety: keep the boundary synchronous
 
@@ -292,6 +357,13 @@ result is still `PENDING`, so the callback is a no-op.)
 
 If a catch event still ends up stuck, recover it manually from the
 admin page's Pending Jobs tab — see [Recovering a stuck catch event](#recovering-a-stuck-catch-event).
+
+For a runnable example of the self-heal path, see `single-document-async.bpmn` in the
+test-app `example` case: `generate-document` carries `camunda:asyncAfter`, so the
+subscription commits one transaction after the result variable. The validator flags the
+boundary (advisory — extra latency from the job-executor round trip), and if a completion
+lands in the window the self-heal delivers it once the subscription commits, so the
+process still continues instead of stalling.
 
 ## Recovering a stuck catch event
 

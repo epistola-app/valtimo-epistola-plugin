@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_parallel" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.23.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.21.0">
+  <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
+  <bpmn:process id="parallel-documents" name="Generate Documents in Parallel" isExecutable="true">
+    <bpmn:documentation>Generates two documents concurrently on the branches of a parallel gateway, each waiting on its own round EpistolaDocumentGenerated catch event. Each branch uses a DISTINCT resultProcessVariable (resultA / resultB) so the rich result objects do not clobber one another; the plugin auto-pins a per-branch correlation token so a completion wakes exactly the branch that submitted it. The join waits for both before ending.</bpmn:documentation>
+    <bpmn:startEvent id="startEvent">
+      <bpmn:outgoing>Flow_start_fork</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_start_fork" sourceRef="startEvent" targetRef="fork" />
+    <bpmn:parallelGateway id="fork" name="Generate both">
+      <bpmn:incoming>Flow_start_fork</bpmn:incoming>
+      <bpmn:outgoing>Flow_fork_a</bpmn:outgoing>
+      <bpmn:outgoing>Flow_fork_b</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_fork_a" sourceRef="fork" targetRef="generate-doc-a" />
+    <bpmn:sequenceFlow id="Flow_fork_b" sourceRef="fork" targetRef="generate-doc-b" />
+    <bpmn:serviceTask id="generate-doc-a" name="Generate document A" camunda:expression="${null}">
+      <bpmn:incoming>Flow_fork_a</bpmn:incoming>
+      <bpmn:outgoing>Flow_a_wait</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="generate-doc-b" name="Generate document B" camunda:expression="${null}">
+      <bpmn:incoming>Flow_fork_b</bpmn:incoming>
+      <bpmn:outgoing>Flow_b_wait</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_a_wait" sourceRef="generate-doc-a" targetRef="wait-a" />
+    <bpmn:sequenceFlow id="Flow_b_wait" sourceRef="generate-doc-b" targetRef="wait-b" />
+    <bpmn:intermediateCatchEvent id="wait-a" name="Wait for A">
+      <bpmn:incoming>Flow_a_wait</bpmn:incoming>
+      <bpmn:outgoing>Flow_a_join</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_a" messageRef="Message_EpistolaDocumentGenerated" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:intermediateCatchEvent id="wait-b" name="Wait for B">
+      <bpmn:incoming>Flow_b_wait</bpmn:incoming>
+      <bpmn:outgoing>Flow_b_join</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_b" messageRef="Message_EpistolaDocumentGenerated" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_a_join" sourceRef="wait-a" targetRef="join" />
+    <bpmn:sequenceFlow id="Flow_b_join" sourceRef="wait-b" targetRef="join" />
+    <bpmn:parallelGateway id="join" name="Both done">
+      <bpmn:incoming>Flow_a_join</bpmn:incoming>
+      <bpmn:incoming>Flow_b_join</bpmn:incoming>
+      <bpmn:outgoing>Flow_join_end</bpmn:outgoing>
+    </bpmn:parallelGateway>
+    <bpmn:sequenceFlow id="Flow_join_end" sourceRef="join" targetRef="end-success" />
+    <bpmn:endEvent id="end-success">
+      <bpmn:incoming>Flow_join_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:textAnnotation id="TextAnnotation_parallel">
+      <bpmn:text>Beide taken vereisen een Valtimo process koppeling (resultA / resultB)</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_parallel" associationDirection="None" sourceRef="generate-doc-a" targetRef="TextAnnotation_parallel" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="parallel-documents">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="startEvent">
+        <dc:Bounds x="152" y="177" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="fork_di" bpmnElement="fork">
+        <dc:Bounds x="240" y="170" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="234" y="146" width="63" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="generate-doc-a_di" bpmnElement="generate-doc-a">
+        <dc:Bounds x="340" y="77" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="generate-doc-b_di" bpmnElement="generate-doc-b">
+        <dc:Bounds x="340" y="257" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-a_di" bpmnElement="wait-a">
+        <dc:Bounds x="502" y="99" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="500" y="142" width="44" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-b_di" bpmnElement="wait-b">
+        <dc:Bounds x="502" y="279" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="500" y="322" width="44" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="join_di" bpmnElement="join">
+        <dc:Bounds x="640" y="170" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="639" y="146" width="52" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-success_di" bpmnElement="end-success">
+        <dc:Bounds x="752" y="177" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_parallel_di" bpmnElement="TextAnnotation_parallel">
+        <dc:Bounds x="150" y="60" width="160" height="55" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_start_fork_di" bpmnElement="Flow_start_fork">
+        <di:waypoint x="188" y="195" />
+        <di:waypoint x="240" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_fork_a_di" bpmnElement="Flow_fork_a">
+        <di:waypoint x="265" y="170" />
+        <di:waypoint x="265" y="117" />
+        <di:waypoint x="340" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_fork_b_di" bpmnElement="Flow_fork_b">
+        <di:waypoint x="265" y="220" />
+        <di:waypoint x="265" y="297" />
+        <di:waypoint x="340" y="297" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_a_wait_di" bpmnElement="Flow_a_wait">
+        <di:waypoint x="440" y="117" />
+        <di:waypoint x="502" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_b_wait_di" bpmnElement="Flow_b_wait">
+        <di:waypoint x="440" y="297" />
+        <di:waypoint x="502" y="297" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_a_join_di" bpmnElement="Flow_a_join">
+        <di:waypoint x="538" y="117" />
+        <di:waypoint x="665" y="117" />
+        <di:waypoint x="665" y="170" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_b_join_di" bpmnElement="Flow_b_join">
+        <di:waypoint x="538" y="297" />
+        <di:waypoint x="665" y="297" />
+        <di:waypoint x="665" y="220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_join_end_di" bpmnElement="Flow_join_end">
+        <di:waypoint x="690" y="195" />
+        <di:waypoint x="752" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_parallel_di" bpmnElement="Association_parallel">
+        <di:waypoint x="370" y="77" />
+        <di:waypoint x="290" y="115" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
