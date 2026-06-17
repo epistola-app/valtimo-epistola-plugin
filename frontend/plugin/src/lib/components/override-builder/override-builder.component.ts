@@ -45,6 +45,37 @@ export type OverrideMapping = Record<string, Record<string, string>>;
         </button>
       </div>
 
+      <!-- Inline guidance for the author -->
+      <p class="builder-intro">
+        Make the preview reflect what the user is typing — <em>before</em> they submit — by feeding
+        live form values into the document inputs.
+      </p>
+      <details class="builder-help">
+        <summary>When should I map a field?</summary>
+        <ul>
+          <li>
+            <strong>Map</strong> a field when its value ends up in the generated document — i.e. the
+            template's data mapping reads that <code>doc</code>/<code>pv</code> path. The preview
+            then updates live as the field is filled in.
+          </li>
+          <li>
+            <strong>Don't map</strong> fields that don't affect the document, or values that are
+            already saved on the case/process before this task — those are read from the real data
+            automatically.
+          </li>
+          <li>
+            Overriding a path the template never reads has <strong>no effect</strong> on the
+            preview.
+          </li>
+        </ul>
+        <p class="builder-help__how">
+          <strong>How it works:</strong> <code>$form</code> holds the current form values; the
+          mapping returns a <code>{{ '{' }} doc, pv {{ '}' }}</code> overlay used
+          <strong>only for the preview</strong>. The actual document is always generated from the
+          real saved data after the form is submitted.
+        </p>
+      </details>
+
       <!-- Simple mode: table -->
       <div *ngIf="!advancedMode" class="builder-table">
         <div *ngIf="rows.length > 0" class="table-header">
@@ -130,6 +161,40 @@ export type OverrideMapping = Record<string, Record<string, string>>;
         font-weight: 600;
         font-size: 0.85rem;
         color: #495057;
+      }
+      .builder-intro {
+        font-size: 0.78rem;
+        color: #495057;
+        margin: 0 0 0.4rem;
+        line-height: 1.4;
+      }
+      .builder-help {
+        margin: 0 0 0.6rem;
+        font-size: 0.76rem;
+        color: #6c757d;
+      }
+      .builder-help > summary {
+        cursor: pointer;
+        color: #0d6efd;
+        font-size: 0.76rem;
+        user-select: none;
+      }
+      .builder-help ul {
+        margin: 0.35rem 0 0.35rem 0;
+        padding-left: 1.1rem;
+        line-height: 1.45;
+      }
+      .builder-help li {
+        margin-bottom: 0.2rem;
+      }
+      .builder-help__how {
+        margin: 0.35rem 0 0;
+        line-height: 1.45;
+      }
+      .builder-help code {
+        background: #eef0f2;
+        border-radius: 3px;
+        padding: 0 0.2rem;
       }
       .mode-toggle {
         background: none;
