@@ -35,6 +35,12 @@ export interface PendingJob {
   tenantId: string;
   requestId: string;
   configurationTitle: string;
+  /**
+   * 'WAITING' — has the epistolaWaitFor token; the collector can correlate it.
+   * 'UNWIRED' — has the subscription but no token, so it can never be correlated (stuck); requestId is
+   * absent and reconcile cannot recover it. Surfaced so operators can see and fix the process model.
+   */
+  status: 'WAITING' | 'UNWIRED';
 }
 
 export interface PluginUsageEntry {
