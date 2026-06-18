@@ -17,6 +17,8 @@
     "format:check": "oxfmt --check",
     "lint": "oxlint --fix",
     "lint:check": "oxlint",
+    "headers": "node scripts/license-headers.mjs",
+    "headers:check": "node scripts/license-headers.mjs --check",
     "clean": "rm -rf node_modules && pnpm -r exec rm -rf node_modules dist"
   },
   "devDependencies": {

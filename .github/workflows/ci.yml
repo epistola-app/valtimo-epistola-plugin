@@ -72,6 +72,9 @@ jobs:
       - name: Check format
         run: pnpm format:check
 
+      - name: Check license headers
+        run: pnpm headers:check
+
       - name: Test plugin
         run: pnpm --filter @epistola.app/valtimo-plugin test
 

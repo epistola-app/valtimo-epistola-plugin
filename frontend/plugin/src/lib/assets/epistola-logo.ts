@@ -1,2 +1,20 @@
+/*
+ * Copyright 2025 Epistola.
+ *
+ * Licensed under EUPL, Version 1.2 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 export const EPISTOLA_PLUGIN_LOGO_BASE64 =
   'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAgMTIwIiB3aWR0aD0iMTIwIiBoZWlnaHQ9IjEyMCI+CiAgPCEtLSBTdGFjayBiYXNlIC0tPgogIDxyZWN0IHg9IjM2IiB5PSIxNiIgd2lkdGg9IjU0IiBoZWlnaHQ9IjcwIiByeD0iMyIgZmlsbD0iI2U2YzJiMCIgc3Ryb2tlPSIjNGYyZjJiIiBzdHJva2Utd2lkdGg9IjIiIHRyYW5zZm9ybT0icm90YXRlKDUgNjMgNTEpIi8+CiAgPHJlY3QgeD0iMzIiIHk9IjIyIiB3aWR0aD0iNTQiIGhlaWdodD0iNzAiIHJ4PSIzIiBmaWxsPSIjZjBkOGM4IiBzdHJva2U9IiM0ZjJmMmIiIHN0cm9rZS13aWR0aD0iMiIvPgogIDxyZWN0IHg9IjI4IiB5PSIyOCIgd2lkdGg9IjU0IiBoZWlnaHQ9IjcwIiByeD0iMyIgZmlsbD0iI2Y1ZWJlMyIgc3Ryb2tlPSIjNGYyZjJiIiBzdHJva2Utd2lkdGg9IjIuNSIvPgogIDxsaW5lIHgxPSIzOCIgeTE9IjQ0IiB4Mj0iNzIiIHkyPSI0NCIgc3Ryb2tlPSIjYzRhODgyIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDxsaW5lIHgxPSIzOCIgeTE9IjU0IiB4Mj0iNzIiIHkyPSI1NCIgc3Ryb2tlPSIjYzRhODgyIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDxsaW5lIHgxPSIzOCIgeTE9IjY0IiB4Mj0iNTgiIHkyPSI2NCIgc3Ryb2tlPSIjYzRhODgyIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPgogIDwhLS0gV2F4IHNlYWwgd2l0aCBjaGVja21hcmsgLS0+CiAgPGNpcmNsZSBjeD0iNTUiIGN5PSI4NCIgcj0iMTUiIGZpbGw9IiNiODVjM2MiIHN0cm9rZT0iIzRmMmYyYiIgc3Ryb2tlLXdpZHRoPSIyIi8+CiAgPGNpcmNsZSBjeD0iNTUiIGN5PSI4NCIgcj0iMTAuNSIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZDQ4MzZhIiBzdHJva2Utd2lkdGg9IjEiLz4KICA8cG9seWxpbmUgcG9pbnRzPSI0OSw4NCA1Myw4OSA2Miw3OCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNGYyZjJiIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
