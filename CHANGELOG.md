@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Documented in [async.md → Adding a timeout](docs/async.md#adding-a-timeout-event-gateway--boundary-timer), [Parallel generation](docs/async.md#parallel-generation), and [Race-safety](docs/async.md#race-safety-keep-the-boundary-synchronous).
 
+### Added
+
+- **Isolated unit tests for the `check-job-status` action and the template-browsing controller.** `EpistolaPluginCheckJobStatusTest` covers the type-tolerant request-id extraction (rich-result `Map` vs legacy `String`), null/blank/unsupported-type validation, and the conditional status/document-id/error-message variable writes. `EpistolaTemplateResourceTest` pins that each `EpistolaTemplateResource` endpoint resolves the plugin configuration and delegates to `EpistolaService` with the right connection details and path/query params. Closes two of the documented test-coverage gaps.
+
 ### Changed
 
 - **The frontend library now compiles under TypeScript `strict`, enforced by a CI type-check.** `tsconfig.lib.json` sets `strict: true`, and because ng-packagr's partial-compilation build does not fail on type errors, a dedicated `pnpm typecheck` (`tsc --noEmit --skipLibCheck`) gate now runs in CI between the header check and the build. Fixing the fallout aligned the four configurator components' `@Output() configuration` generic with Valtimo's framework contract (`FunctionConfigurationData` / `PluginConfigurationData` — `EventEmitter` is invariant, so the narrower per-config generic wasn't assignable under strict); emitted values are unchanged, still the typed config. One null-safety guard was added where a nullable form value was emitted.
@@ -34,6 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Documentation corrected for accuracy.** The README backend-install snippet now pins the current release (`0.10.0`, was a stale `0.6.0`; the authoritative Maven-metadata link is alongside it). `CLAUDE.md`'s Testing and Test Coverage sections were brought in line with the code: the split controller tests replace the removed `EpistolaPluginResource` reference, the Playwright count is corrected (4, not 5), the genuinely-remaining gaps are restated (`checkJobStatus` isolated test, `EpistolaTemplateResource`), and the full CI gate set is listed (`lint:check`, `typecheck`, `headers:check`, backend E2E).
+- **The test-app backend E2E suite now runs in CI, and a pre-existing failure in it is fixed.** A new `Backend E2E (Testcontainers)` CI job runs `./gradlew :test-app:backend:test` (which boots the real Valtimo app against Testcontainers Postgres + Keycloak; Epistola is mocked) — previously CI compiled the test-app but skipped these tests (`-x test`), so they only ran locally. Wiring them in surfaced a pre-existing failure: the value-resolver E2E started a process with no business key, so Valtimo's user-task-create listeners (`CaseAssigneeTaskCreatedListener` / `CaseTaskTeamAutoAssignListener`) hit `UUID.fromString(null)` / "no document found". The test now creates a real `example` case document and starts the process with its id as the business key, matching how real dossier processes run. (The Playwright UI E2E suites need a full running stack and remain a local / planned-nightly step, not part of PR CI.)
 - **`@formio/angular` is now a declared peer dependency.** The retry-form component imports `FormioModule` from `@formio/angular`, but it was absent from the published `package.json` and `ng-package.json`, resolving only transitively through `@valtimo/components` — a consumer whose package manager hoisted differently could fail to resolve it. It is now declared in `peerDependencies` (`^7.0.0`) and `allowedNonPeerDependencies`. The stale, unused `@ngx-translate/core` entry was dropped from `allowedNonPeerDependencies`.
 
 ## [0.10.0] - 2026-06-16
