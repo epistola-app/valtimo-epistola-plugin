@@ -18,7 +18,11 @@
 
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FunctionConfigurationComponent, PluginTranslatePipeModule } from '@valtimo/plugin';
+import {
+  FunctionConfigurationComponent,
+  FunctionConfigurationData,
+  PluginTranslatePipeModule,
+} from '@valtimo/plugin';
 import { FormModule, FormOutput, InputModule, SelectItem, SelectModule } from '@valtimo/components';
 import { BehaviorSubject, combineLatest, Observable, of, Subscription, take } from 'rxjs';
 import { delay, startWith } from 'rxjs/operators';
@@ -45,8 +49,10 @@ export class DownloadDocumentConfigurationComponent
   @Input() prefillConfiguration$!: Observable<DownloadDocumentConfig>;
 
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
-  @Output() configuration: EventEmitter<DownloadDocumentConfig> =
-    new EventEmitter<DownloadDocumentConfig>();
+  // Framework's FunctionConfigurationData (index type) to satisfy the invariant
+  // EventEmitter contract under strict mode; emitted values remain the typed config.
+  @Output() configuration: EventEmitter<FunctionConfigurationData> =
+    new EventEmitter<FunctionConfigurationData>();
 
   private saveSubscription!: Subscription;
   private readonly formValue$ = new BehaviorSubject<DownloadDocumentConfig | null>(null);

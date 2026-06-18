@@ -18,7 +18,11 @@
 
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { PluginConfigurationComponent, PluginTranslatePipeModule } from '@valtimo/plugin';
+import {
+  PluginConfigurationComponent,
+  PluginConfigurationData,
+  PluginTranslatePipeModule,
+} from '@valtimo/plugin';
 import { FormModule, FormOutput, InputModule } from '@valtimo/components';
 import { BehaviorSubject, combineLatest, Observable, Subscription, take } from 'rxjs';
 import { delay, startWith } from 'rxjs/operators';
@@ -40,8 +44,10 @@ export class EpistolaConfigurationComponent
   @Input() prefillConfiguration$!: Observable<EpistolaPluginConfig>;
 
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
-  @Output() configuration: EventEmitter<EpistolaPluginConfig> =
-    new EventEmitter<EpistolaPluginConfig>();
+  // Framework's PluginConfigurationData (index type) to satisfy the invariant
+  // EventEmitter contract under strict mode; emitted values remain the typed config.
+  @Output() configuration: EventEmitter<PluginConfigurationData> =
+    new EventEmitter<PluginConfigurationData>();
 
   /** Epistola slug pattern: lowercase alphanumeric with hyphens, no leading/trailing hyphens. */
   private static readonly SLUG_PATTERN = /^[a-z][a-z0-9]*(-[a-z0-9]+)*$/;
@@ -107,7 +113,7 @@ export class EpistolaConfigurationComponent
       combineLatest([this.formValue$, this.valid$])
         .pipe(take(1))
         .subscribe(([formValue, valid]) => {
-          if (valid) {
+          if (valid && formValue) {
             this.configuration.emit(formValue);
           }
         });

@@ -22,6 +22,7 @@
   "scripts": {
     "build": "ng-packagr -p ng-package.json",
     "watch": "ng-packagr -p ng-package.json --watch",
+    "typecheck": "tsc -p tsconfig.lib.json --noEmit --skipLibCheck",
     "test": "jest"
   },
   "dependencies": {

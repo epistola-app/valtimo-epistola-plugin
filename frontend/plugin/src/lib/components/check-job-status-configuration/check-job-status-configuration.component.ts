@@ -18,7 +18,11 @@
 
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FunctionConfigurationComponent, PluginTranslatePipeModule } from '@valtimo/plugin';
+import {
+  FunctionConfigurationComponent,
+  FunctionConfigurationData,
+  PluginTranslatePipeModule,
+} from '@valtimo/plugin';
 import { FormModule, FormOutput, InputModule } from '@valtimo/components';
 import { BehaviorSubject, combineLatest, Observable, of, Subscription, take } from 'rxjs';
 import { delay, startWith } from 'rxjs/operators';
@@ -40,8 +44,11 @@ export class CheckJobStatusConfigurationComponent
   @Input() prefillConfiguration$!: Observable<CheckJobStatusConfig>;
 
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
-  @Output() configuration: EventEmitter<CheckJobStatusConfig> =
-    new EventEmitter<CheckJobStatusConfig>();
+  // Typed as the framework's FunctionConfigurationData (an index type) to match the
+  // FunctionConfigurationComponent contract under strict mode — EventEmitter is invariant,
+  // so a narrower generic isn't assignable. Emitted values are still the typed config.
+  @Output() configuration: EventEmitter<FunctionConfigurationData> =
+    new EventEmitter<FunctionConfigurationData>();
 
   private saveSubscription!: Subscription;
   private readonly formValue$ = new BehaviorSubject<CheckJobStatusConfig | null>(null);

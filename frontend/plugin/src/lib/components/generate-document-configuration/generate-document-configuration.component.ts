@@ -30,6 +30,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   FunctionConfigurationComponent,
+  FunctionConfigurationData,
   PluginConfigurationData,
   PluginTranslatePipeModule,
 } from '@valtimo/plugin';
@@ -107,8 +108,10 @@ export class GenerateDocumentConfigurationComponent
   @Input() context$?: Observable<[ManagementContext, CaseManagementParams]>;
 
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
-  @Output() configuration: EventEmitter<GenerateDocumentConfig> =
-    new EventEmitter<GenerateDocumentConfig>();
+  // Framework's FunctionConfigurationData (index type) to satisfy the invariant
+  // EventEmitter contract under strict mode; emitted values remain the typed config.
+  @Output() configuration: EventEmitter<FunctionConfigurationData> =
+    new EventEmitter<FunctionConfigurationData>();
 
   catalogs$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   templates$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
