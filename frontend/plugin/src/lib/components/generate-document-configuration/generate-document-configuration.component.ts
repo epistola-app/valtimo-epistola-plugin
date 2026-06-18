@@ -1,3 +1,21 @@
+/*
+ * Copyright 2025 Epistola.
+ *
+ * Licensed under EUPL, Version 1.2 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -12,6 +30,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   FunctionConfigurationComponent,
+  FunctionConfigurationData,
   PluginConfigurationData,
   PluginTranslatePipeModule,
 } from '@valtimo/plugin';
@@ -89,8 +108,10 @@ export class GenerateDocumentConfigurationComponent
   @Input() context$?: Observable<[ManagementContext, CaseManagementParams]>;
 
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
-  @Output() configuration: EventEmitter<GenerateDocumentConfig> =
-    new EventEmitter<GenerateDocumentConfig>();
+  // Framework's FunctionConfigurationData (index type) to satisfy the invariant
+  // EventEmitter contract under strict mode; emitted values remain the typed config.
+  @Output() configuration: EventEmitter<FunctionConfigurationData> =
+    new EventEmitter<FunctionConfigurationData>();
 
   catalogs$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   templates$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));

@@ -1,3 +1,20 @@
+/*
+ * Copyright 2025 Epistola.
+ *
+ * Licensed under EUPL, Version 1.2 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-License-Identifier: EUPL-1.2
+ */
 package app.epistola.valtimo.config;
 
 import lombok.Data;
@@ -21,6 +38,34 @@ public class EpistolaProperties {
     private final ResultCollector resultCollector = new ResultCollector();
     private final RetryForm retryForm = new RetryForm();
     private final CatchEventAutoWiring catchEventAutoWiring = new CatchEventAutoWiring();
+    private final Client client = new Client();
+
+    @Data
+    public static class Client {
+
+        /**
+         * Connection-establish timeout (ms) applied to every outbound Epistola HTTP call,
+         * including the result collector. A hung connect would otherwise block a BPMN
+         * job-executor thread (or the collector's virtual thread) indefinitely.
+         */
+        private long connectTimeoutMs = 10000;
+
+        /**
+         * Socket read/inactivity timeout (ms) for short request/response API calls
+         * (job status, submit, catalog/template/variant reads). Deliberately NOT applied
+         * to streaming or long/large operations — the result collector poll, document
+         * download, document preview, and catalog import — which only get the connect
+         * timeout so a legitimately slow render or large transfer is not cut off.
+         */
+        private long readTimeoutMs = 30000;
+
+        /**
+         * Number of retry attempts (in addition to the first try) for idempotent reads
+         * (job status, document download) on a transient failure — connect/read timeout,
+         * connection refused, or a 5xx response. 4xx responses are never retried.
+         */
+        private int maxReadRetries = 2;
+    }
 
     @Data
     public static class CatchEventAutoWiring {

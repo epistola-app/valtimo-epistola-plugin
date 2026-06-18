@@ -48,6 +48,33 @@ jobs:
           path: backend/plugin/build/reports/tests/
           retention-days: 7
 
+  e2e-backend:
+    name: Backend E2E (Testcontainers)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # Boots the real test-app against Testcontainers Postgres + Keycloak (Docker is
+      # available on GitHub-hosted runners). Epistola itself is mocked, so no external
+      # service is needed. The Playwright UI E2E suites still require a full running stack
+      # and are run locally / planned as a separate nightly workflow.
+      - name: Run test-app backend E2E
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./gradlew :test-app:backend:test
+
+      - name: Upload E2E test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-backend-test-results
+          path: test-app/backend/build/reports/tests/
+          retention-days: 7
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
@@ -71,6 +98,12 @@ jobs:
 
       - name: Check format
         run: pnpm format:check
+
+      - name: Check license headers
+        run: pnpm headers:check
+
+      - name: Type-check (strict)
+        run: pnpm typecheck
 
       - name: Test plugin
         run: pnpm --filter @epistola.app/valtimo-plugin test

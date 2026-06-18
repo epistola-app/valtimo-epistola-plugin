@@ -22,6 +22,7 @@
   "scripts": {
     "build": "ng-packagr -p ng-package.json",
     "watch": "ng-packagr -p ng-package.json --watch",
+    "typecheck": "tsc -p tsconfig.lib.json --noEmit --skipLibCheck",
     "test": "jest"
   },
   "dependencies": {
@@ -43,6 +44,7 @@
     "@angular/core": ">=17.0.0",
     "@angular/forms": ">=17.0.0",
     "@angular/router": ">=17.0.0",
+    "@formio/angular": "^7.0.0",
     "@valtimo/components": "^13.21.0",
     "@valtimo/plugin": "^13.21.0",
     "@valtimo/process-link": "^13.21.0",

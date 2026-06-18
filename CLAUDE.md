@@ -138,6 +138,7 @@ This plugin pins a single Valtimo version (the `valtimo` key in `gradle/libs.ver
 # Full end-to-end app tests (boots the real test-app with Testcontainers
 # Postgres + Keycloak — Docker required). Plugin-only logic lives in the
 # plugin module above; tests that need the whole Valtimo application go here.
+# Runs in CI as the "Backend E2E (Testcontainers)" job.
 ./gradlew :test-app:backend:test
 
 # Frontend tests (Jest unit tests)
@@ -146,10 +147,17 @@ cd frontend/plugin && pnpm test
 # Frontend build (must also succeed)
 cd frontend/plugin && pnpm build
 
-# Formatting (run from project root)
-pnpm format         # auto-fix
-pnpm format:check   # check only (used in CI)
+# Frontend checks (run from project root — all gated in CI)
+pnpm format         # auto-fix formatting (oxfmt)
+pnpm format:check   # formatting check only (CI gate)
+pnpm lint:check     # oxlint (CI gate)
+pnpm typecheck      # strict tsc --noEmit on the published library (CI gate)
+pnpm headers        # insert EUPL-1.2 license headers on frontend TS sources
+pnpm headers:check  # license-header check (CI gate)
 ```
+
+License headers on the Java backend are applied/gated by Spotless
+(`./gradlew :backend:plugin:spotlessApply` / `spotlessCheck`, the latter part of `build`).
 
 ## Current State
 
@@ -226,12 +234,16 @@ BPMN `@PluginAction` methods (`generate-document`, `check-job-status`, `download
 - `CatalogScanner` — Classpath catalog discovery
 - `EpistolaCatalogSyncService` — Catalog import with version tracking, forced single-catalog redeploy, and classpath discovery
 - `NormalizeVariantAttributes` — Old vs new format normalization
-- `EpistolaPluginResource` (document download only)
-- **5 Playwright E2E suites**: Plugin configuration, generate-document, check-job-status, download-document
+- `EpistolaServiceImpl` retry/timeout behavior — `EpistolaServiceImplRetryTest` (transient-failure retry on idempotent reads)
+- Controllers (`EpistolaPluginResource` was split into focused resources): `EpistolaPluginResourceDocumentDownloadTest` (download), `EpistolaAdminResourceAuthorizationTest`, `EpistolaGenerationResourceAuthorizationTest`, `EpistolaToolingResourceValidateJsonataTest` (authorization + key behaviors)
+- `EpistolaPlugin.downloadDocument` — `EpistolaPluginDownloadDocumentTest` (storage-strategy wiring); `EpistolaPlugin.checkJobStatus` — `EpistolaPluginCheckJobStatusTest` (request-id extraction + variable writes); `generateDocument` is exercised via the standalone-engine correlation integration tests (`EpistolaAutoWiringCorrelationIntegrationTest`, `EpistolaParallelCorrelationIntegrationTest`)
+- `EpistolaTemplateResource` — `EpistolaTemplateResourceTest` (per-endpoint delegation to `EpistolaService`)
+- **End-to-end** (`test-app`, Testcontainers, runs in CI): `DownloadDocumentE2ETest` — real app boot, both download storage strategies, async catch-event completion, and the task-scope value resolver
+- **4 Playwright E2E suites** (run locally / planned nightly, not in PR CI): plugin-configuration, generate-document, check-job-status, download-document
 
 ### Gaps (tracked as future work)
 
-- `EpistolaPlugin` action methods (`generateDocument`, `checkJobStatus`, `downloadDocument`) — no unit tests for the orchestration logic
+- `EpistolaPlugin.generateDocument` orchestration is covered only via integration paths, not an isolated unit test
 - Full multi-node result collector behavior depends on Epistola contract/server integration tests
-- `EpistolaPluginResource` — only document download endpoint tested, other endpoints untested at controller level
-- Frontend `.spec.ts` unit tests — minimal coverage (E2E tests cover the main flows)
+- Frontend `.spec.ts` unit tests — partial coverage (Playwright E2E covers the main flows)
+- Playwright UI E2E not yet wired into CI (needs a full running stack; planned as a nightly workflow)

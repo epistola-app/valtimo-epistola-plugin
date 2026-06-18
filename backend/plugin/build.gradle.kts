@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.vanniktech.publish)
     alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.cyclonedx)
+    alias(libs.plugins.spotless)
 }
 
 group = "app.epistola.valtimo"
@@ -88,6 +89,21 @@ dependencies {
 
 tasks.withType<JavaCompile> {
     options.compilerArgs.add("-parameters")
+}
+
+// EUPL-1.2 license headers, applied with `spotlessApply` and gated by `spotlessCheck`
+// (which `build` already depends on via `check`). Shares the canonical header text with
+// the frontend (config/license-header.txt) so the two never diverge. The two
+// Ritense-attributed, Valtimo-derived test files keep their original copyright notice.
+spotless {
+    java {
+        target("src/**/*.java")
+        targetExclude(
+            "src/test/java/app/epistola/valtimo/BaseIntegrationTest.java",
+            "src/test/java/app/epistola/valtimo/PostgresTestContainerConfig.java",
+        )
+        licenseHeaderFile(rootProject.file("config/license-header.txt"))
+    }
 }
 
 // Populate the jar manifest so EpistolaAdminService.getPluginVersion() can read

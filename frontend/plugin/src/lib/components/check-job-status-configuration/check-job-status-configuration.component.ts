@@ -1,6 +1,28 @@
+/*
+ * Copyright 2025 Epistola.
+ *
+ * Licensed under EUPL, Version 1.2 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
 import { Component, EventEmitter, Input, OnDestroy, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FunctionConfigurationComponent, PluginTranslatePipeModule } from '@valtimo/plugin';
+import {
+  FunctionConfigurationComponent,
+  FunctionConfigurationData,
+  PluginTranslatePipeModule,
+} from '@valtimo/plugin';
 import { FormModule, FormOutput, InputModule } from '@valtimo/components';
 import { BehaviorSubject, combineLatest, Observable, of, Subscription, take } from 'rxjs';
 import { delay, startWith } from 'rxjs/operators';
@@ -22,8 +44,11 @@ export class CheckJobStatusConfigurationComponent
   @Input() prefillConfiguration$!: Observable<CheckJobStatusConfig>;
 
   @Output() valid: EventEmitter<boolean> = new EventEmitter<boolean>();
-  @Output() configuration: EventEmitter<CheckJobStatusConfig> =
-    new EventEmitter<CheckJobStatusConfig>();
+  // Typed as the framework's FunctionConfigurationData (an index type) to match the
+  // FunctionConfigurationComponent contract under strict mode — EventEmitter is invariant,
+  // so a narrower generic isn't assignable. Emitted values are still the typed config.
+  @Output() configuration: EventEmitter<FunctionConfigurationData> =
+    new EventEmitter<FunctionConfigurationData>();
 
   private saveSubscription!: Subscription;
   private readonly formValue$ = new BehaviorSubject<CheckJobStatusConfig | null>(null);

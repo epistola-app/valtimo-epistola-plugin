@@ -6,6 +6,8 @@ import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService
 import app.epistola.valtimo.service.download.DocumentStorageStrategy
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.ritense.authorization.AuthorizationContext.Companion.runWithoutAuthorization
+import com.ritense.document.domain.impl.request.NewDocumentRequest
+import com.ritense.document.service.DocumentService
 import com.ritense.plugin.domain.PluginConfiguration
 import com.ritense.plugin.service.PluginService
 import com.ritense.valtimo.Application
@@ -85,6 +87,9 @@ class DownloadDocumentE2ETest {
 
     @Autowired
     lateinit var valueResolverService: ValueResolverService
+
+    @Autowired
+    lateinit var documentService: DocumentService
 
     @Autowired
     lateinit var operatonTaskService: OperatonTaskService
@@ -239,7 +244,24 @@ class DownloadDocumentE2ETest {
         val deployment =
             repositoryService.createDeployment().addString("epistola-usertask-test.bpmn", USER_TASK_BPMN).deploy()
         try {
-            val pi = runtimeService.startProcessInstanceByKey(USER_TASK_PROCESS_KEY)
+            // Bind the process to a real case document: Valtimo dossier processes always carry the
+            // case-document UUID as the business key, and the engine's task-create listeners
+            // (CaseAssigneeTaskCreatedListener / CaseTaskTeamAutoAssignListener) resolve that document
+            // on user-task creation — a process without one fails before our resolver runs.
+            val document =
+                runWithoutAuthorization {
+                    documentService
+                        .createDocument(
+                            NewDocumentRequest(
+                                "example",
+                                "example",
+                                "1.0.0",
+                                objectMapper.readTree("""{"firstName":"Test"}"""),
+                            ),
+                        ).resultingDocument()
+                        .orElseThrow()
+                }
+            val pi = runtimeService.startProcessInstanceByKey(USER_TASK_PROCESS_KEY, document.id().toString())
             val task = engineTaskService.createTaskQuery().processInstanceId(pi.id).singleResult()
             assertThat(task).isNotNull
 

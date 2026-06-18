@@ -1,3 +1,20 @@
+/*
+ * Copyright 2025 Epistola.
+ *
+ * Licensed under EUPL, Version 1.2 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" basis,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * SPDX-License-Identifier: EUPL-1.2
+ */
 package app.epistola.valtimo.config;
 
 import app.epistola.valtimo.authorization.EpistolaAdministrationActionProvider;
@@ -66,8 +83,11 @@ public class EpistolaPluginAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EpistolaApiClientFactory.class)
-    public EpistolaApiClientFactory epistolaApiClientFactory() {
-        return new EpistolaApiClientFactory();
+    public EpistolaApiClientFactory epistolaApiClientFactory(EpistolaProperties properties) {
+        EpistolaProperties.Client client = properties.getClient();
+        return new EpistolaApiClientFactory(
+                java.time.Duration.ofMillis(client.getConnectTimeoutMs()),
+                java.time.Duration.ofMillis(client.getReadTimeoutMs()));
     }
 
     @Bean
@@ -117,8 +137,8 @@ public class EpistolaPluginAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EpistolaService.class)
-    public EpistolaService epistolaService(EpistolaApiClientFactory apiClientFactory) {
-        return new EpistolaServiceImpl(apiClientFactory);
+    public EpistolaService epistolaService(EpistolaApiClientFactory apiClientFactory, EpistolaProperties properties) {
+        return new EpistolaServiceImpl(apiClientFactory, properties.getClient().getMaxReadRetries());
     }
 
     // Exposes the current user task's id to a form at server-side prefill time (prefix

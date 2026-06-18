@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "outDir": "../../out-tsc/lib",
+    "strict": true,
     "target": "ES2022",
     "module": "ES2022",
     "moduleResolution": "node",
@@ -18,5 +19,5 @@
   "angularCompilerOptions": {
     "compilationMode": "partial"
   },
-  "exclude": ["**/*.spec.ts"]
+  "exclude": ["**/*.spec.ts", "dist"]
 }

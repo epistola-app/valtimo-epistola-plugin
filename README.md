@@ -14,7 +14,7 @@ Add the plugin dependency to your Valtimo application's `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("app.epistola.valtimo:epistola-plugin:0.6.0")
+    implementation("app.epistola.valtimo:epistola-plugin:0.10.0")
 }
 ```
 
