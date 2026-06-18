@@ -309,6 +309,33 @@ wait synchronous. Note that receive tasks don't get the self-heal callback that 
 catch events do, so the synchronous boundary is the only thing guarding the
 result-before-subscription race — don't add an async boundary before the receive task.
 
+## Ambiguous (merged) catch events
+
+A subtle correlation trap: an **exclusive gateway picks a different template per
+input, the branches merge, and a _single_ catch event waits**. Now two
+`generate-document` tasks reach one `EpistolaDocumentGenerated` catch event, and the
+auto-wiring's resolver can map that catch event to only **one** result variable. If the
+branches use **different** `resultProcessVariable` names (e.g. `resultA` / `resultB`),
+the resolver pins one of them (last-write-wins, DB order); when the _other_ branch runs,
+its catch event reads `${resultA.jobPath}` against an unset variable, so **no
+`epistolaWaitFor` token is pinned**. The collector's completion then matches no
+subscription (`…without a catch-event subscription (variable pattern)`), the process
+**stalls at the wait forever**, and — because `getPendingJobs()` skips token-less
+executions — it is **invisible in the admin Pending Jobs tab**.
+
+The validator flags this as `AMBIGUOUS_CATCH_EVENT`. There are two correct fixes:
+
+- **Exclusive / merge topology** (only one branch runs): give both branches the **same**
+  `resultProcessVariable` (e.g. `epistolaResult`). The resolver then maps the catch event
+  to that one variable unambiguously, whichever branch ran has set it, and correlation
+  works. This is also the natural design — a single downstream read after the merge.
+- **Parallel topology** (branches run concurrently): do the opposite — give each branch
+  its **own** catch event _and_ its own `resultProcessVariable`, so the per-branch tokens
+  stay isolated (see [Parallel generation](#parallel-generation)).
+
+The test-app `example` case ships `letter-by-type.bpmn` as a runnable reproduction of the
+broken (different-variable) case.
+
 ## Race-safety: keep the boundary synchronous
 
 The result-collector runs on its own thread and polls Epistola continuously.

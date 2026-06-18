@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_letter_by_type" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.23.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.21.0">
+  <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
+  <bpmn:process id="letter-by-type" name="Briefgeneratie (keuze per type)" isExecutable="true">
+    <bpmn:documentation>Reproduces a customer setup: an exclusive gateway picks a different template depending on input, the branches MERGE, and then a SINGLE EpistolaDocumentGenerated catch event waits. Because two generate-document tasks (each with its own resultProcessVariable: resultA / resultB) reach the same catch event, the auto-wiring can only pin one of them — the validator flags this as AMBIGUOUS_CATCH_EVENT. When the branch whose result variable the resolver did NOT pick runs, the catch event gets no epistolaWaitFor token, so the completion never correlates and the wait does not appear in the admin Pending Jobs tab.</bpmn:documentation>
+    <bpmn:startEvent id="startEvent">
+      <bpmn:outgoing>Flow_start_choose</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_start_choose" sourceRef="startEvent" targetRef="choose-type" />
+    <bpmn:exclusiveGateway id="choose-type" name="Welk brieftype?" default="Flow_choose_b">
+      <bpmn:incoming>Flow_start_choose</bpmn:incoming>
+      <bpmn:outgoing>Flow_choose_a</bpmn:outgoing>
+      <bpmn:outgoing>Flow_choose_b</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_choose_a" name="Type A" sourceRef="choose-type" targetRef="st-gen-a">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${letterType == 'a'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_choose_b" name="Type B (default)" sourceRef="choose-type" targetRef="st-gen-b" />
+    <bpmn:serviceTask id="st-gen-a" name="Genereer Brief A" camunda:expression="${null}">
+      <bpmn:incoming>Flow_choose_a</bpmn:incoming>
+      <bpmn:outgoing>Flow_a_merge</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="st-gen-b" name="Genereer Brief B" camunda:expression="${null}">
+      <bpmn:incoming>Flow_choose_b</bpmn:incoming>
+      <bpmn:outgoing>Flow_b_merge</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_a_merge" sourceRef="st-gen-a" targetRef="merge" />
+    <bpmn:sequenceFlow id="Flow_b_merge" sourceRef="st-gen-b" targetRef="merge" />
+    <bpmn:exclusiveGateway id="merge" name="Samenvoegen">
+      <bpmn:incoming>Flow_a_merge</bpmn:incoming>
+      <bpmn:incoming>Flow_b_merge</bpmn:incoming>
+      <bpmn:outgoing>Flow_merge_wait</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_merge_wait" sourceRef="merge" targetRef="wait-for-generation" />
+    <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wacht op brief">
+      <bpmn:incoming>Flow_merge_wait</bpmn:incoming>
+      <bpmn:outgoing>Flow_wait_end</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_EpistolaDocumentGenerated" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_wait_end" sourceRef="wait-for-generation" targetRef="end-success" />
+    <bpmn:endEvent id="end-success">
+      <bpmn:incoming>Flow_wait_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:textAnnotation id="TextAnnotation_ambiguous">
+      <bpmn:text>Beide generate-taken lopen in één catch event — dubbelzinnig (AMBIGUOUS_CATCH_EVENT)</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_ambiguous" associationDirection="None" sourceRef="wait-for-generation" targetRef="TextAnnotation_ambiguous" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="letter-by-type">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="startEvent">
+        <dc:Bounds x="152" y="177" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="choose-type_di" bpmnElement="choose-type" isMarkerVisible="true">
+        <dc:Bounds x="240" y="170" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="231" y="146" width="69" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="st-gen-a_di" bpmnElement="st-gen-a">
+        <dc:Bounds x="340" y="77" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="st-gen-b_di" bpmnElement="st-gen-b">
+        <dc:Bounds x="340" y="257" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="merge_di" bpmnElement="merge" isMarkerVisible="true">
+        <dc:Bounds x="500" y="170" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="495" y="146" width="60" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-for-generation_di" bpmnElement="wait-for-generation">
+        <dc:Bounds x="612" y="177" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="600" y="220" width="62" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-success_di" bpmnElement="end-success">
+        <dc:Bounds x="712" y="177" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_ambiguous_di" bpmnElement="TextAnnotation_ambiguous">
+        <dc:Bounds x="560" y="60" width="180" height="68" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_start_choose_di" bpmnElement="Flow_start_choose">
+        <di:waypoint x="188" y="195" />
+        <di:waypoint x="240" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_choose_a_di" bpmnElement="Flow_choose_a">
+        <di:waypoint x="265" y="170" />
+        <di:waypoint x="265" y="117" />
+        <di:waypoint x="340" y="117" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="273" y="140" width="33" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_choose_b_di" bpmnElement="Flow_choose_b">
+        <di:waypoint x="265" y="220" />
+        <di:waypoint x="265" y="297" />
+        <di:waypoint x="340" y="297" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="266" y="263" width="73" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_a_merge_di" bpmnElement="Flow_a_merge">
+        <di:waypoint x="440" y="117" />
+        <di:waypoint x="525" y="117" />
+        <di:waypoint x="525" y="170" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_b_merge_di" bpmnElement="Flow_b_merge">
+        <di:waypoint x="440" y="297" />
+        <di:waypoint x="525" y="297" />
+        <di:waypoint x="525" y="220" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_merge_wait_di" bpmnElement="Flow_merge_wait">
+        <di:waypoint x="550" y="195" />
+        <di:waypoint x="612" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_wait_end_di" bpmnElement="Flow_wait_end">
+        <di:waypoint x="648" y="195" />
+        <di:waypoint x="712" y="195" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_ambiguous_di" bpmnElement="Association_ambiguous">
+        <di:waypoint x="630" y="177" />
+        <di:waypoint x="630" y="128" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
