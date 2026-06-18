@@ -179,6 +179,11 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminReconciling: 'Bezig...',
       epistolaAdminReconcileTooltip:
         'Vraag de huidige status op bij Epistola en hervat het wachtende proces als het klaar is.',
+      epistolaAdminStatusWaiting: 'Wachtend',
+      epistolaAdminStatusUnwired: 'Vastgelopen',
+      epistolaAdminUnwiredTooltip:
+        'Deze taak heeft geen correlatie-token (epistolaWaitFor), dus de collector kan hem nooit hervatten — het proces is vastgelopen. Meestal een dubbelzinnig samengevoegd catch event (zie BPMN-validatie). Op te lossen in het procesmodel; hersynchroniseren werkt hier niet.',
+      epistolaAdminUnwiredHint: 'Niet te hersynchroniseren',
       epistolaAdminConfigurations: 'Configuraties',
       epistolaAdminValidations: 'BPMN-validatie',
       epistolaAdminNoValidations:
@@ -382,6 +387,11 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminReconciling: 'Reconciling...',
       epistolaAdminReconcileTooltip:
         "Ask Epistola for this job's current status and resume the waiting process if it has finished.",
+      epistolaAdminStatusWaiting: 'Waiting',
+      epistolaAdminStatusUnwired: 'Stuck',
+      epistolaAdminUnwiredTooltip:
+        'This wait has no correlation token (epistolaWaitFor), so the collector can never resume it — the process is stuck. Usually an ambiguous merged catch event (see BPMN validation). Fix it in the process model; reconcile cannot recover it.',
+      epistolaAdminUnwiredHint: 'Cannot reconcile',
       epistolaAdminConfigurations: 'Configurations',
       epistolaAdminValidations: 'BPMN validation',
       epistolaAdminNoValidations:

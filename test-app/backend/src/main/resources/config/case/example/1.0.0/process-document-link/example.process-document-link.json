@@ -10,5 +10,47 @@
     "canInitializeDocument": false,
     "startableByUser": true,
     "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "single-document-event-gateway",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "single-document-receive-task",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "single-document-async",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "parallel-documents",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "letter-by-type",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "letter-by-type-fixed",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "three-branch-one-linked",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
   }
 ]

@@ -200,6 +200,7 @@ describe('EpistolaAdminService', () => {
           tenantId: 'test-tenant',
           requestId: 'req-123',
           configurationTitle: 'Test Config',
+          status: 'WAITING',
         },
       ];
       httpClient.get.mockReturnValue(of(mockJobs));

@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_evt_gw" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.23.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.21.0">
+  <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
+  <bpmn:process id="single-document-event-gateway" name="Generate Single Document (event gateway + timeout)" isExecutable="true">
+    <bpmn:documentation>⚠️ EXPECTED-TO-FAIL ANTI-PATTERN — do not use an event-based gateway to wait for Epistola. It will never correlate: the message branch always times out. The working way to "wait with a timeout" is a receive task (or catch event) with an interrupting boundary timer — see single-document-receive-task.
+
+Why it fails: an event-based gateway places its EpistolaDocumentGenerated message subscription on a transient CHILD execution. Correlation matches a waiting execution by the epistolaWaitFor token pinned on the SAME execution as the subscription, but there is no hook to pin the token onto that child execution before the message arrives (the catch event behind the gateway is not entered until the message is delivered, and a token pinned upstream lands on the PARENT execution, not the child). So the collector can never wake the message branch, and only the timer branch ever fires.</bpmn:documentation>
+    <bpmn:startEvent id="startEvent">
+      <bpmn:outgoing>Flow_start_gen</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_start_gen" sourceRef="startEvent" targetRef="generate-document" />
+    <bpmn:serviceTask id="generate-document" name="Generate document" camunda:expression="${null}">
+      <bpmn:incoming>Flow_start_gen</bpmn:incoming>
+      <bpmn:outgoing>Flow_gen_gw</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="boundary-generate-error" name="EpistolaGenerationError" attachedToRef="generate-document">
+      <bpmn:outgoing>Flow_boundary_err</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_gen" errorRef="Error_EpistolaDocumentError" camunda:errorCodeVariable="errorCode" camunda:errorMessageVariable="errorMessage" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_boundary_err" sourceRef="boundary-generate-error" targetRef="end-error" />
+    <bpmn:endEvent id="end-error">
+      <bpmn:incoming>Flow_boundary_err</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_gen_gw" sourceRef="generate-document" targetRef="wait-gateway" />
+    <bpmn:eventBasedGateway id="wait-gateway" name="Generated or timeout?">
+      <bpmn:incoming>Flow_gen_gw</bpmn:incoming>
+      <bpmn:outgoing>Flow_gw_msg</bpmn:outgoing>
+      <bpmn:outgoing>Flow_gw_timer</bpmn:outgoing>
+    </bpmn:eventBasedGateway>
+    <bpmn:sequenceFlow id="Flow_gw_msg" sourceRef="wait-gateway" targetRef="wait-for-generation" />
+    <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wait for generation (never fires)">
+      <!-- This branch can never correlate (see the process documentation): the subscription lives on a
+           child execution the epistolaWaitFor token cannot be pinned onto. The timer branch always wins. -->
+      <bpmn:incoming>Flow_gw_msg</bpmn:incoming>
+      <bpmn:outgoing>Flow_msg_end</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_EpistolaDocumentGenerated" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_msg_end" sourceRef="wait-for-generation" targetRef="end-success" />
+    <bpmn:endEvent id="end-success">
+      <bpmn:incoming>Flow_msg_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_gw_timer" sourceRef="wait-gateway" targetRef="wait-timeout" />
+    <bpmn:intermediateCatchEvent id="wait-timeout" name="30 minutes elapsed">
+      <bpmn:incoming>Flow_gw_timer</bpmn:incoming>
+      <bpmn:outgoing>Flow_timer_end</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_1">
+        <bpmn:timeDuration>PT30M</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_timer_end" sourceRef="wait-timeout" targetRef="end-timeout" />
+    <bpmn:endEvent id="end-timeout" name="Generation timed out">
+      <bpmn:incoming>Flow_timer_end</bpmn:incoming>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_timeout" errorRef="Error_EpistolaGenerationTimeout" />
+    </bpmn:endEvent>
+    <bpmn:textAnnotation id="TextAnnotation_0e3bvwm">
+      <bpmn:text>Deze taak vereist een Valtimo process koppeling</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_0gngtw5" associationDirection="None" sourceRef="generate-document" targetRef="TextAnnotation_0e3bvwm" />
+  </bpmn:process>
+  <bpmn:error id="Error_EpistolaDocumentError" name="EpistolaDocumentError" />
+  <bpmn:error id="Error_EpistolaGenerationTimeout" name="EpistolaGenerationTimeout" errorCode="EpistolaGenerationTimeout" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="single-document-event-gateway">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="startEvent">
+        <dc:Bounds x="152" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="generate-document_di" bpmnElement="generate-document">
+        <dc:Bounds x="240" y="77" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="boundary-generate-error_di" bpmnElement="boundary-generate-error">
+        <dc:Bounds x="272" y="139" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="246" y="182" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-error_di" bpmnElement="end-error">
+        <dc:Bounds x="222" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-gateway_di" bpmnElement="wait-gateway">
+        <dc:Bounds x="405" y="92" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="392" y="62" width="77" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-for-generation_di" bpmnElement="wait-for-generation">
+        <dc:Bounds x="532" y="99" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="508" y="142" width="85" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-success_di" bpmnElement="end-success">
+        <dc:Bounds x="652" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-timeout_di" bpmnElement="wait-timeout">
+        <dc:Bounds x="532" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="511" y="265" width="80" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-timeout_di" bpmnElement="end-timeout">
+        <dc:Bounds x="652" y="222" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="630" y="265" width="81" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0e3bvwm_di" bpmnElement="TextAnnotation_0e3bvwm">
+        <dc:Bounds x="150" y="200" width="100" height="55" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_start_gen_di" bpmnElement="Flow_start_gen">
+        <di:waypoint x="188" y="117" />
+        <di:waypoint x="240" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_gen_gw_di" bpmnElement="Flow_gen_gw">
+        <di:waypoint x="340" y="117" />
+        <di:waypoint x="405" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_gw_msg_di" bpmnElement="Flow_gw_msg">
+        <di:waypoint x="455" y="117" />
+        <di:waypoint x="532" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_msg_end_di" bpmnElement="Flow_msg_end">
+        <di:waypoint x="568" y="117" />
+        <di:waypoint x="652" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_gw_timer_di" bpmnElement="Flow_gw_timer">
+        <di:waypoint x="430" y="142" />
+        <di:waypoint x="430" y="240" />
+        <di:waypoint x="532" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_timer_end_di" bpmnElement="Flow_timer_end">
+        <di:waypoint x="568" y="240" />
+        <di:waypoint x="652" y="240" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_boundary_err_di" bpmnElement="Flow_boundary_err">
+        <di:waypoint x="290" y="175" />
+        <di:waypoint x="290" y="282" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_0gngtw5_di" bpmnElement="Association_0gngtw5">
+        <di:waypoint x="256" y="157" />
+        <di:waypoint x="220" y="200" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

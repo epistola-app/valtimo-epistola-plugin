@@ -102,6 +102,128 @@ class EpistolaAutoWiringCorrelationIntegrationTest {
                 """.formatted(suffix, requestId, resultVar);
     }
 
+    /** Receive-task wait WITHOUT any declarative epistolaWaitFor mapping — the token must be auto-pinned. */
+    private static final String RECEIVE_TASK_BPMN = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                              xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                              targetNamespace="http://bpmn.io/schema/bpmn" id="defs_auto_rt">
+              <bpmn:message id="msg" name="EpistolaDocumentGenerated" />
+              <bpmn:process id="auto-receive-task" isExecutable="true" camunda:historyTimeToLive="P1D">
+                <bpmn:startEvent id="rstart"><bpmn:outgoing>rf0</bpmn:outgoing></bpmn:startEvent>
+                <bpmn:sequenceFlow id="rf0" sourceRef="rstart" targetRef="submit-a" />
+                <bpmn:serviceTask id="submit-a" camunda:class="app.epistola.valtimo.service.completion.EpistolaAutoWiringCorrelationIntegrationTest$SubmitDelegate">
+                  <bpmn:extensionElements><camunda:inputOutput>
+                    <camunda:inputParameter name="testRequestId">req-a</camunda:inputParameter>
+                    <camunda:inputParameter name="testResultVar">resultA</camunda:inputParameter>
+                  </camunda:inputOutput></bpmn:extensionElements>
+                  <bpmn:incoming>rf0</bpmn:incoming><bpmn:outgoing>rf1</bpmn:outgoing>
+                </bpmn:serviceTask>
+                <bpmn:sequenceFlow id="rf1" sourceRef="submit-a" targetRef="recv-a" />
+                <bpmn:receiveTask id="recv-a" messageRef="msg">
+                  <bpmn:incoming>rf1</bpmn:incoming><bpmn:outgoing>rf2</bpmn:outgoing>
+                </bpmn:receiveTask>
+                <bpmn:sequenceFlow id="rf2" sourceRef="recv-a" targetRef="rend" />
+                <bpmn:endEvent id="rend"><bpmn:incoming>rf2</bpmn:incoming></bpmn:endEvent>
+              </bpmn:process>
+            </bpmn:definitions>
+            """;
+
+    /**
+     * Event-based gateway racing the completion message against a timer. The token can't be pinned by
+     * the catch event's own listener here (it isn't entered until the message arrives), so it is pinned
+     * UPSTREAM on the generate output (camunda:outputParameter) — the example's mechanism.
+     */
+    private static final String EVENT_GATEWAY_BPMN = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                              xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                              targetNamespace="http://bpmn.io/schema/bpmn" id="defs_evt">
+              <bpmn:message id="msg" name="EpistolaDocumentGenerated" />
+              <bpmn:process id="auto-event-gateway" isExecutable="true" camunda:historyTimeToLive="P1D">
+                <bpmn:startEvent id="estart"><bpmn:outgoing>ef0</bpmn:outgoing></bpmn:startEvent>
+                <bpmn:sequenceFlow id="ef0" sourceRef="estart" targetRef="submit-a" />
+                <bpmn:serviceTask id="submit-a" camunda:class="app.epistola.valtimo.service.completion.EpistolaAutoWiringCorrelationIntegrationTest$SubmitDelegate">
+                  <bpmn:extensionElements><camunda:inputOutput>
+                    <camunda:inputParameter name="testRequestId">req-a</camunda:inputParameter>
+                    <camunda:inputParameter name="testResultVar">resultA</camunda:inputParameter>
+                    <camunda:outputParameter name="epistolaWaitFor">${resultA.jobPath}</camunda:outputParameter>
+                  </camunda:inputOutput></bpmn:extensionElements>
+                  <bpmn:incoming>ef0</bpmn:incoming><bpmn:outgoing>ef1</bpmn:outgoing>
+                </bpmn:serviceTask>
+                <bpmn:sequenceFlow id="ef1" sourceRef="submit-a" targetRef="egw" />
+                <bpmn:eventBasedGateway id="egw">
+                  <bpmn:incoming>ef1</bpmn:incoming><bpmn:outgoing>ef_msg</bpmn:outgoing><bpmn:outgoing>ef_timer</bpmn:outgoing>
+                </bpmn:eventBasedGateway>
+                <bpmn:sequenceFlow id="ef_msg" sourceRef="egw" targetRef="ewait" />
+                <bpmn:intermediateCatchEvent id="ewait">
+                  <bpmn:incoming>ef_msg</bpmn:incoming><bpmn:outgoing>ef_ok</bpmn:outgoing>
+                  <bpmn:messageEventDefinition messageRef="msg" />
+                </bpmn:intermediateCatchEvent>
+                <bpmn:sequenceFlow id="ef_ok" sourceRef="ewait" targetRef="eok" />
+                <bpmn:endEvent id="eok"><bpmn:incoming>ef_ok</bpmn:incoming></bpmn:endEvent>
+                <bpmn:sequenceFlow id="ef_timer" sourceRef="egw" targetRef="etimer" />
+                <bpmn:intermediateCatchEvent id="etimer">
+                  <bpmn:incoming>ef_timer</bpmn:incoming><bpmn:outgoing>ef_to</bpmn:outgoing>
+                  <bpmn:timerEventDefinition><bpmn:timeDuration>PT30M</bpmn:timeDuration></bpmn:timerEventDefinition>
+                </bpmn:intermediateCatchEvent>
+                <bpmn:sequenceFlow id="ef_to" sourceRef="etimer" targetRef="eto" />
+                <bpmn:endEvent id="eto"><bpmn:incoming>ef_to</bpmn:incoming></bpmn:endEvent>
+              </bpmn:process>
+            </bpmn:definitions>
+            """;
+
+    /**
+     * Exclusive split → two generates with DIFFERENT result variables → merge → ONE shared catch event.
+     * The resolver can pin only one result variable to that catch event, so the other branch stalls
+     * (the letter-by-type anti-pattern). Branch order [a,b,c] means the catch event resolves to resultB.
+     */
+    private static final String AMBIGUOUS_MERGE_BPMN = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                              xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                              targetNamespace="http://bpmn.io/schema/bpmn" id="defs_amb">
+              <bpmn:message id="msg" name="EpistolaDocumentGenerated" />
+              <bpmn:process id="auto-ambiguous" isExecutable="true" camunda:historyTimeToLive="P1D">
+                <bpmn:startEvent id="astart"><bpmn:outgoing>af0</bpmn:outgoing></bpmn:startEvent>
+                <bpmn:sequenceFlow id="af0" sourceRef="astart" targetRef="axor" />
+                <bpmn:exclusiveGateway id="axor" default="af_b"><bpmn:incoming>af0</bpmn:incoming>
+                  <bpmn:outgoing>af_a</bpmn:outgoing><bpmn:outgoing>af_b</bpmn:outgoing></bpmn:exclusiveGateway>
+                <bpmn:sequenceFlow id="af_a" sourceRef="axor" targetRef="submit-a">
+                  <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${branch == 'a'}</bpmn:conditionExpression>
+                </bpmn:sequenceFlow>
+                <bpmn:sequenceFlow id="af_b" sourceRef="axor" targetRef="submit-b" />
+                <bpmn:serviceTask id="submit-a" camunda:class="app.epistola.valtimo.service.completion.EpistolaAutoWiringCorrelationIntegrationTest$SubmitDelegate">
+                  <bpmn:extensionElements><camunda:inputOutput>
+                    <camunda:inputParameter name="testRequestId">req-a</camunda:inputParameter>
+                    <camunda:inputParameter name="testResultVar">resultA</camunda:inputParameter>
+                  </camunda:inputOutput></bpmn:extensionElements>
+                  <bpmn:incoming>af_a</bpmn:incoming><bpmn:outgoing>af_a2</bpmn:outgoing>
+                </bpmn:serviceTask>
+                <bpmn:serviceTask id="submit-b" camunda:class="app.epistola.valtimo.service.completion.EpistolaAutoWiringCorrelationIntegrationTest$SubmitDelegate">
+                  <bpmn:extensionElements><camunda:inputOutput>
+                    <camunda:inputParameter name="testRequestId">req-b</camunda:inputParameter>
+                    <camunda:inputParameter name="testResultVar">resultB</camunda:inputParameter>
+                  </camunda:inputOutput></bpmn:extensionElements>
+                  <bpmn:incoming>af_b</bpmn:incoming><bpmn:outgoing>af_b2</bpmn:outgoing>
+                </bpmn:serviceTask>
+                <bpmn:sequenceFlow id="af_a2" sourceRef="submit-a" targetRef="amerge" />
+                <bpmn:sequenceFlow id="af_b2" sourceRef="submit-b" targetRef="amerge" />
+                <bpmn:exclusiveGateway id="amerge">
+                  <bpmn:incoming>af_a2</bpmn:incoming><bpmn:incoming>af_b2</bpmn:incoming><bpmn:outgoing>af_w</bpmn:outgoing>
+                </bpmn:exclusiveGateway>
+                <bpmn:sequenceFlow id="af_w" sourceRef="amerge" targetRef="await" />
+                <bpmn:intermediateCatchEvent id="await">
+                  <bpmn:incoming>af_w</bpmn:incoming><bpmn:outgoing>af_e</bpmn:outgoing>
+                  <bpmn:messageEventDefinition messageRef="msg" />
+                </bpmn:intermediateCatchEvent>
+                <bpmn:sequenceFlow id="af_e" sourceRef="await" targetRef="aend" />
+                <bpmn:endEvent id="aend"><bpmn:incoming>af_e</bpmn:incoming></bpmn:endEvent>
+              </bpmn:process>
+            </bpmn:definitions>
+            """;
+
     private ProcessEngine processEngine;
     private RuntimeService runtimeService;
     private ManagementService managementService;
@@ -186,6 +308,82 @@ class EpistolaAutoWiringCorrelationIntegrationTest {
 
         assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(pi.getId()).singleResult())
                 .as("all three branches joined and the process completed").isNull();
+    }
+
+    @Test
+    void autoPinsTheTokenForAReceiveTaskWaitAndCorrelatesWithoutDeclarativeMapping() {
+        processEngine.getRepositoryService().createDeployment()
+                .addString("auto-receive.bpmn", RECEIVE_TASK_BPMN)
+                .deploy();
+
+        ProcessInstance pi = runtimeService.startProcessInstanceByKey("auto-receive-task");
+
+        // The receive task is parked on the message, and the token was auto-pinned (no input mapping
+        // in the BPMN did this — receive tasks are now wired exactly like round catch events).
+        assertThat(messageSubscriptionCount(pi.getId())).isEqualTo(1);
+        List<String> pinned = runtimeService.createVariableInstanceQuery()
+                .processInstanceIdIn(pi.getId())
+                .variableName(EpistolaProcessVariables.WAIT_FOR)
+                .list().stream().map(VariableInstance::getValue).map(String::valueOf).toList();
+        assertThat(pinned).containsExactly(EpistolaMessageCorrelationService.buildJobPath(TENANT, "req-a"));
+
+        // The completion correlates the receive task (waking exactly one execution); the single-branch
+        // process then runs straight to completion. (We don't read resultA afterwards — the instance has
+        // already ended, so its runtime variables are gone; correlated==1 + completion is the proof.)
+        assertThat(correlationService.correlateCompletion(TENANT, "req-a", "COMPLETED", "doc-a", null)).isEqualTo(1);
+        executeAllJobs();
+        assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(pi.getId()).singleResult())
+                .as("receive-task process completed after correlation").isNull();
+    }
+
+    @Test
+    void eventBasedGatewayWaitCannotBeCorrelated_subscriptionLivesOnAChildExecution() {
+        // Documents a hard limitation: an event-based gateway places its message subscription on a
+        // transient CHILD execution, while any token pinned upstream (here via the generate output
+        // mapping) sits on the PARENT execution. Correlation requires the subscription and the
+        // epistolaWaitFor token on the SAME execution, so they never meet — the branch cannot be woken.
+        // The correct "wait with a timeout" is a receive task / catch event with an interrupting boundary
+        // timer (see single-document-receive-task), NOT an event-based gateway.
+        processEngine.getRepositoryService().createDeployment()
+                .addString("auto-event-gateway.bpmn", EVENT_GATEWAY_BPMN)
+                .deploy();
+
+        ProcessInstance pi = runtimeService.startProcessInstanceByKey("auto-event-gateway");
+
+        // The message subscription exists behind the gateway, and the token IS pinned upstream...
+        assertThat(messageSubscriptionCount(pi.getId())).isEqualTo(1);
+        assertThat(runtimeService.createVariableInstanceQuery().processInstanceIdIn(pi.getId())
+                .variableName(EpistolaProcessVariables.WAIT_FOR).list()).hasSize(1);
+
+        // ...but they are on different executions, so the targeted correlation query matches nothing
+        // and the wait stays stuck (in a real process the PT30M timer would eventually fire).
+        assertThat(correlationService.correlateCompletion(TENANT, "req-a", "COMPLETED", "doc-a", null))
+                .as("event-gateway wait cannot be correlated").isEqualTo(0);
+        assertThat(messageSubscriptionCount(pi.getId())).as("still stuck at the gateway").isEqualTo(1);
+    }
+
+    @Test
+    void ambiguousMergedCatchEventLeavesTheMispairedBranchUncorrelated() {
+        processEngine.getRepositoryService().createDeployment()
+                .addString("auto-ambiguous.bpmn", AMBIGUOUS_MERGE_BPMN)
+                .deploy();
+
+        // Branch order [a,b,c] in the stubbed links means the shared catch event resolves to resultB.
+        // Run branch A (writes resultA): the catch event reads ${resultB.jobPath} = null, so no token is
+        // pinned, and branch A's completion can never be correlated — it is stuck (the customer's bug).
+        ProcessInstance piA = runtimeService.startProcessInstanceByKey("auto-ambiguous", Map.of("branch", "a"));
+        assertThat(messageSubscriptionCount(piA.getId())).isEqualTo(1);
+        assertThat(runtimeService.createVariableInstanceQuery()
+                .processInstanceIdIn(piA.getId()).variableName(EpistolaProcessVariables.WAIT_FOR).list())
+                .as("branch A's catch event got no token (the resolver pinned it to resultB)").isEmpty();
+        assertThat(correlationService.correlateCompletion(TENANT, "req-a", "COMPLETED", "doc-a", null))
+                .as("branch A cannot correlate — stuck").isEqualTo(0);
+        assertThat(messageSubscriptionCount(piA.getId())).as("branch A still waiting").isEqualTo(1);
+
+        // Run branch B (writes resultB, the variable the catch event resolved to): it correlates fine.
+        ProcessInstance piB = runtimeService.startProcessInstanceByKey("auto-ambiguous", Map.of("branch", "b"));
+        assertThat(correlationService.correlateCompletion(TENANT, "req-b", "COMPLETED", "doc-b", null))
+                .as("branch B correlates — its variable is the one pinned").isEqualTo(1);
     }
 
     private void executeAllJobs() {

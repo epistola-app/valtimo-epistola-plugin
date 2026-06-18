@@ -5,7 +5,9 @@ import com.ritense.processlink.service.ProcessLinkService;
 import lombok.RequiredArgsConstructor;
 import org.operaton.bpm.engine.RepositoryService;
 import org.operaton.bpm.model.bpmn.BpmnModelInstance;
+import org.operaton.bpm.model.bpmn.instance.FlowNode;
 import org.operaton.bpm.model.bpmn.instance.IntermediateCatchEvent;
+import org.operaton.bpm.model.bpmn.instance.ReceiveTask;
 import org.operaton.bpm.model.bpmn.instance.ServiceTask;
 
 import java.util.HashMap;
@@ -18,10 +20,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * BPMN model via {@link RepositoryService#getBpmnModelInstance} and {@link ProcessLinkService}).
  *
  * <p>Pairing reuses the validator's forward walk
- * ({@link EpistolaProcessDefinitionValidator#findReachableEpistolaCatchEvent}): for each
- * {@code generate-document} process link, find its reachable catch event and map that catch event's id
- * to the link's {@code resultProcessVariable}. Results are cached per process-definition id (a deployed
- * version is immutable).
+ * ({@link EpistolaProcessDefinitionValidator#findReachableEpistolaWait}): for each
+ * {@code generate-document} process link, find its reachable Epistola wait (a round catch event or a
+ * receive task) and map that wait activity's id to the link's {@code resultProcessVariable}. Results are
+ * cached per process-definition id (a deployed version is immutable).
  *
  * <p><b>Cache only trustworthy results.</b> An empty mapping is cached only when the model genuinely has
  * no {@code EpistolaDocumentGenerated} catch event (definitively non-Epistola). If the model contains
@@ -79,23 +81,28 @@ public class EpistolaCatchEventLinkResolver {
             if (!(model.getModelElementById(link.getActivityId()) instanceof ServiceTask serviceTask)) {
                 continue;
             }
-            IntermediateCatchEvent catchEvent =
-                    EpistolaProcessDefinitionValidator.findReachableEpistolaCatchEvent(serviceTask);
+            FlowNode wait =
+                    EpistolaProcessDefinitionValidator.findReachableEpistolaWait(serviceTask);
             String resultVariable = resultProcessVariable(link);
-            if (catchEvent != null && resultVariable != null) {
-                mapping.put(catchEvent.getId(), resultVariable);
+            if (wait != null && resultVariable != null) {
+                mapping.put(wait.getId(), resultVariable);
             }
         }
         // Cacheable when we have a confident answer: a resolved mapping, or a model that genuinely has
-        // no Epistola catch event. An empty mapping for a model that DOES have Epistola catch events
-        // means the pairing isn't resolvable yet (process links not loaded) — don't cache it.
-        boolean cacheable = !mapping.isEmpty() || !hasEpistolaCatchEvent(model);
+        // no Epistola wait. An empty mapping for a model that DOES have an Epistola wait (catch event or
+        // receive task) means the pairing isn't resolvable yet (process links not loaded) — don't cache it.
+        boolean cacheable = !mapping.isEmpty() || !hasEpistolaWait(model);
         return new Mapping(mapping, cacheable);
     }
 
-    private static boolean hasEpistolaCatchEvent(BpmnModelInstance model) {
+    private static boolean hasEpistolaWait(BpmnModelInstance model) {
         for (IntermediateCatchEvent ice : model.getModelElementsByType(IntermediateCatchEvent.class)) {
-            if (EpistolaProcessDefinitionValidator.matchesEpistolaMessage(ice)) {
+            if (EpistolaProcessDefinitionValidator.isEpistolaWaitTarget(ice)) {
+                return true;
+            }
+        }
+        for (ReceiveTask rt : model.getModelElementsByType(ReceiveTask.class)) {
+            if (EpistolaProcessDefinitionValidator.isEpistolaWaitTarget(rt)) {
                 return true;
             }
         }

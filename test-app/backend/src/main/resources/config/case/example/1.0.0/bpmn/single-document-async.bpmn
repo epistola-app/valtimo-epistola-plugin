@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_async" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.23.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.21.0">
+  <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
+  <bpmn:process id="single-document-async" name="Generate Single Document (async boundary)" isExecutable="true">
+    <bpmn:documentation>Like single-document, but generate-document has camunda:asyncAfter set, so the engine commits the generate step and the catch-event subscription in two separate transactions. If the completion arrives in that window the plugin self-heals: once the subscription commits, the already-terminal result is delivered so the process does not stall. The BPMN validator still flags the async boundary as an advisory note (extra latency), not a correctness problem.</bpmn:documentation>
+    <bpmn:startEvent id="startEvent">
+      <bpmn:outgoing>Flow_start_gen</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_start_gen" sourceRef="startEvent" targetRef="generate-document" />
+    <bpmn:serviceTask id="generate-document" name="Generate document" camunda:asyncAfter="true" camunda:expression="${null}">
+      <bpmn:incoming>Flow_start_gen</bpmn:incoming>
+      <bpmn:outgoing>Flow_gen_wait</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="boundary-generate-error" name="EpistolaGenerationError" attachedToRef="generate-document">
+      <bpmn:outgoing>Flow_boundary_err</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_gen" errorRef="Error_EpistolaDocumentError" camunda:errorCodeVariable="errorCode" camunda:errorMessageVariable="errorMessage" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_boundary_err" sourceRef="boundary-generate-error" targetRef="end-error" />
+    <bpmn:endEvent id="end-error">
+      <bpmn:incoming>Flow_boundary_err</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_gen_wait" sourceRef="generate-document" targetRef="wait-for-generation" />
+    <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wait for generation">
+      <!-- No epistolaWaitFor mapping: the plugin auto-wires the correlation token for round
+           EpistolaDocumentGenerated catch events. The asyncAfter on generate-document above is what
+           this example exercises — the self-heal path recovers a result that lands before the
+           subscription commits. -->
+      <bpmn:incoming>Flow_gen_wait</bpmn:incoming>
+      <bpmn:outgoing>Flow_wait_end</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_EpistolaDocumentGenerated" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_wait_end" sourceRef="wait-for-generation" targetRef="end-success" />
+    <bpmn:endEvent id="end-success">
+      <bpmn:incoming>Flow_wait_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:textAnnotation id="TextAnnotation_async">
+      <bpmn:text>Deze taak vereist een Valtimo process koppeling</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_async" associationDirection="None" sourceRef="generate-document" targetRef="TextAnnotation_async" />
+  </bpmn:process>
+  <bpmn:error id="Error_EpistolaDocumentError" name="EpistolaDocumentError" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="single-document-async">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="startEvent">
+        <dc:Bounds x="152" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="generate-document_di" bpmnElement="generate-document">
+        <dc:Bounds x="240" y="77" width="100" height="80" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="boundary-generate-error_di" bpmnElement="boundary-generate-error">
+        <dc:Bounds x="272" y="139" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="246" y="182" width="88" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-error_di" bpmnElement="end-error">
+        <dc:Bounds x="222" y="282" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-for-generation_di" bpmnElement="wait-for-generation">
+        <dc:Bounds x="412" y="99" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="388" y="142" width="85" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-success_di" bpmnElement="end-success">
+        <dc:Bounds x="532" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_async_di" bpmnElement="TextAnnotation_async">
+        <dc:Bounds x="150" y="220" width="100" height="55" />
+        <bpmndi:BPMNLabel />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_start_gen_di" bpmnElement="Flow_start_gen">
+        <di:waypoint x="188" y="117" />
+        <di:waypoint x="240" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_gen_wait_di" bpmnElement="Flow_gen_wait">
+        <di:waypoint x="340" y="117" />
+        <di:waypoint x="412" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_wait_end_di" bpmnElement="Flow_wait_end">
+        <di:waypoint x="448" y="117" />
+        <di:waypoint x="532" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_boundary_err_di" bpmnElement="Flow_boundary_err">
+        <di:waypoint x="290" y="175" />
+        <di:waypoint x="290" y="282" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Association_async_di" bpmnElement="Association_async">
+        <di:waypoint x="256" y="157" />
+        <di:waypoint x="220" y="220" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

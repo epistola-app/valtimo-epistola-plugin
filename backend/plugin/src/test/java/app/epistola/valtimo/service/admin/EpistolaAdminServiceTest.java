@@ -732,10 +732,14 @@ class EpistolaAdminServiceTest {
             assertThat(job.tenantId()).isEqualTo("test-tenant");
             assertThat(job.requestId()).isEqualTo("req-123");
             assertThat(job.configurationTitle()).isEqualTo(CONFIG_TITLE);
+            assertThat(job.status()).isEqualTo(PendingJob.STATUS_WAITING);
         }
 
         @Test
-        void shouldSkipExecutionsWithoutJobPath() {
+        void shouldSurfaceExecutionsWithoutJobPathAsUnwired() {
+            // A wait with the subscription but no epistolaWaitFor token can never be correlated — it is
+            // stuck. It must still be surfaced (previously it was silently skipped), best-effort tenant
+            // resolved from the standalone epistolaTenantId variable, with status UNWIRED and no requestId.
             Execution execution = mockExecution("exec-1", "pi-1", "my-process");
 
             ExecutionQuery query = mock(ExecutionQuery.class);
@@ -744,10 +748,28 @@ class EpistolaAdminServiceTest {
             when(query.list()).thenReturn(List.of(execution));
 
             when(runtimeService.getVariable("exec-1", "epistolaWaitFor")).thenReturn(null);
+            when(runtimeService.getVariable("exec-1", "epistolaTenantId")).thenReturn("test-tenant");
+            when(runtimeService.getActiveActivityIds("exec-1")).thenReturn(List.of("waitForDocument"));
+
+            ProcessDefinition processDef = mockProcessDefinition("my-process", "My Process");
+            ProcessDefinitionQuery pdQuery = mock(ProcessDefinitionQuery.class);
+            when(repositoryService.createProcessDefinitionQuery()).thenReturn(pdQuery);
+            when(pdQuery.processDefinitionKey("my-process")).thenReturn(pdQuery);
+            when(pdQuery.latestVersion()).thenReturn(pdQuery);
+            when(pdQuery.singleResult()).thenReturn(processDef);
+
+            mockBpmnModel("my-process:1:abc123", "waitForDocument", "Wait for document");
+            mockSinglePluginConfiguration();
 
             List<PendingJob> jobs = adminService.getPendingJobs();
 
-            assertThat(jobs).isEmpty();
+            assertThat(jobs).hasSize(1);
+            PendingJob job = jobs.get(0);
+            assertThat(job.executionId()).isEqualTo("exec-1");
+            assertThat(job.status()).isEqualTo(PendingJob.STATUS_UNWIRED);
+            assertThat(job.requestId()).isNull();
+            assertThat(job.tenantId()).isEqualTo("test-tenant");
+            assertThat(job.activityName()).isEqualTo("Wait for document");
         }
 
         private Execution mockExecution(String executionId, String processInstanceId,

@@ -288,7 +288,12 @@ public class EpistolaProcessDefinitionValidator {
 
         // catch-event id -> the generate-document service-task ids that reach it, to detect ambiguous
         // pairings (two+ generate-documents flowing into one catch event the auto-wiring can't tell apart).
-        Map<String, List<String>> sourcesByCatchEvent = new HashMap<>();
+        Map<String, List<String>> sourcesByWait = new HashMap<>();
+        // catch-event id -> the resultProcessVariable of each reaching generate-document (aligned with
+        // sourcesByWait; null when a source has none). Lets us flag only the genuinely ambiguous
+        // case — converging branches that DON'T all share one result variable — and stay quiet when they
+        // do (the correct fix for an exclusive split that merges into a single catch event).
+        Map<String, List<String>> resultVarsByWait = new HashMap<>();
 
         for (PluginProcessLink link : links) {
             String activityId = link.getActivityId();
@@ -297,14 +302,16 @@ public class EpistolaProcessDefinitionValidator {
                 continue;
             }
 
-            IntermediateCatchEvent reachableCatchEvent = findReachableEpistolaCatchEvent(serviceTask);
-            if (reachableCatchEvent == null) {
-                // Variable-pattern BPMN — no catch event in the immediate forward graph.
-                // Race exposure is N/A. Validator stays silent.
+            FlowNode reachableWait = findReachableEpistolaWait(serviceTask);
+            if (reachableWait == null) {
+                // Variable-pattern BPMN — no catch event / receive task in the immediate forward
+                // graph. Race exposure is N/A. Validator stays silent.
                 continue;
             }
 
-            sourcesByCatchEvent.computeIfAbsent(reachableCatchEvent.getId(), k -> new ArrayList<>()).add(activityId);
+            sourcesByWait.computeIfAbsent(reachableWait.getId(), k -> new ArrayList<>()).add(activityId);
+            resultVarsByWait.computeIfAbsent(reachableWait.getId(), k -> new ArrayList<>())
+                    .add(resultVariableOf(link));
 
             // Platform-injected asyncAfter check: signature is expression="${null}"
             // AND asyncAfter=true AND no other handler (class/type/delegateExpression).
@@ -319,37 +326,58 @@ public class EpistolaProcessDefinitionValidator {
                 result.add(violation(definition.getKey(), displayName, activityId,
                         BpmnValidationViolation.CODE_PLATFORM_ASYNC_AFTER_ON_SERVICE_TASK,
                         "this service task flows into the " + EpistolaProcessVariables.MESSAGE_NAME
-                                + " catch event but has no camunda:expression set — Valtimo auto-enabled "
+                                + " catch event / receive task but has no camunda:expression set — Valtimo auto-enabled "
                                 + "camunda:asyncAfter=\"true\" on it, opening a transactional race that can "
                                 + "drop result correlations. Add camunda:expression=\"${null}\" "
                                 + "(or any other expression) to the service task in your BPMN authoring "
                                 + "tool to opt out."));
             }
 
-            if (reachableCatchEvent.isOperatonAsyncBefore()) {
-                result.add(violation(definition.getKey(), displayName, reachableCatchEvent.getId(),
+            if (reachableWait.isOperatonAsyncBefore()) {
+                result.add(violation(definition.getKey(), displayName, reachableWait.getId(),
                         BpmnValidationViolation.CODE_ASYNC_BEFORE_ON_CATCH_EVENT,
                         "remove camunda:asyncBefore on the " + EpistolaProcessVariables.MESSAGE_NAME
-                                + " catch event — it must subscribe in the same transaction as the service-task "
-                                + "execution to keep the result-collector race-safe."));
+                                + " catch event / receive task — it must subscribe in the same transaction as the "
+                                + "service-task execution to keep the result-collector race-safe."));
             }
         }
 
         // Ambiguous pairing: more than one generate-document reaches the same catch event. The
-        // auto-wiring can only pin one result variable's jobPath there, so completions may correlate
-        // to the wrong branch (the resolver keeps only the last pairing). Flag once per catch event.
-        for (Map.Entry<String, List<String>> entry : sourcesByCatchEvent.entrySet()) {
+        // auto-wiring pins exactly one result variable's jobPath there, so a branch whose result
+        // variable wasn't the one pinned gets no epistolaWaitFor token — its completion is never
+        // correlated, the wait stalls, and (being token-less) it doesn't even show in admin Pending
+        // Jobs. We flag this ONLY when the converging branches do not all share one (non-blank) result
+        // variable: sharing one is the correct fix for an exclusive split that merges (only one branch
+        // runs, so the single shared variable always resolves). Flag once per catch event.
+        for (Map.Entry<String, List<String>> entry : sourcesByWait.entrySet()) {
             List<String> sources = entry.getValue();
-            if (sources.size() > 1) {
-                List<String> sorted = sources.stream().sorted().toList();
-                result.add(violation(definition.getKey(), displayName, entry.getKey(),
-                        BpmnValidationViolation.CODE_AMBIGUOUS_CATCH_EVENT,
-                        "generate-document tasks " + sorted + " all flow into this "
-                                + EpistolaProcessVariables.MESSAGE_NAME + " catch event — the auto-wiring "
-                                + "can only pin one result variable to it, so completions may correlate to the "
-                                + "wrong branch. Give each branch its own catch event, or set a distinct "
-                                + "epistolaWaitFor camunda:inputParameter on each catch event to disambiguate."));
+            if (sources.size() <= 1) {
+                continue;
             }
+            List<String> resultVars = resultVarsByWait.getOrDefault(entry.getKey(), List.of());
+            Set<String> distinctNonBlank = new HashSet<>();
+            for (String v : resultVars) {
+                if (v != null && !v.isBlank()) {
+                    distinctNonBlank.add(v);
+                }
+            }
+            boolean allShareOneVariable = distinctNonBlank.size() == 1
+                    && resultVars.stream().allMatch(v -> v != null && !v.isBlank());
+            if (allShareOneVariable) {
+                continue; // safe: exclusive merge onto a single shared result variable
+            }
+            List<String> sortedSources = sources.stream().sorted().toList();
+            List<String> shownVars = resultVars.stream().map(v -> v == null || v.isBlank() ? "<unset>" : v).sorted().toList();
+            result.add(violation(definition.getKey(), displayName, entry.getKey(),
+                    BpmnValidationViolation.CODE_AMBIGUOUS_CATCH_EVENT,
+                    "generate-document tasks " + sortedSources + " all flow into this "
+                            + EpistolaProcessVariables.MESSAGE_NAME + " catch event / receive task with different "
+                            + "result variables " + shownVars + " — the auto-wiring can pin only one, so completions "
+                            + "on the other branch(es) are never correlated: the process stalls at the wait and "
+                            + "does not appear in admin Pending Jobs. Fix: for an exclusive split that merges, "
+                            + "give every branch the SAME resultProcessVariable (only one branch runs, so the "
+                            + "shared variable always resolves); for parallel branches, give each its own wait "
+                            + "and its own resultProcessVariable."));
         }
 
         return result;
@@ -357,14 +385,17 @@ public class EpistolaProcessDefinitionValidator {
 
     /**
      * Walk the BPMN forward graph from {@code start}, following sequence flows and
-     * traversing through gateways. Returns the first reachable {@link IntermediateCatchEvent}
-     * with our message ref, or {@code null} if a wait state breaks every branch first.
+     * traversing through gateways. Returns the first reachable Epistola wait — either an
+     * {@link IntermediateCatchEvent} or a {@link ReceiveTask} referencing our
+     * {@link EpistolaProcessVariables#MESSAGE_NAME} message — or {@code null} if some other wait
+     * state breaks every branch first. Both wait kinds are auto-wired (the start listener pins the
+     * correlation token on the wait's own execution), so both must be discoverable here.
      *
      * <p>Conditions on gateway outflows are NOT evaluated — if any branch from any
-     * gateway can lead to our catch event, it counts. Conservative on purpose: we'd
+     * gateway can lead to our wait, it counts. Conservative on purpose: we'd
      * rather warn on a path that's unreachable at runtime than silently miss a real race.
      */
-    static IntermediateCatchEvent findReachableEpistolaCatchEvent(ServiceTask start) {
+    static FlowNode findReachableEpistolaWait(ServiceTask start) {
         Set<String> visited = new HashSet<>();
         Deque<FlowNode> queue = new ArrayDeque<>();
         for (SequenceFlow sf : start.getOutgoing()) {
@@ -377,10 +408,12 @@ public class EpistolaProcessDefinitionValidator {
                 continue;
             }
 
-            if (node instanceof IntermediateCatchEvent ice) {
-                if (matchesEpistolaMessage(ice)) {
-                    return ice;
-                }
+            // Our wait — a round message catch event OR a receive task on EpistolaDocumentGenerated.
+            if (isEpistolaWaitTarget(node)) {
+                return node;
+            }
+
+            if (node instanceof IntermediateCatchEvent) {
                 // Different message / timer / signal — also a wait state, break this branch.
                 continue;
             }
@@ -392,7 +425,7 @@ public class EpistolaProcessDefinitionValidator {
                 continue;
             }
 
-            // Wait states (other than the catch event we're hunting for): break this branch.
+            // Other wait states (user task, non-Epistola receive task): break this branch.
             if (node instanceof UserTask || node instanceof ReceiveTask) {
                 continue;
             }
@@ -411,12 +444,38 @@ public class EpistolaProcessDefinitionValidator {
         return null;
     }
 
+    /** The {@code resultProcessVariable} configured on a generate-document link, or {@code null} if none/blank. */
+    private static String resultVariableOf(PluginProcessLink link) {
+        var props = link.getActionProperties();
+        if (props == null || !props.hasNonNull("resultProcessVariable")) {
+            return null;
+        }
+        String value = props.get("resultProcessVariable").asText();
+        return value.isBlank() ? null : value;
+    }
+
     private static boolean isPlatformInjectedAsyncAfter(ServiceTask task) {
         return task.isOperatonAsyncAfter()
                 && "${null}".equals(task.getOperatonExpression())
                 && task.getOperatonClass() == null
                 && task.getOperatonType() == null
                 && task.getOperatonDelegateExpression() == null;
+    }
+
+    /**
+     * Whether {@code node} is an Epistola wait — a round {@link IntermediateCatchEvent} OR a
+     * {@link ReceiveTask}, in either case referencing the {@link EpistolaProcessVariables#MESSAGE_NAME}
+     * message. Both are auto-wired and correlated identically.
+     */
+    static boolean isEpistolaWaitTarget(FlowNode node) {
+        if (node instanceof IntermediateCatchEvent ice) {
+            return matchesEpistolaMessage(ice);
+        }
+        if (node instanceof ReceiveTask receiveTask) {
+            Message message = receiveTask.getMessage();
+            return message != null && EpistolaProcessVariables.MESSAGE_NAME.equals(message.getName());
+        }
+        return false;
     }
 
     static boolean matchesEpistolaMessage(CatchEvent catchEvent) {

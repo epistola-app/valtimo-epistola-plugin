@@ -253,15 +253,27 @@ public class EpistolaAdminService {
                 String jobPath = (String) runtimeService.getVariable(
                         execution.getId(), EpistolaProcessVariables.WAIT_FOR);
 
-                if (jobPath == null) {
-                    log.debug("Execution {} has no {} variable, skipping",
-                            execution.getId(), EpistolaProcessVariables.WAIT_FOR);
-                    continue;
+                String tenantId;
+                String requestId;
+                String status;
+                if (jobPath != null) {
+                    String[] parts = EpistolaMessageCorrelationService.parseJobPath(jobPath);
+                    tenantId = parts[0];
+                    requestId = parts[1];
+                    status = PendingJob.STATUS_WAITING;
+                } else {
+                    // No correlation token pinned: the collector can never wake this execution, so the
+                    // process is stuck (e.g. an ambiguous merged catch event, or auto-wiring disabled).
+                    // Previously these were skipped and thus invisible in admin — exactly the casualty an
+                    // operator most needs to see. Surface it as UNWIRED. tenantId is best-effort from the
+                    // standalone epistolaTenantId variable generate-document writes at instance scope
+                    // (present even without the token), so the row still lands on the right config card.
+                    Object tenant = runtimeService.getVariable(
+                            execution.getId(), EpistolaProcessVariables.TENANT_ID);
+                    tenantId = tenant instanceof String s ? s : null;
+                    requestId = null;
+                    status = PendingJob.STATUS_UNWIRED;
                 }
-
-                String[] parts = EpistolaMessageCorrelationService.parseJobPath(jobPath);
-                String tenantId = parts[0];
-                String requestId = parts[1];
 
                 // Resolve activity ID from active activities on this execution
                 List<String> activeActivities = runtimeService.getActiveActivityIds(execution.getId());
@@ -277,7 +289,9 @@ public class EpistolaAdminService {
                         ? resolveActivityName(processDef.getId(), activityId)
                         : activityId;
 
-                String configTitle = configTitlesByTenant.getOrDefault(tenantId, tenantId);
+                String configTitle = tenantId != null
+                        ? configTitlesByTenant.getOrDefault(tenantId, tenantId)
+                        : null;
 
                 jobs.add(new PendingJob(
                         execution.getId(),
@@ -288,7 +302,8 @@ public class EpistolaAdminService {
                         activityName,
                         tenantId,
                         requestId,
-                        configTitle
+                        configTitle,
+                        status
                 ));
             } catch (Exception e) {
                 log.warn("Failed to read pending job for execution {}: {}",

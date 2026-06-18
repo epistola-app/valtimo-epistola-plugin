@@ -1,0 +1,38 @@
+[
+  {
+    "activityId": "startEvent",
+    "activityType": "bpmn:StartEvent:start",
+    "processLinkType": "form",
+    "formDefinitionName": "letter-by-type-start"
+  },
+  {
+    "activityId": "st-gen-a",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+    "pluginActionDefinitionKey": "epistola-generate-document",
+    "actionProperties": {
+      "templateId": "example-template",
+      "outputFormat": "PDF",
+      "filename": "brief-a.pdf",
+      "resultProcessVariable": "resultA",
+      "dataMapping": "{\n  \"firstName\": $doc.firstName\n}",
+      "catalogId": "municipality-demo"
+    }
+  },
+  {
+    "activityId": "st-gen-b",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+    "pluginActionDefinitionKey": "epistola-generate-document",
+    "actionProperties": {
+      "templateId": "example-template",
+      "outputFormat": "PDF",
+      "filename": "brief-b.pdf",
+      "resultProcessVariable": "resultB",
+      "dataMapping": "{\n  \"firstName\": $doc.firstName\n}",
+      "catalogId": "municipality-demo"
+    }
+  }
+]

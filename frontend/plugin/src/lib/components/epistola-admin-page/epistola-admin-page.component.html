@@ -539,6 +539,7 @@
             <tr>
               <th>{{ 'epistolaAdminProcess' | pluginTranslate: 'epistola' | async }}</th>
               <th>{{ 'epistolaAdminActivity' | pluginTranslate: 'epistola' | async }}</th>
+              <th>{{ 'epistolaAdminStatus' | pluginTranslate: 'epistola' | async }}</th>
               <th>{{ 'epistolaAdminRequestId' | pluginTranslate: 'epistola' | async }}</th>
               <th></th>
             </tr>
@@ -548,10 +549,27 @@
               <td>{{ job.processDefinitionName }}</td>
               <td>{{ job.activityName }}</td>
               <td>
-                <code>{{ job.requestId }}</code>
+                <cds-tag
+                  *ngIf="job.status === 'UNWIRED'; else waitingTag"
+                  size="sm"
+                  type="red"
+                  [title]="'epistolaAdminUnwiredTooltip' | pluginTranslate: 'epistola' | async"
+                >
+                  {{ 'epistolaAdminStatusUnwired' | pluginTranslate: 'epistola' | async }}
+                </cds-tag>
+                <ng-template #waitingTag>
+                  <cds-tag size="sm" type="blue">
+                    {{ 'epistolaAdminStatusWaiting' | pluginTranslate: 'epistola' | async }}
+                  </cds-tag>
+                </ng-template>
+              </td>
+              <td>
+                <code *ngIf="job.status !== 'UNWIRED'">{{ job.requestId }}</code>
+                <span *ngIf="job.status === 'UNWIRED'" class="text-muted">—</span>
               </td>
               <td class="text-end">
                 <button
+                  *ngIf="job.status !== 'UNWIRED'"
                   class="btn btn-sm btn-outline-primary"
                   (click)="reconcilePending(job)"
                   [disabled]="isReconciling(job)"
@@ -564,6 +582,13 @@
                     {{ 'epistolaAdminReconciling' | pluginTranslate: 'epistola' | async }}
                   </span>
                 </button>
+                <span
+                  *ngIf="job.status === 'UNWIRED'"
+                  class="text-muted small"
+                  [title]="'epistolaAdminUnwiredTooltip' | pluginTranslate: 'epistola' | async"
+                >
+                  {{ 'epistolaAdminUnwiredHint' | pluginTranslate: 'epistola' | async }}
+                </span>
                 <div
                   *ngIf="reconcileFeedback && reconcileFeedback.executionId === job.executionId"
                   class="reconcile-feedback small mt-1"

@@ -242,7 +242,90 @@ result variable, and triggers **only that execution** by id
 
 This is verified end-to-end against a real engine by
 `EpistolaParallelCorrelationIntegrationTest` (parallel gateway, multi-instance,
-sequential, and override cases — all with `asyncAfter` catch events).
+sequential, and override cases — all with `asyncAfter` catch events). For a runnable
+example, see `parallel-documents.bpmn` in the test-app `example` case: a parallel gateway
+generates two documents on separate branches, each with its own `resultProcessVariable`
+(`resultA` / `resultB`) and round catch event, joining once both complete.
+
+## Adding a timeout (event gateway / boundary timer)
+
+The default wait (a round `EpistolaDocumentGenerated` catch event) blocks until the
+document is generated, however long that takes. When you want to bound the wait and
+fail — or branch — if generation runs long, two example processes in the test-app's
+`example` case bundle show the patterns:
+
+⚠️ **Do NOT use an event-based gateway to wait for Epistola — it cannot correlate.**
+`single-document-event-gateway.bpmn` exists only as a runnable **anti-pattern**. An
+event-based gateway places its `EpistolaDocumentGenerated` message subscription on a
+transient **child execution**, while the `epistolaWaitFor` token can only be pinned on the
+**parent** execution (an upstream output mapping) or not at all (the catch event behind the
+gateway isn't entered until the message already arrives). Correlation requires the
+subscription and the token on the **same** execution, so they never meet: the message
+branch never fires and only the timer branch ever wins. Verified by
+`EpistolaAutoWiringCorrelationIntegrationTest` (the event-gateway wait correlates 0
+executions). There is no BPMN-level fix — the subscription's child execution can't be
+reached in time.
+
+**The correct way to wait with a timeout** is a **receive task (or round catch event) with
+an interrupting boundary timer** — a single wait state, on its own execution, that
+auto-wires normally, with a `cancelActivity="true"` boundary timer that fires the timeout
+branch if the result doesn't arrive in time. That is exactly what
+`single-document-receive-task.bpmn` does (`PT30M` interrupting timer →
+`EpistolaGenerationTimeout`).
+
+**Receive task with an interrupting boundary timer** —
+`single-document-receive-task.bpmn`. Here the wait is a `bpmn:receiveTask` (the
+task-shaped equivalent of the round catch event) referencing the same
+`EpistolaDocumentGenerated` message, with an interrupting (`cancelActivity="true"`)
+`PT30M` boundary timer that cancels the task and throws `EpistolaGenerationTimeout`.
+
+**Receive tasks are auto-wired**, exactly like round catch events — the plugin's parse
+listener attaches the same start listener to both, pinning the `epistolaWaitFor`
+correlation token on the receive task's own execution as it is entered (co-located with
+the subscription). So **no `epistolaWaitFor` mapping is needed**:
+
+```xml
+<bpmn:receiveTask id="wait-for-generation" name="Wait for generation"
+                  messageRef="Message_EpistolaDocumentGenerated">
+  <bpmn:incoming>...</bpmn:incoming>
+  <bpmn:outgoing>...</bpmn:outgoing>
+</bpmn:receiveTask>
+```
+
+Everything else matches the round catch event: the same race-safety rule (keep the
+boundary between `generate-document` and the wait synchronous — don't add an async
+boundary before it), the same self-heal coverage, and the same ambiguity rule (a single
+receive task fed by branches with **different** result variables needs one shared
+`resultProcessVariable` — see [Ambiguous (merged) catch events](#ambiguous-merged-catch-events)).
+
+## Ambiguous (merged) catch events
+
+A subtle correlation trap: an **exclusive gateway picks a different template per
+input, the branches merge, and a _single_ catch event waits**. Now two
+`generate-document` tasks reach one `EpistolaDocumentGenerated` catch event, and the
+auto-wiring's resolver can map that catch event to only **one** result variable. If the
+branches use **different** `resultProcessVariable` names (e.g. `resultA` / `resultB`),
+the resolver pins one of them (last-write-wins, DB order); when the _other_ branch runs,
+its catch event reads `${resultA.jobPath}` against an unset variable, so **no
+`epistolaWaitFor` token is pinned**. The collector's completion then matches no
+subscription (`…without a catch-event subscription (variable pattern)`), the process
+**stalls at the wait forever**, and — because `getPendingJobs()` skips token-less
+executions — it is **invisible in the admin Pending Jobs tab**.
+
+The validator flags this as `AMBIGUOUS_CATCH_EVENT`. There are two correct fixes:
+
+- **Exclusive / merge topology** (only one branch runs): give both branches the **same**
+  `resultProcessVariable` (e.g. `epistolaResult`). The resolver then maps the catch event
+  to that one variable unambiguously, whichever branch ran has set it, and correlation
+  works. This is also the natural design — a single downstream read after the merge.
+- **Parallel topology** (branches run concurrently): do the opposite — give each branch
+  its **own** catch event _and_ its own `resultProcessVariable`, so the per-branch tokens
+  stay isolated (see [Parallel generation](#parallel-generation)).
+
+The test-app `example` case ships `letter-by-type.bpmn` as a runnable reproduction of the
+broken (different-variable) case, and `letter-by-type-fixed.bpmn` as the corrected sibling
+(same topology, both branches share `epistolaResult` — completes on either branch, and the
+validator does not flag it).
 
 ## Race-safety: keep the boundary synchronous
 
@@ -292,6 +375,13 @@ result is still `PENDING`, so the callback is a no-op.)
 
 If a catch event still ends up stuck, recover it manually from the
 admin page's Pending Jobs tab — see [Recovering a stuck catch event](#recovering-a-stuck-catch-event).
+
+For a runnable example of the self-heal path, see `single-document-async.bpmn` in the
+test-app `example` case: `generate-document` carries `camunda:asyncAfter`, so the
+subscription commits one transaction after the result variable. The validator flags the
+boundary (advisory — extra latency from the job-executor round trip), and if a completion
+lands in the window the self-heal delivers it once the subscription commits, so the
+process still continues instead of stalling.
 
 ## Recovering a stuck catch event
 
