@@ -9,11 +9,11 @@
     "@angular/core",
     "@angular/forms",
     "@angular/router",
+    "@formio/angular",
     "@valtimo/plugin",
     "@valtimo/components",
     "@valtimo/security",
     "@valtimo/shared",
-    "@ngx-translate/core",
     "jsonata",
     "rxjs",
     "tslib"

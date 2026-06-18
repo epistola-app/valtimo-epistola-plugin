@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The admin "Forms" tab now lists forms still using the legacy override-mapping object format.** A new read-only scan (`GET /admin/forms/legacy-override`, `EpistolaAdministration:MANAGE`) walks every form definition for `epistola-document-preview` components whose `overrideMapping` is an object, so operators can see which forms need a one-time re-save to migrate. The tab's count badge reflects carrier issues + legacy-override forms combined.
 - **The JSONata editor's autocomplete is now driven by a single `contextVariables` map instead of per-variable inputs.** The Monaco completion provider derives both the `$`-variable list and `$<name>.` field suggestions generically from one `Record<string, string[]>` (`{ doc, pv, case }` for the data mapping, `{ form }` for the override builder), so adding a context variable no longer needs a new editor input or a hardcoded provider branch.
 
+### Fixed
+
+- **`@formio/angular` is now a declared peer dependency.** The retry-form component imports `FormioModule` from `@formio/angular`, but it was absent from the published `package.json` and `ng-package.json`, resolving only transitively through `@valtimo/components` — a consumer whose package manager hoisted differently could fail to resolve it. It is now declared in `peerDependencies` (`^7.0.0`) and `allowedNonPeerDependencies`. The stale, unused `@ngx-translate/core` entry was dropped from `allowedNonPeerDependencies`.
+
 ## [0.10.0] - 2026-06-16
 
 ### Changed
