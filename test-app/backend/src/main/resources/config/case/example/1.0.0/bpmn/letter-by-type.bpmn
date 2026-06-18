@@ -2,7 +2,11 @@
 <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_letter_by_type" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.23.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.21.0">
   <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
   <bpmn:process id="letter-by-type" name="Briefgeneratie (keuze per type)" isExecutable="true">
-    <bpmn:documentation>Reproduces a customer setup: an exclusive gateway picks a different template depending on input, the branches MERGE, and then a SINGLE EpistolaDocumentGenerated catch event waits. Because two generate-document tasks (each with its own resultProcessVariable: resultA / resultB) reach the same catch event, the auto-wiring can only pin one of them — the validator flags this as AMBIGUOUS_CATCH_EVENT. When the branch whose result variable the resolver did NOT pick runs, the catch event gets no epistolaWaitFor token, so the completion never correlates and the wait does not appear in the admin Pending Jobs tab.</bpmn:documentation>
+    <bpmn:documentation>⚠️ EXPECTED-TO-FAIL ANTI-PATTERN — this process is intentionally broken; one branch will stall forever. Do not copy it. The working version is letter-by-type-fixed (both branches share one resultProcessVariable).
+
+Reproduces a customer setup: an exclusive gateway picks a different template depending on input, the branches MERGE, and then a SINGLE EpistolaDocumentGenerated catch event waits. Because two generate-document tasks (each with its OWN resultProcessVariable: resultA / resultB) reach the same catch event, the auto-wiring can only pin one of them to that catch event — the validator flags this as AMBIGUOUS_CATCH_EVENT.
+
+Why it fails: correlation wakes a waiting execution by matching the per-job epistolaWaitFor token. That token is pinned when the execution ENTERS the catch event, by reading ${&lt;resultVar&gt;.jobPath}. For this single shared catch event the resolver must pick ONE result variable name (say resultA). At runtime only one branch runs: if it is Type A (resultA) the token resolves and it completes; if it is Type B, only resultB was set, so ${resultA.jobPath} is null → NO token is pinned → the collector cannot match the completion (it falls back to the variable pattern and acks) → the execution waits forever, and because it has no token it is even skipped by the admin Pending Jobs tab. Fix: see letter-by-type-fixed.</bpmn:documentation>
     <bpmn:startEvent id="startEvent">
       <bpmn:outgoing>Flow_start_choose</bpmn:outgoing>
     </bpmn:startEvent>
@@ -42,7 +46,7 @@
       <bpmn:incoming>Flow_wait_end</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:textAnnotation id="TextAnnotation_ambiguous">
-      <bpmn:text>Beide generate-taken lopen in één catch event — dubbelzinnig (AMBIGUOUS_CATCH_EVENT)</bpmn:text>
+      <bpmn:text>⚠️ VERWACHT TE FALEN — anti-pattern. Beide generate-taken (resultA / resultB) lopen in één catch event → dubbelzinnig (AMBIGUOUS_CATCH_EVENT). De tak waarvan de resultaatvariabele niet gekozen is, krijgt geen epistolaWaitFor-token en blijft eeuwig wachten (en is onzichtbaar in admin). Werkende versie: letter-by-type-fixed.</bpmn:text>
     </bpmn:textAnnotation>
     <bpmn:association id="Association_ambiguous" associationDirection="None" sourceRef="wait-for-generation" targetRef="TextAnnotation_ambiguous" />
   </bpmn:process>
