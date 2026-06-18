@@ -288,12 +288,12 @@ public class EpistolaProcessDefinitionValidator {
 
         // catch-event id -> the generate-document service-task ids that reach it, to detect ambiguous
         // pairings (two+ generate-documents flowing into one catch event the auto-wiring can't tell apart).
-        Map<String, List<String>> sourcesByCatchEvent = new HashMap<>();
+        Map<String, List<String>> sourcesByWait = new HashMap<>();
         // catch-event id -> the resultProcessVariable of each reaching generate-document (aligned with
-        // sourcesByCatchEvent; null when a source has none). Lets us flag only the genuinely ambiguous
+        // sourcesByWait; null when a source has none). Lets us flag only the genuinely ambiguous
         // case — converging branches that DON'T all share one result variable — and stay quiet when they
         // do (the correct fix for an exclusive split that merges into a single catch event).
-        Map<String, List<String>> resultVarsByCatchEvent = new HashMap<>();
+        Map<String, List<String>> resultVarsByWait = new HashMap<>();
 
         for (PluginProcessLink link : links) {
             String activityId = link.getActivityId();
@@ -309,8 +309,8 @@ public class EpistolaProcessDefinitionValidator {
                 continue;
             }
 
-            sourcesByCatchEvent.computeIfAbsent(reachableWait.getId(), k -> new ArrayList<>()).add(activityId);
-            resultVarsByCatchEvent.computeIfAbsent(reachableWait.getId(), k -> new ArrayList<>())
+            sourcesByWait.computeIfAbsent(reachableWait.getId(), k -> new ArrayList<>()).add(activityId);
+            resultVarsByWait.computeIfAbsent(reachableWait.getId(), k -> new ArrayList<>())
                     .add(resultVariableOf(link));
 
             // Platform-injected asyncAfter check: signature is expression="${null}"
@@ -326,7 +326,7 @@ public class EpistolaProcessDefinitionValidator {
                 result.add(violation(definition.getKey(), displayName, activityId,
                         BpmnValidationViolation.CODE_PLATFORM_ASYNC_AFTER_ON_SERVICE_TASK,
                         "this service task flows into the " + EpistolaProcessVariables.MESSAGE_NAME
-                                + " catch event but has no camunda:expression set — Valtimo auto-enabled "
+                                + " catch event / receive task but has no camunda:expression set — Valtimo auto-enabled "
                                 + "camunda:asyncAfter=\"true\" on it, opening a transactional race that can "
                                 + "drop result correlations. Add camunda:expression=\"${null}\" "
                                 + "(or any other expression) to the service task in your BPMN authoring "
@@ -349,12 +349,12 @@ public class EpistolaProcessDefinitionValidator {
         // Jobs. We flag this ONLY when the converging branches do not all share one (non-blank) result
         // variable: sharing one is the correct fix for an exclusive split that merges (only one branch
         // runs, so the single shared variable always resolves). Flag once per catch event.
-        for (Map.Entry<String, List<String>> entry : sourcesByCatchEvent.entrySet()) {
+        for (Map.Entry<String, List<String>> entry : sourcesByWait.entrySet()) {
             List<String> sources = entry.getValue();
             if (sources.size() <= 1) {
                 continue;
             }
-            List<String> resultVars = resultVarsByCatchEvent.getOrDefault(entry.getKey(), List.of());
+            List<String> resultVars = resultVarsByWait.getOrDefault(entry.getKey(), List.of());
             Set<String> distinctNonBlank = new HashSet<>();
             for (String v : resultVars) {
                 if (v != null && !v.isBlank()) {
@@ -371,13 +371,13 @@ public class EpistolaProcessDefinitionValidator {
             result.add(violation(definition.getKey(), displayName, entry.getKey(),
                     BpmnValidationViolation.CODE_AMBIGUOUS_CATCH_EVENT,
                     "generate-document tasks " + sortedSources + " all flow into this "
-                            + EpistolaProcessVariables.MESSAGE_NAME + " catch event with different result "
-                            + "variables " + shownVars + " — the auto-wiring can pin only one, so completions "
+                            + EpistolaProcessVariables.MESSAGE_NAME + " catch event / receive task with different "
+                            + "result variables " + shownVars + " — the auto-wiring can pin only one, so completions "
                             + "on the other branch(es) are never correlated: the process stalls at the wait and "
                             + "does not appear in admin Pending Jobs. Fix: for an exclusive split that merges, "
                             + "give every branch the SAME resultProcessVariable (only one branch runs, so the "
-                            + "shared variable always resolves); for parallel branches, give each its own catch "
-                            + "event and its own resultProcessVariable."));
+                            + "shared variable always resolves); for parallel branches, give each its own wait "
+                            + "and its own resultProcessVariable."));
         }
 
         return result;

@@ -254,32 +254,24 @@ document is generated, however long that takes. When you want to bound the wait 
 fail — or branch — if generation runs long, two example processes in the test-app's
 `example` case bundle show the patterns:
 
-**Event-based gateway racing message vs. timer** —
-`single-document-event-gateway.bpmn`. After `generate-document`, an event-based gateway
-forks into the `EpistolaDocumentGenerated` message catch event and a `PT30M` timer catch
-event. Whichever fires first wins; the timer branch routes to an Error End Event that
-throws `EpistolaGenerationTimeout`.
+⚠️ **Do NOT use an event-based gateway to wait for Epistola — it cannot correlate.**
+`single-document-event-gateway.bpmn` exists only as a runnable **anti-pattern**. An
+event-based gateway places its `EpistolaDocumentGenerated` message subscription on a
+transient **child execution**, while the `epistolaWaitFor` token can only be pinned on the
+**parent** execution (an upstream output mapping) or not at all (the catch event behind the
+gateway isn't entered until the message already arrives). Correlation requires the
+subscription and the token on the **same** execution, so they never meet: the message
+branch never fires and only the timer branch ever wins. Verified by
+`EpistolaAutoWiringCorrelationIntegrationTest` (the event-gateway wait correlates 0
+executions). There is no BPMN-level fix — the subscription's child execution can't be
+reached in time.
 
-⚠️ **Auto-wiring does NOT work behind an event-based gateway** — and neither does an
-`epistolaWaitFor` mapping placed on the catch event. The execution waits _at the gateway_,
-so the catch event is not entered (its start listener / input mapping never runs) until
-the message has already been delivered — but the collector can only deliver the message if
-`epistolaWaitFor` is _already_ pinned on the waiting execution. That chicken-and-egg makes
-the completion fall through to the variable-pattern path, the gateway keeps waiting, and
-the timer eventually fires. **Fix: pin the token upstream on the `generate-document`
-output**, so it sits on the execution that holds the subscription before the result can
-arrive:
-
-```xml
-<bpmn:serviceTask id="generate-document" ...>
-  <bpmn:extensionElements>
-    <camunda:inputOutput>
-      <camunda:outputParameter name="epistolaWaitFor">${epistolaResult.jobPath}</camunda:outputParameter>
-    </camunda:inputOutput>
-  </bpmn:extensionElements>
-  ...
-</bpmn:serviceTask>
-```
+**The correct way to wait with a timeout** is a **receive task (or round catch event) with
+an interrupting boundary timer** — a single wait state, on its own execution, that
+auto-wires normally, with a `cancelActivity="true"` boundary timer that fires the timeout
+branch if the result doesn't arrive in time. That is exactly what
+`single-document-receive-task.bpmn` does (`PT30M` interrupting timer →
+`EpistolaGenerationTimeout`).
 
 **Receive task with an interrupting boundary timer** —
 `single-document-receive-task.bpmn`. Here the wait is a `bpmn:receiveTask` (the

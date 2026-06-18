@@ -235,6 +235,22 @@ class EpistolaProcessDefinitionValidatorTest {
     }
 
     @Test
+    void twoGenerateDocumentsReachingOneReceiveTaskWithDifferentResultVariables_isFlaggedAsAmbiguous() {
+        // Proves the validator recognizes a RECEIVE TASK as an Epistola wait (not only round catch
+        // events): two generate-documents with different result variables converging on one receive task
+        // is the same ambiguity as with a catch event.
+        installBpmn(twoSourcesOneReceiveTask());
+        installGenerateLinks(new String[]{"gen-a", "gen-b"}, new String[]{"resultA", "resultB"});
+
+        validator.scan();
+
+        assertThat(validator.getViolations()).singleElement().satisfies(v -> {
+            assertThat(v.code()).isEqualTo(BpmnValidationViolation.CODE_AMBIGUOUS_CATCH_EVENT);
+            assertThat(v.activityId()).isEqualTo("recv-wait");
+        });
+    }
+
+    @Test
     void twoGenerateDocumentsReachingOneCatchEventWithTheSameResultVariable_isNotFlagged() {
         // The fix for an exclusive split that merges: both branches write the SAME result variable, so
         // the auto-wiring resolves the shared catch event unambiguously regardless of which branch ran.
@@ -409,6 +425,21 @@ class EpistolaProcessDefinitionValidatorTest {
             links.add(link);
         }
         when(processLinkService.getProcessLinks(DEFINITION_ID)).thenReturn(links);
+    }
+
+    /** Same as {@link #twoSourcesOneCatchEvent()} but the shared wait is a RECEIVE TASK, not a catch event. */
+    private static BpmnModelInstance twoSourcesOneReceiveTask() {
+        return Bpmn.createExecutableProcess(PROCESS_KEY)
+                .startEvent("start")
+                .parallelGateway("fork")
+                .serviceTask("gen-a")
+                .parallelGateway("merge")
+                .receiveTask("recv-wait").message("EpistolaDocumentGenerated")
+                .endEvent("end")
+                .moveToNode("fork")
+                .serviceTask("gen-b")
+                .connectTo("merge")
+                .done();
     }
 
     /** fork → gen-a → merge → wait ; fork → gen-b → merge → wait (two sources, one shared catch event). */

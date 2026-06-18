@@ -31,22 +31,22 @@ public record BpmnValidationViolation(
     public static final String CODE_PLATFORM_ASYNC_AFTER_ON_SERVICE_TASK = "PLATFORM_ASYNC_AFTER_ON_SERVICE_TASK";
 
     /**
-     * The catch event has {@code camunda:asyncBefore="true"}, which forces a tx commit
-     * between the service task and the subscription creation — same race window as the
-     * platform-injected asyncAfter. Remediation: remove asyncBefore on the catch event.
+     * The wait (catch event or receive task) has {@code camunda:asyncBefore="true"}, which forces a tx
+     * commit between the service task and the subscription creation — same race window as the
+     * platform-injected asyncAfter. Remediation: remove asyncBefore on the wait.
      */
     public static final String CODE_ASYNC_BEFORE_ON_CATCH_EVENT = "ASYNC_BEFORE_ON_CATCH_EVENT";
 
     /**
      * Two or more {@code generate-document} service tasks flow into the <em>same</em>
-     * {@code EpistolaDocumentGenerated} catch event <em>with different result variables</em>. The
-     * auto-wiring pins exactly one result variable's jobPath to that catch event (the resolver keeps
-     * only the last pairing), so a branch whose variable wasn't pinned gets no {@code epistolaWaitFor}
-     * token: its completion is never correlated, the process stalls at the wait, and — being
-     * token-less — it doesn't even appear in admin Pending Jobs. Remediation: for an exclusive split
-     * that merges, give every branch the <em>same</em> {@code resultProcessVariable} (only one branch
-     * runs, so the shared variable always resolves); for parallel branches, give each its own catch
-     * event and its own {@code resultProcessVariable}. Not flagged when all converging branches already
+     * {@code EpistolaDocumentGenerated} wait (catch event or receive task) <em>with different result
+     * variables</em>. The auto-wiring pins exactly one result variable's jobPath to that wait (the
+     * resolver keeps only the last pairing), so a branch whose variable wasn't pinned gets no
+     * {@code epistolaWaitFor} token: its completion is never correlated, the process stalls at the wait,
+     * and — being token-less — it doesn't even appear in admin Pending Jobs. Remediation: for an
+     * exclusive split that merges, give every branch the <em>same</em> {@code resultProcessVariable}
+     * (only one branch runs, so the shared variable always resolves); for parallel branches, give each
+     * its own wait and its own {@code resultProcessVariable}. Not flagged when all converging branches already
      * share one result variable.
      */
     public static final String CODE_AMBIGUOUS_CATCH_EVENT = "AMBIGUOUS_CATCH_EVENT";
