@@ -46,5 +46,11 @@
     "canInitializeDocument": false,
     "startableByUser": true,
     "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "three-branch-one-linked",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
   }
 ]

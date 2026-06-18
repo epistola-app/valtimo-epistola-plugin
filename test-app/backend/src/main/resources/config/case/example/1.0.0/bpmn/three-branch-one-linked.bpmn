@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_three_branch" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="5.23.0" modeler:executionPlatform="Camunda Platform" modeler:executionPlatformVersion="7.21.0">
+  <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
+  <bpmn:process id="three-branch-one-linked" name="Drie takken, één gekoppeld" isExecutable="true">
+    <bpmn:documentation>Reproduction: an exclusive gateway with THREE branches where only branch A has a generate-document process-link; branches B and C are no-op (${null}) service tasks with no link. All three merge into a single EpistolaDocumentGenerated catch event. We test going through branch A (the linked one) to see whether correlation still happens.</bpmn:documentation>
+    <bpmn:startEvent id="startEvent">
+      <bpmn:outgoing>Flow_start_choose</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_start_choose" sourceRef="startEvent" targetRef="choose-branch" />
+    <bpmn:exclusiveGateway id="choose-branch" name="Welke tak?" default="Flow_choose_c">
+      <bpmn:incoming>Flow_start_choose</bpmn:incoming>
+      <bpmn:outgoing>Flow_choose_a</bpmn:outgoing>
+      <bpmn:outgoing>Flow_choose_b</bpmn:outgoing>
+      <bpmn:outgoing>Flow_choose_c</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_choose_a" name="A (gekoppeld)" sourceRef="choose-branch" targetRef="st-gen-a">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${branch == 'a'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_choose_b" name="B (geen koppeling)" sourceRef="choose-branch" targetRef="st-plain-b">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${branch == 'b'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_choose_c" name="C (geen koppeling, default)" sourceRef="choose-branch" targetRef="st-plain-c" />
+    <bpmn:serviceTask id="st-gen-a" name="Genereer Brief A" camunda:expression="${null}">
+      <bpmn:incoming>Flow_choose_a</bpmn:incoming>
+      <bpmn:outgoing>Flow_a_merge</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="st-plain-b" name="Stap B (no-op)" camunda:expression="${null}">
+      <bpmn:incoming>Flow_choose_b</bpmn:incoming>
+      <bpmn:outgoing>Flow_b_merge</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:serviceTask id="st-plain-c" name="Stap C (no-op)" camunda:expression="${null}">
+      <bpmn:incoming>Flow_choose_c</bpmn:incoming>
+      <bpmn:outgoing>Flow_c_merge</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_a_merge" sourceRef="st-gen-a" targetRef="merge" />
+    <bpmn:sequenceFlow id="Flow_b_merge" sourceRef="st-plain-b" targetRef="merge" />
+    <bpmn:sequenceFlow id="Flow_c_merge" sourceRef="st-plain-c" targetRef="merge" />
+    <bpmn:exclusiveGateway id="merge" name="Samenvoegen">
+      <bpmn:incoming>Flow_a_merge</bpmn:incoming>
+      <bpmn:incoming>Flow_b_merge</bpmn:incoming>
+      <bpmn:incoming>Flow_c_merge</bpmn:incoming>
+      <bpmn:outgoing>Flow_merge_wait</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_merge_wait" sourceRef="merge" targetRef="wait-for-generation" />
+    <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wacht op brief">
+      <bpmn:incoming>Flow_merge_wait</bpmn:incoming>
+      <bpmn:outgoing>Flow_wait_end</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_EpistolaDocumentGenerated" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_wait_end" sourceRef="wait-for-generation" targetRef="end-success" />
+    <bpmn:endEvent id="end-success">
+      <bpmn:incoming>Flow_wait_end</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="three-branch-one-linked">
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="startEvent">
+        <dc:Bounds x="152" y="237" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="choose-branch_di" bpmnElement="choose-branch" isMarkerVisible="true">
+        <dc:Bounds x="240" y="230" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="244" y="206" width="56" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="st-gen-a_di" bpmnElement="st-gen-a">
+        <dc:Bounds x="340" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="st-plain-b_di" bpmnElement="st-plain-b">
+        <dc:Bounds x="340" y="217" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="st-plain-c_di" bpmnElement="st-plain-c">
+        <dc:Bounds x="340" y="357" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="merge_di" bpmnElement="merge" isMarkerVisible="true">
+        <dc:Bounds x="520" y="230" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="515" y="206" width="60" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-for-generation_di" bpmnElement="wait-for-generation">
+        <dc:Bounds x="632" y="237" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="620" y="280" width="62" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-success_di" bpmnElement="end-success">
+        <dc:Bounds x="722" y="237" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_start_choose_di" bpmnElement="Flow_start_choose">
+        <di:waypoint x="188" y="255" />
+        <di:waypoint x="240" y="255" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_choose_a_di" bpmnElement="Flow_choose_a">
+        <di:waypoint x="265" y="230" />
+        <di:waypoint x="265" y="117" />
+        <di:waypoint x="340" y="117" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="270" y="140" width="71" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_choose_b_di" bpmnElement="Flow_choose_b">
+        <di:waypoint x="290" y="255" />
+        <di:waypoint x="340" y="257" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="291" y="263" width="49" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_choose_c_di" bpmnElement="Flow_choose_c">
+        <di:waypoint x="265" y="280" />
+        <di:waypoint x="265" y="397" />
+        <di:waypoint x="340" y="397" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="266" y="403" width="73" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_a_merge_di" bpmnElement="Flow_a_merge">
+        <di:waypoint x="440" y="117" />
+        <di:waypoint x="545" y="117" />
+        <di:waypoint x="545" y="230" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_b_merge_di" bpmnElement="Flow_b_merge">
+        <di:waypoint x="440" y="257" />
+        <di:waypoint x="520" y="255" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_c_merge_di" bpmnElement="Flow_c_merge">
+        <di:waypoint x="440" y="397" />
+        <di:waypoint x="545" y="397" />
+        <di:waypoint x="545" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_merge_wait_di" bpmnElement="Flow_merge_wait">
+        <di:waypoint x="570" y="255" />
+        <di:waypoint x="632" y="255" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_wait_end_di" bpmnElement="Flow_wait_end">
+        <di:waypoint x="668" y="255" />
+        <di:waypoint x="722" y="255" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
