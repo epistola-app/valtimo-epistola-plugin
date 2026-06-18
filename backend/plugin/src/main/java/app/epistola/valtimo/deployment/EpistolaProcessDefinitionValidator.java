@@ -289,6 +289,11 @@ public class EpistolaProcessDefinitionValidator {
         // catch-event id -> the generate-document service-task ids that reach it, to detect ambiguous
         // pairings (two+ generate-documents flowing into one catch event the auto-wiring can't tell apart).
         Map<String, List<String>> sourcesByCatchEvent = new HashMap<>();
+        // catch-event id -> the resultProcessVariable of each reaching generate-document (aligned with
+        // sourcesByCatchEvent; null when a source has none). Lets us flag only the genuinely ambiguous
+        // case — converging branches that DON'T all share one result variable — and stay quiet when they
+        // do (the correct fix for an exclusive split that merges into a single catch event).
+        Map<String, List<String>> resultVarsByCatchEvent = new HashMap<>();
 
         for (PluginProcessLink link : links) {
             String activityId = link.getActivityId();
@@ -305,6 +310,8 @@ public class EpistolaProcessDefinitionValidator {
             }
 
             sourcesByCatchEvent.computeIfAbsent(reachableCatchEvent.getId(), k -> new ArrayList<>()).add(activityId);
+            resultVarsByCatchEvent.computeIfAbsent(reachableCatchEvent.getId(), k -> new ArrayList<>())
+                    .add(resultVariableOf(link));
 
             // Platform-injected asyncAfter check: signature is expression="${null}"
             // AND asyncAfter=true AND no other handler (class/type/delegateExpression).
@@ -336,20 +343,41 @@ public class EpistolaProcessDefinitionValidator {
         }
 
         // Ambiguous pairing: more than one generate-document reaches the same catch event. The
-        // auto-wiring can only pin one result variable's jobPath there, so completions may correlate
-        // to the wrong branch (the resolver keeps only the last pairing). Flag once per catch event.
+        // auto-wiring pins exactly one result variable's jobPath there, so a branch whose result
+        // variable wasn't the one pinned gets no epistolaWaitFor token — its completion is never
+        // correlated, the wait stalls, and (being token-less) it doesn't even show in admin Pending
+        // Jobs. We flag this ONLY when the converging branches do not all share one (non-blank) result
+        // variable: sharing one is the correct fix for an exclusive split that merges (only one branch
+        // runs, so the single shared variable always resolves). Flag once per catch event.
         for (Map.Entry<String, List<String>> entry : sourcesByCatchEvent.entrySet()) {
             List<String> sources = entry.getValue();
-            if (sources.size() > 1) {
-                List<String> sorted = sources.stream().sorted().toList();
-                result.add(violation(definition.getKey(), displayName, entry.getKey(),
-                        BpmnValidationViolation.CODE_AMBIGUOUS_CATCH_EVENT,
-                        "generate-document tasks " + sorted + " all flow into this "
-                                + EpistolaProcessVariables.MESSAGE_NAME + " catch event — the auto-wiring "
-                                + "can only pin one result variable to it, so completions may correlate to the "
-                                + "wrong branch. Give each branch its own catch event, or set a distinct "
-                                + "epistolaWaitFor camunda:inputParameter on each catch event to disambiguate."));
+            if (sources.size() <= 1) {
+                continue;
             }
+            List<String> resultVars = resultVarsByCatchEvent.getOrDefault(entry.getKey(), List.of());
+            Set<String> distinctNonBlank = new HashSet<>();
+            for (String v : resultVars) {
+                if (v != null && !v.isBlank()) {
+                    distinctNonBlank.add(v);
+                }
+            }
+            boolean allShareOneVariable = distinctNonBlank.size() == 1
+                    && resultVars.stream().allMatch(v -> v != null && !v.isBlank());
+            if (allShareOneVariable) {
+                continue; // safe: exclusive merge onto a single shared result variable
+            }
+            List<String> sortedSources = sources.stream().sorted().toList();
+            List<String> shownVars = resultVars.stream().map(v -> v == null || v.isBlank() ? "<unset>" : v).sorted().toList();
+            result.add(violation(definition.getKey(), displayName, entry.getKey(),
+                    BpmnValidationViolation.CODE_AMBIGUOUS_CATCH_EVENT,
+                    "generate-document tasks " + sortedSources + " all flow into this "
+                            + EpistolaProcessVariables.MESSAGE_NAME + " catch event with different result "
+                            + "variables " + shownVars + " — the auto-wiring can pin only one, so completions "
+                            + "on the other branch(es) are never correlated: the process stalls at the wait and "
+                            + "does not appear in admin Pending Jobs. Fix: for an exclusive split that merges, "
+                            + "give every branch the SAME resultProcessVariable (only one branch runs, so the "
+                            + "shared variable always resolves); for parallel branches, give each its own catch "
+                            + "event and its own resultProcessVariable."));
         }
 
         return result;
@@ -409,6 +437,16 @@ public class EpistolaProcessDefinitionValidator {
         }
 
         return null;
+    }
+
+    /** The {@code resultProcessVariable} configured on a generate-document link, or {@code null} if none/blank. */
+    private static String resultVariableOf(PluginProcessLink link) {
+        var props = link.getActionProperties();
+        if (props == null || !props.hasNonNull("resultProcessVariable")) {
+            return null;
+        }
+        String value = props.get("resultProcessVariable").asText();
+        return value.isBlank() ? null : value;
     }
 
     private static boolean isPlatformInjectedAsyncAfter(ServiceTask task) {

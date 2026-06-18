@@ -39,11 +39,15 @@ public record BpmnValidationViolation(
 
     /**
      * Two or more {@code generate-document} service tasks flow into the <em>same</em>
-     * {@code EpistolaDocumentGenerated} catch event. The auto-wiring pins exactly one result
-     * variable's jobPath to that catch event, so completions can correlate to the wrong branch
-     * (and the resolver silently keeps only the last pairing). Remediation: give each branch its
-     * own catch event, or disambiguate by setting a distinct {@code epistolaWaitFor}
-     * {@code camunda:inputParameter} on each catch event.
+     * {@code EpistolaDocumentGenerated} catch event <em>with different result variables</em>. The
+     * auto-wiring pins exactly one result variable's jobPath to that catch event (the resolver keeps
+     * only the last pairing), so a branch whose variable wasn't pinned gets no {@code epistolaWaitFor}
+     * token: its completion is never correlated, the process stalls at the wait, and — being
+     * token-less — it doesn't even appear in admin Pending Jobs. Remediation: for an exclusive split
+     * that merges, give every branch the <em>same</em> {@code resultProcessVariable} (only one branch
+     * runs, so the shared variable always resolves); for parallel branches, give each its own catch
+     * event and its own {@code resultProcessVariable}. Not flagged when all converging branches already
+     * share one result variable.
      */
     public static final String CODE_AMBIGUOUS_CATCH_EVENT = "AMBIGUOUS_CATCH_EVENT";
 }

@@ -1,6 +1,8 @@
 package app.epistola.valtimo.deployment;
 
 import app.epistola.valtimo.web.rest.dto.BpmnValidationViolation;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.ritense.plugin.domain.PluginProcessLink;
 import com.ritense.processlink.domain.ProcessLink;
 import com.ritense.processlink.service.ProcessLinkService;
@@ -214,31 +216,34 @@ class EpistolaProcessDefinitionValidatorTest {
     }
 
     @Test
-    void twoGenerateDocumentsReachingTheSameCatchEvent_isFlaggedAsAmbiguous() {
+    void twoGenerateDocumentsReachingOneCatchEventWithDifferentResultVariables_isFlaggedAsAmbiguous() {
         // fork → gen-a → merge → wait ; fork → gen-b → merge → wait. Both generate-documents
-        // forward-reach the same catch event, which the auto-wiring cannot disambiguate.
-        BpmnModelInstance model = Bpmn.createExecutableProcess(PROCESS_KEY)
-                .startEvent("start")
-                .parallelGateway("fork")
-                .serviceTask("gen-a")
-                .parallelGateway("merge")
-                .intermediateCatchEvent("wait-for-generation")
-                .message("EpistolaDocumentGenerated")
-                .endEvent("end")
-                .moveToNode("fork")
-                .serviceTask("gen-b")
-                .connectTo("merge")
-                .done();
-        installBpmn(model);
-        installLinks("gen-a", "gen-b");
+        // forward-reach the same catch event, with DIFFERENT result variables — the auto-wiring can
+        // pin only one, so the other branch stalls. This is the reproduced customer bug.
+        installBpmn(twoSourcesOneCatchEvent());
+        installGenerateLinks(new String[]{"gen-a", "gen-b"}, new String[]{"resultA", "resultB"});
 
         validator.scan();
 
         assertThat(validator.getViolations()).singleElement().satisfies(v -> {
             assertThat(v.code()).isEqualTo(BpmnValidationViolation.CODE_AMBIGUOUS_CATCH_EVENT);
             assertThat(v.activityId()).isEqualTo("wait-for-generation");
-            assertThat(v.message()).contains("gen-a").contains("gen-b");
+            assertThat(v.message()).contains("gen-a").contains("gen-b")
+                    .contains("resultA").contains("resultB")
+                    .contains("SAME resultProcessVariable");
         });
+    }
+
+    @Test
+    void twoGenerateDocumentsReachingOneCatchEventWithTheSameResultVariable_isNotFlagged() {
+        // The fix for an exclusive split that merges: both branches write the SAME result variable, so
+        // the auto-wiring resolves the shared catch event unambiguously regardless of which branch ran.
+        installBpmn(twoSourcesOneCatchEvent());
+        installGenerateLinks(new String[]{"gen-a", "gen-b"}, new String[]{"epistolaResult", "epistolaResult"});
+
+        validator.scan();
+
+        assertThat(validator.getViolations()).isEmpty();
     }
 
     @Test
@@ -388,6 +393,38 @@ class EpistolaProcessDefinitionValidatorTest {
             return (ProcessLink) link;
         }).toList();
         when(processLinkService.getProcessLinks(DEFINITION_ID)).thenReturn(links);
+    }
+
+    /** Install generate-document links, each carrying its own {@code resultProcessVariable}. */
+    private void installGenerateLinks(String[] activityIds, String[] resultVars) {
+        List<ProcessLink> links = new java.util.ArrayList<>();
+        for (int i = 0; i < activityIds.length; i++) {
+            PluginProcessLink link = mock(PluginProcessLink.class);
+            lenient().when(link.getId()).thenReturn(UUID.randomUUID());
+            lenient().when(link.getActivityId()).thenReturn(activityIds[i]);
+            lenient().when(link.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
+            ObjectNode props = JsonNodeFactory.instance.objectNode();
+            props.put("resultProcessVariable", resultVars[i]);
+            lenient().when(link.getActionProperties()).thenReturn(props);
+            links.add(link);
+        }
+        when(processLinkService.getProcessLinks(DEFINITION_ID)).thenReturn(links);
+    }
+
+    /** fork → gen-a → merge → wait ; fork → gen-b → merge → wait (two sources, one shared catch event). */
+    private static BpmnModelInstance twoSourcesOneCatchEvent() {
+        return Bpmn.createExecutableProcess(PROCESS_KEY)
+                .startEvent("start")
+                .parallelGateway("fork")
+                .serviceTask("gen-a")
+                .parallelGateway("merge")
+                .intermediateCatchEvent("wait-for-generation")
+                .message("EpistolaDocumentGenerated")
+                .endEvent("end")
+                .moveToNode("fork")
+                .serviceTask("gen-b")
+                .connectTo("merge")
+                .done();
     }
 
     private static BpmnModelInstance simpleModel(String messageName) {
