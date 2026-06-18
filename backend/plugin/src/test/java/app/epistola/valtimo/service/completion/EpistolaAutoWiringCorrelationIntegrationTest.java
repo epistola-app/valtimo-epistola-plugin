@@ -102,6 +102,33 @@ class EpistolaAutoWiringCorrelationIntegrationTest {
                 """.formatted(suffix, requestId, resultVar);
     }
 
+    /** Receive-task wait WITHOUT any declarative epistolaWaitFor mapping — the token must be auto-pinned. */
+    private static final String RECEIVE_TASK_BPMN = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                              xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                              targetNamespace="http://bpmn.io/schema/bpmn" id="defs_auto_rt">
+              <bpmn:message id="msg" name="EpistolaDocumentGenerated" />
+              <bpmn:process id="auto-receive-task" isExecutable="true" camunda:historyTimeToLive="P1D">
+                <bpmn:startEvent id="rstart"><bpmn:outgoing>rf0</bpmn:outgoing></bpmn:startEvent>
+                <bpmn:sequenceFlow id="rf0" sourceRef="rstart" targetRef="submit-a" />
+                <bpmn:serviceTask id="submit-a" camunda:class="app.epistola.valtimo.service.completion.EpistolaAutoWiringCorrelationIntegrationTest$SubmitDelegate">
+                  <bpmn:extensionElements><camunda:inputOutput>
+                    <camunda:inputParameter name="testRequestId">req-a</camunda:inputParameter>
+                    <camunda:inputParameter name="testResultVar">resultA</camunda:inputParameter>
+                  </camunda:inputOutput></bpmn:extensionElements>
+                  <bpmn:incoming>rf0</bpmn:incoming><bpmn:outgoing>rf1</bpmn:outgoing>
+                </bpmn:serviceTask>
+                <bpmn:sequenceFlow id="rf1" sourceRef="submit-a" targetRef="recv-a" />
+                <bpmn:receiveTask id="recv-a" messageRef="msg">
+                  <bpmn:incoming>rf1</bpmn:incoming><bpmn:outgoing>rf2</bpmn:outgoing>
+                </bpmn:receiveTask>
+                <bpmn:sequenceFlow id="rf2" sourceRef="recv-a" targetRef="rend" />
+                <bpmn:endEvent id="rend"><bpmn:incoming>rf2</bpmn:incoming></bpmn:endEvent>
+              </bpmn:process>
+            </bpmn:definitions>
+            """;
+
     private ProcessEngine processEngine;
     private RuntimeService runtimeService;
     private ManagementService managementService;
@@ -186,6 +213,32 @@ class EpistolaAutoWiringCorrelationIntegrationTest {
 
         assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(pi.getId()).singleResult())
                 .as("all three branches joined and the process completed").isNull();
+    }
+
+    @Test
+    void autoPinsTheTokenForAReceiveTaskWaitAndCorrelatesWithoutDeclarativeMapping() {
+        processEngine.getRepositoryService().createDeployment()
+                .addString("auto-receive.bpmn", RECEIVE_TASK_BPMN)
+                .deploy();
+
+        ProcessInstance pi = runtimeService.startProcessInstanceByKey("auto-receive-task");
+
+        // The receive task is parked on the message, and the token was auto-pinned (no input mapping
+        // in the BPMN did this — receive tasks are now wired exactly like round catch events).
+        assertThat(messageSubscriptionCount(pi.getId())).isEqualTo(1);
+        List<String> pinned = runtimeService.createVariableInstanceQuery()
+                .processInstanceIdIn(pi.getId())
+                .variableName(EpistolaProcessVariables.WAIT_FOR)
+                .list().stream().map(VariableInstance::getValue).map(String::valueOf).toList();
+        assertThat(pinned).containsExactly(EpistolaMessageCorrelationService.buildJobPath(TENANT, "req-a"));
+
+        // The completion correlates the receive task (waking exactly one execution); the single-branch
+        // process then runs straight to completion. (We don't read resultA afterwards — the instance has
+        // already ended, so its runtime variables are gone; correlated==1 + completion is the proof.)
+        assertThat(correlationService.correlateCompletion(TENANT, "req-a", "COMPLETED", "doc-a", null)).isEqualTo(1);
+        executeAllJobs();
+        assertThat(runtimeService.createProcessInstanceQuery().processInstanceId(pi.getId()).singleResult())
+                .as("receive-task process completed after correlation").isNull();
     }
 
     private void executeAllJobs() {

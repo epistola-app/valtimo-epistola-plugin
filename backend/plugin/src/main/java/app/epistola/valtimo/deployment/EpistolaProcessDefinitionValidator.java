@@ -302,15 +302,15 @@ public class EpistolaProcessDefinitionValidator {
                 continue;
             }
 
-            IntermediateCatchEvent reachableCatchEvent = findReachableEpistolaCatchEvent(serviceTask);
-            if (reachableCatchEvent == null) {
-                // Variable-pattern BPMN — no catch event in the immediate forward graph.
-                // Race exposure is N/A. Validator stays silent.
+            FlowNode reachableWait = findReachableEpistolaWait(serviceTask);
+            if (reachableWait == null) {
+                // Variable-pattern BPMN — no catch event / receive task in the immediate forward
+                // graph. Race exposure is N/A. Validator stays silent.
                 continue;
             }
 
-            sourcesByCatchEvent.computeIfAbsent(reachableCatchEvent.getId(), k -> new ArrayList<>()).add(activityId);
-            resultVarsByCatchEvent.computeIfAbsent(reachableCatchEvent.getId(), k -> new ArrayList<>())
+            sourcesByCatchEvent.computeIfAbsent(reachableWait.getId(), k -> new ArrayList<>()).add(activityId);
+            resultVarsByCatchEvent.computeIfAbsent(reachableWait.getId(), k -> new ArrayList<>())
                     .add(resultVariableOf(link));
 
             // Platform-injected asyncAfter check: signature is expression="${null}"
@@ -333,12 +333,12 @@ public class EpistolaProcessDefinitionValidator {
                                 + "tool to opt out."));
             }
 
-            if (reachableCatchEvent.isOperatonAsyncBefore()) {
-                result.add(violation(definition.getKey(), displayName, reachableCatchEvent.getId(),
+            if (reachableWait.isOperatonAsyncBefore()) {
+                result.add(violation(definition.getKey(), displayName, reachableWait.getId(),
                         BpmnValidationViolation.CODE_ASYNC_BEFORE_ON_CATCH_EVENT,
                         "remove camunda:asyncBefore on the " + EpistolaProcessVariables.MESSAGE_NAME
-                                + " catch event — it must subscribe in the same transaction as the service-task "
-                                + "execution to keep the result-collector race-safe."));
+                                + " catch event / receive task — it must subscribe in the same transaction as the "
+                                + "service-task execution to keep the result-collector race-safe."));
             }
         }
 
@@ -385,14 +385,17 @@ public class EpistolaProcessDefinitionValidator {
 
     /**
      * Walk the BPMN forward graph from {@code start}, following sequence flows and
-     * traversing through gateways. Returns the first reachable {@link IntermediateCatchEvent}
-     * with our message ref, or {@code null} if a wait state breaks every branch first.
+     * traversing through gateways. Returns the first reachable Epistola wait — either an
+     * {@link IntermediateCatchEvent} or a {@link ReceiveTask} referencing our
+     * {@link EpistolaProcessVariables#MESSAGE_NAME} message — or {@code null} if some other wait
+     * state breaks every branch first. Both wait kinds are auto-wired (the start listener pins the
+     * correlation token on the wait's own execution), so both must be discoverable here.
      *
      * <p>Conditions on gateway outflows are NOT evaluated — if any branch from any
-     * gateway can lead to our catch event, it counts. Conservative on purpose: we'd
+     * gateway can lead to our wait, it counts. Conservative on purpose: we'd
      * rather warn on a path that's unreachable at runtime than silently miss a real race.
      */
-    static IntermediateCatchEvent findReachableEpistolaCatchEvent(ServiceTask start) {
+    static FlowNode findReachableEpistolaWait(ServiceTask start) {
         Set<String> visited = new HashSet<>();
         Deque<FlowNode> queue = new ArrayDeque<>();
         for (SequenceFlow sf : start.getOutgoing()) {
@@ -405,10 +408,12 @@ public class EpistolaProcessDefinitionValidator {
                 continue;
             }
 
-            if (node instanceof IntermediateCatchEvent ice) {
-                if (matchesEpistolaMessage(ice)) {
-                    return ice;
-                }
+            // Our wait — a round message catch event OR a receive task on EpistolaDocumentGenerated.
+            if (isEpistolaWaitTarget(node)) {
+                return node;
+            }
+
+            if (node instanceof IntermediateCatchEvent) {
                 // Different message / timer / signal — also a wait state, break this branch.
                 continue;
             }
@@ -420,7 +425,7 @@ public class EpistolaProcessDefinitionValidator {
                 continue;
             }
 
-            // Wait states (other than the catch event we're hunting for): break this branch.
+            // Other wait states (user task, non-Epistola receive task): break this branch.
             if (node instanceof UserTask || node instanceof ReceiveTask) {
                 continue;
             }
@@ -455,6 +460,22 @@ public class EpistolaProcessDefinitionValidator {
                 && task.getOperatonClass() == null
                 && task.getOperatonType() == null
                 && task.getOperatonDelegateExpression() == null;
+    }
+
+    /**
+     * Whether {@code node} is an Epistola wait — a round {@link IntermediateCatchEvent} OR a
+     * {@link ReceiveTask}, in either case referencing the {@link EpistolaProcessVariables#MESSAGE_NAME}
+     * message. Both are auto-wired and correlated identically.
+     */
+    static boolean isEpistolaWaitTarget(FlowNode node) {
+        if (node instanceof IntermediateCatchEvent ice) {
+            return matchesEpistolaMessage(ice);
+        }
+        if (node instanceof ReceiveTask receiveTask) {
+            Message message = receiveTask.getMessage();
+            return message != null && EpistolaProcessVariables.MESSAGE_NAME.equals(message.getName());
+        }
+        return false;
     }
 
     static boolean matchesEpistolaMessage(CatchEvent catchEvent) {

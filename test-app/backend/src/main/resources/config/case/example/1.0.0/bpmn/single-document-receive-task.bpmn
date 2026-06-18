@@ -21,14 +21,9 @@
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="Flow_gen_recv" sourceRef="generate-document" targetRef="wait-for-generation" />
     <bpmn:receiveTask id="wait-for-generation" name="Wait for generation" messageRef="Message_EpistolaDocumentGenerated">
-      <!-- Receive tasks are NOT auto-wired by the plugin (auto-wiring only attaches to round
-           intermediate message catch events), so the epistolaWaitFor correlation token MUST be
-           pinned explicitly here. It is the jobPath of the generate-document result variable. -->
-      <bpmn:extensionElements>
-        <camunda:inputOutput>
-          <camunda:inputParameter name="epistolaWaitFor">${epistolaResult.jobPath}</camunda:inputParameter>
-        </camunda:inputOutput>
-      </bpmn:extensionElements>
+      <!-- No epistolaWaitFor mapping needed: the plugin auto-wires receive tasks the same way it
+           auto-wires round intermediate message catch events — it pins the correlation token on the
+           receive task's own execution as it is entered (co-located with the subscription). -->
       <bpmn:incoming>Flow_gen_recv</bpmn:incoming>
       <bpmn:outgoing>Flow_recv_end</bpmn:outgoing>
     </bpmn:receiveTask>

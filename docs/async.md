@@ -286,28 +286,25 @@ arrive:
 task-shaped equivalent of the round catch event) referencing the same
 `EpistolaDocumentGenerated` message, with an interrupting (`cancelActivity="true"`)
 `PT30M` boundary timer that cancels the task and throws `EpistolaGenerationTimeout`.
-**A receive task is _not_ auto-wired** — the plugin's parse listener only attaches to
-round intermediate message catch events — so the `epistolaWaitFor` correlation token
-**must** be pinned explicitly on the receive task:
+
+**Receive tasks are auto-wired**, exactly like round catch events — the plugin's parse
+listener attaches the same start listener to both, pinning the `epistolaWaitFor`
+correlation token on the receive task's own execution as it is entered (co-located with
+the subscription). So **no `epistolaWaitFor` mapping is needed**:
 
 ```xml
 <bpmn:receiveTask id="wait-for-generation" name="Wait for generation"
                   messageRef="Message_EpistolaDocumentGenerated">
-  <bpmn:extensionElements>
-    <camunda:inputOutput>
-      <camunda:inputParameter name="epistolaWaitFor">${epistolaResult.jobPath}</camunda:inputParameter>
-    </camunda:inputOutput>
-  </bpmn:extensionElements>
-  ...
+  <bpmn:incoming>...</bpmn:incoming>
+  <bpmn:outgoing>...</bpmn:outgoing>
 </bpmn:receiveTask>
 ```
 
-Correlation otherwise works identically — the receive task creates the same
-`EpistolaDocumentGenerated` subscription that `correlateCompletion` matches on. The same
-race-safety rule applies (below): keep the boundary between `generate-document` and the
-wait synchronous. Note that receive tasks don't get the self-heal callback that round
-catch events do, so the synchronous boundary is the only thing guarding the
-result-before-subscription race — don't add an async boundary before the receive task.
+Everything else matches the round catch event: the same race-safety rule (keep the
+boundary between `generate-document` and the wait synchronous — don't add an async
+boundary before it), the same self-heal coverage, and the same ambiguity rule (a single
+receive task fed by branches with **different** result variables needs one shared
+`resultProcessVariable` — see [Ambiguous (merged) catch events](#ambiguous-merged-catch-events)).
 
 ## Ambiguous (merged) catch events
 
