@@ -334,7 +334,9 @@ The validator flags this as `AMBIGUOUS_CATCH_EVENT`. There are two correct fixes
   stay isolated (see [Parallel generation](#parallel-generation)).
 
 The test-app `example` case ships `letter-by-type.bpmn` as a runnable reproduction of the
-broken (different-variable) case.
+broken (different-variable) case, and `letter-by-type-fixed.bpmn` as the corrected sibling
+(same topology, both branches share `epistolaResult` — completes on either branch, and the
+validator does not flag it).
 
 ## Race-safety: keep the boundary synchronous
 
