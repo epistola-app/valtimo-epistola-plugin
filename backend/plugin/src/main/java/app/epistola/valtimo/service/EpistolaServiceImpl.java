@@ -45,8 +45,10 @@ import app.epistola.client.model.TemplateListResponse;
 import app.epistola.client.model.TemplateSummaryDto;
 import app.epistola.client.model.VariantDto;
 import app.epistola.client.model.VariantListResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -55,15 +57,58 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /**
  * Implementation of EpistolaService using the Epistola REST API client.
  */
 @Slf4j
-@RequiredArgsConstructor
 public class EpistolaServiceImpl implements EpistolaService {
 
     private final EpistolaApiClientFactory apiClientFactory;
+
+    /** Retry attempts (beyond the first try) for idempotent reads on a transient failure. */
+    private final int maxReadRetries;
+
+    public EpistolaServiceImpl(EpistolaApiClientFactory apiClientFactory) {
+        this(apiClientFactory, 2);
+    }
+
+    public EpistolaServiceImpl(EpistolaApiClientFactory apiClientFactory, int maxReadRetries) {
+        this.apiClientFactory = apiClientFactory;
+        this.maxReadRetries = maxReadRetries;
+    }
+
+    /**
+     * Run an idempotent read, retrying on transient failures — connect/read timeouts and
+     * connection errors ({@link ResourceAccessException}) or 5xx responses
+     * ({@link HttpServerErrorException}). 4xx responses ({@link HttpClientErrorException})
+     * and everything else propagate immediately without a retry.
+     */
+    private <T> T withRetry(String operation, Supplier<T> call) {
+        int attempt = 0;
+        while (true) {
+            try {
+                return call.get();
+            } catch (HttpClientErrorException e) {
+                throw e;
+            } catch (ResourceAccessException | HttpServerErrorException e) {
+                if (attempt >= maxReadRetries) {
+                    throw e;
+                }
+                attempt++;
+                long backoffMs = 200L * (1L << (attempt - 1));
+                log.warn("Transient failure on {} (attempt {} of {}): {} — retrying in {}ms",
+                        operation, attempt, maxReadRetries + 1, e.getMessage(), backoffMs);
+                try {
+                    Thread.sleep(backoffMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new EpistolaApiException("Interrupted while retrying " + operation, ie);
+                }
+            }
+        }
+    }
 
     @Override
     public List<CatalogInfo> getCatalogs(String baseUrl, String apiKey, String tenantId) {
@@ -245,7 +290,8 @@ public class EpistolaServiceImpl implements EpistolaService {
         try {
             GenerationApi generationApi = apiClientFactory.createGenerationApi(baseUrl, apiKey);
             UUID requestUuid = UUID.fromString(requestId);
-            app.epistola.client.model.GenerationJobDetail response = generationApi.getGenerationJobStatus(tenantId, requestUuid);
+            app.epistola.client.model.GenerationJobDetail response = withRetry("getJobStatus",
+                    () -> generationApi.getGenerationJobStatus(tenantId, requestUuid));
 
             if (response == null) {
                 throw new EpistolaApiException("Job not found: " + requestId);
@@ -267,12 +313,12 @@ public class EpistolaServiceImpl implements EpistolaService {
             // Use RestClient directly instead of the generated client, because the generated
             // client returns java.io.File which requires an HttpMessageConverter for
             // application/pdf → File that Spring doesn't provide out of the box.
-            byte[] content = apiClientFactory.createRestClient(baseUrl, apiKey)
+            byte[] content = withRetry("downloadDocument", () -> apiClientFactory.createRestClient(baseUrl, apiKey)
                     .get()
                     .uri("/tenants/{tenantId}/documents/{documentId}", tenantId, documentId)
                     .accept(org.springframework.http.MediaType.APPLICATION_PDF)
                     .retrieve()
-                    .body(byte[].class);
+                    .body(byte[].class));
 
             if (content == null || content.length == 0) {
                 throw new EpistolaApiException("Downloaded document is empty: " + documentId);

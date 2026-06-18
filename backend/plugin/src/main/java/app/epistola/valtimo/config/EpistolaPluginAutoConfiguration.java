@@ -83,8 +83,11 @@ public class EpistolaPluginAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EpistolaApiClientFactory.class)
-    public EpistolaApiClientFactory epistolaApiClientFactory() {
-        return new EpistolaApiClientFactory();
+    public EpistolaApiClientFactory epistolaApiClientFactory(EpistolaProperties properties) {
+        EpistolaProperties.Client client = properties.getClient();
+        return new EpistolaApiClientFactory(
+                java.time.Duration.ofMillis(client.getConnectTimeoutMs()),
+                java.time.Duration.ofMillis(client.getReadTimeoutMs()));
     }
 
     @Bean
@@ -134,8 +137,8 @@ public class EpistolaPluginAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EpistolaService.class)
-    public EpistolaService epistolaService(EpistolaApiClientFactory apiClientFactory) {
-        return new EpistolaServiceImpl(apiClientFactory);
+    public EpistolaService epistolaService(EpistolaApiClientFactory apiClientFactory, EpistolaProperties properties) {
+        return new EpistolaServiceImpl(apiClientFactory, properties.getClient().getMaxReadRetries());
     }
 
     // Exposes the current user task's id to a form at server-side prefill time (prefix
