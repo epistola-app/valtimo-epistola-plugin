@@ -22,19 +22,19 @@ Add it to the form of any user task that follows a successful `generate-document
   "key": "document",
   "label": "Bevestigingsbrief",
   "display": "both",
-  "documentIdVariable": "epistolaDocumentId",
+  "documentVariable": "epistolaResult",
   "tenantIdVariable": "epistolaTenantId",
   "filename": "bevestigingsbrief.pdf"
 }
 ```
 
-| Property             | Required | Default                | Description                                                                                                                                                                                      |
-| -------------------- | -------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `display`            | no       | `"both"`               | `"inline"` renders the PDF in an embedded panel only. `"button"` renders a click-to-save download button only. `"both"` renders the inline panel with a download icon in the header.             |
-| `documentIdVariable` | no       | `"epistolaDocumentId"` | Name of the **process variable** holding the Epistola PDF id (UUIDv7). Must match the variable name written by the upstream `generate-document` action — by default that's `epistolaDocumentId`. |
-| `tenantIdVariable`   | no       | `"epistolaTenantId"`   | Name of the **process variable** holding the Epistola tenant id (slug). Must match the variable name written by the upstream `generate-document` action — by default that's `epistolaTenantId`.  |
-| `filename`           | no       | `"document.pdf"`       | Filename used for the download `Content-Disposition`. Cosmetic — affects what the user's browser saves the file as.                                                                              |
-| `label`              | no       | `"Document"`           | Header text shown above the panel and on the button.                                                                                                                                             |
+| Property           | Required | Default              | Description                                                                                                                                                                                                                                                                                                               |
+| ------------------ | -------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `display`          | no       | `"both"`             | `"inline"` renders the PDF in an embedded panel only. `"button"` renders a click-to-save download button only. `"both"` renders the inline panel with a download icon in the header.                                                                                                                                      |
+| `documentVariable` | no       | `"epistolaResult"`   | Name of the **process variable** holding the Epistola result. Type-tolerant: it may hold the rich result object written by `generate-document` (the backend digs out the `documentId` key) or a plain PDF-id string. Must match the variable written upstream — by default that's `epistolaResult`.                       |
+| `tenantIdVariable` | no       | `"epistolaTenantId"` | Name of the **process variable** holding the Epistola tenant id (slug). Not exposed in the Formio builder — the tenant is process-wide, so it's fixed to the default `epistolaTenantId` (written by the upstream `generate-document` action). Override only via raw form JSON if a non-standard flow stores it elsewhere. |
+| `filename`         | no       | `"document.pdf"`     | Filename used for the download `Content-Disposition`. Cosmetic — affects what the user's browser saves the file as.                                                                                                                                                                                                       |
+| `label`            | no       | `"Document"`         | Header text shown above the panel and on the button.                                                                                                                                                                                                                                                                      |
 
 The component **does not** take a raw `documentId` or `tenantId` value. The backend resolves both by reading the named process variables off the caller's task. This is by design — it makes the endpoint forge-proof (see [Authorization](authorization.md#documentsdownload)).
 
@@ -56,7 +56,7 @@ Component reads:
 GET /api/v1/plugin/epistola/documents/download
     ?taskId=…
     &caseDocumentId=…
-    &documentIdVariable=epistolaDocumentId
+    &documentVariable=epistolaResult
     &tenantIdVariable=epistolaTenantId
     &disposition=inline   (or "attachment" for the download button)
     &filename=…
@@ -64,7 +64,7 @@ GET /api/v1/plugin/epistola/documents/download
 Backend (EpistolaGenerationResource):
   1. requireTaskBoundTo(taskId, processInstanceId, caseDocumentId)
        → OperatonTask:VIEW + same-process-instance + business-key match
-  2. runtimeService.getVariable(processInstanceId, documentIdVariable)
+  2. runtimeService.getVariable(processInstanceId, documentVariable)
   3. runtimeService.getVariable(processInstanceId, tenantIdVariable)
   4. epistolaService.downloadDocument(tenantId, documentId)
   ↓
@@ -101,16 +101,16 @@ Forms authored **before** the carrier was embedded don't have it. The admin page
 
 ### Design-mode behaviour
 
-In the Formio builder there is no `caseDocumentId`, so the component renders a configuration summary instead of trying to fetch a non-existent document — `display`, `documentIdVariable`, and `tenantIdVariable` are shown as labelled values. This means form authors can drop the component on the canvas without seeing an error toast.
+In the Formio builder there is no `caseDocumentId`, so the component renders a configuration summary instead of trying to fetch a non-existent document — `display`, `documentVariable`, and `tenantIdVariable` are shown as labelled values. This means form authors can drop the component on the canvas without seeing an error toast.
 
 ### Failure modes the user sees
 
-| Scenario                                                       | UI                                                                          |
-| -------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `epistolaDocumentId` not yet set on the process instance       | "Document is nog niet gegenereerd."                                         |
-| Epistola server returns 404 for the stored id (stale variable) | "Document is nog niet gegenereerd." (404 → 404 translation)                 |
-| Component is mounted outside a user task (no `taskId`)         | "Document is alleen beschikbaar binnen een taak."                           |
-| Network/server error                                           | "Document kon niet geladen worden." (inline) / "Download mislukt." (button) |
+| Scenario                                                                  | UI                                                                          |
+| ------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `documentVariable` (`epistolaResult`) not yet set on the process instance | "Document is nog niet gegenereerd."                                         |
+| Epistola server returns 404 for the stored id (stale variable)            | "Document is nog niet gegenereerd." (404 → 404 translation)                 |
+| Component is mounted outside a user task (no `taskId`)                    | "Document is alleen beschikbaar binnen een taak."                           |
+| Network/server error                                                      | "Document kon niet geladen worden." (inline) / "Download mislukt." (button) |
 
 ## Migration from earlier versions
 
@@ -121,7 +121,7 @@ Pre-0.8 the post-generation UX was split across two components:
 | `epistola-preview-button` | `epistola-document` with `display: "button"` (or `"both"`) |
 | `epistola-download`       | `epistola-document` with `display: "button"`               |
 
-The 0.8 endpoint reshape also matters: the old `GET /api/v1/plugin/epistola/documents/{documentId}/download` (path-param) is gone. The new shape is `GET /api/v1/plugin/epistola/documents/download?taskId=…&caseDocumentId=…&documentIdVariable=…&tenantIdVariable=…`. If you have integrations that called the old URL directly (outside the Formio component), they have to be updated.
+The 0.8 endpoint reshape also matters: the old `GET /api/v1/plugin/epistola/documents/{documentId}/download` (path-param) is gone. The new shape is `GET /api/v1/plugin/epistola/documents/download?taskId=…&caseDocumentId=…&documentVariable=…&tenantIdVariable=…`. If you have integrations that called the old URL directly (outside the Formio component), they have to be updated.
 
 ## Architecture
 

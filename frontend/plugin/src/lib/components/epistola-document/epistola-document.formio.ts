@@ -28,10 +28,60 @@ export const EPISTOLA_DOCUMENT_OPTIONS: FormioCustomComponentInfo = {
   group: 'basic',
   icon: 'file-pdf-o',
   emptyValue: null,
-  fieldOptions: ['label', 'display', 'documentVariable', 'tenantIdVariable', 'filename'],
+  // tenantIdVariable is intentionally absent: it is not author-configurable in the builder
+  // (the tenant is process-wide, always the default), and Valtimo copies every fieldOptions
+  // key onto the element unconditionally — listing it would overwrite the component's
+  // `epistolaTenantId` @Input() default with `undefined` and break the download.
+  fieldOptions: ['label', 'display', 'documentVariable', 'filename'],
   // Embed the hidden task-id carrier so dropping this component is enough — no separate
   // field for the author to add. Valtimo prefills it server-side via the epistola: resolver.
   schema: { components: [PREFILLED_TASK_ID_CARRIER] },
+  // Minimal edit form: only the five properties this component actually reads (its
+  // @Input()s / fieldOptions). A flat `components` array (no `tabs` wrapper) replaces the
+  // inherited stock text-field dialog (Display/Data/Validation/API/Conditional/Logic/Layout)
+  // entirely. Keys must match the @Input() names verbatim so the fieldOptions copy works.
+  editForm: () => ({
+    components: [
+      {
+        type: 'textfield',
+        key: 'label',
+        label: 'Label',
+        weight: 10,
+        defaultValue: 'Document',
+      },
+      {
+        type: 'select',
+        key: 'display',
+        label: 'Display',
+        weight: 20,
+        defaultValue: 'both',
+        dataSrc: 'values',
+        data: {
+          values: [
+            { label: 'Inline preview', value: 'inline' },
+            { label: 'Download button', value: 'button' },
+            { label: 'Both', value: 'both' },
+          ],
+        },
+      },
+      {
+        type: 'textfield',
+        key: 'documentVariable',
+        label: 'Document variable',
+        weight: 30,
+        defaultValue: 'epistolaResult',
+        tooltip: 'Name of the process variable holding the Epistola result (PDF id).',
+      },
+      {
+        type: 'textfield',
+        key: 'filename',
+        label: 'Filename',
+        weight: 40,
+        defaultValue: 'document.pdf',
+        tooltip: 'Filename used for the download (Content-Disposition).',
+      },
+    ],
+  }),
 };
 
 export function registerEpistolaDocumentComponent(injector: Injector): void {
