@@ -102,10 +102,21 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
     private _blurTarget: HTMLElement | null = null;
     private _destroyed = false;
     private _debounceMs = DEFAULT_REFRESH_DEBOUNCE_MS;
-    // Serialized form of the last value pushed via setValue, so we skip re-rendering
-    // the preview when a change recomputes to the same overrides (e.g. typing in a
-    // field that isn't part of the mapping). undefined = nothing pushed yet.
+    // Serialized form of the last value pushed, so we skip re-rendering the preview
+    // when a change recomputes to the same overrides (e.g. typing in a field that
+    // isn't part of the mapping). undefined = nothing pushed yet.
     private _lastPushedJson: string | undefined = undefined;
+    // Whether the last compute produced usable overrides. Drives the initial-paint
+    // retry below: it stops once the form data is present.
+    private _hasUsableValue = false;
+    // Timers for the initial-paint retry — Valtimo can prefill form data
+    // asynchronously after the component mounts, sometimes without a change event.
+    private _initialPaintTimers: any[] = [];
+    // Whether auto-refresh (recompute on change/blur) is currently active. Seeded
+    // once from the builder's autoRefresh option, then toggled at runtime by the
+    // end-user via the preview header. Persisted across redraws (only seeded once).
+    private _autoRefreshEnabled = true;
+    private _autoRefreshInitialized = false;
 
     attach(element: HTMLElement) {
       // Formio detaches and re-attaches components on every redraw — not only at
@@ -114,6 +125,13 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
       // (genuine teardown, e.g. task completion), which is what suppresses the
       // post-submit preview.
       this._destroyed = false;
+
+      // Seed the runtime auto-refresh state from the builder option, once. Re-attach
+      // (redraw) must not clobber a choice the end-user made via the header toggle.
+      if (!this._autoRefreshInitialized) {
+        this._autoRefreshEnabled = this.component?.autoRefresh !== false;
+        this._autoRefreshInitialized = true;
+      }
 
       // Bidirectional sync between processLinkSelection object and separate properties.
       // The editForm uses processLinkSelection (single field), while the component
@@ -141,37 +159,69 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
         if (prefilledTaskId) {
           this._customAngularElement['taskInstanceId'] = prefilledTaskId;
         }
+        if (this.component?.overrideMapping) {
+          // Let the component's Refresh button force a recompute from the live form
+          // data, so it works before the first change (e.g. on initial load with
+          // pre-filled fields) rather than reading a not-yet-populated value.
+          this._customAngularElement['requestOverrides'] = () => this._computeAndSetOverrides(true);
+          // Reflect the current auto-refresh state to the header toggle (current
+          // state, not the builder default — so a redraw keeps the user's choice),
+          // and let the toggle flip it. Turning it on does an immediate refresh.
+          this._customAngularElement['autoRefresh'] = this._autoRefreshEnabled;
+          this._customAngularElement['setAutoRefresh'] = (enabled: boolean) => {
+            this._autoRefreshEnabled = enabled;
+            if (enabled) {
+              this._computeAndSetOverrides(true);
+            }
+          };
+        }
       }
 
-      // Compute input overrides from the mapping. Always paint once from the
-      // current/pre-filled data; only wire up the live listeners when auto-refresh
-      // is enabled (the default).
+      // Compute input overrides from the mapping and wire up the live listeners.
       if (this.root && this.component?.overrideMapping && !this._changeListenerAttached) {
         this._changeListenerAttached = true;
         this._debounceMs = this._resolveDebounceMs();
 
         // Compute the initial overrides immediately (no debounce) so a pre-filled
-        // form paints its preview without the debounce delay. This runs even when
-        // auto-refresh is off, so the preview still shows once on open.
+        // form paints its preview without the debounce delay. This runs regardless
+        // of the auto-refresh state, so the preview still shows once on open.
         this._computeAndSetOverrides(true);
 
-        if (this.component.autoRefresh !== false) {
-          // Debounced recompute on any form change — collapses bursts of edits and,
-          // together with the dedup in _computeAndSetOverrides, only re-renders when
-          // the mapped data actually changes.
-          this._changeHandler = () => this._computeAndSetOverrides();
-          this.root.on('change', this._changeHandler);
+        // Valtimo can prefill the form data asynchronously after the component
+        // mounts, sometimes without a change event we can hook — so the single
+        // compute above may see empty data. Re-attempt a few times over ~2s until
+        // usable overrides appear, so a pre-filled form previews itself without a
+        // manual edit or Refresh click. Each attempt is skipped once the data is in.
+        this._initialPaintTimers = [400, 1000, 2000].map((ms) =>
+          setTimeout(() => {
+            if (!this._hasUsableValue && !this._destroyed) {
+              void this._runCompute();
+            }
+          }, ms),
+        );
 
-          // Flush immediately when a field loses focus. `focusout` bubbles (unlike
-          // `blur`), so one listener on the form root catches every input — and it
-          // fires on blur rather than on each keystroke, which is what keeps the
-          // refresh from feeling hectic.
-          const formEl: HTMLElement | undefined = this.root?.element;
-          if (formEl?.addEventListener) {
-            this._blurHandler = () => this._computeAndSetOverrides(true);
-            formEl.addEventListener('focusout', this._blurHandler);
-            this._blurTarget = formEl;
-          }
+        // Always wire the change + blur listeners; the runtime auto-refresh toggle
+        // (_autoRefreshEnabled) gates whether they actually recompute, so the
+        // end-user can switch it on/off live without re-attaching anything.
+        //
+        // Debounced recompute on any form change — collapses bursts of edits and,
+        // together with the dedup, only re-renders when the mapped data changes.
+        this._changeHandler = () => {
+          if (this._autoRefreshEnabled) this._computeAndSetOverrides();
+        };
+        this.root.on('change', this._changeHandler);
+
+        // Flush immediately when a field loses focus. `focusout` bubbles (unlike
+        // `blur`), so one listener on the form root catches every input — and it
+        // fires on blur rather than on each keystroke, which keeps the refresh from
+        // feeling hectic.
+        const formEl: HTMLElement | undefined = this.root?.element;
+        if (formEl?.addEventListener) {
+          this._blurHandler = () => {
+            if (this._autoRefreshEnabled) this._computeAndSetOverrides(true);
+          };
+          formEl.addEventListener('focusout', this._blurHandler);
+          this._blurTarget = formEl;
         }
       }
 
@@ -188,6 +238,9 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
         clearTimeout(this._debounceTimer);
         this._debounceTimer = null;
       }
+      this._initialPaintTimers.forEach((t) => clearTimeout(t));
+      this._initialPaintTimers = [];
+      this._hasUsableValue = false;
       if (this._changeHandler && this.root?.off) {
         this.root.off('change', this._changeHandler);
         this._changeHandler = null;
@@ -207,39 +260,57 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
         clearTimeout(this._debounceTimer);
       }
       this._debounceTimer = setTimeout(
-        async () => {
-          // Skip if the form is being/has been submitted or the component is gone —
-          // those previews would run with incomplete/reset data and 400 from Epistola.
-          if (this._destroyed || this.root?.submitting || this.root?.submitted) {
-            return;
-          }
-          const mapping = this.component?.overrideMapping;
-          const formData = this.root?.data;
-          if (!mapping || !formData) {
-            return;
-          }
-          // computeInputOverrides evaluates a JSONata expression (async). Re-check
-          // the submit/teardown guards after the await — they can flip while the
-          // promise is in flight.
-          const overrides = await computeInputOverrides(mapping, formData);
-          if (this._destroyed || this.root?.submitting || this.root?.submitted) {
-            return;
-          }
-          // Push null when there's nothing usable yet so the component reverts to
-          // its "complete the form" placeholder instead of keeping a stale preview.
-          const next = Object.keys(overrides).length > 0 ? overrides : null;
-          // Dedup: only push (and re-render) when the computed overrides actually
-          // changed since the last push. A change/blur that doesn't affect the
-          // mapped data recomputes to the same value and is dropped here.
-          const nextJson = JSON.stringify(next);
-          if (nextJson === this._lastPushedJson) {
-            return;
-          }
-          this._lastPushedJson = nextJson;
-          this.setValue(next);
-        },
+        () => void this._runCompute(),
         immediate ? 0 : this._debounceMs,
       );
+    }
+
+    // Compute the input overrides from the live form data and push them to the
+    // component (deduped). Separated from the debounce scheduling so the
+    // initial-paint retry can invoke it directly without another timer hop.
+    private async _runCompute() {
+      // Skip if the form is being/has been submitted or the component is gone —
+      // those previews would run with incomplete/reset data and 400 from Epistola.
+      if (this._destroyed || this.root?.submitting || this.root?.submitted) {
+        return;
+      }
+      const mapping = this.component?.overrideMapping;
+      const formData = this.root?.data;
+      if (!mapping || !formData) {
+        return;
+      }
+      // computeInputOverrides evaluates a JSONata expression (async). Re-check
+      // the submit/teardown guards after the await — they can flip while the
+      // promise is in flight.
+      const overrides = await computeInputOverrides(mapping, formData);
+      if (this._destroyed || this.root?.submitting || this.root?.submitted) {
+        return;
+      }
+      // Push null when there's nothing usable yet so the component reverts to
+      // its "complete the form" placeholder instead of keeping a stale preview.
+      const next = Object.keys(overrides).length > 0 ? overrides : null;
+      // Track whether the data is in yet (stops the initial-paint retry).
+      this._hasUsableValue = next !== null;
+      // Dedup: only push (and re-render) when the computed overrides actually
+      // changed since the last push. A change/blur that doesn't affect the
+      // mapped data recomputes to the same value and is dropped here.
+      const nextJson = JSON.stringify(next);
+      if (nextJson === this._lastPushedJson) {
+        return;
+      }
+      this._lastPushedJson = nextJson;
+      this._pushOverrides(next);
+    }
+
+    // Push the computed overrides to the Angular component via a dedicated input.
+    // NOT Formio's setValue: Valtimo's bridge only mirrors `value` to the DOM and
+    // never to Formio's data model, so Formio resets it to emptyValue on the next
+    // redraw — which would cancel the preview. A plain element property is left
+    // untouched by Formio and so sticks.
+    private _pushOverrides(value: Record<string, any> | null) {
+      if (this._customAngularElement) {
+        this._customAngularElement['inputOverrides'] = value;
+      }
     }
 
     /**

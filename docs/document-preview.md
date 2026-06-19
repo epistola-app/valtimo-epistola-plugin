@@ -48,19 +48,33 @@ The builder has two modes:
 
 ### Auto-refresh (optional, default on)
 
-Controls how the preview reacts while the form is being filled in:
+Auto-refresh is controllable in **two places**: a builder default (set by the form author) and a
+runtime toggle in the preview header (flipped by the end-user filling in the form).
 
-- **Auto-refresh preview as the form is filled in** (checkbox, default **on**) — when on, the preview
-  refreshes automatically as the form changes. It does **not** refresh on every keystroke: changes are
-  debounced and the preview flushes when a field loses focus (blur). It also only re-renders when the
-  mapped data actually changed, so typing in fields the mapping doesn't read no longer triggers a
-  refresh. Turn it **off** to refresh only via the **Refresh** button (the preview still paints once
-  when the form opens).
+**Builder options** (in the component's edit dialog):
+
+- **Auto-refresh preview as the form is filled in** (checkbox, default **on**) — the default state of
+  the runtime toggle. When on, the preview refreshes automatically as the form changes. It does
+  **not** refresh on every keystroke: changes are debounced and the preview flushes when a field loses
+  focus (blur). It also only re-renders when the mapped data actually changed, so typing in fields the
+  mapping doesn't read no longer triggers a refresh.
 - **Auto-refresh debounce (ms)** (number, default **1500**) — how long to wait after the last change
   before refreshing. Higher values feel calmer; lower values feel more responsive. Shown only when
   auto-refresh is on. Invalid/negative values fall back to 1500.
 
-The **Refresh** button in the preview header always works regardless of these settings.
+**Runtime toggle** — an **Auto-refresh** checkbox in the preview header (shown for override-driven
+previews). It starts from the builder default and lets the person filling in the form turn
+auto-refresh off/on for their session; the choice is preserved across Formio redraws. Turning it on
+refreshes immediately. With it off, the preview updates only via the **Refresh** button.
+
+The **Refresh** button in the preview header always works regardless of these settings, and it
+forces a recompute from the live form data — so it loads the preview even before the first edit
+(e.g. right after opening a form whose fields are pre-filled).
+
+**Initial load.** When the mapped fields are already filled in on open, the preview loads itself
+without a manual edit. Valtimo can populate form data asynchronously after the component mounts
+(sometimes without a change event), so the wrapper re-attempts the initial paint a few times over
+~2s until the data is present.
 
 #### Example: objection decision preview
 
@@ -113,7 +127,9 @@ computeInputOverrides(overrideMapping, formData)  [async]
   ↓
 Dedup: skip if the computed overrides equal the last pushed value
   ↓
-Sets value on Angular component
+Pushes overrides to the Angular component's dedicated `inputOverrides` input
+  (NOT Formio's value — Valtimo's bridge would let Formio reset that to its
+   emptyValue on the next redraw, cancelling the preview)
   ↓
 POST /api/v1/plugin/epistola/preview
   {
