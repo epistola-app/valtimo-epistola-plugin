@@ -46,6 +46,22 @@ The builder has two modes:
   express (concatenation, conditionals, functions). A richer expression locks the builder into
   advanced mode.
 
+### Auto-refresh (optional, default on)
+
+Controls how the preview reacts while the form is being filled in:
+
+- **Auto-refresh preview as the form is filled in** (checkbox, default **on**) — when on, the preview
+  refreshes automatically as the form changes. It does **not** refresh on every keystroke: changes are
+  debounced and the preview flushes when a field loses focus (blur). It also only re-renders when the
+  mapped data actually changed, so typing in fields the mapping doesn't read no longer triggers a
+  refresh. Turn it **off** to refresh only via the **Refresh** button (the preview still paints once
+  when the form opens).
+- **Auto-refresh debounce (ms)** (number, default **1500**) — how long to wait after the last change
+  before refreshing. Higher values feel calmer; lower values feel more responsive. Shown only when
+  auto-refresh is on. Invalid/negative values fall back to 1500.
+
+The **Refresh** button in the preview header always works regardless of these settings.
+
 #### Example: objection decision preview
 
 The assess-objection form has two fields (`pv:decision`, `pv:motivation`) and a preview component configured as:
@@ -62,8 +78,9 @@ The assess-objection form has two fields (`pv:decision`, `pv:motivation`) and a 
 ```
 
 Form field keys that aren't bare identifiers (e.g. `pv:motivation`) are backtick-quoted so JSONata
-reads them as a single property. When the user types in the Motivatie field, the preview regenerates
-after ~1.5 seconds with the new value.
+reads them as a single property. When the user edits the Motivatie field, the preview regenerates once
+the field loses focus (or after the debounce, default ~1.5s) — and only if the mapped value changed.
+Auto-refresh can be turned off so the preview only updates on the **Refresh** button.
 
 > **Legacy format.** Forms authored before this change store `overrideMapping` as an object of
 > `"form:<componentKey>"` references (e.g. `{ "pv": { "motivation": "form:pv:motivation" } }`). These
@@ -84,12 +101,17 @@ live value of that form component (and is omitted from the overlay when the fiel
 ```
 Form field changes
   ↓
-Formio wrapper (root.on('change')) — debounced 1500ms
+Formio wrapper (when auto-refresh is on):
+  - root.on('change')  — debounced (default 1500ms, configurable)
+  - root.element focusout (blur) — flushes immediately
+  (when auto-refresh is off, only the initial paint + the Refresh button trigger it)
   ↓
 computeInputOverrides(overrideMapping, formData)  [async]
   - evaluates the JSONata expression with $form = formData
     (legacy form:-ref objects are converted to JSONata first)
   - keeps only doc/pv scopes that resolved at least one field
+  ↓
+Dedup: skip if the computed overrides equal the last pushed value
   ↓
 Sets value on Angular component
   ↓
@@ -139,10 +161,10 @@ In the Formio builder (no runtime context), the component shows a configuration 
 
 ### Frontend
 
-| Component                              | File                                  | Role                                                                      |
-| -------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------- |
-| `EpistolaDocumentPreviewComponent`     | `epistola-document-preview/`          | Angular component — auto-discover and configured modes                    |
-| `EpistolaProcessLinkSelectorComponent` | `process-link-selector/`              | Dropdown of generate-document process links                               |
-| `EpistolaOverrideBuilderComponent`     | `override-builder/`                   | Simple table + advanced JSONata editor (`$form`) for the override mapping |
-| Preview Formio registration            | `epistola-document-preview.formio.ts` | Extended Formio class with `root.on('change')` listener and `editForm`    |
-| Override builder Formio registration   | `override-builder.formio.ts`          | Extended Formio class that extracts form fields from `options.editForm`   |
+| Component                              | File                                  | Role                                                                                                               |
+| -------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `EpistolaDocumentPreviewComponent`     | `epistola-document-preview/`          | Angular component — auto-discover and configured modes                                                             |
+| `EpistolaProcessLinkSelectorComponent` | `process-link-selector/`              | Dropdown of generate-document process links                                                                        |
+| `EpistolaOverrideBuilderComponent`     | `override-builder/`                   | Simple table + advanced JSONata editor (`$form`) for the override mapping                                          |
+| Preview Formio registration            | `epistola-document-preview.formio.ts` | Extended Formio class with debounced change + blur listeners, value dedup, the auto-refresh toggle, and `editForm` |
+| Override builder Formio registration   | `override-builder.formio.ts`          | Extended Formio class that extracts form fields from `options.editForm`                                            |
