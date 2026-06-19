@@ -129,7 +129,7 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
       refreshDebounceMs: opts.refreshDebounceMs,
     };
     inst.root = root;
-    inst.setValue = jest.fn();
+    inst._pushOverrides = jest.fn();
 
     return { inst, root, handlers, domHandlers };
   }
@@ -176,14 +176,14 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
 
     // ...and the initial compute (scheduled by attach) fires after the debounce.
     await jest.advanceTimersByTimeAsync(1500);
-    expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
+    expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
 
     // A subsequent change re-computes from the latest form data.
-    inst.setValue.mockClear();
+    inst._pushOverrides.mockClear();
     root.data = { nameField: 'Bob' };
     handlers['change']();
     await jest.advanceTimersByTimeAsync(1500);
-    expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Bob' } });
+    expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Bob' } });
   });
 
   it('fires the initial override compute immediately (no 1.5s debounce)', async () => {
@@ -196,7 +196,7 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
 
     // The initial compute is scheduled at 0ms, so it runs without waiting 1.5s.
     await jest.advanceTimersByTimeAsync(0);
-    expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
+    expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
   });
 
   it('pushes null when the form has no usable mapped data (reverts to placeholder)', async () => {
@@ -208,7 +208,7 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     inst.attach({});
 
     await jest.advanceTimersByTimeAsync(1500);
-    expect(inst.setValue).toHaveBeenCalledWith(null);
+    expect(inst._pushOverrides).toHaveBeenCalledWith(null);
   });
 
   it('cancels a pending debounce and removes the change listener on detach', async () => {
@@ -222,7 +222,7 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     inst.detach();
 
     await jest.advanceTimersByTimeAsync(1500);
-    expect(inst.setValue).not.toHaveBeenCalled();
+    expect(inst._pushOverrides).not.toHaveBeenCalled();
     expect(root.off).toHaveBeenCalledWith('change', expect.any(Function));
   });
 
@@ -239,7 +239,7 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     inst.attach({});
 
     await jest.advanceTimersByTimeAsync(1500);
-    expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
+    expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
     expect(root.on).toHaveBeenCalledTimes(2); // listener re-registered on re-attach
   });
 
@@ -253,7 +253,7 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     root.submitting = true;
 
     await jest.advanceTimersByTimeAsync(1500);
-    expect(inst.setValue).not.toHaveBeenCalled();
+    expect(inst._pushOverrides).not.toHaveBeenCalled();
   });
 
   it('does not fire a preview once the form has been submitted', async () => {
@@ -266,7 +266,7 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     root.submitted = true;
 
     await jest.advanceTimersByTimeAsync(1500);
-    expect(inst.setValue).not.toHaveBeenCalled();
+    expect(inst._pushOverrides).not.toHaveBeenCalled();
   });
 
   it('does not re-push when a change recomputes to the same overrides (dedup)', async () => {
@@ -277,35 +277,43 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
 
     inst.attach({});
     await jest.advanceTimersByTimeAsync(1500);
-    expect(inst.setValue).toHaveBeenCalledTimes(1);
-    expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
+    expect(inst._pushOverrides).toHaveBeenCalledTimes(1);
+    expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
 
     // A change that doesn't touch the mapped field recomputes to the same value.
-    inst.setValue.mockClear();
+    inst._pushOverrides.mockClear();
     root.data = { nameField: 'Alice', unrelated: 'typing...' };
     handlers['change']();
     await jest.advanceTimersByTimeAsync(1500);
-    expect(inst.setValue).not.toHaveBeenCalled();
+    expect(inst._pushOverrides).not.toHaveBeenCalled();
 
     // A change that does affect the mapping pushes again.
     root.data = { nameField: 'Bob' };
     handlers['change']();
     await jest.advanceTimersByTimeAsync(1500);
-    expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Bob' } });
+    expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Bob' } });
   });
 
-  describe('auto-refresh toggle', () => {
-    it('does not attach change/focusout listeners when auto-refresh is off', async () => {
-      const { inst, root } = createInstance({
+  describe('auto-refresh toggle (builder default)', () => {
+    it('does not recompute on change or blur when auto-refresh is off', async () => {
+      const { inst, root, handlers, domHandlers } = createInstance({
         overrideMapping: { doc: { name: 'form:nameField' } },
         data: { nameField: 'Alice' },
         autoRefresh: false,
       });
 
       inst.attach({});
+      // The initial paint still runs regardless of the toggle.
+      await jest.advanceTimersByTimeAsync(2000);
+      inst._pushOverrides.mockClear();
 
-      expect(root.on).not.toHaveBeenCalled();
-      expect(root.element.addEventListener).not.toHaveBeenCalled();
+      // ...but a change / blur does not trigger a recompute while off.
+      root.data = { nameField: 'Bob' };
+      handlers['change']();
+      await jest.advanceTimersByTimeAsync(1500);
+      domHandlers['focusout']();
+      await jest.advanceTimersByTimeAsync(0);
+      expect(inst._pushOverrides).not.toHaveBeenCalled();
     });
 
     it('still paints the preview once on open when auto-refresh is off', async () => {
@@ -318,19 +326,92 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
       inst.attach({});
 
       await jest.advanceTimersByTimeAsync(0);
-      expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
+      expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
     });
 
-    it('treats a missing autoRefresh flag as on (backward compatible)', () => {
-      const { inst, root } = createInstance({
+    it('treats a missing autoRefresh flag as on (recomputes on change)', async () => {
+      const { inst, root, handlers } = createInstance({
         overrideMapping: { doc: { name: 'form:nameField' } },
         data: { nameField: 'Alice' },
       });
 
       inst.attach({});
+      await jest.advanceTimersByTimeAsync(2000);
+      inst._pushOverrides.mockClear();
 
-      expect(root.on).toHaveBeenCalledWith('change', expect.any(Function));
-      expect(root.element.addEventListener).toHaveBeenCalledWith('focusout', expect.any(Function));
+      root.data = { nameField: 'Bob' };
+      handlers['change']();
+      await jest.advanceTimersByTimeAsync(1500);
+      expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Bob' } });
+    });
+  });
+
+  describe('runtime auto-refresh toggle (header control)', () => {
+    it('exposes the current state and a setter on the Angular element', () => {
+      const { inst } = createInstance({
+        overrideMapping: { doc: { name: 'form:nameField' } },
+        data: {},
+      });
+      inst._customAngularElement = {};
+
+      inst.attach({});
+
+      expect(inst._customAngularElement.autoRefresh).toBe(true);
+      expect(typeof inst._customAngularElement.setAutoRefresh).toBe('function');
+    });
+
+    it('stops recomputing on change after setAutoRefresh(false)', async () => {
+      const { inst, root, handlers } = createInstance({
+        overrideMapping: { doc: { name: 'form:nameField' } },
+        data: { nameField: 'Alice' },
+      });
+      inst._customAngularElement = {};
+
+      inst.attach({});
+      await jest.advanceTimersByTimeAsync(2000);
+      inst._pushOverrides.mockClear();
+
+      inst._customAngularElement.setAutoRefresh(false);
+      root.data = { nameField: 'Bob' };
+      handlers['change']();
+      await jest.advanceTimersByTimeAsync(1500);
+      expect(inst._pushOverrides).not.toHaveBeenCalled();
+    });
+
+    it('recomputes immediately when re-enabled via setAutoRefresh(true)', async () => {
+      const { inst, root } = createInstance({
+        overrideMapping: { doc: { name: 'form:nameField' } },
+        data: { nameField: 'Alice' },
+      });
+      inst._customAngularElement = {};
+
+      inst.attach({});
+      await jest.advanceTimersByTimeAsync(2000);
+      inst._customAngularElement.setAutoRefresh(false);
+      inst._pushOverrides.mockClear();
+
+      root.data = { nameField: 'Bob' };
+      inst._customAngularElement.setAutoRefresh(true);
+      await jest.advanceTimersByTimeAsync(0);
+      expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Bob' } });
+    });
+
+    it('keeps the user toggle choice across a redraw (detach/attach)', () => {
+      const { inst } = createInstance({
+        overrideMapping: { doc: { name: 'form:nameField' } },
+        data: {},
+      });
+      inst._customAngularElement = {};
+
+      inst.attach({});
+      inst._customAngularElement.setAutoRefresh(false);
+
+      inst.detach();
+      inst._customAngularElement = {};
+      inst.attach({});
+
+      // Not reseeded from the builder default — the user's off choice survives.
+      expect(inst._customAngularElement.autoRefresh).toBe(false);
     });
   });
 
@@ -344,14 +425,14 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
       inst.attach({});
       // Drain the initial immediate compute so we isolate the blur behavior.
       await jest.advanceTimersByTimeAsync(0);
-      inst.setValue.mockClear();
+      inst._pushOverrides.mockClear();
 
       // A pending debounced change is in flight...
       root.data = { nameField: 'Bob' };
       domHandlers['focusout']();
       // ...and resolves at 0ms (immediate), without advancing the full debounce.
       await jest.advanceTimersByTimeAsync(0);
-      expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Bob' } });
+      expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Bob' } });
     });
 
     it('removes the focusout listener on detach', () => {
@@ -370,6 +451,89 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     });
   });
 
+  describe('initial-paint retry (async prefill)', () => {
+    it('re-attempts the initial paint until the prefilled data arrives', async () => {
+      const { inst, root } = createInstance({
+        overrideMapping: { doc: { name: 'form:nameField' } },
+        data: {}, // not prefilled yet at mount
+      });
+
+      inst.attach({});
+      // The immediate compute sees empty data and shows the placeholder.
+      await jest.advanceTimersByTimeAsync(0);
+      expect(inst._pushOverrides).toHaveBeenCalledWith(null);
+      inst._pushOverrides.mockClear();
+
+      // Valtimo prefills the form data after mount, without a change event.
+      root.data = { nameField: 'Alice' };
+
+      // A retry picks it up and paints the preview — no manual edit needed.
+      await jest.advanceTimersByTimeAsync(400);
+      expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
+    });
+
+    it('stops re-attempting once usable overrides are present', async () => {
+      const { inst } = createInstance({
+        overrideMapping: { doc: { name: 'form:nameField' } },
+        data: { nameField: 'Alice' }, // already prefilled
+      });
+
+      inst.attach({});
+      await jest.advanceTimersByTimeAsync(0); // immediate compute → usable
+      inst._pushOverrides.mockClear();
+
+      // Advance past every retry window — nothing more fires.
+      await jest.advanceTimersByTimeAsync(2000);
+      expect(inst._pushOverrides).not.toHaveBeenCalled();
+    });
+
+    it('cancels the initial-paint retries on detach', async () => {
+      const { inst, root } = createInstance({
+        overrideMapping: { doc: { name: 'form:nameField' } },
+        data: {},
+      });
+
+      inst.attach({});
+      await jest.advanceTimersByTimeAsync(0);
+      inst._pushOverrides.mockClear();
+
+      inst.detach();
+      root.data = { nameField: 'Alice' };
+
+      await jest.advanceTimersByTimeAsync(2000);
+      expect(inst._pushOverrides).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('requestOverrides (Refresh button hook)', () => {
+    it('exposes requestOverrides on the Angular element for override-driven previews', async () => {
+      const { inst, root } = createInstance({
+        overrideMapping: { doc: { name: 'form:nameField' } },
+        data: {},
+      });
+      inst._customAngularElement = {};
+
+      inst.attach({});
+      expect(typeof inst._customAngularElement.requestOverrides).toBe('function');
+
+      // Simulate a Refresh click after the data has been filled in.
+      root.data = { nameField: 'Alice' };
+      inst._pushOverrides.mockClear();
+      inst._customAngularElement.requestOverrides();
+      await jest.advanceTimersByTimeAsync(0);
+      expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
+    });
+
+    it('does not expose requestOverrides without an override mapping', () => {
+      const { inst } = createInstance({ data: {} }); // no overrideMapping
+      inst._customAngularElement = {};
+
+      inst.attach({});
+
+      expect(inst._customAngularElement.requestOverrides).toBeUndefined();
+    });
+  });
+
   describe('configurable debounce', () => {
     it('honors a custom refreshDebounceMs', async () => {
       const { inst, root, handlers } = createInstance({
@@ -380,18 +544,18 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
 
       inst.attach({});
       await jest.advanceTimersByTimeAsync(0); // initial immediate compute
-      inst.setValue.mockClear();
+      inst._pushOverrides.mockClear();
 
       root.data = { nameField: 'Bob' };
       handlers['change']();
 
       // Nothing yet before the custom debounce elapses...
       await jest.advanceTimersByTimeAsync(299);
-      expect(inst.setValue).not.toHaveBeenCalled();
+      expect(inst._pushOverrides).not.toHaveBeenCalled();
 
       // ...and it fires at 300ms, well before the 1.5s default.
       await jest.advanceTimersByTimeAsync(1);
-      expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Bob' } });
+      expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Bob' } });
     });
 
     it('falls back to the default debounce for an invalid value', async () => {
@@ -403,14 +567,14 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
 
       inst.attach({});
       await jest.advanceTimersByTimeAsync(0);
-      inst.setValue.mockClear();
+      inst._pushOverrides.mockClear();
 
       root.data = { nameField: 'Bob' };
       handlers['change']();
       await jest.advanceTimersByTimeAsync(1499);
-      expect(inst.setValue).not.toHaveBeenCalled();
+      expect(inst._pushOverrides).not.toHaveBeenCalled();
       await jest.advanceTimersByTimeAsync(1);
-      expect(inst.setValue).toHaveBeenCalledWith({ doc: { name: 'Bob' } });
+      expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Bob' } });
     });
   });
 });

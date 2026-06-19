@@ -71,6 +71,18 @@ import {
       <div class="preview-header">
         <span>{{ label || 'Document Preview' }}</span>
         <div class="preview-controls">
+          <label
+            *ngIf="overrideMapping"
+            class="preview-autorefresh"
+            title="Automatically refresh the preview as you fill in the form"
+          >
+            <input
+              type="checkbox"
+              [checked]="autoRefreshEnabled"
+              (change)="onToggleAutoRefresh($event)"
+            />
+            Auto-refresh
+          </label>
           <button type="button" class="preview-refresh" [disabled]="loading" (click)="refresh()">
             <i class="mdi mdi-refresh mr-1"></i>
             {{ loading ? 'Generating...' : 'Refresh' }}
@@ -117,7 +129,22 @@ import {
       .preview-controls {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.75rem;
+      }
+      .preview-autorefresh {
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.8rem;
+        font-weight: normal;
+        color: #495057;
+        cursor: pointer;
+        margin: 0;
+        white-space: nowrap;
+      }
+      .preview-autorefresh input {
+        cursor: pointer;
+        margin: 0;
       }
       .preview-select {
         border: 1px solid #ced4da;
@@ -236,6 +263,33 @@ export class EpistolaDocumentPreviewComponent
    * ({@code epistola:taskId} value resolver), populated in every Valtimo task-open flow.
    */
   @Input() taskInstanceId?: string | null;
+  /**
+   * The computed input overrides (`{ doc, pv }`) the preview renders with, pushed
+   * by the Formio wrapper. Kept separate from the Formio `value`: Valtimo's custom
+   * component bridge only mirrors `value` to the DOM (never to Formio's data
+   * model), so Formio resets it to `emptyValue` on every redraw — which would
+   * cancel the preview. This dedicated input is never touched by Formio.
+   */
+  @Input() inputOverrides?: Record<string, any> | null;
+  /**
+   * Forces the Formio wrapper to recompute the input overrides from the live form
+   * data. Set by the wrapper for override-driven previews; lets the Refresh button
+   * work before the first change (e.g. on initial load with pre-filled fields).
+   */
+  @Input() requestOverrides?: () => void;
+  /**
+   * Current auto-refresh state, forwarded by the wrapper (seeded from the builder's
+   * `autoRefresh` option, default on). Seeds the header toggle's initial state.
+   */
+  @Input() autoRefresh?: boolean;
+  /**
+   * Tells the wrapper to enable/disable auto-refresh (recompute on change/blur).
+   * Set by the wrapper for override-driven previews; called by the header toggle.
+   */
+  @Input() setAutoRefresh?: (enabled: boolean) => void;
+
+  /** Runtime state of the header auto-refresh toggle. */
+  autoRefreshEnabled = true;
 
   loading = false;
   error: string | null = null;
@@ -272,6 +326,10 @@ export class EpistolaDocumentPreviewComponent
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    // Seed the runtime auto-refresh toggle from the wrapper-forwarded state.
+    if (changes['autoRefresh']) {
+      this.autoRefreshEnabled = this.autoRefresh !== false;
+    }
     if (!this.initialized) {
       this.initialized = true;
 
@@ -299,7 +357,7 @@ export class EpistolaDocumentPreviewComponent
     // wrapper sets taskInstanceId after attach, so it can land after the first render —
     // re-run the preview once it does, instead of leaving the "only available from
     // within a user task" message until a manual refresh.
-    if (changes['value'] || changes['taskInstanceId']) {
+    if (changes['inputOverrides'] || changes['taskInstanceId']) {
       this.triggerPreview();
     }
   }
@@ -310,7 +368,24 @@ export class EpistolaDocumentPreviewComponent
   }
 
   refresh(): void {
+    // For an override-driven preview whose value isn't ready yet (e.g. initial load
+    // before the overrides have been computed), recompute from the live form data;
+    // the resulting value change drives the preview. Otherwise re-fetch directly.
+    if (this.requestOverrides && !shouldLoadPreview(this.overrideMapping, this.inputOverrides)) {
+      this.requestOverrides();
+      return;
+    }
     this.triggerPreview();
+  }
+
+  /** Toggle auto-refresh for this session; flipping it on triggers an immediate refresh. */
+  onToggleAutoRefresh(event: Event): void {
+    const enabled = (event.target as HTMLInputElement).checked;
+    this.autoRefreshEnabled = enabled;
+    // The wrapper owns the change/blur listeners, so it must learn about the flip;
+    // turning it on recomputes immediately (handled wrapper-side).
+    this.setAutoRefresh?.(enabled);
+    this.cdr.markForCheck();
   }
 
   /**
@@ -320,7 +395,7 @@ export class EpistolaDocumentPreviewComponent
    * request that Epistola would reject with a 400 for missing required fields.
    */
   private triggerPreview(): void {
-    if (!shouldLoadPreview(this.overrideMapping, this.value)) {
+    if (!shouldLoadPreview(this.overrideMapping, this.inputOverrides)) {
       this.showWaitingForInput();
       return;
     }
@@ -367,7 +442,7 @@ export class EpistolaDocumentPreviewComponent
       .previewToBlob({
         taskId,
         sourceActivityId: this.sourceActivityId,
-        inputOverrides: this.value || null,
+        inputOverrides: this.inputOverrides || null,
         overrides: null,
       })
       .subscribe({
