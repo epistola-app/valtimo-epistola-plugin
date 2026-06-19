@@ -22,6 +22,9 @@ import { EpistolaDocumentPreviewComponent } from './epistola-document-preview.co
 import { computeInputOverrides } from './preview-utils';
 import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/prefilled-task-id';
 
+/** Default debounce for the auto-refresh, in milliseconds. */
+const DEFAULT_REFRESH_DEBOUNCE_MS = 1500;
+
 export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-document-preview',
   selector: 'epistola-document-preview-element',
@@ -47,6 +50,25 @@ export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
         key: 'overrideMapping',
         label: 'Input Overrides',
         weight: 20,
+      },
+      {
+        type: 'checkbox',
+        key: 'autoRefresh',
+        label: 'Auto-refresh preview as the form is filled in',
+        tooltip:
+          'When on, the preview refreshes automatically while the form is edited — debounced, and only when a field loses focus, not on every keystroke. Turn off to refresh only with the Refresh button.',
+        defaultValue: true,
+        weight: 30,
+      },
+      {
+        type: 'number',
+        key: 'refreshDebounceMs',
+        label: 'Auto-refresh debounce (ms)',
+        tooltip:
+          'How long to wait after the last change before refreshing. Higher values feel calmer; lower values feel more responsive.',
+        defaultValue: DEFAULT_REFRESH_DEBOUNCE_MS,
+        weight: 40,
+        conditional: { show: true, when: 'autoRefresh', eq: 'true' },
       },
     ],
   }),
@@ -76,7 +98,14 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
     private _debounceTimer: any = null;
     private _changeListenerAttached = false;
     private _changeHandler: (() => void) | null = null;
+    private _blurHandler: (() => void) | null = null;
+    private _blurTarget: HTMLElement | null = null;
     private _destroyed = false;
+    private _debounceMs = DEFAULT_REFRESH_DEBOUNCE_MS;
+    // Serialized form of the last value pushed via setValue, so we skip re-rendering
+    // the preview when a change recomputes to the same overrides (e.g. typing in a
+    // field that isn't part of the mapping). undefined = nothing pushed yet.
+    private _lastPushedJson: string | undefined = undefined;
 
     attach(element: HTMLElement) {
       // Formio detaches and re-attaches components on every redraw — not only at
@@ -114,14 +143,36 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
         }
       }
 
-      // Listen to form changes and compute input overrides from the mapping
+      // Compute input overrides from the mapping. Always paint once from the
+      // current/pre-filled data; only wire up the live listeners when auto-refresh
+      // is enabled (the default).
       if (this.root && this.component?.overrideMapping && !this._changeListenerAttached) {
         this._changeListenerAttached = true;
-        this._changeHandler = () => this._computeAndSetOverrides();
-        this.root.on('change', this._changeHandler);
+        this._debounceMs = this._resolveDebounceMs();
+
         // Compute the initial overrides immediately (no debounce) so a pre-filled
-        // form paints its preview without the 1.5s delay.
+        // form paints its preview without the debounce delay. This runs even when
+        // auto-refresh is off, so the preview still shows once on open.
         this._computeAndSetOverrides(true);
+
+        if (this.component.autoRefresh !== false) {
+          // Debounced recompute on any form change — collapses bursts of edits and,
+          // together with the dedup in _computeAndSetOverrides, only re-renders when
+          // the mapped data actually changes.
+          this._changeHandler = () => this._computeAndSetOverrides();
+          this.root.on('change', this._changeHandler);
+
+          // Flush immediately when a field loses focus. `focusout` bubbles (unlike
+          // `blur`), so one listener on the form root catches every input — and it
+          // fires on blur rather than on each keystroke, which is what keeps the
+          // refresh from feeling hectic.
+          const formEl: HTMLElement | undefined = this.root?.element;
+          if (formEl?.addEventListener) {
+            this._blurHandler = () => this._computeAndSetOverrides(true);
+            formEl.addEventListener('focusout', this._blurHandler);
+            this._blurTarget = formEl;
+          }
+        }
       }
 
       return result;
@@ -141,7 +192,13 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
         this.root.off('change', this._changeHandler);
         this._changeHandler = null;
       }
+      if (this._blurHandler && this._blurTarget?.removeEventListener) {
+        this._blurTarget.removeEventListener('focusout', this._blurHandler);
+        this._blurHandler = null;
+        this._blurTarget = null;
+      }
       this._changeListenerAttached = false;
+      this._lastPushedJson = undefined;
       return super.detach();
     }
 
@@ -170,10 +227,30 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
           }
           // Push null when there's nothing usable yet so the component reverts to
           // its "complete the form" placeholder instead of keeping a stale preview.
-          this.setValue(Object.keys(overrides).length > 0 ? overrides : null);
+          const next = Object.keys(overrides).length > 0 ? overrides : null;
+          // Dedup: only push (and re-render) when the computed overrides actually
+          // changed since the last push. A change/blur that doesn't affect the
+          // mapped data recomputes to the same value and is dropped here.
+          const nextJson = JSON.stringify(next);
+          if (nextJson === this._lastPushedJson) {
+            return;
+          }
+          this._lastPushedJson = nextJson;
+          this.setValue(next);
         },
-        immediate ? 0 : 1500,
+        immediate ? 0 : this._debounceMs,
       );
+    }
+
+    /**
+     * Resolve the configured auto-refresh debounce (ms), falling back to the
+     * default for missing or non-numeric/negative values.
+     */
+    private _resolveDebounceMs(): number {
+      const configured = Number(this.component?.refreshDebounceMs);
+      return Number.isFinite(configured) && configured >= 0
+        ? configured
+        : DEFAULT_REFRESH_DEBOUNCE_MS;
     }
   }
 
