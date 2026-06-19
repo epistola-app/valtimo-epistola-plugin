@@ -26,6 +26,7 @@ import {
   EnvironmentInfo,
   ExpressionFunctionInfo,
   JsonataValidationResult,
+  ProcessLinkMapping,
   TemplateDetails,
   TemplateInfo,
   EvaluationResult,
@@ -160,6 +161,20 @@ export class EpistolaPluginService {
   getProcessVariables(processDefinitionKey: string): Observable<string[]> {
     return this.http.get<string[]>(`${this.apiEndpoint}/process-variables`, {
       params: { processDefinitionKey },
+    });
+  }
+
+  /**
+   * Get the raw `dataMapping` JSONata of a generate-document process link, identified by its
+   * process definition key and activity id. The override builder extracts the referenced
+   * `$doc`/`$pv` paths from it to guide the author. Returns an empty mapping when unresolved.
+   */
+  getProcessLinkMapping(
+    processDefinitionKey: string,
+    activityId: string,
+  ): Observable<ProcessLinkMapping> {
+    return this.http.get<ProcessLinkMapping>(`${this.apiEndpoint}/process-link-mapping`, {
+      params: { processDefinitionKey, activityId },
     });
   }
 

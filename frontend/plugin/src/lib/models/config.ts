@@ -108,6 +108,16 @@ export interface VariableSuggestions {
   pv: string[];
 }
 
+/**
+ * Raw `dataMapping` JSONata of a generate-document process link, keyed server-side by
+ * `(processDefinitionKey, activityId)`. Empty when the link or its mapping can't be resolved.
+ * The override builder statically extracts the referenced `$doc`/`$pv` paths from it to show
+ * the author which inputs this template's mapping consumes.
+ */
+export interface ProcessLinkMapping {
+  dataMapping: string;
+}
+
 export interface EvaluationResult {
   success: boolean;
   result: Record<string, any> | null;
