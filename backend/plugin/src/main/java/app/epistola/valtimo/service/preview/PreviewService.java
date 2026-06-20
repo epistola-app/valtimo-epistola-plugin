@@ -74,7 +74,7 @@ public class PreviewService {
 
         String catalogId = extractCatalogId(processLink);
         String templateId = extractTemplateId(processLink);
-        String dataMapping = extractDataMapping(processLink);
+        String dataMapping = ProcessLinkMappingService.extractDataMapping(processLink);
 
         // Build resolvers with input-level overrides layered on top.
         // The OverlayMap checks overrides first; non-overridden paths fall through
@@ -201,21 +201,6 @@ public class PreviewService {
                     "No templateId in process link for activity '" + link.getActivityId() + "'");
         }
         return actionProps.get("templateId").asText();
-    }
-
-    private String extractDataMapping(PluginProcessLink link) {
-        ObjectNode actionProps = link.getActionProperties();
-        if (!actionProps.has("dataMapping")) {
-            return "";
-        }
-        var node = actionProps.get("dataMapping");
-        if (node.isTextual()) {
-            return node.asText("");
-        }
-        // Legacy: dataMapping stored as JSON object — not supported with JSONata
-        log.warn("Process link {} has dataMapping in legacy object format. " +
-                "Please redeploy process links to use JSONata string format.", link.getId());
-        return "";
     }
 
     @SuppressWarnings("unchecked")

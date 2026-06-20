@@ -18,9 +18,11 @@
 package app.epistola.valtimo.web.rest;
 
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
+import app.epistola.valtimo.service.preview.ProcessLinkMappingService;
 import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
 import app.epistola.valtimo.web.rest.dto.JsonataValidationResult;
+import app.epistola.valtimo.web.rest.dto.ProcessLinkMappingResponse;
 import app.epistola.valtimo.web.rest.dto.ValidateJsonataRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,17 +33,44 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class EpistolaToolingResourceValidateJsonataTest {
 
     private EpistolaToolingResource resource;
+    private ProcessLinkMappingService processLinkMappingService;
 
     @BeforeEach
     void setUp() {
+        processLinkMappingService = mock(ProcessLinkMappingService.class);
         resource = new EpistolaToolingResource(
                 mock(ProcessVariableDiscoveryService.class),
                 mock(VariableSuggestionService.class),
-                new ExpressionFunctionRegistry(List.of()));
+                new ExpressionFunctionRegistry(List.of()),
+                processLinkMappingService);
+    }
+
+    @Test
+    void processLinkMappingReturnsResolvedDataMapping() {
+        when(processLinkMappingService.getDataMapping("my-process", "Activity_1"))
+                .thenReturn("{ \"name\": $doc.customer.name }");
+
+        ResponseEntity<ProcessLinkMappingResponse> response =
+                resource.getProcessLinkMapping("my-process", "Activity_1");
+
+        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().dataMapping()).isEqualTo("{ \"name\": $doc.customer.name }");
+    }
+
+    @Test
+    void processLinkMappingReturnsEmptyWhenUnresolved() {
+        when(processLinkMappingService.getDataMapping("my-process", "Activity_1")).thenReturn("");
+
+        var body = resource.getProcessLinkMapping("my-process", "Activity_1").getBody();
+
+        assertThat(body).isNotNull();
+        assertThat(body.dataMapping()).isEmpty();
     }
 
     @Test

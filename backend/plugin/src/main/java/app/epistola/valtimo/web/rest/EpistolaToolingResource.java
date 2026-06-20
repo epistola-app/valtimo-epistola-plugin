@@ -19,9 +19,11 @@ package app.epistola.valtimo.web.rest;
 
 import app.epistola.valtimo.expression.ExpressionFunctionInfo;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
+import app.epistola.valtimo.service.preview.ProcessLinkMappingService;
 import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
 import app.epistola.valtimo.web.rest.dto.JsonataValidationResult;
+import app.epistola.valtimo.web.rest.dto.ProcessLinkMappingResponse;
 import app.epistola.valtimo.web.rest.dto.ValidateJsonataRequest;
 import com.dashjoin.jsonata.Jsonata;
 import com.ritense.valtimo.contract.annotation.SkipComponentScan;
@@ -53,6 +55,7 @@ public class EpistolaToolingResource {
     private final ProcessVariableDiscoveryService processVariableDiscoveryService;
     private final VariableSuggestionService variableSuggestionService;
     private final ExpressionFunctionRegistry expressionFunctionRegistry;
+    private final ProcessLinkMappingService processLinkMappingService;
 
     /**
      * Discover process variable names for a given process definition.
@@ -86,6 +89,26 @@ public class EpistolaToolingResource {
     ) {
         log.debug("Fetching variable suggestions for case={}, process={}", caseDefinitionKey, processDefinitionKey);
         return ResponseEntity.ok(variableSuggestionService.getSuggestions(caseDefinitionKey, processDefinitionKey));
+    }
+
+    /**
+     * Return the raw {@code dataMapping} JSONata of a generate-document process link, keyed by
+     * its {@code (processDefinitionKey, activityId)} pair. The override builder extracts the
+     * referenced {@code $doc}/{@code $pv} paths from it to guide the author. Returns an empty
+     * mapping when the link or its mapping cannot be resolved.
+     *
+     * @param processDefinitionKey the process definition key
+     * @param activityId           the BPMN activity id of the generate-document task
+     * @return the link's raw {@code dataMapping} expression (possibly empty)
+     */
+    @GetMapping("/process-link-mapping")
+    public ResponseEntity<ProcessLinkMappingResponse> getProcessLinkMapping(
+            @RequestParam("processDefinitionKey") String processDefinitionKey,
+            @RequestParam("activityId") String activityId
+    ) {
+        log.debug("Fetching dataMapping for process link {}/{}", processDefinitionKey, activityId);
+        String dataMapping = processLinkMappingService.getDataMapping(processDefinitionKey, activityId);
+        return ResponseEntity.ok(new ProcessLinkMappingResponse(dataMapping));
     }
 
     /**

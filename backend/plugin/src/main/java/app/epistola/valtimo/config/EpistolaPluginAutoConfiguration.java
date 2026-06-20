@@ -284,14 +284,25 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(app.epistola.valtimo.service.preview.ProcessLinkMappingService.class)
+    public app.epistola.valtimo.service.preview.ProcessLinkMappingService processLinkMappingService(
+            RepositoryService repositoryService,
+            ProcessLinkService processLinkService
+    ) {
+        return new app.epistola.valtimo.service.preview.ProcessLinkMappingService(
+                repositoryService, processLinkService);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(EpistolaToolingResource.class)
     public EpistolaToolingResource epistolaToolingResource(
             ProcessVariableDiscoveryService processVariableDiscoveryService,
             VariableSuggestionService variableSuggestionService,
-            ExpressionFunctionRegistry expressionFunctionRegistry
+            ExpressionFunctionRegistry expressionFunctionRegistry,
+            app.epistola.valtimo.service.preview.ProcessLinkMappingService processLinkMappingService
     ) {
         return new EpistolaToolingResource(processVariableDiscoveryService,
-                variableSuggestionService, expressionFunctionRegistry);
+                variableSuggestionService, expressionFunctionRegistry, processLinkMappingService);
     }
 
     @Bean

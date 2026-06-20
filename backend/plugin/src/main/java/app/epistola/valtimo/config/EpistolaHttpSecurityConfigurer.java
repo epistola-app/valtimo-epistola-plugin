@@ -55,6 +55,7 @@ public class EpistolaHttpSecurityConfigurer implements HttpSecurityConfigurer {
                     .requestMatchers("/api/v1/plugin/epistola/expression-functions").hasAuthority("ROLE_ADMIN")
                     .requestMatchers("/api/v1/plugin/epistola/validate-jsonata").hasAuthority("ROLE_ADMIN")
                     .requestMatchers("/api/v1/plugin/epistola/evaluate-mapping").hasAuthority("ROLE_ADMIN")
+                    .requestMatchers("/api/v1/plugin/epistola/process-link-mapping").hasAuthority("ROLE_ADMIN")
                     // All other Epistola endpoints (admin, preview, download, retry-form)
                     // authenticate at the HTTP layer; the controllers enforce PBAC.
                     .requestMatchers("/api/v1/plugin/epistola/**").authenticated()

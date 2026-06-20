@@ -28,7 +28,7 @@ export const EPISTOLA_OVERRIDE_BUILDER_OPTIONS: FormioCustomComponentInfo = {
   group: 'basic',
   icon: 'list',
   emptyValue: null,
-  fieldOptions: ['label', 'availableFields'],
+  fieldOptions: ['label', 'availableFields', 'processDefinitionKey', 'sourceActivityId'],
 };
 
 /**
@@ -74,12 +74,51 @@ export function registerEpistolaOverrideBuilderComponent(injector: Injector): vo
   const BaseComponent = Formio.Components.components[EPISTOLA_OVERRIDE_BUILDER_OPTIONS.type];
   if (!BaseComponent) return;
 
-  // Extend the base class to pass available form fields to the Angular component
+  // Extend the base class to pass available form fields and the selected process link
+  // to the Angular component.
   class OverrideBuilderWithFields extends BaseComponent {
+    private _selectionChangeHandler: (() => void) | null = null;
+
     attach(element: HTMLElement) {
-      // Set form fields on the component BEFORE super.attach() reads fieldOptions
+      // Set inputs on the component BEFORE super.attach() reads fieldOptions.
       this.component.availableFields = this._extractFormFields();
-      return super.attach(element);
+      this._applyProcessLinkSelection();
+
+      const result = super.attach(element);
+
+      // The override builder lives in the preview component's editForm alongside the
+      // process-link selector (key `processLinkSelection`). When the author changes the
+      // selected link, push the new identity straight to the Angular element so it can
+      // refetch the link's data mapping — Formio doesn't always redraw this widget on a
+      // sibling change. Mirrors the listener lifecycle in epistola-document-preview.formio.ts.
+      if (this.root?.on && !this._selectionChangeHandler) {
+        this._selectionChangeHandler = () => {
+          const selection = this.root?.data?.processLinkSelection;
+          if (this._customAngularElement) {
+            this._customAngularElement['processDefinitionKey'] =
+              selection?.processDefinitionKey || '';
+            this._customAngularElement['sourceActivityId'] = selection?.sourceActivityId || '';
+          }
+        };
+        this.root.on('change', this._selectionChangeHandler);
+      }
+
+      return result;
+    }
+
+    detach() {
+      if (this._selectionChangeHandler && this.root?.off) {
+        this.root.off('change', this._selectionChangeHandler);
+        this._selectionChangeHandler = null;
+      }
+      return super.detach();
+    }
+
+    private _applyProcessLinkSelection(): void {
+      // The editForm dialog stores the selected link under `processLinkSelection`.
+      const selection = this.root?.data?.processLinkSelection;
+      this.component.processDefinitionKey = selection?.processDefinitionKey || '';
+      this.component.sourceActivityId = selection?.sourceActivityId || '';
     }
 
     private _extractFormFields(): { key: string; label: string }[] {
