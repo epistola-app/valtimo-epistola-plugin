@@ -101,8 +101,10 @@ export type OverrideMapping = Record<string, Record<string, string>>;
       </details>
 
       <!-- Variables the selected template's mapping consumes (read-only guidance) -->
-      <div *ngIf="hasReferencedPaths" class="used-by-template">
-        <span class="used-by-template__label">Used by this template</span>
+      <details *ngIf="hasReferencedPaths" class="used-by-template">
+        <summary class="used-by-template__label">
+          Used by this template ({{ referencedPaths.length }})
+        </summary>
         <p class="used-by-template__hint">
           This template's data mapping reads these inputs — the paths worth overriding for the
           preview.
@@ -112,7 +114,7 @@ export type OverrideMapping = Record<string, Record<string, string>>;
             <code>{{ formatReferencedPath(ref) }}</code>
           </li>
         </ul>
-      </div>
+      </details>
 
       <!-- Per-scope autocomplete options for the Input Path column -->
       <datalist id="epistola-override-paths-doc">
@@ -254,6 +256,11 @@ export type OverrideMapping = Record<string, Record<string, string>>;
         font-weight: 600;
         font-size: 0.78rem;
         color: #495057;
+        cursor: pointer;
+        user-select: none;
+      }
+      .used-by-template[open] .used-by-template__label {
+        margin-bottom: 0.1rem;
       }
       .used-by-template__hint {
         margin: 0.2rem 0 0.4rem;
