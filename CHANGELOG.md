@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-06-22
+
 ### Added
 
 - **The document-preview "Input Overrides" builder now shows which variables the selected template's mapping actually consumes.** Picking a process link in the preview component's editForm surfaces a read-only "Used by this template" list of every `$doc`/`$pv`/`$case` path the link's `generate-document` data mapping references, and feeds those paths into the Input-Path column autocomplete (a `<datalist>` per scope) and the advanced JSONata editor's completion — so the author can see exactly what is worth overriding instead of guessing against a free-form field. The paths are extracted **statically on the frontend** by walking the mapping's JSONata AST (`extractReferencedPaths`, generalizing the existing `jsonata-converter` variable-path technique), reusing the bundled `jsonata` parser — so it's best-effort guidance, never validation (dynamically built paths simply don't appear, and a parse failure shows nothing). A thin configurator-tier endpoint `GET /api/v1/plugin/epistola/process-link-mapping` (keyed by `processDefinitionKey` + `activityId`, `ROLE_ADMIN` like the other configurator endpoints) returns just the raw `dataMapping` string; the backend does no JSONata parsing. The list refreshes when the selected link changes and is empty (hidden) when no link is selected or none can be resolved. Closes #57.
