@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Demo Keycloak realm now exercises Epistola's renamed, fine-grained authorization roles via both supported claim shapes (chart `valtimo-demo` 0.3.2 → 0.4.0).** Epistola Suite renamed its tenant roles to `content-viewer` / `content-author` / `document-generator` / `content-publisher` / `tenant-administrator` (+ platform `tenant-manager` / `platform-observer`); the demo realm's old `ep_demo_reader`/`ep_reader`/… groups were vestigial (flat `ep_`-prefixed names with `full.path: false` matched neither the app's hierarchical `/epistola/tenants/{tenant}/{role}` parser nor its flat `ept_/epg_/eps_` parser, so demo roles only ever came from the email-domain fallback resolver). Replaced them with the real hierarchical group tree (`/epistola/{tenants/demo,global,platform}/…`), flipped the `epistola-suite` client's group-membership mapper to `full.path: true`, added matching flat realm roles (`ept_demo_*`, `epg_*`, `eps_*`) plus a realm-role mapper emitting the top-level `roles` claim (so **both** the group and flat-role shapes resolve, and the app unions them), and seeded demo users that prove each path: `viewer@demo` (group → viewer), `author@demo` (groups), `publisher@demo` (**flat roles** → viewer+publisher), `admin@demo` (group → tenant-administrator + platform tenant-manager). The valtimo clients/`valtimo-users` are untouched. **Applying this requires wiping the Keycloak DB** (realm import is `IGNORE_EXISTING`), which clears existing demo accounts.
+
 ## [0.11.0] - 2026-06-22
 
 ### Added
