@@ -185,6 +185,10 @@ data:
           "lastName": "Demo",
           "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
           "groups": [
+            "/epistola/tenants/demo/content-viewer",
+            "/epistola/tenants/demo/content-author",
+            "/epistola/tenants/demo/document-generator",
+            "/epistola/tenants/demo/content-publisher",
             "/epistola/tenants/demo/tenant-administrator",
             "/epistola/platform/tenant-manager"
           ]
