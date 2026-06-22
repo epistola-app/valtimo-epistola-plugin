@@ -54,7 +54,22 @@ data:
         "realm": [
           { "name": "ROLE_USER", "description": "User role" },
           { "name": "ROLE_ADMIN", "description": "Admin role" },
-          { "name": "ROLE_DEVELOPER", "description": "Developer role" }
+          { "name": "ROLE_DEVELOPER", "description": "Developer role" },
+
+          { "name": "ept_demo_content-viewer", "description": "Epistola flat-role form: demo tenant content-viewer" },
+          { "name": "ept_demo_content-author", "description": "Epistola flat-role form: demo tenant content-author" },
+          { "name": "ept_demo_document-generator", "description": "Epistola flat-role form: demo tenant document-generator" },
+          { "name": "ept_demo_content-publisher", "description": "Epistola flat-role form: demo tenant content-publisher" },
+          { "name": "ept_demo_tenant-administrator", "description": "Epistola flat-role form: demo tenant tenant-administrator" },
+
+          { "name": "epg_content-viewer", "description": "Epistola flat-role form: global content-viewer" },
+          { "name": "epg_content-author", "description": "Epistola flat-role form: global content-author" },
+          { "name": "epg_document-generator", "description": "Epistola flat-role form: global document-generator" },
+          { "name": "epg_content-publisher", "description": "Epistola flat-role form: global content-publisher" },
+          { "name": "epg_tenant-administrator", "description": "Epistola flat-role form: global tenant-administrator" },
+
+          { "name": "eps_tenant-manager", "description": "Epistola flat-role form: platform tenant-manager" },
+          { "name": "eps_platform-observer", "description": "Epistola flat-role form: platform platform-observer" }
         ]
       },
       "groups": [
@@ -63,15 +78,43 @@ data:
           "path": "/valtimo-users",
           "realmRoles": ["ROLE_USER", "ROLE_ADMIN"]
         },
-        { "name": "ep_demo_reader" },
-        { "name": "ep_demo_editor" },
-        { "name": "ep_demo_generator" },
-        { "name": "ep_demo_manager" },
-        { "name": "ep_tenant-manager" },
-        { "name": "ep_reader" },
-        { "name": "ep_editor" },
-        { "name": "ep_generator" },
-        { "name": "ep_manager" }
+        {
+          "name": "epistola",
+          "subGroups": [
+            {
+              "name": "tenants",
+              "subGroups": [
+                {
+                  "name": "demo",
+                  "subGroups": [
+                    { "name": "content-viewer" },
+                    { "name": "content-author" },
+                    { "name": "document-generator" },
+                    { "name": "content-publisher" },
+                    { "name": "tenant-administrator" }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "global",
+              "subGroups": [
+                { "name": "content-viewer" },
+                { "name": "content-author" },
+                { "name": "document-generator" },
+                { "name": "content-publisher" },
+                { "name": "tenant-administrator" }
+              ]
+            },
+            {
+              "name": "platform",
+              "subGroups": [
+                { "name": "tenant-manager" },
+                { "name": "platform-observer" }
+              ]
+            }
+          ]
+        }
       ],
       "users": [
         {
@@ -99,6 +142,52 @@ data:
               "query-users"
             ]
           }
+        },
+        {
+          "username": "viewer@demo",
+          "email": "viewer@demo",
+          "emailVerified": true,
+          "enabled": true,
+          "firstName": "Viewer",
+          "lastName": "Demo",
+          "credentials": [{ "type": "password", "value": "viewer", "temporary": false }],
+          "groups": ["/epistola/tenants/demo/content-viewer"]
+        },
+        {
+          "username": "author@demo",
+          "email": "author@demo",
+          "emailVerified": true,
+          "enabled": true,
+          "firstName": "Author",
+          "lastName": "Demo",
+          "credentials": [{ "type": "password", "value": "author", "temporary": false }],
+          "groups": [
+            "/epistola/tenants/demo/content-viewer",
+            "/epistola/tenants/demo/content-author"
+          ]
+        },
+        {
+          "username": "publisher@demo",
+          "email": "publisher@demo",
+          "emailVerified": true,
+          "enabled": true,
+          "firstName": "Publisher",
+          "lastName": "Demo",
+          "credentials": [{ "type": "password", "value": "publisher", "temporary": false }],
+          "realmRoles": ["ept_demo_content-viewer", "ept_demo_content-publisher"]
+        },
+        {
+          "username": "admin@demo",
+          "email": "admin@demo",
+          "emailVerified": true,
+          "enabled": true,
+          "firstName": "Admin",
+          "lastName": "Demo",
+          "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
+          "groups": [
+            "/epistola/tenants/demo/tenant-administrator",
+            "/epistola/platform/tenant-manager"
+          ]
         }
       ],
       "clients": [
@@ -169,10 +258,25 @@ data:
               "protocolMapper": "oidc-group-membership-mapper",
               "consentRequired": false,
               "config": {
-                "full.path": "false",
+                "full.path": "true",
                 "id.token.claim": "true",
                 "access.token.claim": "true",
                 "claim.name": "groups",
+                "userinfo.token.claim": "true"
+              }
+            },
+            {
+              "name": "epistola-flat-roles-mapper",
+              "protocol": "openid-connect",
+              "protocolMapper": "oidc-usermodel-realm-role-mapper",
+              "consentRequired": false,
+              "config": {
+                "multivalued": "true",
+                "id.token.claim": "true",
+                "access.token.claim": "true",
+                "claim.name": "roles",
+                "jsonType.label": "String",
+                "usermodel.realmRoleMapping.rolePrefix": "",
                 "userinfo.token.claim": "true"
               }
             }
