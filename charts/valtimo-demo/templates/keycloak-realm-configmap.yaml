@@ -185,6 +185,7 @@ data:
           "lastName": "Demo",
           "credentials": [{ "type": "password", "value": "admin", "temporary": false }],
           "groups": [
+            "/valtimo-users",
             "/epistola/tenants/demo/content-viewer",
             "/epistola/tenants/demo/content-author",
             "/epistola/tenants/demo/document-generator",
