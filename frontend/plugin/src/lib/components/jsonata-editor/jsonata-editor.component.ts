@@ -40,8 +40,9 @@ const jsonata = (_jsonata as any).default || _jsonata;
   standalone: true,
   imports: [CommonModule, PluginTranslatePipeModule, EditorModule],
   template: `
-    <div class="jsonata-editor">
+    <div class="jsonata-editor" data-testid="epistola-jsonata-editor">
       <valtimo-editor
+        data-testid="epistola-jsonata-editor-input"
         [model]="editorModel"
         [editorOptions]="editorOptions"
         [disabled]="disabled"
@@ -49,10 +50,19 @@ const jsonata = (_jsonata as any).default || _jsonata;
         [formatOnLoad]="false"
         (valueChangeEvent)="onEditorValueChange($event)"
       ></valtimo-editor>
-      <div class="jsonata-editor__footer">
-        <span *ngIf="error" class="jsonata-editor__error">{{ error }}</span>
-        <span *ngIf="!error && expression" class="jsonata-editor__valid">&#x2713;</span>
-        <span class="jsonata-editor__variables">{{ variablesHint }}</span>
+      <div class="jsonata-editor__footer" data-testid="epistola-jsonata-footer">
+        <span *ngIf="error" class="jsonata-editor__error" data-testid="epistola-jsonata-error">{{
+          error
+        }}</span>
+        <span
+          *ngIf="!error && expression"
+          class="jsonata-editor__valid"
+          data-testid="epistola-jsonata-valid"
+          >&#x2713;</span
+        >
+        <span class="jsonata-editor__variables" data-testid="epistola-jsonata-variables-hint">{{
+          variablesHint
+        }}</span>
       </div>
     </div>
   `,

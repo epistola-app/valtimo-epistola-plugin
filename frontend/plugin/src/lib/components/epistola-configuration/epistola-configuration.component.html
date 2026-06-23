@@ -1,4 +1,5 @@
 <v-form
+  data-testid="epistola-config-form"
   (valueChange)="formValueChange($event)"
   *ngIf="{
     disabled: safeDisabled$ | async,
@@ -7,6 +8,7 @@
 >
   <v-input
     name="configurationTitle"
+    data-testid="epistola-config-title"
     [title]="'configurationTitle' | pluginTranslate: pluginId | async"
     [margin]="true"
     [defaultValue]="obs.prefill?.configurationTitle"
@@ -17,6 +19,7 @@
 
   <v-input
     name="baseUrl"
+    data-testid="epistola-config-base-url"
     [title]="'baseUrl' | pluginTranslate: pluginId | async"
     [tooltip]="'baseUrlTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -28,6 +31,7 @@
 
   <v-input
     name="apiKey"
+    data-testid="epistola-config-api-key"
     [title]="'apiKey' | pluginTranslate: pluginId | async"
     [tooltip]="'apiKeyTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -40,6 +44,7 @@
 
   <v-input
     name="tenantId"
+    data-testid="epistola-config-tenant-id"
     [title]="'tenantId' | pluginTranslate: pluginId | async"
     [tooltip]="'tenantIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -51,6 +56,7 @@
 
   <v-input
     name="defaultEnvironmentId"
+    data-testid="epistola-config-default-environment-id"
     [title]="'defaultEnvironmentId' | pluginTranslate: pluginId | async"
     [tooltip]="'defaultEnvironmentIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -62,6 +68,7 @@
 
   <v-input
     name="templateSyncEnabled"
+    data-testid="epistola-config-template-sync-enabled"
     type="checkbox"
     [title]="'templateSyncEnabled' | pluginTranslate: pluginId | async"
     [tooltip]="'templateSyncEnabledTooltip' | pluginTranslate: pluginId | async"

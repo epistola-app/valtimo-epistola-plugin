@@ -26,21 +26,41 @@ import { BuilderField } from '../../../utils/jsonata-converter';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="builder-field">
+    <div class="builder-field" [attr.data-testid]="'epistola-mapping-field-' + field.name">
       <div
         class="builder-field__name"
         [class.builder-field__name--clickable]="field.children"
         (click)="field.children && collapseToggle.emit(path)"
+        [attr.data-testid]="'epistola-mapping-field-name-' + field.name"
       >
-        <span *ngIf="field.children" class="builder-field__chevron">{{
-          collapsed ? '&#x25B6;' : '&#x25BC;'
+        <span
+          *ngIf="field.children"
+          class="builder-field__chevron"
+          [attr.data-testid]="'epistola-mapping-field-chevron-' + field.name"
+          >{{ collapsed ? '&#x25B6;' : '&#x25BC;' }}</span
+        >
+        <span class="builder-field__label" [attr.data-testid]="'epistola-mapping-field-label-' + field.name">{{
+          field.name
         }}</span>
-        <span class="builder-field__label">{{ field.name }}</span>
-        <span *ngIf="required" class="builder-field__required">*</span>
-        <span *ngIf="field.children" class="builder-field__type">(object)</span>
+        <span
+          *ngIf="required"
+          class="builder-field__required"
+          [attr.data-testid]="'epistola-mapping-field-required-' + field.name"
+          >*</span
+        >
+        <span
+          *ngIf="field.children"
+          class="builder-field__type"
+          [attr.data-testid]="'epistola-mapping-field-type-' + field.name"
+          >(object)</span
+        >
       </div>
 
-      <div class="builder-field__value" *ngIf="!field.children">
+      <div
+        class="builder-field__value"
+        *ngIf="!field.children"
+        [attr.data-testid]="'epistola-mapping-field-value-' + field.name"
+      >
         <input
           *ngIf="field.mode === 'ref'"
           type="text"
@@ -50,8 +70,13 @@ import { BuilderField } from '../../../utils/jsonata-converter';
           [disabled]="disabled"
           placeholder="$doc.path.to.field"
           [attr.list]="'suggestions-' + path.join('-')"
+          [attr.data-testid]="'epistola-mapping-field-input-ref-' + field.name"
         />
-        <datalist *ngIf="field.mode === 'ref'" [id]="'suggestions-' + path.join('-')">
+        <datalist
+          *ngIf="field.mode === 'ref'"
+          [id]="'suggestions-' + path.join('-')"
+          [attr.data-testid]="'epistola-mapping-field-suggestions-' + field.name"
+        >
           <option *ngFor="let s of suggestions" [value]="s"></option>
         </datalist>
         <input
@@ -62,18 +87,24 @@ import { BuilderField } from '../../../utils/jsonata-converter';
           (ngModelChange)="valueChange.emit({ path: path, value: $event })"
           [disabled]="disabled"
           placeholder="JSONata expression"
+          [attr.data-testid]="'epistola-mapping-field-input-raw-' + field.name"
         />
         <button
           class="builder-field__mode-toggle"
           (click)="modeToggle.emit(path)"
           [disabled]="disabled"
           [title]="field.mode === 'ref' ? 'Switch to raw JSONata' : 'Switch to reference'"
+          [attr.data-testid]="'epistola-mapping-field-mode-toggle-' + field.name"
         >
           {{ field.mode === 'ref' ? 'fx' : '·' }}
         </button>
       </div>
 
-      <div *ngIf="field.children && !collapsed" class="builder-field__children">
+      <div
+        *ngIf="field.children && !collapsed"
+        class="builder-field__children"
+        [attr.data-testid]="'epistola-mapping-field-children-' + field.name"
+      >
         <epistola-builder-field
           *ngFor="let child of field.children; let j = index"
           [field]="child"

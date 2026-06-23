@@ -56,12 +56,15 @@ export type OverrideMapping = Record<string, Record<string, string>>;
   selector: 'epistola-override-builder-component',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="override-builder">
+    <div class="override-builder" data-testid="epistola-override-root">
       <div class="builder-header">
-        <span class="builder-label">{{ label || 'Input Overrides' }}</span>
+        <span class="builder-label" data-testid="epistola-override-label">{{
+          label || 'Input Overrides'
+        }}</span>
         <button
           type="button"
           class="mode-toggle"
+          data-testid="epistola-override-mode-toggle"
           [disabled]="simpleUnavailable && !advancedMode"
           (click)="toggleMode()"
         >
@@ -74,8 +77,8 @@ export type OverrideMapping = Record<string, Record<string, string>>;
         Make the preview reflect what the user is typing — <em>before</em> they submit — by feeding
         live form values into the document inputs.
       </p>
-      <details class="builder-help">
-        <summary>When should I map a field?</summary>
+      <details class="builder-help" data-testid="epistola-override-help">
+        <summary data-testid="epistola-override-help-summary">When should I map a field?</summary>
         <ul>
           <li>
             <strong>Map</strong> a field when its value ends up in the generated document — i.e. the
@@ -101,17 +104,26 @@ export type OverrideMapping = Record<string, Record<string, string>>;
       </details>
 
       <!-- Variables the selected template's mapping consumes (read-only guidance) -->
-      <details *ngIf="hasReferencedPaths" class="used-by-template">
-        <summary class="used-by-template__label">
+      <details
+        *ngIf="hasReferencedPaths"
+        class="used-by-template"
+        data-testid="epistola-override-used-by-template"
+      >
+        <summary
+          class="used-by-template__label"
+          data-testid="epistola-override-used-by-template-summary"
+        >
           Used by this template ({{ referencedPaths.length }})
         </summary>
         <p class="used-by-template__hint">
           This template's data mapping reads these inputs — the paths worth overriding for the
           preview.
         </p>
-        <ul class="used-by-template__list">
-          <li *ngFor="let ref of referencedPaths">
-            <code>{{ formatReferencedPath(ref) }}</code>
+        <ul class="used-by-template__list" data-testid="epistola-override-used-by-template-list">
+          <li *ngFor="let ref of referencedPaths; let i = index">
+            <code [attr.data-testid]="'epistola-override-used-by-template-item-' + i">{{
+              formatReferencedPath(ref)
+            }}</code>
           </li>
         </ul>
       </details>
@@ -125,21 +137,35 @@ export type OverrideMapping = Record<string, Record<string, string>>;
       </datalist>
 
       <!-- Simple mode: table -->
-      <div *ngIf="!advancedMode" class="builder-table">
-        <div *ngIf="rows.length > 0" class="table-header">
+      <div *ngIf="!advancedMode" class="builder-table" data-testid="epistola-override-table">
+        <div
+          *ngIf="rows.length > 0"
+          class="table-header"
+          data-testid="epistola-override-table-header"
+        >
           <span class="col-scope">Scope</span>
           <span class="col-path">Input Path</span>
           <span class="col-field">Form Field</span>
           <span class="col-action"></span>
         </div>
-        <div *ngFor="let row of rows; let i = index" class="table-row">
-          <select class="col-scope" [(ngModel)]="row.scope" (ngModelChange)="emitChange()">
+        <div
+          *ngFor="let row of rows; let i = index"
+          class="table-row"
+          [attr.data-testid]="'epistola-override-row-' + i"
+        >
+          <select
+            class="col-scope"
+            [attr.data-testid]="'epistola-override-row-scope-' + i"
+            [(ngModel)]="row.scope"
+            (ngModelChange)="emitChange()"
+          >
             <option value="doc">doc</option>
             <option value="pv">pv</option>
           </select>
           <input
             class="col-path"
             type="text"
+            [attr.data-testid]="'epistola-override-row-path-' + i"
             [(ngModel)]="row.inputPath"
             (ngModelChange)="emitChange()"
             [attr.list]="'epistola-override-paths-' + row.scope"
@@ -149,6 +175,7 @@ export type OverrideMapping = Record<string, Record<string, string>>;
           <select
             *ngIf="availableFields.length > 0"
             class="col-field"
+            [attr.data-testid]="'epistola-override-row-field-' + i"
             [(ngModel)]="row.formFieldKey"
             (ngModelChange)="emitChange()"
           >
@@ -161,25 +188,41 @@ export type OverrideMapping = Record<string, Record<string, string>>;
             *ngIf="availableFields.length === 0"
             class="col-field"
             type="text"
+            [attr.data-testid]="'epistola-override-row-field-' + i"
             [(ngModel)]="row.formFieldKey"
             (ngModelChange)="emitChange()"
             placeholder="form field key"
           />
-          <button type="button" class="col-action remove-btn" (click)="removeRow(i)">
+          <button
+            type="button"
+            class="col-action remove-btn"
+            [attr.data-testid]="'epistola-override-row-remove-' + i"
+            (click)="removeRow(i)"
+          >
             <i class="mdi mdi-close"></i>
           </button>
         </div>
-        <button type="button" class="add-btn" (click)="addRow()">
+        <button
+          type="button"
+          class="add-btn"
+          data-testid="epistola-override-add"
+          (click)="addRow()"
+        >
           <i class="mdi mdi-plus mr-1"></i> Add override
         </button>
       </div>
 
       <!-- Advanced mode: JSONata editor over $form -->
-      <div *ngIf="advancedMode" class="builder-advanced">
-        <div *ngIf="simpleUnavailable" class="advanced-note">
+      <div *ngIf="advancedMode" class="builder-advanced" data-testid="epistola-override-advanced">
+        <div
+          *ngIf="simpleUnavailable"
+          class="advanced-note"
+          data-testid="epistola-override-advanced-note"
+        >
           This expression is too rich for the simple table — edit it here.
         </div>
         <epistola-jsonata-editor
+          data-testid="epistola-override-jsonata-editor"
           [expression]="expression"
           [contextVariables]="editorContextVariables"
           variablesHint="$form"

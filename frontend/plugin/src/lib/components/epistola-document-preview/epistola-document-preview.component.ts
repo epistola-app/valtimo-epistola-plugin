@@ -45,7 +45,7 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <!-- Design-time view: show configuration summary when no runtime context -->
-    <div *ngIf="designMode" class="epistola-preview-panel">
+    <div *ngIf="designMode" class="epistola-preview-panel" data-testid="epistola-preview-design">
       <div class="preview-header">
         <span>{{ label || 'Document Preview' }}</span>
       </div>
@@ -67,7 +67,7 @@ import {
     </div>
 
     <!-- Runtime view: actual preview -->
-    <div *ngIf="!designMode" class="epistola-preview-panel">
+    <div *ngIf="!designMode" class="epistola-preview-panel" data-testid="epistola-preview-runtime">
       <div class="preview-header">
         <span>{{ label || 'Document Preview' }}</span>
         <div class="preview-controls">
@@ -78,20 +78,33 @@ import {
           >
             <input
               type="checkbox"
+              data-testid="epistola-preview-autorefresh"
               [checked]="autoRefreshEnabled"
               (change)="onToggleAutoRefresh($event)"
             />
             Auto-refresh
           </label>
-          <button type="button" class="preview-refresh" [disabled]="loading" (click)="refresh()">
+          <button
+            type="button"
+            class="preview-refresh"
+            data-testid="epistola-preview-refresh"
+            [disabled]="loading"
+            (click)="refresh()"
+          >
             <i class="mdi mdi-refresh mr-1"></i>
             {{ loading ? 'Generating...' : 'Refresh' }}
           </button>
         </div>
       </div>
       <div class="preview-body">
-        <div *ngIf="loading" class="preview-loading">Generating preview...</div>
-        <div *ngIf="error && !loading" class="preview-unavailable">
+        <div *ngIf="loading" class="preview-loading" data-testid="epistola-preview-loading">
+          Generating preview...
+        </div>
+        <div
+          *ngIf="error && !loading"
+          class="preview-unavailable"
+          data-testid="epistola-preview-error"
+        >
           <i class="mdi mdi-information-outline"></i>
           {{ error }}
         </div>
@@ -100,6 +113,7 @@ import {
           [data]="previewUrl"
           type="application/pdf"
           class="preview-pdf"
+          data-testid="epistola-preview-pdf"
         >
           PDF preview is not supported in this browser.
         </object>

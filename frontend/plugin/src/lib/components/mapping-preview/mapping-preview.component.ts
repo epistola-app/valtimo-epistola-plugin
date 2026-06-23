@@ -37,21 +37,23 @@ import { EpistolaPluginService } from '../../services';
   standalone: true,
   imports: [CommonModule, FormsModule, PluginTranslatePipeModule],
   template: `
-    <div class="preview">
+    <div class="preview" data-testid="epistola-mapping-preview-root">
       <div class="preview__header">
-        <span class="preview__title">{{
+        <span class="preview__title" data-testid="epistola-mapping-preview-title">{{
           'previewTitle' | pluginTranslate: 'epistola' | async
         }}</span>
         <div class="preview__controls">
           <input
             type="text"
             class="preview__doc-input"
+            data-testid="epistola-mapping-preview-doc-input"
             [ngModel]="documentId"
             (ngModelChange)="documentId = $event"
             [placeholder]="'previewDocPlaceholder' | pluginTranslate: 'epistola' | async"
           />
           <button
             class="preview__run-btn"
+            data-testid="epistola-mapping-preview-run-btn"
             (click)="runPreview()"
             [disabled]="!documentId || !expression || loading"
           >
@@ -62,33 +64,56 @@ import { EpistolaPluginService } from '../../services';
 
       <div class="preview__panels">
         <!-- Expected structure -->
-        <div class="preview__panel">
+        <div class="preview__panel" data-testid="epistola-mapping-preview-panel-expected">
           <div class="preview__panel-label">
             {{ 'previewExpected' | pluginTranslate: 'epistola' | async }}
           </div>
-          <pre class="preview__code">{{ expectedJson }}</pre>
+          <pre class="preview__code" data-testid="epistola-mapping-preview-expected-code">{{
+            expectedJson
+          }}</pre>
         </div>
 
         <!-- Produced output -->
-        <div class="preview__panel">
+        <div class="preview__panel" data-testid="epistola-mapping-preview-panel-produced">
           <div class="preview__panel-label">
             {{ 'previewProduced' | pluginTranslate: 'epistola' | async }}
           </div>
-          <div *ngIf="loading" class="preview__loading">...</div>
-          <pre *ngIf="!loading && result?.success" class="preview__code">{{
-            result.result | json
-          }}</pre>
-          <div *ngIf="!loading && result && !result.success" class="preview__error">
+          <div
+            *ngIf="loading"
+            class="preview__loading"
+            data-testid="epistola-mapping-preview-loading"
+          >
+            ...
+          </div>
+          <pre
+            *ngIf="!loading && result?.success"
+            class="preview__code"
+            data-testid="epistola-mapping-preview-produced-code"
+            >{{ result.result | json }}</pre
+          >
+          <div
+            *ngIf="!loading && result && !result.success"
+            class="preview__error"
+            data-testid="epistola-mapping-preview-error"
+          >
             {{ result.error }}
           </div>
-          <div *ngIf="!loading && !result" class="preview__placeholder">
+          <div
+            *ngIf="!loading && !result"
+            class="preview__placeholder"
+            data-testid="epistola-mapping-preview-placeholder"
+          >
             {{ 'previewRunHint' | pluginTranslate: 'epistola' | async }}
           </div>
         </div>
       </div>
 
       <!-- Missing fields warning -->
-      <div *ngIf="missingRequired.length > 0" class="preview__warnings">
+      <div
+        *ngIf="missingRequired.length > 0"
+        class="preview__warnings"
+        data-testid="epistola-mapping-preview-warnings"
+      >
         <span class="preview__warning-icon">&#x26A0;</span>
         {{ 'previewMissing' | pluginTranslate: 'epistola' | async }}:
         <strong>{{ missingRequired.join(', ') }}</strong>

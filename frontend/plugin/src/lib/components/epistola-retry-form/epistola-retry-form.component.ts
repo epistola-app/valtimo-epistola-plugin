@@ -41,39 +41,63 @@ import { EpistolaPluginService } from '../../services';
   selector: 'epistola-retry-form-component',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div *ngIf="loading" class="epistola-retry-loading">Loading form...</div>
-    <div *ngIf="error" class="epistola-retry-error">{{ error }}</div>
+    <div *ngIf="loading" class="epistola-retry-loading" data-testid="epistola-retry-loading">
+      Loading form...
+    </div>
+    <div *ngIf="error" class="epistola-retry-error" data-testid="epistola-retry-error">
+      {{ error }}
+    </div>
     <div
       *ngIf="formDefinition && !loading"
       class="epistola-retry-container"
       [class.preview-expanded]="previewExpanded"
+      data-testid="epistola-retry-container"
     >
-      <div class="epistola-retry-form" [hidden]="previewExpanded">
+      <div class="epistola-retry-form" [hidden]="previewExpanded" data-testid="epistola-retry-form">
         <formio
           [form]="formDefinition"
           [submission]="submission"
           (change)="onFormChange($event)"
           [options]="formOptions"
+          data-testid="epistola-retry-formio"
         ></formio>
       </div>
-      <div class="epistola-retry-preview">
-        <div class="preview-header">
+      <div class="epistola-retry-preview" data-testid="epistola-retry-preview">
+        <div class="preview-header" data-testid="epistola-retry-preview-header">
           <span>Preview</span>
-          <button type="button" class="preview-toggle" (click)="togglePreview()">
+          <button
+            type="button"
+            class="preview-toggle"
+            (click)="togglePreview()"
+            data-testid="epistola-retry-preview-toggle"
+          >
             {{ previewExpanded ? 'Show form' : 'Expand' }}
           </button>
         </div>
-        <div *ngIf="previewLoading" class="preview-loading">Generating preview...</div>
+        <div
+          *ngIf="previewLoading"
+          class="preview-loading"
+          data-testid="epistola-retry-preview-loading"
+        >
+          Generating preview...
+        </div>
         <object
           *ngIf="previewUrl && !previewLoading"
           [data]="previewUrl"
           type="application/pdf"
           class="preview-pdf"
+          data-testid="epistola-retry-preview-pdf"
         >
           PDF preview not supported in this browser.
         </object>
-        <div *ngIf="previewError" class="preview-error">{{ previewError }}</div>
-        <div *ngIf="!previewUrl && !previewLoading && !previewError" class="preview-empty">
+        <div *ngIf="previewError" class="preview-error" data-testid="epistola-retry-preview-error">
+          {{ previewError }}
+        </div>
+        <div
+          *ngIf="!previewUrl && !previewLoading && !previewError"
+          class="preview-empty"
+          data-testid="epistola-retry-preview-empty"
+        >
           Edit fields to see a preview
         </div>
       </div>

@@ -1,6 +1,11 @@
-<v-form (valueChange)="formValueChange($event)" *ngIf="prefillResolved$ | async">
+<v-form
+  data-testid="epistola-check-status-form"
+  (valueChange)="formValueChange($event)"
+  *ngIf="prefillResolved$ | async"
+>
   <v-input
     name="requestIdVariable"
+    data-testid="epistola-check-status-request-id-variable"
     [title]="'requestIdVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'requestIdVariableTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -12,6 +17,7 @@
 
   <v-input
     name="statusVariable"
+    data-testid="epistola-check-status-status-variable"
     [title]="'statusVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'statusVariableTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -23,6 +29,7 @@
 
   <v-input
     name="documentIdVariable"
+    data-testid="epistola-check-status-document-id-variable"
     [title]="'documentIdVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'documentIdVariableTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -34,6 +41,7 @@
 
   <v-input
     name="errorMessageVariable"
+    data-testid="epistola-check-status-error-message-variable"
     [title]="'errorMessageVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'errorMessageVariableTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
