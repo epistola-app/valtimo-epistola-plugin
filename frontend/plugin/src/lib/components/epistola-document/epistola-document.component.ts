@@ -58,7 +58,7 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <!-- Design-time placeholder -->
-    <div *ngIf="designMode" class="epistola-doc-panel">
+    <div *ngIf="designMode" class="epistola-doc-panel" data-testid="epistola-document-design">
       <div class="doc-header">
         <span>{{ label || 'Document' }}</span>
         <span class="design-tag">design mode</span>
@@ -76,21 +76,28 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
     </div>
 
     <!-- Button-only display -->
-    <div *ngIf="!designMode && display === 'button'">
+    <div *ngIf="!designMode && display === 'button'" data-testid="epistola-document-button-view">
       <button
         type="button"
         class="btn btn-outline-primary"
+        data-testid="epistola-document-download-button"
         [disabled]="disabled || downloading"
         (click)="download()"
       >
         <i class="mdi mdi-download mr-1"></i>
         {{ downloading ? 'Downloading...' : label || 'Download PDF' }}
       </button>
-      <span *ngIf="error" class="text-danger ml-2">{{ error }}</span>
+      <span *ngIf="error" class="text-danger ml-2" data-testid="epistola-document-button-error">{{
+        error
+      }}</span>
     </div>
 
     <!-- Inline / both: panel with optional download icon -->
-    <div *ngIf="!designMode && display !== 'button'" class="epistola-doc-panel">
+    <div
+      *ngIf="!designMode && display !== 'button'"
+      class="epistola-doc-panel"
+      data-testid="epistola-document-inline-view"
+    >
       <div class="doc-header">
         <span>{{ label || 'Document' }}</span>
         <div class="doc-controls">
@@ -98,6 +105,7 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
             *ngIf="display === 'both'"
             type="button"
             class="doc-icon-btn"
+            data-testid="epistola-document-download-icon"
             [disabled]="disabled || downloading"
             (click)="download()"
             [title]="downloading ? 'Downloading...' : 'Download'"
@@ -107,6 +115,7 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
           <button
             type="button"
             class="doc-icon-btn"
+            data-testid="epistola-document-refresh"
             [disabled]="loading"
             (click)="refresh()"
             title="Refresh"
@@ -116,8 +125,14 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
         </div>
       </div>
       <div class="doc-body">
-        <div *ngIf="loading" class="doc-loading">Loading document...</div>
-        <div *ngIf="error && !loading" class="doc-unavailable">
+        <div *ngIf="loading" class="doc-loading" data-testid="epistola-document-loading">
+          Loading document...
+        </div>
+        <div
+          *ngIf="error && !loading"
+          class="doc-unavailable"
+          data-testid="epistola-document-error"
+        >
           <i class="mdi mdi-information-outline"></i>
           {{ error }}
         </div>
@@ -126,6 +141,7 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
           [data]="previewUrl"
           type="application/pdf"
           class="doc-pdf"
+          data-testid="epistola-document-pdf"
         >
           PDF preview is not supported in this browser.
         </object>

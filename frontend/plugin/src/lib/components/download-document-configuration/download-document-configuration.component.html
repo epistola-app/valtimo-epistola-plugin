@@ -1,6 +1,11 @@
-<v-form (valueChange)="formValueChange($event)" *ngIf="prefillResolved$ | async">
+<v-form
+  data-testid="epistola-download-form"
+  (valueChange)="formValueChange($event)"
+  *ngIf="prefillResolved$ | async"
+>
   <v-input
     name="documentVariable"
+    data-testid="epistola-download-document-variable"
     [title]="'documentVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'documentVariableTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -12,6 +17,7 @@
 
   <v-select
     name="storageTarget"
+    data-testid="epistola-download-storage-target"
     [title]="'storageTarget' | pluginTranslate: pluginId | async"
     [tooltip]="'storageTargetTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -25,6 +31,7 @@
   <v-input
     *ngIf="(selectedTarget$ | async) === 'TEMPORARY_RESOURCE'"
     name="resourceIdVariable"
+    data-testid="epistola-download-resource-id-variable"
     [title]="'resourceIdVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'resourceIdVariableTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -37,6 +44,7 @@
   <v-input
     *ngIf="(selectedTarget$ | async) === 'PROCESS_VARIABLE'"
     name="contentVariable"
+    data-testid="epistola-download-content-variable"
     [title]="'contentVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'contentVariableTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"

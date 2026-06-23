@@ -1,4 +1,5 @@
 <v-form
+  data-testid="epistola-generate-form"
   (valueChange)="formValueChange($event)"
   *ngIf="{
     disabled: disabled$ | async,
@@ -16,6 +17,7 @@
   <div
     *ngIf="obs.validationErrors && obs.validationErrors.length > 0"
     class="jsonata-validation-errors"
+    data-testid="epistola-generate-validation-errors"
   >
     <strong>{{ 'jsonataValidationErrorsHeading' | pluginTranslate: pluginId | async }}</strong>
     <ul>
@@ -27,6 +29,7 @@
   </div>
   <v-select
     name="catalogId"
+    data-testid="epistola-generate-catalog-id"
     [title]="'catalogId' | pluginTranslate: pluginId | async"
     [tooltip]="'catalogIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -37,10 +40,17 @@
     [loading]="obs.catalogs.loading"
   >
   </v-select>
-  <div *ngIf="obs.catalogs.error" class="loading-error">{{ obs.catalogs.error }}</div>
+  <div
+    *ngIf="obs.catalogs.error"
+    class="loading-error"
+    data-testid="epistola-generate-catalog-error"
+  >
+    {{ obs.catalogs.error }}
+  </div>
 
   <v-select
     name="templateId"
+    data-testid="epistola-generate-template-id"
     [title]="'templateId' | pluginTranslate: pluginId | async"
     [tooltip]="'templateIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -52,10 +62,20 @@
     [loading]="obs.templates.loading"
   >
   </v-select>
-  <div *ngIf="obs.templates.error" class="loading-error">{{ obs.templates.error }}</div>
+  <div
+    *ngIf="obs.templates.error"
+    class="loading-error"
+    data-testid="epistola-generate-template-error"
+  >
+    {{ obs.templates.error }}
+  </div>
 
   <!-- Variant selection mode toggle -->
-  <div class="variant-mode-toggle" *ngIf="obs.selectedTemplateId">
+  <div
+    class="variant-mode-toggle"
+    *ngIf="obs.selectedTemplateId"
+    data-testid="epistola-generate-variant-mode-toggle"
+  >
     <label class="variant-mode-label">{{
       'variantSelectionMode' | pluginTranslate: pluginId | async
     }}</label>
@@ -63,6 +83,7 @@
       <button
         type="button"
         class="variant-mode-btn"
+        data-testid="epistola-generate-variant-mode-explicit"
         [class.active]="variantSelectionMode === 'explicit'"
         (click)="onVariantSelectionModeChange('explicit')"
         [disabled]="obs.disabled"
@@ -72,6 +93,7 @@
       <button
         type="button"
         class="variant-mode-btn"
+        data-testid="epistola-generate-variant-mode-attributes"
         [class.active]="variantSelectionMode === 'attributes'"
         (click)="onVariantSelectionModeChange('attributes')"
         [disabled]="obs.disabled"
@@ -91,6 +113,7 @@
   <div *ngIf="variantSelectionMode === 'explicit'" class="field-with-fx">
     <v-select
       *ngIf="!variantIdExpressionMode"
+      data-testid="epistola-generate-variant-id"
       [title]="'variantId' | pluginTranslate: pluginId | async"
       [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
       [margin]="true"
@@ -108,6 +131,7 @@
       <input
         type="text"
         class="fx-input"
+        data-testid="epistola-generate-variant-id-expression"
         [ngModel]="variantIdExpression"
         (ngModelChange)="variantIdExpression = $event; onVariantIdExpressionChange()"
         [disabled]="obs.disabled"
@@ -117,6 +141,7 @@
     <button
       type="button"
       class="fx-toggle"
+      data-testid="epistola-generate-variant-id-fx-toggle"
       (click)="toggleVariantIdExpressionMode()"
       [disabled]="obs.disabled"
       [title]="variantIdExpressionMode ? 'Switch to dropdown' : 'Switch to expression'"
@@ -124,12 +149,19 @@
       {{ variantIdExpressionMode ? '·' : 'fx' }}
     </button>
   </div>
-  <div *ngIf="obs.variants.error" class="loading-error">{{ obs.variants.error }}</div>
+  <div
+    *ngIf="obs.variants.error"
+    class="loading-error"
+    data-testid="epistola-generate-variant-error"
+  >
+    {{ obs.variants.error }}
+  </div>
 
   <!-- Attribute-based variant selection -->
   <div
     *ngIf="variantSelectionMode === 'attributes' && obs.selectedTemplateId"
     class="variant-attributes-section"
+    data-testid="epistola-generate-variant-attributes"
   >
     <label class="variant-attributes-label">{{
       'variantAttributes' | pluginTranslate: pluginId | async
@@ -138,10 +170,12 @@
       <div
         *ngFor="let entry of variantAttributeEntries; let i = index"
         class="variant-attribute-row"
+        [attr.data-testid]="'epistola-generate-attribute-row-' + i"
       >
         <select
           *ngIf="!entry._customKey"
           class="variant-attribute-input"
+          [attr.data-testid]="'epistola-generate-attribute-key-' + i"
           [ngModel]="entry.key"
           (ngModelChange)="onKeySelected(entry, $event)"
           [disabled]="obs.disabled"
@@ -158,6 +192,7 @@
           <input
             type="text"
             class="variant-attribute-input"
+            [attr.data-testid]="'epistola-generate-attribute-key-custom-' + i"
             [placeholder]="'attributeKey' | pluginTranslate: pluginId | async"
             [(ngModel)]="entry.key"
             (ngModelChange)="onAttributeEntryChange()"
@@ -166,6 +201,7 @@
           <button
             type="button"
             class="custom-key-cancel"
+            [attr.data-testid]="'epistola-generate-attribute-key-custom-cancel-' + i"
             (click)="cancelCustomKey(entry)"
             [disabled]="obs.disabled"
           >
@@ -176,6 +212,7 @@
           <input
             type="text"
             class="variant-attribute-input"
+            [attr.data-testid]="'epistola-generate-attribute-value-' + i"
             [class.fx-input]="entry._expressionMode"
             [placeholder]="
               entry._expressionMode
@@ -189,6 +226,7 @@
           <button
             type="button"
             class="fx-toggle fx-toggle--inline"
+            [attr.data-testid]="'epistola-generate-attribute-value-fx-toggle-' + i"
             (click)="entry._expressionMode = !entry._expressionMode"
             [disabled]="obs.disabled"
             [title]="entry._expressionMode ? 'Switch to plain value' : 'Switch to expression'"
@@ -199,6 +237,7 @@
         <label class="variant-attribute-required-toggle">
           <input
             type="checkbox"
+            [attr.data-testid]="'epistola-generate-attribute-required-' + i"
             [(ngModel)]="entry.required"
             (ngModelChange)="onAttributeEntryChange()"
             [disabled]="obs.disabled"
@@ -212,6 +251,7 @@
         <button
           type="button"
           class="variant-attribute-remove-btn"
+          [attr.data-testid]="'epistola-generate-attribute-remove-' + i"
           (click)="removeAttributeEntry(i)"
           [disabled]="obs.disabled"
           title="{{ 'removeAttribute' | pluginTranslate: pluginId | async }}"
@@ -223,6 +263,7 @@
     <button
       type="button"
       class="variant-attribute-add-btn"
+      data-testid="epistola-generate-attribute-add"
       (click)="addAttributeEntry()"
       [disabled]="obs.disabled"
     >
@@ -232,6 +273,7 @@
 
   <v-select
     name="environmentId"
+    data-testid="epistola-generate-environment-id"
     [title]="'environmentId' | pluginTranslate: pluginId | async"
     [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -242,10 +284,17 @@
     [loading]="obs.environments.loading"
   >
   </v-select>
-  <div *ngIf="obs.environments.error" class="loading-error">{{ obs.environments.error }}</div>
+  <div
+    *ngIf="obs.environments.error"
+    class="loading-error"
+    data-testid="epistola-generate-environment-error"
+  >
+    {{ obs.environments.error }}
+  </div>
 
   <v-select
     name="outputFormat"
+    data-testid="epistola-generate-output-format"
     [title]="'outputFormat' | pluginTranslate: pluginId | async"
     [tooltip]="'outputFormatTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -259,6 +308,7 @@
   <div class="field-with-fx">
     <v-input
       *ngIf="!filenameExpressionMode"
+      data-testid="epistola-generate-filename"
       [title]="'filename' | pluginTranslate: pluginId | async"
       [tooltip]="'filenameTooltip' | pluginTranslate: pluginId | async"
       [margin]="true"
@@ -273,6 +323,7 @@
       <input
         type="text"
         class="fx-input"
+        data-testid="epistola-generate-filename-expression"
         [ngModel]="filenameExpression"
         (ngModelChange)="filenameExpression = $event; onFilenameExpressionChange()"
         [disabled]="obs.disabled"
@@ -282,6 +333,7 @@
     <button
       type="button"
       class="fx-toggle"
+      data-testid="epistola-generate-filename-fx-toggle"
       (click)="toggleFilenameExpressionMode()"
       [disabled]="obs.disabled"
       [title]="filenameExpressionMode ? 'Switch to plain input' : 'Switch to expression'"
@@ -292,6 +344,7 @@
 
   <v-input
     name="correlationId"
+    data-testid="epistola-generate-correlation-id"
     [title]="'correlationId' | pluginTranslate: pluginId | async"
     [tooltip]="'correlationIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -303,6 +356,7 @@
 
   <v-input
     name="resultProcessVariable"
+    data-testid="epistola-generate-result-process-variable"
     [title]="'resultProcessVariable' | pluginTranslate: pluginId | async"
     [tooltip]="'resultProcessVariableTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
@@ -327,6 +381,7 @@
   <div class="mapping-mode-toggle">
     <button
       class="mapping-mode-toggle__btn"
+      data-testid="epistola-generate-mapping-mode-simple"
       [class.mapping-mode-toggle__btn--active]="mappingMode === 'simple'"
       (click)="mappingMode = 'simple'"
     >
@@ -334,6 +389,7 @@
     </button>
     <button
       class="mapping-mode-toggle__btn"
+      data-testid="epistola-generate-mapping-mode-advanced"
       [class.mapping-mode-toggle__btn--active]="mappingMode === 'advanced'"
       (click)="mappingMode = 'advanced'"
     >
@@ -362,7 +418,11 @@
 
   <!-- Bottom tabs: Schema + Preview (collapsible) -->
   <div class="mapping-tools" [class.mapping-tools--collapsed]="toolsCollapsed">
-    <div class="mapping-tools__header" (click)="toolsCollapsed = !toolsCollapsed">
+    <div
+      class="mapping-tools__header"
+      data-testid="epistola-generate-mapping-tools-header"
+      (click)="toolsCollapsed = !toolsCollapsed"
+    >
       <span class="mapping-tools__chevron">{{ toolsCollapsed ? '&#x25B6;' : '&#x25BC;' }}</span>
       <span>{{ 'mappingTools' | pluginTranslate: pluginId | async }}</span>
     </div>
@@ -370,6 +430,7 @@
       <div class="mapping-tools__tabs">
         <button
           class="mapping-tools__tab"
+          data-testid="epistola-generate-mapping-tab-schema"
           [class.mapping-tools__tab--active]="activeToolTab === 'schema'"
           (click)="activeToolTab = 'schema'"
         >
@@ -377,6 +438,7 @@
         </button>
         <button
           class="mapping-tools__tab"
+          data-testid="epistola-generate-mapping-tab-preview"
           [class.mapping-tools__tab--active]="activeToolTab === 'preview'"
           (click)="activeToolTab = 'preview'"
         >

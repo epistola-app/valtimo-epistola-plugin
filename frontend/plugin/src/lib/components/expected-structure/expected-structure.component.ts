@@ -26,16 +26,23 @@ import { TemplateField } from '../../models';
   standalone: true,
   imports: [CommonModule, PluginTranslatePipeModule],
   template: `
-    <div class="expected">
-      <div class="expected__header">
+    <div class="expected" data-testid="epistola-schema-panel">
+      <div class="expected__header" data-testid="epistola-schema-header">
         {{ 'expectedStructure' | pluginTranslate: 'epistola' | async }}
       </div>
-      <div *ngIf="!templateFields || templateFields.length === 0" class="expected__empty">
+      <div
+        *ngIf="!templateFields || templateFields.length === 0"
+        class="expected__empty"
+        data-testid="epistola-schema-empty"
+      >
         {{ 'expectedStructureLoading' | pluginTranslate: 'epistola' | async }}
       </div>
-      <pre *ngIf="templateFields && templateFields.length > 0" class="expected__code">{{
-        structureText
-      }}</pre>
+      <pre
+        *ngIf="templateFields && templateFields.length > 0"
+        class="expected__code"
+        data-testid="epistola-schema-code"
+        >{{ structureText }}</pre
+      >
     </div>
   `,
   styles: [

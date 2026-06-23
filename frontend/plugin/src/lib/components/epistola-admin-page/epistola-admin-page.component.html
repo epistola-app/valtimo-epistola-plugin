@@ -1,4 +1,4 @@
-<div class="epistola-admin">
+<div class="epistola-admin" data-testid="epistola-admin">
   <!-- Overview: tabs (no configuration selected) -->
   <ng-container *ngIf="!selectedCard">
     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -6,7 +6,12 @@
         <h5 class="mb-0">{{ 'epistolaAdminOverview' | pluginTranslate: 'epistola' | async }}</h5>
         <span *ngIf="pluginVersion" class="version-badge ms-2">v{{ pluginVersion }}</span>
       </div>
-      <button class="btn btn-outline-primary btn-sm" (click)="refresh()" [disabled]="loading">
+      <button
+        class="btn btn-outline-primary btn-sm"
+        data-testid="epistola-admin-refresh"
+        (click)="refresh()"
+        [disabled]="loading"
+      >
         {{ 'epistolaAdminRefresh' | pluginTranslate: 'epistola' | async }}
       </button>
     </div>
@@ -39,24 +44,38 @@
       >
     </ng-template>
 
-    <cds-tabs [cacheActive]="true" type="contained">
+    <cds-tabs [cacheActive]="true" type="contained" data-testid="epistola-admin-overview-tabs">
       <cds-tab
         [heading]="configurationsHeading"
+        data-testid="epistola-admin-tab-configurations"
         [active]="overviewTab === 'configurations'"
         (selected)="setOverviewTab('configurations')"
       >
-        <div *ngIf="loading" class="text-muted mt-3">
+        <div
+          *ngIf="loading"
+          class="text-muted mt-3"
+          data-testid="epistola-admin-configurations-loading"
+        >
           {{ 'epistolaAdminLoading' | pluginTranslate: 'epistola' | async }}
         </div>
 
-        <div *ngIf="!loading && cards.length === 0" class="text-muted mt-3">
+        <div
+          *ngIf="!loading && cards.length === 0"
+          class="text-muted mt-3"
+          data-testid="epistola-admin-configurations-empty"
+        >
           {{ 'epistolaAdminNoConfigurations' | pluginTranslate: 'epistola' | async }}
         </div>
 
-        <div *ngIf="!loading && cards.length > 0" class="card-grid">
+        <div
+          *ngIf="!loading && cards.length > 0"
+          class="card-grid"
+          data-testid="epistola-admin-card-grid"
+        >
           <div
             *ngFor="let card of cards"
             class="config-card"
+            [attr.data-testid]="'epistola-admin-config-card-' + card.tenantId"
             [class.config-card--ok]="card.reachable && card.problemCount === 0"
             [class.config-card--warning]="card.reachable && card.problemCount > 0"
             [class.config-card--error]="!card.reachable"
@@ -126,6 +145,7 @@
 
       <cds-tab
         [heading]="validationsHeading"
+        data-testid="epistola-admin-tab-validations"
         [active]="overviewTab === 'validations'"
         (selected)="setOverviewTab('validations')"
       >
@@ -154,7 +174,7 @@
           <p class="text-muted mb-3">
             {{ 'epistolaAdminValidationWarningBody' | pluginTranslate: 'epistola' | async }}
           </p>
-          <table class="table table-striped">
+          <table class="table table-striped" data-testid="epistola-admin-validations-table">
             <thead>
               <tr>
                 <th>{{ 'epistolaAdminProcess' | pluginTranslate: 'epistola' | async }}</th>
@@ -166,7 +186,10 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let v of validationViolations">
+              <tr
+                *ngFor="let v of validationViolations; let i = index"
+                [attr.data-testid]="'epistola-admin-validation-row-' + i"
+              >
                 <td>
                   {{ v.processDefinitionName || v.processDefinitionKey }}
                   <div *ngIf="v.processDefinitionName" class="text-muted small">
@@ -188,6 +211,7 @@
 
       <cds-tab
         [heading]="changelogHeading"
+        data-testid="epistola-admin-tab-changelog"
         [active]="overviewTab === 'changelog'"
         (selected)="setOverviewTab('changelog')"
       >
@@ -231,6 +255,7 @@
       <!-- TEMPORARY (removed in 1.0.0): forms missing the task-id carrier -->
       <cds-tab
         [heading]="formsHeading"
+        data-testid="epistola-admin-tab-forms"
         [active]="overviewTab === 'forms'"
         (selected)="setOverviewTab('forms')"
       >
@@ -253,6 +278,7 @@
           <div class="mb-2">
             <button
               class="btn btn-sm btn-primary"
+              data-testid="epistola-admin-repair-all"
               (click)="repairAllForms()"
               [disabled]="repairingAll"
             >
@@ -280,7 +306,10 @@
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let issue of formIssues">
+              <tr
+                *ngFor="let issue of formIssues"
+                [attr.data-testid]="'epistola-admin-form-issue-' + issue.formId"
+              >
                 <td>
                   <code>{{ issue.name }}</code>
                   <cds-tag
@@ -298,6 +327,7 @@
                 <td class="text-end">
                   <button
                     class="btn btn-sm btn-outline-primary"
+                    [attr.data-testid]="'epistola-admin-repair-form-' + issue.formId"
                     (click)="repairForm(issue)"
                     [disabled]="isRepairingForm(issue)"
                     [title]="'epistolaAdminRepairTooltip' | pluginTranslate: 'epistola' | async"
@@ -378,7 +408,11 @@
   <!-- Detail view: selected configuration -->
   <ng-container *ngIf="selectedCard">
     <div class="detail-header mb-3">
-      <button class="btn btn-link btn-sm p-0" (click)="backToOverview()">
+      <button
+        class="btn btn-link btn-sm p-0"
+        data-testid="epistola-admin-back"
+        (click)="backToOverview()"
+      >
         &larr; {{ 'epistolaAdminBackToOverview' | pluginTranslate: 'epistola' | async }}
       </button>
     </div>
@@ -449,9 +483,10 @@
       <cds-tag size="sm" type="gray" class="ms-1">{{ catalogs.length }}</cds-tag>
     </ng-template>
 
-    <cds-tabs [cacheActive]="true" type="contained">
+    <cds-tabs [cacheActive]="true" type="contained" data-testid="epistola-admin-detail-tabs">
       <cds-tab
         [heading]="actionsHeading"
+        data-testid="epistola-admin-detail-tab-actions"
         [active]="activeTab === 'actions'"
         (selected)="setActiveTab('actions')"
       >
@@ -472,7 +507,8 @@
           </thead>
           <tbody>
             <tr
-              *ngFor="let entry of selectedCard.usageEntries"
+              *ngFor="let entry of selectedCard.usageEntries; let i = index"
+              [attr.data-testid]="'epistola-admin-usage-row-' + i"
               [class.table-warning]="entry.problems.length > 0"
             >
               <td>{{ entry.caseDefinitionKey || '-' }}</td>
@@ -514,6 +550,7 @@
               <td>
                 <button
                   class="btn btn-sm btn-outline-secondary"
+                  [attr.data-testid]="'epistola-admin-export-' + i"
                   (click)="exportProcessLink(entry)"
                   [title]="'epistolaAdminExport' | pluginTranslate: 'epistola' | async"
                 >
@@ -527,6 +564,7 @@
 
       <cds-tab
         [heading]="pendingHeading"
+        data-testid="epistola-admin-detail-tab-pending"
         [active]="activeTab === 'pending'"
         (selected)="setActiveTab('pending')"
       >
@@ -545,7 +583,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let job of selectedCard.pendingJobs">
+            <tr
+              *ngFor="let job of selectedCard.pendingJobs"
+              [attr.data-testid]="'epistola-admin-pending-row-' + job.executionId"
+            >
               <td>{{ job.processDefinitionName }}</td>
               <td>{{ job.activityName }}</td>
               <td>
@@ -571,6 +612,7 @@
                 <button
                   *ngIf="job.status !== 'UNWIRED'"
                   class="btn btn-sm btn-outline-primary"
+                  [attr.data-testid]="'epistola-admin-reconcile-' + job.executionId"
                   (click)="reconcilePending(job)"
                   [disabled]="isReconciling(job)"
                   [title]="'epistolaAdminReconcileTooltip' | pluginTranslate: 'epistola' | async"
@@ -606,6 +648,7 @@
 
       <cds-tab
         [heading]="catalogsHeading"
+        data-testid="epistola-admin-detail-tab-catalogs"
         [active]="activeTab === 'catalogs'"
         (selected)="setActiveTab('catalogs')"
       >
@@ -631,7 +674,10 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let catalog of catalogs">
+            <tr
+              *ngFor="let catalog of catalogs"
+              [attr.data-testid]="'epistola-admin-catalog-row-' + catalog.slug"
+            >
               <td>
                 <code>{{ catalog.slug }}</code>
               </td>
@@ -650,6 +696,7 @@
               <td class="text-end">
                 <button
                   class="btn btn-sm btn-outline-primary"
+                  [attr.data-testid]="'epistola-admin-redeploy-' + catalog.slug"
                   (click)="redeployCatalog(catalog)"
                   [disabled]="isRedeploying(catalog)"
                   [title]="'epistolaAdminRedeployTooltip' | pluginTranslate: 'epistola' | async"

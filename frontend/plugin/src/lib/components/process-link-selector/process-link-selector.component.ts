@@ -46,20 +46,31 @@ export interface ProcessLinkSelection {
   selector: 'epistola-process-link-selector-component',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="process-link-selector">
-      <label class="selector-label">{{ label || 'Process Link' }}</label>
+    <div class="process-link-selector" data-testid="epistola-process-link-container">
+      <label class="selector-label" data-testid="epistola-process-link-label">{{
+        label || 'Process Link'
+      }}</label>
       <select
         class="selector-dropdown"
+        data-testid="epistola-process-link-select"
         [ngModel]="selectedKey"
         (ngModelChange)="onSelect($event)"
         [disabled]="disabled || loading"
       >
-        <option value="">{{ loading ? 'Loading...' : '-- Select a process link --' }}</option>
-        <option *ngFor="let entry of filteredEntries" [value]="entryKey(entry)">
+        <option value="" data-testid="epistola-process-link-option-empty">
+          {{ loading ? 'Loading...' : '-- Select a process link --' }}
+        </option>
+        <option
+          *ngFor="let entry of filteredEntries"
+          [value]="entryKey(entry)"
+          [attr.data-testid]="'epistola-process-link-option-' + entryKey(entry)"
+        >
           {{ entry.processDefinitionName }} / {{ entry.activityName }} ({{ entry.activityId }})
         </option>
       </select>
-      <div *ngIf="error" class="selector-error">{{ error }}</div>
+      <div *ngIf="error" class="selector-error" data-testid="epistola-process-link-error">
+        {{ error }}
+      </div>
     </div>
   `,
   styles: [

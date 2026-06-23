@@ -33,16 +33,18 @@ import {
   standalone: true,
   imports: [CommonModule, FormsModule, PluginTranslatePipeModule, BuilderFieldComponent],
   template: `
-    <div class="mapping-builder">
+    <div class="mapping-builder" data-testid="epistola-mapping-builder">
       <div
         *ngIf="fields.length === 0 && (!templateFields || templateFields.length === 0)"
         class="mapping-builder__empty"
+        data-testid="epistola-mapping-empty"
       >
         {{ 'noTemplateFields' | pluginTranslate: 'epistola' | async }}
       </div>
 
       <epistola-builder-field
         *ngFor="let field of fields; let i = index"
+        [attr.data-testid]="'epistola-mapping-row-' + field.name"
         [field]="field"
         [path]="[i]"
         [suggestions]="allSuggestions"
