@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [chart-0.4.1] - 2026-06-23
+
 ### Fixed
 
 - **Frontend nginx crash-loop from an unquoted regex in the chart's nginx config (chart 0.4.0).** The cache-busting `location` block matching hashed asset filenames used `location ~* \.[0-9a-f]{16,}\.(js|css)$`. nginx treats an unquoted `{` in a `location` regex as a block delimiter, so it failed to parse with `unknown directive "16,}\.(js|css)$"` and refused to start — crash-looping the frontend pod. Because the chart's `frontend-nginx-configmap.yaml` is mounted over `/etc/nginx/conf.d/default.conf`, this took down the deployed frontend (not just the dev image). The regex is now double-quoted (`location ~* "\.[0-9a-f]{16,}\.(js|css)$"`) in both `charts/valtimo-demo/templates/frontend-nginx-configmap.yaml` and `test-app/frontend/conf/default.conf`. The block was introduced on 2026-04-21 but only shipped in `chart-0.4.0` (2026-06-22), so it stayed latent until the chart was deployed.
