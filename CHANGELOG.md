@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-06-23
+
 ### Added
 
 - **Stable `data-testid` attributes across the plugin frontend for UI test automation.** Every plugin Angular template — the four process-link configurators (configuration, generate-document, check-job-status, download-document), the admin page, and the inline-template Formio components (document, document-preview, retry-form, mapping-builder + builder-field, override-builder, jsonata-editor, mapping-preview, expected-structure, process-link-selector) — now carries `data-testid` hooks on its interactive and assertable elements (inputs, selects, buttons, toggles, tabs, list/table rows, loading/error/empty states, and PDF panels). This lets Playwright select by `getByTestId(...)` instead of translation-dependent label/text locators, which previously broke whenever NL/EN copy changed. The convention is `epistola-<area>-<element>` (e.g. `epistola-config-base-url`, `epistola-generate-catalog-id`, `epistola-admin-refresh`); dynamic rows use an attribute binding keyed on a stable id where one exists (tenant id, catalog slug, form id, execution id) or the loop index otherwise. Attributes on Valtimo/Carbon wrapper components (`v-input`, `v-select`, `v-form`, `cds-tab`) land on the host element, so tests scope into the rendered control (e.g. `getByTestId('epistola-config-base-url').getByRole('textbox')`). No runtime behaviour, bindings, styling, or copy changed.
