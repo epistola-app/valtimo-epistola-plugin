@@ -35,7 +35,6 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver
  * newer suite baseline.
  */
 class BundledCatalogSchemaVersionTest {
-
     private val mapper = ObjectMapper()
     private val resolver = PathMatchingResourcePatternResolver()
 
@@ -47,7 +46,11 @@ class BundledCatalogSchemaVersionTest {
             .isNotEmpty
 
         manifests.forEach { resource ->
-            val schemaVersion = resource.inputStream.use { mapper.readTree(it) }.path("schemaVersion").asInt(-1)
+            val schemaVersion =
+                resource.inputStream
+                    .use { mapper.readTree(it) }
+                    .path("schemaVersion")
+                    .asInt(-1)
             assertThat(schemaVersion)
                 .describedAs("schemaVersion of bundled manifest %s", resource.description)
                 .isEqualTo(EXPECTED_CATALOG_SCHEMA_VERSION)
@@ -62,7 +65,11 @@ class BundledCatalogSchemaVersionTest {
             .isNotEmpty
 
         details.forEach { resource ->
-            val schemaVersion = resource.inputStream.use { mapper.readTree(it) }.path("schemaVersion").asInt(-1)
+            val schemaVersion =
+                resource.inputStream
+                    .use { mapper.readTree(it) }
+                    .path("schemaVersion")
+                    .asInt(-1)
             assertThat(schemaVersion)
                 .describedAs("schemaVersion of bundled resource detail %s", resource.description)
                 .isEqualTo(EXPECTED_CATALOG_SCHEMA_VERSION)
