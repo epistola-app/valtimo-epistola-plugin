@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-06-25
+
+### Compatibility
+
+- **Requires Epistola Suite ≥ 0.26.0.** This release re-authors the bundled catalogs to catalog wire schema v4 and bumps the Epistola contract client to `0.8.0`, aligning the plugin with Epistola Suite `0.26.0`. Earlier plugin builds (≤ 0.11.x, wire schema 2 / contract `0.6.0`) are incompatible with Suite ≥ 0.26.0. See [COMPATIBILITY.md](COMPATIBILITY.md#epistola-suite-compatibility-catalog-wire-schema).
+
 ### Fixed
 
 - **Bundled catalogs re-authored to Epistola catalog wire schema v4 — fixes a hard import failure against Epistola Suite ≥ 0.26.0 (#71).** Suite 0.26.0 raised the minimum supported catalog wire `schemaVersion` to **4** and ships an empty migration chain, so the previously bundled `schemaVersion: 2` catalogs were rejected at import with RFC-9457 `400 catalog-schema-too-old` — breaking both startup catalog sync and the admin-page redeploy (it surfaced as a bare `502 OK`). The bundled `municipality-demo` catalog (manifest + all 8 templates) and the `test-catalog` test fixture are now authored at wire schema **v4**: `schemaVersion` bumped to 4, each template carries the now-required `themeId` pointing at a newly bundled `default` theme (mirroring the suite's system `default` theme; its `inter` font resolves cross-catalog against the always-present `system` catalog), and the single default variant's attributes are emptied. `municipality-demo` is bumped to release `1.1` so an environment that already imported `1.0` re-imports the v4 content instead of version-skipping. There is no automated v2→v4 migration (re-authoring is the only path); a new regression test (`BundledCatalogSchemaVersionTest` in the test-app, plus a ZIP-level assertion in `EpistolaCatalogSyncServiceTest`) fails CI loudly if any bundled manifest or resource detail drifts below the targeted wire schema, rather than failing in production.
