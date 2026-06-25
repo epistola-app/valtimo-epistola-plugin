@@ -107,7 +107,9 @@ export interface ClasspathCatalog {
 
 /**
  * Outcome of a manual single-catalog redeploy. `success=false` carries the
- * reason in `errorMessage`; the backend returns HTTP 502 in that case.
+ * reason in `errorMessage`; the backend returns 422 for a downstream client-class
+ * (4xx) failure, e.g. a too-old catalog wire schema, and 502 for a 5xx /
+ * connectivity failure. `httpStatus` is the downstream Epistola status, when known.
  */
 export interface CatalogRedeployResult {
   slug: string;
@@ -119,6 +121,7 @@ export interface CatalogRedeployResult {
   failed: number;
   total: number;
   errorMessage: string | null;
+  httpStatus?: number | null;
 }
 
 /**

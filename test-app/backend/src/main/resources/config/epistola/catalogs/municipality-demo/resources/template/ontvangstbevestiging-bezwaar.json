@@ -1,7 +1,8 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 4,
   "resource": {
     "type": "template",
+    "themeId": "default",
     "slug": "ontvangstbevestiging-bezwaar",
     "name": "Ontvangstbevestiging bezwaarschrift",
     "dataModel": {
@@ -530,9 +531,7 @@
         "id": "default",
         "isDefault": true,
         "title": "Standaard",
-        "attributes": {
-          "language": "nl"
-        }
+        "attributes": {}
       }
     ]
   }

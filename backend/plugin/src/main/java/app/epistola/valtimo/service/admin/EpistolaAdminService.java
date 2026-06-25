@@ -504,7 +504,8 @@ public class EpistolaAdminService {
                 outcome.updated(),
                 outcome.failed(),
                 outcome.total(),
-                outcome.errorMessage());
+                outcome.errorMessage(),
+                outcome.httpStatus());
     }
 
     private Map<String, String> buildTenantConfigTitleMap() {

@@ -1,7 +1,8 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 4,
   "resource": {
     "type": "template",
+    "themeId": "default",
     "slug": "financieel-overzicht",
     "name": "Financieel Overzicht Subsidie",
     "dataModel": {
@@ -712,9 +713,7 @@
         "id": "default",
         "isDefault": true,
         "title": "Standaard",
-        "attributes": {
-          "language": "nl"
-        }
+        "attributes": {}
       }
     ]
   }

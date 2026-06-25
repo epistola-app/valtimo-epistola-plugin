@@ -1,7 +1,8 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 4,
   "resource": {
     "type": "template",
+    "themeId": "default",
     "slug": "voorwaarden-bijlage",
     "name": "Voorwaarden Bijlage",
     "dataModel": {
@@ -625,9 +626,7 @@
         "id": "default",
         "isDefault": true,
         "title": "Standaard",
-        "attributes": {
-          "language": "nl"
-        }
+        "attributes": {}
       }
     ]
   }

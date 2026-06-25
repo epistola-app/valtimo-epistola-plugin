@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.deploy;
 
+import app.epistola.valtimo.service.EpistolaApiException;
 import app.epistola.valtimo.service.EpistolaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +57,7 @@ class EpistolaCatalogSyncServiceTest {
     private static final String API_KEY = "secret-key";
     private static final String TENANT_ID = "tenant-1";
     private static final String CATALOG_TYPE = "full";
+    private static final int EXPECTED_CATALOG_SCHEMA_VERSION = 4;
 
     @BeforeEach
     void setUp() {
@@ -132,6 +134,28 @@ class EpistolaCatalogSyncServiceTest {
             // Verify template resource is valid JSON
             var templateNode = mapper.readTree(entries.get("resources/template/test-template.json"));
             assertThat(templateNode.path("resource").path("slug").asText()).isEqualTo("test-template");
+        }
+
+        @Test
+        void bundledCatalogIsAtCurrentWireSchema() throws IOException {
+            // Regression guard for issue #71: the bundled catalog (manifest + every resource
+            // detail) must be at the wire schema this plugin build targets, or Epistola rejects
+            // the import (catalog-schema-too-old, 400). A baseline drift fails here, not in prod.
+            CatalogScanner.CatalogOnClasspath testCatalog = scanner.scan().stream()
+                    .filter(c -> "test-catalog".equals(c.slug()))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("test-catalog not found on classpath"));
+
+            Map<String, byte[]> entries = readZipEntries(syncService.buildCatalogZip(testCatalog));
+            ObjectMapper mapper = new ObjectMapper();
+
+            for (Map.Entry<String, byte[]> entry : entries.entrySet()) {
+                if (!entry.getKey().endsWith(".json")) continue;
+                int schemaVersion = mapper.readTree(entry.getValue()).path("schemaVersion").asInt(-1);
+                assertThat(schemaVersion)
+                        .as("schemaVersion of bundled catalog entry %s", entry.getKey())
+                        .isEqualTo(EXPECTED_CATALOG_SCHEMA_VERSION);
+            }
         }
     }
 
@@ -240,6 +264,47 @@ class EpistolaCatalogSyncServiceTest {
             assertThat(outcome.success()).isFalse();
             assertThat(outcome.slug()).isEqualTo("test-catalog");
             assertThat(outcome.errorMessage()).contains("Epistola rejected the import");
+        }
+
+        @Test
+        void preservesDownstreamDetailAndStatusOnApiFailure() {
+            when(epistolaService.importCatalog(anyString(), anyString(), anyString(),
+                    any(byte[].class), anyString()))
+                    .thenThrow(new EpistolaApiException(
+                            "Some other validation failure", null, 422, null, null));
+
+            EpistolaCatalogSyncService.RedeployOutcome outcome = syncService.redeployCatalog(
+                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE, "test-catalog");
+
+            assertThat(outcome.success()).isFalse();
+            assertThat(outcome.errorMessage()).isEqualTo("Some other validation failure");
+            assertThat(outcome.httpStatus()).isEqualTo(422);
+        }
+
+        @Test
+        void translatesCatalogSchemaTooOldForClasspathOperator() {
+            when(epistolaService.importCatalog(anyString(), anyString(), anyString(),
+                    any(byte[].class), anyString()))
+                    .thenThrow(new EpistolaApiException(
+                            "Catalog wire schema version 2 predates the oldest supported version (4). "
+                                    + "Re-export the catalog from a current source.",
+                            null, 400,
+                            "https://epistola.app/errors/catalog-schema-too-old",
+                            Map.of("version", 2, "baselineVersion", 4)));
+
+            EpistolaCatalogSyncService.RedeployOutcome outcome = syncService.redeployCatalog(
+                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE, "test-catalog");
+
+            assertThat(outcome.success()).isFalse();
+            assertThat(outcome.httpStatus()).isEqualTo(400);
+            // The suite's "re-export from a current source" is replaced with operator-actionable
+            // guidance built from the structured version/baselineVersion.
+            assertThat(outcome.errorMessage())
+                    .contains("test-catalog")
+                    .contains("wire schema v2")
+                    .contains("requires at least v4")
+                    .contains("upgrade the valtimo-epistola-plugin")
+                    .doesNotContain("Re-export the catalog from a current source");
         }
 
         @Test

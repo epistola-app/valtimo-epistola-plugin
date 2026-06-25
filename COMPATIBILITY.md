@@ -19,6 +19,30 @@ Two things are tracked, and they are not the same:
 
 Backend versions use the `X.Y.Z.RELEASE` form; the frontend `@valtimo/*` packages use the matching `X.Y.Z`.
 
+## Epistola Suite compatibility (catalog wire schema)
+
+Separate from Valtimo, the plugin also has a compatibility surface with **Epistola Suite**: the
+bundled classpath catalogs it imports carry a catalog **wire `schemaVersion`**, and the suite
+gates imports against its own `[baseline, current]` window. A catalog below the suite's baseline
+is rejected with RFC-9457 `400 catalog-schema-too-old`.
+
+| Plugin build         | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema | Compatible Epistola Suite        |
+| -------------------- | --------------------------------------------- | --------------------------- | -------------------------------- |
+| current (unreleased) | `0.8.0`                                       | `4`                         | `>= 0.26.0`                      |
+| ≤ 0.11.x             | `0.6.0`                                       | `2`                         | `<= 0.25.x` (broken on ≥ 0.26.0) |
+
+Notes:
+
+- The suite's image automation can bump `epistola-suite` and the host (`demo-backend`)
+  **independently**, so a suite catalog-wire baseline bump is a **breaking change for already-released
+  plugin versions** — the catalog is compiled into the application image and cannot be re-exported by
+  an operator; the fix is to ship a plugin/host build whose bundled catalogs target the new baseline.
+- There is **no automated v2→v4 catalog migration** (the suite's migration chain is empty:
+  `baseline == current == 4`); re-authoring the bundled catalogs is the only path.
+- The floor is guarded in CI by `BundledCatalogSchemaVersionTest` (test-app) and a ZIP-level
+  assertion in `EpistolaCatalogSyncServiceTest` — both pinned to the targeted wire schema, so a
+  future suite baseline bump fails the build loudly instead of in production. See GitHub issue #71.
+
 ## Engine-integration dependency (correlation)
 
 The plugin is otherwise built on Valtimo/Operaton **public** APIs. The one exception is the

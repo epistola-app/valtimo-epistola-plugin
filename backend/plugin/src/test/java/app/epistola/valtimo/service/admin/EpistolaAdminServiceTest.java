@@ -633,7 +633,7 @@ class EpistolaAdminServiceTest {
             when(catalogSyncService.redeployCatalog(eq(configId), eq(BASE_URL), eq(API_KEY),
                     eq(TENANT_ID), anyString(), eq("demo")))
                     .thenReturn(new EpistolaCatalogSyncService.RedeployOutcome(
-                            "demo", "1.2.0", true, "demo", 3, 1, 0, 4, null));
+                            "demo", "1.2.0", true, "demo", 3, 1, 0, 4, null, null));
 
             CatalogRedeployResult result = adminService.redeployCatalog(configId, "demo");
 

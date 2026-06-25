@@ -166,7 +166,7 @@ License headers on the Java backend are applied/gated by Spotless
 - **Full Epistola API integration** via `app.epistola.contract:client-spring3-restclient` (OpenAPI-generated client)
 - **3 plugin actions**: `generate-document`, `check-job-status`, `download-document`
 - **Async completion**: `EpistolaResultCollectorRunner` manages one contract `ResultCollector` per active plugin configuration and correlates results via `EpistolaMessageCorrelationService`
-- **Catalog sync**: Automatic import of classpath-based catalogs on startup, plus a manual per-catalog force-redeploy from the admin page that bypasses the version-skip and `templateSyncEnabled` gate (`EpistolaCatalogSyncService`)
+- **Catalog sync**: Automatic import of classpath-based catalogs on startup, plus a manual per-catalog force-redeploy from the admin page that bypasses the version-skip and `templateSyncEnabled` gate (`EpistolaCatalogSyncService`). Bundled catalogs are authored at Epistola **catalog wire `schemaVersion` 4** (Suite ≥ 0.26.0; see [COMPATIBILITY.md](COMPATIBILITY.md)); the floor is pinned by `BundledCatalogSchemaVersionTest`/`EpistolaCatalogSyncServiceTest`, and a too-old wire schema surfaces a translated, operator-actionable redeploy error (downstream 4xx → 422, not 502)
 - **Retry flow**: Dynamic Formio form generation for failed document retries (`RetryFormService`)
 - **Document preview**: Preview without creating generation jobs (`PreviewService`)
 - **Admin page**: Health checks, plugin usage overview (with dangling catalog/template/variant reference detection), per-config classpath-catalog redeploy, running version + bundled CHANGELOG tab (`EpistolaAdminResource`)
