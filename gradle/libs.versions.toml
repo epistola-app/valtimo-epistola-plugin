@@ -53,6 +53,7 @@ valtimo-objecttypen-api = { module = "com.ritense.valtimo:objecttypen-api" }
 valtimo-zaken-api = { module = "com.ritense.valtimo:zaken-api" }
 valtimo-documenten-api = { module = "com.ritense.valtimo:documenten-api" }
 valtimo-catalogi-api = { module = "com.ritense.valtimo:catalogi-api" }
+valtimo-openzaak-plugin-authentication = { module = "com.ritense.valtimo:openzaak-plugin-authentication" }
 
 # JSONata
 jsonata = { module = "com.dashjoin:jsonata", version.ref = "jsonata" }

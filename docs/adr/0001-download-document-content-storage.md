@@ -45,6 +45,8 @@ A _download_ action must download — i.e. it always **materializes** the bytes 
 
 `download-document(storageTarget = temporary-resource)` → process variable holds a temp resource id → chain Valtimo's `documenten-api: store-temp-document` (pass that variable as `localDocumentLocation`) → durable zaakdocument + `documentUrl`. Upload as **concept** before a review task and flip to **definitief** on approval, so the human reviews against the durable Documenten API copy and the temp resource is consumed within its TTL.
 
+> **Now demonstrated end-to-end (subsidy demo).** The `subsidy-decision-package` process implements exactly this composition with **no plugin code**: a `zakenapi:create-zaak` start task, then per document `epistola-download-document` (temporary-resource) → `documentenapi:store-temp-document` → `zakenapi:link-document-to-zaak`, so the three generated PDFs land on the case Documents tab. A minimal, opt-in OpenZaak (`docker compose --profile zgw`) provides the ZGW backend locally; connections are in `config/zgw.pluginconfig.json`. This confirms the composition decision in practice without the plugin owning a ZGW target.
+
 ### When not to use download-document (view-only / no materialization)
 
 If nothing in the process needs the bytes materialized — e.g. a user task just needs to _view_ the PDF — do **not** add a `download-document` step. The `documentId` on `epistolaResult` plus the authorized `GET /documents/download` streaming endpoint already serve the PDF on demand (`docs/document-component.md`). This avoids storing anything and keeps the document out of the variable map entirely.

@@ -60,6 +60,22 @@ services:
       ved-postgres:
         condition: service_healthy
 
+  # === ZGW backend (default = lightweight stateful mock) ===
+  # Started by plain `docker compose up`. A tiny, dependency-free, native (arm64/amd64)
+  # in-memory fake of the ZGW Documenten + Zaken + Catalogi APIs on :8002 — enough for the
+  # Valtimo documentenapi/zakenapi/catalogiapi plugins to run the subsidy demo and surface
+  # generated PDFs on the case Documents tab, without PostGIS/Redis/Celery/emulation.
+  # For full-fidelity testing against a real OpenZaak, use the `openzaak` profile instead
+  # (stop this mock first — both bind :8002). See docker/zgw-fake/README.md.
+  ved-zgw-mock:
+    image: python:3.12-alpine
+    container_name: ved-zgw-mock
+    command: ["python", "/srv/server.py"]
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./zgw-fake/server.py:/srv/server.py:ro
+
   # === Containers profile: run actual container images to reproduce K8s behavior ===
 
   ved-valtimo-backend:
@@ -138,5 +154,133 @@ services:
       ved-postgres:
         condition: service_healthy
 
+  # === `openzaak` profile: the WHOLE real OpenZaak stack (Documenten + Zaken + Catalogi
+  # APIs) for full-fidelity ZGW testing. Opt-in — NOT started by `docker compose up`
+  # (that runs the lightweight ved-zgw-mock instead). Self-contained: its own PostGIS DB
+  # + Redis + OpenZaak web + one Celery worker. Notifications are disabled, so no Open
+  # Notificaties is needed. Provisioning (a `valtimo` API client + a published
+  # catalogus/zaaktype/informatieobjecttype) runs once via ved-openzaak-init.
+  #
+  # Bring up with:  docker compose stop ved-zgw-mock   # free :8002
+  #                 docker compose --profile openzaak up -d
+  #
+  # OpenZaak publishes amd64 images only → native on amd64 (CI/cluster), emulated on arm64
+  # (slow first boot). Valtimo (host Gradle bootRun) reaches it at http://localhost:8002,
+  # matching SITE_DOMAIN so returned resource URLs resolve.
+
+  ved-openzaak-db:
+    profiles: ["openzaak"]
+    # Multi-arch PostGIS (arm64 + amd64). Dedicated to OpenZaak so the default Postgres
+    # stays lean. POSTGRES_DB=openzaak; the postgis extension is enabled via db-init.
+    image: imresamu/postgis:16-3.5
+    container_name: ved-openzaak-db
+    environment:
+      POSTGRES_USER: openzaak
+      POSTGRES_PASSWORD: openzaak
+      POSTGRES_DB: openzaak
+    volumes:
+      - ved_openzaak_db_data:/var/lib/postgresql/data
+      - ./openzaak/db-init:/docker-entrypoint-initdb.d:z
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openzaak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ved-openzaak-redis:
+    profiles: ["openzaak"]
+    image: redis:7-alpine
+    container_name: ved-openzaak-redis
+
+  ved-openzaak-init:
+    profiles: ["openzaak"]
+    image: &oz-image openzaak/open-zaak:1.29.0
+    # OpenZaak publishes amd64 only; runs natively on amd64 (CI/cluster), under emulation
+    # on arm64 dev machines.
+    platform: &oz-platform linux/amd64
+    container_name: ved-openzaak-init
+    environment: &oz-env
+      DJANGO_SETTINGS_MODULE: openzaak.conf.docker
+      SECRET_KEY: epistola-demo-not-for-production
+      DB_HOST: ved-openzaak-db
+      DB_PORT: "5432"
+      DB_NAME: openzaak
+      DB_USER: openzaak
+      DB_PASSWORD: openzaak
+      IS_HTTPS: "no"
+      SITE_DOMAIN: localhost:8002
+      ALLOWED_HOSTS: localhost,127.0.0.1,ved-openzaak
+      CORS_ALLOW_ALL_ORIGINS: "True"
+      CACHE_DEFAULT: ved-openzaak-redis:6379/0
+      CACHE_AXES: ved-openzaak-redis:6379/0
+      CELERY_BROKER_URL: redis://ved-openzaak-redis:6379/1
+      CELERY_RESULT_BACKEND: redis://ved-openzaak-redis:6379/1
+      OPENZAAK_SUPERUSER_USERNAME: admin
+      DJANGO_SUPERUSER_PASSWORD: admin
+      OPENZAAK_SUPERUSER_EMAIL: admin@localhost
+      DISABLE_2FA: "true"
+      NOTIFICATIONS_DISABLED: "true"
+      LOG_NOTIFICATIONS_IN_DB: "no"
+      ENVIRONMENT: dev
+      DB_CONN_MAX_AGE: "0"
+      SENDFILE_BACKEND: django_sendfile.backends.development
+      RUN_SETUP_CONFIG: "true"
+    command:
+      - sh
+      - -c
+      - "/setup_configuration.sh && src/manage.py loaddata /app/fixtures/catalogi.json"
+    volumes:
+      - ./openzaak/setup_configuration:/app/setup_configuration:z
+      - ./openzaak/fixtures/catalogi.json:/app/fixtures/catalogi.json:z
+    depends_on:
+      ved-openzaak-db:
+        condition: service_healthy
+      ved-openzaak-redis:
+        condition: service_started
+
+  ved-openzaak:
+    profiles: ["openzaak"]
+    image: *oz-image
+    platform: *oz-platform
+    container_name: ved-openzaak
+    environment: *oz-env
+    ports:
+      - "8002:8000"
+    volumes:
+      - ved_openzaak_media:/app/media
+      - ved_openzaak_private_media:/app/private-media
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import requests,sys; sys.exit(requests.head('http://localhost:8000/admin/').status_code not in (200,302))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    depends_on:
+      ved-openzaak-init:
+        condition: service_completed_successfully
+
+  ved-openzaak-celery:
+    profiles: ["openzaak"]
+    image: *oz-image
+    platform: *oz-platform
+    container_name: ved-openzaak-celery
+    environment: *oz-env
+    command: /celery_worker.sh
+    volumes:
+      - ved_openzaak_media:/app/media
+      - ved_openzaak_private_media:/app/private-media
+    depends_on:
+      ved-openzaak:
+        condition: service_healthy
+
 volumes:
   ved_postgres_data:
+  ved_openzaak_db_data:
+  ved_openzaak_media:
+  ved_openzaak_private_media:

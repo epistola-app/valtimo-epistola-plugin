@@ -85,5 +85,98 @@
       "storageTarget": "TEMPORARY_RESOURCE",
       "resourceIdVariable": "doc3ResourceId"
     }
+  },
+  {
+    "activityId": "create-zaak",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "b1000000-0000-0000-0000-0000000000a3",
+    "pluginActionDefinitionKey": "create-zaak",
+    "actionProperties": {
+      "rsin": "000000000",
+      "zaaktypeUrl": "http://localhost:8002/catalogi/api/v1/zaaktypen/59fa0613-b50d-41f1-8358-673909944686",
+      "description": "Subsidie besluitpakket"
+    }
+  },
+  {
+    "activityId": "store-doc1",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "b1000000-0000-0000-0000-0000000000a2",
+    "pluginActionDefinitionKey": "store-temp-document",
+    "actionProperties": {
+      "localDocumentLocation": "doc1ResourceId",
+      "storedDocumentUrl": "doc1Url",
+      "informatieobjecttype": "http://localhost:8002/catalogi/api/v1/informatieobjecttypen/cb6718f1-7b06-4dfc-9b11-1ba8db4740e6",
+      "taal": "nld",
+      "status": "DEFINITIEF",
+      "title": "Subsidiebesluit",
+      "fileName": "subsidiebesluit.pdf"
+    }
+  },
+  {
+    "activityId": "link-doc1",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "b1000000-0000-0000-0000-0000000000a3",
+    "pluginActionDefinitionKey": "link-document-to-zaak",
+    "actionProperties": {
+      "documentUrl": "pv:doc1Url",
+      "titel": "Subsidiebesluit"
+    }
+  },
+  {
+    "activityId": "store-doc2",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "b1000000-0000-0000-0000-0000000000a2",
+    "pluginActionDefinitionKey": "store-temp-document",
+    "actionProperties": {
+      "localDocumentLocation": "doc2ResourceId",
+      "storedDocumentUrl": "doc2Url",
+      "informatieobjecttype": "http://localhost:8002/catalogi/api/v1/informatieobjecttypen/cb6718f1-7b06-4dfc-9b11-1ba8db4740e6",
+      "taal": "nld",
+      "status": "DEFINITIEF",
+      "title": "Financieel Overzicht",
+      "fileName": "financieel-overzicht.pdf"
+    }
+  },
+  {
+    "activityId": "link-doc2",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "b1000000-0000-0000-0000-0000000000a3",
+    "pluginActionDefinitionKey": "link-document-to-zaak",
+    "actionProperties": {
+      "documentUrl": "pv:doc2Url",
+      "titel": "Financieel Overzicht"
+    }
+  },
+  {
+    "activityId": "store-doc3",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "b1000000-0000-0000-0000-0000000000a2",
+    "pluginActionDefinitionKey": "store-temp-document",
+    "actionProperties": {
+      "localDocumentLocation": "doc3ResourceId",
+      "storedDocumentUrl": "doc3Url",
+      "informatieobjecttype": "http://localhost:8002/catalogi/api/v1/informatieobjecttypen/cb6718f1-7b06-4dfc-9b11-1ba8db4740e6",
+      "taal": "nld",
+      "status": "DEFINITIEF",
+      "title": "Voorwaarden Bijlage",
+      "fileName": "voorwaarden-bijlage.pdf"
+    }
+  },
+  {
+    "activityId": "link-doc3",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "b1000000-0000-0000-0000-0000000000a3",
+    "pluginActionDefinitionKey": "link-document-to-zaak",
+    "actionProperties": {
+      "documentUrl": "pv:doc3Url",
+      "titel": "Voorwaarden Bijlage"
+    }
   }
 ]

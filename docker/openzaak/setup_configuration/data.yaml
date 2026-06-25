@@ -1,0 +1,33 @@
+# OpenZaak setup_configuration for the Epistola plugin ZGW demo (local, opt-in `zgw` profile).
+# Loaded by the `ved-openzaak-init` container via `setup_configuration`.
+# NOT for production — non-safe demo defaults.
+
+# Site domain OpenZaak uses to build absolute resource URLs. Must match how Valtimo
+# reaches OpenZaak. The default local dev scenario runs Valtimo via Gradle on the host,
+# so OpenZaak is reachable at localhost:8002 (the published port of ved-openzaak).
+sites_config_enable: true
+sites_config:
+  items:
+    - domain: localhost:8002
+      name: Open Zaak (Epistola demo)
+
+# API client Valtimo authenticates with. heeft_alle_autorisaties grants full access
+# (demo only). These credentials are referenced by the Valtimo `openzaak` plugin config.
+vng_api_common_credentials_config_enable: true
+vng_api_common_credentials:
+  items:
+    - identifier: valtimo
+      # OpenZaak signs its API JWT with this secret and requires >= 32 chars.
+      secret: epistola-demo-openzaak-client-secret-0001
+
+vng_api_common_applicaties_config_enable: true
+vng_api_common_applicaties:
+  items:
+    - uuid: 1b6c1e2a-0d6c-4a5b-9e3a-7c2f0a1b2c3d
+      client_ids:
+        - valtimo
+      label: Valtimo Epistola demo
+      heeft_alle_autorisaties: true
+
+# Notifications are disabled (NOTIFICATIONS_DISABLED=true on the containers), so no
+# Notificaties API / Open Notificaties service is required for the demo.

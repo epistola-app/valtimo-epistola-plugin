@@ -52,7 +52,13 @@ import { ProcessLinkModule } from '@valtimo/process-link';
 import { MigrationModule } from '@valtimo/migration';
 import { CaseManagementModule } from '@valtimo/case-management';
 import { BootstrapModule } from '@valtimo/bootstrap';
-import { ConfigModule, ConfigService, MultiTranslateHttpLoaderFactory } from '@valtimo/shared';
+import {
+  ConfigModule,
+  ConfigService,
+  MultiTranslateHttpLoaderFactory,
+  ZGW_DOCUMENTEN_API_DOCUMENTS_COMPONENT_TOKEN,
+} from '@valtimo/shared';
+import { ZgwDocumentsTabComponent } from './zgw-documents/zgw-documents-tab.component';
 import { TranslateLoader, TranslateModule } from '@ngx-translate/core';
 import { FormFlowManagementModule } from '@valtimo/form-flow-management';
 import { PluginManagementModule } from '@valtimo/plugin-management';
@@ -174,6 +180,9 @@ export function tabsFactory() {
       ],
     },
     provideHttpClient(withInterceptorsFromDi()),
+    // Fills Valtimo's ZGW documents-tab extension point so the case Documents tab lists the
+    // case's Documenten-API documents (requires uploadProvider: DOCUMENTEN_API).
+    { provide: ZGW_DOCUMENTEN_API_DOCUMENTS_COMPONENT_TOKEN, useValue: ZgwDocumentsTabComponent },
   ],
 })
 export class AppModule {

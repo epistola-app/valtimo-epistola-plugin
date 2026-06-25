@@ -66,6 +66,7 @@ dependencies {
     implementation(libs.valtimo.zaken.api)
     implementation(libs.valtimo.documenten.api)
     implementation(libs.valtimo.catalogi.api)
+    implementation(libs.valtimo.openzaak.plugin.authentication)
 
     implementation(libs.postgresql)
 

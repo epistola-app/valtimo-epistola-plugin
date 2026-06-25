@@ -197,6 +197,19 @@ scheduling:
 epistola:
   base-url: ${EPISTOLA_BASE_URL:http://localhost:4000/api}
 
+# ZGW / OpenZaak connection settings consumed by config/zgw.pluginconfig.json.
+# Defaults target the opt-in local `zgw` docker profile (OpenZaak on localhost:8002);
+# override per environment via the ZGW_* env vars (e.g. in the Helm chart).
+# NOTE: the plugin-config placeholder resolver does not support ${key:default} syntax,
+# so the defaults live here and the JSON references the bare property keys.
+zgw:
+  client-id: ${ZGW_CLIENT_ID:valtimo}
+  client-secret: ${ZGW_CLIENT_SECRET:epistola-demo-openzaak-client-secret-0001}
+  bronorganisatie: ${ZGW_BRONORGANISATIE:000000000}
+  documenten-api-url: ${ZGW_DOCUMENTEN_API_URL:http://localhost:8002/documenten/api/v1/}
+  zaken-api-url: ${ZGW_ZAKEN_API_URL:http://localhost:8002/zaken/api/v1/}
+  catalogi-api-url: ${ZGW_CATALOGI_API_URL:http://localhost:8002/catalogi/api/v1/}
+
 operaton:
   bpm:
     database:

@@ -1,0 +1,39 @@
+[
+  {
+    "id": "b1000000-0000-0000-0000-0000000000a1",
+    "title": "OpenZaak authentication",
+    "pluginDefinitionKey": "openzaak",
+    "properties": {
+      "clientId": "${zgw.client-id}",
+      "clientSecret": "${zgw.client-secret}"
+    }
+  },
+  {
+    "id": "b1000000-0000-0000-0000-0000000000a2",
+    "title": "Documenten API",
+    "pluginDefinitionKey": "documentenapi",
+    "properties": {
+      "url": "${zgw.documenten-api-url}",
+      "bronorganisatie": "${zgw.bronorganisatie}",
+      "authenticationPluginConfiguration": "b1000000-0000-0000-0000-0000000000a1"
+    }
+  },
+  {
+    "id": "b1000000-0000-0000-0000-0000000000a3",
+    "title": "Zaken API",
+    "pluginDefinitionKey": "zakenapi",
+    "properties": {
+      "url": "${zgw.zaken-api-url}",
+      "authenticationPluginConfiguration": "b1000000-0000-0000-0000-0000000000a1"
+    }
+  },
+  {
+    "id": "b1000000-0000-0000-0000-0000000000a4",
+    "title": "Catalogi API",
+    "pluginDefinitionKey": "catalogiapi",
+    "properties": {
+      "url": "${zgw.catalogi-api-url}",
+      "authenticationPluginConfiguration": "b1000000-0000-0000-0000-0000000000a1"
+    }
+  }
+]

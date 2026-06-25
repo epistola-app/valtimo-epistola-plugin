@@ -16,8 +16,15 @@
     <bpmn:documentation>Generates 3 documents in parallel (decision, financial overview, conditions), then archives them via Documenten API.</bpmn:documentation>
 
     <bpmn:startEvent id="startEvent" name="Start">
-      <bpmn:outgoing>Flow_to_fork</bpmn:outgoing>
+      <bpmn:outgoing>Flow_start_to_createzaak</bpmn:outgoing>
     </bpmn:startEvent>
+
+    <!-- Create the OpenZaak zaak for this case (links the Valtimo document to a zaak so
+         generated documents can later be attached to the case Documents tab). -->
+    <bpmn:serviceTask id="create-zaak" name="Maak zaak aan">
+      <bpmn:incoming>Flow_start_to_createzaak</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_fork</bpmn:outgoing>
+    </bpmn:serviceTask>
 
     <!-- ===== Parallel fork: generate 3 documents simultaneously ===== -->
 
@@ -120,7 +127,8 @@
 
     <!-- ===== Sequence flows ===== -->
 
-    <bpmn:sequenceFlow id="Flow_to_fork" sourceRef="startEvent" targetRef="fork" />
+    <bpmn:sequenceFlow id="Flow_start_to_createzaak" sourceRef="startEvent" targetRef="create-zaak" />
+    <bpmn:sequenceFlow id="Flow_to_fork" sourceRef="create-zaak" targetRef="fork" />
 
     <!-- Fork → branches -->
     <bpmn:sequenceFlow id="Flow_fork_to_a" sourceRef="fork" targetRef="generate-doc1" />
@@ -158,6 +166,11 @@
       <!-- Start -->
       <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent">
         <dc:Bounds x="179" y="342" width="36" height="36" />
+      </bpmndi:BPMNShape>
+
+      <!-- Create zaak -->
+      <bpmndi:BPMNShape id="create-zaak_di" bpmnElement="create-zaak">
+        <dc:Bounds x="240" y="30" width="110" height="70" />
       </bpmndi:BPMNShape>
 
       <!-- Fork -->
@@ -229,9 +242,14 @@
       </bpmndi:BPMNShape>
 
       <!-- Edges: start → fork -->
+      <bpmndi:BPMNEdge id="Flow_start_to_createzaak_di" bpmnElement="Flow_start_to_createzaak">
+        <di:waypoint x="197" y="342" />
+        <di:waypoint x="197" y="65" />
+        <di:waypoint x="240" y="65" />
+      </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Flow_to_fork_di" bpmnElement="Flow_to_fork">
-        <di:waypoint x="215" y="360" />
-        <di:waypoint x="275" y="360" />
+        <di:waypoint x="295" y="100" />
+        <di:waypoint x="295" y="335" />
       </bpmndi:BPMNEdge>
 
       <!-- Fork → branches -->

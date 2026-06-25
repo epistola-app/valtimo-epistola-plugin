@@ -129,7 +129,9 @@ export const environment: ValtimoConfig = {
   openZaak: {
     catalogus: window['env']['openZaakCatalogusId'] || '',
   },
-  uploadProvider: UploadProvider.S3,
+  // DOCUMENTEN_API activates the ZGW documents tab (ZgwDocumentsTabComponent, registered in
+  // AppModule), which lists the case's zaak documents from /api/v2/zaken-api/document/{id}/files.
+  uploadProvider: UploadProvider.DOCUMENTEN_API,
   defaultDefinitionTable: defaultDefinitionColumns,
   featureToggles: {
     showUserNameInTopBar: true,
