@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.deploy;
 
+import app.epistola.valtimo.service.EpistolaApiException;
 import app.epistola.valtimo.service.EpistolaService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
@@ -177,13 +178,46 @@ public class EpistolaCatalogSyncService {
 
             return new RedeployOutcome(catalog.slug(), catalog.version(), true,
                     result.catalogKey(), result.installed(), result.updated(),
-                    result.failed(), result.total(), null);
+                    result.failed(), result.total(), null, null);
+        } catch (EpistolaApiException e) {
+            String message = translateRedeployError(catalog, e);
+            log.error("Manual redeploy of catalog '{}' v{} failed ({}): {}",
+                    catalog.slug(), catalog.version(),
+                    e.getHttpStatus() != null ? e.getHttpStatus() : "no-status", message, e);
+            return new RedeployOutcome(catalog.slug(), catalog.version(), false,
+                    null, 0, 0, 0, 0, message, e.getHttpStatus());
         } catch (Exception e) {
             log.error("Manual redeploy of catalog '{}' v{} failed: {}",
                     catalog.slug(), catalog.version(), e.getMessage(), e);
             return new RedeployOutcome(catalog.slug(), catalog.version(), false,
-                    null, 0, 0, 0, 0, e.getMessage());
+                    null, 0, 0, 0, 0, e.getMessage(), null);
         }
+    }
+
+    /**
+     * Translate a failed catalog import into an operator-actionable message.
+     *
+     * <p>The suite's {@code catalog-schema-too-old} remediation — "re-export the catalog from a
+     * current source" — is a dead end for a classpath catalog compiled into the application
+     * image: there is nothing for the operator to re-export. For that case we replace it with
+     * guidance to upgrade the plugin/host build, using the structured {@code version} /
+     * {@code baselineVersion} the suite returned. All other failures keep the downstream detail.
+     */
+    private String translateRedeployError(CatalogScanner.CatalogOnClasspath catalog, EpistolaApiException e) {
+        if ("catalog-schema-too-old".equals(e.getProblemTypeSlug())) {
+            Object version = e.getProblemExtensions().get("version");
+            Object baseline = e.getProblemExtensions().get("baselineVersion");
+            if (version != null && baseline != null) {
+                return String.format(
+                        "The bundled '%s' catalog is at Epistola wire schema v%s, but the connected "
+                                + "Epistola requires at least v%s. This catalog is compiled into the "
+                                + "application image and cannot be re-exported by an operator — upgrade "
+                                + "the valtimo-epistola-plugin (and the host application) to a build whose "
+                                + "bundled catalogs target wire schema v%s.",
+                        catalog.slug(), version, baseline, baseline);
+            }
+        }
+        return e.getMessage();
     }
 
     /**
@@ -308,6 +342,7 @@ public class EpistolaCatalogSyncService {
             int updated,
             int failed,
             int total,
-            String errorMessage
+            String errorMessage,
+            Integer httpStatus
     ) {}
 }

@@ -48,6 +48,7 @@ import app.epistola.client.model.VariantListResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 
 import java.time.Instant;
@@ -376,6 +377,19 @@ public class EpistolaServiceImpl implements EpistolaService {
                     tenantId, catalogKey, installed, updated, failed, total);
 
             return new ImportCatalogResult(catalogKey, catalogName, installed, updated, failed, total);
+        } catch (HttpStatusCodeException e) {
+            // Preserve the downstream RFC-9457 problem detail (covers 4xx and 5xx). The suite's
+            // import endpoint returns a structured body (e.g. catalog-schema-too-old with
+            // version/baselineVersion) that callers translate and map to a correct status class.
+            String body = e.getResponseBodyAsString();
+            log.error("Failed to import catalog for tenant {}: {} {}", tenantId, e.getStatusCode(), body);
+            ProblemBody problem = parseProblemBody(body);
+            throw new EpistolaApiException(
+                    problem.message() != null ? problem.message() : "Failed to import catalog",
+                    e,
+                    e.getStatusCode().value(),
+                    problem.type(),
+                    problem.extensions());
         } catch (Exception e) {
             log.error("Failed to import catalog for tenant {}: {}", tenantId, e.getMessage());
             throw new EpistolaApiException("Failed to import catalog", e);
@@ -427,22 +441,52 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     /**
      * Extract a human-readable error message from an Epistola API error response body.
-     * Tries to parse JSON and extract "message" or "error" fields.
+     * Prefers the RFC-9457 problem-detail fields ({@code detail}, then {@code title}),
+     * falling back to the legacy {@code message}/{@code error} fields, then the raw body.
      */
     private String extractErrorMessage(String responseBody) {
         if (responseBody == null || responseBody.isBlank()) return null;
         try {
             var tree = new com.fasterxml.jackson.databind.ObjectMapper().readTree(responseBody);
-            if (tree.has("message") && !tree.get("message").isNull()) {
-                return tree.get("message").asText();
-            }
-            if (tree.has("error") && !tree.get("error").isNull()) {
-                return tree.get("error").asText();
+            for (String field : new String[]{"detail", "title", "message", "error"}) {
+                if (tree.has(field) && !tree.get(field).isNull()) {
+                    return tree.get(field).asText();
+                }
             }
         } catch (Exception ignored) {
             // Not JSON, return raw body
         }
         return responseBody.length() > 500 ? responseBody.substring(0, 500) : responseBody;
+    }
+
+    /**
+     * A parsed downstream error body: a human-readable {@code message}, the RFC-9457 problem
+     * {@code type} URI (or null), and the structured extension members relevant to catalog
+     * import ({@code version} / {@code baselineVersion}).
+     */
+    private record ProblemBody(String message, String type, Map<String, Object> extensions) {}
+
+    /** Parse an Epistola error response body into its message + RFC-9457 type/extensions. */
+    private ProblemBody parseProblemBody(String responseBody) {
+        String message = extractErrorMessage(responseBody);
+        String type = null;
+        Map<String, Object> extensions = new java.util.LinkedHashMap<>();
+        if (responseBody != null && !responseBody.isBlank()) {
+            try {
+                var tree = new com.fasterxml.jackson.databind.ObjectMapper().readTree(responseBody);
+                if (tree.has("type") && !tree.get("type").isNull()) {
+                    type = tree.get("type").asText();
+                }
+                for (String field : new String[]{"version", "baselineVersion"}) {
+                    if (tree.has(field) && tree.get(field).isInt()) {
+                        extensions.put(field, tree.get(field).asInt());
+                    }
+                }
+            } catch (Exception ignored) {
+                // Not JSON — message already holds the raw body.
+            }
+        }
+        return new ProblemBody(message, type, extensions);
     }
 
     // Mapping methods

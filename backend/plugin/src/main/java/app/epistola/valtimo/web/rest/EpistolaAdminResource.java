@@ -179,8 +179,11 @@ public class EpistolaAdminResource {
      * Force-redeploy a single classpath catalog to the configuration's Epistola
      * installation. Explicit operator action — bypasses the {@code templateSyncEnabled}
      * gate and the version-skip check. Returns 200 with the per-resource counts on
-     * success, 502 (with the same body, carrying {@code errorMessage}) when the import
-     * failed, or 400 when the configuration id or catalog slug is unknown.
+     * success; on failure the same body (carrying {@code errorMessage}) is returned with
+     * a status that reflects the cause — a downstream 4xx becomes {@code 422 Unprocessable
+     * Entity} (a deterministic data problem, e.g. a too-old catalog wire schema), while a
+     * 5xx / connectivity failure stays {@code 502 Bad Gateway}. A 400 is returned when the
+     * configuration id or catalog slug is unknown.
      */
     @PostMapping("/configurations/{configurationId}/catalogs/{slug}/redeploy")
     public ResponseEntity<CatalogRedeployResult> redeployCatalog(
@@ -188,8 +191,23 @@ public class EpistolaAdminResource {
         requireManagePermission();
         log.info("Manual catalog redeploy requested: configuration={}, slug={}", configurationId, slug);
         CatalogRedeployResult result = adminService.redeployCatalog(configurationId, slug);
-        HttpStatus status = result.success() ? HttpStatus.OK : HttpStatus.BAD_GATEWAY;
-        return ResponseEntity.status(status).body(result);
+        return ResponseEntity.status(redeployStatus(result)).body(result);
+    }
+
+    /**
+     * Map a redeploy outcome to an HTTP status: success → 200; a downstream client-class
+     * (4xx) failure → 422 (the operator must ship a fixed catalog, not retry); everything
+     * else (5xx, connectivity, build failure) → 502.
+     */
+    private static HttpStatus redeployStatus(CatalogRedeployResult result) {
+        if (result.success()) {
+            return HttpStatus.OK;
+        }
+        Integer downstream = result.httpStatus();
+        if (downstream != null && downstream >= 400 && downstream < 500) {
+            return HttpStatus.UNPROCESSABLE_ENTITY;
+        }
+        return HttpStatus.BAD_GATEWAY;
     }
 
     /**

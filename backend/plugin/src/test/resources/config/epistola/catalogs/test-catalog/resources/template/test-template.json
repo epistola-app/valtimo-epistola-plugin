@@ -1,7 +1,8 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 4,
   "resource": {
     "type": "template",
+    "themeId": "default",
     "slug": "test-template",
     "name": "Test Template",
     "templateModel": {

@@ -24,9 +24,11 @@ package app.epistola.valtimo.web.rest.dto;
  * accepted by Epistola's import endpoint; {@code installed} / {@code updated} /
  * {@code failed} / {@code total} are the per-resource counts Epistola reported.
  * {@code success=false} means the build or import failed — {@code errorMessage}
- * carries the reason and the resource counts are zero. The controller maps a
- * failed redeploy to HTTP 502 so standard client error handling applies while
- * still returning this body.
+ * carries the reason and the resource counts are zero. {@code httpStatus} is the
+ * downstream Epistola status code (when the failure was an HTTP response); the
+ * controller maps a downstream 4xx to {@code 422 Unprocessable Entity} (a
+ * deterministic data problem the operator must fix) and reserves {@code 502 Bad
+ * Gateway} for 5xx / connectivity failures, while still returning this body.
  */
 public record CatalogRedeployResult(
         String slug,
@@ -37,5 +39,6 @@ public record CatalogRedeployResult(
         int updated,
         int failed,
         int total,
-        String errorMessage
+        String errorMessage,
+        Integer httpStatus
 ) {}
