@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The local Authentik blueprint now provisions cleanly on startup.** It follows the working infra blueprint pattern for built-in scope lookup, signing key selection, and explicit OAuth2 grant types, emits Valtimo role claims through the requested `roles` scope, and seeds valid demo-user email addresses (`viewer@demo.local` / `admin@demo.local`).
 - **The test-app frontend now keeps Angular auth modules statically importable.** Keycloak and Authentik modules are both imported by the root app module, while the runtime `authProvider` switch only selects the active auth config/providers. This preserves the local `pnpm start` workflow and the separate `pnpm start:authentik` workflow.
 - **Authentik mode now satisfies Valtimo frontend components that still inject `KeycloakService`.** The test-app provides a small compatibility service that delegates to Keycloak in Keycloak mode and exposes Authentik roles/profile/token data in Authentik mode, avoiding undefined `resourceAccess` reads during menu construction.
+- **The Authentik frontend dev configuration now serves the app at `/`.** The alternate Authentik index file is emitted as `index.html`, so `pnpm start:authentik` works at `http://localhost:4200` without a query parameter or alternate path.
 
 ## [0.12.0] - 2026-06-25
 
