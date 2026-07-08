@@ -40,7 +40,8 @@ auth:
     jwksUri: ""
     clientId: valtimo-console
     backendClientId: valtimo-backend
-    scopes: "openid profile email"
+    # Include roles so Authentik can emit Keycloak-compatible Valtimo role claims.
+    scopes: "openid profile email roles"
     # Browser callback values default to the Valtimo frontend URL.
     redirectUri: ""
     logoutRedirectUri: ""

@@ -62,18 +62,19 @@ See `values.yaml` for the exhaustive list of tunables.
 
 ## Authentik OIDC Integration
 
-Set `auth.provider=authentik` to use an external Authentik OAuth2/OIDC provider instead of the bundled Keycloak issuer for Valtimo login. The chart automatically appends the backend `authentik` Spring profile, renders generic OIDC issuer/JWKS/client values, and switches the frontend to the Authentik-compatible PKCE flow.
+Keycloak is the default chart authentication provider. Set `auth.provider=authentik` to use an external Authentik OAuth2/OIDC provider instead of the bundled Keycloak issuer for Valtimo login. The chart automatically appends the backend `authentik` Spring profile, skips bundled Keycloak resources, renders generic OIDC issuer/JWKS/client values, and switches the frontend runtime config to the Authentik-compatible PKCE flow.
 
 ```bash
 helm install demo charts/valtimo-demo \
   --set auth.provider=authentik \
   --set auth.oidc.issuerUri="https://auth.example.com/application/o/valtimo-demo/" \
   --set auth.oidc.jwksUri="https://auth.example.com/application/o/valtimo-demo/jwks/" \
+  --set auth.oidc.scopes="openid profile email roles" \
   --set secrets.keycloakClientSecret.value="backend-client-secret" \
   --set publicUrls.frontend="https://valtimo.example.com"
 ```
 
-Configure Authentik with redirect URI `https://valtimo.example.com/auth/callback` and post-logout redirect URI `https://valtimo.example.com`. Tokens must include `email`, `preferred_username`, and Keycloak-compatible role claims: `realm_access.roles` and/or `resource_access.<client-id>.roles`, containing values such as `ROLE_USER` and `ROLE_ADMIN`.
+Configure Authentik with redirect URI `https://valtimo.example.com/auth/callback` and post-logout redirect URI `https://valtimo.example.com`. The default `auth.oidc.scopes` value requests `openid profile email roles`; keep `roles` enabled unless your Authentik provider emits role claims through another requested scope. Tokens must include `email`, `preferred_username`, and Keycloak-compatible role claims: `realm_access.roles` and/or `resource_access.<client-id>.roles`, containing values such as `ROLE_USER` and `ROLE_ADMIN`.
 
 This mode covers OIDC login and JWT authorization. User creation, profile edits, password changes, and other Keycloak Admin API-backed user-management features are delegated to Authentik and are not implemented by the demo backend.
 

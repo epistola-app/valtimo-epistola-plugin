@@ -350,13 +350,21 @@ docker compose -f docker/docker-compose.yml --profile server --profile authentik
 
 If your local `ved_postgres_data` volume was created before the `authentik` database was added, recreate it once with `docker compose -f docker/docker-compose.yml down -v` and start the stack again.
 
-When running `pnpm start`, the frontend reads `test-app/frontend/src/assets/config.js`. Its local-dev default is Keycloak, but you can switch it in the browser without copying files. In Authentik mode the local config also fills the Compose issuer, client id, callback URL, logout URL, and scopes.
+Build the plugin and start the frontend with the Authentik dev configuration:
 
-```text
-http://localhost:4200/?authProvider=authentik
+```bash
+pnpm build:plugin
+pnpm start:authentik
 ```
 
-The query parameter is persisted in `localStorage` as `valtimo.authProvider`. Switch back with `?authProvider=keycloak` or clear that local-storage entry.
+Open <http://localhost:4200>. The Authentik frontend configuration is selected by the Angular dev-server configuration, not by a URL query parameter. It loads `test-app/frontend/src/assets/config.authentik.js`, which fills the Compose issuer, client id, callback URL, logout URL, and scopes. The default `pnpm start` remains Keycloak mode and loads `assets/config.js`.
+
+If you tested an earlier version of this branch with `?authProvider=authentik`, clear the old browser override once:
+
+```js
+localStorage.removeItem("valtimo.authProvider");
+sessionStorage.clear();
+```
 
 Use these provisioned Authentik users for Valtimo login:
 
@@ -367,18 +375,24 @@ Use these provisioned Authentik users for Valtimo login:
 
 The Authentik bootstrap admin remains `akadmin` with password `admin`.
 
-For the pre-built container demo, provide an Authentik-flavoured frontend config and OIDC backend values. Source-mode testing is preferred until the demo images include this branch:
+For the pre-built container demo, Keycloak remains the default:
 
 ```bash
-SPRING_PROFILES_ACTIVE=demo,dev,authentik \
-FRONTEND_CONFIG_JS=./containers/config.authentik.js \
-OIDC_ISSUER_URI=https://auth.example.com/application/o/valtimo-demo/ \
-OIDC_JWKS_URI=https://auth.example.com/application/o/valtimo-demo/jwks/ \
-OIDC_BACKEND_CLIENT_SECRET=... \
-docker compose -f docker/docker-compose.yml --profile server --profile authentik --profile containers up -d
+docker compose -f docker/docker-compose.yml --profile server --profile containers up -d
 ```
 
-In Authentik, configure the Valtimo provider with redirect URI `http://localhost:4200/auth/callback` for local Compose. Tokens must include `email`, `preferred_username`, and Keycloak-compatible role claims: `realm_access.roles` and/or `resource_access.<client-id>.roles`, containing values such as `ROLE_USER` and `ROLE_ADMIN`.
+To run the same container demo against Authentik, use the Authentik Compose env file. It switches the backend Spring profiles/OIDC URLs and mounts the Authentik frontend runtime config:
+
+```bash
+docker compose -f docker/docker-compose.yml \
+  --env-file docker/containers/authentik.env \
+  --profile server \
+  --profile authentik \
+  --profile containers \
+  up -d
+```
+
+The local Authentik blueprint already configures the Valtimo provider with redirect URI `http://localhost:4200/auth/callback` for local Compose. Tokens include `email`, `preferred_username`, and Keycloak-compatible role claims: `realm_access.roles` and `resource_access.valtimo-console.roles`, containing values such as `ROLE_USER` and `ROLE_ADMIN`.
 
 This mode covers OIDC login and JWT authorization. User creation, profile edits, password changes, and other Keycloak Admin API-backed user-management features are intentionally delegated to Authentik and are not implemented in Valtimo.
 

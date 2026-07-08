@@ -101,12 +101,22 @@
             "optimization": false,
             "namedChunks": true
           },
+          "configurations": {
+            "authentik": {
+              "index": "src/index.authentik.html"
+            }
+          },
           "defaultConfiguration": ""
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
             "buildTarget": "valtimo-frontend-template:build"
+          },
+          "configurations": {
+            "authentik": {
+              "buildTarget": "valtimo-frontend-template:build:authentik"
+            }
           }
         },
         "extract-i18n": {
