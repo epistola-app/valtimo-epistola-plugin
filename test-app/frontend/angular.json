@@ -103,7 +103,10 @@
           },
           "configurations": {
             "authentik": {
-              "index": "src/index.authentik.html"
+              "index": {
+                "input": "src/index.authentik.html",
+                "output": "index.html"
+              }
             }
           },
           "defaultConfiguration": ""
