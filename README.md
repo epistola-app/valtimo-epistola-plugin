@@ -301,7 +301,7 @@ If you've cloned this repo, [`docker/docker-compose.yml`](docker/docker-compose.
 | Profile      | What it adds                                               | When to use                                                             |
 | ------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
 | `server`     | Postgres + Keycloak + Epistola server                      | Running Valtimo locally from source against a real Epistola             |
-| `authentik`  | Local Authentik server + worker on Postgres                | Testing Valtimo's Authentik/OIDC mode from source                       |
+| `authentik`  | Local Authentik server + worker on Postgres and Redis      | Testing Valtimo's Authentik/OIDC mode from source                       |
 | `mock`       | Postgres + Keycloak + Epistola mock-server (contract-only) | Offline / CI — exercises the plugin without a real Epistola             |
 | `containers` | Adds pre-built Valtimo demo backend + frontend             | End-to-end demo without building your own Valtimo                       |
 | `reset`      | One-shot DB reset utility                                  | Testing the CronJob/data flows in [Demo Environment](#demo-environment) |

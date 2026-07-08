@@ -62,6 +62,12 @@ services:
 
   # === Authentik profile: local OIDC provider for source-mode Valtimo testing ===
 
+  ved-authentik-redis:
+    profiles: ["authentik"]
+    image: redis:7-alpine
+    container_name: ved-authentik-redis
+    command: redis-server --save "" --appendonly no
+
   ved-authentik-server:
     profiles: ["authentik"]
     image: ghcr.io/goauthentik/server:${AUTHENTIK_VERSION:-2025.6}
@@ -74,6 +80,7 @@ services:
       AUTHENTIK_POSTGRESQL__NAME: authentik
       AUTHENTIK_POSTGRESQL__USER: epistola
       AUTHENTIK_POSTGRESQL__PASSWORD: epistola
+      AUTHENTIK_REDIS__HOST: ved-authentik-redis
       AUTHENTIK_BOOTSTRAP_EMAIL: "${AUTHENTIK_BOOTSTRAP_EMAIL:-root@localhost}"
       AUTHENTIK_BOOTSTRAP_PASSWORD: "${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin}"
       AUTHENTIK_BOOTSTRAP_TOKEN: "${AUTHENTIK_BOOTSTRAP_TOKEN:-dev-authentik-bootstrap-token}"
@@ -84,6 +91,8 @@ services:
     depends_on:
       ved-postgres:
         condition: service_healthy
+      ved-authentik-redis:
+        condition: service_started
 
   ved-authentik-worker:
     profiles: ["authentik"]
@@ -97,11 +106,14 @@ services:
       AUTHENTIK_POSTGRESQL__NAME: authentik
       AUTHENTIK_POSTGRESQL__USER: epistola
       AUTHENTIK_POSTGRESQL__PASSWORD: epistola
+      AUTHENTIK_REDIS__HOST: ved-authentik-redis
     volumes:
       - ./authentik/blueprints:/blueprints/valtimo:z
     depends_on:
       ved-postgres:
         condition: service_healthy
+      ved-authentik-redis:
+        condition: service_started
 
   # === Containers profile: run actual container images to reproduce K8s behavior ===
 
