@@ -7,19 +7,19 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          jwk-set-uri: ${OIDC_JWKS_URI}
+          jwk-set-uri: ${OIDC_JWKS_URI:http://localhost:9000/application/o/valtimo-demo/jwks/}
       client:
         provider:
           keycloakjwt:
-            issuer-uri: ${OIDC_ISSUER_URI}
+            issuer-uri: ${OIDC_ISSUER_URI:http://localhost:9000/application/o/valtimo-demo/}
           keycloakapi:
-            issuer-uri: ${OIDC_ISSUER_URI}
+            issuer-uri: ${OIDC_ISSUER_URI:http://localhost:9000/application/o/valtimo-demo/}
         registration:
           keycloakjwt:
             client-id: ${OIDC_CLIENT_ID:valtimo-console}
           keycloakapi:
             client-id: ${OIDC_BACKEND_CLIENT_ID:valtimo-backend}
-            client-secret: ${OIDC_BACKEND_CLIENT_SECRET}
+            client-secret: ${OIDC_BACKEND_CLIENT_SECRET:unused-for-public-local-client}
             authorization-grant-type: client_credentials
 
 valtimo:

@@ -345,9 +345,6 @@ For local source-mode testing, start the `authentik` Compose profile. The profil
 
 ```bash
 docker compose -f docker/docker-compose.yml --profile server --profile authentik up -d
-OIDC_ISSUER_URI=http://localhost:9000/application/o/valtimo-demo/ \
-OIDC_JWKS_URI=http://localhost:9000/application/o/valtimo-demo/jwks/ \
-OIDC_BACKEND_CLIENT_SECRET=unused-for-public-local-client \
 ./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev,authentik'
 ```
 
