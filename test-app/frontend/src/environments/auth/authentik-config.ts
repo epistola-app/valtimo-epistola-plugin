@@ -1,8 +1,26 @@
 import { CommonModule } from '@angular/common';
-import { HTTP_INTERCEPTORS, HttpEvent, HttpHandler, HttpInterceptor, HttpRequest } from '@angular/common/http';
+import {
+  HTTP_INTERCEPTORS,
+  HttpEvent,
+  HttpHandler,
+  HttpInterceptor,
+  HttpRequest,
+} from '@angular/common/http';
 import { Component, Injectable, Injector, NgModule, OnDestroy } from '@angular/core';
-import { ActivatedRouteSnapshot, CanActivate, Router, RouterModule, RouterStateSnapshot } from '@angular/router';
-import { Auth, AuthProviders, UserIdentity, UserService, ValtimoUserIdentity } from '@valtimo/shared';
+import {
+  ActivatedRouteSnapshot,
+  CanActivate,
+  Router,
+  RouterModule,
+  RouterStateSnapshot,
+} from '@angular/router';
+import {
+  Auth,
+  AuthProviders,
+  UserIdentity,
+  UserService,
+  ValtimoUserIdentity,
+} from '@valtimo/shared';
 import { jwtDecode } from 'jwt-decode';
 import { NGXLogger } from 'ngx-logger';
 import { Observable, ReplaySubject } from 'rxjs';
@@ -140,7 +158,10 @@ export class AuthentikOidcService {
       client_id: oidcConfig.clientId,
       refresh_token: tokens.refresh_token,
     });
-    this.storeTokens({...refreshedTokens, refresh_token: refreshedTokens.refresh_token || tokens.refresh_token});
+    this.storeTokens({
+      ...refreshedTokens,
+      refresh_token: refreshedTokens.refresh_token || tokens.refresh_token,
+    });
 
     return this.getTokens()?.access_token || null;
   }
@@ -155,7 +176,7 @@ export class AuthentikOidcService {
     sessionStorage.removeItem(STORAGE_KEYS.tokens);
 
     this.ensureDiscovery()
-      .then(discovery => {
+      .then((discovery) => {
         if (!discovery.end_session_endpoint) {
           window.location.assign(oidcConfig.logoutRedirectUri);
           return;
@@ -168,7 +189,7 @@ export class AuthentikOidcService {
         }
         window.location.assign(logoutUrl.toString());
       })
-      .catch(error => {
+      .catch((error) => {
         this.logger.warn('Failed to resolve logout endpoint', error);
         window.location.assign(oidcConfig.logoutRedirectUri);
       });
@@ -179,7 +200,7 @@ export class AuthentikOidcService {
     const body = new URLSearchParams(params);
     const response = await fetch(discovery.token_endpoint, {
       method: 'POST',
-      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
     });
 
@@ -209,7 +230,7 @@ export class AuthentikUserService implements UserService, OnDestroy {
 
   constructor(
     private readonly oidcService: AuthentikOidcService,
-    private readonly logger: NGXLogger
+    private readonly logger: NGXLogger,
   ) {}
 
   async init(): Promise<boolean> {
@@ -264,7 +285,7 @@ export class AuthentikUserService implements UserService, OnDestroy {
       claims.family_name || '',
       roles,
       claims.preferred_username || claims.email,
-      claims.sub
+      claims.sub,
     );
 
     this.logger.debug('Authentik user identity loaded', user);
@@ -276,7 +297,7 @@ export class AuthentikUserService implements UserService, OnDestroy {
 export class AuthentikAuthGuardService implements CanActivate {
   constructor(
     private readonly oidcService: AuthentikOidcService,
-    private readonly userService: AuthentikUserService
+    private readonly userService: AuthentikUserService,
   ) {}
 
   async canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Promise<boolean> {
@@ -295,7 +316,7 @@ export class AuthentikAuthGuardService implements CanActivate {
     const roles = extractRoles(claims, oidcConfig.clientId);
 
     this.userService.publishUserIdentity();
-    return requiredRoles.some(role => roles.includes(role));
+    return requiredRoles.some((role) => roles.includes(role));
   }
 }
 
@@ -304,20 +325,20 @@ export class AuthentikBearerInterceptor implements HttpInterceptor {
   constructor(private readonly oidcService: AuthentikOidcService) {}
 
   intercept(request: HttpRequest<unknown>, next: HttpHandler): Observable<HttpEvent<unknown>> {
-    if (oidcConfig.bearerExcludedUrls.some(url => request.url.includes(url))) {
+    if (oidcConfig.bearerExcludedUrls.some((url) => request.url.includes(url))) {
       return next.handle(request);
     }
 
-    return new Observable<HttpEvent<unknown>>(subscriber => {
+    return new Observable<HttpEvent<unknown>>((subscriber) => {
       this.oidcService
         .getAccessToken()
-        .then(token => {
+        .then((token) => {
           const authorizedRequest = token
-            ? request.clone({setHeaders: {Authorization: `Bearer ${token}`}})
+            ? request.clone({ setHeaders: { Authorization: `Bearer ${token}` } })
             : request;
           next.handle(authorizedRequest).subscribe(subscriber);
         })
-        .catch(error => subscriber.error(error));
+        .catch((error) => subscriber.error(error));
     });
   }
 }
@@ -331,9 +352,9 @@ export class AuthentikCallbackComponent {
   constructor(
     oidcService: AuthentikOidcService,
     userService: AuthentikUserService,
-    router: Router
+    router: Router,
   ) {
-    oidcService.handleCallback().then(redirectTo => {
+    oidcService.handleCallback().then((redirectTo) => {
       userService.publishUserIdentity();
       router.navigateByUrl(redirectTo);
     });
@@ -348,7 +369,7 @@ export class AuthentikCallbackComponent {
       {
         path: 'auth/callback',
         component: AuthentikCallbackComponent,
-        data: {title: 'Loading...'},
+        data: { title: 'Loading...' },
       },
     ]),
   ],
@@ -397,6 +418,6 @@ async function sha256Base64Url(value: string): Promise<string> {
 }
 
 function base64Url(bytes: Uint8Array): string {
-  const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
+  const binary = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }

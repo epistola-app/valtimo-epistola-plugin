@@ -360,10 +360,10 @@ The query parameter is persisted in `localStorage` as `valtimo.authProvider`. Sw
 
 Use these provisioned Authentik users for Valtimo login:
 
-| User | Password | Roles |
-| --- | --- | --- |
-| `admin@demo` | `admin` | `ROLE_USER`, `ROLE_ADMIN` |
-| `viewer@demo` | `viewer` | `ROLE_USER` |
+| User                | Password | Roles                     |
+| ------------------- | -------- | ------------------------- |
+| `admin@demo.local`  | `admin`  | `ROLE_USER`, `ROLE_ADMIN` |
+| `viewer@demo.local` | `viewer` | `ROLE_USER`               |
 
 The Authentik bootstrap admin remains `akadmin` with password `admin`.
 

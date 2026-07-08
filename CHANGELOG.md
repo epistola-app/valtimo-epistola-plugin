@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **The local Authentik blueprint now provisions cleanly on startup.** It follows the working infra blueprint pattern for built-in scope lookup, signing key selection, and explicit OAuth2 grant types, emits Valtimo role claims through the requested `roles` scope, and seeds valid demo-user email addresses (`viewer@demo.local` / `admin@demo.local`).
+- **The test-app frontend now keeps Angular auth modules statically importable.** Keycloak and Authentik modules are both imported by the root app module, while the runtime `authProvider` switch only selects the active auth config/providers. This preserves the local `pnpm start` workflow while still allowing `?authProvider=authentik`.
 
 ## [0.12.0] - 2026-06-25
 
