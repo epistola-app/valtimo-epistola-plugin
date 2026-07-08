@@ -301,6 +301,7 @@ If you've cloned this repo, [`docker/docker-compose.yml`](docker/docker-compose.
 | Profile      | What it adds                                               | When to use                                                             |
 | ------------ | ---------------------------------------------------------- | ----------------------------------------------------------------------- |
 | `server`     | Postgres + Keycloak + Epistola server                      | Running Valtimo locally from source against a real Epistola             |
+| `authentik`  | Local Authentik server + worker on Postgres                | Testing Valtimo's Authentik/OIDC mode from source                       |
 | `mock`       | Postgres + Keycloak + Epistola mock-server (contract-only) | Offline / CI — exercises the plugin without a real Epistola             |
 | `containers` | Adds pre-built Valtimo demo backend + frontend             | End-to-end demo without building your own Valtimo                       |
 | `reset`      | One-shot DB reset utility                                  | Testing the CronJob/data flows in [Demo Environment](#demo-environment) |
@@ -313,6 +314,9 @@ docker compose -f docker/docker-compose.yml --profile server --profile container
 
 # Just the Epistola side, then run your own Valtimo locally:
 docker compose -f docker/docker-compose.yml --profile server up -d
+
+# Epistola plus local Authentik for source-mode OIDC testing:
+docker compose -f docker/docker-compose.yml --profile server --profile authentik up -d
 ```
 
 Run the test-app against the docker stack (build the plugin first so the test-app/frontend picks it up):
@@ -337,7 +341,18 @@ Both Valtimo and Epistola share the `valtimo` realm. The compose setup handles t
 
 The demo can also use an external Authentik OAuth2/OIDC provider for Valtimo login. Keycloak remains the default; Authentik mode is selected by the frontend runtime config and the backend `authentik` Spring profile.
 
-For the pre-built container demo, provide an Authentik-flavoured frontend config and OIDC backend values:
+For local source-mode testing, start the `authentik` Compose profile and configure an Authentik OAuth2/OIDC provider at <http://localhost:9000> with redirect URI `http://localhost:4200/auth/callback`:
+
+```bash
+docker compose -f docker/docker-compose.yml --profile server --profile authentik up -d
+cp docker/containers/config.authentik.js test-app/frontend/src/assets/config.js
+OIDC_ISSUER_URI=http://localhost:9000/application/o/valtimo-demo/ \
+OIDC_JWKS_URI=http://localhost:9000/application/o/valtimo-demo/jwks/ \
+OIDC_BACKEND_CLIENT_SECRET=... \
+./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev,authentik'
+```
+
+For the pre-built container demo, provide an Authentik-flavoured frontend config and OIDC backend values. Source-mode testing is preferred until the demo images include this branch:
 
 ```bash
 SPRING_PROFILES_ACTIVE=demo,dev,authentik \
@@ -345,7 +360,7 @@ FRONTEND_CONFIG_JS=./containers/config.authentik.js \
 OIDC_ISSUER_URI=https://auth.example.com/application/o/valtimo-demo/ \
 OIDC_JWKS_URI=https://auth.example.com/application/o/valtimo-demo/jwks/ \
 OIDC_BACKEND_CLIENT_SECRET=... \
-docker compose -f docker/docker-compose.yml --profile server --profile containers up -d
+docker compose -f docker/docker-compose.yml --profile server --profile authentik --profile containers up -d
 ```
 
 In Authentik, configure the Valtimo provider with redirect URI `http://localhost:4200/auth/callback` for local Compose. Tokens must include `email`, `preferred_username`, and Keycloak-compatible role claims: `realm_access.roles` and/or `resource_access.<client-id>.roles`, containing values such as `ROLE_USER` and `ROLE_ADMIN`.

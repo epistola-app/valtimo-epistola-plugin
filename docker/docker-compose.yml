@@ -60,6 +60,45 @@ services:
       ved-postgres:
         condition: service_healthy
 
+  # === Authentik profile: local OIDC provider for source-mode Valtimo testing ===
+
+  ved-authentik-server:
+    profiles: ["authentik"]
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_VERSION:-2025.6}
+    container_name: ved-authentik-server
+    command: server
+    environment:
+      AUTHENTIK_SECRET_KEY: "${AUTHENTIK_SECRET_KEY:-dev-authentik-secret-key-change-me-dev-authentik-secret-key-change-me}"
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      AUTHENTIK_POSTGRESQL__HOST: ved-postgres
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: epistola
+      AUTHENTIK_POSTGRESQL__PASSWORD: epistola
+      AUTHENTIK_BOOTSTRAP_EMAIL: "${AUTHENTIK_BOOTSTRAP_EMAIL:-admin@demo}"
+      AUTHENTIK_BOOTSTRAP_PASSWORD: "${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin}"
+      AUTHENTIK_BOOTSTRAP_TOKEN: "${AUTHENTIK_BOOTSTRAP_TOKEN:-dev-authentik-bootstrap-token}"
+    ports:
+      - "9000:9000"
+    depends_on:
+      ved-postgres:
+        condition: service_healthy
+
+  ved-authentik-worker:
+    profiles: ["authentik"]
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_VERSION:-2025.6}
+    container_name: ved-authentik-worker
+    command: worker
+    environment:
+      AUTHENTIK_SECRET_KEY: "${AUTHENTIK_SECRET_KEY:-dev-authentik-secret-key-change-me-dev-authentik-secret-key-change-me}"
+      AUTHENTIK_ERROR_REPORTING__ENABLED: "false"
+      AUTHENTIK_POSTGRESQL__HOST: ved-postgres
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__USER: epistola
+      AUTHENTIK_POSTGRESQL__PASSWORD: epistola
+    depends_on:
+      ved-postgres:
+        condition: service_healthy
+
   # === Containers profile: run actual container images to reproduce K8s behavior ===
 
   ved-valtimo-backend:
