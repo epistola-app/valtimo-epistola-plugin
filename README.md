@@ -333,6 +333,25 @@ Both Valtimo and Epistola share the `valtimo` realm. The compose setup handles t
 - **`KC_HOSTNAME_BACKCHANNEL_DYNAMIC`** = `true` — allows containers to reach Keycloak on the internal hostname.
 - **`EPISTOLA_AUTH_OIDC_BACKCHANNELBASEURL`** = `http://keycloak:8080` — Epistola uses this for server-to-server OIDC calls (token, JWK, userinfo).
 
+#### Authentik OIDC mode
+
+The demo can also use an external Authentik OAuth2/OIDC provider for Valtimo login. Keycloak remains the default; Authentik mode is selected by the frontend runtime config and the backend `authentik` Spring profile.
+
+For the pre-built container demo, provide an Authentik-flavoured frontend config and OIDC backend values:
+
+```bash
+SPRING_PROFILES_ACTIVE=demo,dev,authentik \
+FRONTEND_CONFIG_JS=./containers/config.authentik.js \
+OIDC_ISSUER_URI=https://auth.example.com/application/o/valtimo-demo/ \
+OIDC_JWKS_URI=https://auth.example.com/application/o/valtimo-demo/jwks/ \
+OIDC_BACKEND_CLIENT_SECRET=... \
+docker compose -f docker/docker-compose.yml --profile server --profile containers up -d
+```
+
+In Authentik, configure the Valtimo provider with redirect URI `http://localhost:4200/auth/callback` for local Compose. Tokens must include `email`, `preferred_username`, and Keycloak-compatible role claims: `realm_access.roles` and/or `resource_access.<client-id>.roles`, containing values such as `ROLE_USER` and `ROLE_ADMIN`.
+
+This mode covers OIDC login and JWT authorization. User creation, profile edits, password changes, and other Keycloak Admin API-backed user-management features are intentionally delegated to Authentik and are not implemented in Valtimo.
+
 ### Option C — Bring your own
 
 Run the Epistola server somewhere reachable and set `baseUrl` accordingly. The plugin doesn't care how it's hosted.

@@ -50,6 +50,8 @@ kubectl get secret demo-valtimo-demo-backend \
 | --- | --- |
 | `publicUrls.frontend` | Fully-qualified URL for the Angular app. Derives redirect URIs, whitelisted origins, and `VALTIMO_APP_HOSTNAME`. |
 | `publicUrls.keycloak` | Fully-qualified Keycloak URL (include `/auth`). Used by frontend + backend and for `KC_HOSTNAME`. |
+| `auth.provider` | Authentication provider: `keycloak` (default) or `authentik`. |
+| `auth.oidc.*` | Generic OIDC settings used when `auth.provider=authentik`. |
 | `keycloak.webAuthn.*` | WebAuthn relying party settings (entity names, RP IDs, signature algorithms, user verification). Both password-based and passwordless flows use these values. |
 | `secrets.existingSecret` | Name of a pre-existing Secret to use instead of the chart-managed one. See [Secrets Management](#secrets-management). |
 | `database.type` | Choose between `cnpg` (default), `cnpgExisting`, or `external`. |
@@ -57,6 +59,23 @@ kubectl get secret demo-valtimo-demo-backend \
 | `ingress.*` | Configure ingress hosts/tls or rely on an external gateway. When ingress is disabled you must provide `publicUrls.*`. |
 
 See `values.yaml` for the exhaustive list of tunables.
+
+## Authentik OIDC Integration
+
+Set `auth.provider=authentik` to use an external Authentik OAuth2/OIDC provider instead of the bundled Keycloak issuer for Valtimo login. The chart automatically appends the backend `authentik` Spring profile, renders generic OIDC issuer/JWKS/client values, and switches the frontend to the Authentik-compatible PKCE flow.
+
+```bash
+helm install demo charts/valtimo-demo \
+  --set auth.provider=authentik \
+  --set auth.oidc.issuerUri="https://auth.example.com/application/o/valtimo-demo/" \
+  --set auth.oidc.jwksUri="https://auth.example.com/application/o/valtimo-demo/jwks/" \
+  --set secrets.keycloakClientSecret.value="backend-client-secret" \
+  --set publicUrls.frontend="https://valtimo.example.com"
+```
+
+Configure Authentik with redirect URI `https://valtimo.example.com/auth/callback` and post-logout redirect URI `https://valtimo.example.com`. Tokens must include `email`, `preferred_username`, and Keycloak-compatible role claims: `realm_access.roles` and/or `resource_access.<client-id>.roles`, containing values such as `ROLE_USER` and `ROLE_ADMIN`.
+
+This mode covers OIDC login and JWT authorization. User creation, profile edits, password changes, and other Keycloak Admin API-backed user-management features are delegated to Authentik and are not implemented by the demo backend.
 
 ## Epistola + Keycloak Integration
 

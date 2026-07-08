@@ -29,6 +29,7 @@ spec:
       http:
         paths:
           {{- range .paths }}
+          {{- if or (ne .service "keycloak") (eq (include "valtimo-demo.keycloak.enabled" $) "true") }}
           - path: {{ .path }}
             pathType: {{ .pathType }}
             backend:
@@ -46,6 +47,7 @@ spec:
                 port:
                   number: {{ $.Values.backend.service.port }}
                 {{- end }}
+          {{- end }}
           {{- end }}
     {{- end }}
 {{- end }}

@@ -68,6 +68,9 @@ dependencies {
     implementation(libs.valtimo.catalogi.api)
 
     implementation(libs.postgresql)
+    implementation("org.springframework.security:spring-security-config")
+    implementation("org.springframework.security:spring-security-oauth2-jose")
+    implementation("org.springframework.security:spring-security-oauth2-resource-server")
 
     if (System.getProperty("os.arch") == "aarch64") {
         runtimeOnly(variantOf(libs.netty.resolver.dns.macos) { classifier("osx-aarch_64") })

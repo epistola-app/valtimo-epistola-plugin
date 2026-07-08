@@ -26,6 +26,26 @@ publicUrls:
   epistola: ""
 
 # =============================================================================
+# Authentication provider
+# =============================================================================
+auth:
+  # Options: keycloak, authentik
+  provider: keycloak
+
+  oidc:
+    # Required when auth.provider=authentik. Example:
+    # https://auth.example.com/application/o/valtimo-demo/
+    issuerUri: ""
+    # Optional override for backend JWK fetching. Defaults to {issuerUri}/jwks/.
+    jwksUri: ""
+    clientId: valtimo-console
+    backendClientId: valtimo-backend
+    scopes: "openid profile email"
+    # Browser callback values default to the Valtimo frontend URL.
+    redirectUri: ""
+    logoutRedirectUri: ""
+
+# =============================================================================
 # Secrets
 # =============================================================================
 secrets:
@@ -173,6 +193,7 @@ frontend:
     swaggerUri: "/swagger-ui.html"
     mockApiUri: "/mock-api"
     apiUri: "/api"
+    authProvider: ""
     # keycloakUrl is auto-derived from keycloak subchart; override here if needed
     keycloakUrl: ""
     keycloakRealm: "valtimo"
@@ -180,6 +201,11 @@ frontend:
     # Auto-derived from ingress host or backend.valtimo.appHostname; override to set explicitly
     keycloakRedirectUri: ""
     keycloakLogoutRedirectUri: ""
+    oidcIssuerUri: ""
+    oidcClientId: ""
+    oidcRedirectUri: ""
+    oidcLogoutRedirectUri: ""
+    oidcScopes: ""
     whitelistedDomain: ""
     openZaakCatalogusId: ""
 

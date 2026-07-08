@@ -68,16 +68,21 @@ services:
     platform: linux/amd64
     container_name: ved-valtimo-backend
     environment:
-      SPRING_PROFILES_ACTIVE: "demo,dev"
+      SPRING_PROFILES_ACTIVE: "${SPRING_PROFILES_ACTIVE:-demo,dev}"
       SPRING_DATASOURCE_URL: jdbc:postgresql://ved-postgres:5432/valtimo
       SPRING_DATASOURCE_USERNAME: epistola
       SPRING_DATASOURCE_PASSWORD: epistola
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI: http://ved-keycloak:8080/realms/valtimo/protocol/openid-connect/certs
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKJWT_ISSUERURI: http://ved-keycloak:8080/realms/valtimo
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKAPI_ISSUERURI: http://ved-keycloak:8080/realms/valtimo
-      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKJWT_CLIENTID: valtimo-console
-      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTID: valtimo-backend
-      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTSECRET: 6ef6ca16-6b86-482a-a3d9-0561704c1db9
+      OIDC_ISSUER_URI: "${OIDC_ISSUER_URI:-http://ved-keycloak:8080/realms/valtimo}"
+      OIDC_JWKS_URI: "${OIDC_JWKS_URI:-http://ved-keycloak:8080/realms/valtimo/protocol/openid-connect/certs}"
+      OIDC_CLIENT_ID: "${OIDC_CLIENT_ID:-valtimo-console}"
+      OIDC_BACKEND_CLIENT_ID: "${OIDC_BACKEND_CLIENT_ID:-valtimo-backend}"
+      OIDC_BACKEND_CLIENT_SECRET: "${OIDC_BACKEND_CLIENT_SECRET:-6ef6ca16-6b86-482a-a3d9-0561704c1db9}"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI: "${OIDC_JWKS_URI:-http://ved-keycloak:8080/realms/valtimo/protocol/openid-connect/certs}"
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKJWT_ISSUERURI: "${OIDC_ISSUER_URI:-http://ved-keycloak:8080/realms/valtimo}"
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKAPI_ISSUERURI: "${OIDC_ISSUER_URI:-http://ved-keycloak:8080/realms/valtimo}"
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKJWT_CLIENTID: "${OIDC_CLIENT_ID:-valtimo-console}"
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTID: "${OIDC_BACKEND_CLIENT_ID:-valtimo-backend}"
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTSECRET: "${OIDC_BACKEND_CLIENT_SECRET:-6ef6ca16-6b86-482a-a3d9-0561704c1db9}"
       VALTIMO_APP_HOSTNAME: "localhost:4200"
       VALTIMO_PLUGIN_ENCRYPTIONSECRET: "0123456789abcdef0123456789abcdef"
       VALTIMO_SECURITY_WHITELIST_HOSTS_0_: "localhost:4200"
@@ -98,7 +103,7 @@ services:
     ports:
       - "4200:8080"
     volumes:
-      - ./containers/config.js:/usr/share/nginx/html/assets/config.js:ro
+      - ${FRONTEND_CONFIG_JS:-./containers/config.js}:/usr/share/nginx/html/assets/config.js:ro
       - ./containers/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - ved-valtimo-backend

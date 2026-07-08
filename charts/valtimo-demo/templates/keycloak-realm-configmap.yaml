@@ -1,4 +1,4 @@
-{{- if .Values.keycloak.enabled }}
+{{- if eq (include "valtimo-demo.keycloak.enabled" .) "true" }}
 apiVersion: v1
 kind: ConfigMap
 metadata:

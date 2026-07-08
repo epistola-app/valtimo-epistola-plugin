@@ -5,11 +5,17 @@
   window['env']['swaggerUri'] = undefined;
   window['env']['mockApiUri'] = undefined;
   window['env']['apiUri'] = undefined;
+  window['env']['authProvider'] = undefined;
   window['env']['keycloakUrl'] = undefined;
   window['env']['keycloakRealm'] = undefined;
   window['env']['keycloakClientId'] = undefined;
   window['env']['keycloakRedirectUri'] = undefined;
   window['env']['keycloakLogoutRedirectUri'] = undefined;
+  window['env']['oidcIssuerUri'] = undefined;
+  window['env']['oidcClientId'] = undefined;
+  window['env']['oidcRedirectUri'] = undefined;
+  window['env']['oidcLogoutRedirectUri'] = undefined;
+  window['env']['oidcScopes'] = undefined;
   window['env']['whiteListedDomain'] = undefined;
   window['env']['epistolaEnabled'] = true;
 })(this);
