@@ -11,14 +11,18 @@ import {
   ValtimoConfig,
 } from '@valtimo/shared';
 import { authenticationKeycloak } from './auth/keycloak-config';
+import { authenticationAuthentik } from './auth/authentik-config';
 import { defaultDefinitionColumns } from './columns';
 import { DARK_MODE_LOGO_BASE_64, LOGO_BASE_64 } from './logo';
+
+const authentication =
+  window['env']['authProvider'] === 'authentik' ? authenticationAuthentik : authenticationKeycloak;
 
 export const environment: ValtimoConfig = {
   logoSvgBase64: LOGO_BASE_64,
   darkModeLogoSvgBase64: DARK_MODE_LOGO_BASE_64,
   production: false,
-  authentication: authenticationKeycloak,
+  authentication,
   menu: {
     menuItems: [
       {

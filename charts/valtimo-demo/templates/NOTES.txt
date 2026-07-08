@@ -21,7 +21,7 @@ Valtimo Epistola Demo has been deployed!
 
   Users can self-register via the Keycloak login page.
 
-{{- if .Values.keycloak.enabled }}
+{{- if eq (include "valtimo-demo.keycloak.enabled" .) "true" }}
 
   Keycloak admin console:
     kubectl port-forward svc/{{ include "valtimo-demo.keycloak.fullname" . }} 8081:{{ .Values.keycloak.service.port }}
@@ -42,7 +42,7 @@ Valtimo Epistola Demo has been deployed!
 {{- else if eq .Values.database.type "external" }}
   PostgreSQL: {{ .Values.database.external.host }}:{{ .Values.database.external.port }}
 {{- end }}
-{{- if .Values.keycloak.enabled }}
+{{- if eq (include "valtimo-demo.keycloak.enabled" .) "true" }}
   Keycloak:   {{ include "valtimo-demo.keycloak.fullname" . }}:{{ .Values.keycloak.service.port }}
 {{- end }}
 {{- if .Values.epistola.enabled }}

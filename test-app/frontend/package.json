@@ -6,7 +6,9 @@
   "scripts": {
     "ng": "ng",
     "start": "ng serve --proxy-config conf/proxy.conf.json",
+    "start:authentik": "ng serve --configuration authentik --proxy-config conf/proxy.conf.json",
     "build": "node --max_old_space_size=5048 ./node_modules/@angular/cli/bin/ng build --output-path=deployment/dist",
+    "build:authentik": "node --max_old_space_size=5048 ./node_modules/@angular/cli/bin/ng build --configuration authentik --output-path=deployment/dist",
     "test": "ng test",
     "lint": "ng lint",
     "e2e": "playwright test --config=e2e/playwright.config.ts",

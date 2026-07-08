@@ -11,11 +11,17 @@ data:
       window['env']['swaggerUri'] = '{{ .Values.frontend.env.swaggerUri }}';
       window['env']['mockApiUri'] = '{{ .Values.frontend.env.mockApiUri }}';
       window['env']['apiUri'] = '{{ .Values.frontend.env.apiUri }}';
+      window['env']['authProvider'] = '{{ .Values.frontend.env.authProvider | default .Values.auth.provider }}';
       window['env']['keycloakUrl'] = '{{ .Values.frontend.env.keycloakUrl | default (include "valtimo-demo.keycloak.externalUrl" .) }}';
       window['env']['keycloakRealm'] = '{{ .Values.frontend.env.keycloakRealm }}';
       window['env']['keycloakClientId'] = '{{ .Values.frontend.env.keycloakClientId }}';
       window['env']['keycloakRedirectUri'] = '{{ include "valtimo-demo.keycloak.redirectUri" . }}';
       window['env']['keycloakLogoutRedirectUri'] = '{{ include "valtimo-demo.keycloak.logoutRedirectUri" . }}';
+      window['env']['oidcIssuerUri'] = '{{ .Values.frontend.env.oidcIssuerUri | default .Values.auth.oidc.issuerUri }}';
+      window['env']['oidcClientId'] = '{{ .Values.frontend.env.oidcClientId | default .Values.auth.oidc.clientId }}';
+      window['env']['oidcRedirectUri'] = '{{ .Values.frontend.env.oidcRedirectUri | default (include "valtimo-demo.oidc.redirectUri" .) }}';
+      window['env']['oidcLogoutRedirectUri'] = '{{ .Values.frontend.env.oidcLogoutRedirectUri | default (include "valtimo-demo.oidc.logoutRedirectUri" .) }}';
+      window['env']['oidcScopes'] = '{{ .Values.frontend.env.oidcScopes | default .Values.auth.oidc.scopes }}';
       window['env']['whiteListedDomain'] = '{{ include "valtimo-demo.whitelistedDomain" . }}';
       window['env']['openZaakCatalogusId'] = '{{ .Values.frontend.env.openZaakCatalogusId }}';
     })(this);

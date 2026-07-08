@@ -63,7 +63,7 @@ spec:
           env:
             # Spring profile
             - name: SPRING_PROFILES_ACTIVE
-              value: {{ .Values.backend.springProfilesActive | quote }}
+              value: {{ include "valtimo-demo.backend.springProfilesActive" . | quote }}
 
             # Database
             {{- if or (eq .Values.database.type "cnpg") (eq .Values.database.type "cnpgExisting") }}
@@ -98,17 +98,32 @@ spec:
             {{- $keycloakInternalUrl := include "valtimo-demo.keycloak.internalUrl" . }}
             {{- $keycloakExternalUrl := include "valtimo-demo.keycloak.externalUrl" . }}
             {{- $keycloakRealm := .Values.backend.keycloak.realm }}
+            {{- $oidcIssuerUri := include "valtimo-demo.oidc.issuerUri" . }}
+            {{- $oidcJwksUri := include "valtimo-demo.oidc.jwksUri" . }}
             - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWKSETURI
-              value: "{{ $keycloakInternalUrl }}/realms/{{ $keycloakRealm }}/protocol/openid-connect/certs"
+              value: {{ ternary $oidcJwksUri (printf "%s/realms/%s/protocol/openid-connect/certs" $keycloakInternalUrl $keycloakRealm) (eq .Values.auth.provider "authentik") | quote }}
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKJWT_ISSUERURI
-              value: "{{ $keycloakExternalUrl }}/realms/{{ $keycloakRealm }}"
+              value: {{ ternary $oidcIssuerUri (printf "%s/realms/%s" $keycloakExternalUrl $keycloakRealm) (eq .Values.auth.provider "authentik") | quote }}
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAKAPI_ISSUERURI
-              value: "{{ $keycloakExternalUrl }}/realms/{{ $keycloakRealm }}"
+              value: {{ ternary $oidcIssuerUri (printf "%s/realms/%s" $keycloakExternalUrl $keycloakRealm) (eq .Values.auth.provider "authentik") | quote }}
             - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKJWT_CLIENTID
-              value: {{ .Values.backend.keycloak.clientId | quote }}
+              value: {{ ternary .Values.auth.oidc.clientId .Values.backend.keycloak.clientId (eq .Values.auth.provider "authentik") | quote }}
             - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTID
-              value: {{ .Values.backend.keycloak.backendClientId | quote }}
+              value: {{ ternary .Values.auth.oidc.backendClientId .Values.backend.keycloak.backendClientId (eq .Values.auth.provider "authentik") | quote }}
             - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAKAPI_CLIENTSECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "valtimo-demo.secretName" (dict "root" . "credential" .Values.secrets.keycloakClientSecret) }}
+                  key: {{ include "valtimo-demo.secretKey" (dict "root" . "credential" .Values.secrets.keycloakClientSecret "chartKey" "keycloak-client-secret") }}
+            - name: OIDC_ISSUER_URI
+              value: {{ $oidcIssuerUri | quote }}
+            - name: OIDC_JWKS_URI
+              value: {{ $oidcJwksUri | quote }}
+            - name: OIDC_CLIENT_ID
+              value: {{ .Values.auth.oidc.clientId | quote }}
+            - name: OIDC_BACKEND_CLIENT_ID
+              value: {{ .Values.auth.oidc.backendClientId | quote }}
+            - name: OIDC_BACKEND_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: {{ include "valtimo-demo.secretName" (dict "root" . "credential" .Values.secrets.keycloakClientSecret) }}

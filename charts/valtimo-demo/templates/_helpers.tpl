@@ -148,7 +148,7 @@ Keycloak database secret name — explicit override or CNPG auto-generated secre
 Keycloak internal URL (for backend-to-keycloak communication within the cluster).
 */}}
 {{- define "valtimo-demo.keycloak.internalUrl" -}}
-{{- if .Values.keycloak.enabled }}
+{{- if eq (include "valtimo-demo.keycloak.enabled" .) "true" }}
 {{- $port := .Values.keycloak.service.port | default 80 | int }}
 {{- if eq $port 80 }}
 {{- printf "http://%s/auth" (include "valtimo-demo.keycloak.fullname" .) }}
@@ -169,7 +169,7 @@ Priority: explicit frontendUrl > ingress-derived > internal URL.
 {{- trimSuffix "/" .Values.publicUrls.keycloak }}
 {{- else if .Values.externalKeycloak.frontendUrl }}
 {{- .Values.externalKeycloak.frontendUrl }}
-{{- else if and .Values.keycloak.enabled .Values.ingress.enabled }}
+{{- else if and (eq (include "valtimo-demo.keycloak.enabled" .) "true") .Values.ingress.enabled }}
 {{- $host := (index .Values.ingress.hosts 0).host }}
 {{- $scheme := ternary "https" "http" (not (empty .Values.ingress.tls)) }}
 {{- printf "%s://%s/auth" $scheme $host }}
@@ -233,6 +233,48 @@ Keycloak logout redirect URI for the frontend OIDC client.
 {{- end }}
 
 {{/*
+OIDC redirect URI for generic OIDC providers.
+*/}}
+{{- define "valtimo-demo.oidc.redirectUri" -}}
+{{- if .Values.auth.oidc.redirectUri }}
+{{- .Values.auth.oidc.redirectUri }}
+{{- else }}
+{{- printf "%s/auth/callback" (include "valtimo-demo.appBaseUrl" .) }}
+{{- end }}
+{{- end }}
+
+{{/*
+OIDC logout redirect URI for generic OIDC providers.
+*/}}
+{{- define "valtimo-demo.oidc.logoutRedirectUri" -}}
+{{- if .Values.auth.oidc.logoutRedirectUri }}
+{{- .Values.auth.oidc.logoutRedirectUri }}
+{{- else }}
+{{- include "valtimo-demo.appBaseUrl" . }}
+{{- end }}
+{{- end }}
+
+{{/*
+Generic OIDC issuer URI.
+*/}}
+{{- define "valtimo-demo.oidc.issuerUri" -}}
+{{- trimSuffix "/" .Values.auth.oidc.issuerUri }}
+{{- end }}
+
+{{/*
+Generic OIDC JWK set URI.
+*/}}
+{{- define "valtimo-demo.oidc.jwksUri" -}}
+{{- if .Values.auth.oidc.jwksUri }}
+{{- .Values.auth.oidc.jwksUri }}
+{{- else if .Values.auth.oidc.issuerUri }}
+{{- printf "%s/jwks/" (trimSuffix "/" .Values.auth.oidc.issuerUri) }}
+{{- else }}
+{{- "" }}
+{{- end }}
+{{- end }}
+
+{{/*
 Whitelisted domain for Angular HTTP interceptor (hostname only).
 */}}
 {{- define "valtimo-demo.whitelistedDomain" -}}
@@ -256,6 +298,29 @@ Whitelisted domain for Angular HTTP interceptor (hostname only).
 {{- else }}
 {{- .Values.backend.valtimo.appHostname }}
 {{- end }}
+{{- end }}
+
+{{/*
+Spring profiles for the backend. Authentik mode adds the OIDC compatibility profile.
+*/}}
+{{- define "valtimo-demo.backend.springProfilesActive" -}}
+{{- $profiles := .Values.backend.springProfilesActive -}}
+{{- if and (eq .Values.auth.provider "authentik") (not (contains "authentik" $profiles)) -}}
+{{- printf "%s,authentik" $profiles -}}
+{{- else -}}
+{{- $profiles -}}
+{{- end -}}
+{{- end }}
+
+{{/*
+Whether bundled Keycloak resources should be rendered.
+*/}}
+{{- define "valtimo-demo.keycloak.enabled" -}}
+{{- if and .Values.keycloak.enabled (ne .Values.auth.provider "authentik") -}}
+true
+{{- else -}}
+false
+{{- end -}}
 {{- end }}
 
 {{/*

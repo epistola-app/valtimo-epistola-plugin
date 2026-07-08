@@ -7,6 +7,8 @@ import { AppComponent } from './app.component';
 import { LayoutModule, TranslationManagementModule } from '@valtimo/layout';
 import { TaskModule } from '@valtimo/task';
 import { environment } from '../environments/environment';
+import { AuthentikModule } from '../environments/auth/authentik-config';
+import { KeycloakModule } from '@valtimo/keycloak';
 import { SecurityModule } from '@valtimo/security';
 import {
   BpmnJsDiagramModule,
@@ -104,7 +106,8 @@ export function tabsFactory() {
     BootstrapModule,
     ConfigModule.forRoot(environment),
     LoggerModule.forRoot(environment.logger),
-    environment.authentication.module,
+    KeycloakModule,
+    AuthentikModule,
     SecurityModule,
     MenuModule,
     TaskModule,
