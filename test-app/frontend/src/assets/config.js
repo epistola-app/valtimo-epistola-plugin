@@ -18,11 +18,15 @@
   window['env']['keycloakClientId'] = undefined;
   window['env']['keycloakRedirectUri'] = undefined;
   window['env']['keycloakLogoutRedirectUri'] = undefined;
-  window['env']['oidcIssuerUri'] = undefined;
-  window['env']['oidcClientId'] = undefined;
-  window['env']['oidcRedirectUri'] = undefined;
-  window['env']['oidcLogoutRedirectUri'] = undefined;
-  window['env']['oidcScopes'] = undefined;
+  window['env']['oidcIssuerUri'] =
+    authProvider === 'authentik' ? 'http://localhost:9000/application/o/valtimo-demo/' : undefined;
+  window['env']['oidcClientId'] = authProvider === 'authentik' ? 'valtimo-console' : undefined;
+  window['env']['oidcRedirectUri'] =
+    authProvider === 'authentik' ? 'http://localhost:4200/auth/callback' : undefined;
+  window['env']['oidcLogoutRedirectUri'] =
+    authProvider === 'authentik' ? 'http://localhost:4200' : undefined;
+  window['env']['oidcScopes'] =
+    authProvider === 'authentik' ? 'openid profile email roles' : undefined;
   window['env']['whiteListedDomain'] = undefined;
   window['env']['epistolaEnabled'] = true;
 })(this);

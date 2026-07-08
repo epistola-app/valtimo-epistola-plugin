@@ -350,7 +350,7 @@ docker compose -f docker/docker-compose.yml --profile server --profile authentik
 
 If your local `ved_postgres_data` volume was created before the `authentik` database was added, recreate it once with `docker compose -f docker/docker-compose.yml down -v` and start the stack again.
 
-When running `pnpm start`, the frontend reads `test-app/frontend/src/assets/config.js`. Its local-dev default is Keycloak, but you can switch it in the browser without copying files:
+When running `pnpm start`, the frontend reads `test-app/frontend/src/assets/config.js`. Its local-dev default is Keycloak, but you can switch it in the browser without copying files. In Authentik mode the local config also fills the Compose issuer, client id, callback URL, logout URL, and scopes.
 
 ```text
 http://localhost:4200/?authProvider=authentik

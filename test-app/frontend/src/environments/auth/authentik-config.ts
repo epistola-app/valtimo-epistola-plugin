@@ -47,7 +47,9 @@ const STORAGE_KEYS = {
 };
 
 const oidcConfig = {
-  issuerUri: stripTrailingSlash(window['env']['oidcIssuerUri'] || ''),
+  issuerUri: stripTrailingSlash(
+    window['env']['oidcIssuerUri'] || 'http://localhost:9000/application/o/valtimo-demo/',
+  ),
   clientId: window['env']['oidcClientId'] || 'valtimo-console',
   redirectUri: window['env']['oidcRedirectUri'] || 'http://localhost:4200/auth/callback',
   logoutRedirectUri: window['env']['oidcLogoutRedirectUri'] || 'http://localhost:4200',
