@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Local frontend dev auth can now be switched without copying config files.** `test-app/frontend/src/assets/config.js` defaults to Keycloak but accepts `?authProvider=authentik` or `?authProvider=keycloak`, persisted in `localStorage`, for source-mode testing.
 - **The backend `authentik` profile now defaults to the local Compose Authentik issuer.** Local source-mode testing no longer requires exporting `OIDC_ISSUER_URI`, `OIDC_JWKS_URI`, or `OIDC_BACKEND_CLIENT_SECRET`; those variables remain deployment overrides.
 
+### Fixed
+
+- **The local Authentik blueprint now provisions cleanly on startup.** It follows the working infra blueprint pattern for built-in scope lookup, signing key selection, and explicit OAuth2 grant types, emits Valtimo role claims through the requested `roles` scope, and seeds valid demo-user email addresses (`viewer@demo.local` / `admin@demo.local`).
+
 ## [0.12.0] - 2026-06-25
 
 ### Compatibility

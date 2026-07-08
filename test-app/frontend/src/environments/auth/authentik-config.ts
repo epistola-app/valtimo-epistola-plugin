@@ -33,7 +33,7 @@ const oidcConfig = {
   clientId: window['env']['oidcClientId'] || 'valtimo-console',
   redirectUri: window['env']['oidcRedirectUri'] || 'http://localhost:4200/auth/callback',
   logoutRedirectUri: window['env']['oidcLogoutRedirectUri'] || 'http://localhost:4200',
-  scopes: window['env']['oidcScopes'] || 'openid profile email',
+  scopes: window['env']['oidcScopes'] || 'openid profile email roles',
   bearerExcludedUrls: ['/assets'],
 };
 
