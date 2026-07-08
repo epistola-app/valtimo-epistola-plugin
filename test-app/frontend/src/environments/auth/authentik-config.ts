@@ -21,9 +21,10 @@ import {
   UserService,
   ValtimoUserIdentity,
 } from '@valtimo/shared';
+import { KeycloakService } from 'keycloak-angular';
 import { jwtDecode } from 'jwt-decode';
 import { NGXLogger } from 'ngx-logger';
-import { Observable, ReplaySubject } from 'rxjs';
+import { Observable, ReplaySubject, Subject } from 'rxjs';
 
 interface OidcDiscovery {
   authorization_endpoint: string;
@@ -345,6 +346,119 @@ export class AuthentikBearerInterceptor implements HttpInterceptor {
   }
 }
 
+@Injectable()
+export class AuthAwareKeycloakCompatibilityService extends KeycloakService {
+  private readonly authentikEvents$ = new Subject<any>();
+
+  constructor(private readonly oidcService: AuthentikOidcService) {
+    super();
+  }
+
+  override getUserRoles(realmRoles = true, resource?: string): string[] {
+    if (!isAuthentikMode()) {
+      return super.getUserRoles(realmRoles, resource);
+    }
+
+    const claims = this.getAuthentikClaims();
+    if (!claims) {
+      return [];
+    }
+
+    const realmRoleValues = realmRoles ? claims.realm_access?.roles || [] : [];
+    const resourceAccess = claims.resource_access || {};
+    const resourceRoles = resource
+      ? resourceAccess[resource]?.roles || []
+      : Object.values(resourceAccess).flatMap((access: any) => access?.roles || []);
+
+    return Array.from(new Set([...resourceRoles, ...realmRoleValues]));
+  }
+
+  override getKeycloakInstance(): any {
+    if (!isAuthentikMode()) {
+      return super.getKeycloakInstance();
+    }
+
+    const claims = this.getAuthentikClaims() || {};
+
+    return {
+      clientId: oidcConfig.clientId,
+      realmAccess: claims.realm_access || { roles: [] },
+      resourceAccess: claims.resource_access || {},
+      refreshToken: this.oidcService.getTokens()?.refresh_token,
+    };
+  }
+
+  override async loadUserProfile(): Promise<any> {
+    if (!isAuthentikMode()) {
+      return super.loadUserProfile();
+    }
+
+    const claims = this.getAuthentikClaims() || {};
+
+    return {
+      id: claims.sub,
+      username: claims.preferred_username || claims.email || claims.sub,
+      email: claims.email,
+      firstName: claims.given_name || '',
+      lastName: claims.family_name || '',
+    };
+  }
+
+  override async getToken(): Promise<string> {
+    if (!isAuthentikMode()) {
+      return super.getToken();
+    }
+
+    return (await this.oidcService.getAccessToken()) || '';
+  }
+
+  override async updateToken(minValidity?: number): Promise<boolean> {
+    if (!isAuthentikMode()) {
+      return super.updateToken(minValidity);
+    }
+
+    return !!(await this.oidcService.getAccessToken(minValidity));
+  }
+
+  override async logout(redirectUri?: string): Promise<void> {
+    if (!isAuthentikMode()) {
+      return super.logout(redirectUri);
+    }
+
+    this.oidcService.logout();
+  }
+
+  override isLoggedIn(): boolean {
+    if (!isAuthentikMode()) {
+      return super.isLoggedIn();
+    }
+
+    return this.oidcService.isAuthenticated();
+  }
+
+  override getUsername(): string {
+    if (!isAuthentikMode()) {
+      return super.getUsername();
+    }
+
+    const claims = this.getAuthentikClaims() || {};
+    return claims.preferred_username || claims.email || claims.sub || '';
+  }
+
+  override get keycloakEvents$(): Subject<any> {
+    if (!isAuthentikMode()) {
+      return super.keycloakEvents$;
+    }
+
+    return this.authentikEvents$;
+  }
+
+  private getAuthentikClaims(): any | null {
+    const token = this.oidcService.getTokens()?.access_token;
+    return token ? jwtDecode(token) : null;
+  }
+}
+
 @Component({
   standalone: false,
   selector: 'valtimo-authentik-callback',
@@ -377,6 +491,10 @@ export class AuthentikCallbackComponent {
   ],
   providers: [
     {
+      provide: KeycloakService,
+      useClass: AuthAwareKeycloakCompatibilityService,
+    },
+    {
       provide: HTTP_INTERCEPTORS,
       useClass: AuthentikBearerInterceptor,
       multi: true,
@@ -401,6 +519,10 @@ function extractRoles(claims: any, clientId: string): string[] {
   const realmRoles = claims?.realm_access?.roles || [];
   const clientRoles = claims?.resource_access?.[clientId]?.roles || [];
   return Array.from(new Set([...realmRoles, ...clientRoles]));
+}
+
+function isAuthentikMode(): boolean {
+  return window['env']['authProvider'] === 'authentik';
 }
 
 function stripTrailingSlash(value: string): string {
