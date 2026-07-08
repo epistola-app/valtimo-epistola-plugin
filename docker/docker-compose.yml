@@ -74,9 +74,11 @@ services:
       AUTHENTIK_POSTGRESQL__NAME: authentik
       AUTHENTIK_POSTGRESQL__USER: epistola
       AUTHENTIK_POSTGRESQL__PASSWORD: epistola
-      AUTHENTIK_BOOTSTRAP_EMAIL: "${AUTHENTIK_BOOTSTRAP_EMAIL:-admin@demo}"
+      AUTHENTIK_BOOTSTRAP_EMAIL: "${AUTHENTIK_BOOTSTRAP_EMAIL:-root@localhost}"
       AUTHENTIK_BOOTSTRAP_PASSWORD: "${AUTHENTIK_BOOTSTRAP_PASSWORD:-admin}"
       AUTHENTIK_BOOTSTRAP_TOKEN: "${AUTHENTIK_BOOTSTRAP_TOKEN:-dev-authentik-bootstrap-token}"
+    volumes:
+      - ./authentik/blueprints:/blueprints/valtimo:z
     ports:
       - "9000:9000"
     depends_on:
@@ -95,6 +97,8 @@ services:
       AUTHENTIK_POSTGRESQL__NAME: authentik
       AUTHENTIK_POSTGRESQL__USER: epistola
       AUTHENTIK_POSTGRESQL__PASSWORD: epistola
+    volumes:
+      - ./authentik/blueprints:/blueprints/valtimo:z
     depends_on:
       ved-postgres:
         condition: service_healthy

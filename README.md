@@ -341,16 +341,34 @@ Both Valtimo and Epistola share the `valtimo` realm. The compose setup handles t
 
 The demo can also use an external Authentik OAuth2/OIDC provider for Valtimo login. Keycloak remains the default; Authentik mode is selected by the frontend runtime config and the backend `authentik` Spring profile.
 
-For local source-mode testing, start the `authentik` Compose profile and configure an Authentik OAuth2/OIDC provider at <http://localhost:9000> with redirect URI `http://localhost:4200/auth/callback`:
+For local source-mode testing, start the `authentik` Compose profile. The profile provisions Authentik with a `Valtimo Demo` OAuth2/OIDC application, a public `valtimo-console` client, Keycloak-shaped role claims, and demo users.
 
 ```bash
 docker compose -f docker/docker-compose.yml --profile server --profile authentik up -d
-cp docker/containers/config.authentik.js test-app/frontend/src/assets/config.js
 OIDC_ISSUER_URI=http://localhost:9000/application/o/valtimo-demo/ \
 OIDC_JWKS_URI=http://localhost:9000/application/o/valtimo-demo/jwks/ \
-OIDC_BACKEND_CLIENT_SECRET=... \
+OIDC_BACKEND_CLIENT_SECRET=unused-for-public-local-client \
 ./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev,authentik'
 ```
+
+If your local `ved_postgres_data` volume was created before the `authentik` database was added, recreate it once with `docker compose -f docker/docker-compose.yml down -v` and start the stack again.
+
+When running `pnpm start`, the frontend reads `test-app/frontend/src/assets/config.js`. Its local-dev default is Keycloak, but you can switch it in the browser without copying files:
+
+```text
+http://localhost:4200/?authProvider=authentik
+```
+
+The query parameter is persisted in `localStorage` as `valtimo.authProvider`. Switch back with `?authProvider=keycloak` or clear that local-storage entry.
+
+Use these provisioned Authentik users for Valtimo login:
+
+| User | Password | Roles |
+| --- | --- | --- |
+| `admin@demo` | `admin` | `ROLE_USER`, `ROLE_ADMIN` |
+| `viewer@demo` | `viewer` | `ROLE_USER` |
+
+The Authentik bootstrap admin remains `akadmin` with password `admin`.
 
 For the pre-built container demo, provide an Authentik-flavoured frontend config and OIDC backend values. Source-mode testing is preferred until the demo images include this branch:
 

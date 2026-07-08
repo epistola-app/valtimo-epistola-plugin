@@ -1,11 +1,18 @@
 (function (window) {
   window['env'] = window['env'] || {};
 
+  var authProviderParam = new URLSearchParams(window.location.search).get('authProvider');
+  if (authProviderParam === 'keycloak' || authProviderParam === 'authentik') {
+    window.localStorage.setItem('valtimo.authProvider', authProviderParam);
+  }
+
+  var authProvider = window.localStorage.getItem('valtimo.authProvider') || 'keycloak';
+
   // Environment variables
   window['env']['swaggerUri'] = undefined;
   window['env']['mockApiUri'] = undefined;
   window['env']['apiUri'] = undefined;
-  window['env']['authProvider'] = undefined;
+  window['env']['authProvider'] = authProvider === 'authentik' ? 'authentik' : undefined;
   window['env']['keycloakUrl'] = undefined;
   window['env']['keycloakRealm'] = undefined;
   window['env']['keycloakClientId'] = undefined;
