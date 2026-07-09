@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-07-09
+
 ### Added
 
 - **Demo authentication can now target Authentik as a selectable OIDC provider.** Keycloak remains the default, while the test-app frontend can switch to an Authentik-compatible authorization-code + PKCE adapter through its runtime `authProvider` config. The backend adds an `authentik` Spring profile that validates generic OIDC JWTs and maps Keycloak-shaped `realm_access.roles` / `resource_access.*.roles` claims into Valtimo authorities without instantiating the Keycloak Admin client. Docker Compose exposes Authentik OIDC env vars and an alternate frontend config file; the Helm chart adds `auth.provider` and `auth.oidc.*` values for Keycloak-or-Authentik deployments.
