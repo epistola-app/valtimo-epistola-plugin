@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [chart-0.5.0] - 2026-07-09
+
+### Added
+
+- **The chart now supports a Keycloak-or-Authentik authentication provider switch (`valtimo-demo` 0.4.1 → 0.5.0).** A new `auth.provider` value (default `keycloak`) selects the identity provider: `auth.provider=authentik` disables the bundled Keycloak resources, enables the backend `authentik` Spring profile, renders Authentik OIDC frontend/backend settings from the new `auth.oidc.*` values, and requests the `roles` scope needed for Authentik role claims. Keycloak remains the default, so existing deployments are unaffected. See the `## [0.13.0]` app-release notes for the full backend/frontend behaviour behind this switch.
+
 ## [0.13.0] - 2026-07-09
 
 ### Added
