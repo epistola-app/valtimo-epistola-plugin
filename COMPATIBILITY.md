@@ -43,6 +43,36 @@ Notes:
   assertion in `EpistolaCatalogSyncServiceTest` — both pinned to the targeted wire schema, so a
   future suite baseline bump fails the build loudly instead of in production. See GitHub issue #71.
 
+## Machine-readable declaration ([`compatibility.json`](./compatibility.json))
+
+The tables above are the human-facing record. For the cross-repo
+**version-compatibility matrix** (anchored on `epistola-contract`, which both this
+plugin and Epistola Suite speak), the plugin also publishes a small machine-readable
+declaration of the contract version it targets, so the matrix can read the external
+(plugin) side from a feed instead of parsing this file by hand:
+
+```json
+{
+  "schemaVersion": 1,
+  "artifact": "valtimo-epistola-plugin",
+  "anchor": "epistola-contract",
+  "role": "client",
+  "version": "0.13.0",
+  "targetContractVersion": "0.8.0"
+}
+```
+
+- `targetContractVersion` is **derived** from the `epistola-client`
+  (`client-spring3-restclient`) dependency in `gradle/libs.versions.toml` — that
+  client _is_ the contract wire version — so it is never hand-maintained. `version`
+  is the plugin release, stamped at release time (`-Pversion`).
+- Regenerate with `./gradlew generateCompatibilityDeclaration`. CI runs
+  `verifyCompatibilityDeclaration` to fail the build if the committed file drifts
+  from the derived values (the release-stamped `version` is excluded from the check).
+- As a **client**, the plugin declares a single target contract version; whether
+  that version is accepted is decided by the suite's declared range
+  `[minCompatibleApiVersion .. apiVersion]` — the matrix applies that rule.
+
 ## Engine-integration dependency (correlation)
 
 The plugin is otherwise built on Valtimo/Operaton **public** APIs. The one exception is the

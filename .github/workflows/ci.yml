@@ -35,6 +35,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew :backend:plugin:build
 
+      - name: Verify compatibility declaration
+        # Guards compatibility.json against drift from the epistola-client
+        # dependency it is derived from (the version field is release-stamped and
+        # excluded). Regenerate with `./gradlew generateCompatibilityDeclaration`.
+        run: ./gradlew verifyCompatibilityDeclaration
+
       - name: Build test-app (compile only)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

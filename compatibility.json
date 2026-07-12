@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "artifact": "valtimo-epistola-plugin",
+  "anchor": "epistola-contract",
+  "role": "client",
+  "version": "0.13.0",
+  "targetContractVersion": "0.8.0"
+}
