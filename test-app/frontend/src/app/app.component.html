@@ -1,1 +1,19 @@
-<valtimo-layout></valtimo-layout>
+<div class="demo-banner" *ngIf="showDemoBanner" role="status" aria-live="polite">
+  <span class="demo-banner__icon" aria-hidden="true">⚠️</span>
+  <span class="demo-banner__text">
+    This is a <strong>demo application</strong>. The database may be reset at any time — do not
+    store anything you want to keep.
+  </span>
+  <button
+    type="button"
+    class="demo-banner__dismiss"
+    aria-label="Dismiss demo notice"
+    (click)="dismissDemoBanner()"
+  >
+    &times;
+  </button>
+</div>
+
+<div class="app-shell" [class.app-shell--offset]="showDemoBanner">
+  <valtimo-layout></valtimo-layout>
+</div>

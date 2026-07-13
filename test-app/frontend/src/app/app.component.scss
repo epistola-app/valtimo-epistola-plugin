@@ -1,0 +1,76 @@
+:host {
+  --demo-banner-height: 2.25rem;
+  display: block;
+}
+
+.demo-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  // Above Valtimo's own fixed chrome (top bar / overlays sit at z-index 10000–11000).
+  z-index: 20000;
+  height: var(--demo-banner-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0 2.75rem 0 1rem;
+  background: #ffb000;
+  color: #1a1a1a;
+  font-family: 'Fira Sans', sans-serif;
+  font-size: 0.8125rem;
+  line-height: 1.3;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+
+  &__icon {
+    flex: 0 0 auto;
+    font-size: 1rem;
+  }
+
+  &__text {
+    flex: 0 1 auto;
+  }
+
+  &__dismiss {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 0.25rem;
+
+    &:hover,
+    &:focus {
+      opacity: 0.7;
+    }
+  }
+}
+
+// The Valtimo layout positions its top bar, side nav and content with
+// `position: fixed`, so they anchor to the viewport and would slide underneath
+// the banner. Wrapping it in a transformed, fixed box makes THAT box the
+// containing block for all of Valtimo's fixed descendants, so the whole app
+// simply fills the space below the banner — no per-element overrides needed.
+.app-shell {
+  // When the banner is dismissed the wrapper disappears entirely and Valtimo
+  // reverts to filling the full viewport.
+  display: contents;
+
+  &--offset {
+    display: block;
+    position: fixed;
+    top: var(--demo-banner-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    // A transform establishes a containing block for fixed-position descendants.
+    transform: translateZ(0);
+  }
+}
