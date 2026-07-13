@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The demo test-app now shows a "demo application" banner.** A fixed header banner in the test-app frontend warns users that this is a demo application whose database may be reset at any time. It can be dismissed per browser session (remembered in `sessionStorage`, so it reappears in a new browser/session), and a transformed wrapper shifts Valtimo's viewport-fixed chrome below the banner so nothing overlaps. This is scoped to the demo test-app only and is not part of the published plugin.
+
 ## [chart-0.5.0] - 2026-07-09
 
 ### Added
