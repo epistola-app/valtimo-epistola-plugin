@@ -4,5 +4,19 @@
   "anchor": "epistola-contract",
   "role": "client",
   "version": "0.13.0",
-  "targetContractVersion": "0.8.0"
+  "targetContractVersion": "0.8.0",
+  "operations": [
+    "collectGenerationResults",
+    "downloadDocument",
+    "generateDocument",
+    "getGenerationJobStatus",
+    "getTemplate",
+    "importCatalog",
+    "listAttributes",
+    "listCatalogs",
+    "listEnvironments",
+    "listTemplates",
+    "listVariants",
+    "previewDocument"
+  ]
 }

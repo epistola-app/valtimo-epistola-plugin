@@ -58,7 +58,8 @@ declaration of the contract version it targets, so the matrix can read the exter
   "anchor": "epistola-contract",
   "role": "client",
   "version": "0.13.0",
-  "targetContractVersion": "0.8.0"
+  "targetContractVersion": "0.8.0",
+  "operations": ["collectGenerationResults", "downloadDocument", "generateDocument", "..."]
 }
 ```
 
@@ -66,12 +67,25 @@ declaration of the contract version it targets, so the matrix can read the exter
   (`client-spring3-restclient`) dependency in `gradle/libs.versions.toml` — that
   client _is_ the contract wire version — so it is never hand-maintained. `version`
   is the plugin release, stamped at release time (`-Pversion`).
+- `operations` lists every Epistola API call the plugin makes, by the contract's
+  `operationId`. This is what lets the matrix judge compatibility at the
+  **operation level**: a contract release that breaks only calls the plugin never
+  makes does not make the plugin incompatible. The list is maintained in
+  `build.gradle.kts` and verified against the source code —
+  `verifyCompatibilityDeclaration` scans for generated-client calls both ways
+  (an undeclared call fails the build, and so does a declared-but-unused one);
+  the few hand-built HTTP calls (download, preview, catalog import, result
+  collect) are presence-checked by a source marker each.
 - Regenerate with `./gradlew generateCompatibilityDeclaration`. CI runs
   `verifyCompatibilityDeclaration` to fail the build if the committed file drifts
   from the derived values (the release-stamped `version` is excluded from the check).
-- As a **client**, the plugin declares a single target contract version; whether
-  that version is accepted is decided by the suite's declared range
-  `[minCompatibleApiVersion .. apiVersion]` — the matrix applies that rule.
+- As a **client**, the plugin declares a target contract version and its used
+  operations; the verdict is computed by the matrix. With the contract's
+  `compatibility-log.json` (which records the operations each contract release
+  broke) the rule is operation-level: the plugin is compatible with a suite
+  unless a breaking change between its target and the suite's contract version
+  touches an operation it uses. Without operation data the matrix falls back to
+  the coarse range rule `[minCompatibleApiVersion .. apiVersion]`.
 
 ## Engine-integration dependency (correlation)
 
