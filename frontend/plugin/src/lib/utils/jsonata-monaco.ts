@@ -17,6 +17,7 @@
  */
 
 import { ExpressionFunctionInfo } from '../models';
+import { renderJsonataPathTail } from './jsonata-path';
 
 /**
  * Shared state for the JSONata completion provider.
@@ -200,10 +201,10 @@ export function registerJsonataLanguage(monaco: any): void {
           suggestions.push({
             label: field,
             kind: CompletionItemKind.Field,
-            // Path-style suggestions (doc/pv: `a.b`, `a[].b`) insert as-is; keys
-            // with characters invalid in a bare JSONata name (e.g. "pv:motivation")
-            // are backtick-quoted so they resolve as a single property.
-            insertText: /[^A-Za-z0-9_.[\]]/.test(field) ? '`' + field + '`' : field,
+            // Formio and JSONata both treat dots as path separators. Quote only
+            // individual unsafe segments (e.g. `doc:adres`.straat), never the
+            // whole dotted key.
+            insertText: renderJsonataPathTail(field),
             detail: `$${fieldMatch[1]} field`,
           });
         }

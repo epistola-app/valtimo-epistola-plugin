@@ -48,6 +48,20 @@ describe('override-jsonata', () => {
       expect(serializeOverrideRows(rows)).toContain('$form.`pv:motivation`');
     });
 
+    it('keeps dotted form keys as path traversal', () => {
+      const rows: OverrideRow[] = [
+        { scope: 'doc', inputPath: 'adres.straat', formFieldKey: 'adres.straat' },
+      ];
+      expect(serializeOverrideRows(rows)).toContain('"straat": $form.adres.straat');
+    });
+
+    it('quotes only the unsafe segment in prefixed dotted form keys', () => {
+      const rows: OverrideRow[] = [
+        { scope: 'doc', inputPath: 'adres.straat', formFieldKey: 'doc:adres.straat' },
+      ];
+      expect(serializeOverrideRows(rows)).toContain('"straat": $form.`doc:adres`.straat');
+    });
+
     it('expands dot-notation input paths into nested objects', () => {
       const rows: OverrideRow[] = [
         { scope: 'doc', inputPath: 'address.street', formFieldKey: 'streetField' },
@@ -86,6 +100,13 @@ describe('override-jsonata', () => {
       const expr = '{ "doc": { "address": { "street": $form.streetField } } }';
       expect(parseOverrideJsonata(expr)).toEqual([
         { scope: 'doc', inputPath: 'address.street', formFieldKey: 'streetField' },
+      ]);
+    });
+
+    it('rebuilds dotted form keys from multi-step $form references', () => {
+      const expr = '{ "doc": { "adres": { "straat": $form.`doc:adres`.straat } } }';
+      expect(parseOverrideJsonata(expr)).toEqual([
+        { scope: 'doc', inputPath: 'adres.straat', formFieldKey: 'doc:adres.straat' },
       ]);
     });
 
@@ -155,6 +176,17 @@ describe('legacy-override-converter', () => {
         { form: { nameField: 'Alice', 'pv:motivation': 'because' } },
       );
       expect(result).toEqual({ doc: { name: 'Alice' }, pv: { motivation: 'because' } });
+    });
+
+    it('produces an expression that evaluates against nested Formio data for dotted keys', async () => {
+      const expr = legacyOverrideToJsonata({
+        doc: { 'adres.straat': 'form:doc:adres.straat' },
+      });
+      const result = await jsonata(expr).evaluate(
+        {},
+        { form: { 'doc:adres': { straat: 'Kerkstraat' } } },
+      );
+      expect(result).toEqual({ doc: { adres: { straat: 'Kerkstraat' } } });
     });
   });
 });

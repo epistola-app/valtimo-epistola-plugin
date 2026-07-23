@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **The Generate Document process-link form now validates `resultProcessVariable` as alphanumeric only (#78).** Values such as `pv:some-value` are rejected in the frontend before save and fail fast on the backend for already-saved invalid links, avoiding the later process-variable exception.
+- **Document-preview override mappings now handle dotted Formio field keys correctly (#77).** The preview override builder and JSONata editor autocomplete now quote only unsafe path segments instead of the entire dotted form key, so a nested field such as `doc:adres.straat` is emitted as ``$form.`doc:adres`.straat`` and resolves against Formio's nested submission data. Existing already-saved malformed JSONata strings are not rewritten automatically; resaving the preview component regenerates the corrected mapping.
 
 ## [0.13.1] - 2026-07-13
 

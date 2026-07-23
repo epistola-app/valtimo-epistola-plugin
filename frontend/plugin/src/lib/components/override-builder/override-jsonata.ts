@@ -17,6 +17,7 @@
  */
 
 import * as _jsonata from 'jsonata';
+import { renderJsonataPath } from '../../utils/jsonata-path';
 const jsonata = (_jsonata as any).default || _jsonata;
 
 /**
@@ -29,16 +30,14 @@ export interface OverrideRow {
   formFieldKey: string;
 }
 
-const BARE_IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_]*$/;
-
 /**
  * Render a `$form` reference for a form-field key. Keys that aren't bare
- * identifiers (e.g. `pv:motivation`) are backtick-quoted so JSONata treats the
- * whole key as a single property name — matching the old flat `formData[key]`
- * lookup rather than a nested path traversal.
+ * path segments (e.g. `pv:motivation`) are backtick-quoted per segment. Dots
+ * remain path separators because Formio stores dotted component keys through
+ * lodash get/set semantics.
  */
 function formRef(key: string): string {
-  return BARE_IDENTIFIER.test(key) ? `$form.${key}` : '$form.`' + key + '`';
+  return renderJsonataPath('form', key);
 }
 
 /** Branch node = nested object; leaf = a JSONata expression string. */
@@ -156,12 +155,15 @@ function collectLeaves(
 function formKeyOf(node: any): string | null {
   if (
     node?.type === 'path' &&
-    node.steps?.length === 2 &&
+    node.steps?.length >= 2 &&
     node.steps[0].type === 'variable' &&
     node.steps[0].value === 'form' &&
-    typeof node.steps[1]?.value === 'string'
+    node.steps.slice(1).every((step: any) => typeof step?.value === 'string')
   ) {
-    return node.steps[1].value;
+    return node.steps
+      .slice(1)
+      .map((step: any) => step.value)
+      .join('.');
   }
   return null;
 }
