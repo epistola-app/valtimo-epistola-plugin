@@ -58,6 +58,7 @@ public class EpistolaPlugin {
      * Used for tenantId, environmentId, templateId, variantId.
      */
     private static final Pattern SLUG_PATTERN = Pattern.compile("^[a-z][a-z0-9]*(-[a-z0-9]+)*$");
+    private static final Pattern PROCESS_VARIABLE_NAME_PATTERN = Pattern.compile("^[A-Za-z0-9]+$");
 
     private static final TypeReference<Map<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
@@ -209,6 +210,17 @@ public class EpistolaPlugin {
         }
     }
 
+    private static void validateProcessVariableName(String propertyName, String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("'" + propertyName + "' is required");
+        }
+        if (!PROCESS_VARIABLE_NAME_PATTERN.matcher(value).matches()) {
+            throw new IllegalArgumentException(String.format(
+                    "'%s' must contain only letters and numbers (pattern: %s): '%s'",
+                    propertyName, PROCESS_VARIABLE_NAME_PATTERN.pattern(), value));
+        }
+    }
+
     /**
      * Generate a document using Epistola.
      * <p>
@@ -260,6 +272,8 @@ public class EpistolaPlugin {
     ) {
         log.debug("Starting document generation: catalogId={}, templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
                 catalogId, templateId, variantId, variantAttributes, outputFormat, filename);
+
+        validateProcessVariableName("resultProcessVariable", resultProcessVariable);
 
         // Normalize variant attributes from either old (Map<String, String>) or new (List<Map>) format
         List<NormalizedAttribute> normalizedAttributes = normalizeVariantAttributes(variantAttributes);

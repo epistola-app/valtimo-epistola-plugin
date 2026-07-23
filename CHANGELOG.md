@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The Generate Document process-link form now validates `resultProcessVariable` as alphanumeric only (#78).** Values such as `pv:some-value` are rejected in the frontend before save and fail fast on the backend for already-saved invalid links, avoiding the later process-variable exception.
+
 ## [0.13.1] - 2026-07-13
 
 ### Added

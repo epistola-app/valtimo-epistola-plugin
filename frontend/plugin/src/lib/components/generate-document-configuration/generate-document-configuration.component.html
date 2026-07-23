@@ -12,6 +12,7 @@
     selectedCatalogId: selectedCatalogId$ | async,
     selectedTemplateId: selectedTemplateId$ | async,
     validationErrors: validationErrors$ | async,
+    resultProcessVariableInvalid: resultProcessVariableInvalid$ | async,
   } as obs"
 >
   <div
@@ -365,6 +366,13 @@
     [required]="true"
   >
   </v-input>
+  <div
+    *ngIf="obs.resultProcessVariableInvalid"
+    class="field-validation-error"
+    data-testid="epistola-generate-result-process-variable-error"
+  >
+    {{ 'resultProcessVariableInvalid' | pluginTranslate: pluginId | async }}
+  </div>
 </v-form>
 
 <div *ngIf="(templateFields$ | async)?.error as templateFieldsError" class="loading-error">
