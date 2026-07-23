@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The Epistola admin page now warns when the connected server contract is behind the plugin.** The backend reads the plugin's generated contract version and compares it with the Epistola server contract version from `/ping`; same-major newer server minors/patches stay green, older server minors show a warning, and any major mismatch is marked incompatible. The admin overview and configuration detail page surface the server/plugin contract versions with a prominent warning.
 - **The test-app backend now has a `demo-remote` profile for using the shared Epistola demo server.** Running with `--spring.profiles.active=dev,demo-remote` points the local Valtimo backend at `https://demo.epistola.app/api`, so local frontend/admin work can exercise a real Epistola server without starting the local Epistola container.
 
+### Changed
+
+- **Bumped the Epistola contract client `app.epistola.contract:client-spring3-restclient` from `0.8.0` to `0.13.0`.** The Prism mock-server image used by local docker-compose and backend integration tests now uses the matching `mock-server:0.13.0` image. The plugin now follows the contract's paged list responses when loading Epistola catalogs, templates, attributes, environments, and variants for dropdown data, instead of relying on the server's first default page.
+
 ### Fixed
 
 - **The Epistola admin contract-version warning now treats missing server contract metadata as visible operator attention.** `UNKNOWN` compatibility now renders inside the affected configuration card as a compact alert-icon status with hover details instead of a grey tag or large banner, explains that server contract reporting is supported from Epistola Suite `1.0.0-RC4`, and combines version metadata where operators already look: the page header shows the plugin version with its contract version, while each configuration shows the server version with its server contract version.

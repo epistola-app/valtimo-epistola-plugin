@@ -135,7 +135,7 @@ class EpistolaAdminServiceTest {
             assertThat(status.tenantId()).isEqualTo(TENANT_ID);
             assertThat(status.errorMessage()).isNull();
             assertThat(status.latencyMs()).isGreaterThanOrEqualTo(0);
-            assertThat(status.contractVersion()).isEqualTo("0.8.0");
+            assertThat(status.contractVersion()).isEqualTo("0.13.0");
             assertThat(status.serverContractVersion()).isNull();
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
@@ -147,14 +147,14 @@ class EpistolaAdminServiceTest {
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("0.26.3", "0.8.1"));
+                    .thenReturn(new EpistolaService.SystemInfo("0.26.3", "0.13.1"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
             ConnectionStatus status = results.get(0);
             assertThat(status.serverVersion()).isEqualTo("0.26.3");
-            assertThat(status.contractVersion()).isEqualTo("0.8.0");
-            assertThat(status.serverContractVersion()).isEqualTo("0.8.1");
+            assertThat(status.contractVersion()).isEqualTo("0.13.0");
+            assertThat(status.serverContractVersion()).isEqualTo("0.13.1");
             assertThat(status.contractCompatibilitySeverity()).isEqualTo(ContractCompatibilitySeverity.OK);
         }
 
@@ -164,7 +164,7 @@ class EpistolaAdminServiceTest {
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("0.25.9", "0.7.9"));
+                    .thenReturn(new EpistolaService.SystemInfo("0.25.9", "0.12.9"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
@@ -192,7 +192,7 @@ class EpistolaAdminServiceTest {
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("0.28.0", "0.9.0-SNAPSHOT"));
+                    .thenReturn(new EpistolaService.SystemInfo("0.28.0", "0.14.0-SNAPSHOT"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
@@ -231,7 +231,7 @@ class EpistolaAdminServiceTest {
             ConnectionStatus status = results.get(0);
             assertThat(status.reachable()).isFalse();
             assertThat(status.errorMessage()).isEqualTo("Connection refused");
-            assertThat(status.contractVersion()).isEqualTo("0.8.0");
+            assertThat(status.contractVersion()).isEqualTo("0.13.0");
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
         }
