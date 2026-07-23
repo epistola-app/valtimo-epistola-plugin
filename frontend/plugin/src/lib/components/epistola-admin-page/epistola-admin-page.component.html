@@ -18,29 +18,6 @@
       </button>
     </div>
 
-    <div
-      *ngFor="let card of contractWarningCards"
-      class="contract-alert mb-3"
-      [ngClass]="contractAlertClass(card)"
-      [attr.data-testid]="'epistola-admin-contract-alert-' + card.tenantId"
-    >
-      <div class="contract-alert__header">
-        <span class="contract-alert__badge" [ngClass]="contractBadgeClass(card)">
-          {{ contractLabelKey(card) | pluginTranslate: 'epistola' | async }}
-        </span>
-        <strong>{{ card.configurationTitle }}</strong>
-      </div>
-      <div class="contract-alert__body">
-        {{ contractBodyKey(card) | pluginTranslate: 'epistola' | async }}
-        <span class="contract-alert__versions">
-          {{ 'epistolaAdminContractPluginVersion' | pluginTranslate: 'epistola' | async }}:
-          <code>{{ card.contractVersion || '—' }}</code>
-          · {{ 'epistolaAdminContractServerVersion' | pluginTranslate: 'epistola' | async }}:
-          <code>{{ card.serverContractVersion || '—' }}</code>
-        </span>
-      </div>
-    </div>
-
     <ng-template #configurationsHeading>
       {{ 'epistolaAdminConfigurations' | pluginTranslate: 'epistola' | async }}
       <cds-tag size="sm" type="gray" class="ms-1">{{ cards.length }}</cds-tag>
@@ -123,6 +100,22 @@
               >
               </span>
               <h5 class="config-card__title">{{ card.configurationTitle }}</h5>
+            </div>
+
+            <div
+              *ngIf="hasContractCompatibilityWarning(card)"
+              class="config-card__contract-alert"
+              [ngClass]="contractAlertClass(card)"
+              [attr.data-testid]="'epistola-admin-contract-alert-' + card.tenantId"
+            >
+              <div class="contract-alert__header">
+                <span class="contract-alert__badge" [ngClass]="contractBadgeClass(card)">
+                  {{ contractLabelKey(card) | pluginTranslate: 'epistola' | async }}
+                </span>
+              </div>
+              <div class="contract-alert__body">
+                {{ contractBodyKey(card) | pluginTranslate: 'epistola' | async }}
+              </div>
             </div>
 
             <div class="config-card__body">

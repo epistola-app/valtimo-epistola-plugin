@@ -141,10 +141,6 @@ export class EpistolaAdminPageComponent implements OnInit {
     return this.formIssues !== null || this.legacyOverrideForms !== null;
   }
 
-  get contractWarningCards(): ConfigurationCard[] {
-    return this.cards.filter((card) => this.hasContractCompatibilityWarning(card));
-  }
-
   ngOnInit(): void {
     this.deepLinkConfigId = this.route.snapshot.queryParamMap.get('configurationId');
     const tab = this.route.snapshot.queryParamMap.get('tab');

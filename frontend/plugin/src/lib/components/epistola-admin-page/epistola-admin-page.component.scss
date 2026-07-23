@@ -167,6 +167,22 @@
       gap: 0.5rem;
     }
 
+    &__contract-alert {
+      margin: 0.75rem 0 1rem;
+      padding: 0.75rem;
+      border: 1px solid;
+      border-left-width: 4px;
+      border-radius: 4px;
+
+      .contract-alert__header {
+        margin-bottom: 0.4rem;
+      }
+
+      .contract-alert__body {
+        font-size: 0.85rem;
+      }
+    }
+
     &__field {
       display: flex;
       justify-content: space-between;
