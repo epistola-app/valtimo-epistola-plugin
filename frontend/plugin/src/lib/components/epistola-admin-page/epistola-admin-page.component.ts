@@ -30,6 +30,7 @@ import {
   ChangelogRelease,
   ClasspathCatalog,
   ConnectionStatus,
+  ContractCompatibilitySeverity,
   FormCarrierIssue,
   LegacyOverrideForm,
   PendingJob,
@@ -47,6 +48,9 @@ interface ConfigurationCard {
   latencyMs: number;
   errorMessage?: string;
   serverVersion?: string;
+  contractVersion?: string;
+  serverContractVersion?: string;
+  contractCompatibilitySeverity?: ContractCompatibilitySeverity;
   usageCount: number;
   problemCount: number;
   usageEntries: PluginUsageEntry[];
@@ -136,6 +140,10 @@ export class EpistolaAdminPageComponent implements OnInit {
     return this.formIssues !== null || this.legacyOverrideForms !== null;
   }
 
+  get contractWarningCards(): ConfigurationCard[] {
+    return this.cards.filter((card) => this.hasContractCompatibilityWarning(card));
+  }
+
   ngOnInit(): void {
     this.deepLinkConfigId = this.route.snapshot.queryParamMap.get('configurationId');
     const tab = this.route.snapshot.queryParamMap.get('tab');
@@ -151,6 +159,29 @@ export class EpistolaAdminPageComponent implements OnInit {
     this.activeTab = 'actions';
     this.updateUrl(card.configurationId, this.activeTab);
     this.loadCatalogs(card.configurationId);
+  }
+
+  hasContractCompatibilityWarning(card: ConfigurationCard): boolean {
+    return (
+      card.contractCompatibilitySeverity === 'WARNING' ||
+      card.contractCompatibilitySeverity === 'ERROR'
+    );
+  }
+
+  contractAlertClass(card: ConfigurationCard): string {
+    return card.contractCompatibilitySeverity === 'ERROR'
+      ? 'contract-alert--error'
+      : 'contract-alert--warning';
+  }
+
+  contractTagType(card: ConfigurationCard): 'red' | 'warm-gray' | 'gray' {
+    if (card.contractCompatibilitySeverity === 'ERROR') {
+      return 'red';
+    }
+    if (card.contractCompatibilitySeverity === 'WARNING') {
+      return 'warm-gray';
+    }
+    return 'gray';
   }
 
   backToOverview(): void {
@@ -416,7 +447,7 @@ export class EpistolaAdminPageComponent implements OnInit {
   }
 
   private updateUrl(configurationId: string | null, tab: string | null): void {
-    this.router.navigate([], {
+    void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: {
         configurationId: configurationId ?? null,
@@ -501,6 +532,9 @@ export class EpistolaAdminPageComponent implements OnInit {
         latencyMs: status.latencyMs,
         errorMessage: status.errorMessage,
         serverVersion: status.serverVersion,
+        contractVersion: status.contractVersion,
+        serverContractVersion: status.serverContractVersion,
+        contractCompatibilitySeverity: status.contractCompatibilitySeverity,
         usageCount: entries.length,
         problemCount,
         usageEntries: entries,

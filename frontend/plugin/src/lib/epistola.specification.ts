@@ -189,6 +189,16 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminActivity: 'Activiteit',
       epistolaAdminAction: 'Actie',
       epistolaAdminServerVersion: 'Server versie',
+      epistolaAdminContractVersion: 'Contract versie',
+      epistolaAdminContractPluginVersion: 'Plugin contract',
+      epistolaAdminContractServerVersion: 'Server contract',
+      epistolaAdminContractCompatibility: 'Contract compatibiliteit',
+      epistolaAdminContractWarning: 'Waarschuwing',
+      epistolaAdminContractError: 'Niet compatibel',
+      epistolaAdminContractWarningBody:
+        'De Epistola server gebruikt een oudere minor contractversie dan deze plugin. Meestal is de suite backwards compatible, maar controleer de release notes voordat je doorgaat.',
+      epistolaAdminContractErrorBody:
+        'De Epistola server en deze plugin gebruiken verschillende major contractversies. Dit kan documentgeneratie en catalogusuitrol breken; gebruik compatibele versies.',
       epistolaAdminExport: 'Exporteren',
       epistolaAdminPendingJobs: 'Wachtende taken',
       epistolaAdminNoPendingJobs: 'Geen wachtende taken voor deze verbinding.',
@@ -398,6 +408,16 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminActivity: 'Activity',
       epistolaAdminAction: 'Action',
       epistolaAdminServerVersion: 'Server version',
+      epistolaAdminContractVersion: 'Contract version',
+      epistolaAdminContractPluginVersion: 'Plugin contract',
+      epistolaAdminContractServerVersion: 'Server contract',
+      epistolaAdminContractCompatibility: 'Contract compatibility',
+      epistolaAdminContractWarning: 'Warning',
+      epistolaAdminContractError: 'Incompatible',
+      epistolaAdminContractWarningBody:
+        'The Epistola server is on an older minor contract version than this plugin. The suite is usually backwards compatible, but check the release notes before continuing.',
+      epistolaAdminContractErrorBody:
+        'The Epistola server and this plugin use different major contract versions. This can break document generation and catalog deployment; use compatible versions.',
       epistolaAdminExport: 'Export',
       epistolaAdminPendingJobs: 'Pending jobs',
       epistolaAdminNoPendingJobs: 'No pending jobs for this connection.',

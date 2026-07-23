@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The Epistola admin page now warns when the connected server contract is behind the plugin.** The backend reads the plugin's generated contract version and compares it with the Epistola server contract version from `/ping`; same-major newer server minors/patches stay green, older server minors show a warning, and any major mismatch is marked incompatible. The admin overview and configuration detail page surface the server/plugin contract versions with a prominent warning.
+
 ### Fixed
 
 - **Renovate no longer warns on the Form.io Font Awesome 4 CDN stylesheet.** The HTML/cdnjs rule now keeps `font-awesome` below major version 5 because the FA4 `css/font-awesome.min.css` asset path intentionally used by Form.io does not exist in the FA5 package layout, which caused Renovate dependency lookup warnings while recalculating SRI digests.

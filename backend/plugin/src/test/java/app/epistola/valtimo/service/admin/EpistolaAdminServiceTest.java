@@ -33,6 +33,7 @@ import app.epistola.valtimo.web.rest.dto.BpmnValidationViolation;
 import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
 import app.epistola.valtimo.web.rest.dto.ClasspathCatalog;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
+import app.epistola.valtimo.web.rest.dto.ContractCompatibilitySeverity;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
 import app.epistola.valtimo.web.rest.dto.ProcessLinkExport;
@@ -134,6 +135,88 @@ class EpistolaAdminServiceTest {
             assertThat(status.tenantId()).isEqualTo(TENANT_ID);
             assertThat(status.errorMessage()).isNull();
             assertThat(status.latencyMs()).isGreaterThanOrEqualTo(0);
+            assertThat(status.contractVersion()).isEqualTo("0.8.0");
+            assertThat(status.serverContractVersion()).isNull();
+            assertThat(status.contractCompatibilitySeverity())
+                    .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
+        }
+
+        @Test
+        void shouldReturnServerVersionMetadataWhenPingSucceeds() {
+            mockSinglePluginConfiguration();
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of());
+            when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
+                    .thenReturn(new EpistolaService.SystemInfo("0.26.3", "0.8.1"));
+
+            List<ConnectionStatus> results = adminService.checkConnections();
+
+            ConnectionStatus status = results.get(0);
+            assertThat(status.serverVersion()).isEqualTo("0.26.3");
+            assertThat(status.contractVersion()).isEqualTo("0.8.0");
+            assertThat(status.serverContractVersion()).isEqualTo("0.8.1");
+            assertThat(status.contractCompatibilitySeverity()).isEqualTo(ContractCompatibilitySeverity.OK);
+        }
+
+        @Test
+        void shouldWarnWhenServerContractMinorIsOlderThanPluginContractMinor() {
+            mockSinglePluginConfiguration();
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of());
+            when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
+                    .thenReturn(new EpistolaService.SystemInfo("0.25.9", "0.7.9"));
+
+            List<ConnectionStatus> results = adminService.checkConnections();
+
+            assertThat(results.get(0).contractCompatibilitySeverity())
+                    .isEqualTo(ContractCompatibilitySeverity.WARNING);
+        }
+
+        @Test
+        void shouldReportErrorWhenContractMajorDiffers() {
+            mockSinglePluginConfiguration();
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of());
+            when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
+                    .thenReturn(new EpistolaService.SystemInfo("1.0.0", "1.0.0"));
+
+            List<ConnectionStatus> results = adminService.checkConnections();
+
+            assertThat(results.get(0).contractCompatibilitySeverity())
+                    .isEqualTo(ContractCompatibilitySeverity.ERROR);
+        }
+
+        @Test
+        void shouldTreatNewerServerMinorAndPatchAsCompatible() {
+            mockSinglePluginConfiguration();
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of());
+            when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
+                    .thenReturn(new EpistolaService.SystemInfo("0.28.0", "0.9.0-SNAPSHOT"));
+
+            List<ConnectionStatus> results = adminService.checkConnections();
+
+            assertThat(results.get(0).contractCompatibilitySeverity())
+                    .isEqualTo(ContractCompatibilitySeverity.OK);
+        }
+
+        @Test
+        void shouldKeepConnectionReachableWhenPingFails() {
+            mockSinglePluginConfiguration();
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of());
+            when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
+                    .thenThrow(new RuntimeException("ping not found"));
+
+            List<ConnectionStatus> results = adminService.checkConnections();
+
+            ConnectionStatus status = results.get(0);
+            assertThat(status.reachable()).isTrue();
+            assertThat(status.errorMessage()).isNull();
+            assertThat(status.serverVersion()).isNull();
+            assertThat(status.serverContractVersion()).isNull();
+            assertThat(status.contractCompatibilitySeverity())
+                    .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
         }
 
         @Test
@@ -148,6 +231,9 @@ class EpistolaAdminServiceTest {
             ConnectionStatus status = results.get(0);
             assertThat(status.reachable()).isFalse();
             assertThat(status.errorMessage()).isEqualTo("Connection refused");
+            assertThat(status.contractVersion()).isEqualTo("0.8.0");
+            assertThat(status.contractCompatibilitySeverity())
+                    .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
         }
 
         @Test

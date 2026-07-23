@@ -21,6 +21,7 @@ import app.epistola.client.api.AttributesApi;
 import app.epistola.client.api.CatalogsApi;
 import app.epistola.client.api.EnvironmentsApi;
 import app.epistola.client.api.GenerationApi;
+import app.epistola.client.api.SystemApi;
 import app.epistola.client.api.TemplatesApi;
 import app.epistola.client.api.VariantsApi;
 import app.epistola.client.identity.ClientIdentity;
@@ -119,6 +120,13 @@ public class EpistolaApiClientFactory {
      */
     public VariantsApi createVariantsApi(String baseUrl, String apiKey) {
         return new VariantsApi(createApiRestClient(baseUrl, apiKey));
+    }
+
+    /**
+     * Create a SystemApi client for short health/version metadata calls.
+     */
+    public SystemApi createSystemApi(String baseUrl, String apiKey) {
+        return new SystemApi(createApiRestClient(baseUrl, apiKey));
     }
 
     /**

@@ -33,6 +33,7 @@ import app.epistola.valtimo.web.rest.dto.CatalogRedeployResult;
 import app.epistola.valtimo.web.rest.dto.ChangelogRelease;
 import app.epistola.valtimo.web.rest.dto.ClasspathCatalog;
 import app.epistola.valtimo.web.rest.dto.ConnectionStatus;
+import app.epistola.valtimo.web.rest.dto.ContractCompatibilitySeverity;
 import app.epistola.valtimo.web.rest.dto.PendingJob;
 import app.epistola.valtimo.web.rest.dto.PluginUsageEntry;
 import app.epistola.valtimo.web.rest.dto.ProcessLinkExport;
@@ -58,6 +59,7 @@ import org.operaton.bpm.model.bpmn.instance.FlowElement;
 
 import com.fasterxml.jackson.databind.JsonNode;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -82,6 +84,8 @@ public class EpistolaAdminService {
 
     /** Catalog import type — mirrors the value used by the startup sync trigger. */
     private static final String CATALOG_SYNC_TYPE = "AUTHORED";
+    private static final String CONTRACT_VERSION_RESOURCE = "epistola-contract-version.txt";
+    private static final Pattern SEMVER_PREFIX = Pattern.compile("^(\\d+)\\.(\\d+)(?:\\.(\\d+))?.*");
 
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
@@ -121,8 +125,13 @@ public class EpistolaAdminService {
             long start = System.currentTimeMillis();
             try {
                 epistolaService.getCatalogs(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId());
+                EpistolaService.SystemInfo systemInfo = fetchSystemInfo(plugin);
+                String contractVersion = getContractVersion();
+                ContractCompatibilitySeverity compatibilitySeverity = classifyContractCompatibility(
+                        contractVersion,
+                        systemInfo != null ? systemInfo.contractVersion() : null
+                );
                 long latency = System.currentTimeMillis() - start;
-                // TODO: fetch server version when Epistola API exposes a version/health endpoint
                 results.add(new ConnectionStatus(
                         config.getId().toString(),
                         config.getTitle(),
@@ -130,7 +139,10 @@ public class EpistolaAdminService {
                         true,
                         latency,
                         null,
-                        null
+                        systemInfo != null ? systemInfo.serverVersion() : null,
+                        contractVersion,
+                        systemInfo != null ? systemInfo.contractVersion() : null,
+                        compatibilitySeverity
                 ));
             } catch (Exception e) {
                 long latency = System.currentTimeMillis() - start;
@@ -142,7 +154,10 @@ public class EpistolaAdminService {
                         false,
                         latency,
                         e.getMessage(),
-                        null
+                        null,
+                        getContractVersion(),
+                        null,
+                        ContractCompatibilitySeverity.UNKNOWN
                 ));
             }
         }
@@ -156,6 +171,34 @@ public class EpistolaAdminService {
     public VersionInfo getVersions() {
         String pluginVersion = getPluginVersion();
         return new VersionInfo(pluginVersion, null);
+    }
+
+    private EpistolaService.SystemInfo fetchSystemInfo(EpistolaPlugin plugin) {
+        try {
+            return epistolaService.getSystemInfo(plugin.getBaseUrl(), plugin.getApiKey());
+        } catch (Exception e) {
+            log.debug("Could not fetch Epistola system metadata for tenant {}: {}",
+                    plugin.getTenantId(), e.getMessage());
+            return null;
+        }
+    }
+
+    private ContractCompatibilitySeverity classifyContractCompatibility(
+            String contractVersion,
+            String serverContractVersion
+    ) {
+        Optional<SemanticVersion> local = SemanticVersion.parse(contractVersion);
+        Optional<SemanticVersion> server = SemanticVersion.parse(serverContractVersion);
+        if (local.isEmpty() || server.isEmpty()) {
+            return ContractCompatibilitySeverity.UNKNOWN;
+        }
+        if (local.get().major() != server.get().major()) {
+            return ContractCompatibilitySeverity.ERROR;
+        }
+        if (server.get().minor() < local.get().minor()) {
+            return ContractCompatibilitySeverity.WARNING;
+        }
+        return ContractCompatibilitySeverity.OK;
     }
 
     /**
@@ -738,6 +781,35 @@ public class EpistolaAdminService {
             return "development";
         }
         return version;
+    }
+
+    private String getContractVersion() {
+        try (var in = getClass().getClassLoader().getResourceAsStream(CONTRACT_VERSION_RESOURCE)) {
+            if (in == null) {
+                return null;
+            }
+            String version = new String(in.readAllBytes(), StandardCharsets.UTF_8).trim();
+            return version.isBlank() ? null : version;
+        } catch (Exception e) {
+            log.debug("Failed to read {}: {}", CONTRACT_VERSION_RESOURCE, e.getMessage());
+            return null;
+        }
+    }
+
+    private record SemanticVersion(int major, int minor) {
+        static Optional<SemanticVersion> parse(String version) {
+            if (version == null || version.isBlank()) {
+                return Optional.empty();
+            }
+            var matcher = SEMVER_PREFIX.matcher(version.trim());
+            if (!matcher.matches()) {
+                return Optional.empty();
+            }
+            return Optional.of(new SemanticVersion(
+                    Integer.parseInt(matcher.group(1)),
+                    Integer.parseInt(matcher.group(2))
+            ));
+        }
     }
 
     private record PluginConfigEntry(PluginConfiguration config, EpistolaPlugin plugin) {}

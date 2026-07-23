@@ -42,6 +42,24 @@ public interface EpistolaService {
     List<CatalogInfo> getCatalogs(String baseUrl, String apiKey, String tenantId);
 
     /**
+     * Fetch Epistola system metadata, including the server application version and
+     * the contract version exposed by the server.
+     *
+     * @param baseUrl The Epistola API base URL
+     * @param apiKey  The API key for authentication
+     * @return System metadata from the server ping endpoint
+     */
+    SystemInfo getSystemInfo(String baseUrl, String apiKey);
+
+    /**
+     * Epistola server metadata returned by the ping endpoint.
+     */
+    record SystemInfo(
+            String serverVersion,
+            String contractVersion
+    ) {}
+
+    /**
      * Get all available templates for a tenant and catalog.
      *
      * @param baseUrl   The Epistola API base URL
