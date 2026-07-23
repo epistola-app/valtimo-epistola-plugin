@@ -27,72 +27,43 @@
     }
   }
 
-  .contract-alert {
-    padding: 1rem;
-    border: 1px solid;
-    border-left-width: 6px;
-    border-radius: 4px;
-    background: #fff;
+  .contract-compatibility {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 1.5rem;
+    padding: 0 0.5rem 0 0.35rem;
+    border-radius: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
 
     &--warning {
-      border-color: #f1c21b;
-      background: #fcf4d6;
-    }
-
-    &--unknown {
-      border-color: #ff832b;
-      background: #fff4e5;
-    }
-
-    &--error {
-      border-color: #da1e28;
-      background: #fff1f1;
-    }
-
-    &__header {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
-    }
-
-    &__body {
-      font-size: 0.95rem;
-      line-height: 1.45;
+      background: #f1c21b;
       color: #161616;
     }
 
-    &__badge {
-      display: inline-flex;
-      align-items: center;
-      min-height: 1.5rem;
-      padding: 0 0.5rem;
-      border-radius: 0.75rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      line-height: 1;
-      white-space: nowrap;
-
-      &--warning {
-        background: #f1c21b;
-        color: #161616;
-      }
-
-      &--unknown {
-        background: #ff832b;
-        color: #161616;
-      }
-
-      &--error {
-        background: #da1e28;
-        color: #fff;
-      }
+    &--unknown {
+      background: #ff832b;
+      color: #161616;
     }
 
-    &__versions {
-      display: block;
-      margin-top: 0.35rem;
-      color: #525252;
+    &--error {
+      background: #da1e28;
+      color: #fff;
+    }
+
+    &__icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1rem;
+      height: 1rem;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      font-size: 0.7rem;
+      font-weight: 700;
     }
   }
 
@@ -165,22 +136,6 @@
       display: flex;
       flex-direction: column;
       gap: 0.5rem;
-    }
-
-    &__contract-alert {
-      margin: 0.75rem 0 1rem;
-      padding: 0.75rem;
-      border: 1px solid;
-      border-left-width: 4px;
-      border-radius: 4px;
-
-      .contract-alert__header {
-        margin-bottom: 0.4rem;
-      }
-
-      .contract-alert__body {
-        font-size: 0.85rem;
-      }
     }
 
     &__field {

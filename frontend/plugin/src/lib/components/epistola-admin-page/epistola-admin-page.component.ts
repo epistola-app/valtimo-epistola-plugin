@@ -166,24 +166,14 @@ export class EpistolaAdminPageComponent implements OnInit {
     );
   }
 
-  contractAlertClass(card: ConfigurationCard): string {
-    if (card.contractCompatibilitySeverity === 'ERROR') {
-      return 'contract-alert--error';
-    }
-    if (card.contractCompatibilitySeverity === 'UNKNOWN') {
-      return 'contract-alert--unknown';
-    }
-    return 'contract-alert--warning';
-  }
-
   contractBadgeClass(card: ConfigurationCard): string {
     if (card.contractCompatibilitySeverity === 'ERROR') {
-      return 'contract-alert__badge--error';
+      return 'contract-compatibility--error';
     }
     if (card.contractCompatibilitySeverity === 'UNKNOWN') {
-      return 'contract-alert__badge--unknown';
+      return 'contract-compatibility--unknown';
     }
-    return 'contract-alert__badge--warning';
+    return 'contract-compatibility--warning';
   }
 
   contractLabelKey(card: ConfigurationCard): string {
