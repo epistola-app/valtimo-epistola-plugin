@@ -48,6 +48,13 @@
       "description": "Group GitHub Actions updates into a single weekly PR",
       "matchManagers": ["github-actions"],
       "groupName": "github-actions"
+    },
+    {
+      "description": "Keep the Form.io Font Awesome 4 CDN stylesheet on the legacy major; Font Awesome 5 uses a different cdnjs asset path",
+      "matchManagers": ["html"],
+      "matchDatasources": ["cdnjs"],
+      "matchPackageNames": ["font-awesome/css/font-awesome.min.css"],
+      "allowedVersions": "<5.0.0"
     }
   ]
 }
