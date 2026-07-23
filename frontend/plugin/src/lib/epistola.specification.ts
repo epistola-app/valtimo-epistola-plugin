@@ -98,6 +98,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       resultProcessVariable: 'Resultaat Procesvariabele',
       resultProcessVariableTooltip:
         'De naam van de procesvariabele waarin het request ID wordt opgeslagen',
+      resultProcessVariableInvalid: 'Gebruik alleen letters en cijfers (A-Z, a-z, 0-9).',
       pdf: 'PDF',
       html: 'HTML',
       // Data mapping builder translations
@@ -306,6 +307,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       filenameTooltip: 'The filename for the generated document',
       resultProcessVariable: 'Result Process Variable',
       resultProcessVariableTooltip: 'The name of the process variable to store the request ID in',
+      resultProcessVariableInvalid: 'Use only letters and numbers (A-Z, a-z, 0-9).',
       pdf: 'PDF',
       html: 'HTML',
       // Data mapping builder translations

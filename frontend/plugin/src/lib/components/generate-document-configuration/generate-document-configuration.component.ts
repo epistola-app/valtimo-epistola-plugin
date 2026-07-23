@@ -75,6 +75,10 @@ import { ExpectedStructureComponent } from '../expected-structure/expected-struc
 import { MappingBuilderComponent } from '../mapping-builder/mapping-builder.component';
 import { MappingPreviewComponent } from '../mapping-preview/mapping-preview.component';
 import { isExpression } from '../epistola-document-preview/preview-utils';
+import {
+  isGenerateDocumentConfigValid,
+  isProcessVariableNameValid,
+} from './generate-document-config.util';
 
 export type VariantSelectionMode = 'explicit' | 'attributes';
 
@@ -173,6 +177,7 @@ export class GenerateDocumentConfigurationComponent
   editorContextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
   prefillDataMapping: Record<string, any> = {};
   validationErrors$ = new BehaviorSubject<JsonataFieldError[]>([]);
+  resultProcessVariableInvalid$ = new BehaviorSubject<boolean>(false);
 
   private readonly destroy$ = new Subject<void>();
   private saveSubscription!: Subscription;
@@ -640,24 +645,17 @@ export class GenerateDocumentConfigurationComponent
   }
 
   private handleValid(formValue: Partial<GenerateDocumentConfig & { catalogId: string }>): void {
-    const filenameProvided = this.filenameExpressionMode
-      ? !!this.filenameExpression?.trim()
-      : !!this.filenameValue?.trim();
-
-    const baseComplete = !!(
-      this.selectedCatalogId$.getValue() &&
-      formValue?.templateId &&
-      formValue?.outputFormat &&
-      filenameProvided &&
-      formValue?.resultProcessVariable
+    this.resultProcessVariableInvalid$.next(
+      !!formValue?.resultProcessVariable &&
+        !isProcessVariableNameValid(formValue.resultProcessVariable),
     );
 
-    let variantValid = true;
-    if (this.variantSelectionMode === 'attributes' && this.variantAttributeEntries.length > 0) {
-      variantValid = this.variantAttributeEntries.every((e) => !!e.key && !!e.value);
-    }
-
-    const valid = baseComplete && variantValid;
+    const valid = isGenerateDocumentConfigValid(formValue, {
+      selectedCatalogId: this.selectedCatalogId$.getValue(),
+      filename: this.filenameExpressionMode ? this.filenameExpression : this.filenameValue,
+      variantSelectionMode: this.variantSelectionMode,
+      variantAttributeEntries: this.variantAttributeEntries,
+    });
     this.valid$.next(valid);
     this.valid.emit(valid);
   }
