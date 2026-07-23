@@ -194,9 +194,12 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminContractServerVersion: 'Server contract',
       epistolaAdminContractCompatibility: 'Contract compatibiliteit',
       epistolaAdminContractWarning: 'Waarschuwing',
+      epistolaAdminContractUnknown: 'Versie niet gemeld',
       epistolaAdminContractError: 'Niet compatibel',
       epistolaAdminContractWarningBody:
         'De Epistola server gebruikt een oudere minor contractversie dan deze plugin. Meestal is de suite backwards compatible, maar controleer de release notes voordat je doorgaat.',
+      epistolaAdminContractUnknownBody:
+        'De Epistola server meldt geen contractversie. Compatibiliteit kan niet worden gecontroleerd; upgrade of herdeploy de server met een contract build die versie-metadata publiceert.',
       epistolaAdminContractErrorBody:
         'De Epistola server en deze plugin gebruiken verschillende major contractversies. Dit kan documentgeneratie en catalogusuitrol breken; gebruik compatibele versies.',
       epistolaAdminExport: 'Exporteren',
@@ -413,9 +416,12 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminContractServerVersion: 'Server contract',
       epistolaAdminContractCompatibility: 'Contract compatibility',
       epistolaAdminContractWarning: 'Warning',
+      epistolaAdminContractUnknown: 'Version not reported',
       epistolaAdminContractError: 'Incompatible',
       epistolaAdminContractWarningBody:
         'The Epistola server is on an older minor contract version than this plugin. The suite is usually backwards compatible, but check the release notes before continuing.',
+      epistolaAdminContractUnknownBody:
+        'The Epistola server does not report a contract version. Compatibility cannot be checked; upgrade or redeploy the server with a contract build that publishes version metadata.',
       epistolaAdminContractErrorBody:
         'The Epistola server and this plugin use different major contract versions. This can break document generation and catalog deployment; use compatible versions.',
       epistolaAdminExport: 'Export',

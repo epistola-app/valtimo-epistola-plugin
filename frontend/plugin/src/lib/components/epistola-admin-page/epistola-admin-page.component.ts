@@ -72,6 +72,7 @@ export class EpistolaAdminPageComponent implements OnInit {
   overviewTab: 'configurations' | 'validations' | 'changelog' | 'forms' = 'configurations';
   loading = false;
   pluginVersion: string | null = null;
+  pluginContractVersion: string | null = null;
   changelog: ChangelogRelease[] | null = null;
   changelogLoading = false;
   validationReport: BpmnValidationReport | null = null;
@@ -164,24 +165,60 @@ export class EpistolaAdminPageComponent implements OnInit {
   hasContractCompatibilityWarning(card: ConfigurationCard): boolean {
     return (
       card.contractCompatibilitySeverity === 'WARNING' ||
-      card.contractCompatibilitySeverity === 'ERROR'
+      card.contractCompatibilitySeverity === 'ERROR' ||
+      card.contractCompatibilitySeverity === 'UNKNOWN'
     );
   }
 
   contractAlertClass(card: ConfigurationCard): string {
-    return card.contractCompatibilitySeverity === 'ERROR'
-      ? 'contract-alert--error'
-      : 'contract-alert--warning';
+    if (card.contractCompatibilitySeverity === 'ERROR') {
+      return 'contract-alert--error';
+    }
+    if (card.contractCompatibilitySeverity === 'UNKNOWN') {
+      return 'contract-alert--unknown';
+    }
+    return 'contract-alert--warning';
   }
 
-  contractTagType(card: ConfigurationCard): 'red' | 'warm-gray' | 'gray' {
+  contractBadgeClass(card: ConfigurationCard): string {
     if (card.contractCompatibilitySeverity === 'ERROR') {
-      return 'red';
+      return 'contract-alert__badge--error';
     }
-    if (card.contractCompatibilitySeverity === 'WARNING') {
-      return 'warm-gray';
+    if (card.contractCompatibilitySeverity === 'UNKNOWN') {
+      return 'contract-alert__badge--unknown';
     }
-    return 'gray';
+    return 'contract-alert__badge--warning';
+  }
+
+  contractLabelKey(card: ConfigurationCard): string {
+    if (card.contractCompatibilitySeverity === 'ERROR') {
+      return 'epistolaAdminContractError';
+    }
+    if (card.contractCompatibilitySeverity === 'UNKNOWN') {
+      return 'epistolaAdminContractUnknown';
+    }
+    return 'epistolaAdminContractWarning';
+  }
+
+  contractBodyKey(card: ConfigurationCard): string {
+    if (card.contractCompatibilitySeverity === 'ERROR') {
+      return 'epistolaAdminContractErrorBody';
+    }
+    if (card.contractCompatibilitySeverity === 'UNKNOWN') {
+      return 'epistolaAdminContractUnknownBody';
+    }
+    return 'epistolaAdminContractWarningBody';
+  }
+
+  versionWithContract(
+    version: string | null | undefined,
+    contractVersion: string | null | undefined,
+  ): string {
+    const displayVersion = version || '—';
+    if (!contractVersion) {
+      return displayVersion;
+    }
+    return `${displayVersion} (contract ${contractVersion})`;
   }
 
   backToOverview(): void {
@@ -541,6 +578,8 @@ export class EpistolaAdminPageComponent implements OnInit {
         pendingJobs: jobs,
       };
     });
+    this.pluginContractVersion =
+      this.cards.find((card) => card.contractVersion)?.contractVersion ?? null;
 
     // Restore deep link selection
     if (this.deepLinkConfigId) {

@@ -4,7 +4,9 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div class="d-flex align-items-center">
         <h5 class="mb-0">{{ 'epistolaAdminOverview' | pluginTranslate: 'epistola' | async }}</h5>
-        <span *ngIf="pluginVersion" class="version-badge ms-2">v{{ pluginVersion }}</span>
+        <span *ngIf="pluginVersion || pluginContractVersion" class="version-badge ms-2">
+          v{{ versionWithContract(pluginVersion, pluginContractVersion) }}
+        </span>
       </div>
       <button
         class="btn btn-outline-primary btn-sm"
@@ -23,27 +25,13 @@
       [attr.data-testid]="'epistola-admin-contract-alert-' + card.tenantId"
     >
       <div class="contract-alert__header">
-        <cds-tag size="sm" [type]="contractTagType(card)">
-          {{
-            (card.contractCompatibilitySeverity === 'ERROR'
-              ? 'epistolaAdminContractError'
-              : 'epistolaAdminContractWarning'
-            )
-              | pluginTranslate: 'epistola'
-              | async
-          }}
-        </cds-tag>
+        <span class="contract-alert__badge" [ngClass]="contractBadgeClass(card)">
+          {{ contractLabelKey(card) | pluginTranslate: 'epistola' | async }}
+        </span>
         <strong>{{ card.configurationTitle }}</strong>
       </div>
       <div class="contract-alert__body">
-        {{
-          (card.contractCompatibilitySeverity === 'ERROR'
-            ? 'epistolaAdminContractErrorBody'
-            : 'epistolaAdminContractWarningBody'
-          )
-            | pluginTranslate: 'epistola'
-            | async
-        }}
+        {{ contractBodyKey(card) | pluginTranslate: 'epistola' | async }}
         <span class="contract-alert__versions">
           {{ 'epistolaAdminContractPluginVersion' | pluginTranslate: 'epistola' | async }}:
           <code>{{ card.contractVersion || '—' }}</code>
@@ -118,7 +106,9 @@
             "
             [class.config-card--warning]="
               card.reachable &&
-              (card.problemCount > 0 || card.contractCompatibilitySeverity === 'WARNING')
+              (card.problemCount > 0 ||
+                card.contractCompatibilitySeverity === 'WARNING' ||
+                card.contractCompatibilitySeverity === 'UNKNOWN')
             "
             [class.config-card--error]="
               !card.reachable || card.contractCompatibilitySeverity === 'ERROR'
@@ -154,37 +144,24 @@
                   }}
                 </cds-tag>
               </div>
-              <div *ngIf="card.serverVersion" class="config-card__field">
-                <span class="config-card__label">{{
-                  'epistolaAdminServerVersion' | pluginTranslate: 'epistola' | async
-                }}</span>
-                <span class="config-card__value">{{ card.serverVersion }}</span>
-              </div>
               <div
-                *ngIf="card.contractVersion || card.serverContractVersion"
+                *ngIf="card.serverVersion || card.serverContractVersion"
                 class="config-card__field"
               >
                 <span class="config-card__label">{{
-                  'epistolaAdminContractVersion' | pluginTranslate: 'epistola' | async
+                  'epistolaAdminServerVersion' | pluginTranslate: 'epistola' | async
                 }}</span>
                 <span class="config-card__value">
-                  {{ card.contractVersion || '—' }} / {{ card.serverContractVersion || '—' }}
+                  {{ versionWithContract(card.serverVersion, card.serverContractVersion) }}
                 </span>
               </div>
               <div *ngIf="hasContractCompatibilityWarning(card)" class="config-card__field">
                 <span class="config-card__label">{{
                   'epistolaAdminContractCompatibility' | pluginTranslate: 'epistola' | async
                 }}</span>
-                <cds-tag size="sm" [type]="contractTagType(card)">
-                  {{
-                    (card.contractCompatibilitySeverity === 'ERROR'
-                      ? 'epistolaAdminContractError'
-                      : 'epistolaAdminContractWarning'
-                    )
-                      | pluginTranslate: 'epistola'
-                      | async
-                  }}
-                </cds-tag>
+                <span class="contract-alert__badge" [ngClass]="contractBadgeClass(card)">
+                  {{ contractLabelKey(card) | pluginTranslate: 'epistola' | async }}
+                </span>
               </div>
               <div class="config-card__field">
                 <span class="config-card__label">{{
@@ -289,7 +266,9 @@
           <span class="text-muted me-2">{{
             'epistolaAdminRunningVersion' | pluginTranslate: 'epistola' | async
           }}</span>
-          <cds-tag size="sm" type="blue">v{{ pluginVersion || '—' }}</cds-tag>
+          <cds-tag size="sm" type="blue">
+            v{{ versionWithContract(pluginVersion, pluginContractVersion) }}
+          </cds-tag>
         </div>
 
         <div *ngIf="changelogLoading" class="text-muted mb-3">
@@ -505,29 +484,21 @@
         data-testid="epistola-admin-selected-contract-alert"
       >
         <div class="contract-alert__header">
-          <cds-tag size="sm" [type]="contractTagType(selectedCard)">
-            {{
-              (selectedCard.contractCompatibilitySeverity === 'ERROR'
-                ? 'epistolaAdminContractError'
-                : 'epistolaAdminContractWarning'
-              )
-                | pluginTranslate: 'epistola'
-                | async
-            }}
-          </cds-tag>
+          <span class="contract-alert__badge" [ngClass]="contractBadgeClass(selectedCard)">
+            {{ contractLabelKey(selectedCard) | pluginTranslate: 'epistola' | async }}
+          </span>
           <strong>{{
             'epistolaAdminContractCompatibility' | pluginTranslate: 'epistola' | async
           }}</strong>
         </div>
         <div class="contract-alert__body">
-          {{
-            (selectedCard.contractCompatibilitySeverity === 'ERROR'
-              ? 'epistolaAdminContractErrorBody'
-              : 'epistolaAdminContractWarningBody'
-            )
-              | pluginTranslate: 'epistola'
-              | async
-          }}
+          {{ contractBodyKey(selectedCard) | pluginTranslate: 'epistola' | async }}
+          <span class="contract-alert__versions">
+            {{ 'epistolaAdminContractPluginVersion' | pluginTranslate: 'epistola' | async }}:
+            <code>{{ selectedCard.contractVersion || '—' }}</code>
+            · {{ 'epistolaAdminContractServerVersion' | pluginTranslate: 'epistola' | async }}:
+            <code>{{ selectedCard.serverContractVersion || '—' }}</code>
+          </span>
         </div>
       </div>
 
@@ -552,17 +523,12 @@
               <span class="text-muted ms-2">{{ selectedCard.latencyMs }} ms</span>
             </td>
           </tr>
-          <tr *ngIf="selectedCard.serverVersion">
+          <tr *ngIf="selectedCard.serverVersion || selectedCard.serverContractVersion">
             <th>{{ 'epistolaAdminServerVersion' | pluginTranslate: 'epistola' | async }}</th>
-            <td>{{ selectedCard.serverVersion }}</td>
-          </tr>
-          <tr *ngIf="selectedCard.contractVersion || selectedCard.serverContractVersion">
-            <th>{{ 'epistolaAdminContractVersion' | pluginTranslate: 'epistola' | async }}</th>
             <td>
-              {{ 'epistolaAdminContractPluginVersion' | pluginTranslate: 'epistola' | async }}:
-              <code>{{ selectedCard.contractVersion || '—' }}</code>
-              · {{ 'epistolaAdminContractServerVersion' | pluginTranslate: 'epistola' | async }}:
-              <code>{{ selectedCard.serverContractVersion || '—' }}</code>
+              {{
+                versionWithContract(selectedCard.serverVersion, selectedCard.serverContractVersion)
+              }}
             </td>
           </tr>
           <tr *ngIf="selectedCard.errorMessage">

@@ -39,6 +39,11 @@
       background: #fcf4d6;
     }
 
+    &--unknown {
+      border-color: #ff832b;
+      background: #fff4e5;
+    }
+
     &--error {
       border-color: #da1e28;
       background: #fff1f1;
@@ -55,6 +60,33 @@
       font-size: 0.95rem;
       line-height: 1.45;
       color: #161616;
+    }
+
+    &__badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 1.5rem;
+      padding: 0 0.5rem;
+      border-radius: 0.75rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      line-height: 1;
+      white-space: nowrap;
+
+      &--warning {
+        background: #f1c21b;
+        color: #161616;
+      }
+
+      &--unknown {
+        background: #ff832b;
+        color: #161616;
+      }
+
+      &--error {
+        background: #da1e28;
+        color: #fff;
+      }
     }
 
     &__versions {
