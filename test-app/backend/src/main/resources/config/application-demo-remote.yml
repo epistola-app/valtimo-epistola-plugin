@@ -1,0 +1,6 @@
+# ===================================================================
+# Remote Epistola demo profile.
+# ===================================================================
+
+epistola:
+  base-url: ${EPISTOLA_BASE_URL:https://demo.epistola.app/api}

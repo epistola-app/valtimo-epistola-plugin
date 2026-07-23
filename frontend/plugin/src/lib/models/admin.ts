@@ -27,7 +27,12 @@ export interface ConnectionStatus {
   latencyMs: number;
   errorMessage?: string;
   serverVersion?: string;
+  contractVersion?: string;
+  serverContractVersion?: string;
+  contractCompatibilitySeverity?: ContractCompatibilitySeverity;
 }
+
+export type ContractCompatibilitySeverity = 'OK' | 'WARNING' | 'ERROR' | 'UNKNOWN';
 
 /**
  * Version information for the Epistola plugin and connected server.

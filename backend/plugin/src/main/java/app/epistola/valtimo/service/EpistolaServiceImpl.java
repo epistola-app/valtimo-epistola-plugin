@@ -39,6 +39,9 @@ import app.epistola.client.model.EnvironmentDto;
 import app.epistola.client.model.EnvironmentListResponse;
 import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.GenerationJobResponse;
+import app.epistola.client.model.PingRequest;
+import app.epistola.client.model.PongDetailsDto;
+import app.epistola.client.model.PongResponse;
 import app.epistola.client.model.VariantSelectionAttribute;
 import app.epistola.client.model.TemplateDto;
 import app.epistola.client.model.TemplateListResponse;
@@ -128,6 +131,23 @@ public class EpistolaServiceImpl implements EpistolaService {
         } catch (Exception e) {
             log.error("Failed to fetch catalogs for tenant {}: {}", tenantId, e.getMessage());
             throw new EpistolaApiException("Failed to fetch catalogs", e);
+        }
+    }
+
+    @Override
+    public SystemInfo getSystemInfo(String baseUrl, String apiKey) {
+        log.debug("Fetching Epistola system metadata");
+        try {
+            PongResponse response = withRetry("fetch system metadata", () ->
+                    apiClientFactory.createSystemApi(baseUrl, apiKey).ping(new PingRequest()));
+            PongDetailsDto details = response != null ? response.getDetails() : null;
+            return new SystemInfo(
+                    details != null ? details.getServerVersion() : null,
+                    details != null ? details.getApiVersion() : null
+            );
+        } catch (Exception e) {
+            log.debug("Failed to fetch Epistola system metadata: {}", e.getMessage());
+            throw new EpistolaApiException("Failed to fetch system metadata", e);
         }
     }
 

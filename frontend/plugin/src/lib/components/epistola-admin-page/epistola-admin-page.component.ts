@@ -30,6 +30,7 @@ import {
   ChangelogRelease,
   ClasspathCatalog,
   ConnectionStatus,
+  ContractCompatibilitySeverity,
   FormCarrierIssue,
   LegacyOverrideForm,
   PendingJob,
@@ -47,6 +48,9 @@ interface ConfigurationCard {
   latencyMs: number;
   errorMessage?: string;
   serverVersion?: string;
+  contractVersion?: string;
+  serverContractVersion?: string;
+  contractCompatibilitySeverity?: ContractCompatibilitySeverity;
   usageCount: number;
   problemCount: number;
   usageEntries: PluginUsageEntry[];
@@ -68,6 +72,7 @@ export class EpistolaAdminPageComponent implements OnInit {
   overviewTab: 'configurations' | 'validations' | 'changelog' | 'forms' = 'configurations';
   loading = false;
   pluginVersion: string | null = null;
+  pluginContractVersion: string | null = null;
   changelog: ChangelogRelease[] | null = null;
   changelogLoading = false;
   validationReport: BpmnValidationReport | null = null;
@@ -151,6 +156,55 @@ export class EpistolaAdminPageComponent implements OnInit {
     this.activeTab = 'actions';
     this.updateUrl(card.configurationId, this.activeTab);
     this.loadCatalogs(card.configurationId);
+  }
+
+  hasContractCompatibilityWarning(card: ConfigurationCard): boolean {
+    return (
+      card.contractCompatibilitySeverity === 'WARNING' ||
+      card.contractCompatibilitySeverity === 'ERROR' ||
+      card.contractCompatibilitySeverity === 'UNKNOWN'
+    );
+  }
+
+  contractBadgeClass(card: ConfigurationCard): string {
+    if (card.contractCompatibilitySeverity === 'ERROR') {
+      return 'contract-compatibility--error';
+    }
+    if (card.contractCompatibilitySeverity === 'UNKNOWN') {
+      return 'contract-compatibility--unknown';
+    }
+    return 'contract-compatibility--warning';
+  }
+
+  contractLabelKey(card: ConfigurationCard): string {
+    if (card.contractCompatibilitySeverity === 'ERROR') {
+      return 'epistolaAdminContractError';
+    }
+    if (card.contractCompatibilitySeverity === 'UNKNOWN') {
+      return 'epistolaAdminContractUnknown';
+    }
+    return 'epistolaAdminContractWarning';
+  }
+
+  contractBodyKey(card: ConfigurationCard): string {
+    if (card.contractCompatibilitySeverity === 'ERROR') {
+      return 'epistolaAdminContractErrorBody';
+    }
+    if (card.contractCompatibilitySeverity === 'UNKNOWN') {
+      return 'epistolaAdminContractUnknownBody';
+    }
+    return 'epistolaAdminContractWarningBody';
+  }
+
+  versionWithContract(
+    version: string | null | undefined,
+    contractVersion: string | null | undefined,
+  ): string {
+    const displayVersion = version || '—';
+    if (!contractVersion) {
+      return displayVersion;
+    }
+    return `${displayVersion} (contract ${contractVersion})`;
   }
 
   backToOverview(): void {
@@ -416,7 +470,7 @@ export class EpistolaAdminPageComponent implements OnInit {
   }
 
   private updateUrl(configurationId: string | null, tab: string | null): void {
-    this.router.navigate([], {
+    void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: {
         configurationId: configurationId ?? null,
@@ -501,12 +555,17 @@ export class EpistolaAdminPageComponent implements OnInit {
         latencyMs: status.latencyMs,
         errorMessage: status.errorMessage,
         serverVersion: status.serverVersion,
+        contractVersion: status.contractVersion,
+        serverContractVersion: status.serverContractVersion,
+        contractCompatibilitySeverity: status.contractCompatibilitySeverity,
         usageCount: entries.length,
         problemCount,
         usageEntries: entries,
         pendingJobs: jobs,
       };
     });
+    this.pluginContractVersion =
+      this.cards.find((card) => card.contractVersion)?.contractVersion ?? null;
 
     // Restore deep link selection
     if (this.deepLinkConfigId) {

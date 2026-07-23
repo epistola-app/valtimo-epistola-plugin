@@ -27,6 +27,46 @@
     }
   }
 
+  .contract-compatibility {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 1.5rem;
+    padding: 0 0.5rem 0 0.35rem;
+    border-radius: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+
+    &--warning {
+      background: #f1c21b;
+      color: #161616;
+    }
+
+    &--unknown {
+      background: #ff832b;
+      color: #161616;
+    }
+
+    &--error {
+      background: #da1e28;
+      color: #fff;
+    }
+
+    &__icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 1rem;
+      height: 1rem;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+  }
+
   // Status dot (reused across cards and detail view)
   .status-dot {
     display: inline-block;
