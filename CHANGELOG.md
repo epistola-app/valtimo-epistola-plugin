@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **The Epistola admin page now warns when the connected server contract is behind the plugin.** The backend reads the plugin's generated contract version and compares it with the Epistola server contract version from `/ping`; same-major newer server minors/patches stay green, older server minors show a warning, and any major mismatch is marked incompatible. The admin overview and configuration detail page surface the server/plugin contract versions with a prominent warning.
+- **The test-app backend now has a `demo-remote` profile for using the shared Epistola demo server.** Running with `--spring.profiles.active=dev,demo-remote` points the local Valtimo backend at `https://demo.epistola.app/api`, so local frontend/admin work can exercise a real Epistola server without starting the local Epistola container.
 
 ### Fixed
 

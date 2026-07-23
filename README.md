@@ -327,7 +327,17 @@ cd frontend/plugin && pnpm build
 cd ../../test-app/frontend && pnpm start
 ```
 
-Open <http://localhost:4200> (Valtimo) or <http://localhost:4000> (Epistola).
+To run Valtimo locally while using the shared Epistola demo server instead of a local Epistola container, start only the local Postgres/Keycloak dependencies and add the `demo-remote` backend profile:
+
+```bash
+docker compose -f docker/docker-compose.yml up -d ved-postgres ved-keycloak
+./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev,demo-remote'
+pnpm build:plugin
+pnpm start
+```
+
+Open <http://localhost:4200> (Valtimo). With the local Epistola profile, Epistola runs at
+<http://localhost:4000>; with `demo-remote`, it uses <https://demo.epistola.app>.
 
 #### Keycloak SSO between Valtimo and Epistola
 
