@@ -16,7 +16,7 @@ services:
 
   ved-epistola-mock:
     profiles: ["mock"]
-    image: ghcr.io/epistola-app/epistola-contract/mock-server:0.13.0
+    image: ghcr.io/epistola-app/epistola-contract/mock-server:0.14.0
     container_name: ved-epistola-mock
     ports:
       - "4010:4010"

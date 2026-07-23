@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Bumped the Epistola contract client `app.epistola.contract:client-spring3-restclient` from `0.13.0` to `0.14.0`.** The Prism mock-server image used by local docker-compose and backend integration tests now uses the matching `mock-server:0.14.0` image.
 - **Bumped the Epistola contract client `app.epistola.contract:client-spring3-restclient` from `0.8.0` to `0.13.0`.** The Prism mock-server image used by local docker-compose and backend integration tests now uses the matching `mock-server:0.13.0` image. The plugin now follows the contract's paged list responses when loading Epistola catalogs, templates, attributes, environments, and variants for dropdown data, instead of relying on the server's first default page.
 
 ### Fixed

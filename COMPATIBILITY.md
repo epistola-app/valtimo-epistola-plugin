@@ -28,7 +28,7 @@ is rejected with RFC-9457 `400 catalog-schema-too-old`.
 
 | Plugin build | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema | Compatible Epistola Suite        |
 | ------------ | --------------------------------------------- | --------------------------- | -------------------------------- |
-| Unreleased   | `0.13.0`                                      | `4`                         | `>= 0.26.0`                      |
+| Unreleased   | `0.14.0`                                      | `4`                         | `>= 0.26.0`                      |
 | 0.12.0       | `0.8.0`                                       | `4`                         | `>= 0.26.0`                      |
 | ≤ 0.11.x     | `0.6.0`                                       | `2`                         | `<= 0.25.x` (broken on ≥ 0.26.0) |
 
