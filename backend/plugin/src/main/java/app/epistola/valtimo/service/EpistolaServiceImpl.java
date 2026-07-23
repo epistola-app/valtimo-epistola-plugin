@@ -30,6 +30,7 @@ import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.client.api.AttributesApi;
+import app.epistola.client.api.CatalogsApi;
 import app.epistola.client.api.EnvironmentsApi;
 import app.epistola.client.api.GenerationApi;
 import app.epistola.client.api.TemplatesApi;
@@ -39,6 +40,7 @@ import app.epistola.client.model.EnvironmentDto;
 import app.epistola.client.model.EnvironmentListResponse;
 import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.GenerationJobResponse;
+import app.epistola.client.model.PageMeta;
 import app.epistola.client.model.PingRequest;
 import app.epistola.client.model.PongDetailsDto;
 import app.epistola.client.model.PongResponse;
@@ -61,6 +63,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 /**
@@ -68,6 +71,9 @@ import java.util.function.Supplier;
  */
 @Slf4j
 public class EpistolaServiceImpl implements EpistolaService {
+
+    private static final int LIST_PAGE_SIZE = 100;
+    private static final int MAX_LIST_PAGES = 100;
 
     private final EpistolaApiClientFactory apiClientFactory;
 
@@ -114,18 +120,50 @@ public class EpistolaServiceImpl implements EpistolaService {
         }
     }
 
+    private <T, R> List<T> fetchAllPages(
+            String operation,
+            Function<Integer, R> fetchPage,
+            Function<R, List<T>> itemsExtractor,
+            Function<R, PageMeta> pageExtractor
+    ) {
+        List<T> results = new ArrayList<>();
+        int pageNumber = 0;
+        while (true) {
+            R response = fetchPage.apply(pageNumber);
+            if (response == null) {
+                return results;
+            }
+
+            List<T> items = itemsExtractor.apply(response);
+            if (items != null) {
+                results.addAll(items);
+            }
+
+            PageMeta page = pageExtractor.apply(response);
+            if (page == null || page.getTotalPages() <= pageNumber + 1) {
+                return results;
+            }
+
+            pageNumber++;
+            if (pageNumber >= MAX_LIST_PAGES) {
+                throw new EpistolaApiException("Refusing to fetch more than " + MAX_LIST_PAGES + " pages for " + operation);
+            }
+        }
+    }
+
     @Override
     public List<CatalogInfo> getCatalogs(String baseUrl, String apiKey, String tenantId) {
         log.debug("Fetching catalogs for tenant: {}", tenantId);
         try {
-            var response = apiClientFactory.createCatalogsApi(baseUrl, apiKey)
-                    .listCatalogs(tenantId);
+            CatalogsApi catalogsApi = apiClientFactory.createCatalogsApi(baseUrl, apiKey);
+            var catalogs = fetchAllPages(
+                    "catalogs",
+                    page -> catalogsApi.listCatalogs(tenantId, page, LIST_PAGE_SIZE, null, null),
+                    response -> response.getItems(),
+                    response -> response.getPage()
+            );
 
-            if (response == null || response.getItems() == null) {
-                return Collections.emptyList();
-            }
-
-            return response.getItems().stream()
+            return catalogs.stream()
                     .map(dto -> new CatalogInfo(dto.getId(), dto.getName(), dto.getType().getValue()))
                     .toList();
         } catch (Exception e) {
@@ -156,13 +194,14 @@ public class EpistolaServiceImpl implements EpistolaService {
         log.debug("Fetching templates for tenant: {}, catalog: {}", tenantId, catalogId);
         try {
             TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
-            TemplateListResponse response = templatesApi.listTemplates(tenantId, catalogId, null);
+            var templates = fetchAllPages(
+                    "templates",
+                    page -> templatesApi.listTemplates(tenantId, catalogId, null, page, LIST_PAGE_SIZE, null, null),
+                    TemplateListResponse::getItems,
+                    TemplateListResponse::getPage
+            );
 
-            if (response == null || response.getItems() == null) {
-                return Collections.emptyList();
-            }
-
-            return response.getItems().stream()
+            return templates.stream()
                     .map(dto -> mapToTemplateInfo(dto, catalogId))
                     .toList();
         } catch (Exception e) {
@@ -196,13 +235,14 @@ public class EpistolaServiceImpl implements EpistolaService {
         log.debug("Fetching attribute definitions for tenant: {}, catalog: {}", tenantId, catalogId);
         try {
             AttributesApi attributesApi = apiClientFactory.createAttributesApi(baseUrl, apiKey);
-            var response = attributesApi.listAttributes(tenantId, catalogId);
+            var attributes = fetchAllPages(
+                    "attributes",
+                    page -> attributesApi.listAttributes(tenantId, catalogId, page, LIST_PAGE_SIZE, null, null),
+                    response -> response.getItems(),
+                    response -> response.getPage()
+            );
 
-            if (response == null || response.getItems() == null) {
-                return Collections.emptyList();
-            }
-
-            return response.getItems().stream()
+            return attributes.stream()
                     .map(dto -> new AttributeDefinition(dto.getKey(), dto.getDescription()))
                     .toList();
         } catch (Exception e) {
@@ -216,13 +256,14 @@ public class EpistolaServiceImpl implements EpistolaService {
         log.debug("Fetching environments for tenant: {}", tenantId);
         try {
             EnvironmentsApi environmentsApi = apiClientFactory.createEnvironmentsApi(baseUrl, apiKey);
-            EnvironmentListResponse response = environmentsApi.listEnvironments(tenantId);
+            var environments = fetchAllPages(
+                    "environments",
+                    page -> environmentsApi.listEnvironments(tenantId, page, LIST_PAGE_SIZE, null, null),
+                    EnvironmentListResponse::getItems,
+                    EnvironmentListResponse::getPage
+            );
 
-            if (response == null || response.getItems() == null) {
-                return Collections.emptyList();
-            }
-
-            return response.getItems().stream()
+            return environments.stream()
                     .map(this::mapToEnvironmentInfo)
                     .toList();
         } catch (Exception e) {
@@ -236,13 +277,14 @@ public class EpistolaServiceImpl implements EpistolaService {
         log.debug("Fetching variants for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
         try {
             VariantsApi variantsApi = apiClientFactory.createVariantsApi(baseUrl, apiKey);
-            VariantListResponse response = variantsApi.listVariants(tenantId, catalogId, templateId);
+            var variants = fetchAllPages(
+                    "variants",
+                    page -> variantsApi.listVariants(tenantId, catalogId, templateId, page, LIST_PAGE_SIZE, null, null),
+                    VariantListResponse::getItems,
+                    VariantListResponse::getPage
+            );
 
-            if (response == null || response.getItems() == null) {
-                return Collections.emptyList();
-            }
-
-            return response.getItems().stream()
+            return variants.stream()
                     .map(this::mapToVariantInfo)
                     .toList();
         } catch (Exception e) {
