@@ -96,6 +96,16 @@ reads them as a single property. When the user edits the Motivatie field, the pr
 the field loses focus (or after the debounce, default ~1.5s) — and only if the mapped value changed.
 Auto-refresh can be turned off so the preview only updates on the **Refresh** button.
 
+Dotted Formio keys are treated as path traversal, matching Formio's own submission-data shape. If a
+field key combines a value-resolver prefix with a nested path, only the unsafe segment is quoted.
+For `doc:adres.straat`, use:
+
+```jsonata
+$form.`doc:adres`.straat
+```
+
+Do not quote the whole dotted key as one segment.
+
 > **Legacy format.** Forms authored before this change store `overrideMapping` as an object of
 > `"form:<componentKey>"` references (e.g. `{ "pv": { "motivation": "form:pv:motivation" } }`). These
 > keep working — the frontend converts them to JSONata on the fly — and persist in the new format the
