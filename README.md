@@ -238,9 +238,8 @@ See [docs/authorization.md](docs/authorization.md) for the full endpoint matrix 
 
 ### Prerequisites
 
-- Node.js >= 18
-- pnpm 9.x
-- Java 21 (for backend)
+- [mise](https://mise.jdx.dev/getting-started.html)
+- Java 21, Node.js 22.15.0, Gradle 9.2.0, and pnpm 9.15.0 are managed by [`.mise.toml`](.mise.toml)
 
 ### Setup
 
@@ -352,8 +351,8 @@ Run the test-app against the docker stack (build the plugin first so the test-ap
 
 ```bash
 ./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev'
-cd frontend/plugin && pnpm build
-cd ../../test-app/frontend && pnpm start
+pnpm build:plugin
+pnpm start
 ```
 
 To run Valtimo locally while using the shared Epistola demo server instead of a local Epistola container, start only the local Postgres/Keycloak dependencies and add the `demo-remote` backend profile:

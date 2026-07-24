@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **The README now shows live package-version badges instead of pinning a concrete backend dependency version.** The backend installation snippet uses a placeholder and points readers at the Maven Central badge/metadata for the current release, while the header also shows the published npm package version.
+- **The development setup documentation now uses one set of tool versions and commands.** README prerequisites and the contributor quickstart now point at the mise-managed Java/Node/Gradle/pnpm versions, and the contributor Docker/test-app commands match the root-level workflow documented in the README. The mise pnpm entry now matches the workspace `packageManager` pin.
 
 ### Added
 

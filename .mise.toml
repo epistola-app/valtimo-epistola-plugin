@@ -24,7 +24,7 @@
 gradle = "9.2.0"
 java = "temurin-21"
 node = "22.15.0"
-pnpm = "10.26.2"
+pnpm = "9.15.0"
 helm = "3.18"
 oxlint = "1.61.0"
 oxfmt = "0.46.0"
@@ -56,4 +56,3 @@ oxfmt = "0.46.0"
 # [alias.node.versions]
 # # setup a custom alias so you can run `mise use -g node@work` for node-16.x
 # work = '16'
-
