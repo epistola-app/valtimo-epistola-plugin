@@ -21,6 +21,7 @@ env:
 jobs:
   version:
     name: Resolve version
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -38,6 +39,11 @@ jobs:
 
           if [ -z "$VERSION" ]; then
             echo "::error::Could not determine version"
+            exit 1
+          fi
+
+          if ! printf '%s\n' "$VERSION" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Invalid release version: ${VERSION}"
             exit 1
           fi
 
