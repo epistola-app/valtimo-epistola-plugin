@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The frontend package now enforces host-owned Angular, Valtimo, and Form.io singletons.** Runtime packages imported by the plugin are declared as peers, the Form.io peers match Valtimo 13.21-13.38 exactly, and the demo app injects only the local Epistola workspace package. A resolution check fails when the host and plugin load different service or component registries.
 - **The document-preview Form.io component now renders in task forms after the Valtimo upgrade.** The preview wrapper keeps Valtimo's custom Angular element present during attach and treats the server-prefilled task id as runtime context, so task previews load the real generated preview instead of staying empty or falling back to the builder placeholder.
 - **The Epistola frontend module now imports Valtimo's Form.io module for custom component registration.** `EpistolaPluginModule` imports `FormIoModule`, so Valtimo's `registerCustomFormioComponent()` sees the matching `CustomTagsService` provider when Epistola's custom Formio elements register during Angular startup.
 - **Epistola Form.io components now refresh their Form.io registry entries even when their browser custom element already exists.** This keeps `epistola-document-preview` and the related edit-form helper widgets rendering after Valtimo/Form.io initialization order changes where the DOM element definition survives but the Form.io component registry must be rebuilt.

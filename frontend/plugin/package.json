@@ -30,11 +30,14 @@
     "tslib": "^2.6.0"
   },
   "devDependencies": {
-    "@angular/platform-browser": "^19.2.20",
+    "@angular/elements": "^19.2.25",
+    "@angular/platform-browser": "^19.2.25",
+    "@formio/angular": "7.0.0",
     "@types/jest": "^30.0.0",
     "@valtimo/components": "13.38.0",
     "@valtimo/plugin": "13.38.0",
     "@valtimo/process-link": "13.38.0",
+    "@valtimo/security": "13.38.0",
     "@valtimo/shared": "13.38.0",
     "carbon-components-angular": "5.57.6",
     "formiojs": "4.19.5",
@@ -43,17 +46,21 @@
     "ts-jest": "^29.4.9"
   },
   "peerDependencies": {
-    "@angular/common": ">=17.0.0",
-    "@angular/core": ">=17.0.0",
-    "@angular/forms": ">=17.0.0",
-    "@angular/router": ">=17.0.0",
-    "@formio/angular": "^7.0.0",
-    "@valtimo/components": "^13.21.0",
-    "@valtimo/plugin": "^13.21.0",
-    "@valtimo/process-link": "^13.21.0",
-    "@valtimo/security": "^13.21.0",
-    "@valtimo/shared": "^13.21.0",
-    "formiojs": "^4.18.0",
-    "monaco-editor": ">=0.40.0"
+    "@angular/common": ">=19.2.8 <20",
+    "@angular/core": ">=19.2.8 <20",
+    "@angular/elements": ">=19.2.8 <20",
+    "@angular/forms": ">=19.2.8 <20",
+    "@angular/platform-browser": ">=19.2.8 <20",
+    "@angular/router": ">=19.2.8 <20",
+    "@formio/angular": "7.0.0",
+    "@valtimo/components": ">=13.21.0 <14",
+    "@valtimo/plugin": ">=13.21.0 <14",
+    "@valtimo/process-link": ">=13.21.0 <14",
+    "@valtimo/security": ">=13.21.0 <14",
+    "@valtimo/shared": ">=13.21.0 <14",
+    "carbon-components-angular": "5.57.6",
+    "formiojs": "4.19.5",
+    "monaco-editor": ">=0.40.0 <1",
+    "rxjs": "^7.8.0"
   }
 }

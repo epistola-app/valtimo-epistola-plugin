@@ -21,6 +21,7 @@
     "lint:check": "oxlint",
     "headers": "node scripts/license-headers.mjs",
     "headers:check": "node scripts/license-headers.mjs --check",
+    "singletons:check": "node scripts/check-frontend-singletons.mjs",
     "typecheck": "pnpm --filter @epistola.app/valtimo-plugin typecheck",
     "clean": "rm -rf node_modules && pnpm -r exec rm -rf node_modules dist"
   },
