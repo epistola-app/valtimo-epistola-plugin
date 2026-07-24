@@ -21,6 +21,10 @@ import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valti
 import { EpistolaDocumentPreviewComponent } from './epistola-document-preview.component';
 import { computeInputOverrides } from './preview-utils';
 import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/prefilled-task-id';
+import {
+  getRegisteredFormioComponent,
+  setRegisteredFormioComponent,
+} from '../formio-builder-utils';
 
 /** Default debounce for the auto-refresh, in milliseconds. */
 const DEFAULT_REFRESH_DEBOUNCE_MS = 1500;
@@ -83,10 +87,7 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
   );
 
   // Get the Formio Components registry and the registered base class
-  const Formio = (window as any).Formio;
-  if (!Formio?.Components) return;
-
-  const BasePreviewComponent = Formio.Components.components[EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.type];
+  const BasePreviewComponent = getRegisteredFormioComponent(EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.type);
   if (!BasePreviewComponent) return;
 
   // Extend the base class to listen for form data changes and compute input overrides
@@ -322,5 +323,5 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
   }
 
   // Re-register with the extended class
-  Formio.Components.setComponent(EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.type, PreviewWithOverrides);
+  setRegisteredFormioComponent(EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.type, PreviewWithOverrides);
 }

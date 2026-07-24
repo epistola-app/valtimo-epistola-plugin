@@ -35,9 +35,21 @@ jest.mock('@valtimo/components', () => ({
   registerCustomFormioComponent: jest.fn(),
 }));
 
+jest.mock('formiojs', () => {
+  const components = {
+    components: {} as Record<string, any>,
+    setComponent: jest.fn((type: string, cls: any) => {
+      components.components[type] = cls;
+    }),
+  };
+  return { Components: components };
+});
+
+import { Components } from 'formiojs';
 import { registerEpistolaDocumentPreviewComponent } from './epistola-document-preview.formio';
 import { registerCustomFormioComponent } from '@valtimo/components';
 
+const mockComponents = Components as any;
 const TYPE = 'epistola-document-preview';
 
 class FakeBaseComponent {
@@ -72,22 +84,14 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     jest.useFakeTimers();
 
     components = { [TYPE]: FakeBaseComponent };
+    mockComponents.components = components;
+    mockComponents.setComponent.mockClear();
     registeredClass = undefined;
 
     (globalThis as any).customElements = { get: () => undefined, define: jest.fn() };
-    (globalThis as any).window = {
-      Formio: {
-        Components: {
-          components,
-          setComponent: (type: string, cls: any) => {
-            components[type] = cls;
-            registeredClass = cls;
-          },
-        },
-      },
-    };
 
     registerEpistolaDocumentPreviewComponent({} as any);
+    registeredClass = components[TYPE];
   });
 
   afterEach(() => {
@@ -142,15 +146,23 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
 
   it('refreshes the Formio component implementation when the custom element already exists', () => {
     components = { [TYPE]: FakeBaseComponent };
+    mockComponents.components = components;
+    mockComponents.setComponent.mockClear();
     registeredClass = undefined;
     (registerCustomFormioComponent as jest.Mock).mockClear();
     (globalThis as any).customElements = { get: () => class {}, define: jest.fn() };
 
     registerEpistolaDocumentPreviewComponent({} as any);
+    registeredClass = components[TYPE];
 
     expect(registerCustomFormioComponent).toHaveBeenCalled();
     expect(registeredClass).toBeDefined();
     expect(components[TYPE]).toBe(registeredClass);
+  });
+
+  it('does not depend on window.Formio to register the wrapper subclass', () => {
+    expect((globalThis as any).window?.Formio).toBeUndefined();
+    expect(mockComponents.setComponent).toHaveBeenCalledWith(TYPE, registeredClass);
   });
 
   it('forwards the server-prefilled task id to the Angular element on attach', () => {

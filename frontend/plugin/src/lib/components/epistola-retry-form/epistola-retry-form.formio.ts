@@ -20,7 +20,11 @@ import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
 import { EpistolaRetryFormComponent } from './epistola-retry-form.component';
 import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/prefilled-task-id';
-import { hideFormioComponentFromBuilder } from '../formio-builder-utils';
+import {
+  getRegisteredFormioComponent,
+  hideFormioComponentFromBuilder,
+  setRegisteredFormioComponent,
+} from '../formio-builder-utils';
 
 export const EPISTOLA_RETRY_FORM_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-retry-form',
@@ -41,8 +45,7 @@ export function registerEpistolaRetryFormComponent(injector: Injector): void {
   // Extend the base class to forward the server-prefilled task id (epistola: value
   // resolver) to the Angular element, so the retry form authorizes against the exact task in
   // every Valtimo task-open flow.
-  const Formio = (window as any).Formio;
-  const BaseComponent = Formio?.Components?.components?.[EPISTOLA_RETRY_FORM_OPTIONS.type];
+  const BaseComponent = getRegisteredFormioComponent(EPISTOLA_RETRY_FORM_OPTIONS.type);
   if (!BaseComponent) {
     return;
   }
@@ -60,10 +63,7 @@ export function registerEpistolaRetryFormComponent(injector: Injector): void {
     }
   }
 
-  Formio.Components.setComponent(
-    EPISTOLA_RETRY_FORM_OPTIONS.type,
-    EpistolaRetryFormWithTaskContext,
-  );
+  setRegisteredFormioComponent(EPISTOLA_RETRY_FORM_OPTIONS.type, EpistolaRetryFormWithTaskContext);
 
   // Part of the plugin's auto-deployed retry form, not a drop-anywhere component — hide it
   // from the builder palette. It still renders wherever it's already present in a form.

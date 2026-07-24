@@ -16,11 +16,24 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
+jest.mock('formiojs', () => {
+  const components = {
+    components: {} as Record<string, any>,
+    setComponent: jest.fn((type: string, cls: any) => {
+      components.components[type] = cls;
+    }),
+  };
+  return { Components: components };
+});
+
+import { Components } from 'formiojs';
 import { hideFormioComponentFromBuilder } from './formio-builder-utils';
 
+const mockComponents = Components as any;
+
 describe('hideFormioComponentFromBuilder', () => {
-  afterEach(() => {
-    delete (globalThis as any).window;
+  beforeEach(() => {
+    mockComponents.components = {};
   });
 
   it('overrides the registered component builderInfo getter to false', () => {
@@ -29,7 +42,7 @@ describe('hideFormioComponentFromBuilder', () => {
         return { schema: { type: 'epistola-override-builder' }, group: 'basic' };
       }
     }
-    (globalThis as any).window = { Formio: { Components: { components: { 'epistola-x': Cmp } } } };
+    mockComponents.components = { 'epistola-x': Cmp };
 
     expect((Cmp as any).builderInfo).toBeTruthy();
     hideFormioComponentFromBuilder('epistola-x');
@@ -37,12 +50,16 @@ describe('hideFormioComponentFromBuilder', () => {
   });
 
   it('is a no-op when the component is not registered', () => {
-    (globalThis as any).window = { Formio: { Components: { components: {} } } };
     expect(() => hideFormioComponentFromBuilder('missing')).not.toThrow();
   });
 
-  it('is a no-op when Formio is not present', () => {
+  it('does not depend on window.Formio', () => {
     (globalThis as any).window = {};
-    expect(() => hideFormioComponentFromBuilder('epistola-x')).not.toThrow();
+    class Cmp {}
+    mockComponents.components = { 'epistola-x': Cmp };
+
+    hideFormioComponentFromBuilder('epistola-x');
+
+    expect((Cmp as any).builderInfo).toBe(false);
   });
 });

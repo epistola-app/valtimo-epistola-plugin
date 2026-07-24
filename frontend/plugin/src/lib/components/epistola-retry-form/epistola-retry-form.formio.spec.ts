@@ -26,8 +26,20 @@
 jest.mock('./epistola-retry-form.component', () => ({ EpistolaRetryFormComponent: class {} }));
 jest.mock('@valtimo/components', () => ({ registerCustomFormioComponent: jest.fn() }));
 
+jest.mock('formiojs', () => {
+  const components = {
+    components: {} as Record<string, any>,
+    setComponent: jest.fn((type: string, cls: any) => {
+      components.components[type] = cls;
+    }),
+  };
+  return { Components: components };
+});
+
+import { Components } from 'formiojs';
 import { registerEpistolaRetryFormComponent } from './epistola-retry-form.formio';
 
+const mockComponents = Components as any;
 const TYPE = 'epistola-retry-form';
 
 class FakeBaseComponent {
@@ -42,20 +54,12 @@ describe('epistola-retry-form Formio wrapper', () => {
 
   beforeEach(() => {
     components = { [TYPE]: FakeBaseComponent };
+    mockComponents.components = components;
+    mockComponents.setComponent.mockClear();
     registeredClass = undefined;
     (globalThis as any).customElements = { get: () => undefined, define: jest.fn() };
-    (globalThis as any).window = {
-      Formio: {
-        Components: {
-          components,
-          setComponent: (type: string, cls: any) => {
-            components[type] = cls;
-            registeredClass = cls;
-          },
-        },
-      },
-    };
     registerEpistolaRetryFormComponent({} as any);
+    registeredClass = components[TYPE];
   });
 
   afterEach(() => {
@@ -73,6 +77,11 @@ describe('epistola-retry-form Formio wrapper', () => {
   it('registers a wrapper subclass', () => {
     expect(registeredClass).toBeDefined();
     expect(components[TYPE]).toBe(registeredClass);
+  });
+
+  it('does not depend on window.Formio to register the wrapper subclass', () => {
+    expect((globalThis as any).window?.Formio).toBeUndefined();
+    expect(mockComponents.setComponent).toHaveBeenCalledWith(TYPE, registeredClass);
   });
 
   it('forwards the prefilled task id onto the Angular element on attach', () => {

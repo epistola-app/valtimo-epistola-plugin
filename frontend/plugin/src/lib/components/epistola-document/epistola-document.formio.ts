@@ -20,6 +20,10 @@ import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
 import { EpistolaDocumentComponent } from './epistola-document.component';
 import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/prefilled-task-id';
+import {
+  getRegisteredFormioComponent,
+  setRegisteredFormioComponent,
+} from '../formio-builder-utils';
 
 export const EPISTOLA_DOCUMENT_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-document',
@@ -90,8 +94,7 @@ export function registerEpistolaDocumentComponent(injector: Injector): void {
   // Extend the base class to forward the server-prefilled task id (epistola: value
   // resolver) to the Angular element, so the download authorizes against the exact task in
   // every Valtimo task-open flow.
-  const Formio = (window as any).Formio;
-  const BaseComponent = Formio?.Components?.components?.[EPISTOLA_DOCUMENT_OPTIONS.type];
+  const BaseComponent = getRegisteredFormioComponent(EPISTOLA_DOCUMENT_OPTIONS.type);
   if (!BaseComponent) {
     return;
   }
@@ -109,5 +112,5 @@ export function registerEpistolaDocumentComponent(injector: Injector): void {
     }
   }
 
-  Formio.Components.setComponent(EPISTOLA_DOCUMENT_OPTIONS.type, EpistolaDocumentWithTaskContext);
+  setRegisteredFormioComponent(EPISTOLA_DOCUMENT_OPTIONS.type, EpistolaDocumentWithTaskContext);
 }

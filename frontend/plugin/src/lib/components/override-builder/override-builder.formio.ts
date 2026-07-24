@@ -19,7 +19,11 @@
 import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
 import { EpistolaOverrideBuilderComponent } from './override-builder.component';
-import { hideFormioComponentFromBuilder } from '../formio-builder-utils';
+import {
+  getRegisteredFormioComponent,
+  hideFormioComponentFromBuilder,
+  setRegisteredFormioComponent,
+} from '../formio-builder-utils';
 
 export const EPISTOLA_OVERRIDE_BUILDER_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-override-builder',
@@ -64,10 +68,7 @@ export function registerEpistolaOverrideBuilderComponent(injector: Injector): vo
   );
 
   // Get the Formio Components registry and the registered base class
-  const Formio = (window as any).Formio;
-  if (!Formio?.Components) return;
-
-  const BaseComponent = Formio.Components.components[EPISTOLA_OVERRIDE_BUILDER_OPTIONS.type];
+  const BaseComponent = getRegisteredFormioComponent(EPISTOLA_OVERRIDE_BUILDER_OPTIONS.type);
   if (!BaseComponent) return;
 
   // Extend the base class to pass available form fields and the selected process link
@@ -129,7 +130,7 @@ export function registerEpistolaOverrideBuilderComponent(injector: Injector): vo
   }
 
   // Re-register with the extended class
-  Formio.Components.setComponent(EPISTOLA_OVERRIDE_BUILDER_OPTIONS.type, OverrideBuilderWithFields);
+  setRegisteredFormioComponent(EPISTOLA_OVERRIDE_BUILDER_OPTIONS.type, OverrideBuilderWithFields);
 
   // Internal editForm widget — not a standalone form field. Hide it from the builder palette.
   hideFormioComponentFromBuilder(EPISTOLA_OVERRIDE_BUILDER_OPTIONS.type);

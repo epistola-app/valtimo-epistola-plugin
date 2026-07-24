@@ -37,6 +37,7 @@
     "@valtimo/process-link": "13.38.0",
     "@valtimo/shared": "13.38.0",
     "carbon-components-angular": "5.57.6",
+    "formiojs": "4.19.5",
     "jest": "^30.3.0",
     "ng-packagr": "^19.0.0",
     "ts-jest": "^29.4.9"
@@ -52,6 +53,7 @@
     "@valtimo/process-link": "^13.21.0",
     "@valtimo/security": "^13.21.0",
     "@valtimo/shared": "^13.21.0",
+    "formiojs": "^4.18.0",
     "monaco-editor": ">=0.40.0"
   }
 }

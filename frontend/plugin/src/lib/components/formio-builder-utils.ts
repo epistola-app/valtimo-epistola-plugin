@@ -16,6 +16,16 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
+import { Components } from 'formiojs';
+
+export function getRegisteredFormioComponent(type: string): any {
+  return (Components.components as Record<string, any>)[type];
+}
+
+export function setRegisteredFormioComponent(type: string, component: any): void {
+  Components.setComponent(type, component);
+}
+
 /**
  * Hides a registered custom Formio component from the builder's component palette,
  * while keeping it fully usable inside other components' `editForm`s and at runtime.
@@ -27,10 +37,10 @@
  * so they are unaffected.
  *
  * Call this AFTER the component is registered (and after any `setComponent` re-registration),
- * so it targets the final class in `Formio.Components.components[type]`.
+ * so it targets the final class in `Components.components[type]`.
  */
 export function hideFormioComponentFromBuilder(type: string): void {
-  const registered = (window as any).Formio?.Components?.components?.[type];
+  const registered = getRegisteredFormioComponent(type);
   if (registered) {
     Object.defineProperty(registered, 'builderInfo', {
       get: () => false,
