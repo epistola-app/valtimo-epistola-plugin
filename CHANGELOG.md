@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The README now shows live package-version badges instead of pinning a concrete backend dependency version.** The backend installation snippet uses a placeholder and points readers at the Maven Central badge/metadata for the current release, while the header also shows the published npm package version.
+
 ### Added
 
 - **The Epistola admin page now checks for newer Valtimo plugin releases.** The backend reads public release metadata from `https://epistola.app/.well-known/epistola/releases.json` by default, compares the running plugin version with the `valtimo-epistola-plugin` product entry, and surfaces newer releases, unsupported versions, support-ending warnings, pre-release status, metadata failures, and the explicit disabled state in the admin page. The check is enabled by default and can be disabled with `epistola.version-check.enabled=false`; when disabled, the admin page says so instead of looking silently up to date. Requests send the current plugin version plus a Valtimo-installation identifier header when resolvable: operators can set `epistola.version-check.valtimo-installation-id`, otherwise the plugin sends a one-way SHA-256 fingerprint derived from the first Liquibase database changelog execution timestamp. Scheduled refreshes default to a 05:00 UTC cron boundary plus random per-node jitter up to one hour, so clustered nodes spread their daily checks across 05:00-06:00 UTC while keeping independent in-memory caches.

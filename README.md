@@ -1,5 +1,10 @@
 # Valtimo Epistola Plugin
 
+[![CI](https://github.com/epistola-app/valtimo-epistola-plugin/actions/workflows/ci.yml/badge.svg)](https://github.com/epistola-app/valtimo-epistola-plugin/actions/workflows/ci.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/app.epistola.valtimo/epistola-plugin?label=Maven%20Central)](https://central.sonatype.com/artifact/app.epistola.valtimo/epistola-plugin)
+[![npm](https://img.shields.io/npm/v/@epistola.app/valtimo-plugin?label=npm)](https://www.npmjs.com/package/@epistola.app/valtimo-plugin)
+[![License: EUPL-1.2](https://img.shields.io/badge/License-EUPL_1.2-blue.svg)](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12)
+
 Epistola document generation plugin for Valtimo.
 
 ## Compatibility
@@ -14,11 +19,11 @@ Add the plugin dependency to your Valtimo application's `build.gradle.kts`:
 
 ```kotlin
 dependencies {
-    implementation("app.epistola.valtimo:epistola-plugin:0.10.0")
+    implementation("app.epistola.valtimo:epistola-plugin:<version>")
 }
 ```
 
-Releases are published to [Maven Central](https://central.sonatype.com/artifact/app.epistola.valtimo/epistola-plugin) — the [Maven metadata](https://repo1.maven.org/maven2/app/epistola/valtimo/epistola-plugin/maven-metadata.xml) is authoritative if the search index lags behind.
+Releases are published to [Maven Central](https://central.sonatype.com/artifact/app.epistola.valtimo/epistola-plugin). Use the current Maven Central version shown in the badge above; the [Maven metadata](https://repo1.maven.org/maven2/app/epistola/valtimo/epistola-plugin/maven-metadata.xml) is authoritative if the search index lags behind.
 
 The plugin auto-configures itself via Spring Boot. Set `epistola.enabled=false` to disable globally — see [Required configuration](#required-configuration) for the full property tree.
 
