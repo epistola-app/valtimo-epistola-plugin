@@ -124,8 +124,11 @@ epistola:
     enabled: true # check public release metadata for newer plugin versions (default: true)
     well-known-url: https://epistola.app/.well-known/epistola/releases.json
     product-key: valtimo-epistola-plugin
-    # Optional stable id for this Valtimo installation. When omitted, the plugin
-    # sends a one-way hash of this Valtimo database's Epistola plugin configuration ids.
+    cron: "0 0 5 * * *" # daily refresh boundary (default: 05:00 UTC)
+    zone: UTC
+    max-jitter: 1h # random delay after the cron boundary (default: 1h)
+    # Optional stable id for this Valtimo installation. When omitted, the plugin sends a one-way
+    # hash derived from this Valtimo database's first Liquibase changelog execution timestamp.
     valtimo-installation-id:
 ```
 
@@ -143,9 +146,9 @@ The check reads `epistola.version-check.well-known-url` (default `https://episto
 - `X-Epistola-Valtimo-Plugin-Version: <current-version>`
 - `X-Epistola-Valtimo-Installation-Id: <id>` when an id can be resolved
 
-Valtimo 13 does not expose a public stable installation id service. For the installation header, configure `epistola.version-check.valtimo-installation-id` if your deployment platform already has a stable id. If it is omitted, the plugin derives a single Valtimo-host fingerprint by sorting the Epistola plugin configuration UUIDs in this Valtimo database and sending a SHA-256 hash of that list. Raw plugin configuration ids, tenant ids, API keys, case data, and Epistola server details are not sent.
+Valtimo 13 does not expose a public stable installation id service. For the installation header, configure `epistola.version-check.valtimo-installation-id` if your deployment platform already has a stable id. If it is omitted, the plugin derives a Valtimo-database fingerprint by reading the first Liquibase `databasechangelog.dateexecuted` timestamp and sending a SHA-256 hash derived from that value. Raw database timestamps, tenant ids, API keys, case data, plugin configuration ids, and Epistola server details are not sent. If the Liquibase changelog timestamp cannot be resolved, the installation id header is omitted.
 
-The check result is cached in memory per backend node and refreshed daily at `epistola.version-check.cron` (default `0 0 8 * * *`, UTC). A transient fetch failure keeps any previous useful status visible while marking release metadata unavailable.
+The check result is cached in memory per backend node. The daily refresh uses `epistola.version-check.cron` (default `0 0 5 * * *`, UTC) as a boundary and then waits a random per-node delay up to `epistola.version-check.max-jitter` (default `1h`), so scheduled checks happen somewhere between 05:00 and 06:00 UTC by default. In a multi-node Valtimo deployment there is no shared cluster lock: every node keeps its own cache and performs its own jittered daily refresh, plus an initial fetch if its admin page is opened before that node has a cached status. A transient fetch failure keeps any previous useful status visible while marking release metadata unavailable.
 
 ### Disabling the plugin per environment
 

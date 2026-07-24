@@ -15,6 +15,17 @@
     padding: 0.35em 0.65em;
   }
 
+  .overview-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .version-check-freshness {
+    color: #6f6f6f;
+    font-size: 0.75rem;
+  }
+
   .version-check-notice {
     display: flex;
     align-items: flex-start;

@@ -2,11 +2,21 @@
   <!-- Overview: tabs (no configuration selected) -->
   <ng-container *ngIf="!selectedCard">
     <div class="d-flex justify-content-between align-items-center mb-3">
-      <div class="d-flex align-items-center">
-        <h5 class="mb-0">{{ 'epistolaAdminOverview' | pluginTranslate: 'epistola' | async }}</h5>
-        <span *ngIf="pluginVersion || pluginContractVersion" class="version-badge ms-2">
-          v{{ versionWithContract(pluginVersion, pluginContractVersion) }}
-        </span>
+      <div class="overview-heading">
+        <div class="d-flex align-items-center">
+          <h5 class="mb-0">{{ 'epistolaAdminOverview' | pluginTranslate: 'epistola' | async }}</h5>
+          <span *ngIf="pluginVersion || pluginContractVersion" class="version-badge ms-2">
+            v{{ versionWithContract(pluginVersion, pluginContractVersion) }}
+          </span>
+        </div>
+        <div
+          *ngIf="versionCheck?.checkedAt"
+          class="version-check-freshness"
+          data-testid="epistola-admin-version-check-freshness"
+        >
+          {{ 'epistolaAdminVersionCheckedAt' | pluginTranslate: 'epistola' | async }}:
+          {{ versionCheck?.checkedAt | date: 'medium' }}
+        </div>
       </div>
       <button
         class="btn btn-outline-primary btn-sm"
@@ -54,10 +64,6 @@
               versionCheck.latestStableVersion
             }}
           </ng-container>
-        </span>
-        <span *ngIf="versionCheck.checkedAt" class="version-check-notice__meta">
-          {{ 'epistolaAdminVersionCheckedAt' | pluginTranslate: 'epistola' | async }}:
-          {{ versionCheck.checkedAt | date: 'medium' }}
         </span>
       </div>
       <div class="version-check-notice__actions">

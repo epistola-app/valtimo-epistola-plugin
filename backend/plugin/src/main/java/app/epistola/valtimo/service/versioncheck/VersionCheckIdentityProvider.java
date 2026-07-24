@@ -18,34 +18,33 @@
 package app.epistola.valtimo.service.versioncheck;
 
 import app.epistola.valtimo.config.EpistolaProperties;
-import com.ritense.plugin.domain.PluginConfiguration;
-import com.ritense.plugin.service.PluginService;
-import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.util.Comparator;
 import java.util.HexFormat;
-import java.util.stream.Collectors;
+import java.sql.Timestamp;
 
 /**
  * Resolves a stable Valtimo-host identity for release checks.
  *
  * <p>Valtimo 13 does not expose a public installation-id service. To avoid
- * sending tenant/server information, the default identity is a one-way hash of
- * the sorted Epistola plugin configuration UUIDs stored in this Valtimo
- * database. Operators that already have a stable deployment id can configure it
- * explicitly with {@code epistola.version-check.valtimo-installation-id}.
+ * sending tenant/server information, the default identity is a one-way hash
+ * derived from the first Liquibase database changelog execution timestamp.
+ * Operators that already have a stable deployment id can configure it explicitly
+ * with {@code epistola.version-check.valtimo-installation-id}.
  */
 @Slf4j
 public class VersionCheckIdentityProvider {
 
-    private final PluginService pluginService;
+    private static final String DATABASE_INITIALIZATION_QUERY = "select min(dateexecuted) from databasechangelog";
+
+    private final JdbcTemplate jdbcTemplate;
     private final EpistolaProperties properties;
 
-    public VersionCheckIdentityProvider(PluginService pluginService, EpistolaProperties properties) {
-        this.pluginService = pluginService;
+    public VersionCheckIdentityProvider(JdbcTemplate jdbcTemplate, EpistolaProperties properties) {
+        this.jdbcTemplate = jdbcTemplate;
         this.properties = properties;
     }
 
@@ -55,17 +54,14 @@ public class VersionCheckIdentityProvider {
             return configured.trim();
         }
         try {
-            String joinedIds = pluginService.findPluginConfigurations(EpistolaPlugin.class, props -> true)
-                    .stream()
-                    .map(PluginConfiguration::getId)
-                    .map(Object::toString)
-                    .sorted(Comparator.naturalOrder())
-                    .collect(Collectors.joining(","));
-            if (joinedIds.isBlank()) {
+            Timestamp initializedAt = jdbcTemplate.queryForObject(DATABASE_INITIALIZATION_QUERY, Timestamp.class);
+            if (initializedAt == null) {
                 return null;
             }
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(joinedIds.getBytes(StandardCharsets.UTF_8));
+            byte[] hash = digest.digest(
+                    ("valtimo-database-initialized-at:" + initializedAt.toInstant())
+                            .getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hash);
         } catch (Exception e) {
             log.debug("Could not derive Valtimo installation id for version check: {}", e.getMessage());

@@ -18,18 +18,13 @@
 package app.epistola.valtimo.service.versioncheck;
 
 import app.epistola.valtimo.config.EpistolaProperties;
-import com.ritense.plugin.domain.PluginConfiguration;
-import com.ritense.plugin.domain.PluginConfigurationId;
-import com.ritense.plugin.service.PluginService;
-import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.util.List;
-import java.util.UUID;
+import java.sql.Timestamp;
+import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -40,30 +35,38 @@ class VersionCheckIdentityProviderTest {
         EpistolaProperties properties = new EpistolaProperties();
         properties.getVersionCheck().setValtimoInstallationId("valtimo-prod");
 
-        String id = new VersionCheckIdentityProvider(mock(PluginService.class), properties)
+        String id = new VersionCheckIdentityProvider(mock(JdbcTemplate.class), properties)
                 .valtimoInstallationId();
 
         assertThat(id).isEqualTo("valtimo-prod");
     }
 
     @Test
-    void derivesSingleHashFromSortedPluginConfigurationIds() {
-        PluginService pluginService = mock(PluginService.class);
-        PluginConfiguration configB = mockConfiguration("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb");
-        PluginConfiguration configA = mockConfiguration("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa");
-        when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
-                .thenReturn(List.of(configB, configA));
+    void derivesSingleHashFromFirstLiquibaseChangelogTimestamp() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        when(jdbcTemplate.queryForObject(
+                "select min(dateexecuted) from databasechangelog",
+                Timestamp.class
+        )).thenReturn(Timestamp.from(Instant.parse("2026-01-02T03:04:05Z")));
 
-        String id = new VersionCheckIdentityProvider(pluginService, new EpistolaProperties())
+        String id = new VersionCheckIdentityProvider(jdbcTemplate, new EpistolaProperties())
                 .valtimoInstallationId();
 
         assertThat(id).hasSize(64);
         assertThat(id).matches("[0-9a-f]{64}");
     }
 
-    private static PluginConfiguration mockConfiguration(String uuid) {
-        PluginConfiguration config = mock(PluginConfiguration.class);
-        when(config.getId()).thenReturn(new PluginConfigurationId(UUID.fromString(uuid)));
-        return config;
+    @Test
+    void returnsNullWhenDatabaseInitializationTimestampCannotBeResolved() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        when(jdbcTemplate.queryForObject(
+                "select min(dateexecuted) from databasechangelog",
+                Timestamp.class
+        )).thenThrow(new IllegalStateException("database unavailable"));
+
+        String id = new VersionCheckIdentityProvider(jdbcTemplate, new EpistolaProperties())
+                .valtimoInstallationId();
+
+        assertThat(id).isNull();
     }
 }

@@ -65,20 +65,28 @@ public class EpistolaProperties {
 
         /**
          * Stable Valtimo installation identifier to send with version-check requests.
-         * When blank, the plugin derives a one-way fingerprint from the Epistola
-         * plugin configuration ids present in this Valtimo database.
+         * When blank, the plugin derives a one-way fingerprint from the first
+         * Liquibase database changelog execution timestamp.
          */
         private String valtimoInstallationId;
 
         /**
-         * Daily UTC cron for refreshing the cached status.
+         * Daily UTC cron boundary for refreshing the cached status. The actual
+         * request is delayed by a random per-node jitter to avoid synchronized
+         * checks across clustered nodes.
          */
-        private String cron = "0 0 8 * * *";
+        private String cron = "0 0 5 * * *";
 
         /**
          * Time zone used by {@link #cron}.
          */
         private String zone = "UTC";
+
+        /**
+         * Maximum random delay after the scheduled cron boundary. The default
+         * makes the daily check happen somewhere between 05:00 and 06:00 UTC.
+         */
+        private Duration maxJitter = Duration.ofHours(1);
 
         /**
          * How far ahead of support.until an admin warning starts showing.

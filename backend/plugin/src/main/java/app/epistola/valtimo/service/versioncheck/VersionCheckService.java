@@ -20,9 +20,11 @@ package app.epistola.valtimo.service.versioncheck;
 import app.epistola.valtimo.config.EpistolaProperties;
 import app.epistola.valtimo.web.rest.dto.VersionCheckStatus;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.Scheduled;
 
 import java.time.Instant;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Slf4j
 public class VersionCheckService {
@@ -30,16 +32,19 @@ public class VersionCheckService {
     private final VersionCheckClient client;
     private final VersionCheckIdentityProvider identityProvider;
     private final EpistolaProperties properties;
+    private final TaskScheduler taskScheduler;
     private volatile VersionCheckStatus cachedStatus;
 
     public VersionCheckService(
             VersionCheckClient client,
             VersionCheckIdentityProvider identityProvider,
-            EpistolaProperties properties
+            EpistolaProperties properties,
+            TaskScheduler taskScheduler
     ) {
         this.client = client;
         this.identityProvider = identityProvider;
         this.properties = properties;
+        this.taskScheduler = taskScheduler;
     }
 
     public VersionCheckStatus status(String currentVersion) {
@@ -89,15 +94,30 @@ public class VersionCheckService {
     }
 
     @Scheduled(
-            cron = "${epistola.version-check.cron:0 0 8 * * *}",
+            cron = "${epistola.version-check.cron:0 0 5 * * *}",
             zone = "${epistola.version-check.zone:UTC}"
     )
     public void scheduledCheck() {
+        if (!properties.getVersionCheck().isEnabled()) {
+            return;
+        }
+        taskScheduler.schedule(this::runScheduledCheck, Instant.now().plusMillis(nextJitterMs()));
+    }
+
+    void runScheduledCheck() {
         VersionCheckStatus status = cachedStatus;
         String currentVersion = status != null && status.currentVersion() != null
                 ? status.currentVersion()
                 : resolveProductVersion();
         checkNow(currentVersion);
+    }
+
+    long nextJitterMs() {
+        long maxJitterMs = properties.getVersionCheck().getMaxJitter().toMillis();
+        if (maxJitterMs <= 0) {
+            return 0L;
+        }
+        return ThreadLocalRandom.current().nextLong(maxJitterMs + 1);
     }
 
     private VersionCheckStatus metadataUnavailable(String currentVersion, Instant checkedAt, String lastError) {

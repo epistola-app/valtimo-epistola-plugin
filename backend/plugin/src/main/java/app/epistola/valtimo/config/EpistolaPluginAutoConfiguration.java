@@ -74,6 +74,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
@@ -346,10 +347,10 @@ public class EpistolaPluginAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(VersionCheckIdentityProvider.class)
     public VersionCheckIdentityProvider versionCheckIdentityProvider(
-            PluginService pluginService,
+            JdbcTemplate jdbcTemplate,
             EpistolaProperties properties
     ) {
-        return new VersionCheckIdentityProvider(pluginService, properties);
+        return new VersionCheckIdentityProvider(jdbcTemplate, properties);
     }
 
     @Bean
@@ -357,9 +358,10 @@ public class EpistolaPluginAutoConfiguration {
     public VersionCheckService versionCheckService(
             VersionCheckClient client,
             VersionCheckIdentityProvider identityProvider,
-            EpistolaProperties properties
+            EpistolaProperties properties,
+            TaskScheduler taskScheduler
     ) {
-        return new VersionCheckService(client, identityProvider, properties);
+        return new VersionCheckService(client, identityProvider, properties, taskScheduler);
     }
 
     @Bean
