@@ -274,21 +274,11 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminVersionCheckedAt: 'Laatste controle op pluginupdates',
       epistolaAdminVersionRelease: 'Release',
       epistolaAdminVersionChangelog: 'Changelog',
-      // TEMPORARY (remove in 1.0.0): task-id carrier repair (admin "Forms" tab)
       epistolaAdminForms: 'Formulieren',
-      epistolaAdminFormsIntro:
-        'Formulieren met een Epistola-component dat het verborgen task-id veld mist. Zonder dat veld werkt het voorbeeld/downloaden/opnieuw genereren niet in elke taak-openflow. Herstel voegt het veld toe.',
       epistolaAdminFormName: 'Formulier',
-      epistolaAdminFormMissing: 'Ontbrekende componenten',
       epistolaAdminFormReadOnly: 'Alleen-lezen',
       epistolaAdminFormReadOnlyHint:
-        'Dit formulier komt van het classpath en wordt bij de volgende herstart teruggezet naar de bron. Voeg het veld toe aan de bron (component opnieuw plaatsen) voor een blijvende oplossing.',
-      epistolaAdminRepair: 'Herstellen',
-      epistolaAdminRepairAll: 'Alles herstellen',
-      epistolaAdminRepairing: 'Bezig...',
-      epistolaAdminRepairTooltip:
-        'Voeg het verborgen task-id veld toe aan alle Epistola-componenten in dit formulier.',
-      epistolaAdminNoFormIssues: 'Geen formulieren met een ontbrekend task-id veld gevonden.',
+        'Dit formulier komt van het classpath en wordt bij een herstart vanuit de bron hersteld. Migreer daarom de formulierdefinitie in de bron.',
       // TEMPORARY: legacy override-mapping format detection (admin "Forms" tab)
       epistolaAdminLegacyOverrideTitle: 'Verouderd invoer-override formaat',
       epistolaAdminLegacyOverrideIntro:
@@ -522,21 +512,11 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminVersionCheckedAt: 'Last plugin update check',
       epistolaAdminVersionRelease: 'Release',
       epistolaAdminVersionChangelog: 'Changelog',
-      // TEMPORARY (remove in 1.0.0): task-id carrier repair (admin "Forms" tab)
       epistolaAdminForms: 'Forms',
-      epistolaAdminFormsIntro:
-        'Forms with an Epistola component that is missing the hidden task-id field. Without it, preview/download/retry do not work in every task-open flow. Repair adds the field.',
       epistolaAdminFormName: 'Form',
-      epistolaAdminFormMissing: 'Missing components',
       epistolaAdminFormReadOnly: 'Read-only',
       epistolaAdminFormReadOnlyHint:
-        'This form is deployed from the classpath and is reconciled to its source on the next restart. Add the field to the source (re-drop the component) for a permanent fix.',
-      epistolaAdminRepair: 'Repair',
-      epistolaAdminRepairAll: 'Repair all',
-      epistolaAdminRepairing: 'Working...',
-      epistolaAdminRepairTooltip:
-        'Add the hidden task-id field to all Epistola components in this form.',
-      epistolaAdminNoFormIssues: 'No forms with a missing task-id field found.',
+        'This form is deployed from the classpath and is restored from its source on restart. Migrate the source form definition instead.',
       // TEMPORARY: legacy override-mapping format detection (admin "Forms" tab)
       epistolaAdminLegacyOverrideTitle: 'Legacy input-override format',
       epistolaAdminLegacyOverrideIntro:

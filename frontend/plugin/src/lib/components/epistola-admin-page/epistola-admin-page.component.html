@@ -106,7 +106,6 @@
       {{ 'epistolaAdminChangelog' | pluginTranslate: 'epistola' | async }}
     </ng-template>
 
-    <!-- TEMPORARY (removed in 1.0.0): forms missing the task-id carrier -->
     <ng-template #formsHeading>
       {{ 'epistolaAdminForms' | pluginTranslate: 'epistola' | async }}
       <cds-tag
@@ -356,109 +355,14 @@
         </div>
       </cds-tab>
 
-      <!-- TEMPORARY (removed in 1.0.0): forms missing the task-id carrier -->
       <cds-tab
         [heading]="formsHeading"
         data-testid="epistola-admin-tab-forms"
         [active]="overviewTab === 'forms'"
         (selected)="setOverviewTab('forms')"
       >
-        <p class="text-muted mt-3 mb-3">
-          {{ 'epistolaAdminFormsIntro' | pluginTranslate: 'epistola' | async }}
-        </p>
-
-        <div *ngIf="formIssuesLoading" class="text-muted mb-3">
-          {{ 'epistolaAdminLoading' | pluginTranslate: 'epistola' | async }}
-        </div>
-
-        <div
-          *ngIf="!formIssuesLoading && formIssues && formIssues.length === 0"
-          class="text-muted mb-3"
-        >
-          {{ 'epistolaAdminNoFormIssues' | pluginTranslate: 'epistola' | async }}
-        </div>
-
-        <div *ngIf="!formIssuesLoading && formIssues && formIssues.length > 0">
-          <div class="mb-2">
-            <button
-              class="btn btn-sm btn-primary"
-              data-testid="epistola-admin-repair-all"
-              (click)="repairAllForms()"
-              [disabled]="repairingAll"
-            >
-              {{
-                (repairingAll ? 'epistolaAdminRepairing' : 'epistolaAdminRepairAll')
-                  | pluginTranslate: 'epistola'
-                  | async
-              }}
-            </button>
-            <span
-              *ngIf="formFeedback && formFeedback.formId === 'all'"
-              class="small ms-2"
-              [class.text-success]="formFeedback.type === 'success'"
-              [class.text-danger]="formFeedback.type === 'error'"
-              >{{ formFeedback.message }}</span
-            >
-          </div>
-
-          <table class="table table-striped">
-            <thead>
-              <tr>
-                <th>{{ 'epistolaAdminFormName' | pluginTranslate: 'epistola' | async }}</th>
-                <th>{{ 'epistolaAdminFormMissing' | pluginTranslate: 'epistola' | async }}</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                *ngFor="let issue of formIssues"
-                [attr.data-testid]="'epistola-admin-form-issue-' + issue.formId"
-              >
-                <td>
-                  <code>{{ issue.name }}</code>
-                  <cds-tag
-                    *ngIf="issue.readOnly"
-                    size="sm"
-                    type="warm-gray"
-                    class="ms-1"
-                    [title]="'epistolaAdminFormReadOnlyHint' | pluginTranslate: 'epistola' | async"
-                    >{{
-                      'epistolaAdminFormReadOnly' | pluginTranslate: 'epistola' | async
-                    }}</cds-tag
-                  >
-                </td>
-                <td>{{ issue.missingComponents }}</td>
-                <td class="text-end">
-                  <button
-                    class="btn btn-sm btn-outline-primary"
-                    [attr.data-testid]="'epistola-admin-repair-form-' + issue.formId"
-                    (click)="repairForm(issue)"
-                    [disabled]="isRepairingForm(issue)"
-                    [title]="'epistolaAdminRepairTooltip' | pluginTranslate: 'epistola' | async"
-                  >
-                    {{
-                      (isRepairingForm(issue) ? 'epistolaAdminRepairing' : 'epistolaAdminRepair')
-                        | pluginTranslate: 'epistola'
-                        | async
-                    }}
-                  </button>
-                  <div
-                    *ngIf="formFeedback && formFeedback.formId === issue.formId"
-                    class="small mt-1"
-                    [class.text-success]="formFeedback.type === 'success'"
-                    [class.text-danger]="formFeedback.type === 'error'"
-                  >
-                    {{ formFeedback.message }}
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
         <!-- TEMPORARY: forms still using the legacy override-mapping object format -->
-        <hr class="my-4" />
-        <h5 class="mb-1">
+        <h5 class="mt-3 mb-1">
           {{ 'epistolaAdminLegacyOverrideTitle' | pluginTranslate: 'epistola' | async }}
         </h5>
         <p class="text-muted mb-3">
