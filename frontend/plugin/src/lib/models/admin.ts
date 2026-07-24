@@ -40,6 +40,30 @@ export type ContractCompatibilitySeverity = 'OK' | 'WARNING' | 'ERROR' | 'UNKNOW
 export interface VersionInfo {
   pluginVersion: string;
   epistolaServerVersion?: string;
+  versionCheck: VersionCheckStatus;
+}
+
+/**
+ * Status of the public plugin release metadata check.
+ */
+export interface VersionCheckStatus {
+  enabled: boolean;
+  checkedAt?: string | null;
+  currentVersion: string;
+  metadataAvailable: boolean;
+  preRelease: boolean;
+  latestVersion?: string | null;
+  updateAvailable: boolean;
+  releaseUrl?: string | null;
+  changelogUrl?: string | null;
+  latestStableVersion?: string | null;
+  stableReleaseUrl?: string | null;
+  stableChangelogUrl?: string | null;
+  supported: boolean;
+  supportEndingSoon: boolean;
+  minSupportedVersion?: string | null;
+  supportedUntil?: string | null;
+  lastError?: string | null;
 }
 
 /**

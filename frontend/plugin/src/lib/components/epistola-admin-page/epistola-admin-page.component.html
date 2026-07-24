@@ -18,6 +18,72 @@
       </button>
     </div>
 
+    <div
+      *ngIf="versionCheck && versionCheckNoticeType && versionCheckTitleKey"
+      class="version-check-notice"
+      [ngClass]="'version-check-notice--' + versionCheckNoticeType"
+      data-testid="epistola-admin-version-check-notice"
+    >
+      <div class="version-check-notice__body">
+        <strong>{{ versionCheckTitleKey | pluginTranslate: 'epistola' | async }}</strong>
+        <span *ngIf="versionCheckBodyKey">
+          {{ versionCheckBodyKey | pluginTranslate: 'epistola' | async }}
+        </span>
+        <span class="version-check-notice__meta">
+          <ng-container *ngIf="versionCheck.currentVersion">
+            {{ 'epistolaAdminVersionCurrent' | pluginTranslate: 'epistola' | async }}: v{{
+              versionCheck.currentVersion
+            }}
+          </ng-container>
+          <ng-container *ngIf="versionCheck.latestVersion">
+            · {{ 'epistolaAdminVersionLatest' | pluginTranslate: 'epistola' | async }}: v{{
+              versionCheck.latestVersion
+            }}
+          </ng-container>
+          <ng-container *ngIf="versionCheck.minSupportedVersion">
+            · {{ 'epistolaAdminVersionMinSupported' | pluginTranslate: 'epistola' | async }}: v{{
+              versionCheck.minSupportedVersion
+            }}
+          </ng-container>
+          <ng-container *ngIf="versionCheck.supportedUntil">
+            · {{ 'epistolaAdminVersionSupportedUntil' | pluginTranslate: 'epistola' | async }}:
+            {{ versionCheck.supportedUntil }}
+          </ng-container>
+          <ng-container *ngIf="versionCheck.latestStableVersion && versionCheck.preRelease">
+            · {{ 'epistolaAdminVersionLatestStable' | pluginTranslate: 'epistola' | async }}: v{{
+              versionCheck.latestStableVersion
+            }}
+          </ng-container>
+        </span>
+        <span *ngIf="versionCheck.checkedAt" class="version-check-notice__meta">
+          {{ 'epistolaAdminVersionCheckedAt' | pluginTranslate: 'epistola' | async }}:
+          {{ versionCheck.checkedAt | date: 'medium' }}
+        </span>
+      </div>
+      <div class="version-check-notice__actions">
+        <a
+          *ngIf="versionCheck.releaseUrl"
+          [href]="versionCheck.releaseUrl"
+          target="_blank"
+          rel="noopener"
+          class="btn btn-outline-primary btn-sm"
+          data-testid="epistola-admin-version-release"
+        >
+          {{ 'epistolaAdminVersionRelease' | pluginTranslate: 'epistola' | async }}
+        </a>
+        <a
+          *ngIf="versionCheck.changelogUrl"
+          [href]="versionCheck.changelogUrl"
+          target="_blank"
+          rel="noopener"
+          class="btn btn-outline-secondary btn-sm"
+          data-testid="epistola-admin-version-changelog"
+        >
+          {{ 'epistolaAdminVersionChangelog' | pluginTranslate: 'epistola' | async }}
+        </a>
+      </div>
+    </div>
+
     <ng-template #configurationsHeading>
       {{ 'epistolaAdminConfigurations' | pluginTranslate: 'epistola' | async }}
       <cds-tag size="sm" type="gray" class="ms-1">{{ cards.length }}</cds-tag>

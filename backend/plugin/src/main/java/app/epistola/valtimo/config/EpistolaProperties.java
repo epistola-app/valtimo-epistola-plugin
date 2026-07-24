@@ -21,6 +21,8 @@ import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+import java.time.Duration;
+
 /**
  * Configuration properties for Epistola Plugin runtime behavior.
  */
@@ -39,6 +41,60 @@ public class EpistolaProperties {
     private final RetryForm retryForm = new RetryForm();
     private final CatchEventAutoWiring catchEventAutoWiring = new CatchEventAutoWiring();
     private final Client client = new Client();
+    private final VersionCheck versionCheck = new VersionCheck();
+
+    @Data
+    public static class VersionCheck {
+
+        /**
+         * Whether the plugin checks public release metadata for newer plugin versions.
+         * Kept visible in the admin API even when disabled so operators can tell this
+         * is an intentional configuration choice.
+         */
+        private boolean enabled = true;
+
+        /**
+         * Public release metadata document shared with Epistola Suite.
+         */
+        private String wellKnownUrl = "https://epistola.app/.well-known/epistola/releases.json";
+
+        /**
+         * Product key in the releases document.
+         */
+        private String productKey = "valtimo-epistola-plugin";
+
+        /**
+         * Stable Valtimo installation identifier to send with version-check requests.
+         * When blank, the plugin derives a one-way fingerprint from the Epistola
+         * plugin configuration ids present in this Valtimo database.
+         */
+        private String valtimoInstallationId;
+
+        /**
+         * Daily UTC cron for refreshing the cached status.
+         */
+        private String cron = "0 0 8 * * *";
+
+        /**
+         * Time zone used by {@link #cron}.
+         */
+        private String zone = "UTC";
+
+        /**
+         * How far ahead of support.until an admin warning starts showing.
+         */
+        private Duration deprecationWarningWindow = Duration.ofDays(90);
+
+        /**
+         * Connection timeout for release metadata fetches.
+         */
+        private Duration connectTimeout = Duration.ofSeconds(3);
+
+        /**
+         * Read timeout for release metadata fetches.
+         */
+        private Duration readTimeout = Duration.ofSeconds(5);
+    }
 
     @Data
     public static class Client {

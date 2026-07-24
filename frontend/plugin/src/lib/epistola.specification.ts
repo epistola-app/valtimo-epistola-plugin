@@ -247,6 +247,33 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminChangelog: 'Changelog',
       epistolaAdminRunningVersion: 'Actieve plugin-versie:',
       epistolaAdminNoChangelog: 'Geen changelog beschikbaar in deze build.',
+      epistolaAdminVersionCheckDisabledTitle: 'Versiecontrole is uitgeschakeld',
+      epistolaAdminVersionCheckDisabledBody:
+        'Deze omgeving controleert niet automatisch of er een nieuwere Epistola Valtimo plugin beschikbaar is.',
+      epistolaAdminVersionUnsupportedTitle: 'Deze pluginversie wordt niet meer ondersteund',
+      epistolaAdminVersionUnsupportedBody:
+        'Upgrade de Epistola Valtimo plugin naar een ondersteunde versie.',
+      epistolaAdminVersionSupportEndingTitle:
+        'Ondersteuning voor deze pluginversie eindigt binnenkort',
+      epistolaAdminVersionSupportEndingBody: 'Plan een upgrade om ondersteund te blijven.',
+      epistolaAdminVersionPrereleaseTitle: 'Deze omgeving draait een pre-release',
+      epistolaAdminVersionPrereleaseBody:
+        'Controleer of deze pre-release nog de gewenste build is voor deze Valtimo omgeving.',
+      epistolaAdminVersionUpdateTitle: 'Er is een nieuwere pluginversie beschikbaar',
+      epistolaAdminVersionUpdateBody:
+        'Upgrade de Epistola Valtimo plugin om bugfixes en verbeteringen mee te nemen.',
+      epistolaAdminVersionMetadataUnavailableTitle:
+        'Versiecontrole kon release-informatie niet ophalen',
+      epistolaAdminVersionMetadataUnavailableBody:
+        'De laatst bekende status wordt gebruikt als die beschikbaar is. Controleer netwerktoegang of de geconfigureerde releases-URL.',
+      epistolaAdminVersionCurrent: 'Huidig',
+      epistolaAdminVersionLatest: 'Nieuwste',
+      epistolaAdminVersionLatestStable: 'Nieuwste stabiele versie',
+      epistolaAdminVersionMinSupported: 'Minimum ondersteund',
+      epistolaAdminVersionSupportedUntil: 'Ondersteund tot',
+      epistolaAdminVersionCheckedAt: 'Gecontroleerd op',
+      epistolaAdminVersionRelease: 'Release',
+      epistolaAdminVersionChangelog: 'Changelog',
       // TEMPORARY (remove in 1.0.0): task-id carrier repair (admin "Forms" tab)
       epistolaAdminForms: 'Formulieren',
       epistolaAdminFormsIntro:
@@ -469,6 +496,32 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminChangelog: 'Changelog',
       epistolaAdminRunningVersion: 'Running plugin version:',
       epistolaAdminNoChangelog: 'No changelog available in this build.',
+      epistolaAdminVersionCheckDisabledTitle: 'Version check is disabled',
+      epistolaAdminVersionCheckDisabledBody:
+        'This environment does not automatically check whether a newer Epistola Valtimo plugin is available.',
+      epistolaAdminVersionUnsupportedTitle: 'This plugin version is no longer supported',
+      epistolaAdminVersionUnsupportedBody:
+        'Upgrade the Epistola Valtimo plugin to a supported version.',
+      epistolaAdminVersionSupportEndingTitle: 'Support for this plugin version is ending soon',
+      epistolaAdminVersionSupportEndingBody: 'Plan an upgrade to stay supported.',
+      epistolaAdminVersionPrereleaseTitle: 'This environment is running a pre-release',
+      epistolaAdminVersionPrereleaseBody:
+        'Check whether this pre-release is still the intended build for this Valtimo environment.',
+      epistolaAdminVersionUpdateTitle: 'A newer plugin version is available',
+      epistolaAdminVersionUpdateBody:
+        'Upgrade the Epistola Valtimo plugin to pick up bug fixes and improvements.',
+      epistolaAdminVersionMetadataUnavailableTitle:
+        'Version check could not fetch release information',
+      epistolaAdminVersionMetadataUnavailableBody:
+        'The last known status is used when available. Check network access or the configured releases URL.',
+      epistolaAdminVersionCurrent: 'Current',
+      epistolaAdminVersionLatest: 'Latest',
+      epistolaAdminVersionLatestStable: 'Latest stable',
+      epistolaAdminVersionMinSupported: 'Minimum supported',
+      epistolaAdminVersionSupportedUntil: 'Supported until',
+      epistolaAdminVersionCheckedAt: 'Checked at',
+      epistolaAdminVersionRelease: 'Release',
+      epistolaAdminVersionChangelog: 'Changelog',
       // TEMPORARY (remove in 1.0.0): task-id carrier repair (admin "Forms" tab)
       epistolaAdminForms: 'Forms',
       epistolaAdminFormsIntro:

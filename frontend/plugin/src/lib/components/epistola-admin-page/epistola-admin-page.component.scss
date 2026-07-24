@@ -15,6 +15,53 @@
     padding: 0.35em 0.65em;
   }
 
+  .version-check-notice {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid #c6c6c6;
+    border-left-width: 4px;
+    border-radius: 4px;
+    background: #fff;
+
+    &--error {
+      border-left-color: #da1e28;
+      background: #fff1f1;
+    }
+
+    &--warning {
+      border-left-color: #f1c21b;
+      background: #fcf4d6;
+    }
+
+    &--info {
+      border-left-color: #0f62fe;
+      background: #edf5ff;
+    }
+
+    &__body {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      font-size: 0.875rem;
+      color: #161616;
+    }
+
+    &__meta {
+      color: #6f6f6f;
+      font-size: 0.75rem;
+    }
+
+    &__actions {
+      display: flex;
+      gap: 0.5rem;
+      flex-shrink: 0;
+    }
+  }
+
   code {
     font-size: 0.9em;
     color: #525252;

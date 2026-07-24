@@ -36,6 +36,9 @@ import app.epistola.valtimo.expression.functions.FormatDateFunction;
 import app.epistola.valtimo.expression.functions.StringFunctions;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
+import app.epistola.valtimo.service.versioncheck.VersionCheckClient;
+import app.epistola.valtimo.service.versioncheck.VersionCheckIdentityProvider;
+import app.epistola.valtimo.service.versioncheck.VersionCheckService;
 import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
 import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
@@ -70,6 +73,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
 
 import java.util.List;
 
@@ -316,11 +321,45 @@ public class EpistolaPluginAutoConfiguration {
             RuntimeService runtimeService,
             ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService,
             EpistolaProcessDefinitionValidator processDefinitionValidator,
-            EpistolaCatalogSyncService catalogSyncService
+            EpistolaCatalogSyncService catalogSyncService,
+            VersionCheckService versionCheckService
     ) {
         return new EpistolaAdminService(pluginService, epistolaService, correlationService, processLinkService,
                 repositoryService, runtimeService, processDefinitionCaseDefinitionService, processDefinitionValidator,
-                catalogSyncService);
+                catalogSyncService, versionCheckService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(VersionCheckClient.class)
+    public VersionCheckClient versionCheckClient(EpistolaProperties properties) {
+        var config = properties.getVersionCheck();
+        var factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout((int) config.getConnectTimeout().toMillis());
+        factory.setReadTimeout((int) config.getReadTimeout().toMillis());
+        RestClient restClient = RestClient.builder()
+                .requestFactory(factory)
+                .defaultHeader("Accept", "application/json")
+                .build();
+        return new VersionCheckClient(restClient);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(VersionCheckIdentityProvider.class)
+    public VersionCheckIdentityProvider versionCheckIdentityProvider(
+            PluginService pluginService,
+            EpistolaProperties properties
+    ) {
+        return new VersionCheckIdentityProvider(pluginService, properties);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(VersionCheckService.class)
+    public VersionCheckService versionCheckService(
+            VersionCheckClient client,
+            VersionCheckIdentityProvider identityProvider,
+            EpistolaProperties properties
+    ) {
+        return new VersionCheckService(client, identityProvider, properties);
     }
 
     @Bean
