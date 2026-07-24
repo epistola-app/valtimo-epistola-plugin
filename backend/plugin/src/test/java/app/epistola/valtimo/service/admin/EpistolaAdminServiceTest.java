@@ -22,6 +22,7 @@ import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
+import app.epistola.valtimo.service.versioncheck.VersionCheckService;
 
 import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.domain.GenerationJobDetail;
@@ -98,6 +99,7 @@ class EpistolaAdminServiceTest {
     private ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
     private EpistolaProcessDefinitionValidator processDefinitionValidator;
     private EpistolaCatalogSyncService catalogSyncService;
+    private VersionCheckService versionCheckService;
     private EpistolaAdminService adminService;
 
     @BeforeEach
@@ -111,10 +113,11 @@ class EpistolaAdminServiceTest {
         processDefinitionCaseDefinitionService = mock(ProcessDefinitionCaseDefinitionService.class);
         processDefinitionValidator = mock(EpistolaProcessDefinitionValidator.class);
         catalogSyncService = mock(EpistolaCatalogSyncService.class);
+        versionCheckService = mock(VersionCheckService.class);
         adminService = new EpistolaAdminService(
                 pluginService, epistolaService, correlationService, processLinkService, repositoryService,
                 runtimeService, processDefinitionCaseDefinitionService, processDefinitionValidator,
-                catalogSyncService);
+                catalogSyncService, versionCheckService);
     }
 
     @Nested
@@ -282,6 +285,7 @@ class EpistolaAdminServiceTest {
 
             assertThat(info.pluginVersion()).isEqualTo("development");
             assertThat(info.epistolaServerVersion()).isNull();
+            verify(versionCheckService).status("development");
         }
     }
 

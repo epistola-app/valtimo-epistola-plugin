@@ -15,13 +15,11 @@
  *
  * SPDX-License-Identifier: EUPL-1.2
  */
-package app.epistola.valtimo.web.rest.dto;
+package app.epistola.valtimo.service.versioncheck;
 
-/**
- * Version information for the Epistola plugin and connected server.
- */
-public record VersionInfo(
-        String pluginVersion,
-        String epistolaServerVersion,
-        VersionCheckStatus versionCheck
-) {}
+public class VersionMetadataUnavailableException extends RuntimeException {
+
+    public VersionMetadataUnavailableException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}

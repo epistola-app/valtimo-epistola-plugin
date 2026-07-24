@@ -35,6 +35,7 @@ import {
   LegacyOverrideForm,
   PendingJob,
   PluginUsageEntry,
+  VersionCheckStatus,
 } from '../../models';
 
 /**
@@ -73,6 +74,7 @@ export class EpistolaAdminPageComponent implements OnInit {
   loading = false;
   pluginVersion: string | null = null;
   pluginContractVersion: string | null = null;
+  versionCheck: VersionCheckStatus | null = null;
   changelog: ChangelogRelease[] | null = null;
   changelogLoading = false;
   validationReport: BpmnValidationReport | null = null;
@@ -205,6 +207,81 @@ export class EpistolaAdminPageComponent implements OnInit {
       return displayVersion;
     }
     return `${displayVersion} (contract ${contractVersion})`;
+  }
+
+  get versionCheckNoticeType(): 'error' | 'warning' | 'info' | 'success' | null {
+    const status = this.versionCheck;
+    if (!status) {
+      return null;
+    }
+    if (!status.enabled) {
+      return 'info';
+    }
+    if (!status.supported) {
+      return 'error';
+    }
+    if (status.supportEndingSoon) {
+      return 'warning';
+    }
+    if (status.preRelease || status.updateAvailable) {
+      return 'info';
+    }
+    if (!status.metadataAvailable || status.lastError) {
+      return 'warning';
+    }
+    return null;
+  }
+
+  get versionCheckTitleKey(): string | null {
+    const status = this.versionCheck;
+    if (!status) {
+      return null;
+    }
+    if (!status.enabled) {
+      return 'epistolaAdminVersionCheckDisabledTitle';
+    }
+    if (!status.supported) {
+      return 'epistolaAdminVersionUnsupportedTitle';
+    }
+    if (status.supportEndingSoon) {
+      return 'epistolaAdminVersionSupportEndingTitle';
+    }
+    if (status.preRelease) {
+      return 'epistolaAdminVersionPrereleaseTitle';
+    }
+    if (status.updateAvailable) {
+      return 'epistolaAdminVersionUpdateTitle';
+    }
+    if (!status.metadataAvailable || status.lastError) {
+      return 'epistolaAdminVersionMetadataUnavailableTitle';
+    }
+    return null;
+  }
+
+  get versionCheckBodyKey(): string | null {
+    const status = this.versionCheck;
+    if (!status) {
+      return null;
+    }
+    if (!status.enabled) {
+      return 'epistolaAdminVersionCheckDisabledBody';
+    }
+    if (!status.supported) {
+      return 'epistolaAdminVersionUnsupportedBody';
+    }
+    if (status.supportEndingSoon) {
+      return 'epistolaAdminVersionSupportEndingBody';
+    }
+    if (status.preRelease) {
+      return 'epistolaAdminVersionPrereleaseBody';
+    }
+    if (status.updateAvailable) {
+      return 'epistolaAdminVersionUpdateBody';
+    }
+    if (!status.metadataAvailable || status.lastError) {
+      return 'epistolaAdminVersionMetadataUnavailableBody';
+    }
+    return null;
   }
 
   backToOverview(): void {
@@ -584,6 +661,7 @@ export class EpistolaAdminPageComponent implements OnInit {
     this.adminService.getVersions().subscribe({
       next: (info) => {
         this.pluginVersion = info.pluginVersion;
+        this.versionCheck = info.versionCheck ?? null;
       },
     });
   }

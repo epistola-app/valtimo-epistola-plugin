@@ -146,6 +146,17 @@ describe('EpistolaAdminService', () => {
     it('should call GET /versions', (done) => {
       const mockVersions: VersionInfo = {
         pluginVersion: '0.6.0',
+        versionCheck: {
+          enabled: true,
+          checkedAt: '2026-07-24T08:00:00Z',
+          currentVersion: '0.6.0',
+          metadataAvailable: true,
+          preRelease: false,
+          latestVersion: '0.6.0',
+          updateAvailable: false,
+          supported: true,
+          supportEndingSoon: false,
+        },
       };
       httpClient.get.mockReturnValue(of(mockVersions));
 

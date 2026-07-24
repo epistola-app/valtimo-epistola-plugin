@@ -26,6 +26,7 @@ import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
+import app.epistola.valtimo.service.versioncheck.VersionCheckService;
 
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.web.rest.dto.BpmnValidationReport;
@@ -96,6 +97,7 @@ public class EpistolaAdminService {
     private final ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
     private final EpistolaProcessDefinitionValidator processDefinitionValidator;
     private final EpistolaCatalogSyncService catalogSyncService;
+    private final VersionCheckService versionCheckService;
 
     /**
      * Latest BPMN race-safety validation report: the violation snapshot (empty when
@@ -170,7 +172,7 @@ public class EpistolaAdminService {
      */
     public VersionInfo getVersions() {
         String pluginVersion = getPluginVersion();
-        return new VersionInfo(pluginVersion, null);
+        return new VersionInfo(pluginVersion, null, versionCheckService.status(pluginVersion));
     }
 
     private EpistolaService.SystemInfo fetchSystemInfo(EpistolaPlugin plugin) {
