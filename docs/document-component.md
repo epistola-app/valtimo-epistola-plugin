@@ -50,20 +50,18 @@ Server-side form prefill fills the hidden carrier field
   → form data carries the active taskId, in every task-open flow
   ↓
 Component reads:
-  - taskId         ← prefilled form (readPrefilledTaskId)
-  - caseDocumentId ← FormIoStateService.documentId
+  - taskId ← prefilled form (readPrefilledTaskId)
   ↓
 GET /api/v1/plugin/epistola/documents/download
     ?taskId=…
-    &caseDocumentId=…
     &documentVariable=epistolaResult
     &tenantIdVariable=epistolaTenantId
     &disposition=inline   (or "attachment" for the download button)
     &filename=…
   ↓
 Backend (EpistolaGenerationResource):
-  1. requireTaskBoundTo(taskId, processInstanceId, caseDocumentId)
-       → OperatonTask:VIEW + same-process-instance + business-key match
+  1. requireTaskViewable(taskId)
+       → OperatonTask:VIEW; process and case are derived from the task
   2. runtimeService.getVariable(processInstanceId, documentVariable)
   3. runtimeService.getVariable(processInstanceId, tenantIdVariable)
   4. epistolaService.downloadDocument(tenantId, documentId)
@@ -101,7 +99,7 @@ Forms authored **before** the carrier was embedded don't have it. The admin page
 
 ### Design-mode behaviour
 
-In the Formio builder there is no `caseDocumentId`, so the component renders a configuration summary instead of trying to fetch a non-existent document — `display`, `documentVariable`, and `tenantIdVariable` are shown as labelled values. This means form authors can drop the component on the canvas without seeing an error toast.
+In the Formio builder there is no prefilled `taskId`, so the component renders a configuration summary instead of trying to fetch a non-existent document — `display`, `documentVariable`, and `tenantIdVariable` are shown as labelled values. This means form authors can drop the component on the canvas without seeing an error toast.
 
 ### Failure modes the user sees
 
@@ -121,7 +119,7 @@ Pre-0.8 the post-generation UX was split across two components:
 | `epistola-preview-button` | `epistola-document` with `display: "button"` (or `"both"`) |
 | `epistola-download`       | `epistola-document` with `display: "button"`               |
 
-The 0.8 endpoint reshape also matters: the old `GET /api/v1/plugin/epistola/documents/{documentId}/download` (path-param) is gone. The new shape is `GET /api/v1/plugin/epistola/documents/download?taskId=…&caseDocumentId=…&documentVariable=…&tenantIdVariable=…`. If you have integrations that called the old URL directly (outside the Formio component), they have to be updated.
+The 0.8 endpoint reshape also matters: the old `GET /api/v1/plugin/epistola/documents/{documentId}/download` (path-param) is gone. The current shape is `GET /api/v1/plugin/epistola/documents/download?taskId=…&documentVariable=…&tenantIdVariable=…`. If you have integrations that called the old path-param URL directly, they have to be updated.
 
 ## Architecture
 
@@ -138,5 +136,5 @@ The 0.8 endpoint reshape also matters: the old `GET /api/v1/plugin/epistola/docu
 
 | Class                        | File                                       | Role                                                                   |
 | ---------------------------- | ------------------------------------------ | ---------------------------------------------------------------------- |
-| `EpistolaGenerationResource` | `web/rest/EpistolaGenerationResource.java` | `GET /documents/download` — `requireTaskBoundTo` + variable lookup     |
+| `EpistolaGenerationResource` | `web/rest/EpistolaGenerationResource.java` | `GET /documents/download` — task authorization + variable lookup       |
 | `EpistolaService`            | `service/EpistolaServiceImpl.java`         | `downloadDocument(tenantId, documentId)` — calls Epistola contract API |

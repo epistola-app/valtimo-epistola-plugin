@@ -103,6 +103,9 @@ jobs:
       - name: Type-check (strict)
         run: pnpm typecheck
 
+      - name: Check frontend runtime singletons
+        run: pnpm singletons:check
+
       - name: Test plugin
         run: pnpm --filter @epistola.app/valtimo-plugin test
 

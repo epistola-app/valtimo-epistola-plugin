@@ -19,15 +19,34 @@
 /**
  * Lifecycle tests for the wrapper registered by {@link registerEpistolaRetryFormComponent}: it forwards
  * the server-prefilled task id (from the hidden carrier field) onto the Angular element on attach, and —
- * since the retry form is part of the plugin's auto-deployed form, not a drop-anywhere component — hides
- * itself from the builder palette. The Angular component and @valtimo/components are mocked so the wrapper
+ * since the retry form is part of the plugin's auto-deployed form, not a drop-anywhere component, it uses
+ * Formio's hidden builder group. The Angular component and @valtimo/components are mocked so the wrapper
  * runs in the plain node/ts-jest environment, with a fake Formio.Components registry.
  */
 jest.mock('./epistola-retry-form.component', () => ({ EpistolaRetryFormComponent: class {} }));
-jest.mock('@valtimo/components', () => ({ registerCustomFormioComponent: jest.fn() }));
+jest.mock('@valtimo/components', () => ({
+  createCustomFormioComponent: jest.fn(),
+  registerCustomFormioComponent: jest.fn(),
+}));
 
-import { registerEpistolaRetryFormComponent } from './epistola-retry-form.formio';
+jest.mock('formiojs', () => {
+  const components = {
+    components: {} as Record<string, any>,
+    setComponent: jest.fn((type: string, cls: any) => {
+      components.components[type] = cls;
+    }),
+  };
+  return { Components: components };
+});
 
+import { Components } from 'formiojs';
+import { createCustomFormioComponent } from '@valtimo/components';
+import {
+  EPISTOLA_RETRY_FORM_OPTIONS,
+  registerEpistolaRetryFormComponent,
+} from './epistola-retry-form.formio';
+
+const mockComponents = Components as any;
 const TYPE = 'epistola-retry-form';
 
 class FakeBaseComponent {
@@ -42,20 +61,13 @@ describe('epistola-retry-form Formio wrapper', () => {
 
   beforeEach(() => {
     components = { [TYPE]: FakeBaseComponent };
+    mockComponents.components = components;
+    mockComponents.setComponent.mockClear();
+    (createCustomFormioComponent as jest.Mock).mockReturnValue(FakeBaseComponent);
     registeredClass = undefined;
     (globalThis as any).customElements = { get: () => undefined, define: jest.fn() };
-    (globalThis as any).window = {
-      Formio: {
-        Components: {
-          components,
-          setComponent: (type: string, cls: any) => {
-            components[type] = cls;
-            registeredClass = cls;
-          },
-        },
-      },
-    };
     registerEpistolaRetryFormComponent({} as any);
+    registeredClass = components[TYPE];
   });
 
   afterEach(() => {
@@ -75,6 +87,11 @@ describe('epistola-retry-form Formio wrapper', () => {
     expect(components[TYPE]).toBe(registeredClass);
   });
 
+  it('does not depend on window.Formio to register the wrapper subclass', () => {
+    expect((globalThis as any).window?.Formio).toBeUndefined();
+    expect(mockComponents.setComponent).toHaveBeenCalledWith(TYPE, registeredClass);
+  });
+
   it('forwards the prefilled task id onto the Angular element on attach', () => {
     const inst = createInstance({
       form: {
@@ -91,7 +108,7 @@ describe('epistola-retry-form Formio wrapper', () => {
     expect(inst._customAngularElement.taskInstanceId).toBeUndefined();
   });
 
-  it('hides itself from the builder palette', () => {
-    expect((components[TYPE] as any).builderInfo).toBe(false);
+  it('uses Formio hidden builder group', () => {
+    expect(EPISTOLA_RETRY_FORM_OPTIONS.group).toBe('none');
   });
 });

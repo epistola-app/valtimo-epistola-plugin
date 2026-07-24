@@ -278,7 +278,7 @@ export class EpistolaDocumentComponent
   private subscription?: Subscription;
 
   get designMode(): boolean {
-    return !this.formIoStateService.documentId;
+    return !this.taskInstanceId && !this.formIoStateService.documentId;
   }
 
   constructor(
@@ -369,15 +369,13 @@ export class EpistolaDocumentComponent
 
   private buildRequest(disposition: 'inline' | 'attachment'): DownloadDocumentRequest | null {
     const taskId = this.taskInstanceId ?? null;
-    const caseDocumentId = this.formIoStateService.documentId;
-    if (!taskId || !caseDocumentId) {
+    if (!taskId) {
       this.error = 'Document is alleen beschikbaar binnen een taak.';
       this.cdr.markForCheck();
       return null;
     }
     return {
       taskId,
-      caseDocumentId,
       documentVariable: this.documentVariable,
       tenantIdVariable: this.tenantIdVariable,
       filename: this.filename,

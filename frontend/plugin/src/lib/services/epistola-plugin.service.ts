@@ -57,7 +57,6 @@ export interface PreviewBlobRequest {
  */
 export interface DownloadDocumentRequest {
   taskId: string;
-  caseDocumentId: string;
   documentVariable: string;
   tenantIdVariable: string;
   filename: string;
@@ -263,7 +262,6 @@ export class EpistolaPluginService {
   downloadDocumentBlob(request: DownloadDocumentRequest): Observable<Blob> {
     const params = new URLSearchParams({
       taskId: request.taskId,
-      caseDocumentId: request.caseDocumentId,
       documentVariable: request.documentVariable,
       tenantIdVariable: request.tenantIdVariable,
       filename: request.filename,

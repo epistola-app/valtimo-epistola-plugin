@@ -45,7 +45,7 @@ npm install @epistola.app/valtimo-plugin
 pnpm add @epistola.app/valtimo-plugin
 ```
 
-`monaco-editor` is pulled in automatically as a peer dependency (it powers the JSONata editor). If your package manager has peer-dep auto-install turned off (`auto-install-peers=false` in pnpm, or you're on npm < 7), install it explicitly: `npm install monaco-editor`.
+The frontend package declares Angular, Valtimo, Form.io, Carbon, RxJS, and `monaco-editor` as peer dependencies. The host application must provide these packages so Angular services, Valtimo's menu/tag services, and Form.io's component registry each have one runtime instance. Package managers may install peers automatically, but strict pnpm consumers should declare the peers directly; use the versions reported by `pnpm peers check`.
 
 **angular.json** — serve Monaco's bundle from `assets/monaco-editor` by adding this entry to your build configuration's `assets` array:
 
@@ -86,7 +86,13 @@ The plain `EpistolaPluginModule` and `EpistolaPluginModule.forRoot()` are equiva
 export class AppModule {}
 ```
 
-> **Import at the application root only.** The module registers an `ENVIRONMENT_INITIALIZER` (Formio component registration) and the menu service. Importing `EpistolaPluginModule` into a lazy or feature module in addition to `AppModule` would run that initialization twice (e.g. duplicate menu entries).
+> **Import at the application root only.** The module uses an idempotent environment initializer to register the menu extension and Form.io components before Valtimo initializes them. A lazy or feature module should consume the exported components through the root import rather than import `EpistolaPluginModule` again.
+
+The initializer uses Valtimo's public extension points:
+
+- `MenuService.registerAppendMenuItemsFunction()` adds the Epistola entry without mutating Valtimo configuration or forcing a reload.
+- `registerCustomFormioComponent()` owns custom-tag and Angular custom-element registration.
+- `createCustomFormioComponent()` supplies Valtimo's Form.io bridge class. Epistola subclasses that bridge only where task context or live preview behavior is required, then registers the subclass through Form.io's `Components.setComponent()`.
 
 ## Required configuration
 
@@ -211,7 +217,7 @@ Implementation: `app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger` + `Cata
 
 The plugin enforces three layers of authorization on its REST endpoints:
 
-- **User-task endpoints** (`/preview`, `/retry-form`, `/documents/download`) require `OperatonTask:VIEW` on the supplied `taskId` plus a same-process / same-case binding, so callers cannot use a task they own to read a different case's document.
+- **User-task endpoints** (`/preview`, `/retry-form`, `/documents/download`) require `OperatonTask:VIEW` on the supplied `taskId`. Process and case context are derived from that authorized task.
 - **Admin endpoints** (`/admin/**`) require `EpistolaAdministration:MANAGE`. The plugin ships a default grant of this permission to `ROLE_ADMIN` via [`epistola-admin-default.permission.json`](backend/plugin/src/main/resources/config/epistola/permission/epistola-admin-default.permission.json) — override it in your application to assign the action to a different role.
 - **Configurator endpoints** (process-link configuration UI) are gated at the HTTP layer by `ROLE_ADMIN`, mirroring Valtimo's own process-link CRUD.
 
@@ -267,6 +273,8 @@ pnpm start
 ### Developing the frontend plugin
 
 When making changes to the frontend plugin (`frontend/plugin/`), you need to rebuild for changes to take effect in the test app.
+
+The test app injects only `@epistola.app/valtimo-plugin` as a workspace package. All runtime peers resolve from the host. Run `pnpm singletons:check` after dependency changes to verify that the host, Valtimo, and the injected plugin resolve the same Angular, Valtimo, Form.io, Carbon, and RxJS instances.
 
 **Option 1: Manual rebuild**
 

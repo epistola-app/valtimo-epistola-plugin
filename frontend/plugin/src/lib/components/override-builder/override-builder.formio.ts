@@ -17,15 +17,18 @@
  */
 
 import { Injector } from '@angular/core';
-import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
+import { FormioCustomComponentInfo } from '@valtimo/components';
 import { EpistolaOverrideBuilderComponent } from './override-builder.component';
-import { hideFormioComponentFromBuilder } from '../formio-builder-utils';
+import {
+  registerEpistolaFormioComponent,
+  ValtimoFormioComponentConstructor,
+} from '../valtimo-formio-adapter';
 
 export const EPISTOLA_OVERRIDE_BUILDER_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-override-builder',
   selector: 'epistola-override-builder-element',
   title: 'Epistola Override Builder',
-  group: 'basic',
+  group: 'none',
   icon: 'list',
   emptyValue: null,
   fieldOptions: ['label', 'availableFields', 'processDefinitionKey', 'sourceActivityId'],
@@ -56,26 +59,17 @@ function collectFormFields(components: any[]): { key: string; label: string }[] 
 }
 
 export function registerEpistolaOverrideBuilderComponent(injector: Injector): void {
-  if (customElements.get(EPISTOLA_OVERRIDE_BUILDER_OPTIONS.selector)) {
-    return;
-  }
-
-  // Register the base component (Angular element + Formio component class)
-  registerCustomFormioComponent(
+  registerEpistolaFormioComponent(
     EPISTOLA_OVERRIDE_BUILDER_OPTIONS,
     EpistolaOverrideBuilderComponent,
     injector,
+    withAvailableFields,
   );
+}
 
-  // Get the Formio Components registry and the registered base class
-  const Formio = (window as any).Formio;
-  if (!Formio?.Components) return;
-
-  const BaseComponent = Formio.Components.components[EPISTOLA_OVERRIDE_BUILDER_OPTIONS.type];
-  if (!BaseComponent) return;
-
-  // Extend the base class to pass available form fields and the selected process link
-  // to the Angular component.
+function withAvailableFields(
+  BaseComponent: ValtimoFormioComponentConstructor,
+): ValtimoFormioComponentConstructor {
   class OverrideBuilderWithFields extends BaseComponent {
     private _selectionChangeHandler: (() => void) | null = null;
 
@@ -132,9 +126,5 @@ export function registerEpistolaOverrideBuilderComponent(injector: Injector): vo
     }
   }
 
-  // Re-register with the extended class
-  Formio.Components.setComponent(EPISTOLA_OVERRIDE_BUILDER_OPTIONS.type, OverrideBuilderWithFields);
-
-  // Internal editForm widget — not a standalone form field. Hide it from the builder palette.
-  hideFormioComponentFromBuilder(EPISTOLA_OVERRIDE_BUILDER_OPTIONS.type);
+  return OverrideBuilderWithFields;
 }

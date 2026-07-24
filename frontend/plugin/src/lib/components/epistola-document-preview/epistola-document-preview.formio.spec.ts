@@ -29,18 +29,37 @@ jest.mock('./epistola-document-preview.component', () => ({
   EpistolaDocumentPreviewComponent: class {},
 }));
 
-// registerCustomFormioComponent is a no-op here; the base class is pre-seeded into the
-// fake Formio registry below so the wrapper extends it.
 jest.mock('@valtimo/components', () => ({
+  createCustomFormioComponent: jest.fn(),
   registerCustomFormioComponent: jest.fn(),
 }));
 
-import { registerEpistolaDocumentPreviewComponent } from './epistola-document-preview.formio';
+jest.mock('formiojs', () => {
+  const components = {
+    components: {} as Record<string, any>,
+    setComponent: jest.fn((type: string, cls: any) => {
+      components.components[type] = cls;
+    }),
+  };
+  return { Components: components };
+});
 
+import { Components } from 'formiojs';
+import {
+  EPISTOLA_DOCUMENT_PREVIEW_OPTIONS,
+  registerEpistolaDocumentPreviewComponent,
+} from './epistola-document-preview.formio';
+import { createCustomFormioComponent, registerCustomFormioComponent } from '@valtimo/components';
+
+const mockComponents = Components as any;
 const TYPE = 'epistola-document-preview';
+const SELECTOR = EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.selector;
 
 class FakeBaseComponent {
-  attach(element: unknown) {
+  attach(element: any) {
+    if (typeof element?.querySelector === 'function') {
+      this['_customAngularElement'] = element.querySelector(SELECTOR);
+    }
     return element;
   }
   detach() {
@@ -63,6 +82,64 @@ interface FakeRoot {
   };
 }
 
+class FakeElement {
+  readonly children: FakeElement[] = [];
+  readonly attributes: Record<string, string> = {};
+
+  constructor(readonly tagName: string) {}
+
+  appendChild(child: FakeElement) {
+    this.children.push(child);
+    return child;
+  }
+
+  setAttribute(name: string, value: string) {
+    this.attributes[name] = value;
+  }
+
+  getAttribute(name: string) {
+    return this.attributes[name];
+  }
+
+  querySelector(selector: string): FakeElement | null {
+    for (const child of this.children) {
+      if (matchesSelector(child, selector)) {
+        return child;
+      }
+      const nested = child.querySelector(selector);
+      if (nested) {
+        return nested;
+      }
+    }
+    return null;
+  }
+
+  querySelectorAll(selector: string): FakeElement[] {
+    return this.children.flatMap((child) => [
+      ...(matchesSelector(child, selector) ? [child] : []),
+      ...child.querySelectorAll(selector),
+    ]);
+  }
+}
+
+function matchesSelector(element: FakeElement, selector: string): boolean {
+  if (selector === SELECTOR) {
+    return element.tagName === SELECTOR;
+  }
+  if (selector === '[ref="element"]') {
+    return element.attributes['ref'] === 'element';
+  }
+  return false;
+}
+
+function createFakeAttachRoot() {
+  const rootElement = new FakeElement('div');
+  const elementHost = new FakeElement('div');
+  elementHost.setAttribute('ref', 'element');
+  rootElement.appendChild(elementHost);
+  return { rootElement, elementHost };
+}
+
 describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () => {
   let registeredClass: any;
   let components: Record<string, any>;
@@ -71,27 +148,21 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     jest.useFakeTimers();
 
     components = { [TYPE]: FakeBaseComponent };
+    mockComponents.components = components;
+    mockComponents.setComponent.mockClear();
+    (createCustomFormioComponent as jest.Mock).mockReturnValue(FakeBaseComponent);
     registeredClass = undefined;
 
     (globalThis as any).customElements = { get: () => undefined, define: jest.fn() };
-    (globalThis as any).window = {
-      Formio: {
-        Components: {
-          components,
-          setComponent: (type: string, cls: any) => {
-            components[type] = cls;
-            registeredClass = cls;
-          },
-        },
-      },
-    };
 
     registerEpistolaDocumentPreviewComponent({} as any);
+    registeredClass = components[TYPE];
   });
 
   afterEach(() => {
     jest.useRealTimers();
     delete (globalThis as any).window;
+    delete (globalThis as any).document;
     delete (globalThis as any).customElements;
   });
 
@@ -137,6 +208,39 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
   it('registers the wrapper as the component implementation', () => {
     expect(registeredClass).toBeDefined();
     expect(components[TYPE]).toBe(registeredClass);
+  });
+
+  it('refreshes the Formio component implementation when the custom element already exists', () => {
+    components = { [TYPE]: FakeBaseComponent };
+    mockComponents.components = components;
+    mockComponents.setComponent.mockClear();
+    registeredClass = undefined;
+    (registerCustomFormioComponent as jest.Mock).mockClear();
+    (globalThis as any).customElements = { get: () => class {}, define: jest.fn() };
+
+    registerEpistolaDocumentPreviewComponent({} as any);
+    registeredClass = components[TYPE];
+
+    expect(registerCustomFormioComponent).toHaveBeenCalled();
+    expect(registeredClass).toBeDefined();
+    expect(components[TYPE]).toBe(registeredClass);
+  });
+
+  it('does not depend on window.Formio to register the wrapper subclass', () => {
+    expect((globalThis as any).window?.Formio).toBeUndefined();
+    expect(mockComponents.setComponent).toHaveBeenCalledWith(TYPE, registeredClass);
+  });
+
+  it('uses the Angular custom element rendered by Valtimo', () => {
+    const { inst } = createInstance({});
+    const { rootElement, elementHost } = createFakeAttachRoot();
+    const existingPreviewElement = new FakeElement(SELECTOR);
+    elementHost.appendChild(existingPreviewElement);
+
+    inst.attach(rootElement as any);
+
+    expect(rootElement.querySelectorAll(SELECTOR)).toHaveLength(1);
+    expect(inst._customAngularElement).toBe(existingPreviewElement);
   });
 
   it('forwards the server-prefilled task id to the Angular element on attach', () => {

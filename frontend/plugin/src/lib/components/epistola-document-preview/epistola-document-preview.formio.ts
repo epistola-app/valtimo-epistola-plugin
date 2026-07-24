@@ -17,10 +17,14 @@
  */
 
 import { Injector } from '@angular/core';
-import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
+import { FormioCustomComponentInfo } from '@valtimo/components';
 import { EpistolaDocumentPreviewComponent } from './epistola-document-preview.component';
 import { computeInputOverrides } from './preview-utils';
 import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/prefilled-task-id';
+import {
+  registerEpistolaFormioComponent,
+  ValtimoFormioComponentConstructor,
+} from '../valtimo-formio-adapter';
 
 /** Default debounce for the auto-refresh, in milliseconds. */
 const DEFAULT_REFRESH_DEBOUNCE_MS = 1500;
@@ -75,25 +79,17 @@ export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
 };
 
 export function registerEpistolaDocumentPreviewComponent(injector: Injector): void {
-  if (customElements.get(EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.selector)) {
-    return;
-  }
-
-  // Register the base component (Angular element + Formio component class)
-  registerCustomFormioComponent(
+  registerEpistolaFormioComponent(
     EPISTOLA_DOCUMENT_PREVIEW_OPTIONS,
     EpistolaDocumentPreviewComponent,
     injector,
+    withPreviewOverrides,
   );
+}
 
-  // Get the Formio Components registry and the registered base class
-  const Formio = (window as any).Formio;
-  if (!Formio?.Components) return;
-
-  const BasePreviewComponent = Formio.Components.components[EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.type];
-  if (!BasePreviewComponent) return;
-
-  // Extend the base class to listen for form data changes and compute input overrides
+function withPreviewOverrides(
+  BasePreviewComponent: ValtimoFormioComponentConstructor,
+): ValtimoFormioComponentConstructor {
   class PreviewWithOverrides extends BasePreviewComponent {
     private _debounceTimer: any = null;
     private _changeListenerAttached = false;
@@ -325,6 +321,5 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
     }
   }
 
-  // Re-register with the extended class
-  Formio.Components.setComponent(EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.type, PreviewWithOverrides);
+  return PreviewWithOverrides;
 }

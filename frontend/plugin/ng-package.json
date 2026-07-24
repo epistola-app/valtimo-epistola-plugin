@@ -4,18 +4,5 @@
   "lib": {
     "entryFile": "src/public_api.ts"
   },
-  "allowedNonPeerDependencies": [
-    "@angular/common",
-    "@angular/core",
-    "@angular/forms",
-    "@angular/router",
-    "@formio/angular",
-    "@valtimo/plugin",
-    "@valtimo/components",
-    "@valtimo/security",
-    "@valtimo/shared",
-    "jsonata",
-    "rxjs",
-    "tslib"
-  ]
+  "allowedNonPeerDependencies": ["jsonata", "tslib"]
 }

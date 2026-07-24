@@ -17,21 +17,22 @@
     "e2e:install": "playwright install chromium"
   },
   "dependencies": {
-    "@angular/animations": "^19.2.8",
+    "@angular/animations": "^19.2.25",
     "@angular/cdk": "^19.2.11",
-    "@angular/common": "^19.2.8",
-    "@angular/compiler": "^19.2.8",
-    "@angular/core": "^19.2.8",
-    "@angular/elements": "^19.2.8",
-    "@angular/forms": "^19.2.8",
-    "@angular/localize": "^19.2.8",
-    "@angular/platform-browser": "^19.2.8",
-    "@angular/platform-browser-dynamic": "^19.2.8",
-    "@angular/router": "^19.2.8",
+    "@angular/common": "^19.2.25",
+    "@angular/compiler": "^19.2.25",
+    "@angular/core": "^19.2.25",
+    "@angular/elements": "^19.2.25",
+    "@angular/forms": "^19.2.25",
+    "@angular/localize": "^19.2.25",
+    "@angular/platform-browser": "^19.2.25",
+    "@angular/platform-browser-dynamic": "^19.2.25",
+    "@angular/router": "^19.2.25",
     "@bpmn-io/dmn-migrate": "0.5.0",
     "@bpmn-io/properties-panel": "3.26.4",
     "@carbon/charts-angular": "1.23.6",
     "@epistola.app/valtimo-plugin": "workspace:*",
+    "@formio/angular": "7.0.0",
     "@foxythemes/bootstrap-datetime-picker-bs4": "2.3.5",
     "@mdi/font": "7.4.47",
     "@ngx-translate/core": "16.0.4",
@@ -80,12 +81,14 @@
     "buffer": "^6.0.3",
     "camunda-bpmn-js-behaviors": "1.10.0",
     "camunda-bpmn-moddle": "7.0.1",
+    "carbon-components-angular": "5.57.6",
     "components-jqueryui": "1.12.1",
     "core-js": "3.41.0",
     "diagram-js": "15.3.0",
     "dmn-js": "17.2.0",
     "dropzone": "6.0.0-beta.2",
     "flatpickr": "4.6.13",
+    "formiojs": "4.19.5",
     "jquery": "3.7.1",
     "json-server": "0.17.3",
     "jsonata": "^2.2.2",
@@ -107,8 +110,8 @@
   "devDependencies": {
     "@angular-devkit/build-angular": "^19.2.9",
     "@angular/cli": "^19.2.9",
-    "@angular/compiler-cli": "^19.2.8",
-    "@angular/language-service": "^19.2.8",
+    "@angular/compiler-cli": "^19.2.25",
+    "@angular/language-service": "^19.2.25",
     "@playwright/test": "^1.50.0",
     "@types/jasmine": "5.1.7",
     "@types/jasminewd2": "2.0.13",
@@ -128,5 +131,10 @@
     "replace": "1.2.2",
     "ts-node": "10.9.1",
     "typescript": "5.8.3"
+  },
+  "dependenciesMeta": {
+    "@epistola.app/valtimo-plugin": {
+      "injected": true
+    }
   }
 }

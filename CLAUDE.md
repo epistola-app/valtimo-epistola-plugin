@@ -123,6 +123,7 @@ This plugin pins a single Valtimo version (the `valtimo` key in `gradle/libs.ver
 **Write code that is ideally backward- and forward-compatible with Valtimo.** Aim to keep the plugin working across as wide a range of Valtimo versions as is reasonable, not just the one currently pinned:
 
 - Prefer Valtimo's stable, public APIs over internal/experimental ones; avoid depending on implementation details that may change between minor versions.
+- When upgrading Valtimo backend or frontend dependencies, always review the Valtimo changelog/release notes for every version crossed and record the expected impact in the change. Do this even for patch/minor bumps that look mechanical, so initialization, menu, Form.io, PBAC, process-link, and other integration changes are considered before testing.
 - Don't gratuitously adopt brand-new Valtimo APIs that would drop backward compatibility unless there's a clear benefit — and when you do, note the raised floor in `COMPATIBILITY.md`.
 - Guard against fields/endpoints that may be absent in older or newer Valtimo versions (tolerant parsing, null-safety, feature checks) rather than assuming one exact shape.
 - When a change narrows or widens the supported range, update `COMPATIBILITY.md` to record it.

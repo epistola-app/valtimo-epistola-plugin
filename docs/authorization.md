@@ -24,53 +24,44 @@ The HTTP layer is a coarse gate. The PBAC layer is where the real authorization 
 
 ## Endpoint matrix
 
-| Endpoint                                                   | HTTP gate     | PBAC check                                                                          |
-| ---------------------------------------------------------- | ------------- | ----------------------------------------------------------------------------------- |
-| `POST /api/v1/plugin/epistola/preview`                     | authenticated | `OperatonTask:VIEW` on `taskId` + same-process + same-case binding                  |
-| `GET /api/v1/plugin/epistola/retry-form`                   | authenticated | `OperatonTask:VIEW` on `taskId` + same-process + same-case binding                  |
-| `GET /api/v1/plugin/epistola/documents/download`           | authenticated | `OperatonTask:VIEW` on `taskId` + same-case binding (process-id resolved from task) |
-| `GET /api/v1/plugin/epistola/admin/health`                 | authenticated | `EpistolaAdministration:MANAGE`                                                     |
-| `GET /api/v1/plugin/epistola/admin/versions`               | authenticated | `EpistolaAdministration:MANAGE`                                                     |
-| `GET /api/v1/plugin/epistola/admin/usage`                  | authenticated | `EpistolaAdministration:MANAGE`                                                     |
-| `GET /api/v1/plugin/epistola/admin/pending`                | authenticated | `EpistolaAdministration:MANAGE`                                                     |
-| `GET /api/v1/plugin/epistola/admin/export/{processLinkId}` | authenticated | `EpistolaAdministration:MANAGE`                                                     |
-| `/api/v1/plugin/epistola/configurations/**`                | `ROLE_ADMIN`  | —                                                                                   |
-| `/api/v1/plugin/epistola/process-variables`                | `ROLE_ADMIN`  | —                                                                                   |
-| `/api/v1/plugin/epistola/variable-suggestions`             | `ROLE_ADMIN`  | —                                                                                   |
-| `/api/v1/plugin/epistola/expression-functions`             | `ROLE_ADMIN`  | —                                                                                   |
-| `/api/v1/plugin/epistola/validate-jsonata`                 | `ROLE_ADMIN`  | —                                                                                   |
-| `/api/v1/plugin/epistola/evaluate-mapping`                 | `ROLE_ADMIN`  | —                                                                                   |
+| Endpoint                                                   | HTTP gate     | PBAC check                                                          |
+| ---------------------------------------------------------- | ------------- | ------------------------------------------------------------------- |
+| `POST /api/v1/plugin/epistola/preview`                     | authenticated | `OperatonTask:VIEW` on `taskId`; process and case derived from task |
+| `GET /api/v1/plugin/epistola/retry-form`                   | authenticated | `OperatonTask:VIEW` on `taskId`; process and case derived from task |
+| `GET /api/v1/plugin/epistola/documents/download`           | authenticated | `OperatonTask:VIEW` on `taskId`; process and case derived from task |
+| `GET /api/v1/plugin/epistola/admin/health`                 | authenticated | `EpistolaAdministration:MANAGE`                                     |
+| `GET /api/v1/plugin/epistola/admin/versions`               | authenticated | `EpistolaAdministration:MANAGE`                                     |
+| `GET /api/v1/plugin/epistola/admin/usage`                  | authenticated | `EpistolaAdministration:MANAGE`                                     |
+| `GET /api/v1/plugin/epistola/admin/pending`                | authenticated | `EpistolaAdministration:MANAGE`                                     |
+| `GET /api/v1/plugin/epistola/admin/export/{processLinkId}` | authenticated | `EpistolaAdministration:MANAGE`                                     |
+| `/api/v1/plugin/epistola/configurations/**`                | `ROLE_ADMIN`  | —                                                                   |
+| `/api/v1/plugin/epistola/process-variables`                | `ROLE_ADMIN`  | —                                                                   |
+| `/api/v1/plugin/epistola/variable-suggestions`             | `ROLE_ADMIN`  | —                                                                   |
+| `/api/v1/plugin/epistola/expression-functions`             | `ROLE_ADMIN`  | —                                                                   |
+| `/api/v1/plugin/epistola/validate-jsonata`                 | `ROLE_ADMIN`  | —                                                                   |
+| `/api/v1/plugin/epistola/evaluate-mapping`                 | `ROLE_ADMIN`  | —                                                                   |
 
 Configuration:
 
 - HTTP gate: `app.epistola.valtimo.config.EpistolaHttpSecurityConfigurer` (`@Order(270)`)
-- Controller checks: `EpistolaGenerationResource.requireTaskBoundTo(...)` and `EpistolaAdminResource.requirePermission(...)`
+- Controller checks: `EpistolaGenerationResource.requireTaskViewable(...)` and `EpistolaAdminResource.requirePermission(...)`
 
 ## User-task endpoints
 
-`/preview`, `/retry-form`, and `/documents/download` are designed to be called from inside a user task form. They share a single helper, `requireTaskBoundTo(taskId, processInstanceId, documentId)`, which enforces all of:
-
-1. The current principal has `OperatonTask:VIEW` permission on `taskId`.
-2. `task.processInstanceId == request.processInstanceId` (where supplied).
-3. `task.processInstance.businessKey == request.documentId`.
-
-Any mismatch throws `AccessDeniedException` → HTTP 403.
-
-Why all three? Because PBAC alone is not enough. A user with `OperatonTask:VIEW` on task A could otherwise pass task A's id alongside another case's `documentId` and trick the backend into operating on case B. The same-case binding (via Valtimo's convention of writing the case document UUID as the BPMN process business key) closes that gap.
+`/preview`, `/retry-form`, and `/documents/download` are designed to be called from inside a user task form. The current principal must have `OperatonTask:VIEW` permission on `taskId`. The controller then derives the process instance and case document from that task, so the caller cannot combine an authorized task with another case's identity.
 
 ### `/documents/download`
 
 ```
 GET /api/v1/plugin/epistola/documents/download
     ?taskId=<operaton-task-uuid>
-    &caseDocumentId=<valtimo-case-uuid>
-    &documentIdVariable=epistolaDocumentId
+    &documentVariable=epistolaResult
     &tenantIdVariable=epistolaTenantId
     &disposition=inline                      (or "attachment")
     &filename=<download-filename>
 ```
 
-The wire **never carries a raw Epistola PDF id**. Instead, the caller names the process variables on their task that hold the PDF id and tenant id; the controller looks them up via `RuntimeService.getVariable(processInstanceId, …)`. This makes the endpoint forge-proof: a user cannot supply somebody else's `documentId` because they don't write the variable, the upstream `generate-document` action does.
+The wire **never carries a case id or raw Epistola PDF id**. The controller derives the process instance and case from the authorized task, then looks up the named PDF-id and tenant-id variables through `RuntimeService.getVariable(processInstanceId, …)`.
 
 If Epistola returns 404 for the resolved id (typical when the variable holds a stale id from a previous run), the controller translates it to a controller-level 404, so the UI can render "Document is nog niet gegenereerd" instead of a generic 500.
 
@@ -168,7 +159,7 @@ After deploying a plugin upgrade or changing your permission JSON:
 
 - [ ] An admin user can open the Epistola admin page (`/epistola/admin`) and see health/usage data.
 - [ ] A non-admin user gets a 403 from `/api/v1/plugin/epistola/admin/health` directly.
-- [ ] A user with no access to a case cannot download the case's PDF by guessing its `caseDocumentId`.
-- [ ] A user with access to task A in case A cannot pass task A's id alongside case B's `caseDocumentId` to the download endpoint.
+- [ ] A user with no access to a task cannot download its case's PDF by guessing its `taskId`.
+- [ ] A user with access to task A can only download the document referenced by task A's own process variables.
 - [ ] Process-link configuration in the Valtimo console still works for `ROLE_ADMIN` users.
 - [ ] Stale `epistolaDocumentId` values produce a "Document is nog niet gegenereerd" message rather than a 500.

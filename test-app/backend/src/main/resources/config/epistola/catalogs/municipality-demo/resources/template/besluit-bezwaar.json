@@ -168,7 +168,7 @@
       "nodes": {
         "n-root": {
           "id": "n-root",
-          "type": "container",
+          "type": "root",
           "slots": ["s-root-children"],
           "styles": {},
           "props": {}

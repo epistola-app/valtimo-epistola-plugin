@@ -21,35 +21,56 @@ import { MenuService } from '@valtimo/components';
 import { MenuItem, ROLE_ADMIN } from '@valtimo/shared';
 import { Observable, of } from 'rxjs';
 
+const EPISTOLA_MENU_ITEM: MenuItem = {
+  link: ['/epistola'],
+  title: 'Epistola',
+  sequence: 18,
+};
+
+function isAdminMenu(item: MenuItem): boolean {
+  return !!item.roles?.includes(ROLE_ADMIN) && Array.isArray(item.children);
+}
+
+function hasEpistolaMenuItem(item: MenuItem): boolean {
+  return !!item.children?.some((child) => child.link?.[0] === EPISTOLA_MENU_ITEM.link?.[0]);
+}
+
+export function appendEpistolaMenuItem(items: MenuItem[]): MenuItem[] {
+  let changed = false;
+  const menuItems = items.map((item) => {
+    if (!isAdminMenu(item) || hasEpistolaMenuItem(item)) {
+      return item;
+    }
+    changed = true;
+    return {
+      ...item,
+      children: [...item.children!, EPISTOLA_MENU_ITEM],
+    };
+  });
+
+  return changed ? menuItems : items;
+}
+
 /**
  * Registers the Epistola admin page menu item under the Admin > Other section.
- * Instantiated eagerly via ENVIRONMENT_INITIALIZER so the menu item
- * appears without any manual configuration in the host application.
+ * Registration is invoked by EpistolaRegistrationService during environment
+ * initialization, before Valtimo builds the configured menu.
  */
 @Injectable()
 export class EpistolaMenuService {
-  constructor(private readonly menuService: MenuService) {
+  private registered = false;
+
+  constructor(private readonly menuService: MenuService) {}
+
+  register(): void {
+    if (this.registered) {
+      return;
+    }
+
+    this.registered = true;
     this.menuService.registerAppendMenuItemsFunction(
       (items: MenuItem[]): Observable<MenuItem[]> => {
-        return of(
-          items.map((item) => {
-            const isAdminMenu = item.roles?.includes(ROLE_ADMIN) && item.children;
-            if (!isAdminMenu) {
-              return item;
-            }
-            return {
-              ...item,
-              children: [
-                ...item.children!,
-                {
-                  link: ['/epistola'],
-                  title: 'Epistola',
-                  sequence: 18,
-                },
-              ],
-            };
-          }),
-        );
+        return of(appendEpistolaMenuItem(items));
       },
     );
   }

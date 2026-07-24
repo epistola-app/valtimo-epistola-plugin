@@ -17,16 +17,19 @@
  */
 
 import { Injector } from '@angular/core';
-import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
+import { FormioCustomComponentInfo } from '@valtimo/components';
 import { EpistolaRetryFormComponent } from './epistola-retry-form.component';
 import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/prefilled-task-id';
-import { hideFormioComponentFromBuilder } from '../formio-builder-utils';
+import {
+  registerEpistolaFormioComponent,
+  ValtimoFormioComponentConstructor,
+} from '../valtimo-formio-adapter';
 
 export const EPISTOLA_RETRY_FORM_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-retry-form',
   selector: 'epistola-retry-form-element',
   title: 'Epistola Retry Form',
-  group: 'basic',
+  group: 'none',
   icon: 'refresh',
   emptyValue: null,
   fieldOptions: ['sourceActivityId', 'label'], // sourceActivityId is optional (set via BPMN input parameter)
@@ -36,20 +39,17 @@ export const EPISTOLA_RETRY_FORM_OPTIONS: FormioCustomComponentInfo = {
 };
 
 export function registerEpistolaRetryFormComponent(injector: Injector): void {
-  if (customElements.get(EPISTOLA_RETRY_FORM_OPTIONS.selector)) {
-    return;
-  }
-  registerCustomFormioComponent(EPISTOLA_RETRY_FORM_OPTIONS, EpistolaRetryFormComponent, injector);
+  registerEpistolaFormioComponent(
+    EPISTOLA_RETRY_FORM_OPTIONS,
+    EpistolaRetryFormComponent,
+    injector,
+    withTaskContext,
+  );
+}
 
-  // Extend the base class to forward the server-prefilled task id (epistola: value
-  // resolver) to the Angular element, so the retry form authorizes against the exact task in
-  // every Valtimo task-open flow.
-  const Formio = (window as any).Formio;
-  const BaseComponent = Formio?.Components?.components?.[EPISTOLA_RETRY_FORM_OPTIONS.type];
-  if (!BaseComponent) {
-    return;
-  }
-
+function withTaskContext(
+  BaseComponent: ValtimoFormioComponentConstructor,
+): ValtimoFormioComponentConstructor {
   class EpistolaRetryFormWithTaskContext extends BaseComponent {
     attach(element: HTMLElement) {
       const result = super.attach(element);
@@ -63,12 +63,5 @@ export function registerEpistolaRetryFormComponent(injector: Injector): void {
     }
   }
 
-  Formio.Components.setComponent(
-    EPISTOLA_RETRY_FORM_OPTIONS.type,
-    EpistolaRetryFormWithTaskContext,
-  );
-
-  // Part of the plugin's auto-deployed retry form, not a drop-anywhere component — hide it
-  // from the builder palette. It still renders wherever it's already present in a form.
-  hideFormioComponentFromBuilder(EPISTOLA_RETRY_FORM_OPTIONS.type);
+  return EpistolaRetryFormWithTaskContext;
 }

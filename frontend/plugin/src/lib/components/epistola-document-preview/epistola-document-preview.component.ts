@@ -329,6 +329,10 @@ export class EpistolaDocumentPreviewComponent
     return this.taskInstanceId ?? null;
   }
 
+  private get hasRuntimeContext(): boolean {
+    return !!this.currentTaskId || !!this.formIoStateService.documentId;
+  }
+
   /**
    * The override mapping as a JSONata expression for the design-mode summary.
    * Legacy `form:`-ref objects are converted on the fly for display.
@@ -347,9 +351,10 @@ export class EpistolaDocumentPreviewComponent
     if (!this.initialized) {
       this.initialized = true;
 
-      // Detect design mode: no runtime context (Formio builder)
-      const documentId = this.formIoStateService.documentId;
-      if (!documentId) {
+      // Detect design mode: no runtime context (Formio builder). Newer task-open
+      // flows use the server-prefilled task id; older flows may still expose a
+      // document id through FormIoStateService.
+      if (!this.hasRuntimeContext) {
         this.designMode = true;
         this.cdr.markForCheck();
         return;
@@ -365,7 +370,12 @@ export class EpistolaDocumentPreviewComponent
       return;
     }
 
-    if (this.designMode) return;
+    if (this.designMode) {
+      if (!this.hasRuntimeContext) {
+        return;
+      }
+      this.designMode = false;
+    }
 
     // React to input-override changes, and to the task id arriving late: the Formio
     // wrapper sets taskInstanceId after attach, so it can land after the first render —
