@@ -73,11 +73,22 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build & test backend plugin
-        run: ./gradlew :backend:plugin:build :backend:plugin:cyclonedxBom -Pversion=${{ needs.version.outputs.version }}
+      - name: Build & test backend
+        run: ./gradlew :backend:plugin:build :backend:plugin:cyclonedxBom :test-app:backend:test -Pversion=${{ needs.version.outputs.version }}
 
-      - name: Build frontend plugin
-        run: pnpm --filter @epistola.app/valtimo-plugin build
+      - name: Check frontend
+        run: |
+          pnpm lint:check
+          pnpm format:check
+          pnpm headers:check
+          pnpm typecheck
+          pnpm singletons:check
+          pnpm --filter @epistola.app/valtimo-plugin test
+
+      - name: Build frontend plugin and consumer
+        run: |
+          pnpm --filter @epistola.app/valtimo-plugin build
+          pnpm --filter gzac-frontend-template build
 
       - name: Generate frontend SBOM
         run: pnpm sbom:plugin
