@@ -32,13 +32,11 @@ export const EPISTOLA_PROCESS_LINK_SELECTOR_OPTIONS: FormioCustomComponentInfo =
 };
 
 export function registerEpistolaProcessLinkSelectorComponent(injector: Injector): void {
-  if (!customElements.get(EPISTOLA_PROCESS_LINK_SELECTOR_OPTIONS.selector)) {
-    registerCustomFormioComponent(
-      EPISTOLA_PROCESS_LINK_SELECTOR_OPTIONS,
-      EpistolaProcessLinkSelectorComponent,
-      injector,
-    );
-    // Internal editForm widget — not a standalone form field. Hide it from the builder palette.
-    hideFormioComponentFromBuilder(EPISTOLA_PROCESS_LINK_SELECTOR_OPTIONS.type);
-  }
+  registerCustomFormioComponent(
+    EPISTOLA_PROCESS_LINK_SELECTOR_OPTIONS,
+    EpistolaProcessLinkSelectorComponent,
+    injector,
+  );
+  // Internal editForm widget — not a standalone form field. Hide it from the builder palette.
+  hideFormioComponentFromBuilder(EPISTOLA_PROCESS_LINK_SELECTOR_OPTIONS.type);
 }

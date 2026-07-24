@@ -75,10 +75,6 @@ export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
 };
 
 export function registerEpistolaDocumentPreviewComponent(injector: Injector): void {
-  if (customElements.get(EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.selector)) {
-    return;
-  }
-
   // Register the base component (Angular element + Formio component class)
   registerCustomFormioComponent(
     EPISTOLA_DOCUMENT_PREVIEW_OPTIONS,

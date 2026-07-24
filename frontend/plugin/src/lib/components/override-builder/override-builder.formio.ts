@@ -56,10 +56,6 @@ function collectFormFields(components: any[]): { key: string; label: string }[] 
 }
 
 export function registerEpistolaOverrideBuilderComponent(injector: Injector): void {
-  if (customElements.get(EPISTOLA_OVERRIDE_BUILDER_OPTIONS.selector)) {
-    return;
-  }
-
   // Register the base component (Angular element + Formio component class)
   registerCustomFormioComponent(
     EPISTOLA_OVERRIDE_BUILDER_OPTIONS,

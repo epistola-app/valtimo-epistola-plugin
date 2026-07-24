@@ -36,6 +36,7 @@ jest.mock('@valtimo/components', () => ({
 }));
 
 import { registerEpistolaDocumentPreviewComponent } from './epistola-document-preview.formio';
+import { registerCustomFormioComponent } from '@valtimo/components';
 
 const TYPE = 'epistola-document-preview';
 
@@ -135,6 +136,19 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
   }
 
   it('registers the wrapper as the component implementation', () => {
+    expect(registeredClass).toBeDefined();
+    expect(components[TYPE]).toBe(registeredClass);
+  });
+
+  it('refreshes the Formio component implementation when the custom element already exists', () => {
+    components = { [TYPE]: FakeBaseComponent };
+    registeredClass = undefined;
+    (registerCustomFormioComponent as jest.Mock).mockClear();
+    (globalThis as any).customElements = { get: () => class {}, define: jest.fn() };
+
+    registerEpistolaDocumentPreviewComponent({} as any);
+
+    expect(registerCustomFormioComponent).toHaveBeenCalled();
     expect(registeredClass).toBeDefined();
     expect(components[TYPE]).toBe(registeredClass);
   });

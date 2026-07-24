@@ -36,9 +36,6 @@ export const EPISTOLA_RETRY_FORM_OPTIONS: FormioCustomComponentInfo = {
 };
 
 export function registerEpistolaRetryFormComponent(injector: Injector): void {
-  if (customElements.get(EPISTOLA_RETRY_FORM_OPTIONS.selector)) {
-    return;
-  }
   registerCustomFormioComponent(EPISTOLA_RETRY_FORM_OPTIONS, EpistolaRetryFormComponent, injector);
 
   // Extend the base class to forward the server-prefilled task id (epistola: value

@@ -85,9 +85,6 @@ export const EPISTOLA_DOCUMENT_OPTIONS: FormioCustomComponentInfo = {
 };
 
 export function registerEpistolaDocumentComponent(injector: Injector): void {
-  if (customElements.get(EPISTOLA_DOCUMENT_OPTIONS.selector)) {
-    return;
-  }
   registerCustomFormioComponent(EPISTOLA_DOCUMENT_OPTIONS, EpistolaDocumentComponent, injector);
 
   // Extend the base class to forward the server-prefilled task id (epistola: value
