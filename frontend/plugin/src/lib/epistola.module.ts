@@ -26,7 +26,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
-import { FormModule, InputModule, SelectModule } from '@valtimo/components';
+import { FormIoModule, FormModule, InputModule, SelectModule } from '@valtimo/components';
 import { EpistolaConfigurationComponent } from './components/epistola-configuration/epistola-configuration.component';
 import { GenerateDocumentConfigurationComponent } from './components/generate-document-configuration/generate-document-configuration.component';
 import { CheckJobStatusConfigurationComponent } from './components/check-job-status-configuration/check-job-status-configuration.component';
@@ -48,6 +48,7 @@ import { registerEpistolaProcessLinkSelectorComponent } from './components/proce
   imports: [
     CommonModule,
     HttpClientModule,
+    FormIoModule,
     PluginTranslatePipeModule,
     FormModule,
     InputModule,

@@ -18,8 +18,38 @@
 
 import { Injectable } from '@angular/core';
 import { MenuService } from '@valtimo/components';
-import { MenuItem, ROLE_ADMIN } from '@valtimo/shared';
+import { ConfigService, MenuItem, ROLE_ADMIN } from '@valtimo/shared';
 import { Observable, of } from 'rxjs';
+
+const EPISTOLA_MENU_ITEM: MenuItem = {
+  link: ['/epistola'],
+  title: 'Epistola',
+  sequence: 18,
+};
+
+function isAdminMenu(item: MenuItem): boolean {
+  return !!item.roles?.includes(ROLE_ADMIN) && Array.isArray(item.children);
+}
+
+function hasEpistolaMenuItem(item: MenuItem): boolean {
+  return !!item.children?.some((child) => child.link?.[0] === EPISTOLA_MENU_ITEM.link?.[0]);
+}
+
+export function appendEpistolaMenuItem(items: MenuItem[]): MenuItem[] {
+  let changed = false;
+  const menuItems = items.map((item) => {
+    if (!isAdminMenu(item) || hasEpistolaMenuItem(item)) {
+      return item;
+    }
+    changed = true;
+    return {
+      ...item,
+      children: [...item.children!, EPISTOLA_MENU_ITEM],
+    };
+  });
+
+  return changed ? menuItems : items;
+}
 
 /**
  * Registers the Epistola admin page menu item under the Admin > Other section.
@@ -28,29 +58,24 @@ import { Observable, of } from 'rxjs';
  */
 @Injectable()
 export class EpistolaMenuService {
-  constructor(private readonly menuService: MenuService) {
+  constructor(
+    private readonly menuService: MenuService,
+    private readonly configService: ConfigService,
+  ) {
+    this.appendToConfiguredMenu();
     this.menuService.registerAppendMenuItemsFunction(
       (items: MenuItem[]): Observable<MenuItem[]> => {
-        return of(
-          items.map((item) => {
-            const isAdminMenu = item.roles?.includes(ROLE_ADMIN) && item.children;
-            if (!isAdminMenu) {
-              return item;
-            }
-            return {
-              ...item,
-              children: [
-                ...item.children!,
-                {
-                  link: ['/epistola'],
-                  title: 'Epistola',
-                  sequence: 18,
-                },
-              ],
-            };
-          }),
-        );
+        return of(appendEpistolaMenuItem(items));
       },
     );
+    this.menuService.reload();
+  }
+
+  private appendToConfiguredMenu(): void {
+    const menuItems = this.configService.config?.menu?.menuItems;
+    if (!Array.isArray(menuItems)) {
+      return;
+    }
+    this.configService.config.menu.menuItems = appendEpistolaMenuItem(menuItems);
   }
 }

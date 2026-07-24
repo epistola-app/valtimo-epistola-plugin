@@ -2,6 +2,11 @@ packages:
   - frontend/plugin
   - test-app/frontend
 
+injectWorkspacePackages: true
+dedupeInjectedDeps: false
+syncInjectedDepsAfterScripts:
+  - build
+
 overrides:
   "@angular/common": 19.2.25
   "@angular/compiler": 19.2.25
