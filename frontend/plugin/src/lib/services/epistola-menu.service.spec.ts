@@ -17,7 +17,7 @@
  */
 
 import type { MenuService } from '@valtimo/components';
-import type { ConfigService, MenuItem } from '@valtimo/shared';
+import type { MenuItem } from '@valtimo/shared';
 import { EpistolaMenuService, appendEpistolaMenuItem } from './epistola-menu.service';
 
 jest.mock('@angular/core', () => ({ Injectable: () => () => undefined }));
@@ -44,32 +44,42 @@ describe('EpistolaMenuService', () => {
     expect(secondResult).toBe(result);
   });
 
-  it('updates configured menu items and reloads Valtimo menu processing', () => {
-    const config = {
-      menu: {
-        menuItems: [
-          {
-            title: 'Admin',
-            roles: ['ROLE_ADMIN'],
-            children: [{ title: 'Logs', link: ['/logging'] }],
-          },
-        ],
-      },
-    };
+  it('registers the append hook once without forcing a menu reload', () => {
     const menuService = {
       registerAppendMenuItemsFunction: jest.fn(),
       reload: jest.fn(),
     } as unknown as MenuService;
-    const configService = { config } as unknown as ConfigService;
 
-    new EpistolaMenuService(menuService, configService);
+    const service = new EpistolaMenuService(menuService);
+    service.register();
+    service.register();
 
-    expect(config.menu.menuItems[0].children).toContainEqual({
-      title: 'Epistola',
-      link: ['/epistola'],
-      sequence: 18,
-    });
     expect(menuService.registerAppendMenuItemsFunction).toHaveBeenCalledTimes(1);
-    expect(menuService.reload).toHaveBeenCalledTimes(1);
+    expect(menuService.reload).not.toHaveBeenCalled();
+  });
+
+  it('uses the registered hook to append Epistola', (done) => {
+    const menuService = {
+      registerAppendMenuItemsFunction: jest.fn(),
+    } as unknown as MenuService;
+
+    const service = new EpistolaMenuService(menuService);
+    service.register();
+
+    const append = (menuService.registerAppendMenuItemsFunction as jest.Mock).mock.calls[0][0];
+    append([
+      {
+        title: 'Admin',
+        roles: ['ROLE_ADMIN'],
+        children: [],
+      },
+    ]).subscribe((items: MenuItem[]) => {
+      expect(items[0].children).toContainEqual({
+        title: 'Epistola',
+        link: ['/epistola'],
+        sequence: 18,
+      });
+      done();
+    });
   });
 });

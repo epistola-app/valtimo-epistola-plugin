@@ -17,11 +17,10 @@
  */
 
 import {
-  ENVIRONMENT_INITIALIZER,
   inject,
-  Injector,
   ModuleWithProviders,
   NgModule,
+  provideEnvironmentInitializer,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClientModule } from '@angular/common/http';
@@ -37,12 +36,7 @@ import { EpistolaDocumentPreviewComponent } from './components/epistola-document
 import { EpistolaAdminPageComponent } from './components/epistola-admin-page/epistola-admin-page.component';
 import { EpistolaPluginService, EpistolaAdminService, EpistolaMenuService } from './services';
 import { EpistolaAdminRoutingModule } from './epistola-admin-routing.module';
-import { isEpistolaEnabled } from './epistola-runtime-config';
-import { registerEpistolaDocumentComponent } from './components/epistola-document/epistola-document.formio';
-import { registerEpistolaRetryFormComponent } from './components/epistola-retry-form/epistola-retry-form.formio';
-import { registerEpistolaDocumentPreviewComponent } from './components/epistola-document-preview/epistola-document-preview.formio';
-import { registerEpistolaOverrideBuilderComponent } from './components/override-builder/override-builder.formio';
-import { registerEpistolaProcessLinkSelectorComponent } from './components/process-link-selector/process-link-selector.formio';
+import { EpistolaRegistrationService } from './services/epistola-registration.service';
 
 @NgModule({
   imports: [
@@ -77,21 +71,8 @@ import { registerEpistolaProcessLinkSelectorComponent } from './components/proce
     EpistolaPluginService,
     EpistolaAdminService,
     EpistolaMenuService,
-    {
-      provide: ENVIRONMENT_INITIALIZER,
-      multi: true,
-      useValue: () => {
-        if (!isEpistolaEnabled()) return;
-        const injector = inject(Injector);
-        registerEpistolaDocumentComponent(injector);
-        registerEpistolaRetryFormComponent(injector);
-        registerEpistolaOverrideBuilderComponent(injector);
-        registerEpistolaProcessLinkSelectorComponent(injector);
-        registerEpistolaDocumentPreviewComponent(injector);
-        // Eagerly create EpistolaMenuService to trigger menu registration
-        inject(EpistolaMenuService);
-      },
-    },
+    EpistolaRegistrationService,
+    provideEnvironmentInitializer(() => inject(EpistolaRegistrationService).register()),
   ],
 })
 export class EpistolaPluginModule {

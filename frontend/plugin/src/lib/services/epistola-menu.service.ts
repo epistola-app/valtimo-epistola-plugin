@@ -18,7 +18,7 @@
 
 import { Injectable } from '@angular/core';
 import { MenuService } from '@valtimo/components';
-import { ConfigService, MenuItem, ROLE_ADMIN } from '@valtimo/shared';
+import { MenuItem, ROLE_ADMIN } from '@valtimo/shared';
 import { Observable, of } from 'rxjs';
 
 const EPISTOLA_MENU_ITEM: MenuItem = {
@@ -53,29 +53,25 @@ export function appendEpistolaMenuItem(items: MenuItem[]): MenuItem[] {
 
 /**
  * Registers the Epistola admin page menu item under the Admin > Other section.
- * Instantiated eagerly via ENVIRONMENT_INITIALIZER so the menu item
- * appears without any manual configuration in the host application.
+ * Registration is invoked by EpistolaRegistrationService during environment
+ * initialization, before Valtimo builds the configured menu.
  */
 @Injectable()
 export class EpistolaMenuService {
-  constructor(
-    private readonly menuService: MenuService,
-    private readonly configService: ConfigService,
-  ) {
-    this.appendToConfiguredMenu();
+  private registered = false;
+
+  constructor(private readonly menuService: MenuService) {}
+
+  register(): void {
+    if (this.registered) {
+      return;
+    }
+
+    this.registered = true;
     this.menuService.registerAppendMenuItemsFunction(
       (items: MenuItem[]): Observable<MenuItem[]> => {
         return of(appendEpistolaMenuItem(items));
       },
     );
-    this.menuService.reload();
-  }
-
-  private appendToConfiguredMenu(): void {
-    const menuItems = this.configService.config?.menu?.menuItems;
-    if (!Array.isArray(menuItems)) {
-      return;
-    }
-    this.configService.config.menu.menuItems = appendEpistolaMenuItem(menuItems);
   }
 }
