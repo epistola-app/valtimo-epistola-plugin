@@ -19,7 +19,8 @@ overrides:
   # swagger-ui (test-app) still pulls immutable@3; no 3.x fix for CVE-2026-59879/59880.
   # 4.3.9 is API-compatible enough for react-immutable-* / redux-immutable used there.
   immutable: 4.3.9
-  "js-yaml@>=4": ">=4.3.0"
+  # Stay on 4.x — js-yaml 5 drops the default export swagger-ui/swagger-client still import.
+  "js-yaml@>=4": "4.3.0"
   jsonata: ">=2.2.2"
   lodash: ">=4.18.1"
   lodash-es: ">=4.18.1"

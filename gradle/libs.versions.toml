@@ -1,6 +1,6 @@
 [versions]
 # Dependencies
-valtimo = "13.32.0.RELEASE"
+valtimo = "13.38.0.RELEASE"
 epistola-client = "0.14.0"
 lombok = "1.18.42"
 jsonata = "0.9.9"
