@@ -225,7 +225,7 @@ const epistolaPluginSpecification: PluginSpecification = {
         'In deze procesdefinities is de grens tussen de generate-document service task en de EpistolaDocumentGenerated catch event niet synchroon. Resultaten kunnen verloren gaan; gebruik in dat geval de Hersynchroniseer-knop in de Wachtende taken-tab.',
       epistolaAdminValidationCode: 'Code',
       epistolaAdminValidationMessage: 'Bericht',
-      epistolaAdminValidationLastChecked: 'Laatst gecontroleerd',
+      epistolaAdminValidationLastChecked: 'BPMN-procesdefinities laatst gecontroleerd',
       epistolaAdminValidationNotYetRun: 'nog niet uitgevoerd',
       epistolaAdminValidationAutoRefresh: 'automatisch opnieuw gecontroleerd, ongeveer elke',
       epistolaAdminValidationLatestVersionNote:
@@ -271,7 +271,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminVersionLatestStable: 'Nieuwste stabiele versie',
       epistolaAdminVersionMinSupported: 'Minimum ondersteund',
       epistolaAdminVersionSupportedUntil: 'Ondersteund tot',
-      epistolaAdminVersionCheckedAt: 'Gecontroleerd op',
+      epistolaAdminVersionCheckedAt: 'Laatste controle op pluginupdates',
       epistolaAdminVersionRelease: 'Release',
       epistolaAdminVersionChangelog: 'Changelog',
       // TEMPORARY (remove in 1.0.0): task-id carrier repair (admin "Forms" tab)
@@ -474,7 +474,7 @@ const epistolaPluginSpecification: PluginSpecification = {
         'These process definitions have a non-synchronous boundary between the generate-document service task and the EpistolaDocumentGenerated catch event. Results can be missed; use the Reconcile button on the Pending Jobs tab to recover.',
       epistolaAdminValidationCode: 'Code',
       epistolaAdminValidationMessage: 'Message',
-      epistolaAdminValidationLastChecked: 'Last checked',
+      epistolaAdminValidationLastChecked: 'BPMN process definitions last checked',
       epistolaAdminValidationNotYetRun: 'not yet run',
       epistolaAdminValidationAutoRefresh: 'automatically re-checked roughly every',
       epistolaAdminValidationLatestVersionNote:
@@ -519,7 +519,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminVersionLatestStable: 'Latest stable',
       epistolaAdminVersionMinSupported: 'Minimum supported',
       epistolaAdminVersionSupportedUntil: 'Supported until',
-      epistolaAdminVersionCheckedAt: 'Checked at',
+      epistolaAdminVersionCheckedAt: 'Last plugin update check',
       epistolaAdminVersionRelease: 'Release',
       epistolaAdminVersionChangelog: 'Changelog',
       // TEMPORARY (remove in 1.0.0): task-id carrier repair (admin "Forms" tab)

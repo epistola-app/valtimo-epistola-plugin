@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Admin timestamps now state what was checked.** The overview labels its release-metadata timestamp as the last plugin update check, while the validation tab explicitly identifies its timestamp as the last BPMN process-definition check.
 - **Backend CI now accepts the bundled-catalog regression test formatting.** The test file follows the repository's ktlint final-newline expectation, so the test-app compile-only build no longer fails after the catalog fixture update.
 - **The singleton guard now checks every installed Valtimo consumer, not only the host and Epistola package.** Injected dependency deduplication and a consistent Sass peer context prevent Valtimo feature packages from loading a second `@valtimo/components` instance with separate state services.
 - **Generated-document forms no longer depend on Valtimo route state for their case id.** The prefilled task id now activates `epistola-document`, and `/documents/download` derives its process and case context from the authorized task without carrying a separate `caseDocumentId`.
