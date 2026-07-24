@@ -23,7 +23,10 @@
  * environment, with a fake Formio.Components registry capturing the subclass that setComponent registers.
  */
 jest.mock('./epistola-document.component', () => ({ EpistolaDocumentComponent: class {} }));
-jest.mock('@valtimo/components', () => ({ registerCustomFormioComponent: jest.fn() }));
+jest.mock('@valtimo/components', () => ({
+  createCustomFormioComponent: jest.fn(),
+  registerCustomFormioComponent: jest.fn(),
+}));
 
 jest.mock('formiojs', () => {
   const components = {
@@ -36,6 +39,7 @@ jest.mock('formiojs', () => {
 });
 
 import { Components } from 'formiojs';
+import { createCustomFormioComponent } from '@valtimo/components';
 import { registerEpistolaDocumentComponent } from './epistola-document.formio';
 
 const mockComponents = Components as any;
@@ -55,6 +59,7 @@ describe('epistola-document Formio wrapper', () => {
     components = { [TYPE]: FakeBaseComponent };
     mockComponents.components = components;
     mockComponents.setComponent.mockClear();
+    (createCustomFormioComponent as jest.Mock).mockReturnValue(FakeBaseComponent);
     registeredClass = undefined;
     (globalThis as any).customElements = { get: () => undefined, define: jest.fn() };
     registerEpistolaDocumentComponent({} as any);

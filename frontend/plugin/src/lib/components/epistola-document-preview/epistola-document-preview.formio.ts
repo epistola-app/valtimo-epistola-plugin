@@ -17,42 +17,17 @@
  */
 
 import { Injector } from '@angular/core';
-import { FormioCustomComponentInfo, registerCustomFormioComponent } from '@valtimo/components';
+import { FormioCustomComponentInfo } from '@valtimo/components';
 import { EpistolaDocumentPreviewComponent } from './epistola-document-preview.component';
 import { computeInputOverrides } from './preview-utils';
 import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/prefilled-task-id';
 import {
-  getRegisteredFormioComponent,
-  setRegisteredFormioComponent,
-} from '../formio-builder-utils';
+  registerEpistolaFormioComponent,
+  ValtimoFormioComponentConstructor,
+} from '../valtimo-formio-adapter';
 
 /** Default debounce for the auto-refresh, in milliseconds. */
 const DEFAULT_REFRESH_DEBOUNCE_MS = 1500;
-
-function createCustomElementPlaceholder(
-  selector: string,
-  attrs: Record<string, unknown> | undefined,
-): HTMLElement | null {
-  if (typeof document === 'undefined' || !document.createElement) {
-    return null;
-  }
-  const placeholder = document.createElement(selector);
-  placeholder.setAttribute('ref', 'input');
-  copySafeAttributes(placeholder, attrs);
-  return placeholder;
-}
-
-function isSafeAttributeName(name: string): boolean {
-  return /^[A-Za-z_:][A-Za-z0-9_:.-]*$/.test(name);
-}
-
-function copySafeAttributes(target: HTMLElement, attrs: Record<string, unknown> | undefined): void {
-  Object.entries(attrs ?? {}).forEach(([name, value]) => {
-    if (isSafeAttributeName(name) && value !== undefined && value !== null && value !== false) {
-      target.setAttribute(name, String(value));
-    }
-  });
-}
 
 export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-document-preview',
@@ -104,18 +79,17 @@ export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
 };
 
 export function registerEpistolaDocumentPreviewComponent(injector: Injector): void {
-  // Register the base component (Angular element + Formio component class)
-  registerCustomFormioComponent(
+  registerEpistolaFormioComponent(
     EPISTOLA_DOCUMENT_PREVIEW_OPTIONS,
     EpistolaDocumentPreviewComponent,
     injector,
+    withPreviewOverrides,
   );
+}
 
-  // Get the Formio Components registry and the registered base class
-  const BasePreviewComponent = getRegisteredFormioComponent(EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.type);
-  if (!BasePreviewComponent) return;
-
-  // Extend the base class to listen for form data changes and compute input overrides
+function withPreviewOverrides(
+  BasePreviewComponent: ValtimoFormioComponentConstructor,
+): ValtimoFormioComponentConstructor {
   class PreviewWithOverrides extends BasePreviewComponent {
     private _debounceTimer: any = null;
     private _changeListenerAttached = false;
@@ -169,7 +143,6 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
         };
       }
 
-      this._ensureAngularElementPlaceholder(element);
       const result = super.attach(element);
 
       if (this._customAngularElement) {
@@ -278,29 +251,6 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
       return super.detach();
     }
 
-    private _ensureAngularElementPlaceholder(element: HTMLElement) {
-      const selector = EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.selector;
-      const hasQuerySelector = typeof element?.querySelector === 'function';
-      const existingElement = hasQuerySelector ? element.querySelector(selector) : null;
-      if (existingElement) {
-        return;
-      }
-
-      const host = hasQuerySelector
-        ? ((element.querySelector('[ref="element"]') as HTMLElement | null) ?? element)
-        : element;
-      if (!host || typeof host.appendChild !== 'function') {
-        return;
-      }
-
-      const placeholder = createCustomElementPlaceholder(selector, this.inputInfo?.attr);
-      if (!placeholder) {
-        return;
-      }
-
-      host.appendChild(placeholder);
-    }
-
     private _computeAndSetOverrides(immediate = false) {
       if (this._debounceTimer) {
         clearTimeout(this._debounceTimer);
@@ -371,6 +321,5 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
     }
   }
 
-  // Re-register with the extended class
-  setRegisteredFormioComponent(EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.type, PreviewWithOverrides);
+  return PreviewWithOverrides;
 }

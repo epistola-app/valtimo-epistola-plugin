@@ -29,9 +29,8 @@ jest.mock('./epistola-document-preview.component', () => ({
   EpistolaDocumentPreviewComponent: class {},
 }));
 
-// registerCustomFormioComponent is a no-op here; the base class is pre-seeded into the
-// fake Formio registry below so the wrapper extends it.
 jest.mock('@valtimo/components', () => ({
+  createCustomFormioComponent: jest.fn(),
   registerCustomFormioComponent: jest.fn(),
 }));
 
@@ -50,7 +49,7 @@ import {
   EPISTOLA_DOCUMENT_PREVIEW_OPTIONS,
   registerEpistolaDocumentPreviewComponent,
 } from './epistola-document-preview.formio';
-import { registerCustomFormioComponent } from '@valtimo/components';
+import { createCustomFormioComponent, registerCustomFormioComponent } from '@valtimo/components';
 
 const mockComponents = Components as any;
 const TYPE = 'epistola-document-preview';
@@ -151,6 +150,7 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     components = { [TYPE]: FakeBaseComponent };
     mockComponents.components = components;
     mockComponents.setComponent.mockClear();
+    (createCustomFormioComponent as jest.Mock).mockReturnValue(FakeBaseComponent);
     registeredClass = undefined;
 
     (globalThis as any).customElements = { get: () => undefined, define: jest.fn() };
@@ -231,43 +231,14 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     expect(mockComponents.setComponent).toHaveBeenCalledWith(TYPE, registeredClass);
   });
 
-  it('creates the Angular custom element placeholder for the Valtimo attach bridge', () => {
-    const { inst } = createInstance({});
-    inst.inputInfo = {
-      attr: {
-        class: 'preview & form',
-        title: 'A "quoted" preview',
-        disabled: false,
-        'bad attr': 'ignored',
-      },
-    };
-    const { rootElement, elementHost } = createFakeAttachRoot();
-    const createElement = jest.fn((tagName: string) => new FakeElement(tagName));
-    (globalThis as any).document = { createElement };
-
-    inst.attach(rootElement as any);
-
-    const previewElement = rootElement.querySelector(SELECTOR);
-    expect(previewElement).toBe(inst._customAngularElement);
-    expect(previewElement?.getAttribute('ref')).toBe('input');
-    expect(previewElement?.getAttribute('class')).toBe('preview & form');
-    expect(previewElement?.getAttribute('title')).toBe('A "quoted" preview');
-    expect(previewElement?.getAttribute('disabled')).toBeUndefined();
-    expect(previewElement?.getAttribute('bad attr')).toBeUndefined();
-    expect(elementHost.children).toEqual([previewElement]);
-  });
-
-  it('does not duplicate the Angular custom element placeholder when Formio already rendered one', () => {
+  it('uses the Angular custom element rendered by Valtimo', () => {
     const { inst } = createInstance({});
     const { rootElement, elementHost } = createFakeAttachRoot();
     const existingPreviewElement = new FakeElement(SELECTOR);
     elementHost.appendChild(existingPreviewElement);
-    const createElement = jest.fn((tagName: string) => new FakeElement(tagName));
-    (globalThis as any).document = { createElement };
 
     inst.attach(rootElement as any);
 
-    expect(createElement).not.toHaveBeenCalled();
     expect(rootElement.querySelectorAll(SELECTOR)).toHaveLength(1);
     expect(inst._customAngularElement).toBe(existingPreviewElement);
   });
