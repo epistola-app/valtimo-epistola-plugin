@@ -1,0 +1,10 @@
+# Angular 19 CVEs only fixed in Angular 20+. Valtimo 13 pins Angular 19, so these
+# cannot be remediated without a platform major upgrade. Revisit on Valtimo/Angular bump.
+CVE-2026-54266
+CVE-2026-54267
+CVE-2026-54268
+CVE-2026-54265
+
+# uuid@9 has no patched 9.x release (fix requires 11.1.1+). Still pulled transitively
+# by Valtimo/swagger-ui stack; forcing a major risks runtime breaks in test-app only.
+CVE-2026-41907

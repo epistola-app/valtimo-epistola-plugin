@@ -10,7 +10,7 @@ By participating in this project, you agree to abide by our [Code of Conduct](CO
 
 For development setup instructions, see the [README](README.md). In short:
 
-1. Install mise so the repo can provision Java 21, Node.js 22.15.0, Gradle 9.2.0, and pnpm 9.15.0 from `.mise.toml`
+1. Install mise so the repo can provision Java 21, Node.js 24.18.0, Gradle 9.2.0, and pnpm 11.15.1 from `.mise.toml`
 2. Start local infrastructure: `docker compose -f docker/docker-compose.yml --profile server up -d`
 3. Build the frontend plugin: `pnpm build:plugin`
 4. Start the test-app backend: `./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev'`
