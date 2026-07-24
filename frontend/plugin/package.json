@@ -26,7 +26,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "jsonata": "^2.1.0",
+    "jsonata": "^2.2.2",
     "tslib": "^2.6.0"
   },
   "devDependencies": {

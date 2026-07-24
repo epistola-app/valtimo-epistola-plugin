@@ -25,11 +25,11 @@
     "clean": "rm -rf node_modules && pnpm -r exec rm -rf node_modules dist"
   },
   "devDependencies": {
-    "@angular/common": "^19.0.0",
-    "@angular/compiler": "^19.0.0",
-    "@angular/compiler-cli": "^19.0.0",
-    "@angular/core": "^19.0.0",
-    "@angular/forms": "^19.0.0",
+    "@angular/common": "^19.2.25",
+    "@angular/compiler": "^19.2.25",
+    "@angular/compiler-cli": "^19.2.25",
+    "@angular/core": "^19.2.25",
+    "@angular/forms": "^19.2.25",
     "@valtimo/components": "13.32.0",
     "@valtimo/plugin": "13.32.0",
     "@valtimo/shared": "13.32.0",

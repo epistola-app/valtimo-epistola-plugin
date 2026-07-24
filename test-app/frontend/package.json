@@ -88,7 +88,7 @@
     "flatpickr": "4.6.13",
     "jquery": "3.7.1",
     "json-server": "0.17.3",
-    "jsonata": "^2.1.0",
+    "jsonata": "^2.2.2",
     "keycloak-js": "26.1.5",
     "monaco-editor": "0.50.0",
     "ngx-color-picker": "17.0.0",
