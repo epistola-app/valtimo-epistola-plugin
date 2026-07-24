@@ -2,7 +2,7 @@ packages:
   - frontend/plugin
   - test-app/frontend
 
-dedupeInjectedDeps: false
+dedupeInjectedDeps: true
 syncInjectedDepsAfterScripts:
   - build
 
@@ -21,6 +21,7 @@ overrides:
   "ajv@>=8": ">=8.18.0"
   axios: ">=1.18.1"
   "brace-expansion@<2": 1.1.16
+  sass: 1.98.0
   "brace-expansion@>=2": ">=5.0.7"
   devalue: ">=5.8.2"
   dompurify: ">=3.4.12"

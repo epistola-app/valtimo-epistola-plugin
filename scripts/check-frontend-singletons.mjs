@@ -17,10 +17,12 @@
  */
 
 import { createRequire } from 'node:module';
-import { realpathSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const appRequire = createRequire(resolve('test-app/frontend/package.json'));
+const appPackagePath = resolve('test-app/frontend/package.json');
+const appPackage = JSON.parse(readFileSync(appPackagePath, 'utf8'));
+const appRequire = createRequire(appPackagePath);
 const pluginPackage = appRequire.resolve('@epistola.app/valtimo-plugin/package.json');
 const componentsPackage = appRequire.resolve('@valtimo/components/package.json');
 const pluginRequire = createRequire(pluginPackage);
@@ -48,7 +50,7 @@ function packagePath(requireFrom, packageName) {
   return realpathSync(requireFrom.resolve(`${packageName}/package.json`));
 }
 
-function assertSamePackage(packageName, expectedRequire, actualRequire) {
+function assertSamePackage(packageName, expectedRequire, actualRequire, actualOwner = 'plugin') {
   const expected = packagePath(expectedRequire, packageName);
   const actual = packagePath(actualRequire, packageName);
 
@@ -56,7 +58,7 @@ function assertSamePackage(packageName, expectedRequire, actualRequire) {
     throw new Error(
       `${packageName} resolves to different instances:\n` +
         `  host:   ${expected}\n` +
-        `  plugin: ${actual}`,
+        `  ${actualOwner}: ${actual}`,
     );
   }
 }
@@ -67,6 +69,24 @@ for (const packageName of hostSingletons) {
 
 for (const packageName of formioSingletons) {
   assertSamePackage(packageName, componentsRequire, pluginRequire);
+}
+
+const valtimoConsumers = Object.keys(appPackage.dependencies)
+  .filter((packageName) => packageName.startsWith('@valtimo/'))
+  .map((packageName) => ({
+    packageName,
+    requireFrom: createRequire(appRequire.resolve(`${packageName}/package.json`)),
+  }));
+
+for (const consumer of valtimoConsumers) {
+  for (const packageName of hostSingletons) {
+    try {
+      consumer.requireFrom.resolve(`${packageName}/package.json`);
+    } catch {
+      continue;
+    }
+    assertSamePackage(packageName, appRequire, consumer.requireFrom, consumer.packageName);
+  }
 }
 
 console.log('Frontend plugin and host resolve the same singleton packages.');

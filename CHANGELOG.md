@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The singleton guard now checks every installed Valtimo consumer, not only the host and Epistola package.** Injected dependency deduplication and a consistent Sass peer context prevent Valtimo feature packages from loading a second `@valtimo/components` instance with separate state services.
+- **Generated-document forms no longer depend on Valtimo route state for their case id.** The prefilled task id now activates `epistola-document`, and `/documents/download` derives its process and case context from the authorized task. The former `caseDocumentId` query parameter remains optional for backward compatibility and is still verified when supplied.
 - **CI and setup documentation now guard the frontend singleton architecture.** The documented host contract requires direct runtime peers, the local test app injects only the Epistola package, and CI verifies physical package resolution before building the consumer.
 - **Custom Form.io components now register through one Valtimo-owned bridge.** Valtimo creates the Angular custom elements and base Form.io classes, while a small compatibility adapter applies Epistola's task-context and preview behavior through the official Form.io registry. Internal edit-dialog widgets use `group: "none"` instead of patching `builderInfo`, and the preview no longer manufactures placeholder DOM nodes.
 - **Plugin startup now uses an idempotent Angular environment initializer and Valtimo's menu extension API.** The Epistola menu hook registers before Valtimo constructs the menu and no longer mutates `ConfigService`, eagerly relies on constructor side effects, or forces a menu reload.

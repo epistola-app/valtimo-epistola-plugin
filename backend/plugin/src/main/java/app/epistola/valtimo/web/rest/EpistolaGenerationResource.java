@@ -121,13 +121,16 @@ public class EpistolaGenerationResource {
      * <p>Requires:
      * <ul>
      *   <li>{@code OperatonTask:VIEW} on {@code taskId}.</li>
-     *   <li>{@code task.processInstance.businessKey == caseDocumentId} (same Valtimo case).</li>
+     *   <li>When legacy callers supply {@code caseDocumentId}, it must equal
+     *       {@code task.processInstance.businessKey}.</li>
      *   <li>The named {@code documentIdVariable} and {@code tenantIdVariable} both
      *       resolve to non-blank values on {@code task.processInstanceId}.</li>
      * </ul>
      *
      * @param taskId               The Operaton user task ID providing the authorization context
-     * @param caseDocumentId       The Valtimo case document UUID; must equal {@code task.processInstance.businessKey}
+     * @param caseDocumentId       Optional legacy Valtimo case document UUID. When supplied, it must
+     *                             equal {@code task.processInstance.businessKey}. New callers omit it
+     *                             because the task is the authoritative case context.
      * @param documentVariable     Process-variable name holding the Epistola result (default {@code epistolaResult}).
      *                             Resolves either a plain String document id (legacy scalar) OR a
      *                             {@code Map<String,Object>} with a {@code documentId} key (the canonical
@@ -140,14 +143,13 @@ public class EpistolaGenerationResource {
     @GetMapping("/documents/download")
     public ResponseEntity<byte[]> downloadDocument(
             @RequestParam("taskId") String taskId,
-            @RequestParam("caseDocumentId") String caseDocumentId,
+            @RequestParam(value = "caseDocumentId", required = false) String caseDocumentId,
             @RequestParam(value = "documentVariable", defaultValue = "epistolaResult") String documentVariable,
             @RequestParam(value = "tenantIdVariable", defaultValue = EpistolaProcessVariables.TENANT_ID) String tenantIdVariable,
             @RequestParam(value = "filename", defaultValue = "document.pdf") String filename,
             @RequestParam(value = "disposition", defaultValue = "attachment") String disposition
     ) {
         if (taskId == null || taskId.isBlank()
-                || caseDocumentId == null || caseDocumentId.isBlank()
                 || documentVariable == null || documentVariable.isBlank()
                 || tenantIdVariable == null || tenantIdVariable.isBlank()) {
             return ResponseEntity.badRequest().build();
@@ -155,10 +157,9 @@ public class EpistolaGenerationResource {
 
         OperatonTask task;
         try {
-            task = requireTaskBoundTo(taskId, /* request supplies */ null, caseDocumentId);
-            // requireTaskBoundTo accepts a null processInstanceId (only checks when supplied).
-            // For download the task's processInstanceId is what we use to resolve variables;
-            // no separate processInstanceId is sent on the wire.
+            task = caseDocumentId == null || caseDocumentId.isBlank()
+                    ? requireTaskViewable(taskId)
+                    : requireTaskBoundTo(taskId, /* request supplies */ null, caseDocumentId);
         } catch (TaskNotFoundException e) {
             return ResponseEntity.notFound().build();
         }

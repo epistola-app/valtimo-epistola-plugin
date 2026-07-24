@@ -52,8 +52,8 @@ import static org.mockito.Mockito.when;
  * Verifies the post-redesign download endpoint:
  *
  * <ul>
- *   <li>Authorization binds the supplied taskId + caseDocumentId to the task's
- *       process and case (via {@code requireTaskBoundTo}).</li>
+ *   <li>The task is the authoritative process/case context; a legacy
+ *       {@code caseDocumentId} is still verified when supplied.</li>
  *   <li>The Epistola PDF id and tenant id are read from named process variables
  *       on the task's process instance — not from the request body — making the
  *       endpoint forge-proof.</li>
@@ -120,6 +120,21 @@ class EpistolaPluginResourceDocumentDownloadTest {
         assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_PDF);
         assertThat(response.getHeaders().getContentDisposition())
                 .isEqualTo(ContentDisposition.attachment().filename("bevestigingsbrief.pdf").build());
+    }
+
+    @Test
+    void downloadDocument_streamsPdfWhenLegacyCaseDocumentIdIsOmitted() {
+        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, DOC_VAR)).thenReturn("doc-123");
+        when(runtimeService.getVariable(PROCESS_INSTANCE_ID, TENANT_ID_VAR)).thenReturn("tenant-a");
+        registerPlugin(mockPlugin("https://api.epistola.app", "api-key", "tenant-a"));
+        when(epistolaService.downloadDocument(any(), any(), any(), any())).thenReturn(new byte[]{0x25});
+
+        ResponseEntity<byte[]> response = resource.downloadDocument(
+                TASK_ID, null, DOC_VAR, TENANT_ID_VAR, "preview.pdf", "inline");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getHeaders().getContentDisposition())
+                .isEqualTo(ContentDisposition.inline().filename("preview.pdf").build());
     }
 
     @Test
@@ -240,8 +255,6 @@ class EpistolaPluginResourceDocumentDownloadTest {
     @Test
     void downloadDocument_returns400WhenAnyRequiredParamMissing() {
         assertThat(resource.downloadDocument("", CASE_DOCUMENT_ID, DOC_VAR, TENANT_ID_VAR, "x", "attachment").getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(resource.downloadDocument(TASK_ID, "", DOC_VAR, TENANT_ID_VAR, "x", "attachment").getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(resource.downloadDocument(TASK_ID, CASE_DOCUMENT_ID, "", TENANT_ID_VAR, "x", "attachment").getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
