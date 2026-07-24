@@ -298,9 +298,18 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ needs.version.outputs.version }}"
-          gh release edit "v${VERSION}" \
+          RELEASE_TAG="v${VERSION}"
+          gh release view "${RELEASE_TAG}" \
             --repo "${{ github.repository }}" \
-            --notes "$(cat <<EOF
+            --json body \
+            --jq .body > release-notes.md
+          sed -i \
+            '/<!-- epistola-install-instructions:start -->/,/<!-- epistola-install-instructions:end -->/d' \
+            release-notes.md
+
+          cat >> release-notes.md <<EOF
+
+          <!-- epistola-install-instructions:start -->
           ## v${VERSION}
 
           ### Maven (backend plugin)
@@ -333,8 +342,12 @@ jobs:
           frontend plugin. The backend SBOM is also published to Maven Central
           as the \`cyclonedx\` classifier; the frontend SBOM is bundled inside
           the published npm tarball at \`sbom.json\`.
+          <!-- epistola-install-instructions:end -->
           EOF
-          )"
+
+          gh release edit "${RELEASE_TAG}" \
+            --repo "${{ github.repository }}" \
+            --notes-file release-notes.md
 
       - name: Download SBOMs
         uses: actions/download-artifact@v4
