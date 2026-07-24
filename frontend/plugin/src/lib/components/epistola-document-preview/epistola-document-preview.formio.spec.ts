@@ -46,14 +46,21 @@ jest.mock('formiojs', () => {
 });
 
 import { Components } from 'formiojs';
-import { registerEpistolaDocumentPreviewComponent } from './epistola-document-preview.formio';
+import {
+  EPISTOLA_DOCUMENT_PREVIEW_OPTIONS,
+  registerEpistolaDocumentPreviewComponent,
+} from './epistola-document-preview.formio';
 import { registerCustomFormioComponent } from '@valtimo/components';
 
 const mockComponents = Components as any;
 const TYPE = 'epistola-document-preview';
+const SELECTOR = EPISTOLA_DOCUMENT_PREVIEW_OPTIONS.selector;
 
 class FakeBaseComponent {
-  attach(element: unknown) {
+  attach(element: any) {
+    if (typeof element?.querySelector === 'function') {
+      this['_customAngularElement'] = element.querySelector(SELECTOR);
+    }
     return element;
   }
   detach() {
@@ -74,6 +81,64 @@ interface FakeRoot {
     addEventListener: jest.Mock;
     removeEventListener: jest.Mock;
   };
+}
+
+class FakeElement {
+  readonly children: FakeElement[] = [];
+  readonly attributes: Record<string, string> = {};
+
+  constructor(readonly tagName: string) {}
+
+  appendChild(child: FakeElement) {
+    this.children.push(child);
+    return child;
+  }
+
+  setAttribute(name: string, value: string) {
+    this.attributes[name] = value;
+  }
+
+  getAttribute(name: string) {
+    return this.attributes[name];
+  }
+
+  querySelector(selector: string): FakeElement | null {
+    for (const child of this.children) {
+      if (matchesSelector(child, selector)) {
+        return child;
+      }
+      const nested = child.querySelector(selector);
+      if (nested) {
+        return nested;
+      }
+    }
+    return null;
+  }
+
+  querySelectorAll(selector: string): FakeElement[] {
+    return this.children.flatMap((child) => [
+      ...(matchesSelector(child, selector) ? [child] : []),
+      ...child.querySelectorAll(selector),
+    ]);
+  }
+}
+
+function matchesSelector(element: FakeElement, selector: string): boolean {
+  if (selector === SELECTOR) {
+    return element.tagName === SELECTOR;
+  }
+  if (selector === '[ref="element"]') {
+    return element.attributes['ref'] === 'element';
+  }
+  return false;
+}
+
+function createFakeAttachRoot() {
+  const rootElement = new FakeElement('div');
+  const elementHost = new FakeElement('div');
+  elementHost.setAttribute('ref', 'element');
+  rootElement.appendChild(elementHost);
+  return { rootElement, elementHost };
 }
 
 describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () => {
@@ -97,6 +162,7 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
   afterEach(() => {
     jest.useRealTimers();
     delete (globalThis as any).window;
+    delete (globalThis as any).document;
     delete (globalThis as any).customElements;
   });
 
@@ -163,6 +229,47 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
   it('does not depend on window.Formio to register the wrapper subclass', () => {
     expect((globalThis as any).window?.Formio).toBeUndefined();
     expect(mockComponents.setComponent).toHaveBeenCalledWith(TYPE, registeredClass);
+  });
+
+  it('creates the Angular custom element placeholder for the Valtimo attach bridge', () => {
+    const { inst } = createInstance({});
+    inst.inputInfo = {
+      attr: {
+        class: 'preview & form',
+        title: 'A "quoted" preview',
+        disabled: false,
+        'bad attr': 'ignored',
+      },
+    };
+    const { rootElement, elementHost } = createFakeAttachRoot();
+    const createElement = jest.fn((tagName: string) => new FakeElement(tagName));
+    (globalThis as any).document = { createElement };
+
+    inst.attach(rootElement as any);
+
+    const previewElement = rootElement.querySelector(SELECTOR);
+    expect(previewElement).toBe(inst._customAngularElement);
+    expect(previewElement?.getAttribute('ref')).toBe('input');
+    expect(previewElement?.getAttribute('class')).toBe('preview & form');
+    expect(previewElement?.getAttribute('title')).toBe('A "quoted" preview');
+    expect(previewElement?.getAttribute('disabled')).toBeUndefined();
+    expect(previewElement?.getAttribute('bad attr')).toBeUndefined();
+    expect(elementHost.children).toEqual([previewElement]);
+  });
+
+  it('does not duplicate the Angular custom element placeholder when Formio already rendered one', () => {
+    const { inst } = createInstance({});
+    const { rootElement, elementHost } = createFakeAttachRoot();
+    const existingPreviewElement = new FakeElement(SELECTOR);
+    elementHost.appendChild(existingPreviewElement);
+    const createElement = jest.fn((tagName: string) => new FakeElement(tagName));
+    (globalThis as any).document = { createElement };
+
+    inst.attach(rootElement as any);
+
+    expect(createElement).not.toHaveBeenCalled();
+    expect(rootElement.querySelectorAll(SELECTOR)).toHaveLength(1);
+    expect(inst._customAngularElement).toBe(existingPreviewElement);
   });
 
   it('forwards the server-prefilled task id to the Angular element on attach', () => {

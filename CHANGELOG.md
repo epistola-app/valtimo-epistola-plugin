@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The document-preview Form.io component now renders in task forms after the Valtimo upgrade.** The preview wrapper keeps Valtimo's custom Angular element present during attach and treats the server-prefilled task id as runtime context, so task previews load the real generated preview instead of staying empty or falling back to the builder placeholder.
 - **The Epistola frontend module now imports Valtimo's Form.io module for custom component registration.** `EpistolaPluginModule` imports `FormIoModule`, so Valtimo's `registerCustomFormioComponent()` sees the matching `CustomTagsService` provider when Epistola's custom Formio elements register during Angular startup.
 - **Epistola Form.io components now refresh their Form.io registry entries even when their browser custom element already exists.** This keeps `epistola-document-preview` and the related edit-form helper widgets rendering after Valtimo/Form.io initialization order changes where the DOM element definition survives but the Form.io component registry must be rebuilt.
 - **Epistola Form.io wrappers now use the module-scoped Form.io registry instead of the browser global.** The document, preview, retry, and override-builder wrappers now read and update `formiojs.Components`, matching Valtimo's custom component registration path and keeping the preview wrapper installed when no `window.Formio` global is exposed.
