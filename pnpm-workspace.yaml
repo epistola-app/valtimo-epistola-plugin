@@ -2,28 +2,29 @@ packages:
   - frontend/plugin
   - test-app/frontend
 
-onlyBuiltDependencies:
-  - "@carbon/charts"
-  - "@carbon/colors"
-  - "@carbon/feature-flags"
-  - "@carbon/grid"
-  - "@carbon/icons"
-  - "@carbon/layout"
-  - "@carbon/motion"
-  - "@carbon/styles"
-  - "@carbon/themes"
-  - "@carbon/type"
-  - "@carbon/utils-position"
-  - "@parcel/watcher"
-  - "@scarf/scarf"
-  - "@tree-sitter-grammars/tree-sitter-yaml"
-  - carbon-components-angular
-  - core-js
-  - core-js-pure
-  - esbuild
-  - inferno
-  - less
-  - lmdb
-  - msgpackr-extract
-  - tree-sitter
-  - tree-sitter-json
+allowBuilds:
+  "@carbon/charts": true
+  "@carbon/colors": true
+  "@carbon/feature-flags": true
+  "@carbon/grid": true
+  "@carbon/icons": true
+  "@carbon/layout": true
+  "@carbon/motion": true
+  "@carbon/styles": true
+  "@carbon/themes": true
+  "@carbon/type": true
+  "@carbon/utils-position": true
+  "@parcel/watcher": true
+  "@scarf/scarf": true
+  "@tree-sitter-grammars/tree-sitter-yaml": true
+  carbon-components-angular: true
+  core-js: true
+  core-js-pure: true
+  esbuild: true
+  inferno: true
+  less: true
+  lmdb: true
+  msgpackr-extract: true
+  tree-sitter: true
+  tree-sitter-json: true
+  unrs-resolver: true

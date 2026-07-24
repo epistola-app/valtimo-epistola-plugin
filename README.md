@@ -239,7 +239,7 @@ See [docs/authorization.md](docs/authorization.md) for the full endpoint matrix 
 ### Prerequisites
 
 - [mise](https://mise.jdx.dev/getting-started.html)
-- Java 21, Node.js 22.15.0, Gradle 9.2.0, and pnpm 9.15.0 are managed by [`.mise.toml`](.mise.toml)
+- Java 21, Node.js 24.18.0, Gradle 9.2.0, and pnpm 11.15.1 are managed by [`.mise.toml`](.mise.toml)
 
 ### Setup
 

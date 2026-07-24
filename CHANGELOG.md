@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The README now shows live package-version badges instead of pinning a concrete backend dependency version.** The backend installation snippet uses a placeholder and points readers at the Maven Central badge/metadata for the current release, while the header also shows the published npm package version.
 - **The development setup documentation now uses one set of tool versions and commands.** README prerequisites and the contributor quickstart now point at the mise-managed Java/Node/Gradle/pnpm versions, and the contributor Docker/test-app commands match the root-level workflow documented in the README. The mise pnpm entry now matches the workspace `packageManager` pin.
+- **The local frontend toolchain now targets current supported releases.** Node.js is pinned to the 24.x LTS line and pnpm is pinned to the current stable 11.x release in both mise and `packageManager`. The pnpm workspace build-script allowlist was migrated to pnpm 11's `allowBuilds` syntax, `.pnpm-store/` is ignored as generated local cache, and the frontend plugin now declares the direct dev dependencies that pnpm 11's stricter layout requires for type-checking.
 
 ### Added
 
