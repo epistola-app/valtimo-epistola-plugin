@@ -121,16 +121,11 @@ public class EpistolaGenerationResource {
      * <p>Requires:
      * <ul>
      *   <li>{@code OperatonTask:VIEW} on {@code taskId}.</li>
-     *   <li>When legacy callers supply {@code caseDocumentId}, it must equal
-     *       {@code task.processInstance.businessKey}.</li>
      *   <li>The named {@code documentIdVariable} and {@code tenantIdVariable} both
      *       resolve to non-blank values on {@code task.processInstanceId}.</li>
      * </ul>
      *
      * @param taskId               The Operaton user task ID providing the authorization context
-     * @param caseDocumentId       Optional legacy Valtimo case document UUID. When supplied, it must
-     *                             equal {@code task.processInstance.businessKey}. New callers omit it
-     *                             because the task is the authoritative case context.
      * @param documentVariable     Process-variable name holding the Epistola result (default {@code epistolaResult}).
      *                             Resolves either a plain String document id (legacy scalar) OR a
      *                             {@code Map<String,Object>} with a {@code documentId} key (the canonical
@@ -143,7 +138,6 @@ public class EpistolaGenerationResource {
     @GetMapping("/documents/download")
     public ResponseEntity<byte[]> downloadDocument(
             @RequestParam("taskId") String taskId,
-            @RequestParam(value = "caseDocumentId", required = false) String caseDocumentId,
             @RequestParam(value = "documentVariable", defaultValue = "epistolaResult") String documentVariable,
             @RequestParam(value = "tenantIdVariable", defaultValue = EpistolaProcessVariables.TENANT_ID) String tenantIdVariable,
             @RequestParam(value = "filename", defaultValue = "document.pdf") String filename,
@@ -157,9 +151,7 @@ public class EpistolaGenerationResource {
 
         OperatonTask task;
         try {
-            task = caseDocumentId == null || caseDocumentId.isBlank()
-                    ? requireTaskViewable(taskId)
-                    : requireTaskBoundTo(taskId, /* request supplies */ null, caseDocumentId);
+            task = requireTaskViewable(taskId);
         } catch (TaskNotFoundException e) {
             return ResponseEntity.notFound().build();
         }
@@ -306,49 +298,9 @@ public class EpistolaGenerationResource {
     }
 
     /**
-     * Resolve the task, require {@code OperatonTask:VIEW}, and verify the request is
-     * bound to the same process instance and case document the task is operating on.
-     *
-     * <p>{@code OperatonTaskService.findTaskById} performs the {@code VIEW} check itself,
-     * but we issue an explicit {@code requirePermission} too so the intent and the
-     * thrown {@link AccessDeniedException} are obvious in tests. After permission is
-     * confirmed we compare the task's {@code processInstanceId} and business key
-     * (which Valtimo dossier-driven processes set to the case document UUID) against
-     * the request parameters. Mismatch throws {@link AccessDeniedException} → HTTP 403.
-     *
-     * @param taskId            Operaton user task id; required.
-     * @param processInstanceId The expected process instance id, or {@code null} if the
-     *                          caller infers it from the task itself (e.g.
-     *                          {@code downloadDocument} doesn't carry it on the wire).
-     *                          When non-null, must equal {@code task.getProcessInstanceId()}.
-     * @param documentId        The expected Valtimo case-document UUID; required and
-     *                          must equal {@code task.getProcessInstance().getBusinessKey()}.
-     */
-    private OperatonTask requireTaskBoundTo(String taskId, String processInstanceId, String documentId) {
-        OperatonTask task = requireTaskViewable(taskId);
-
-        String taskProcessInstanceId = task.getProcessInstanceId();
-        if (processInstanceId != null && !processInstanceId.equals(taskProcessInstanceId)) {
-            log.debug("processInstanceId {} does not match task {} (taskPid={})",
-                    processInstanceId, taskId, taskProcessInstanceId);
-            throw new AccessDeniedException("Request processInstanceId does not match task");
-        }
-
-        String taskBusinessKey = task.getProcessInstance() != null
-                ? task.getProcessInstance().getBusinessKey()
-                : null;
-        if (taskBusinessKey == null || !taskBusinessKey.equals(documentId)) {
-            log.debug("documentId {} does not match task {} business key (taskBusinessKey={})",
-                    documentId, taskId, taskBusinessKey);
-            throw new AccessDeniedException("Request documentId does not match task's case");
-        }
-        return task;
-    }
-
-    /**
      * Resolve the task and require {@code OperatonTask:VIEW} on it, returning the task.
      *
-     * <p>The authorization gate on its own — used by endpoints (preview, retry-form) that
+     * <p>The authorization gate on its own — used by user-task endpoints that
      * <i>derive</i> the process instance and case document from the task itself rather than
      * accepting them on the wire, so there is nothing client-supplied left to cross-check.
      * {@code OperatonTaskService.findTaskById} also performs the {@code VIEW} check, but we

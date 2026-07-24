@@ -57,8 +57,6 @@ export interface PreviewBlobRequest {
  */
 export interface DownloadDocumentRequest {
   taskId: string;
-  /** @deprecated The backend derives the case from taskId. Kept for older API consumers. */
-  caseDocumentId?: string;
   documentVariable: string;
   tenantIdVariable: string;
   filename: string;
@@ -269,9 +267,6 @@ export class EpistolaPluginService {
       filename: request.filename,
       disposition: request.disposition,
     });
-    if (request.caseDocumentId) {
-      params.set('caseDocumentId', request.caseDocumentId);
-    }
     return this.http.get(`${this.apiEndpoint}/documents/download?${params.toString()}`, {
       responseType: 'blob',
     });

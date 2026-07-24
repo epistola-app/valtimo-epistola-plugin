@@ -44,11 +44,11 @@ The HTTP layer is a coarse gate. The PBAC layer is where the real authorization 
 Configuration:
 
 - HTTP gate: `app.epistola.valtimo.config.EpistolaHttpSecurityConfigurer` (`@Order(270)`)
-- Controller checks: `EpistolaGenerationResource.requireTaskBoundTo(...)` and `EpistolaAdminResource.requirePermission(...)`
+- Controller checks: `EpistolaGenerationResource.requireTaskViewable(...)` and `EpistolaAdminResource.requirePermission(...)`
 
 ## User-task endpoints
 
-`/preview`, `/retry-form`, and `/documents/download` are designed to be called from inside a user task form. The current principal must have `OperatonTask:VIEW` permission on `taskId`. The controller then derives the process instance and case document from that task, so the caller cannot combine an authorized task with another case's identity. Where an older request still supplies process or case context, `requireTaskBoundTo(...)` verifies it and throws `AccessDeniedException` on a mismatch.
+`/preview`, `/retry-form`, and `/documents/download` are designed to be called from inside a user task form. The current principal must have `OperatonTask:VIEW` permission on `taskId`. The controller then derives the process instance and case document from that task, so the caller cannot combine an authorized task with another case's identity.
 
 ### `/documents/download`
 
@@ -61,7 +61,7 @@ GET /api/v1/plugin/epistola/documents/download
     &filename=<download-filename>
 ```
 
-The wire **never carries a case id or raw Epistola PDF id**. The controller derives the process instance and case from the authorized task, then looks up the named PDF-id and tenant-id variables through `RuntimeService.getVariable(processInstanceId, …)`. A legacy `caseDocumentId` is accepted only for backward compatibility and must match the task's business key.
+The wire **never carries a case id or raw Epistola PDF id**. The controller derives the process instance and case from the authorized task, then looks up the named PDF-id and tenant-id variables through `RuntimeService.getVariable(processInstanceId, …)`.
 
 If Epistola returns 404 for the resolved id (typical when the variable holds a stale id from a previous run), the controller translates it to a controller-level 404, so the UI can render "Document is nog niet gegenereerd" instead of a generic 500.
 
@@ -159,7 +159,7 @@ After deploying a plugin upgrade or changing your permission JSON:
 
 - [ ] An admin user can open the Epistola admin page (`/epistola/admin`) and see health/usage data.
 - [ ] A non-admin user gets a 403 from `/api/v1/plugin/epistola/admin/health` directly.
-- [ ] A user with no access to a case cannot download the case's PDF by guessing its `caseDocumentId`.
+- [ ] A user with no access to a task cannot download its case's PDF by guessing its `taskId`.
 - [ ] A user with access to task A can only download the document referenced by task A's own process variables.
 - [ ] Process-link configuration in the Valtimo console still works for `ROLE_ADMIN` users.
 - [ ] Stale `epistolaDocumentId` values produce a "Document is nog niet gegenereerd" message rather than a 500.

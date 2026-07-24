@@ -119,7 +119,7 @@ Pre-0.8 the post-generation UX was split across two components:
 | `epistola-preview-button` | `epistola-document` with `display: "button"` (or `"both"`) |
 | `epistola-download`       | `epistola-document` with `display: "button"`               |
 
-The 0.8 endpoint reshape also matters: the old `GET /api/v1/plugin/epistola/documents/{documentId}/download` (path-param) is gone. The current shape is `GET /api/v1/plugin/epistola/documents/download?taskId=…&documentVariable=…&tenantIdVariable=…`. The former `caseDocumentId` query parameter is optional for backward compatibility and verified when supplied. If you have integrations that called the old path-param URL directly, they have to be updated.
+The 0.8 endpoint reshape also matters: the old `GET /api/v1/plugin/epistola/documents/{documentId}/download` (path-param) is gone. The current shape is `GET /api/v1/plugin/epistola/documents/download?taskId=…&documentVariable=…&tenantIdVariable=…`. If you have integrations that called the old path-param URL directly, they have to be updated.
 
 ## Architecture
 

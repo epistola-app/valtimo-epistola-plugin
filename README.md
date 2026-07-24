@@ -217,7 +217,7 @@ Implementation: `app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger` + `Cata
 
 The plugin enforces three layers of authorization on its REST endpoints:
 
-- **User-task endpoints** (`/preview`, `/retry-form`, `/documents/download`) require `OperatonTask:VIEW` on the supplied `taskId`. Process and case context are derived from that authorized task; legacy request context is verified when supplied.
+- **User-task endpoints** (`/preview`, `/retry-form`, `/documents/download`) require `OperatonTask:VIEW` on the supplied `taskId`. Process and case context are derived from that authorized task.
 - **Admin endpoints** (`/admin/**`) require `EpistolaAdministration:MANAGE`. The plugin ships a default grant of this permission to `ROLE_ADMIN` via [`epistola-admin-default.permission.json`](backend/plugin/src/main/resources/config/epistola/permission/epistola-admin-default.permission.json) — override it in your application to assign the action to a different role.
 - **Configurator endpoints** (process-link configuration UI) are gated at the HTTP layer by `ROLE_ADMIN`, mirroring Valtimo's own process-link CRUD.
 
