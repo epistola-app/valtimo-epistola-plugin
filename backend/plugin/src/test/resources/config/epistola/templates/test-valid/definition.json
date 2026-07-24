@@ -14,7 +14,7 @@
     "modelVersion": 1,
     "root": "n-root",
     "nodes": {
-      "n-root": { "id": "n-root", "type": "container", "slots": ["s-root"] }
+      "n-root": { "id": "n-root", "type": "root", "slots": ["s-root"] }
     },
     "slots": {
       "s-root": { "id": "s-root", "nodeId": "n-root", "name": "children", "children": [] }

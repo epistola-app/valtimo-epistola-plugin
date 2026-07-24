@@ -76,6 +76,34 @@ class BundledCatalogSchemaVersionTest {
         }
     }
 
+    @Test
+    fun `every bundled template document uses a synthetic root node`() {
+        val details = resolver.getResources("classpath*:config/epistola/catalogs/*/resources/template/*.json")
+        assertThat(details)
+            .describedAs("expected bundled template resource detail files on the classpath")
+            .isNotEmpty
+
+        details.forEach { resource ->
+            val templateModel =
+                resource.inputStream
+                    .use { mapper.readTree(it) }
+                    .path("resource")
+                    .path("templateModel")
+            assertThat(templateModel.isMissingNode)
+                .describedAs("templateModel of bundled template %s", resource.description)
+                .isFalse
+
+            val rootId = templateModel.path("root").asText("")
+            val nodes = templateModel.path("nodes")
+            assertThat(nodes.path(rootId).path("type").asText(""))
+                .describedAs("root node type of bundled template %s", resource.description)
+                .isEqualTo("root")
+            assertThat(nodes.count { it.path("type").asText("") == "root" })
+                .describedAs("root node count of bundled template %s", resource.description)
+                .isEqualTo(1)
+        }
+    }
+
     companion object {
         /** The catalog wire `schemaVersion` this plugin build targets (Epistola Suite >= 0.26.0). */
         private const val EXPECTED_CATALOG_SCHEMA_VERSION = 4
