@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-07-25
+
 ### Changed
 
 - **Upgraded Valtimo from `13.32.0` to `13.38.0` (backend + frontend).** Spring Boot `3.5.14`, Kotlin, Java 21, Gradle 9.2, and Angular 19 are unchanged. The 13.33→13.38 changelog is additive (global case search, OpenSearch option, DMN editor GA, access-control UI, widgets/process-link polish); no Plugin SDK, PBAC, process-link, or correlation API break. Compatible floor stays `>=13.21.0, <14` (`peerDependencies ^13.21.0`). Does not clear Angular 19-only CVEs (fixes require Angular ≥20). The test-app now declares `keycloak-angular` directly (pnpm 11 no longer hoists it for the Authentik auth adapter).
