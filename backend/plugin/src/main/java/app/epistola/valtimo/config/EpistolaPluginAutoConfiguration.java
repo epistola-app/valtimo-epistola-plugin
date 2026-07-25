@@ -27,7 +27,6 @@ import app.epistola.valtimo.deployment.EpistolaCatchEventLinkResolver;
 import app.epistola.valtimo.deployment.EpistolaCatchEventParseListener;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.deployment.EpistolaProcessEnginePlugin;
-import app.epistola.valtimo.service.admin.EpistolaFormCarrierRepairService; // TEMPORARY (remove in 1.0.0)
 import app.epistola.valtimo.service.admin.EpistolaLegacyOverrideScanService; // TEMPORARY
 import app.epistola.valtimo.service.completion.EpistolaCatchEventStartListener;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
@@ -382,13 +381,10 @@ public class EpistolaPluginAutoConfiguration {
     public EpistolaAdminResource epistolaAdminResource(
             EpistolaAdminService adminService,
             com.ritense.authorization.AuthorizationService authorizationService,
-            // TEMPORARY (remove in 1.0.0): drop this arg with the carrier-repair feature.
-            EpistolaFormCarrierRepairService formCarrierRepairService,
             // TEMPORARY: drop with the legacy override-format scan.
             EpistolaLegacyOverrideScanService legacyOverrideScanService
     ) {
-        return new EpistolaAdminResource(
-                adminService, authorizationService, formCarrierRepairService, legacyOverrideScanService);
+        return new EpistolaAdminResource(adminService, authorizationService, legacyOverrideScanService);
     }
 
     @Bean
@@ -465,17 +461,6 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaProperties properties
     ) {
         return new EpistolaFormAutoDeployAspect(formDeploymentService, properties);
-    }
-
-    // TEMPORARY (remove in 1.0.0): admin-page detection + repair of forms authored before the task-id
-    // carrier was embedded in the components' schema. See EpistolaFormCarrierRepairService.
-    @Bean
-    @ConditionalOnMissingBean(EpistolaFormCarrierRepairService.class)
-    public EpistolaFormCarrierRepairService epistolaFormCarrierRepairService(
-            com.ritense.form.repository.FormDefinitionRepository formDefinitionRepository,
-            ObjectMapper objectMapper
-    ) {
-        return new EpistolaFormCarrierRepairService(formDefinitionRepository, objectMapper);
     }
 
     // TEMPORARY: admin-page detection of forms still using the legacy override-mapping object

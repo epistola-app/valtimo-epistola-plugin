@@ -57,16 +57,6 @@ import { EpistolaRegistrationService } from './services/epistola-registration.se
     EpistolaDocumentPreviewComponent,
     EpistolaAdminPageComponent,
   ],
-  exports: [
-    EpistolaConfigurationComponent,
-    GenerateDocumentConfigurationComponent,
-    CheckJobStatusConfigurationComponent,
-    DownloadDocumentConfigurationComponent,
-    EpistolaDocumentComponent,
-    EpistolaRetryFormComponent,
-    EpistolaDocumentPreviewComponent,
-    EpistolaAdminPageComponent,
-  ],
   providers: [
     EpistolaPluginService,
     EpistolaAdminService,

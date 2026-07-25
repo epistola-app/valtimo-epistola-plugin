@@ -77,25 +77,9 @@ Add a process-link entry for the retry user task pointing to the built-in `epist
 
 No custom form JSON is needed — the plugin auto-deploys the `epistola-retry-document` form for each case.
 
-### 3. Register the Formio Component (test-app / your app)
+### 3. Component Registration
 
-In your Angular `AppModule`, register the retry form component:
-
-```typescript
-import {
-  registerEpistolaDownloadComponent,
-  registerEpistolaRetryFormComponent,
-} from "@epistola.app/valtimo-plugin";
-
-export class AppModule {
-  constructor(private injector: Injector) {
-    registerEpistolaDownloadComponent(injector);
-    registerEpistolaRetryFormComponent(injector);
-  }
-}
-```
-
-That's it. No per-process form JSON, no custom configuration.
+`EpistolaPluginModule` registers the retry and document components automatically. No per-process form JSON or additional component registration is needed.
 
 ## How generate-document Detects a Retry
 

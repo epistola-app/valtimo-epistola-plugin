@@ -31,7 +31,6 @@ import {
   ClasspathCatalog,
   ConnectionStatus,
   ContractCompatibilitySeverity,
-  FormCarrierIssue,
   LegacyOverrideForm,
   PendingJob,
   PluginUsageEntry,
@@ -69,7 +68,7 @@ export class EpistolaAdminPageComponent implements OnInit {
   cards: ConfigurationCard[] = [];
   selectedCard: ConfigurationCard | null = null;
   activeTab: 'actions' | 'pending' | 'catalogs' = 'actions';
-  // NOTE: the 'forms' tab is TEMPORARY (remove in 1.0.0) — see the carrier-repair block below.
+  // NOTE: the 'forms' tab is temporary while legacy override mappings are still supported.
   overviewTab: 'configurations' | 'validations' | 'changelog' | 'forms' = 'configurations';
   loading = false;
   pluginVersion: string | null = null;
@@ -90,17 +89,6 @@ export class EpistolaAdminPageComponent implements OnInit {
   redeployingSlugs = new Set<string>();
   catalogFeedback: {
     slug: string;
-    type: 'success' | 'error';
-    message: string;
-  } | null = null;
-
-  // TEMPORARY (removed in 1.0.0): task-id carrier detection + repair.
-  formIssues: FormCarrierIssue[] | null = null;
-  formIssuesLoading = false;
-  repairingFormIds = new Set<string>();
-  repairingAll = false;
-  formFeedback: {
-    formId: string;
     type: 'success' | 'error';
     message: string;
   } | null = null;
@@ -133,14 +121,14 @@ export class EpistolaAdminPageComponent implements OnInit {
     return Math.round((this.validationReport?.refreshIntervalMs ?? 600000) / 60000);
   }
 
-  /** Combined "forms needing attention" count for the tab badge (carrier + legacy override). */
+  /** Forms that still need their legacy override mapping migrated. */
   get formsAttentionCount(): number {
-    return (this.formIssues?.length ?? 0) + (this.legacyOverrideForms?.length ?? 0);
+    return this.legacyOverrideForms?.length ?? 0;
   }
 
-  /** Whether the forms tab has loaded at least one of its two scans. */
+  /** Whether the legacy override scan has completed. */
   get formsScanLoaded(): boolean {
-    return this.formIssues !== null || this.legacyOverrideForms !== null;
+    return this.legacyOverrideForms !== null;
   }
 
   ngOnInit(): void {
@@ -297,14 +285,10 @@ export class EpistolaAdminPageComponent implements OnInit {
     this.updateUrl(this.selectedCard?.configurationId ?? null, tab);
   }
 
-  // 'forms' is TEMPORARY (remove in 1.0.0).
   setOverviewTab(tab: 'configurations' | 'validations' | 'changelog' | 'forms'): void {
     this.overviewTab = tab;
     if (tab === 'changelog' && this.changelog === null && !this.changelogLoading) {
       this.loadChangelog();
-    }
-    if (tab === 'forms' && this.formIssues === null && !this.formIssuesLoading) {
-      this.loadFormIssues();
     }
     if (tab === 'forms' && this.legacyOverrideForms === null && !this.legacyOverrideLoading) {
       this.loadLegacyOverrideForms();
@@ -323,78 +307,6 @@ export class EpistolaAdminPageComponent implements OnInit {
       error: () => {
         this.legacyOverrideForms = [];
         this.legacyOverrideLoading = false;
-      },
-    });
-  }
-
-  // ---- TEMPORARY (removed in 1.0.0): task-id carrier detection + repair ----
-
-  private loadFormIssues(): void {
-    this.formIssuesLoading = true;
-    this.formFeedback = null;
-    this.adminService.getFormCarrierIssues().subscribe({
-      next: (issues) => {
-        this.formIssues = issues;
-        this.formIssuesLoading = false;
-      },
-      error: () => {
-        this.formIssues = [];
-        this.formIssuesLoading = false;
-      },
-    });
-  }
-
-  isRepairingForm(issue: FormCarrierIssue): boolean {
-    return this.repairingFormIds.has(issue.formId);
-  }
-
-  repairForm(issue: FormCarrierIssue): void {
-    if (this.repairingFormIds.has(issue.formId)) {
-      return;
-    }
-    this.repairingFormIds.add(issue.formId);
-    this.formFeedback = null;
-    this.adminService.repairFormCarrier(issue.formId).subscribe({
-      next: (result) => {
-        this.repairingFormIds.delete(issue.formId);
-        this.formFeedback = {
-          formId: issue.formId,
-          type: 'success',
-          message: `OK — ${result.componentsPatched} component(s) patched`,
-        };
-        this.loadFormIssues();
-      },
-      error: (err) => {
-        this.repairingFormIds.delete(issue.formId);
-        const message =
-          err?.error?.errorMessage ?? err?.error?.message ?? err?.message ?? 'unknown error';
-        this.formFeedback = { formId: issue.formId, type: 'error', message };
-      },
-    });
-  }
-
-  repairAllForms(): void {
-    if (this.repairingAll) {
-      return;
-    }
-    this.repairingAll = true;
-    this.formFeedback = null;
-    this.adminService.repairAllFormCarriers().subscribe({
-      next: (summary) => {
-        this.repairingAll = false;
-        this.formFeedback = {
-          formId: 'all',
-          type: summary.failed > 0 ? 'error' : 'success',
-          message: `Repaired ${summary.formsRepaired} form(s), ${summary.componentsPatched} component(s)${
-            summary.failed > 0 ? `, ${summary.failed} failed` : ''
-          }`,
-        };
-        this.loadFormIssues();
-      },
-      error: (err) => {
-        this.repairingAll = false;
-        const message = err?.error?.message ?? err?.message ?? 'unknown error';
-        this.formFeedback = { formId: 'all', type: 'error', message };
       },
     });
   }
