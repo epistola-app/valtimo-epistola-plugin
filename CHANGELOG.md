@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Bumped the Epistola contract client `app.epistola.contract:client-spring3-restclient` from `0.14.0` to `0.15.0`.** Contract `0.15.0` replaces the generated portable catalog graph `*Dto` models with canonical model names; the plugin does not consume those renamed graph types, so its client integration remains source-compatible. The Prism mock-server image used by local docker-compose and backend integration tests now uses the matching `mock-server:0.15.0` image.
+
 ### Added
 
 - **All tracked first-party files now carry EUPL-1.2 licensing metadata.** Source files declare SPDX metadata inline where their format supports comments; documentation, configuration, generated resources, and binary assets are covered through `REUSE.toml`. The REUSE CLI is pinned through mise, and CI and release builds reject incomplete license metadata.
