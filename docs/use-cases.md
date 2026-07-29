@@ -164,7 +164,7 @@ End Event
 | --------------------- | ------------------------------------------------------------------------- |
 | Nested object mapping | `$doc.applicant.address.street` resolves through 2 levels                 |
 | Array mapping         | `activities` forwards the document array into the template payload        |
-| Environment override  | Action-level `environmentId` overrides the plugin default                 |
+| Environment override  | Literal or JSONata `environmentId` overrides the plugin default           |
 | Variant selection     | Specific variant chosen for the formal letter style                       |
 | Async completion      | Message Catch Event waits for the result collector to correlate           |
 | Download + review     | `download-document` stores a temp resource id, user task renders download |

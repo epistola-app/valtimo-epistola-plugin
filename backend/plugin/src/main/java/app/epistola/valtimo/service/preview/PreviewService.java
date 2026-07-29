@@ -127,8 +127,19 @@ public class PreviewService {
         String variantId = variantIdExpr != null
                 ? jsonataMappingService.evaluateScalar(evalCtxBuilder.build().withExpression(variantIdExpr))
                 : null;
-        String environmentId = actionProps.has("environmentId") && !actionProps.get("environmentId").isNull()
-                ? actionProps.get("environmentId").asText() : plugin.getDefaultEnvironmentId();
+        String configuredEnvironmentId =
+                actionProps.has("environmentId") && !actionProps.get("environmentId").isNull()
+                        ? actionProps.get("environmentId").asText()
+                        : null;
+        String resolvedEnvironmentId =
+                configuredEnvironmentId != null && !configuredEnvironmentId.isBlank()
+                        ? jsonataMappingService.resolveScalar(
+                                evalCtxBuilder.build().withExpression(configuredEnvironmentId))
+                        : null;
+        String environmentId =
+                resolvedEnvironmentId != null && !resolvedEnvironmentId.isBlank()
+                        ? resolvedEnvironmentId
+                        : plugin.getDefaultEnvironmentId();
 
         // Call Epistola preview API
         try {

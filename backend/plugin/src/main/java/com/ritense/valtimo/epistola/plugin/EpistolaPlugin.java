@@ -243,7 +243,8 @@ public class EpistolaPlugin {
      * @param variantId             The ID of the template variant (optional — omit to use default or attribute selection)
      * @param variantAttributes     Key-value attributes for automatic variant selection (optional).
      *                              Expression values can use the JSONata context ($doc, $pv, $case).
-     * @param environmentId         The environment ID (optional, uses plugin default if not specified)
+     * @param environmentId         The environment ID or JSONata expression (optional, uses plugin default
+     *                              when not specified or when the expression resolves to null/blank)
      * @param dataMapping           JSONata expression that produces the template data payload.
      *                              Has access to $doc (document data), $pv (process variables), $case (case data).
      * @param outputFormat          The desired output format (PDF or HTML)
@@ -323,9 +324,13 @@ public class EpistolaPlugin {
         // Resolve the filename as a JSONata expression
         String resolvedFilename = jsonataMappingService.evaluateScalar(buildEvalCtx(execution, filename));
 
-        // Use action-level environmentId if provided, otherwise fall back to plugin default
-        String effectiveEnvironmentId = (environmentId != null && !environmentId.isBlank())
-                ? environmentId
+        // Resolve a dynamic action-level environment and fall back to the plugin default
+        // when no usable override is configured or produced.
+        String resolvedEnvironmentId = (environmentId != null && !environmentId.isBlank())
+                ? jsonataMappingService.resolveScalar(buildEvalCtx(execution, environmentId))
+                : null;
+        String effectiveEnvironmentId = (resolvedEnvironmentId != null && !resolvedEnvironmentId.isBlank())
+                ? resolvedEnvironmentId
                 : defaultEnvironmentId;
 
         // Resolve variantId if it uses a JSONata expression
@@ -592,7 +597,8 @@ public class EpistolaPlugin {
     }
 
     /**
-     * Build an EvaluationContext for scalar expression evaluation (filename, variantId, attribute values).
+     * Build an EvaluationContext for scalar expression evaluation
+     * (filename, variantId, environmentId, attribute values).
      */
     private app.epistola.valtimo.mapping.EvaluationContext buildEvalCtx(DelegateExecution execution, String expression) {
         return app.epistola.valtimo.mapping.EvaluationContext.builder()

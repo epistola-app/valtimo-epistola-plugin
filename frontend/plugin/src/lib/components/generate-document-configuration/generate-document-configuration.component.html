@@ -272,19 +272,46 @@
     </button>
   </div>
 
-  <v-select
-    name="environmentId"
-    data-testid="epistola-generate-environment-id"
-    [title]="'environmentId' | pluginTranslate: pluginId | async"
-    [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
-    [margin]="true"
-    [items]="obs.environments.data"
-    [defaultSelectionId]="obs.prefill?.environmentId"
-    [disabled]="obs.disabled || obs.environments.loading"
-    [required]="false"
-    [loading]="obs.environments.loading"
-  >
-  </v-select>
+  <div class="field-with-fx">
+    <v-select
+      *ngIf="!environmentIdExpressionMode"
+      data-testid="epistola-generate-environment-id"
+      [title]="'environmentId' | pluginTranslate: pluginId | async"
+      [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
+      [margin]="true"
+      [items]="obs.environments.data"
+      [defaultSelectionId]="environmentIdValue"
+      (selectedChange)="onEnvironmentIdValueChange($event)"
+      [disabled]="obs.disabled || obs.environments.loading"
+      [required]="false"
+      [loading]="obs.environments.loading"
+    >
+    </v-select>
+    <div *ngIf="environmentIdExpressionMode" class="fx-input-group">
+      <label class="fx-input-label">{{
+        'environmentId' | pluginTranslate: pluginId | async
+      }}</label>
+      <input
+        type="text"
+        class="fx-input"
+        data-testid="epistola-generate-environment-id-expression"
+        [ngModel]="environmentIdExpression"
+        (ngModelChange)="environmentIdExpression = $event; onEnvironmentIdExpressionChange()"
+        [disabled]="obs.disabled"
+        placeholder="$pv.environmentId"
+      />
+    </div>
+    <button
+      type="button"
+      class="fx-toggle"
+      data-testid="epistola-generate-environment-id-fx-toggle"
+      (click)="toggleEnvironmentIdExpressionMode()"
+      [disabled]="obs.disabled"
+      [title]="environmentIdExpressionMode ? 'Switch to dropdown' : 'Switch to expression'"
+    >
+      {{ environmentIdExpressionMode ? '·' : 'fx' }}
+    </button>
+  </div>
   <div
     *ngIf="obs.environments.error"
     class="loading-error"

@@ -27,5 +27,6 @@ public record ValidateJsonataRequest(
         String dataMapping,
         String filename,
         String variantId,
+        String environmentId,
         Map<String, String> variantAttributeValues
 ) {}

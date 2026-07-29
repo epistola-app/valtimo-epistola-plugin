@@ -19,6 +19,7 @@ package com.ritense.valtimo.epistola.plugin;
 
 import app.epistola.valtimo.domain.DocumentStorageTarget;
 import app.epistola.valtimo.domain.FileFormat;
+import app.epistola.valtimo.domain.GenerationJobResult;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
@@ -35,11 +36,15 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class EpistolaPluginGenerateDocumentTest {
 
@@ -72,7 +77,18 @@ class EpistolaPluginGenerateDocumentTest {
         ReflectionTestUtils.setField(plugin, "baseUrl", BASE_URL);
         ReflectionTestUtils.setField(plugin, "apiKey", API_KEY);
         ReflectionTestUtils.setField(plugin, "tenantId", TENANT_ID);
+        ReflectionTestUtils.setField(plugin, "defaultEnvironmentId", "default");
         return plugin;
+    }
+
+    private void stubSuccessfulGeneration(String resolvedEnvironmentId) {
+        when(jsonataMappingService.evaluate(any())).thenReturn(Map.of());
+        when(jsonataMappingService.evaluateScalar(any())).thenReturn("document.pdf");
+        when(jsonataMappingService.resolveScalar(any())).thenReturn(resolvedEnvironmentId);
+        when(epistolaService.submitGenerationJob(
+                anyString(), anyString(), anyString(), anyString(), anyString(),
+                isNull(), isNull(), any(), anyMap(), eq(FileFormat.PDF), anyString(), isNull(), isNull()))
+                .thenReturn(GenerationJobResult.builder().requestId("request-1").status("PENDING").build());
     }
 
     @Test
@@ -95,5 +111,51 @@ class EpistolaPluginGenerateDocumentTest {
 
         verifyNoInteractions(epistolaService, jsonataMappingService, resultCollectorRunner);
         verify(execution, never()).setVariable(anyString(), any());
+    }
+
+    @Test
+    void generateDocumentResolvesEnvironmentExpression() {
+        stubSuccessfulGeneration("production");
+
+        plugin().generateDocument(
+                execution,
+                "catalog",
+                "template",
+                null,
+                null,
+                "$pv.environmentId",
+                "{}",
+                FileFormat.PDF,
+                "\"document.pdf\"",
+                null,
+                "epistolaResult");
+
+        verify(epistolaService).submitGenerationJob(
+                eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), eq("catalog"), eq("template"),
+                isNull(), isNull(), eq("production"), anyMap(), eq(FileFormat.PDF),
+                eq("document.pdf"), isNull(), isNull());
+    }
+
+    @Test
+    void generateDocumentFallsBackToDefaultWhenEnvironmentExpressionResolvesBlank() {
+        stubSuccessfulGeneration(" ");
+
+        plugin().generateDocument(
+                execution,
+                "catalog",
+                "template",
+                null,
+                null,
+                "$doc.environmentId",
+                "{}",
+                FileFormat.PDF,
+                "\"document.pdf\"",
+                null,
+                "epistolaResult");
+
+        verify(epistolaService).submitGenerationJob(
+                eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), eq("catalog"), eq("template"),
+                isNull(), isNull(), eq("default"), anyMap(), eq(FileFormat.PDF),
+                eq("document.pdf"), isNull(), isNull());
     }
 }
