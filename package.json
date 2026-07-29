@@ -19,8 +19,11 @@
     "format:check": "oxfmt --check",
     "lint": "oxlint --fix",
     "lint:check": "oxlint",
-    "headers": "node scripts/license-headers.mjs",
-    "headers:check": "node scripts/license-headers.mjs --check",
+    "license:headers": "node scripts/license-headers.mjs",
+    "license:headers:check": "node scripts/license-headers.mjs --check",
+    "license:check": "pnpm license:headers:check && mise exec -- reuse --no-multiprocessing lint",
+    "headers": "pnpm license:headers",
+    "headers:check": "pnpm license:headers:check",
     "singletons:check": "node scripts/check-frontend-singletons.mjs",
     "typecheck": "pnpm --filter @epistola.app/valtimo-plugin typecheck",
     "clean": "rm -rf node_modules && pnpm -r exec rm -rf node_modules dist"

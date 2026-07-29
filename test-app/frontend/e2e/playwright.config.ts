@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Epistola Nederland B.V.
+//
+// SPDX-License-Identifier: EUPL-1.2
+
 import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({

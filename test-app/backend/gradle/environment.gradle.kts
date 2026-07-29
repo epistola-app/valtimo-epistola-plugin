@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Epistola Nederland B.V.
+//
+// SPDX-License-Identifier: EUPL-1.2
+
 fun configureEnvironment(task: ProcessForkOptions) {
     val f = File("${rootProject.projectDir}/.env.properties")
     if (f.isFile) {

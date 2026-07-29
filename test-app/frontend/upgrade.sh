@@ -1,4 +1,8 @@
 #!/bin/bash
+# SPDX-FileCopyrightText: Epistola Nederland B.V.
+#
+# SPDX-License-Identifier: EUPL-1.2
+
 git fetch && git checkout v/${VALTIMO_RELEASE_MAJOR_VERSION} && git pull
 sed -r -i '' 's/"@valtimo\/([a-z0-9_-]+)".+/"@valtimo\/\1": "'${VALTIMO_RELEASE_VERSION}'",/' package.json
 npm i

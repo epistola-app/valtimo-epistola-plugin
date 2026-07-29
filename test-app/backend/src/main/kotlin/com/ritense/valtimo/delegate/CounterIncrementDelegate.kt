@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Epistola Nederland B.V.
+//
+// SPDX-License-Identifier: EUPL-1.2
+
 package com.ritense.valtimo.delegate
 
 import org.operaton.bpm.engine.delegate.DelegateExecution

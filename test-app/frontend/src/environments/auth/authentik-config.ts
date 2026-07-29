@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Epistola Nederland B.V.
+//
+// SPDX-License-Identifier: EUPL-1.2
+
 import { CommonModule } from '@angular/common';
 import {
   HTTP_INTERCEPTORS,

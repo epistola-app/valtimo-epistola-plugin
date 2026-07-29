@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Epistola Nederland B.V.
+//
+// SPDX-License-Identifier: EUPL-1.2
+
 import { type Page, type Locator, expect } from '@playwright/test';
 
 export class PluginManagementPage {

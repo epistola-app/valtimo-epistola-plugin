@@ -1,4 +1,8 @@
 #!/bin/bash
+# SPDX-FileCopyrightText: Epistola Nederland B.V.
+#
+# SPDX-License-Identifier: EUPL-1.2
+
 echo "Which version do you want to release?"
 read valtimoReleaseNumber
 

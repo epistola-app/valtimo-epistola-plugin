@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: Epistola Nederland B.V.
+#
+# SPDX-License-Identifier: EUPL-1.2
+
 set -euo pipefail
 
 # Vendors the official Keycloak Helm chart into charts/valtimo-demo/charts for Helm 4 usage.

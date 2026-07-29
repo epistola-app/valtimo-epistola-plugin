@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# SPDX-FileCopyrightText: Epistola Nederland B.V.
+#
+# SPDX-License-Identifier: EUPL-1.2
+
 # Resets the valtimo and epistola databases and restarts affected services.
 # Simulates what the Kubernetes CronJob does in the Helm chart.
 #

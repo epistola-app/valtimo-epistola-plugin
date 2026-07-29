@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Epistola Nederland B.V.
+//
+// SPDX-License-Identifier: EUPL-1.2
+
 plugins {
     // Settings-level plugin - version catalog not available here, keep in sync with libs.versions.toml
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"

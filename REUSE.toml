@@ -1,0 +1,39 @@
+version = 1
+SPDX-PackageName = "Valtimo Epistola Plugin"
+SPDX-PackageSupplier = "Epistola Nederland B.V."
+SPDX-PackageDownloadLocation = "https://github.com/epistola-app/valtimo-epistola-plugin"
+
+[[annotations]]
+path = ["*", "**/*"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Epistola Nederland B.V."
+SPDX-License-Identifier = "EUPL-1.2"
+
+[[annotations]]
+path = [
+  "gradle/wrapper/gradle-wrapper.jar",
+  "gradle/wrapper/gradle-wrapper.properties",
+  "gradlew",
+  "gradlew.bat",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "Gradle, Inc."
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = [
+  "backend/plugin/src/test/java/app/epistola/valtimo/BaseIntegrationTest.java",
+  "backend/plugin/src/test/java/app/epistola/valtimo/PostgresTestContainerConfig.java",
+  "test-app/frontend/src/assets/audit-2.png",
+  "test-app/frontend/src/assets/modal/header-image.png",
+  "test-app/frontend/src/favicon.ico",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "Ritense BV, the Netherlands"
+SPDX-License-Identifier = "EUPL-1.2"
+
+[[annotations]]
+path = "test-app/frontend/src/assets/bpmn/ValtimoBPMNModeler.js"
+precedence = "override"
+SPDX-FileCopyrightText = "Ritense BV and bundled third-party contributors"
+SPDX-License-Identifier = "EUPL-1.2 AND MIT AND BSD-3-Clause"

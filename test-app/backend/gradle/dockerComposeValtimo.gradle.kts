@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Epistola Nederland B.V.
+//
+// SPDX-License-Identifier: EUPL-1.2
+
 /*
  * Copyright 2015-2024 Ritense BV, the Netherlands.
  *

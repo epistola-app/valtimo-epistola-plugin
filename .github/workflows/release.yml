@@ -80,7 +80,7 @@ jobs:
         run: |
           pnpm lint:check
           pnpm format:check
-          pnpm headers:check
+          pnpm license:check
           pnpm typecheck
           pnpm singletons:check
           pnpm --filter @epistola.app/valtimo-plugin test

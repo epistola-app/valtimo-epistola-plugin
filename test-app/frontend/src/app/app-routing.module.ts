@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Epistola Nederland B.V.
+//
+// SPDX-License-Identifier: EUPL-1.2
+
 import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 

@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: Epistola Nederland B.V.
+#
+# SPDX-License-Identifier: EUPL-1.2
+
 FROM nginxinc/nginx-unprivileged:1.28-alpine
 
 COPY --chown=1000:1000 ./deployment/dist /usr/share/nginx/html

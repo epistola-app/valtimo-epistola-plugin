@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Epistola Nederland B.V.
+//
+// SPDX-License-Identifier: EUPL-1.2
+
 import { test as setup, expect } from '@playwright/test';
 
 const AUTH_FILE = 'e2e/.auth/user.json';

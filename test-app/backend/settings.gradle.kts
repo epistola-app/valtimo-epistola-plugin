@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Epistola Nederland B.V.
+//
+// SPDX-License-Identifier: EUPL-1.2
+
 // Background info https://github.com/gradle/gradle/issues/1697
 pluginManagement {
     val kotlinVersion: String by settings

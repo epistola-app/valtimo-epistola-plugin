@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Epistola Nederland B.V.
+//
+// SPDX-License-Identifier: EUPL-1.2
+
 import { test, expect, type Page } from '@playwright/test';
 
 const MOCK_TEMPLATES = [
