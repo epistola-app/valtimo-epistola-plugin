@@ -134,6 +134,7 @@ public class EpistolaToolingResource {
         validate("dataMapping", request.dataMapping(), errors);
         validate("filename", request.filename(), errors);
         validate("variantId", request.variantId(), errors);
+        validate("environmentId", request.environmentId(), errors);
         if (request.variantAttributeValues() != null) {
             for (Map.Entry<String, String> entry : request.variantAttributeValues().entrySet()) {
                 validate("variantAttributes." + entry.getKey(), entry.getValue(), errors);

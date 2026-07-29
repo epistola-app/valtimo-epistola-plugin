@@ -161,6 +161,10 @@ export class GenerateDocumentConfigurationComponent
   filenameExpression = '';
   /** Plain-mode filename. Tracked outside `<v-form>` for the same reason as `variantIdValue`. */
   filenameValue = '';
+  environmentIdExpressionMode = false;
+  environmentIdExpression = '';
+  /** Plain-mode environment id. Tracked outside `<v-form>` because the field has an fx wrapper. */
+  environmentIdValue = '';
   variantAttributeEntries: {
     key: string;
     value: string;
@@ -200,6 +204,7 @@ export class GenerateDocumentConfigurationComponent
     this.initContext();
     this.initPluginConfiguration();
     this.initCascade();
+    this.initEnvironmentPrefill();
     this.loadExpressionFunctions();
     this.openSaveSubscription();
   }
@@ -257,6 +262,11 @@ export class GenerateDocumentConfigurationComponent
     this.revalidate();
   }
 
+  onEnvironmentIdValueChange(value: SelectedValue | undefined): void {
+    this.environmentIdValue = value == null || Array.isArray(value) ? '' : String(value);
+    this.revalidate();
+  }
+
   toggleFilenameExpressionMode(): void {
     this.filenameExpressionMode = !this.filenameExpressionMode;
     this.revalidate();
@@ -264,6 +274,11 @@ export class GenerateDocumentConfigurationComponent
 
   toggleVariantIdExpressionMode(): void {
     this.variantIdExpressionMode = !this.variantIdExpressionMode;
+    this.revalidate();
+  }
+
+  toggleEnvironmentIdExpressionMode(): void {
+    this.environmentIdExpressionMode = !this.environmentIdExpressionMode;
     this.revalidate();
   }
 
@@ -297,6 +312,10 @@ export class GenerateDocumentConfigurationComponent
   }
 
   onFilenameExpressionChange(): void {
+    this.revalidate();
+  }
+
+  onEnvironmentIdExpressionChange(): void {
     this.revalidate();
   }
 
@@ -347,6 +366,21 @@ export class GenerateDocumentConfigurationComponent
       return of(null).pipe(shareReplay(1));
     }
     return this.prefillConfiguration$.pipe(take(1), shareReplay(1));
+  }
+
+  private initEnvironmentPrefill(): void {
+    this.prefill$.pipe(takeUntil(this.destroy$), take(1)).subscribe((config) => {
+      if (!config?.environmentId) {
+        return;
+      }
+      if (isExpression(config.environmentId)) {
+        this.environmentIdExpressionMode = true;
+        this.environmentIdExpression = config.environmentId;
+      } else {
+        this.environmentIdValue = config.environmentId;
+      }
+      this.cdr.markForCheck();
+    });
   }
 
   private initContext(): void {
@@ -672,7 +706,9 @@ export class GenerateDocumentConfigurationComponent
             const config: GenerateDocumentConfig = {
               catalogId,
               templateId,
-              environmentId: formValue.environmentId || undefined,
+              environmentId: this.environmentIdExpressionMode
+                ? this.environmentIdExpression || undefined
+                : this.environmentIdValue || undefined,
               dataMapping: dataMapping,
               outputFormat: formValue.outputFormat as 'PDF' | 'HTML',
               filename: this.filenameExpressionMode ? this.filenameExpression : this.filenameValue,
@@ -700,7 +736,7 @@ export class GenerateDocumentConfigurationComponent
    * Build a JSONata validation request from the config and call the backend.
    * Only fields that are JSONata expressions get validated:
    * - dataMapping is always JSONata
-   * - filename / variantId only when their `fx` toggle is on
+   * - filename / variantId / environmentId only when their `fx` toggle is on
    * - variant attribute values only when isExpression() reports true
    * On invalid response, surface errors and abort the emit.
    * If the validator endpoint itself fails (network/server), proceed with the
@@ -720,6 +756,7 @@ export class GenerateDocumentConfigurationComponent
       dataMapping: config.dataMapping || null,
       filename: this.filenameExpressionMode ? config.filename : null,
       variantId: this.variantIdExpressionMode ? config.variantId || null : null,
+      environmentId: this.environmentIdExpressionMode ? config.environmentId || null : null,
       variantAttributeValues:
         Object.keys(variantAttributeValues).length > 0 ? variantAttributeValues : null,
     };

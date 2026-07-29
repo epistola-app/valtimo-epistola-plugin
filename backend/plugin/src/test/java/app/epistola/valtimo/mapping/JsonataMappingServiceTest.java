@@ -334,6 +334,23 @@ class JsonataMappingServiceTest {
             var ctx = EvaluationContext.builder().expression("  ").build();
             assertThat(service.evaluateScalar(ctx)).isEqualTo("  ");
         }
+
+        @Test
+        void shouldReturnLiteralScalarUnchanged() {
+            var ctx = EvaluationContext.builder().expression("production").build();
+
+            assertThat(service.resolveScalar(ctx)).isEqualTo("production");
+        }
+
+        @Test
+        void shouldResolveExpressionScalar() {
+            var ctx = EvaluationContext.builder()
+                    .expression("$pv.environment")
+                    .processVariableResolver(Map.of("environment", "production")::get)
+                    .build();
+
+            assertThat(service.resolveScalar(ctx)).isEqualTo("production");
+        }
     }
 
     @Nested

@@ -86,7 +86,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       attributeRequired: 'Verplicht',
       attributePreferred: 'Voorkeur',
       environmentId: 'Omgeving',
-      environmentIdTooltip: 'Selecteer de doelomgeving (optioneel)',
+      environmentIdTooltip:
+        'Selecteer de doelomgeving of gebruik een JSONata-expressie (optioneel)',
       correlationId: 'Correlatie ID',
       correlationIdTooltip: 'Een optioneel correlatie ID voor het traceren van dit verzoek',
       dataMapping: 'Data Mapping',
@@ -326,7 +327,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       attributeRequired: 'Required',
       attributePreferred: 'Preferred',
       environmentId: 'Environment',
-      environmentIdTooltip: 'Select the target environment (optional)',
+      environmentIdTooltip: 'Select the target environment or use a JSONata expression (optional)',
       correlationId: 'Correlation ID',
       correlationIdTooltip: 'An optional correlation ID for tracking this request',
       dataMapping: 'Data Mapping',

@@ -48,6 +48,8 @@ export interface VariantAttributeEntry {
  * Variant selection supports two modes:
  * - Explicit: set variantId directly
  * - By attributes: set variantAttributes with key-value pairs (values can be JSONata expressions)
+ *
+ * environmentId may be a literal environment id or a JSONata expression.
  */
 export interface GenerateDocumentConfig {
   catalogId: string;
@@ -132,6 +134,7 @@ export interface ValidateJsonataRequest {
   dataMapping?: string | null;
   filename?: string | null;
   variantId?: string | null;
+  environmentId?: string | null;
   variantAttributeValues?: Record<string, string> | null;
 }
 

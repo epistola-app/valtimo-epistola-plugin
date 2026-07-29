@@ -56,6 +56,7 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -314,7 +315,7 @@ class PreviewServiceTest {
             when(plugin.getBaseUrl()).thenReturn("https://api.epistola.app");
             when(plugin.getApiKey()).thenReturn("secret-key");
             when(plugin.getTenantId()).thenReturn("tenant-1");
-            when(plugin.getDefaultEnvironmentId()).thenReturn("env-1");
+            lenient().when(plugin.getDefaultEnvironmentId()).thenReturn("env-1");
             when(pluginService.createInstance(configId)).thenReturn(plugin);
 
             when(epistolaService.previewDocument(
@@ -417,6 +418,46 @@ class PreviewServiceTest {
                     anyString(), variantIdCaptor.capture(), anyString(), any());
 
             assertEquals("letter-formal", variantIdCaptor.getValue());
+        }
+
+        @Test
+        void environmentIdExpression_evaluatedDynamically() {
+            PluginProcessLink processLink = mockFullChain("instance-1", "my-process:1:abc");
+            processLink.getActionProperties().put("environmentId", "$pv.environmentId");
+
+            when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
+                    .thenReturn(new LinkedHashMap<>());
+            when(jsonataMappingService.resolveScalar(any(EvaluationContext.class)))
+                    .thenReturn("production");
+
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
+
+            previewService.generatePreview(request, "doc-123", "instance-1");
+
+            ArgumentCaptor<String> environmentIdCaptor = ArgumentCaptor.forClass(String.class);
+            verify(epistolaService).previewDocument(
+                    anyString(), anyString(), anyString(), anyString(),
+                    anyString(), any(), environmentIdCaptor.capture(), any());
+
+            assertEquals("production", environmentIdCaptor.getValue());
+        }
+
+        @Test
+        void blankEnvironmentIdExpression_fallsBackToPluginDefault() {
+            PluginProcessLink processLink = mockFullChain("instance-1", "my-process:1:abc");
+            processLink.getActionProperties().put("environmentId", "$pv.environmentId");
+
+            when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
+                    .thenReturn(new LinkedHashMap<>());
+            when(jsonataMappingService.resolveScalar(any(EvaluationContext.class))).thenReturn(" ");
+
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
+
+            previewService.generatePreview(request, "doc-123", "instance-1");
+
+            verify(epistolaService).previewDocument(
+                    anyString(), anyString(), anyString(), anyString(),
+                    anyString(), any(), eq("env-1"), any());
         }
 
         @Test
