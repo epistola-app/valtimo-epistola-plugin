@@ -44,7 +44,16 @@ import {
 } from '@valtimo/components';
 import { CaseManagementParams, ManagementContext } from '@valtimo/shared';
 import { ProcessLinkStateService } from '@valtimo/process-link';
-import { BehaviorSubject, combineLatest, merge, Observable, of, Subject, Subscription } from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  merge,
+  Observable,
+  of,
+  ReplaySubject,
+  Subject,
+  Subscription,
+} from 'rxjs';
 import {
   catchError,
   distinctUntilChanged,
@@ -87,6 +96,23 @@ import {
 } from './generate-document-config-version';
 
 export type VariantSelectionMode = 'explicit' | 'attributes';
+
+export function resolveExpressionSelectPrefill(
+  expression: string | undefined,
+  options: SelectItem[],
+): { expressionMode: boolean; expression: string; value: string } {
+  if (!expression) {
+    return { expressionMode: false, expression: '', value: '' };
+  }
+
+  const literal = decodeJsonataStringLiteral(expression);
+  const exactMatch =
+    literal !== undefined && options.some((option) => String(option.id) === literal);
+
+  return exactMatch
+    ? { expressionMode: false, expression: '', value: literal }
+    : { expressionMode: true, expression, value: '' };
+}
 
 @Component({
   selector: 'epistola-generate-document-configuration',
@@ -188,6 +214,8 @@ export class GenerateDocumentConfigurationComponent
   private readonly formValue$ = new BehaviorSubject<Partial<GenerateDocumentConfig> | null>(null);
   private readonly valid$ = new BehaviorSubject<boolean>(false);
   private pluginConfigurationId$ = new BehaviorSubject<string>('');
+  private readonly loadedEnvironmentOptions$ = new ReplaySubject<SelectItem[]>(1);
+  private readonly loadedVariantOptions$ = new ReplaySubject<SelectItem[]>(1);
 
   /** Resolves once with the prefill config (or empty config if none). */
   private prefill$!: Observable<GenerateDocumentConfigV1 | null>;
@@ -207,6 +235,7 @@ export class GenerateDocumentConfigurationComponent
     this.initPluginConfiguration();
     this.initCascade();
     this.initEnvironmentPrefill();
+    this.initVariantPrefill();
     this.initCorrelationIdPrefill();
     this.loadExpressionFunctions();
     this.openSaveSubscription();
@@ -392,19 +421,30 @@ export class GenerateDocumentConfigurationComponent
   }
 
   private initEnvironmentPrefill(): void {
-    this.prefill$.pipe(takeUntil(this.destroy$), take(1)).subscribe((config) => {
-      if (!config?.environmentId) {
-        return;
-      }
-      const literal = decodeJsonataStringLiteral(config.environmentId);
-      if (literal === undefined) {
-        this.environmentIdExpressionMode = true;
-        this.environmentIdExpression = config.environmentId;
-      } else {
-        this.environmentIdValue = literal;
-      }
-      this.cdr.markForCheck();
-    });
+    combineLatest([this.prefill$, this.loadedEnvironmentOptions$])
+      .pipe(takeUntil(this.destroy$), take(1))
+      .subscribe(([config, options]) => {
+        const selection = resolveExpressionSelectPrefill(config?.environmentId, options);
+        this.environmentIdExpressionMode = selection.expressionMode;
+        this.environmentIdExpression = selection.expression;
+        this.environmentIdValue = selection.value;
+        this.cdr.markForCheck();
+      });
+  }
+
+  private initVariantPrefill(): void {
+    combineLatest([this.prefill$, this.loadedVariantOptions$])
+      .pipe(takeUntil(this.destroy$), take(1))
+      .subscribe(([config, options]) => {
+        if (!config || (config.variantAttributes?.length ?? 0) > 0) {
+          return;
+        }
+        const selection = resolveExpressionSelectPrefill(config.variantId, options);
+        this.variantIdExpressionMode = selection.expressionMode;
+        this.variantIdExpression = selection.expression;
+        this.variantIdValue = selection.value;
+        this.cdr.markForCheck();
+      });
   }
 
   private initCorrelationIdPrefill(): void {
@@ -498,7 +538,10 @@ export class GenerateDocumentConfigurationComponent
           ),
         ),
       )
-      .subscribe((resource) => this.environments$.next(resource));
+      .subscribe((resource) => {
+        this.environments$.next(resource);
+        this.loadedEnvironmentOptions$.next(resource.data);
+      });
 
     // ── Seed selectedCatalogId$ from prefill once catalogs are loaded ──
     combineLatest([
@@ -578,7 +621,10 @@ export class GenerateDocumentConfigurationComponent
           ),
         ),
       )
-      .subscribe((resource) => this.variants$.next(resource));
+      .subscribe((resource) => {
+        this.variants$.next(resource);
+        this.loadedVariantOptions$.next(resource.data);
+      });
 
     // ── Template fields: load when templateId changes ──
     combineLatest([configId$, catalogId$, templateId$])
@@ -624,15 +670,6 @@ export class GenerateDocumentConfigurationComponent
               _expressionMode: literal === undefined,
             };
           });
-        } else if (config.variantId) {
-          this.variantSelectionMode = 'explicit';
-          const literal = decodeJsonataStringLiteral(config.variantId);
-          if (literal === undefined) {
-            this.variantIdExpressionMode = true;
-            this.variantIdExpression = config.variantId;
-          } else {
-            this.variantIdValue = literal;
-          }
         }
 
         // Filename is always represented directly as JSONata.

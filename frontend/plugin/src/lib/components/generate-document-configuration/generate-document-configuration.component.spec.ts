@@ -58,7 +58,46 @@ jest.mock('../mapping-preview/mapping-preview.component', () => ({
   MappingPreviewComponent: class {},
 }));
 
-import { GenerateDocumentConfigurationComponent } from './generate-document-configuration.component';
+import {
+  GenerateDocumentConfigurationComponent,
+  resolveExpressionSelectPrefill,
+} from './generate-document-configuration.component';
+
+describe('resolveExpressionSelectPrefill', () => {
+  const options = [
+    { id: 'default', text: 'Default' },
+    { id: 'production', text: 'Production' },
+  ];
+
+  it('uses the select only for an exact decoded option id', () => {
+    expect(resolveExpressionSelectPrefill('"production"', options)).toEqual({
+      expressionMode: false,
+      expression: '',
+      value: 'production',
+    });
+  });
+
+  it('uses fx mode for dynamic expressions and unmatched literals', () => {
+    expect(resolveExpressionSelectPrefill('$pv.environment', options)).toEqual({
+      expressionMode: true,
+      expression: '$pv.environment',
+      value: '',
+    });
+    expect(resolveExpressionSelectPrefill('"staging"', options)).toEqual({
+      expressionMode: true,
+      expression: '"staging"',
+      value: '',
+    });
+  });
+
+  it('keeps an unconfigured field in select mode', () => {
+    expect(resolveExpressionSelectPrefill(undefined, options)).toEqual({
+      expressionMode: false,
+      expression: '',
+      value: '',
+    });
+  });
+});
 
 describe('GenerateDocumentConfigurationComponent versioning', () => {
   const createComponent = () => {
@@ -153,5 +192,31 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
         correlationId: '"request-123"',
       }),
     ]);
+  });
+
+  it('applies exact-match selection only after environment and variant options load', () => {
+    const { component } = createComponent();
+    (component as any).prefill$ = of({
+      actionConfigVersion: 1,
+      catalogId: 'catalog',
+      templateId: 'template',
+      dataMapping: '{}',
+      outputFormat: '"PDF"',
+      filename: '"letter.pdf"',
+      environmentId: '"production"',
+      variantId: '"missing-variant"',
+      resultProcessVariable: 'result',
+    });
+
+    (component as any).initEnvironmentPrefill();
+    (component as any).initVariantPrefill();
+
+    (component as any).loadedEnvironmentOptions$.next([{ id: 'production', text: 'Production' }]);
+    (component as any).loadedVariantOptions$.next([{ id: 'default', text: 'Default' }]);
+
+    expect(component.environmentIdExpressionMode).toBe(false);
+    expect(component.environmentIdValue).toBe('production');
+    expect(component.variantIdExpressionMode).toBe(true);
+    expect(component.variantIdExpression).toBe('"missing-variant"');
   });
 });
