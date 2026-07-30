@@ -77,7 +77,6 @@ import {
   loadingResource,
   successResource,
   TemplateField,
-  ValidateJsonataRequest,
   VariableSuggestions,
 } from '../../models';
 import { EpistolaPluginService } from '../../services';
@@ -94,25 +93,15 @@ import {
   encodeJsonataStringLiteral,
   migrateGenerateDocumentConfig,
 } from './generate-document-config-version';
-
-export type VariantSelectionMode = 'explicit' | 'attributes';
-
-export function resolveExpressionSelectPrefill(
-  expression: string | undefined,
-  options: SelectItem[],
-): { expressionMode: boolean; expression: string; value: string } {
-  if (!expression) {
-    return { expressionMode: false, expression: '', value: '' };
-  }
-
-  const literal = decodeJsonataStringLiteral(expression);
-  const exactMatch =
-    literal !== undefined && options.some((option) => String(option.id) === literal);
-
-  return exactMatch
-    ? { expressionMode: false, expression: '', value: literal }
-    : { expressionMode: true, expression, value: '' };
-}
+import {
+  buildGenerateDocumentConfig,
+  buildValidateJsonataRequest,
+  createVariantAttributeEditorEntries,
+  formatVariantAttributes,
+  resolveExpressionSelectPrefill,
+  VariantAttributeEditorEntry,
+  VariantSelectionMode,
+} from './generate-document-config-editor.adapter';
 
 @Component({
   selector: 'epistola-generate-document-configuration',
@@ -190,13 +179,7 @@ export class GenerateDocumentConfigurationComponent
   /** Plain-mode environment id. Tracked outside `<v-form>` because the field has an fx wrapper. */
   environmentIdValue = '';
   correlationIdExpression = '';
-  variantAttributeEntries: {
-    key: string;
-    value: string;
-    required: boolean;
-    _customKey?: boolean;
-    _expressionMode?: boolean;
-  }[] = [];
+  variantAttributeEntries: VariantAttributeEditorEntry[] = [];
   availableAttributeKeys: string[] = [];
   caseDefinitionKey: string | null = null;
   processVariables: string[] = [];
@@ -388,12 +371,6 @@ export class GenerateDocumentConfigurationComponent
     if (currentFormValue) {
       this.handleValid(currentFormValue);
     }
-  }
-
-  private formatAttributes(attributes: Record<string, string>): string {
-    const entries = Object.entries(attributes || {});
-    if (entries.length === 0) return '';
-    return ` (${entries.map(([k, v]) => `${k}=${v}`).join(', ')})`;
   }
 
   /**
@@ -613,7 +590,7 @@ export class GenerateDocumentConfigurationComponent
               successResource(
                 variants.map((v) => ({
                   id: v.id,
-                  text: v.name + this.formatAttributes(v.attributes),
+                  text: v.name + formatVariantAttributes(v.attributes),
                 })),
               ),
             ),
@@ -661,15 +638,9 @@ export class GenerateDocumentConfigurationComponent
         // Apply variant prefill
         if (config.variantAttributes && config.variantAttributes.length > 0) {
           this.variantSelectionMode = 'attributes';
-          this.variantAttributeEntries = config.variantAttributes.map((e) => {
-            const literal = decodeJsonataStringLiteral(e.value);
-            return {
-              key: e.key,
-              value: literal ?? e.value,
-              required: e.required,
-              _expressionMode: literal === undefined,
-            };
-          });
+          this.variantAttributeEntries = createVariantAttributeEditorEntries(
+            config.variantAttributes,
+          );
         }
 
         // Filename is always represented directly as JSONata.
@@ -764,37 +735,26 @@ export class GenerateDocumentConfigurationComponent
             const catalogId = this.selectedCatalogId$.getValue();
             const templateId = formValue.templateId!;
 
-            const config: GenerateDocumentConfig = {
-              actionConfigVersion: 1,
+            const config = buildGenerateDocumentConfig({
               catalogId,
               templateId,
-              environmentId: this.environmentIdExpressionMode
-                ? this.environmentIdExpression || undefined
-                : this.environmentIdValue
-                  ? encodeJsonataStringLiteral(this.environmentIdValue)
-                  : undefined,
-              dataMapping: dataMapping,
-              outputFormat: encodeJsonataStringLiteral('PDF'),
-              filename: this.filenameExpression,
-              correlationId: this.correlationIdExpression || undefined,
+              dataMapping,
+              filenameExpression: this.filenameExpression,
+              correlationIdExpression: this.correlationIdExpression,
               resultProcessVariable: formValue.resultProcessVariable!,
-            };
-
-            if (this.variantSelectionMode === 'explicit') {
-              config.variantId = this.variantIdExpressionMode
-                ? this.variantIdExpression
-                : this.variantIdValue
-                  ? encodeJsonataStringLiteral(this.variantIdValue)
-                  : undefined;
-            } else {
-              config.variantAttributes = this.variantAttributeEntries
-                .filter((e) => e.key && e.value)
-                .map((e) => ({
-                  key: e.key,
-                  value: e._expressionMode ? e.value : encodeJsonataStringLiteral(e.value),
-                  required: e.required,
-                }));
-            }
+              environment: {
+                expressionMode: this.environmentIdExpressionMode,
+                expression: this.environmentIdExpression,
+                value: this.environmentIdValue,
+              },
+              variantSelectionMode: this.variantSelectionMode,
+              variant: {
+                expressionMode: this.variantIdExpressionMode,
+                expression: this.variantIdExpression,
+                value: this.variantIdValue,
+              },
+              variantAttributes: this.variantAttributeEntries,
+            });
 
             this.validateAndEmit(config);
           }
@@ -810,26 +770,8 @@ export class GenerateDocumentConfigurationComponent
    * emit — the validation is a quality-of-life check, not a hard gate.
    */
   private validateAndEmit(config: GenerateDocumentConfig): void {
-    const variantAttributeValues: Record<string, string> = {};
-    if (config.variantAttributes) {
-      for (const attr of config.variantAttributes) {
-        variantAttributeValues[attr.key] = attr.value;
-      }
-    }
-
-    const request: ValidateJsonataRequest = {
-      dataMapping: config.dataMapping || null,
-      outputFormat: config.outputFormat,
-      filename: config.filename,
-      variantId: config.variantId || null,
-      environmentId: config.environmentId || null,
-      correlationId: config.correlationId || null,
-      variantAttributeValues:
-        Object.keys(variantAttributeValues).length > 0 ? variantAttributeValues : null,
-    };
-
     this.epistolaPluginService
-      .validateJsonata(request)
+      .validateJsonata(buildValidateJsonataRequest(config))
       .pipe(
         take(1),
         catchError(() => of({ valid: true, errors: [] as JsonataFieldError[] })),

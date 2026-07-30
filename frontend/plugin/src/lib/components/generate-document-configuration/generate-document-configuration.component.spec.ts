@@ -58,10 +58,8 @@ jest.mock('../mapping-preview/mapping-preview.component', () => ({
   MappingPreviewComponent: class {},
 }));
 
-import {
-  GenerateDocumentConfigurationComponent,
-  resolveExpressionSelectPrefill,
-} from './generate-document-configuration.component';
+import { resolveExpressionSelectPrefill } from './generate-document-config-editor.adapter';
+import { GenerateDocumentConfigurationComponent } from './generate-document-configuration.component';
 
 describe('resolveExpressionSelectPrefill', () => {
   const options = [
