@@ -9,12 +9,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Generate-document action versions now use independent Java parsers.** Valtimo-injected and persisted action properties share a clearly named immutable carrier, while complete v0 and v1 parsing workflows implement a small version-parser interface without an abstract template that could accidentally change frozen legacy semantics.
+- **Variant-attribute values are now consistently JSONata-only inputs.** The per-row literal/fx toggle has been removed; saved expressions are displayed and persisted unchanged, and literal attribute values use explicit JSONata strings such as `"nl"`, matching filename, correlation ID, and simple data-mapping semantics.
+- **The generate-document editor now separates configuration logic from Angular presentation state.** Prefill interpretation, expression/select serialization, variant-attribute conversion, option-label formatting, and JSONata validation-request construction live in a pure adapter with focused tests, leaving the component responsible for UI orchestration.
+- **Generate-document v1 now treats filename, correlation ID, and output format consistently as JSONata expressions.** Filename and correlation ID are shown directly as expression inputs without an fx/plain mode, while output format is fixed to the JSONata literal `"PDF"` and HTML is no longer offered or accepted by v1. Unversioned v0 actions retain their historical literal and HTML compatibility.
+- **The simple data-mapping builder now accepts JSONata expressions directly per template field.** Its per-field fx toggles and autocomplete datalists have been removed, while advanced mode and context retrieval remain available.
+- **Generate-document action configurations are now explicitly versioned.** Existing unversioned actions execute as v0 with their mixed literal/JSONata scalar semantics, while the configurator upgrades them locally to v1 when opened and persists `actionConfigVersion: 1` on save. In v1, filename, variant, environment, and variant-attribute values are always JSONata, with ordinary UI values stored as escaped JSONata string literals. The backend keeps version-specific execution for already-deployed links and rejects unsupported future versions clearly.
 - **Bumped the Epistola contract client `app.epistola.contract:client-spring3-restclient` from `0.14.0` to `0.15.0`.** Contract `0.15.0` replaces the generated portable catalog graph `*Dto` models with canonical model names; the plugin does not consume those renamed graph types, so its client integration remains source-compatible. The Prism mock-server image used by local docker-compose and backend integration tests now uses the matching `mock-server:0.15.0` image.
 
 ### Added
 
+- **Legacy generate-document upgrades are now visible and guarded by shared compatibility fixtures.** Opening a valid v0 action shows a localized notice that saving persists v1 while cancelling leaves storage unchanged. Frontend and backend tests consume the same v0 scalar corpus so their separate JSONata parsers cannot silently disagree about literal and expression interpretation.
 - **Generate-document environments can now be selected dynamically with JSONata.** The action configurator keeps the Epistola-backed environment dropdown and adds an `fx` mode for expressions using `$doc`, `$pv`, `$case`, and registered functions. Expressions are syntax-checked when the process link is saved and resolved consistently for generation and preview; null or blank results fall back to the plugin's default environment. Existing literal environment selections and saved process links remain compatible.
 - **All tracked first-party files now carry EUPL-1.2 licensing metadata.** Source files declare SPDX metadata inline where their format supports comments; documentation, configuration, generated resources, and binary assets are covered through `REUSE.toml`. The REUSE CLI is pinned through mise, and CI and release builds reject incomplete license metadata.
+
+### Deprecated
+
+- **Generate-document action configuration v0 is deprecated for eventual removal in a future major release.** The backend continues to execute existing unversioned process links, and the frontend upgrades them in memory when opened, but all new and resaved actions use v1. `LiteralScalar` remains only as the backend representation of v0 literal semantics.
+
+### Removed
+
+- **Deprecated generate-document action shapes are no longer accepted.** `dataMapping` must be a JSONata string, `variantAttributes` must be the typed entry array, and the old map/object normalization paths have been removed.
+
+### Fixed
+
+- **Explicitly quoted JSONata strings retain their v0 runtime meaning.** The legacy backend parser now recognizes values such as `"letter.pdf"` as expressions, matching both the frontend migration and the pre-versioning generate action instead of returning the quote characters as part of the generated filename.
+- **JSONata failures during document generation and preview now identify their source.** Exceptions include the generate-action version, configuration field or variant-attribute path, a bounded expression snippet, operation, and available process/activity/document identifiers while excluding process-variable and document values. Expressions are also compiled only once per evaluation.
+- **Expression-backed variant and environment selectors now explain why dropdown mode is unavailable.** Dynamic expressions and quoted values that no longer match a loaded option remain safely in expression mode; the disabled toggle is accompanied by a localized hint instead of silently ignoring the click.
+- **Generate-document migrations now respect the configuration version boundary.** The frontend migrates the complete v0 action object to v1 once; configurations already marked as v1 are only validated and are never passed through legacy per-field inference, so expressions such as `customer.id` retain their meaning when the editor is reopened.
+- **Invalid generate-document actions now fail at the backend configuration boundary.** Both v0 and v1 reject missing or blank catalog, template, data mapping, output format, filename, and result-variable fields with version-specific diagnostics instead of failing later during JSONata evaluation, job submission, or process-variable storage.
+- **Generate-document execution now has one configuration source.** After the action properties are parsed by the version handler, job submission, result storage, locator creation, and diagnostics consistently consume the typed action configuration rather than mixing it with raw plugin-action parameters.
+- **Variant and environment prefills now choose dropdown or fx mode from the loaded options.** A saved JSONata string literal uses the dropdown only when its decoded value exactly matches an available option ID; dynamic expressions and unmatched literals remain visible in fx mode instead of producing an unselected dropdown.
+- **Variant and environment dropdowns now remain stable and retain their selected values in the generate-document editor.** The fx-wrapped selectors use Angular's controlled-value binding and render their Carbon popup outside the process-link modal's inline flow, preventing the menu from closing and reopening above the field while choosing an item.
+- **The municipality demo catalog now follows the current portable-template schema.** Release `1.2.0` uses a valid SemVer version, layout tables declare numeric dimensions and header rows, and loop/conditional content uses `body` slots so Suite can import and deploy the bundled templates.
+- **Plain unversioned filenames and slugs are no longer parsed as JSONata paths.** Values such as `value.pdf` retain their literal meaning in v0, preventing generation-only parser failures that did not appear in preview.
 
 ## [0.15.0] - 2026-07-25
 

@@ -15,20 +15,18 @@
  *
  * SPDX-License-Identifier: EUPL-1.2
  */
-package app.epistola.valtimo.web.rest.dto;
+package app.epistola.valtimo.action.generate;
 
-import java.util.Map;
-
-/**
- * Request to validate the JSONata syntax of one or more action-config fields.
- * All fields are optional; null/blank fields are skipped.
- */
-public record ValidateJsonataRequest(
+public record GenerateDocumentActionProperties(
+        Integer actionConfigVersion,
+        String catalogId,
+        String templateId,
+        String variantId,
+        Object variantAttributes,
+        String environmentId,
         String dataMapping,
         String outputFormat,
         String filename,
-        String variantId,
-        String environmentId,
         String correlationId,
-        Map<String, String> variantAttributeValues
+        String resultProcessVariable
 ) {}

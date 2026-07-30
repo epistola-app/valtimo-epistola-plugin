@@ -44,7 +44,16 @@ import {
 } from '@valtimo/components';
 import { CaseManagementParams, ManagementContext } from '@valtimo/shared';
 import { ProcessLinkStateService } from '@valtimo/process-link';
-import { BehaviorSubject, combineLatest, merge, Observable, of, Subject, Subscription } from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  merge,
+  Observable,
+  of,
+  ReplaySubject,
+  Subject,
+  Subscription,
+} from 'rxjs';
 import {
   catchError,
   distinctUntilChanged,
@@ -61,12 +70,13 @@ import {
   errorResource,
   ExpressionFunctionInfo,
   GenerateDocumentConfig,
+  GenerateDocumentConfigV1,
+  GenerateDocumentConfigVersioned,
   initialResource,
   JsonataFieldError,
   loadingResource,
   successResource,
   TemplateField,
-  ValidateJsonataRequest,
   VariableSuggestions,
 } from '../../models';
 import { EpistolaPluginService } from '../../services';
@@ -74,13 +84,25 @@ import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.compone
 import { ExpectedStructureComponent } from '../expected-structure/expected-structure.component';
 import { MappingBuilderComponent } from '../mapping-builder/mapping-builder.component';
 import { MappingPreviewComponent } from '../mapping-preview/mapping-preview.component';
-import { isExpression } from '../epistola-document-preview/preview-utils';
 import {
   isGenerateDocumentConfigValid,
   isProcessVariableNameValid,
 } from './generate-document-config.util';
-
-export type VariantSelectionMode = 'explicit' | 'attributes';
+import {
+  encodeJsonataStringLiteral,
+  isLegacyGenerateDocumentConfig,
+  migrateGenerateDocumentConfig,
+} from './generate-document-config-version';
+import {
+  buildGenerateDocumentConfig,
+  buildValidateJsonataRequest,
+  canRepresentExpressionAsSelection,
+  createVariantAttributeEditorEntries,
+  formatVariantAttributes,
+  resolveExpressionSelectPrefill,
+  VariantAttributeEditorEntry,
+  VariantSelectionMode,
+} from './generate-document-config-editor.adapter';
 
 @Component({
   selector: 'epistola-generate-document-configuration',
@@ -107,7 +129,7 @@ export class GenerateDocumentConfigurationComponent
   @Input() save$!: Observable<void>;
   @Input() disabled$!: Observable<boolean>;
   @Input() pluginId!: string;
-  @Input() prefillConfiguration$!: Observable<GenerateDocumentConfig>;
+  @Input() prefillConfiguration$!: Observable<GenerateDocumentConfigVersioned>;
   @Input() selectedPluginConfigurationData$?: Observable<PluginConfigurationData>;
   @Input() context$?: Observable<[ManagementContext, CaseManagementParams]>;
 
@@ -127,11 +149,6 @@ export class GenerateDocumentConfigurationComponent
   mappingMode: 'simple' | 'advanced' = 'simple';
   toolsCollapsed = true;
   activeToolTab: 'schema' | 'preview' = 'preview';
-
-  outputFormatOptions: SelectItem[] = [
-    { id: 'PDF', text: 'PDF' },
-    { id: 'HTML', text: 'HTML' },
-  ];
 
   readonly selectedCatalogId$ = new BehaviorSubject<string>('');
   /** Composite ID: "catalogId/templateId" */
@@ -157,21 +174,13 @@ export class GenerateDocumentConfigurationComponent
    * children (Angular defaults `descendants: false`).
    */
   variantIdValue = '';
-  filenameExpressionMode = false;
   filenameExpression = '';
-  /** Plain-mode filename. Tracked outside `<v-form>` for the same reason as `variantIdValue`. */
-  filenameValue = '';
   environmentIdExpressionMode = false;
   environmentIdExpression = '';
   /** Plain-mode environment id. Tracked outside `<v-form>` because the field has an fx wrapper. */
   environmentIdValue = '';
-  variantAttributeEntries: {
-    key: string;
-    value: string;
-    required: boolean;
-    _customKey?: boolean;
-    _expressionMode?: boolean;
-  }[] = [];
+  correlationIdExpression = '';
+  variantAttributeEntries: VariantAttributeEditorEntry[] = [];
   availableAttributeKeys: string[] = [];
   caseDefinitionKey: string | null = null;
   processVariables: string[] = [];
@@ -181,6 +190,8 @@ export class GenerateDocumentConfigurationComponent
   editorContextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
   prefillDataMapping: Record<string, any> = {};
   validationErrors$ = new BehaviorSubject<JsonataFieldError[]>([]);
+  configurationVersionError$ = new BehaviorSubject<string | null>(null);
+  legacyConfigurationLoaded$ = new BehaviorSubject<boolean>(false);
   resultProcessVariableInvalid$ = new BehaviorSubject<boolean>(false);
 
   private readonly destroy$ = new Subject<void>();
@@ -188,9 +199,12 @@ export class GenerateDocumentConfigurationComponent
   private readonly formValue$ = new BehaviorSubject<Partial<GenerateDocumentConfig> | null>(null);
   private readonly valid$ = new BehaviorSubject<boolean>(false);
   private pluginConfigurationId$ = new BehaviorSubject<string>('');
+  private readonly loadedEnvironmentOptions$ = new ReplaySubject<SelectItem[]>(1);
+  private readonly loadedVariantOptions$ = new ReplaySubject<SelectItem[]>(1);
 
   /** Resolves once with the prefill config (or empty config if none). */
-  private prefill$!: Observable<GenerateDocumentConfig | null>;
+  private prefill$!: Observable<GenerateDocumentConfigV1 | null>;
+  effectivePrefill$!: Observable<GenerateDocumentConfigV1 | null>;
 
   constructor(
     private readonly epistolaPluginService: EpistolaPluginService,
@@ -200,11 +214,14 @@ export class GenerateDocumentConfigurationComponent
 
   ngOnInit(): void {
     this.prefill$ = this.resolvePrefill$();
+    this.effectivePrefill$ = this.prefill$;
 
     this.initContext();
     this.initPluginConfiguration();
     this.initCascade();
     this.initEnvironmentPrefill();
+    this.initVariantPrefill();
+    this.initCorrelationIdPrefill();
     this.loadExpressionFunctions();
     this.openSaveSubscription();
   }
@@ -250,11 +267,6 @@ export class GenerateDocumentConfigurationComponent
     this.revalidate();
   }
 
-  onFilenameValueChange(value: string | undefined): void {
-    this.filenameValue = value ?? '';
-    this.revalidate();
-  }
-
   onVariantIdValueChange(value: SelectedValue | undefined): void {
     // v-select is single-select here, so SelectedValue narrows to string | number;
     // our variant ids are always strings — coerce defensively.
@@ -267,19 +279,48 @@ export class GenerateDocumentConfigurationComponent
     this.revalidate();
   }
 
-  toggleFilenameExpressionMode(): void {
-    this.filenameExpressionMode = !this.filenameExpressionMode;
-    this.revalidate();
-  }
-
   toggleVariantIdExpressionMode(): void {
+    if (this.variantIdExpressionMode) {
+      const selection = resolveExpressionSelectPrefill(
+        this.variantIdExpression,
+        this.variants$.getValue().data,
+      );
+      if (selection.expressionMode) return;
+      this.variantIdValue = selection.value;
+    } else {
+      this.variantIdExpression = encodeJsonataStringLiteral(this.variantIdValue);
+    }
     this.variantIdExpressionMode = !this.variantIdExpressionMode;
     this.revalidate();
   }
 
   toggleEnvironmentIdExpressionMode(): void {
+    if (this.environmentIdExpressionMode) {
+      const selection = resolveExpressionSelectPrefill(
+        this.environmentIdExpression,
+        this.environments$.getValue().data,
+      );
+      if (selection.expressionMode) return;
+      this.environmentIdValue = selection.value;
+    } else {
+      this.environmentIdExpression = encodeJsonataStringLiteral(this.environmentIdValue);
+    }
     this.environmentIdExpressionMode = !this.environmentIdExpressionMode;
     this.revalidate();
+  }
+
+  canSwitchVariantIdToDropdown(): boolean {
+    return canRepresentExpressionAsSelection(
+      this.variantIdExpression,
+      this.variants$.getValue().data,
+    );
+  }
+
+  canSwitchEnvironmentIdToDropdown(): boolean {
+    return canRepresentExpressionAsSelection(
+      this.environmentIdExpression,
+      this.environments$.getValue().data,
+    );
   }
 
   onVariantSelectionModeChange(mode: VariantSelectionMode): void {
@@ -319,6 +360,10 @@ export class GenerateDocumentConfigurationComponent
     this.revalidate();
   }
 
+  onCorrelationIdExpressionChange(): void {
+    this.revalidate();
+  }
+
   onKeySelected(
     entry: { key: string; value: string; required: boolean; _customKey?: boolean },
     value: string,
@@ -350,36 +395,71 @@ export class GenerateDocumentConfigurationComponent
     }
   }
 
-  private formatAttributes(attributes: Record<string, string>): string {
-    const entries = Object.entries(attributes || {});
-    if (entries.length === 0) return '';
-    return ` (${entries.map(([k, v]) => `${k}=${v}`).join(', ')})`;
-  }
-
   /**
    * Creates a shared observable that resolves once with the prefill config
    * (or null if no prefill is provided). This is used to seed the cascade
    * with initial selection values before any loading starts.
    */
-  private resolvePrefill$(): Observable<GenerateDocumentConfig | null> {
+  private resolvePrefill$(): Observable<GenerateDocumentConfigV1 | null> {
     if (!this.prefillConfiguration$) {
       return of(null).pipe(shareReplay(1));
     }
-    return this.prefillConfiguration$.pipe(take(1), shareReplay(1));
+    return this.prefillConfiguration$.pipe(
+      take(1),
+      map((config) => {
+        if (!config) {
+          return null;
+        }
+        const migrated = migrateGenerateDocumentConfig(config);
+        this.legacyConfigurationLoaded$.next(isLegacyGenerateDocumentConfig(config));
+        return migrated;
+      }),
+      catchError((error: unknown) => {
+        this.legacyConfigurationLoaded$.next(false);
+        this.configurationVersionError$.next(
+          error instanceof Error ? error.message : 'Invalid generate-document configuration.',
+        );
+        this.valid$.next(false);
+        this.valid.emit(false);
+        return of(null);
+      }),
+      shareReplay(1),
+    );
   }
 
   private initEnvironmentPrefill(): void {
+    combineLatest([this.prefill$, this.loadedEnvironmentOptions$])
+      .pipe(takeUntil(this.destroy$), take(1))
+      .subscribe(([config, options]) => {
+        const selection = resolveExpressionSelectPrefill(config?.environmentId, options);
+        this.environmentIdExpressionMode = selection.expressionMode;
+        this.environmentIdExpression = selection.expression;
+        this.environmentIdValue = selection.value;
+        this.cdr.markForCheck();
+      });
+  }
+
+  private initVariantPrefill(): void {
+    combineLatest([this.prefill$, this.loadedVariantOptions$])
+      .pipe(takeUntil(this.destroy$), take(1))
+      .subscribe(([config, options]) => {
+        if (!config || (config.variantAttributes?.length ?? 0) > 0) {
+          return;
+        }
+        const selection = resolveExpressionSelectPrefill(config.variantId, options);
+        this.variantIdExpressionMode = selection.expressionMode;
+        this.variantIdExpression = selection.expression;
+        this.variantIdValue = selection.value;
+        this.cdr.markForCheck();
+      });
+  }
+
+  private initCorrelationIdPrefill(): void {
     this.prefill$.pipe(takeUntil(this.destroy$), take(1)).subscribe((config) => {
-      if (!config?.environmentId) {
-        return;
+      if (config?.correlationId) {
+        this.correlationIdExpression = config.correlationId;
+        this.cdr.markForCheck();
       }
-      if (isExpression(config.environmentId)) {
-        this.environmentIdExpressionMode = true;
-        this.environmentIdExpression = config.environmentId;
-      } else {
-        this.environmentIdValue = config.environmentId;
-      }
-      this.cdr.markForCheck();
     });
   }
 
@@ -465,7 +545,10 @@ export class GenerateDocumentConfigurationComponent
           ),
         ),
       )
-      .subscribe((resource) => this.environments$.next(resource));
+      .subscribe((resource) => {
+        this.environments$.next(resource);
+        this.loadedEnvironmentOptions$.next(resource.data);
+      });
 
     // ── Seed selectedCatalogId$ from prefill once catalogs are loaded ──
     combineLatest([
@@ -537,7 +620,7 @@ export class GenerateDocumentConfigurationComponent
               successResource(
                 variants.map((v) => ({
                   id: v.id,
-                  text: v.name + this.formatAttributes(v.attributes),
+                  text: v.name + formatVariantAttributes(v.attributes),
                 })),
               ),
             ),
@@ -545,7 +628,10 @@ export class GenerateDocumentConfigurationComponent
           ),
         ),
       )
-      .subscribe((resource) => this.variants$.next(resource));
+      .subscribe((resource) => {
+        this.variants$.next(resource);
+        this.loadedVariantOptions$.next(resource.data);
+      });
 
     // ── Template fields: load when templateId changes ──
     combineLatest([configId$, catalogId$, templateId$])
@@ -569,53 +655,27 @@ export class GenerateDocumentConfigurationComponent
       )
       .subscribe((resource) => this.templateFields$.next(resource));
 
-    // ── Seed variant + dataMapping from prefill once templateFields are loaded ──
-    combineLatest([
-      this.prefill$.pipe(filter((config) => !!config?.templateId)),
-      this.templateFields$.pipe(filter((tf) => !tf.loading && tf.data.length > 0)),
-    ])
-      .pipe(takeUntil(this.destroy$), take(1))
-      .subscribe(([config]) => {
+    // ── Seed expression-capable fields from the locally migrated prefill ──
+    this.prefill$
+      .pipe(
+        filter((config) => !!config?.templateId),
+        takeUntil(this.destroy$),
+        take(1),
+      )
+      .subscribe((config) => {
         if (!config) return;
 
         // Apply variant prefill
-        if (
-          config.variantAttributes &&
-          (Array.isArray(config.variantAttributes)
-            ? config.variantAttributes.length > 0
-            : Object.keys(config.variantAttributes).length > 0)
-        ) {
+        if (config.variantAttributes && config.variantAttributes.length > 0) {
           this.variantSelectionMode = 'attributes';
-          if (Array.isArray(config.variantAttributes)) {
-            this.variantAttributeEntries = config.variantAttributes.map((e) => ({
-              key: e.key,
-              value: e.value,
-              required: e.required !== false,
-              _expressionMode: isExpression(e.value),
-            }));
-          } else {
-            this.variantAttributeEntries = Object.entries(config.variantAttributes as any).map(
-              ([key, value]) => ({ key, value: String(value), required: true }),
-            );
-          }
-        } else if (config.variantId) {
-          this.variantSelectionMode = 'explicit';
-          if (isExpression(config.variantId)) {
-            this.variantIdExpressionMode = true;
-            this.variantIdExpression = config.variantId;
-          } else {
-            this.variantIdValue = config.variantId;
-          }
+          this.variantAttributeEntries = createVariantAttributeEditorEntries(
+            config.variantAttributes,
+          );
         }
 
-        // Detect expression mode for filename
+        // Filename is always represented directly as JSONata.
         if (config.filename) {
-          if (isExpression(config.filename)) {
-            this.filenameExpressionMode = true;
-            this.filenameExpression = config.filename;
-          } else {
-            this.filenameValue = config.filename;
-          }
+          this.filenameExpression = config.filename;
         }
 
         // Apply dataMapping prefill (JSONata expression string)
@@ -684,12 +744,14 @@ export class GenerateDocumentConfigurationComponent
         !isProcessVariableNameValid(formValue.resultProcessVariable),
     );
 
-    const valid = isGenerateDocumentConfigValid(formValue, {
-      selectedCatalogId: this.selectedCatalogId$.getValue(),
-      filename: this.filenameExpressionMode ? this.filenameExpression : this.filenameValue,
-      variantSelectionMode: this.variantSelectionMode,
-      variantAttributeEntries: this.variantAttributeEntries,
-    });
+    const valid =
+      !this.configurationVersionError$.getValue() &&
+      isGenerateDocumentConfigValid(formValue, {
+        selectedCatalogId: this.selectedCatalogId$.getValue(),
+        filename: this.filenameExpression,
+        variantSelectionMode: this.variantSelectionMode,
+        variantAttributeEntries: this.variantAttributeEntries,
+      });
     this.valid$.next(valid);
     this.valid.emit(valid);
   }
@@ -703,28 +765,26 @@ export class GenerateDocumentConfigurationComponent
             const catalogId = this.selectedCatalogId$.getValue();
             const templateId = formValue.templateId!;
 
-            const config: GenerateDocumentConfig = {
+            const config = buildGenerateDocumentConfig({
               catalogId,
               templateId,
-              environmentId: this.environmentIdExpressionMode
-                ? this.environmentIdExpression || undefined
-                : this.environmentIdValue || undefined,
-              dataMapping: dataMapping,
-              outputFormat: formValue.outputFormat as 'PDF' | 'HTML',
-              filename: this.filenameExpressionMode ? this.filenameExpression : this.filenameValue,
-              correlationId: formValue.correlationId || undefined,
+              dataMapping,
+              filenameExpression: this.filenameExpression,
+              correlationIdExpression: this.correlationIdExpression,
               resultProcessVariable: formValue.resultProcessVariable!,
-            };
-
-            if (this.variantSelectionMode === 'explicit') {
-              config.variantId = this.variantIdExpressionMode
-                ? this.variantIdExpression
-                : this.variantIdValue;
-            } else {
-              config.variantAttributes = this.variantAttributeEntries
-                .filter((e) => e.key && e.value)
-                .map((e) => ({ key: e.key, value: e.value, required: e.required }));
-            }
+              environment: {
+                expressionMode: this.environmentIdExpressionMode,
+                expression: this.environmentIdExpression,
+                value: this.environmentIdValue,
+              },
+              variantSelectionMode: this.variantSelectionMode,
+              variant: {
+                expressionMode: this.variantIdExpressionMode,
+                expression: this.variantIdExpression,
+                value: this.variantIdValue,
+              },
+              variantAttributes: this.variantAttributeEntries,
+            });
 
             this.validateAndEmit(config);
           }
@@ -734,35 +794,14 @@ export class GenerateDocumentConfigurationComponent
 
   /**
    * Build a JSONata validation request from the config and call the backend.
-   * Only fields that are JSONata expressions get validated:
-   * - dataMapping is always JSONata
-   * - filename / variantId / environmentId only when their `fx` toggle is on
-   * - variant attribute values only when isExpression() reports true
+   * Every expression-capable v1 field contains JSONata, including encoded literals.
    * On invalid response, surface errors and abort the emit.
    * If the validator endpoint itself fails (network/server), proceed with the
    * emit — the validation is a quality-of-life check, not a hard gate.
    */
   private validateAndEmit(config: GenerateDocumentConfig): void {
-    const variantAttributeValues: Record<string, string> = {};
-    if (config.variantAttributes) {
-      for (const attr of config.variantAttributes) {
-        if (isExpression(attr.value)) {
-          variantAttributeValues[attr.key] = attr.value;
-        }
-      }
-    }
-
-    const request: ValidateJsonataRequest = {
-      dataMapping: config.dataMapping || null,
-      filename: this.filenameExpressionMode ? config.filename : null,
-      variantId: this.variantIdExpressionMode ? config.variantId || null : null,
-      environmentId: this.environmentIdExpressionMode ? config.environmentId || null : null,
-      variantAttributeValues:
-        Object.keys(variantAttributeValues).length > 0 ? variantAttributeValues : null,
-    };
-
     this.epistolaPluginService
-      .validateJsonata(request)
+      .validateJsonata(buildValidateJsonataRequest(config))
       .pipe(
         take(1),
         catchError(() => of({ valid: true, errors: [] as JsonataFieldError[] })),

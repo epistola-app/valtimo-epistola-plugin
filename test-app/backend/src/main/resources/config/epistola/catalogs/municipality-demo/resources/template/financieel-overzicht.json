@@ -382,15 +382,10 @@
           },
           "props": {
             "columnWidths": [60, 40],
-            "borderStyle": "horizontal",
-            "rows": [
-              {
-                "isHeader": true
-              },
-              {
-                "isHeader": false
-              }
-            ]
+            "rows": 2,
+            "columns": 2,
+            "headerRows": 1,
+            "merges": []
           }
         },
         "n-col-header-desc": {

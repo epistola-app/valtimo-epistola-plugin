@@ -18,6 +18,8 @@
 package com.ritense.valtimo.epistola.plugin;
 
 import app.epistola.client.model.VariantSelectionAttribute;
+import app.epistola.valtimo.action.generate.GenerateDocumentActionConfigurationRegistry;
+import app.epistola.valtimo.action.generate.GenerateDocumentActionProperties;
 import app.epistola.valtimo.domain.DocumentStorageTarget;
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.FileFormat;
@@ -238,6 +240,7 @@ public class EpistolaPlugin {
      * variantId and variantAttributes are mutually exclusive.
      *
      * @param execution             The process execution context
+     * @param actionConfigVersion   The generate-document action configuration schema version
      * @param catalogId             The ID of the catalog containing the template
      * @param templateId            The ID of the template to use for document generation
      * @param variantId             The ID of the template variant (optional — omit to use default or attribute selection)
@@ -247,9 +250,10 @@ public class EpistolaPlugin {
      *                              when not specified or when the expression resolves to null/blank)
      * @param dataMapping           JSONata expression that produces the template data payload.
      *                              Has access to $doc (document data), $pv (process variables), $case (case data).
-     * @param outputFormat          The desired output format (PDF or HTML)
+     * @param outputFormat          The output-format value in v0 or JSONata expression in v1.
+     *                              v1 expressions must resolve to PDF.
      * @param filename              The filename for the generated document
-     * @param correlationId         Optional correlation ID for tracking across systems
+     * @param correlationId         Optional correlation ID in v0 or JSONata expression in v1
      * @param resultProcessVariable The name of the process variable to store the request ID in
      */
     @PluginAction(
@@ -260,32 +264,45 @@ public class EpistolaPlugin {
     )
     public void generateDocument(
             DelegateExecution execution,
+            @PluginActionProperty Integer actionConfigVersion,
             @PluginActionProperty String catalogId,
             @PluginActionProperty String templateId,
             @PluginActionProperty String variantId,
-            @PluginActionProperty Object variantAttributes,
+            @PluginActionProperty List<Map<String, Object>> variantAttributes,
             @PluginActionProperty String environmentId,
             @PluginActionProperty String dataMapping,
-            @PluginActionProperty FileFormat outputFormat,
+            @PluginActionProperty String outputFormat,
             @PluginActionProperty String filename,
             @PluginActionProperty String correlationId,
             @PluginActionProperty String resultProcessVariable
     ) {
+        var actionConfig = GenerateDocumentActionConfigurationRegistry.parse(
+                new GenerateDocumentActionProperties(
+                        actionConfigVersion,
+                        catalogId,
+                        templateId,
+                        variantId,
+                        variantAttributes,
+                        environmentId,
+                        dataMapping,
+                        outputFormat,
+                        filename,
+                        correlationId,
+                        resultProcessVariable));
+
         log.debug("Starting document generation: catalogId={}, templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
-                catalogId, templateId, variantId, variantAttributes, outputFormat, filename);
+                actionConfig.catalogId(),
+                actionConfig.templateId(),
+                actionConfig.variantId().source(),
+                actionConfig.variantAttributes(),
+                actionConfig.outputFormat().source(),
+                actionConfig.filename().source());
 
-        validateProcessVariableName("resultProcessVariable", resultProcessVariable);
+        validateProcessVariableName("resultProcessVariable", actionConfig.resultProcessVariable());
+        String configuredResultVariable = actionConfig.resultProcessVariable();
 
-        // Normalize variant attributes from either old (Map<String, String>) or new (List<Map>) format
-        List<NormalizedAttribute> normalizedAttributes = normalizeVariantAttributes(variantAttributes);
-
-        // Validate: variantId and variantAttributes are mutually exclusive.
-        // If neither is provided, the API will use the template's default variant.
-        boolean hasVariantId = variantId != null && !variantId.isBlank();
-        boolean hasAttributes = !normalizedAttributes.isEmpty();
-        if (hasVariantId && hasAttributes) {
-            throw new IllegalArgumentException("Cannot specify both variantId and variantAttributes");
-        }
+        boolean hasVariantId = actionConfig.variantId().isConfigured();
+        boolean hasAttributes = !actionConfig.variantAttributes().isEmpty();
 
         // Check if this is a retry with user-edited data from the fallback form.
         Object rawEditedData = execution.getVariable(EpistolaProcessVariables.EDITED_DATA);
@@ -311,23 +328,35 @@ public class EpistolaPlugin {
         } else {
             // Evaluate JSONata expression to produce the template data
             var evalCtx = app.epistola.valtimo.mapping.EvaluationContext.builder()
-                    .expression(dataMapping != null ? dataMapping : "")
+                    .expression(actionConfig.dataMapping())
                     .documentResolver(this::loadDocumentContent)
                     .processVariableResolver(execution::getVariable)
                     .processVariableEnumerator(execution::getVariables)
                     .execution(execution)
                     .documentId(execution.getBusinessKey())
+                    .operation("execution")
                     .build();
-            resolvedData = jsonataMappingService.evaluate(evalCtx);
+            resolvedData = actionConfig.evaluateDataMapping(jsonataMappingService, evalCtx);
         }
 
-        // Resolve the filename as a JSONata expression
-        String resolvedFilename = jsonataMappingService.evaluateScalar(buildEvalCtx(execution, filename));
+        var scalarEvalContext = buildEvalCtx(execution, null);
+        String resolvedOutputFormat = actionConfig.outputFormat().resolve(jsonataMappingService, scalarEvalContext);
+        FileFormat effectiveOutputFormat;
+        try {
+            effectiveOutputFormat = FileFormat.valueOf(resolvedOutputFormat);
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException(
+                    "outputFormat must resolve to a supported file format", exception);
+        }
+        if (actionConfig.version() >= 1 && effectiveOutputFormat != FileFormat.PDF) {
+            throw new IllegalArgumentException("outputFormat must resolve to PDF for action configuration v1");
+        }
+        String resolvedFilename = actionConfig.filename().resolve(jsonataMappingService, scalarEvalContext);
 
         // Resolve a dynamic action-level environment and fall back to the plugin default
         // when no usable override is configured or produced.
-        String resolvedEnvironmentId = (environmentId != null && !environmentId.isBlank())
-                ? jsonataMappingService.resolveScalar(buildEvalCtx(execution, environmentId))
+        String resolvedEnvironmentId = actionConfig.environmentId().isConfigured()
+                ? actionConfig.environmentId().resolve(jsonataMappingService, scalarEvalContext)
                 : null;
         String effectiveEnvironmentId = (resolvedEnvironmentId != null && !resolvedEnvironmentId.isBlank())
                 ? resolvedEnvironmentId
@@ -335,15 +364,18 @@ public class EpistolaPlugin {
 
         // Resolve variantId if it uses a JSONata expression
         String resolvedVariantId = hasVariantId
-                ? jsonataMappingService.evaluateScalar(buildEvalCtx(execution, variantId))
+                ? actionConfig.variantId().resolve(jsonataMappingService, scalarEvalContext)
+                : null;
+        String resolvedCorrelationId = actionConfig.correlationId().isConfigured()
+                ? actionConfig.correlationId().resolve(jsonataMappingService, scalarEvalContext)
                 : null;
 
         // Build variant selection attributes, resolving each value as a JSONata expression
         List<VariantSelectionAttribute> resolvedAttributes = hasAttributes
-                ? normalizedAttributes.stream()
+                ? actionConfig.variantAttributes().stream()
                         .map(attr -> new VariantSelectionAttribute(
                                 attr.key(),
-                                jsonataMappingService.evaluateScalar(buildEvalCtx(execution, attr.value())),
+                                attr.value().resolve(jsonataMappingService, scalarEvalContext),
                                 null,
                                 attr.required()))
                         .toList()
@@ -353,8 +385,8 @@ public class EpistolaPlugin {
         // If the collector hasn't completed its first poll yet (cold start) this returns null,
         // in which case the server falls back to the requestId as the routing key — the
         // result then routes by hash, which may land on another node and bypass us.
-        String baseRoutingKey = correlationId != null && !correlationId.isBlank()
-                ? correlationId
+        String baseRoutingKey = resolvedCorrelationId != null && !resolvedCorrelationId.isBlank()
+                ? resolvedCorrelationId
                 : java.util.UUID.randomUUID().toString();
         String routingKey = resultCollectorRunner.routingKeyFor(baseUrl, apiKey, tenantId, baseRoutingKey);
 
@@ -365,15 +397,15 @@ public class EpistolaPlugin {
                     baseUrl,
                     apiKey,
                     tenantId,
-                    catalogId,
-                    templateId,
+                    actionConfig.catalogId(),
+                    actionConfig.templateId(),
                     resolvedVariantId,
                     resolvedAttributes,
                     effectiveEnvironmentId,
                     resolvedData,
-                    outputFormat,
+                    effectiveOutputFormat,
                     resolvedFilename,
-                    correlationId,
+                    resolvedCorrelationId,
                     routingKey
             );
         } catch (Exception e) {
@@ -386,7 +418,7 @@ public class EpistolaPlugin {
             failureData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
             failureData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE,
                     "Document generation request failed: " + e.getMessage());
-            execution.setVariable(resultProcessVariable, failureData);
+            execution.setVariable(configuredResultVariable, failureData);
             throw new RuntimeException("Failed to submit document generation request to Epistola", e);
         }
 
@@ -407,7 +439,7 @@ public class EpistolaPlugin {
         resultData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
         resultData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE, null);
         resultData.put(EpistolaProcessVariables.RESULT_KEY_JOB_PATH, jobPath);
-        execution.setVariable(resultProcessVariable, resultData);
+        execution.setVariable(configuredResultVariable, resultData);
 
         // Store tenantId as a standalone process variable so it can be used in forms
         // (e.g. for building document download URLs without parsing the composite jobPath).
@@ -418,7 +450,7 @@ public class EpistolaPlugin {
         // the result collector can resolve the result variable (and process instance) from just the
         // completed job — including the variable pattern with no catch event. Unique name → parallel
         // branches never clobber it. See EpistolaMessageCorrelationService.
-        execution.setVariable(jobPath, resultProcessVariable);
+        execution.setVariable(jobPath, configuredResultVariable);
 
         // Hint the collector to look for the result soon — if it's currently
         // backed off into idle mode, this brings the next poll forward to
@@ -428,7 +460,7 @@ public class EpistolaPlugin {
         resultCollectorRunner.kickFor(baseUrl, apiKey, tenantId);
 
         log.debug("Document generation request submitted. jobPath={}, resultVar={}",
-                jobPath, resultProcessVariable);
+                jobPath, configuredResultVariable);
     }
 
     /**
@@ -608,50 +640,8 @@ public class EpistolaPlugin {
                 .processVariableEnumerator(execution::getVariables)
                 .execution(execution)
                 .documentId(execution.getBusinessKey())
+                .operation("execution")
                 .build();
-    }
-
-    /**
-     * Internal representation of a variant attribute entry, supporting both old and new config formats.
-     */
-    record NormalizedAttribute(String key, String value, Boolean required) {}
-
-    /**
-     * Normalize variant attributes from either the old format (Map&lt;String, String&gt;)
-     * or the new format (List of objects with key, value, required).
-     */
-    @SuppressWarnings("unchecked")
-    List<NormalizedAttribute> normalizeVariantAttributes(Object raw) {
-        if (raw == null) {
-            return List.of();
-        }
-        if (raw instanceof List<?> list) {
-            // New format: List<{key, value, required}>
-            return list.stream()
-                    .filter(item -> item instanceof Map)
-                    .map(item -> {
-                        Map<String, Object> map = (Map<String, Object>) item;
-                        String key = map.get("key") != null ? String.valueOf(map.get("key")) : "";
-                        String value = map.get("value") != null ? String.valueOf(map.get("value")) : "";
-                        Boolean required = map.get("required") instanceof Boolean b ? b : null;
-                        return new NormalizedAttribute(key, value, required);
-                    })
-                    .filter(a -> !a.key().isEmpty() && !a.value().isEmpty())
-                    .toList();
-        }
-        if (raw instanceof Map<?, ?> map) {
-            // Old format: Map<String, String> — treat all as required (null = API default true)
-            return map.entrySet().stream()
-                    .map(entry -> new NormalizedAttribute(
-                            String.valueOf(entry.getKey()),
-                            String.valueOf(entry.getValue()),
-                            null
-                    ))
-                    .filter(a -> !a.key().isEmpty() && !a.value().isEmpty())
-                    .toList();
-        }
-        log.warn("Unexpected variantAttributes type: {}", raw.getClass().getName());
-        return List.of();
     }
 
 }

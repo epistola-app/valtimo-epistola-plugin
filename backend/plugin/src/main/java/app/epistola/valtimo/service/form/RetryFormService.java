@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.service.form;
 
+import app.epistola.valtimo.action.generate.GenerateDocumentActionConfigurationRegistry;
 import app.epistola.valtimo.service.EpistolaService;
 
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
@@ -76,9 +77,18 @@ public class RetryFormService {
         PluginProcessLink originalLink = resolveSourceProcessLink(
                 processDefinitionId, processInstanceId, sourceActivityId);
 
-        String catalogId = extractCatalogId(originalLink);
-        String templateId = extractTemplateId(originalLink);
-        String dataMapping = extractDataMapping(originalLink);
+        ObjectNode actionProperties = originalLink.getActionProperties();
+        String configuredTemplateId = actionProperties.path("templateId").asText(null);
+        if (configuredTemplateId == null || configuredTemplateId.isBlank()) {
+            throw new RetryFormException(RetryFormException.Reason.MISSING_TEMPLATE,
+                    "No templateId found in process link action properties for activity '"
+                            + originalLink.getActivityId() + "'");
+        }
+
+        var actionConfig = GenerateDocumentActionConfigurationRegistry.parse(actionProperties);
+        String catalogId = actionConfig.catalogId();
+        String templateId = actionConfig.templateId();
+        String dataMapping = actionConfig.dataMapping();
 
         String effectiveDocumentId = resolveDocumentId(documentId, processInstance);
         var evalCtx = app.epistola.valtimo.mapping.EvaluationContext.builder()
@@ -149,39 +159,6 @@ public class RetryFormService {
 
         log.debug("Auto-discovered generate-document activity: {}", generateLinks.get(0).getActivityId());
         return generateLinks.get(0);
-    }
-
-    private String extractCatalogId(PluginProcessLink link) {
-        ObjectNode actionProps = link.getActionProperties();
-        if (actionProps.has("catalogId") && !actionProps.get("catalogId").isNull()) {
-            return actionProps.get("catalogId").asText();
-        }
-        return null;
-    }
-
-    private String extractTemplateId(PluginProcessLink link) {
-        ObjectNode actionProps = link.getActionProperties();
-        if (!actionProps.has("templateId") || actionProps.get("templateId").isNull()) {
-            throw new RetryFormException(RetryFormException.Reason.MISSING_TEMPLATE,
-                    "No templateId found in process link action properties for activity '"
-                            + link.getActivityId() + "'");
-        }
-        return actionProps.get("templateId").asText();
-    }
-
-    private String extractDataMapping(PluginProcessLink link) {
-        ObjectNode actionProps = link.getActionProperties();
-        if (!actionProps.has("dataMapping")) {
-            return "";
-        }
-        var node = actionProps.get("dataMapping");
-        if (node.isTextual()) {
-            return node.asText("");
-        }
-        // Legacy: dataMapping stored as JSON object — not supported with JSONata
-        log.warn("Process link {} has dataMapping in legacy object format. " +
-                "Please redeploy process links to use JSONata string format.", link.getId());
-        return "";
     }
 
     private String resolveDocumentId(String documentId, ProcessInstance processInstance) {

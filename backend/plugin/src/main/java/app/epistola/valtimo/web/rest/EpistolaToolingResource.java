@@ -132,9 +132,11 @@ public class EpistolaToolingResource {
     ) {
         List<JsonataValidationResult.FieldError> errors = new ArrayList<>();
         validate("dataMapping", request.dataMapping(), errors);
+        validate("outputFormat", request.outputFormat(), errors);
         validate("filename", request.filename(), errors);
         validate("variantId", request.variantId(), errors);
         validate("environmentId", request.environmentId(), errors);
+        validate("correlationId", request.correlationId(), errors);
         if (request.variantAttributeValues() != null) {
             for (Map.Entry<String, String> entry : request.variantAttributeValues().entrySet()) {
                 validate("variantAttributes." + entry.getKey(), entry.getValue(), errors);

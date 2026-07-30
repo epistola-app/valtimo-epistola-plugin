@@ -255,7 +255,10 @@ class PreviewServiceTest {
             ObjectNode actionProps = objectMapper.createObjectNode();
             actionProps.put("catalogId", "default");
             actionProps.put("templateId", "template-123");
-            actionProps.putObject("dataMapping");
+            actionProps.put("dataMapping", "{}");
+            actionProps.put("outputFormat", "PDF");
+            actionProps.put("filename", "preview.pdf");
+            actionProps.put("resultProcessVariable", "generationResult");
 
             PluginProcessLink processLink = mock(PluginProcessLink.class);
             when(processLink.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
@@ -301,6 +304,9 @@ class PreviewServiceTest {
             actionProps.put("catalogId", "default");
             actionProps.put("templateId", "template-123");
             actionProps.put("dataMapping", "$spread($doc)");
+            actionProps.put("outputFormat", "PDF");
+            actionProps.put("filename", "preview.pdf");
+            actionProps.put("resultProcessVariable", "generationResult");
 
             PluginProcessLink processLink = mock(PluginProcessLink.class);
             when(processLink.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
@@ -427,7 +433,7 @@ class PreviewServiceTest {
 
             when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
                     .thenReturn(new LinkedHashMap<>());
-            when(jsonataMappingService.resolveScalar(any(EvaluationContext.class)))
+            when(jsonataMappingService.evaluateScalar(any(EvaluationContext.class)))
                     .thenReturn("production");
 
             PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
@@ -449,7 +455,7 @@ class PreviewServiceTest {
 
             when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
                     .thenReturn(new LinkedHashMap<>());
-            when(jsonataMappingService.resolveScalar(any(EvaluationContext.class))).thenReturn(" ");
+            when(jsonataMappingService.evaluateScalar(any(EvaluationContext.class))).thenReturn(" ");
 
             PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
 

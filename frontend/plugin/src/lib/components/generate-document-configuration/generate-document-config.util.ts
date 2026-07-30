@@ -17,7 +17,7 @@
  */
 
 import { GenerateDocumentConfig } from '../../models';
-import type { VariantSelectionMode } from './generate-document-configuration.component';
+import type { VariantSelectionMode } from './generate-document-config-editor.adapter';
 
 export interface GenerateDocumentValidationOptions {
   selectedCatalogId?: string | null;
@@ -40,7 +40,6 @@ export function isGenerateDocumentConfigValid(
     options.selectedCatalogId &&
     config &&
     config.templateId &&
-    config.outputFormat &&
     options.filename &&
     options.filename.trim() &&
     isProcessVariableNameValid(config.resultProcessVariable)

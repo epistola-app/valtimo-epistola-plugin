@@ -25,6 +25,7 @@
     "@angular/platform-browser": "^19.2.25",
     "@formio/angular": "7.0.0",
     "@types/jest": "^30.0.0",
+    "@types/node": "^22.15.3",
     "@valtimo/components": "13.38.0",
     "@valtimo/plugin": "13.38.0",
     "@valtimo/process-link": "13.38.0",

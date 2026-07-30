@@ -20,6 +20,7 @@ package com.ritense.valtimo.epistola.plugin;
 import app.epistola.valtimo.domain.DocumentStorageTarget;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
+import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
@@ -83,8 +84,12 @@ class EpistolaPluginGenerateDocumentTest {
 
     private void stubSuccessfulGeneration(String resolvedEnvironmentId) {
         when(jsonataMappingService.evaluate(any())).thenReturn(Map.of());
-        when(jsonataMappingService.evaluateScalar(any())).thenReturn("document.pdf");
-        when(jsonataMappingService.resolveScalar(any())).thenReturn(resolvedEnvironmentId);
+        when(jsonataMappingService.evaluateScalar(any())).thenAnswer(invocation -> {
+            EvaluationContext context = invocation.getArgument(0);
+            return context.getExpression().contains("environmentId")
+                    ? resolvedEnvironmentId
+                    : "document.pdf";
+        });
         when(epistolaService.submitGenerationJob(
                 anyString(), anyString(), anyString(), anyString(), anyString(),
                 isNull(), isNull(), any(), anyMap(), eq(FileFormat.PDF), anyString(), isNull(), isNull()))
@@ -95,13 +100,14 @@ class EpistolaPluginGenerateDocumentTest {
     void generateDocumentFailsFastWhenResultProcessVariableIsNotAlphanumeric() {
         assertThatThrownBy(() -> plugin().generateDocument(
                 execution,
+                null,
                 "catalog",
                 "template",
                 null,
                 null,
                 null,
                 "{}",
-                FileFormat.PDF,
+                "PDF",
                 "\"document.pdf\"",
                 null,
                 "pv:some-value"))
@@ -119,14 +125,15 @@ class EpistolaPluginGenerateDocumentTest {
 
         plugin().generateDocument(
                 execution,
+                null,
                 "catalog",
                 "template",
                 null,
                 null,
                 "$pv.environmentId",
                 "{}",
-                FileFormat.PDF,
-                "\"document.pdf\"",
+                "PDF",
+                "document.pdf",
                 null,
                 "epistolaResult");
 
@@ -142,14 +149,15 @@ class EpistolaPluginGenerateDocumentTest {
 
         plugin().generateDocument(
                 execution,
+                null,
                 "catalog",
                 "template",
                 null,
                 null,
                 "$doc.environmentId",
                 "{}",
-                FileFormat.PDF,
-                "\"document.pdf\"",
+                "PDF",
+                "document.pdf",
                 null,
                 "epistolaResult");
 
@@ -157,5 +165,94 @@ class EpistolaPluginGenerateDocumentTest {
                 eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), eq("catalog"), eq("template"),
                 isNull(), isNull(), eq("default"), anyMap(), eq(FileFormat.PDF),
                 eq("document.pdf"), isNull(), isNull());
+    }
+
+    @Test
+    void unversionedPlainFilenameIsTreatedAsLiteral() {
+        stubSuccessfulGeneration(null);
+
+        plugin().generateDocument(
+                execution,
+                null,
+                "catalog",
+                "template",
+                null,
+                null,
+                null,
+                "{}",
+                "PDF",
+                "template-segment.pdf",
+                null,
+                "epistolaResult");
+
+        verify(epistolaService).submitGenerationJob(
+                eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), eq("catalog"), eq("template"),
+                isNull(), isNull(), eq("default"), anyMap(), eq(FileFormat.PDF),
+                eq("template-segment.pdf"), isNull(), isNull());
+    }
+
+    @Test
+    void v1ResolvesPdfAndCorrelationExpressions() {
+        when(jsonataMappingService.evaluate(any())).thenReturn(Map.of());
+        when(jsonataMappingService.evaluateScalar(any())).thenAnswer(invocation -> {
+            EvaluationContext context = invocation.getArgument(0);
+            return switch (context.getExpression()) {
+                case "\"PDF\"" -> "PDF";
+                case "\"document.pdf\"" -> "document.pdf";
+                case "$pv.correlationId" -> "request-123";
+                default -> null;
+            };
+        });
+        when(epistolaService.submitGenerationJob(
+                anyString(), anyString(), anyString(), anyString(), anyString(),
+                isNull(), isNull(), any(), anyMap(), eq(FileFormat.PDF), anyString(),
+                eq("request-123"), isNull()))
+                .thenReturn(GenerationJobResult.builder().requestId("request-1").status("PENDING").build());
+
+        plugin().generateDocument(
+                execution,
+                1,
+                "catalog",
+                "template",
+                null,
+                null,
+                null,
+                "{}",
+                "\"PDF\"",
+                "\"document.pdf\"",
+                "$pv.correlationId",
+                "epistolaResult");
+
+        verify(epistolaService).submitGenerationJob(
+                eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), eq("catalog"), eq("template"),
+                isNull(), isNull(), eq("default"), anyMap(), eq(FileFormat.PDF),
+                eq("document.pdf"), eq("request-123"), isNull());
+    }
+
+    @Test
+    void v1RejectsOutputFormatsOtherThanPdf() {
+        when(jsonataMappingService.evaluate(any())).thenReturn(Map.of());
+        when(jsonataMappingService.evaluateScalar(any())).thenAnswer(invocation -> {
+            EvaluationContext context = invocation.getArgument(0);
+            return context.getExpression().equals("\"HTML\"") ? "HTML" : "document.pdf";
+        });
+
+        assertThatThrownBy(() -> plugin().generateDocument(
+                execution,
+                1,
+                "catalog",
+                "template",
+                null,
+                null,
+                null,
+                "{}",
+                "\"HTML\"",
+                "\"document.pdf\"",
+                null,
+                "epistolaResult"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must resolve to PDF");
+
+        verifyNoInteractions(epistolaService);
     }
 }

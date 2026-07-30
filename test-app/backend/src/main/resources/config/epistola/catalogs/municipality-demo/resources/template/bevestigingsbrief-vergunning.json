@@ -637,12 +637,10 @@
           },
           "props": {
             "columnWidths": [20, 55, 25],
-            "borderStyle": "all",
-            "rows": [
-              {
-                "isHeader": true
-              }
-            ]
+            "rows": 1,
+            "columns": 3,
+            "headerRows": 1,
+            "merges": []
           }
         },
         "n-ath-type": {
@@ -748,12 +746,10 @@
           "slots": ["s-art-cell-0-0", "s-art-cell-0-1", "s-art-cell-0-2"],
           "props": {
             "columnWidths": [20, 55, 25],
-            "borderStyle": "horizontal",
-            "rows": [
-              {
-                "isHeader": false
-              }
-            ]
+            "rows": 1,
+            "columns": 3,
+            "headerRows": 0,
+            "merges": []
           }
         },
         "n-activity-type-text": {
@@ -1047,7 +1043,7 @@
         "s-kadastraal-cond-children": {
           "id": "s-kadastraal-cond-children",
           "nodeId": "n-kadastraal-conditional",
-          "name": "children",
+          "name": "body",
           "children": ["n-kadastraal-text"]
         },
         "s-ath-cell-0-0": {
@@ -1071,7 +1067,7 @@
         "s-activities-loop-children": {
           "id": "s-activities-loop-children",
           "nodeId": "n-activities-loop",
-          "name": "children",
+          "name": "body",
           "children": ["n-activity-row-table"]
         },
         "s-art-cell-0-0": {

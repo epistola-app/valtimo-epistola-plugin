@@ -51,7 +51,6 @@ describe('generate-document-config.util', () => {
   describe('isGenerateDocumentConfigValid', () => {
     const validConfig = {
       templateId: 'template',
-      outputFormat: 'PDF' as const,
       resultProcessVariable: 'epistolaResult',
     };
     const validOptions = {
@@ -80,12 +79,6 @@ describe('generate-document-config.util', () => {
     it('preserves required field validation', () => {
       expect(isGenerateDocumentConfigValid(null, validOptions)).toBe(false);
       expect(isGenerateDocumentConfigValid(config({ templateId: '' }), validOptions)).toBe(false);
-      expect(
-        isGenerateDocumentConfigValid(
-          { templateId: 'template', resultProcessVariable: 'epistolaResult' },
-          validOptions,
-        ),
-      ).toBe(false);
       expect(isGenerateDocumentConfigValid(validConfig, options({ selectedCatalogId: '' }))).toBe(
         false,
       );

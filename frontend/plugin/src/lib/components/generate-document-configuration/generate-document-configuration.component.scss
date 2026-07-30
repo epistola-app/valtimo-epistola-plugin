@@ -10,6 +10,20 @@
   color: #dc3545;
 }
 
+.legacy-configuration-notice {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #0f62fe;
+  background: #edf5ff;
+  color: #161616;
+  font-size: 0.875rem;
+
+  strong {
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+}
+
 .field-validation-error {
   margin: -0.5rem 0 0.75rem;
   padding: 0 0.75rem;
@@ -271,10 +285,6 @@
   &:hover {
     background: #f4f4f4;
   }
-
-  &--inline {
-    margin-top: 0;
-  }
 }
 
 .fx-input-group {
@@ -300,10 +310,17 @@
   background: #f4f4f4;
 }
 
-.attribute-value-with-fx {
+.fx-mode-hint {
+  display: block;
+  margin-top: 0.25rem;
+  color: #525252;
+  font-size: 0.75rem;
+  line-height: 1.25;
+}
+
+.attribute-expression {
   display: flex;
   align-items: center;
-  gap: 4px;
   flex: 1;
   min-width: 0;
 

@@ -28,7 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 import static com.dashjoin.jsonata.Jsonata.jsonata;
 
@@ -45,9 +44,6 @@ public class JsonataMappingService {
 
     private static final long TIMEOUT_MS = 5000;
     private static final int MAX_RECURSION_DEPTH = 100;
-    private static final Pattern JSONATA_MARKER = Pattern.compile("[$&({?\\[]");
-
-
     private final ExpressionFunctionRegistry functionRegistry;
 
     /**
@@ -63,8 +59,8 @@ public class JsonataMappingService {
             return Map.of();
         }
 
-        Frame frame = buildFrame(ctx);
         Jsonata jsonataExpr = jsonata(expression);
+        Frame frame = buildFrame(ctx, jsonataExpr);
         Object result = jsonataExpr.evaluate(Map.of(), frame);
         if (result instanceof Map<?, ?> map) {
             return (Map<String, Object>) map;
@@ -88,30 +84,10 @@ public class JsonataMappingService {
             return expression;
         }
 
-        Frame frame = buildFrame(ctx);
         Jsonata jsonataExpr = jsonata(expression);
+        Frame frame = buildFrame(ctx, jsonataExpr);
         Object result = jsonataExpr.evaluate(Map.of(), frame);
         return result != null ? result.toString() : null;
-    }
-
-    /**
-     * Resolve a scalar configuration value that may be either a literal or a JSONata expression.
-     * Values containing the same JSONata markers used by the frontend are evaluated; other values
-     * are returned unchanged.
-     *
-     * @param ctx the evaluation context with the literal or expression and its resolvers
-     * @return the literal value or evaluated scalar result
-     */
-    public String resolveScalar(EvaluationContext ctx) {
-        String value = ctx.getExpression();
-        return isExpression(value) ? evaluateScalar(ctx) : value;
-    }
-
-    /**
-     * Detect whether a scalar configuration value should be interpreted as JSONata.
-     */
-    public static boolean isExpression(String value) {
-        return value != null && JSONATA_MARKER.matcher(value).find();
     }
 
     /**
@@ -126,7 +102,7 @@ public class JsonataMappingService {
         return evaluateWithMaps(expression, documentData, processVariables, caseData, null);
     }
 
-    private Frame buildFrame(EvaluationContext ctx) {
+    private Frame buildFrame(EvaluationContext ctx, Jsonata jsonataExpr) {
         Map<String, Object> docMap = buildDocumentMap(ctx);
         Map<String, Object> pvMap = buildProcessVariableMap(ctx);
 
@@ -138,8 +114,6 @@ public class JsonataMappingService {
                 Map.of()
         );
 
-        String expression = ctx.getExpression();
-        Jsonata jsonataExpr = jsonata(expression);
         Frame frame = jsonataExpr.createFrame();
         frame.setRuntimeBounds(TIMEOUT_MS, MAX_RECURSION_DEPTH);
 

@@ -106,7 +106,8 @@ class RetryFormServiceTest {
         void findsProcessLinkAndGeneratesForm() {
             // Arrange
             ProcessInstance processInstance = mockProcessInstanceLookup(BUSINESS_KEY);
-            PluginProcessLink link = mockPluginProcessLink(ACTIVITY_ID, TEMPLATE_ID, Map.of("name", "doc:name"));
+            PluginProcessLink link = mockPluginProcessLink(
+                    ACTIVITY_ID, TEMPLATE_ID, "{ \"name\": $doc.name }");
             mockProcessLinkServiceForActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID, link);
             mockPluginInstance(link);
             mockTaskQueryReturnsEmpty();
@@ -142,7 +143,7 @@ class RetryFormServiceTest {
         void worksWithSingleGenerateDocumentLink() {
             // Arrange
             mockProcessInstanceLookup(BUSINESS_KEY);
-            PluginProcessLink link = mockPluginProcessLink(ACTIVITY_ID, TEMPLATE_ID, Map.of());
+            PluginProcessLink link = mockPluginProcessLink(ACTIVITY_ID, TEMPLATE_ID, "{}");
             mockTaskQueryReturnsEmpty();
 
             // No link found for explicit activity lookup — fall through to auto-discover
@@ -179,8 +180,8 @@ class RetryFormServiceTest {
             mockProcessInstanceLookup(BUSINESS_KEY);
             mockTaskQueryReturnsEmpty();
 
-            PluginProcessLink link1 = mockPluginProcessLink("task1", TEMPLATE_ID, Map.of());
-            PluginProcessLink link2 = mockPluginProcessLink("task2", TEMPLATE_ID, Map.of());
+            PluginProcessLink link1 = mockPluginProcessLink("task1", TEMPLATE_ID, "{}");
+            PluginProcessLink link2 = mockPluginProcessLink("task2", TEMPLATE_ID, "{}");
 
             when(processLinkService.getProcessLinks(PROCESS_DEFINITION_ID))
                     .thenReturn(List.of(link1, link2));
@@ -242,7 +243,7 @@ class RetryFormServiceTest {
             mockTaskQueryReturnsEmpty();
 
             // Create a link without templateId
-            PluginProcessLink link = mockPluginProcessLink(ACTIVITY_ID, null, Map.of());
+            PluginProcessLink link = mockPluginProcessLink(ACTIVITY_ID, null, "{}");
             mockProcessLinkServiceForActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID, link);
 
             // Act & Assert
@@ -262,7 +263,7 @@ class RetryFormServiceTest {
             mockProcessInstanceLookup(null);
             mockTaskQueryReturnsEmpty();
 
-            PluginProcessLink link = mockPluginProcessLink(ACTIVITY_ID, TEMPLATE_ID, Map.of());
+            PluginProcessLink link = mockPluginProcessLink(ACTIVITY_ID, TEMPLATE_ID, "{}");
             mockProcessLinkServiceForActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID, link);
 
             // Act & Assert — no explicit documentId passed either
@@ -292,7 +293,7 @@ class RetryFormServiceTest {
             when(taskService.getVariableLocal("task-001", EpistolaProcessVariables.SOURCE_ACTIVITY_ID))
                     .thenReturn(ACTIVITY_ID);
 
-            PluginProcessLink link = mockPluginProcessLink(ACTIVITY_ID, TEMPLATE_ID, Map.of());
+            PluginProcessLink link = mockPluginProcessLink(ACTIVITY_ID, TEMPLATE_ID, "{}");
             mockProcessLinkServiceForActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID, link);
             mockPluginInstance(link);
 
@@ -332,18 +333,21 @@ class RetryFormServiceTest {
         return processInstance;
     }
 
-    private PluginProcessLink mockPluginProcessLink(String activityId, String templateId, Map<String, Object> dataMapping) {
+    private PluginProcessLink mockPluginProcessLink(String activityId, String templateId, String dataMapping) {
         PluginProcessLink link = mock(PluginProcessLink.class);
         lenient().when(link.getActivityId()).thenReturn(activityId);
         lenient().when(link.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
 
         ObjectNode actionProps = objectMapper.createObjectNode();
         actionProps.put("catalogId", CATALOG_ID);
+        actionProps.put("outputFormat", "PDF");
+        actionProps.put("filename", "retry.pdf");
+        actionProps.put("resultProcessVariable", "generationResult");
         if (templateId != null) {
             actionProps.put("templateId", templateId);
         }
-        if (dataMapping != null && !dataMapping.isEmpty()) {
-            actionProps.set("dataMapping", objectMapper.valueToTree(dataMapping));
+        if (dataMapping != null) {
+            actionProps.put("dataMapping", dataMapping);
         }
         lenient().when(link.getActionProperties()).thenReturn(actionProps);
 

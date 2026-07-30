@@ -42,16 +42,14 @@ export interface VariantAttributeEntry {
 }
 
 /**
- * Action configuration for the generate-document action.
- * Contains all parameters needed to generate a document.
+ * Original unversioned generate-document action shape. Expression-capable
+ * scalar fields contain either literals or JSONata expressions.
  *
- * Variant selection supports two modes:
- * - Explicit: set variantId directly
- * - By attributes: set variantAttributes with key-value pairs (values can be JSONata expressions)
- *
- * environmentId may be a literal environment id or a JSONata expression.
+ * @deprecated Retained only to migrate existing v0 process links in memory.
+ * New and resaved actions use GenerateDocumentConfigV1.
  */
-export interface GenerateDocumentConfig {
+export interface GenerateDocumentConfigV0 {
+  actionConfigVersion?: 0 | null;
   catalogId: string;
   templateId: string;
   variantId?: string;
@@ -63,6 +61,24 @@ export interface GenerateDocumentConfig {
   correlationId?: string;
   resultProcessVariable: string;
 }
+
+/**
+ * Current generate-document action shape. Every expression-capable scalar is
+ * JSONata; literal values are represented as JSONata string literals.
+ */
+export interface GenerateDocumentConfigV1 extends Omit<
+  GenerateDocumentConfigV0,
+  'actionConfigVersion' | 'outputFormat'
+> {
+  actionConfigVersion: 1;
+  /** JSONata expression; the current editor always stores the fixed value as `"PDF"`. */
+  outputFormat: string;
+}
+
+export type GenerateDocumentConfigVersioned = GenerateDocumentConfigV0 | GenerateDocumentConfigV1;
+
+/** Current shape used when creating or saving a generate-document action. */
+export type GenerateDocumentConfig = GenerateDocumentConfigV1;
 
 /**
  * Action configuration for the check-job-status action.
@@ -132,9 +148,11 @@ export interface EvaluationResult {
  */
 export interface ValidateJsonataRequest {
   dataMapping?: string | null;
+  outputFormat?: string | null;
   filename?: string | null;
   variantId?: string | null;
   environmentId?: string | null;
+  correlationId?: string | null;
   variantAttributeValues?: Record<string, string> | null;
 }
 

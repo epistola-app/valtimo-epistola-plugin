@@ -17,6 +17,7 @@
  */
 package com.ritense.valtimo.epistola
 
+import app.epistola.valtimo.service.versioncheck.SemVersion
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -46,14 +47,14 @@ class BundledCatalogSchemaVersionTest {
             .isNotEmpty
 
         manifests.forEach { resource ->
-            val schemaVersion =
-                resource.inputStream
-                    .use { mapper.readTree(it) }
-                    .path("schemaVersion")
-                    .asInt(-1)
+            val manifest = resource.inputStream.use { mapper.readTree(it) }
+            val schemaVersion = manifest.path("schemaVersion").asInt(-1)
             assertThat(schemaVersion)
                 .describedAs("schemaVersion of bundled manifest %s", resource.description)
                 .isEqualTo(EXPECTED_CATALOG_SCHEMA_VERSION)
+            assertThat(SemVersion.parse(manifest.path("release").path("version").asText("")))
+                .describedAs("release version of bundled manifest %s", resource.description)
+                .isPresent
         }
     }
 
@@ -78,12 +79,7 @@ class BundledCatalogSchemaVersionTest {
 
     @Test
     fun `every bundled template document uses a synthetic root node`() {
-        val details = resolver.getResources("classpath*:config/epistola/catalogs/*/resources/template/*.json")
-        assertThat(details)
-            .describedAs("expected bundled template resource detail files on the classpath")
-            .isNotEmpty
-
-        details.forEach { resource ->
+        bundledTemplateDetails().forEach { resource ->
             val templateModel =
                 resource.inputStream
                     .use { mapper.readTree(it) }
@@ -103,6 +99,75 @@ class BundledCatalogSchemaVersionTest {
                 .isEqualTo(1)
         }
     }
+
+    @Test
+    fun `every bundled layout table uses numeric dimensions`() {
+        bundledTemplateDetails().forEach { resource ->
+            val nodes =
+                resource.inputStream
+                    .use { mapper.readTree(it) }
+                    .path("resource")
+                    .path("templateModel")
+                    .path("nodes")
+
+            nodes
+                .filter { it.path("type").asText() == "table" }
+                .forEach { table ->
+                    val props = table.path("props")
+                    val description = "${table.path("id").asText()} in ${resource.description}"
+                    assertThat(props.path("rows").isIntegralNumber)
+                        .describedAs("numeric rows for table %s", description)
+                        .isTrue
+                    assertThat(props.path("columns").isIntegralNumber)
+                        .describedAs("numeric columns for table %s", description)
+                        .isTrue
+                    assertThat(props.path("headerRows").isIntegralNumber)
+                        .describedAs("numeric headerRows for table %s", description)
+                        .isTrue
+                    assertThat(props.path("merges").isArray)
+                        .describedAs("merges array for table %s", description)
+                        .isTrue
+                    assertThat(props.has("borderStyle"))
+                        .describedAs("obsolete borderStyle for table %s", description)
+                        .isFalse
+                }
+        }
+    }
+
+    @Test
+    fun `every bundled loop and conditional uses a body slot`() {
+        bundledTemplateDetails().forEach { resource ->
+            val templateModel =
+                resource.inputStream
+                    .use { mapper.readTree(it) }
+                    .path("resource")
+                    .path("templateModel")
+            val slots = templateModel.path("slots")
+
+            templateModel
+                .path("nodes")
+                .filter { it.path("type").asText() in setOf("loop", "conditional") }
+                .forEach { node ->
+                    node.path("slots").forEach { slotId ->
+                        assertThat(slots.path(slotId.asText()).path("name").asText())
+                            .describedAs(
+                                "slot %s of %s node %s in %s",
+                                slotId.asText(),
+                                node.path("type").asText(),
+                                node.path("id").asText(),
+                                resource.description,
+                            ).isEqualTo("body")
+                    }
+                }
+        }
+    }
+
+    private fun bundledTemplateDetails() =
+        resolver.getResources("classpath*:config/epistola/catalogs/*/resources/template/*.json").also { details ->
+            assertThat(details)
+                .describedAs("expected bundled template resource detail files on the classpath")
+                .isNotEmpty
+        }
 
     companion object {
         /** The catalog wire `schemaVersion` this plugin build targets (Epistola Suite >= 0.26.0). */

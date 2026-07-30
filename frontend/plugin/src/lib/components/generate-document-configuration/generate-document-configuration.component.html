@@ -3,7 +3,7 @@
   (valueChange)="formValueChange($event)"
   *ngIf="{
     disabled: disabled$ | async,
-    prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null,
+    prefill: effectivePrefill$ ? (effectivePrefill$ | async) : null,
     catalogs: catalogs$ | async,
     templates: templates$ | async,
     variants: variants$ | async,
@@ -12,9 +12,27 @@
     selectedCatalogId: selectedCatalogId$ | async,
     selectedTemplateId: selectedTemplateId$ | async,
     validationErrors: validationErrors$ | async,
+    configurationVersionError: configurationVersionError$ | async,
+    legacyConfigurationLoaded: legacyConfigurationLoaded$ | async,
     resultProcessVariableInvalid: resultProcessVariableInvalid$ | async,
   } as obs"
 >
+  <div
+    *ngIf="obs.legacyConfigurationLoaded"
+    class="legacy-configuration-notice"
+    data-testid="epistola-generate-legacy-configuration-notice"
+    role="status"
+  >
+    <strong>{{ 'legacyGenerateConfigurationHeading' | pluginTranslate: pluginId | async }}</strong>
+    {{ 'legacyGenerateConfigurationDescription' | pluginTranslate: pluginId | async }}
+  </div>
+  <div
+    *ngIf="obs.configurationVersionError"
+    class="jsonata-validation-errors"
+    data-testid="epistola-generate-version-error"
+  >
+    {{ obs.configurationVersionError }}
+  </div>
   <div
     *ngIf="obs.validationErrors && obs.validationErrors.length > 0"
     class="jsonata-validation-errors"
@@ -108,8 +126,8 @@
   <!--
     The v-select / v-input here is intentionally NOT named into the v-form: v-form's
     @ContentChildren queries default to descendants:false and would skip anything nested
-    in this `field-with-fx` wrapper. The value is tracked via (selectedChange)/(valueChange)
-    on the component, see variantIdValue / filenameValue.
+    in this `field-with-fx` wrapper. The value is tracked through standalone ngModel/value
+    bindings on the component, see variantIdValue.
   -->
   <div *ngIf="variantSelectionMode === 'explicit'" class="field-with-fx">
     <v-select
@@ -119,9 +137,12 @@
       [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
       [margin]="true"
       [items]="obs.variants.data"
-      [defaultSelectionId]="variantIdValue"
+      [appendInline]="false"
+      [dropUp]="false"
+      [ngModel]="variantIdValue"
+      [ngModelOptions]="{ standalone: true }"
       [clearSelectionSubject$]="clearVariantId$"
-      (selectedChange)="onVariantIdValueChange($event)"
+      (ngModelChange)="onVariantIdValueChange($event)"
       [disabled]="obs.disabled || obs.variants.loading || !obs.selectedTemplateId"
       [required]="false"
       [loading]="obs.variants.loading"
@@ -138,14 +159,25 @@
         [disabled]="obs.disabled"
         placeholder="$pv.letterType"
       />
+      <small
+        *ngIf="!canSwitchVariantIdToDropdown()"
+        class="fx-mode-hint"
+        data-testid="epistola-generate-variant-id-expression-hint"
+      >
+        {{ 'expressionDropdownUnavailable' | pluginTranslate: pluginId | async }}
+      </small>
     </div>
     <button
       type="button"
       class="fx-toggle"
       data-testid="epistola-generate-variant-id-fx-toggle"
       (click)="toggleVariantIdExpressionMode()"
-      [disabled]="obs.disabled"
-      [title]="variantIdExpressionMode ? 'Switch to dropdown' : 'Switch to expression'"
+      [disabled]="obs.disabled || (variantIdExpressionMode && !canSwitchVariantIdToDropdown())"
+      [title]="
+        (variantIdExpressionMode ? 'switchToDropdown' : 'switchToExpression')
+          | pluginTranslate: pluginId
+          | async
+      "
     >
       {{ variantIdExpressionMode ? '·' : 'fx' }}
     </button>
@@ -209,31 +241,18 @@
             &times;
           </button>
         </div>
-        <div class="attribute-value-with-fx">
+        <div class="attribute-expression">
           <input
             type="text"
             class="variant-attribute-input"
             [attr.data-testid]="'epistola-generate-attribute-value-' + i"
-            [class.fx-input]="entry._expressionMode"
             [placeholder]="
-              entry._expressionMode
-                ? '$pv.language'
-                : ('attributeValue' | pluginTranslate: pluginId | async)
+              'attributeValueExpressionPlaceholder' | pluginTranslate: pluginId | async
             "
             [(ngModel)]="entry.value"
             (ngModelChange)="onAttributeEntryChange()"
             [disabled]="obs.disabled"
           />
-          <button
-            type="button"
-            class="fx-toggle fx-toggle--inline"
-            [attr.data-testid]="'epistola-generate-attribute-value-fx-toggle-' + i"
-            (click)="entry._expressionMode = !entry._expressionMode"
-            [disabled]="obs.disabled"
-            [title]="entry._expressionMode ? 'Switch to plain value' : 'Switch to expression'"
-          >
-            {{ entry._expressionMode ? '·' : 'fx' }}
-          </button>
         </div>
         <label class="variant-attribute-required-toggle">
           <input
@@ -280,8 +299,11 @@
       [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
       [margin]="true"
       [items]="obs.environments.data"
-      [defaultSelectionId]="environmentIdValue"
-      (selectedChange)="onEnvironmentIdValueChange($event)"
+      [appendInline]="false"
+      [dropUp]="false"
+      [ngModel]="environmentIdValue"
+      [ngModelOptions]="{ standalone: true }"
+      (ngModelChange)="onEnvironmentIdValueChange($event)"
       [disabled]="obs.disabled || obs.environments.loading"
       [required]="false"
       [loading]="obs.environments.loading"
@@ -300,14 +322,27 @@
         [disabled]="obs.disabled"
         placeholder="$pv.environmentId"
       />
+      <small
+        *ngIf="!canSwitchEnvironmentIdToDropdown()"
+        class="fx-mode-hint"
+        data-testid="epistola-generate-environment-id-expression-hint"
+      >
+        {{ 'expressionDropdownUnavailable' | pluginTranslate: pluginId | async }}
+      </small>
     </div>
     <button
       type="button"
       class="fx-toggle"
       data-testid="epistola-generate-environment-id-fx-toggle"
       (click)="toggleEnvironmentIdExpressionMode()"
-      [disabled]="obs.disabled"
-      [title]="environmentIdExpressionMode ? 'Switch to dropdown' : 'Switch to expression'"
+      [disabled]="
+        obs.disabled || (environmentIdExpressionMode && !canSwitchEnvironmentIdToDropdown())
+      "
+      [title]="
+        (environmentIdExpressionMode ? 'switchToDropdown' : 'switchToExpression')
+          | pluginTranslate: pluginId
+          | async
+      "
     >
       {{ environmentIdExpressionMode ? '·' : 'fx' }}
     </button>
@@ -320,67 +355,31 @@
     {{ obs.environments.error }}
   </div>
 
-  <v-select
-    name="outputFormat"
-    data-testid="epistola-generate-output-format"
-    [title]="'outputFormat' | pluginTranslate: pluginId | async"
-    [tooltip]="'outputFormatTooltip' | pluginTranslate: pluginId | async"
-    [margin]="true"
-    [items]="outputFormatOptions"
-    [defaultSelectionId]="obs.prefill?.outputFormat || 'PDF'"
-    [disabled]="obs.disabled"
-    [required]="true"
-  >
-  </v-select>
-
-  <div class="field-with-fx">
-    <v-input
-      *ngIf="!filenameExpressionMode"
-      data-testid="epistola-generate-filename"
-      [title]="'filename' | pluginTranslate: pluginId | async"
-      [tooltip]="'filenameTooltip' | pluginTranslate: pluginId | async"
-      [margin]="true"
-      [defaultValue]="filenameValue"
-      (valueChange)="onFilenameValueChange($event)"
+  <div class="fx-input-group">
+    <label class="fx-input-label">{{ 'filename' | pluginTranslate: pluginId | async }}</label>
+    <input
+      type="text"
+      class="fx-input"
+      data-testid="epistola-generate-filename-expression"
+      [ngModel]="filenameExpression"
+      (ngModelChange)="filenameExpression = $event; onFilenameExpressionChange()"
       [disabled]="obs.disabled"
-      [required]="true"
-    >
-    </v-input>
-    <div *ngIf="filenameExpressionMode" class="fx-input-group">
-      <label class="fx-input-label">{{ 'filename' | pluginTranslate: pluginId | async }}</label>
-      <input
-        type="text"
-        class="fx-input"
-        data-testid="epistola-generate-filename-expression"
-        [ngModel]="filenameExpression"
-        (ngModelChange)="filenameExpression = $event; onFilenameExpressionChange()"
-        [disabled]="obs.disabled"
-        placeholder='"besluit-" & $doc.name & ".pdf"'
-      />
-    </div>
-    <button
-      type="button"
-      class="fx-toggle"
-      data-testid="epistola-generate-filename-fx-toggle"
-      (click)="toggleFilenameExpressionMode()"
-      [disabled]="obs.disabled"
-      [title]="filenameExpressionMode ? 'Switch to plain input' : 'Switch to expression'"
-    >
-      {{ filenameExpressionMode ? '·' : 'fx' }}
-    </button>
+      placeholder='"besluit-" & $doc.name & ".pdf"'
+    />
   </div>
 
-  <v-input
-    name="correlationId"
-    data-testid="epistola-generate-correlation-id"
-    [title]="'correlationId' | pluginTranslate: pluginId | async"
-    [tooltip]="'correlationIdTooltip' | pluginTranslate: pluginId | async"
-    [margin]="true"
-    [defaultValue]="obs.prefill?.correlationId"
-    [disabled]="obs.disabled"
-    [required]="false"
-  >
-  </v-input>
+  <div class="fx-input-group">
+    <label class="fx-input-label">{{ 'correlationId' | pluginTranslate: pluginId | async }}</label>
+    <input
+      type="text"
+      class="fx-input"
+      data-testid="epistola-generate-correlation-id-expression"
+      [ngModel]="correlationIdExpression"
+      (ngModelChange)="correlationIdExpression = $event; onCorrelationIdExpressionChange()"
+      [disabled]="obs.disabled"
+      placeholder="$pv.correlationId"
+    />
+  </div>
 
   <v-input
     name="resultProcessVariable"
@@ -437,7 +436,6 @@
     *ngIf="mappingMode === 'simple'"
     [expression]="dataMapping$ | async"
     [templateFields]="(templateFields$ | async)?.data ?? []"
-    [suggestions]="variableSuggestions"
     [disabled]="!!(disabled$ | async)"
     (expressionChange)="onDataMappingChange($event)"
   ></epistola-mapping-builder>

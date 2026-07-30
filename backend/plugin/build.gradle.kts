@@ -130,6 +130,12 @@ tasks.processResources {
     }
 }
 
+tasks.processTestResources {
+    from(rootProject.file("test-fixtures")) {
+        into("compatibility-fixtures")
+    }
+}
+
 tasks.test {
     // Don't fail if there are no tests yet
     failOnNoDiscoveredTests.set(false)
