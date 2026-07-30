@@ -291,9 +291,15 @@ public class EpistolaPlugin {
                         resultProcessVariable));
 
         log.debug("Starting document generation: catalogId={}, templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
-                catalogId, templateId, variantId, variantAttributes, outputFormat, filename);
+                actionConfig.catalogId(),
+                actionConfig.templateId(),
+                actionConfig.variantId().source(),
+                actionConfig.variantAttributes(),
+                actionConfig.outputFormat().source(),
+                actionConfig.filename().source());
 
         validateProcessVariableName("resultProcessVariable", actionConfig.resultProcessVariable());
+        String configuredResultVariable = actionConfig.resultProcessVariable();
 
         boolean hasVariantId = actionConfig.variantId().isConfigured();
         boolean hasAttributes = !actionConfig.variantAttributes().isEmpty();
@@ -390,8 +396,8 @@ public class EpistolaPlugin {
                     baseUrl,
                     apiKey,
                     tenantId,
-                    catalogId,
-                    templateId,
+                    actionConfig.catalogId(),
+                    actionConfig.templateId(),
                     resolvedVariantId,
                     resolvedAttributes,
                     effectiveEnvironmentId,
@@ -411,7 +417,7 @@ public class EpistolaPlugin {
             failureData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
             failureData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE,
                     "Document generation request failed: " + e.getMessage());
-            execution.setVariable(resultProcessVariable, failureData);
+            execution.setVariable(configuredResultVariable, failureData);
             throw new RuntimeException("Failed to submit document generation request to Epistola", e);
         }
 
@@ -432,7 +438,7 @@ public class EpistolaPlugin {
         resultData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
         resultData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE, null);
         resultData.put(EpistolaProcessVariables.RESULT_KEY_JOB_PATH, jobPath);
-        execution.setVariable(resultProcessVariable, resultData);
+        execution.setVariable(configuredResultVariable, resultData);
 
         // Store tenantId as a standalone process variable so it can be used in forms
         // (e.g. for building document download URLs without parsing the composite jobPath).
@@ -443,7 +449,7 @@ public class EpistolaPlugin {
         // the result collector can resolve the result variable (and process instance) from just the
         // completed job — including the variable pattern with no catch event. Unique name → parallel
         // branches never clobber it. See EpistolaMessageCorrelationService.
-        execution.setVariable(jobPath, resultProcessVariable);
+        execution.setVariable(jobPath, configuredResultVariable);
 
         // Hint the collector to look for the result soon — if it's currently
         // backed off into idle mode, this brings the next poll forward to
@@ -453,7 +459,7 @@ public class EpistolaPlugin {
         resultCollectorRunner.kickFor(baseUrl, apiKey, tenantId);
 
         log.debug("Document generation request submitted. jobPath={}, resultVar={}",
-                jobPath, resultProcessVariable);
+                jobPath, configuredResultVariable);
     }
 
     /**
