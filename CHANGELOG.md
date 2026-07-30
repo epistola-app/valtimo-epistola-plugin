@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Data-mapping expression rows now use a compact visual hierarchy.** Field names have greater emphasis, leaf fields align labels and editors horizontally, and the repeated editor chrome takes less vertical space. The interaction model now distinguishes `@` as inline variable search from the `+` button that opens the complete insert menu.
 - **The expression picker now accepts variables missing from context suggestions.** An unmatched name can be inserted as a process variable, while `doc.`, `pv.`, and `case.` prefixes explicitly select another JSONata scope.
 - **The visual expression caret now remains after an inserted value.** Closing the picker can no longer move the cursor back to the start of the content-editable field during its final focus cycle.
+- **The expression picker now has consistent popover focus, placement, and dismissal.** Opening it places the popover below the input and moves keyboard focus to its search field; clicking anywhere outside closes it, clicking `+` again toggles it closed, and selecting an entry closes it while returning the caret to the expression.
 - **The ESM test application can run its Karma suite again.** Its CommonJS Karma configuration now uses a `.cjs` extension, the obsolete webpack `require.context` bootstrap is removed, and CI selects headless Chrome with a single run instead of failing during setup or waiting in watch mode.
 
 ## [0.16.0] - 2026-07-30

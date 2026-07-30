@@ -362,17 +362,24 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     this.activeOptionIndex = 0;
     this.positionPicker();
     this.cdr.markForCheck();
-    queueMicrotask(() => this.pickerSearch?.nativeElement.focus());
+    this.focusPickerSearchAfterRender();
   }
 
   onInsertMouseDown(event: MouseEvent): void {
     event.preventDefault();
     event.stopPropagation();
-    this.openInsertPicker();
+    if (this.pickerOpen) {
+      this.closePicker(true);
+    } else {
+      this.openInsertPicker();
+    }
   }
 
-  onInsertClick(): void {
-    if (!this.pickerOpen) {
+  onInsertClick(event: MouseEvent): void {
+    if (event.detail !== 0) return;
+    if (this.pickerOpen) {
+      this.closePicker(true);
+    } else {
       this.openInsertPicker();
     }
   }
@@ -495,9 +502,10 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
 
   @HostListener('document:mousedown', ['$event'])
   onDocumentMouseDown(event: MouseEvent): void {
+    const target = event.target;
     if (
       this.pickerOpen &&
-      !this.surface?.nativeElement.closest('.smart-expression')?.contains(event.target as Node)
+      (!(target instanceof Element) || !target.closest('.smart-expression__picker'))
     ) {
       this.dismissedAtTrigger = this.atTrigger;
       this.closePicker(false);
@@ -679,6 +687,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     this.activeOptionIndex = 0;
     this.positionPicker(range);
     this.cdr.markForCheck();
+    this.focusPickerSearchAfterRender();
   }
 
   private openPickerForChip(chip: HTMLElement): void {
@@ -693,7 +702,22 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     this.activeOptionIndex = 0;
     this.positionPicker();
     this.cdr.markForCheck();
-    queueMicrotask(() => this.pickerSearch?.nativeElement.focus());
+    this.focusPickerSearchAfterRender();
+  }
+
+  private focusPickerSearchAfterRender(): void {
+    const focus = () => {
+      const input = this.pickerSearch?.nativeElement;
+      if (!this.pickerOpen || !input?.isConnected) return;
+      input.focus({ preventScroll: true });
+    };
+
+    queueMicrotask(focus);
+    this.zone.runOutsideAngular(() => {
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(focus);
+      }
+    });
   }
 
   private insertSegment(segment: Exclude<SimpleExpressionSegment, { kind: 'text' }>): void {
@@ -955,15 +979,20 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   }
 
   private positionPicker(range?: Range): void {
-    const wrapper = this.surface?.nativeElement.parentElement;
+    const surface = this.surface?.nativeElement;
+    const wrapper = surface?.parentElement;
+    const container = surface?.closest<HTMLElement>('.smart-expression');
     const anchor = range?.getBoundingClientRect();
     const wrapperRect = wrapper?.getBoundingClientRect();
+    const containerRect = container?.getBoundingClientRect();
     this.popoverLeft =
-      anchor && wrapperRect && anchor.left > 0 ? Math.max(0, anchor.left - wrapperRect.left) : 0;
+      anchor && containerRect && anchor.left > 0
+        ? Math.max(0, anchor.left - containerRect.left)
+        : 0;
     this.popoverTop =
-      anchor && wrapperRect && anchor.bottom > 0
-        ? Math.max(36, anchor.bottom - wrapperRect.top + 4)
-        : 40;
+      wrapperRect && containerRect && wrapperRect.bottom > containerRect.top
+        ? wrapperRect.bottom - containerRect.top + 6
+        : (wrapper?.offsetTop || 0) + (wrapper?.offsetHeight || 40) + 6;
   }
 
   private resizeRawTextarea(): void {

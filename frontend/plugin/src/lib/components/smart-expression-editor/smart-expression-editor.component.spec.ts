@@ -82,18 +82,25 @@ describe('SmartExpressionEditorComponent', () => {
       },
     });
 
+    const root = document.createElement('div');
+    root.className = 'smart-expression';
+    const surfaceWrap = document.createElement('div');
+    surfaceWrap.className = 'smart-expression__surface-wrap';
     const surface = document.createElement('div');
     surface.contentEditable = 'true';
-    document.body.append(surface);
+    surfaceWrap.append(surface);
+    root.append(surfaceWrap);
+    document.body.append(root);
     (component as any).surface = { nativeElement: surface };
     component.ngAfterViewInit();
 
     return {
       component,
+      root,
       surface,
       destroy: () => {
         component.ngOnDestroy();
-        surface.remove();
+        root.remove();
       },
     };
   };
@@ -276,7 +283,7 @@ describe('SmartExpressionEditorComponent', () => {
     );
 
     setCaret(surface.firstChild!, 0);
-    animationFrames[0](0);
+    animationFrames.at(-1)!(0);
 
     const selection = window.getSelection()!;
     expect((component as any).logicalOffsetAtRange(selection.getRangeAt(0))).toBe(
@@ -306,6 +313,63 @@ describe('SmartExpressionEditorComponent', () => {
     expect(component.expression).toBe(`'prefix-' & $doc.name`);
     expect(component.pickerOpen).toBe(false);
     destroy();
+  });
+
+  it('toggles the insert picker closed when the + button is clicked again', () => {
+    const { component, surface, destroy } = createComponent(`'prefix-'`);
+    setCaret(surface.firstChild!, 'prefix-'.length);
+    component.onSurfaceFocus();
+
+    component.onInsertMouseDown(new MouseEvent('mousedown', { cancelable: true }));
+    component.onInsertClick(new MouseEvent('click', { detail: 1 }));
+    expect(component.pickerOpen).toBe(true);
+
+    component.onInsertMouseDown(new MouseEvent('mousedown', { cancelable: true }));
+    component.onInsertClick(new MouseEvent('click', { detail: 1 }));
+    expect(component.pickerOpen).toBe(false);
+    destroy();
+  });
+
+  it('closes on pointer interaction outside the picker but not inside it', () => {
+    const { component, root, destroy } = createComponent('');
+    const picker = document.createElement('div');
+    picker.className = 'smart-expression__picker';
+    const pickerInput = document.createElement('input');
+    picker.append(pickerInput);
+    root.append(picker);
+    component.pickerOpen = true;
+
+    component.onDocumentMouseDown({ target: pickerInput } as unknown as MouseEvent);
+    expect(component.pickerOpen).toBe(true);
+
+    component.onDocumentMouseDown({ target: root } as unknown as MouseEvent);
+    expect(component.pickerOpen).toBe(false);
+    destroy();
+  });
+
+  it('focuses the picker search after rendering and positions it below the input', () => {
+    const animationFrames: FrameRequestCallback[] = [];
+    const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = jest.fn((callback: FrameRequestCallback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
+    const { component, root, surface, destroy } = createComponent('');
+    const pickerInput = document.createElement('input');
+    root.append(pickerInput);
+    (component as any).pickerSearch = { nativeElement: pickerInput };
+    root.getBoundingClientRect = () => ({ top: 100, left: 20, bottom: 300 }) as DOMRect;
+    surface.parentElement!.getBoundingClientRect = () =>
+      ({ top: 124, left: 20, bottom: 164 }) as DOMRect;
+
+    component.openInsertPicker();
+    animationFrames.at(-1)!(0);
+
+    expect(document.activeElement).toBe(pickerInput);
+    expect(component.popoverTop).toBe(70);
+
+    destroy();
+    globalThis.requestAnimationFrame = originalRequestAnimationFrame;
   });
 
   it('replaces a clicked reference chip on mouse down and closes the picker', () => {

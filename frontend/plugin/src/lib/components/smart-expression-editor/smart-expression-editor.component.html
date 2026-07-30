@@ -59,7 +59,7 @@
         [attr.aria-expanded]="pickerOpen"
         [attr.data-testid]="testId + '-insert'"
         (mousedown)="onInsertMouseDown($event)"
-        (click)="onInsertClick()"
+        (click)="onInsertClick($event)"
       >
         +
       </button>
@@ -78,7 +78,7 @@
     >
       <input
         #pickerSearch
-        *ngIf="!atTrigger && !numberEntryOpen"
+        *ngIf="!numberEntryOpen"
         type="search"
         class="smart-expression__search"
         role="combobox"
