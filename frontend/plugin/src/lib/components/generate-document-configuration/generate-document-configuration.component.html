@@ -270,33 +270,31 @@
     {{ obs.environments.error }}
   </div>
 
-  <div class="fx-input-group">
-    <label class="fx-input-label">{{ 'filename' | pluginTranslate: pluginId | async }}</label>
-    <epistola-smart-expression-editor
-      [expression]="filenameExpression"
-      [contextVariables]="editorContextVariables"
-      [disabled]="obs.disabled"
-      [required]="true"
-      [allowNull]="false"
-      [placeholder]="'besluit-'"
-      testId="epistola-generate-filename-expression"
-      (expressionChange)="onFilenameExpressionChange($event)"
-      (validChange)="onExpressionValidityChange('filename', $event)"
-    ></epistola-smart-expression-editor>
-  </div>
+  <epistola-smart-expression-editor
+    [expression]="filenameExpression"
+    [contextVariables]="editorContextVariables"
+    [title]="'filename' | pluginTranslate: pluginId | async"
+    [tooltip]="'filenameTooltip' | pluginTranslate: pluginId | async"
+    [disabled]="obs.disabled"
+    [required]="true"
+    [allowNull]="false"
+    [placeholder]="'besluit-'"
+    testId="epistola-generate-filename-expression"
+    (expressionChange)="onFilenameExpressionChange($event)"
+    (validChange)="onExpressionValidityChange('filename', $event)"
+  ></epistola-smart-expression-editor>
 
-  <div class="fx-input-group">
-    <label class="fx-input-label">{{ 'correlationId' | pluginTranslate: pluginId | async }}</label>
-    <epistola-smart-expression-editor
-      [expression]="correlationIdExpression"
-      [contextVariables]="editorContextVariables"
-      [disabled]="obs.disabled"
-      [placeholder]="'$pv.correlationId'"
-      testId="epistola-generate-correlation-id-expression"
-      (expressionChange)="onCorrelationIdExpressionChange($event)"
-      (validChange)="onExpressionValidityChange('correlationId', $event)"
-    ></epistola-smart-expression-editor>
-  </div>
+  <epistola-smart-expression-editor
+    [expression]="correlationIdExpression"
+    [contextVariables]="editorContextVariables"
+    [title]="'correlationId' | pluginTranslate: pluginId | async"
+    [tooltip]="'correlationIdTooltip' | pluginTranslate: pluginId | async"
+    [disabled]="obs.disabled"
+    [placeholder]="'$pv.correlationId'"
+    testId="epistola-generate-correlation-id-expression"
+    (expressionChange)="onCorrelationIdExpressionChange($event)"
+    (validChange)="onExpressionValidityChange('correlationId', $event)"
+  ></epistola-smart-expression-editor>
 
   <v-input
     name="resultProcessVariable"
