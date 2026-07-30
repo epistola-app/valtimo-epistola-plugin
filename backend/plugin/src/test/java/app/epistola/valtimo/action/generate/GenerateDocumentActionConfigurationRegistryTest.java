@@ -21,6 +21,7 @@ import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.LiteralScalar;
 import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import org.junit.jupiter.api.Test;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 
@@ -36,7 +37,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
 
     @Test
     void missingVersionUsesV0LiteralOrExpressionSemantics() {
-        var config = GenerateDocumentActionConfigurationRegistry.parse(raw(
+        var config = GenerateDocumentActionConfigurationRegistry.parse(properties(
                 null,
                 "value.pdf",
                 null,
@@ -53,7 +54,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
 
     @Test
     void malformedExpressionLikeV0ValueRemainsLiteral() {
-        var config = GenerateDocumentActionConfigurationRegistry.parse(raw(
+        var config = GenerateDocumentActionConfigurationRegistry.parse(properties(
                 null,
                 "$pv.[broken",
                 null,
@@ -64,7 +65,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
 
     @Test
     void v1TreatsEveryScalarAsJsonata() {
-        var config = GenerateDocumentActionConfigurationRegistry.parse(raw(
+        var config = GenerateDocumentActionConfigurationRegistry.parse(properties(
                 1,
                 "\"value.pdf\"",
                 "$pv.variant",
@@ -77,8 +78,26 @@ class GenerateDocumentActionConfigurationRegistryTest {
     }
 
     @Test
+    void propertiesAndObjectNodeEntryPointsProduceEquivalentConfiguration() {
+        var properties = properties(1, "\"value.pdf\"", "$pv.variant", null);
+        var objectNode = JsonNodeFactory.instance.objectNode()
+                .put("actionConfigVersion", 1)
+                .put("catalogId", "catalog")
+                .put("templateId", "template")
+                .put("variantId", "$pv.variant")
+                .put("dataMapping", "{}")
+                .put("outputFormat", "\"PDF\"")
+                .put("filename", "\"value.pdf\"")
+                .put("correlationId", "$pv.correlationId")
+                .put("resultProcessVariable", "result");
+
+        assertThat(GenerateDocumentActionConfigurationRegistry.parse(objectNode))
+                .isEqualTo(GenerateDocumentActionConfigurationRegistry.parse(properties));
+    }
+
+    @Test
     void rejectsUnsupportedVersion() {
-        assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(raw(
+        assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(properties(
                 2,
                 "\"value.pdf\"",
                 null,
@@ -90,7 +109,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
 
     @Test
     void rejectsDeprecatedMapVariantAttributes() {
-        assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(raw(
+        assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(properties(
                 null,
                 "value.pdf",
                 null,
@@ -101,7 +120,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
 
     @Test
     void rejectsMissingRequiredFlag() {
-        assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(raw(
+        assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(properties(
                 1,
                 "\"value.pdf\"",
                 null,
@@ -111,21 +130,73 @@ class GenerateDocumentActionConfigurationRegistryTest {
     }
 
     @Test
+    void eachVersionRejectsVariantIdTogetherWithVariantAttributes() {
+        for (int version : List.of(0, 1)) {
+            String variantId = version == 0 ? "variant" : "\"variant\"";
+
+            assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(properties(
+                    version,
+                    version == 0 ? "value.pdf" : "\"value.pdf\"",
+                    variantId,
+                    List.of(Map.of(
+                            "key", "language",
+                            "value", version == 0 ? "nl" : "\"nl\"",
+                            "required", true)))))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("configuration v" + version)
+                    .hasMessageContaining("variantId and variantAttributes are mutually exclusive");
+        }
+    }
+
+    @Test
+    void eachVersionRejectsInvalidDataMappingSyntax() {
+        for (int version : List.of(0, 1)) {
+            var valid = properties(
+                    version,
+                    version == 0 ? "value.pdf" : "\"value.pdf\"",
+                    null,
+                    null);
+            var invalid = new GenerateDocumentActionProperties(
+                    valid.actionConfigVersion(),
+                    valid.catalogId(),
+                    valid.templateId(),
+                    valid.variantId(),
+                    valid.variantAttributes(),
+                    valid.environmentId(),
+                    "<mapping>",
+                    valid.outputFormat(),
+                    valid.filename(),
+                    valid.correlationId(),
+                    valid.resultProcessVariable());
+
+            assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(invalid))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("configuration v" + version)
+                    .hasMessageContaining("dataMapping")
+                    .hasMessageContaining("<mapping>")
+                    .hasCauseInstanceOf(RuntimeException.class);
+        }
+    }
+
+    @Test
     void rejectsMissingRequiredFieldsAtTheVersionBoundary() {
         for (int version : List.of(0, 1)) {
-            assertMissingRequired(version, "catalogId", rawMissing(version, "catalogId"));
-            assertMissingRequired(version, "templateId", rawMissing(version, "templateId"));
-            assertMissingRequired(version, "dataMapping", rawMissing(version, "dataMapping"));
-            assertMissingRequired(version, "outputFormat", rawMissing(version, "outputFormat"));
-            assertMissingRequired(version, "filename", rawMissing(version, "filename"));
-            assertMissingRequired(version, "resultProcessVariable", rawMissing(version, "resultProcessVariable"));
+            assertMissingRequired(version, "catalogId", propertiesMissing(version, "catalogId"));
+            assertMissingRequired(version, "templateId", propertiesMissing(version, "templateId"));
+            assertMissingRequired(version, "dataMapping", propertiesMissing(version, "dataMapping"));
+            assertMissingRequired(version, "outputFormat", propertiesMissing(version, "outputFormat"));
+            assertMissingRequired(version, "filename", propertiesMissing(version, "filename"));
+            assertMissingRequired(
+                    version,
+                    "resultProcessVariable",
+                    propertiesMissing(version, "resultProcessVariable"));
         }
     }
 
     @Test
     void syntaxErrorIdentifiesVersionFieldAndExpression() {
-        RawGenerateDocumentActionConfiguration valid = raw(1, "\"value.pdf\"", null, null);
-        var invalid = new RawGenerateDocumentActionConfiguration(
+        GenerateDocumentActionProperties valid = properties(1, "\"value.pdf\"", null, null);
+        var invalid = new GenerateDocumentActionProperties(
                 valid.actionConfigVersion(),
                 valid.catalogId(),
                 valid.templateId(),
@@ -148,7 +219,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
 
     @Test
     void runtimeErrorIdentifiesFieldAndExecutionWithoutIncludingRuntimeValues() {
-        var config = GenerateDocumentActionConfigurationRegistry.parse(raw(
+        var config = GenerateDocumentActionConfigurationRegistry.parse(properties(
                 1,
                 "\"value.pdf\"",
                 null,
@@ -186,7 +257,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
 
     @Test
     void dataMappingRuntimeErrorIdentifiesFieldAndPreviewContext() {
-        var config = GenerateDocumentActionConfigurationRegistry.parse(raw(
+        var config = GenerateDocumentActionConfigurationRegistry.parse(properties(
                 1,
                 "\"value.pdf\"",
                 null,
@@ -214,7 +285,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
 
     @Test
     void variantAttributeRuntimeErrorUsesTheAttributeKeyAsFieldPath() {
-        var config = GenerateDocumentActionConfigurationRegistry.parse(raw(
+        var config = GenerateDocumentActionConfigurationRegistry.parse(properties(
                 1,
                 "\"value.pdf\"",
                 null,
@@ -237,16 +308,16 @@ class GenerateDocumentActionConfigurationRegistryTest {
     private static void assertMissingRequired(
             int version,
             String field,
-            RawGenerateDocumentActionConfiguration raw
+            GenerateDocumentActionProperties properties
     ) {
-        assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(raw))
+        assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(properties))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("configuration v" + version)
                 .hasMessageContaining(field);
     }
 
-    private static RawGenerateDocumentActionConfiguration rawMissing(int version, String field) {
-        return new RawGenerateDocumentActionConfiguration(
+    private static GenerateDocumentActionProperties propertiesMissing(int version, String field) {
+        return new GenerateDocumentActionProperties(
                 version,
                 field.equals("catalogId") ? " " : "catalog",
                 field.equals("templateId") ? null : "template",
@@ -260,13 +331,13 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 field.equals("resultProcessVariable") ? "" : "result");
     }
 
-    private static RawGenerateDocumentActionConfiguration raw(
+    private static GenerateDocumentActionProperties properties(
             Integer version,
             String filename,
             String variantId,
             Object variantAttributes
     ) {
-        return new RawGenerateDocumentActionConfiguration(
+        return new GenerateDocumentActionProperties(
                 version,
                 "catalog",
                 "template",
@@ -274,9 +345,9 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 variantAttributes,
                 null,
                 "{}",
-                version == null ? "PDF" : "\"PDF\"",
+                version == null || version == 0 ? "PDF" : "\"PDF\"",
                 filename,
-                version == null ? null : "$pv.correlationId",
+                version == null || version == 0 ? null : "$pv.correlationId",
                 "result");
     }
 }

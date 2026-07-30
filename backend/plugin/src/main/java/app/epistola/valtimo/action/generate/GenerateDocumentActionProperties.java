@@ -17,7 +17,7 @@
  */
 package app.epistola.valtimo.action.generate;
 
-public record RawGenerateDocumentActionConfiguration(
+public record GenerateDocumentActionProperties(
         Integer actionConfigVersion,
         String catalogId,
         String templateId,

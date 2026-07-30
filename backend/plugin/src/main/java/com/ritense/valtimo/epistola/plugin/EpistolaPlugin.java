@@ -19,7 +19,7 @@ package com.ritense.valtimo.epistola.plugin;
 
 import app.epistola.client.model.VariantSelectionAttribute;
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfigurationRegistry;
-import app.epistola.valtimo.action.generate.RawGenerateDocumentActionConfiguration;
+import app.epistola.valtimo.action.generate.GenerateDocumentActionProperties;
 import app.epistola.valtimo.domain.DocumentStorageTarget;
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.FileFormat;
@@ -277,7 +277,7 @@ public class EpistolaPlugin {
             @PluginActionProperty String resultProcessVariable
     ) {
         var actionConfig = GenerateDocumentActionConfigurationRegistry.parse(
-                new RawGenerateDocumentActionConfiguration(
+                new GenerateDocumentActionProperties(
                         actionConfigVersion,
                         catalogId,
                         templateId,

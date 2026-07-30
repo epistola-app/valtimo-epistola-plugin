@@ -17,9 +17,9 @@
  */
 package app.epistola.valtimo.action.generate;
 
-interface GenerateDocumentActionVersionHandler {
+interface GenerateDocumentActionVersionParser {
 
     int version();
 
-    GenerateDocumentActionConfiguration parse(RawGenerateDocumentActionConfiguration raw);
+    GenerateDocumentActionConfiguration parse(GenerateDocumentActionProperties properties);
 }

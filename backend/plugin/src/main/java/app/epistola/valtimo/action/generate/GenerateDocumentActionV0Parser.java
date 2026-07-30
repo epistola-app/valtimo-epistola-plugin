@@ -18,53 +18,67 @@
 package app.epistola.valtimo.action.generate;
 
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.ConfiguredScalar;
+import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.JsonataScalar;
+import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.LiteralScalar;
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.VariantAttribute;
 
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import static com.dashjoin.jsonata.Jsonata.jsonata;
 
-abstract class AbstractGenerateDocumentActionVersionHandler implements GenerateDocumentActionVersionHandler {
+final class GenerateDocumentActionV0Parser implements GenerateDocumentActionVersionParser {
+
+    private static final Pattern JSONATA_MARKER = Pattern.compile("[$&({?\\[]");
 
     @Override
-    public GenerateDocumentActionConfiguration parse(RawGenerateDocumentActionConfiguration raw) {
-        requireNonBlank(raw.catalogId(), "No catalog configured: catalogId must be a non-blank string");
-        requireNonBlank(raw.templateId(), "No template configured: templateId must be a non-blank string");
-        requireNonBlank(raw.dataMapping(), "dataMapping must be a non-blank JSONata string");
-        requireNonBlank(raw.outputFormat(), "outputFormat must be a non-blank string");
-        requireNonBlank(raw.filename(), "filename must be a non-blank string");
-        requireNonBlank(raw.resultProcessVariable(), "resultProcessVariable must be a non-blank string");
-        validateDataMapping(raw.dataMapping());
+    public int version() {
+        return 0;
+    }
 
-        List<VariantAttribute> attributes = parseAttributes(raw.variantAttributes());
-        ConfiguredScalar variantId = scalar("variantId", raw.variantId());
+    @Override
+    public GenerateDocumentActionConfiguration parse(GenerateDocumentActionProperties properties) {
+        requireNonBlank(properties.catalogId(), "No catalog configured: catalogId must be a non-blank string");
+        requireNonBlank(properties.templateId(), "No template configured: templateId must be a non-blank string");
+        requireNonBlank(properties.dataMapping(), "dataMapping must be a non-blank JSONata string");
+        requireNonBlank(properties.outputFormat(), "outputFormat must be a non-blank string");
+        requireNonBlank(properties.filename(), "filename must be a non-blank string");
+        requireNonBlank(
+                properties.resultProcessVariable(),
+                "resultProcessVariable must be a non-blank string");
+        validateDataMapping(properties.dataMapping());
+
+        List<VariantAttribute> attributes = parseAttributes(properties.variantAttributes());
+        ConfiguredScalar variantId = scalar("variantId", properties.variantId());
         if (variantId.isConfigured() && !attributes.isEmpty()) {
             throw invalid("variantId and variantAttributes are mutually exclusive");
         }
 
         return new GenerateDocumentActionConfiguration(
                 version(),
-                raw.catalogId(),
-                raw.templateId(),
+                properties.catalogId(),
+                properties.templateId(),
                 variantId,
                 attributes,
-                scalar("environmentId", raw.environmentId()),
-                raw.dataMapping(),
-                outputFormat(raw.outputFormat()),
-                scalar("filename", raw.filename()),
-                correlationId(raw.correlationId()),
-                raw.resultProcessVariable());
+                scalar("environmentId", properties.environmentId()),
+                properties.dataMapping(),
+                new LiteralScalar(properties.outputFormat()),
+                scalar("filename", properties.filename()),
+                new LiteralScalar(properties.correlationId()),
+                properties.resultProcessVariable());
     }
 
-    protected abstract ConfiguredScalar scalar(String field, String value);
-
-    protected ConfiguredScalar outputFormat(String value) {
-        return scalar("outputFormat", value);
-    }
-
-    protected ConfiguredScalar correlationId(String value) {
-        return scalar("correlationId", value);
+    private ConfiguredScalar scalar(String field, String value) {
+        if (value == null || !JSONATA_MARKER.matcher(value).find()) {
+            return new LiteralScalar(value);
+        }
+        try {
+            jsonata(value);
+            return new JsonataScalar(version(), field, value);
+        } catch (RuntimeException ignored) {
+            return new LiteralScalar(value);
+        }
     }
 
     private void requireNonBlank(String value, String message) {
@@ -111,15 +125,18 @@ abstract class AbstractGenerateDocumentActionVersionHandler implements GenerateD
         if (!(required instanceof Boolean requiredBoolean)) {
             throw invalid("variantAttributes.required must be a boolean");
         }
-        return new VariantAttribute(keyString, scalar("variantAttributes." + keyString, valueString), requiredBoolean);
+        return new VariantAttribute(
+                keyString,
+                scalar("variantAttributes." + keyString, valueString),
+                requiredBoolean);
     }
 
-    protected IllegalArgumentException invalid(String message) {
+    private IllegalArgumentException invalid(String message) {
         return new IllegalArgumentException(
                 "Invalid epistola-generate-document action configuration v" + version() + ": " + message);
     }
 
-    protected IllegalArgumentException invalid(String message, RuntimeException cause) {
+    private IllegalArgumentException invalid(String message, RuntimeException cause) {
         return new IllegalArgumentException(
                 "Invalid epistola-generate-document action configuration v" + version() + ": " + message,
                 cause);

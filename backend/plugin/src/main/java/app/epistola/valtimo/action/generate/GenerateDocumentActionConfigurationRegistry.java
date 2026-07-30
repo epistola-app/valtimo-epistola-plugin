@@ -31,37 +31,37 @@ public final class GenerateDocumentActionConfigurationRegistry {
 
     public static final int LATEST_VERSION = 1;
 
-    private static final Map<Integer, GenerateDocumentActionVersionHandler> HANDLERS = createHandlers();
+    private static final Map<Integer, GenerateDocumentActionVersionParser> PARSERS = createParsers();
 
     private GenerateDocumentActionConfigurationRegistry() {}
 
-    private static Map<Integer, GenerateDocumentActionVersionHandler> createHandlers() {
-        return List.<GenerateDocumentActionVersionHandler>of(
-                        new GenerateDocumentActionV0Handler(),
-                        new GenerateDocumentActionV1Handler())
+    private static Map<Integer, GenerateDocumentActionVersionParser> createParsers() {
+        return List.<GenerateDocumentActionVersionParser>of(
+                        new GenerateDocumentActionV0Parser(),
+                        new GenerateDocumentActionV1Parser())
                 .stream()
                 .collect(Collectors.toUnmodifiableMap(
-                        GenerateDocumentActionVersionHandler::version,
+                        GenerateDocumentActionVersionParser::version,
                         Function.identity()));
     }
 
-    public static GenerateDocumentActionConfiguration parse(RawGenerateDocumentActionConfiguration raw) {
-        int version = raw.actionConfigVersion() == null ? 0 : raw.actionConfigVersion();
+    public static GenerateDocumentActionConfiguration parse(GenerateDocumentActionProperties properties) {
+        int version = properties.actionConfigVersion() == null ? 0 : properties.actionConfigVersion();
         if (version < 0) {
             throw new IllegalArgumentException(
                     "Invalid epistola-generate-document actionConfigVersion: " + version);
         }
-        GenerateDocumentActionVersionHandler handler = HANDLERS.get(version);
-        if (handler == null) {
+        GenerateDocumentActionVersionParser parser = PARSERS.get(version);
+        if (parser == null) {
             throw new IllegalArgumentException(
                     "Unsupported epistola-generate-document actionConfigVersion " + version
                             + "; latest supported version is " + LATEST_VERSION);
         }
-        return handler.parse(raw);
+        return parser.parse(properties);
     }
 
     public static GenerateDocumentActionConfiguration parse(ObjectNode properties) {
-        return parse(new RawGenerateDocumentActionConfiguration(
+        return parse(new GenerateDocumentActionProperties(
                 integerOrNull(properties, "actionConfigVersion"),
                 textOrNull(properties, "catalogId"),
                 textOrNull(properties, "templateId"),
