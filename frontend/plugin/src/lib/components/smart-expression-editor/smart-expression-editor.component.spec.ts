@@ -458,6 +458,17 @@ describe('SmartExpressionEditorComponent', () => {
     destroy();
   });
 
+  it('uses one action to toggle between Visual and Advanced modes', () => {
+    const { component, destroy } = createComponent(`"letter-" & $doc.name`);
+
+    component.toggleMode();
+    expect(component.mode).toBe('advanced');
+
+    component.toggleMode();
+    expect(component.mode).toBe('simple');
+    destroy();
+  });
+
   it('renders the expression when Angular reattaches the Visual surface', () => {
     const { component, surface, destroy } = createComponent(`"letter-" & $doc.name`);
     component.switchToAdvanced();

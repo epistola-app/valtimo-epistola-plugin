@@ -278,6 +278,14 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     });
   }
 
+  toggleMode(): void {
+    if (this.mode === 'simple') {
+      this.switchToAdvanced();
+    } else {
+      this.switchToSimple();
+    }
+  }
+
   onSurfaceInput(): void {
     if (this.composing) return;
     this.syncSegmentsFromSurface();

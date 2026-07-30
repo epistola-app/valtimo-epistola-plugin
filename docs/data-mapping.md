@@ -167,10 +167,11 @@ Existing quote style and expression source are retained while the visual value
 is untouched. Editing a visual expression serializes it to a canonical JSONata
 form.
 
-Every field also has an Advanced mode, selected with the inline Visual/Code
-control. Unsupported or complex expressions open there automatically and are
-edited as validated raw JSONata. The Visual option is disabled when that
-conversion would lose expression structure:
+Every field also has an Advanced mode, selected with the inline mode button.
+The button shows the destination: Code in Visual mode and Visual blocks in
+Advanced mode. Unsupported or complex expressions open in Advanced
+automatically and are edited as validated raw JSONata. Switching to Visual is
+disabled when that conversion would lose expression structure:
 
 ```jsonata
 $doc.language = "nl" ? "nederlands" : "engels"
