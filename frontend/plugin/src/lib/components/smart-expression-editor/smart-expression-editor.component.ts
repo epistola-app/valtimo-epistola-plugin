@@ -80,9 +80,22 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   @Output() expressionChange = new EventEmitter<string>();
   @Output() validChange = new EventEmitter<boolean>();
 
-  @ViewChild('surface') private surface?: ElementRef<HTMLDivElement>;
+  private surface?: ElementRef<HTMLDivElement>;
   @ViewChild('pickerSearch') private pickerSearch?: ElementRef<HTMLInputElement>;
   @ViewChild('rawTextarea') private rawTextarea?: ElementRef<HTMLTextAreaElement>;
+  private focusSimpleOnAttach = false;
+
+  @ViewChild('surface')
+  private set surfaceView(value: ElementRef<HTMLDivElement> | undefined) {
+    this.surface = value;
+    if (value && this.mode === 'simple') {
+      this.renderSurface();
+      if (this.focusSimpleOnAttach) {
+        this.focusSimpleOnAttach = false;
+        this.focusAtEnd();
+      }
+    }
+  }
 
   mode: 'simple' | 'advanced' = 'simple';
   segments: SimpleExpressionSegment[] = [];
@@ -226,10 +239,14 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     this.mode = 'simple';
     this.rawError = null;
     this.emitValidity(this.isSimpleValid());
+    this.focusSimpleOnAttach = true;
     this.cdr.markForCheck();
     queueMicrotask(() => {
-      this.renderSurface();
-      this.focusAtEnd();
+      if (this.surface?.nativeElement.isConnected) {
+        this.renderSurface();
+        this.focusSimpleOnAttach = false;
+        this.focusAtEnd();
+      }
     });
   }
 
@@ -319,6 +336,18 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     queueMicrotask(() => this.pickerSearch?.nativeElement.focus());
   }
 
+  onInsertMouseDown(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.openInsertPicker();
+  }
+
+  onInsertClick(): void {
+    if (!this.pickerOpen) {
+      this.openInsertPicker();
+    }
+  }
+
   onPickerSearchKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       event.preventDefault();
@@ -339,6 +368,46 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
 
   selectReference(option: ReferenceOption): void {
     this.insertSegment(option);
+  }
+
+  onReferenceMouseDown(event: MouseEvent, option: ReferenceOption): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.selectReference(option);
+  }
+
+  onReferenceClick(option: ReferenceOption): void {
+    if (this.pickerOpen) {
+      this.selectReference(option);
+    }
+  }
+
+  onTypedValueMouseDown(event: MouseEvent, value: 'number' | 'true' | 'false' | 'null'): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.applyTypedValue(value);
+  }
+
+  onTypedValueClick(value: 'number' | 'true' | 'false' | 'null'): void {
+    if (!this.pickerOpen) return;
+    this.applyTypedValue(value);
+  }
+
+  private applyTypedValue(value: 'number' | 'true' | 'false' | 'null'): void {
+    switch (value) {
+      case 'number':
+        this.openNumberEntry();
+        break;
+      case 'true':
+        this.insertBoolean(true);
+        break;
+      case 'false':
+        this.insertBoolean(false);
+        break;
+      case 'null':
+        this.insertNull();
+        break;
+    }
   }
 
   insertBoolean(value: boolean): void {

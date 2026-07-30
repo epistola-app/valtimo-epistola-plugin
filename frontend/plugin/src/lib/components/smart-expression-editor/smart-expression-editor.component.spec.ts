@@ -185,6 +185,46 @@ describe('SmartExpressionEditorComponent', () => {
     destroy();
   });
 
+  it('opens the insert picker on mouse down without losing the saved cursor', () => {
+    const { component, surface, destroy } = createComponent(`'prefix-'`);
+    setCaret(surface.firstChild!, 'prefix-'.length);
+    component.onSurfaceFocus();
+    const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    const stopPropagation = jest.spyOn(event, 'stopPropagation');
+
+    component.onInsertMouseDown(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(stopPropagation).toHaveBeenCalled();
+    expect(component.pickerOpen).toBe(true);
+    component.onReferenceMouseDown(
+      new MouseEvent('mousedown', { bubbles: true, cancelable: true }),
+      component.flatReferenceOptions.find((option) => option.expression === '$doc.name')!,
+    );
+    expect(component.expression).toBe(`'prefix-' & $doc.name`);
+    expect(component.pickerOpen).toBe(false);
+    destroy();
+  });
+
+  it('replaces a clicked reference chip on mouse down and closes the picker', () => {
+    const { component, surface, destroy } = createComponent('$pv.filename');
+    component.onSurfaceClick({
+      target: surface.querySelector('[data-expression-chip]'),
+      preventDefault: jest.fn(),
+    } as unknown as MouseEvent);
+    expect(component.pickerOpen).toBe(true);
+
+    component.onReferenceMouseDown(
+      new MouseEvent('mousedown', { bubbles: true, cancelable: true }),
+      component.flatReferenceOptions.find((option) => option.expression === '$doc.name')!,
+    );
+
+    expect(component.expression).toBe('$doc.name');
+    expect(component.pickerOpen).toBe(false);
+    expect(surface.querySelector('[data-expression-chip]')?.textContent).toBe('$doc.name');
+    destroy();
+  });
+
   it('opens unsupported persisted JSONata in validated Advanced mode', () => {
     jest.useFakeTimers();
     const { component, destroy } = createComponent('$uppercase($doc.name)');
@@ -220,6 +260,27 @@ describe('SmartExpressionEditorComponent', () => {
 
     destroy();
     jest.useRealTimers();
+  });
+
+  it('renders the expression when Angular reattaches the Visual surface', () => {
+    const { component, surface, destroy } = createComponent(`"letter-" & $doc.name`);
+    component.switchToAdvanced();
+    (component as any).surface = undefined;
+    surface.remove();
+
+    component.switchToSimple();
+    const reattachedSurface = document.createElement('div');
+    reattachedSurface.contentEditable = 'true';
+    document.body.append(reattachedSurface);
+    (component as any).surfaceView = { nativeElement: reattachedSurface };
+
+    expect(component.mode).toBe('simple');
+    expect(reattachedSurface.textContent).toContain('letter-');
+    expect(reattachedSurface.querySelector('[data-expression-chip]')?.textContent).toBe(
+      '$doc.name',
+    );
+    reattachedSurface.remove();
+    destroy();
   });
 
   it('shows an untouched expression source exactly when opening Advanced mode', () => {

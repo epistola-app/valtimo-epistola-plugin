@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The guided expression editor now handles pointer insertion and mode changes reliably.** The `+` button opens without losing the saved cursor, picker choices are applied on pointer-down before surrounding modal/focus handlers can dismiss them, and returning from Advanced mode repaints the Visual surface when Angular reattaches it.
 - **The ESM test application can run its Karma suite again.** Its CommonJS Karma configuration now uses a `.cjs` extension, the obsolete webpack `require.context` bootstrap is removed, and CI selects headless Chrome with a single run instead of failing during setup or waiting in watch mode.
 
 ## [0.16.0] - 2026-07-30

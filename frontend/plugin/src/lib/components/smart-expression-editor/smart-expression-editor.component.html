@@ -57,8 +57,8 @@
         aria-haspopup="listbox"
         [attr.aria-expanded]="pickerOpen"
         [attr.data-testid]="testId + '-insert'"
-        (mousedown)="$event.preventDefault()"
-        (click)="openInsertPicker()"
+        (mousedown)="onInsertMouseDown($event)"
+        (click)="onInsertClick()"
       >
         +
       </button>
@@ -73,6 +73,7 @@
       [style.left.px]="popoverLeft"
       [style.top.px]="popoverTop"
       [attr.data-testid]="testId + '-picker'"
+      (mousedown)="$event.stopPropagation()"
     >
       <input
         #pickerSearch
@@ -126,7 +127,8 @@
                 flatReferenceOptions[activeOptionIndex] === option
               "
               [attr.aria-selected]="flatReferenceOptions[activeOptionIndex] === option"
-              (click)="selectReference(option)"
+              (mousedown)="onReferenceMouseDown($event, option)"
+              (click)="onReferenceClick(option)"
             >
               <span>{{ option.label }}</span>
               <code>{{ option.expression }}</code>
@@ -140,12 +142,35 @@
       </div>
 
       <div *ngIf="allowTypedValues && !numberEntryOpen" class="smart-expression__values">
-        <button type="button" (click)="openNumberEntry()">
+        <button
+          type="button"
+          (mousedown)="onTypedValueMouseDown($event, 'number')"
+          (click)="onTypedValueClick('number')"
+        >
           {{ 'expressionEditorNumber' | pluginTranslate: 'epistola' | async }}
         </button>
-        <button type="button" (click)="insertBoolean(true)">true</button>
-        <button type="button" (click)="insertBoolean(false)">false</button>
-        <button *ngIf="allowNull" type="button" (click)="insertNull()">null</button>
+        <button
+          type="button"
+          (mousedown)="onTypedValueMouseDown($event, 'true')"
+          (click)="onTypedValueClick('true')"
+        >
+          true
+        </button>
+        <button
+          type="button"
+          (mousedown)="onTypedValueMouseDown($event, 'false')"
+          (click)="onTypedValueClick('false')"
+        >
+          false
+        </button>
+        <button
+          *ngIf="allowNull"
+          type="button"
+          (mousedown)="onTypedValueMouseDown($event, 'null')"
+          (click)="onTypedValueClick('null')"
+        >
+          null
+        </button>
       </div>
     </div>
   </div>
