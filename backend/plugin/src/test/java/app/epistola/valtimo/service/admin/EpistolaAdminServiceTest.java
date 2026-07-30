@@ -87,6 +87,9 @@ class EpistolaAdminServiceTest {
     private static final String API_KEY = "test-key";
     private static final String TENANT_ID = "test-tenant";
     private static final String CONFIG_TITLE = "Test Configuration";
+    private static final String OUTDATED_GENERATE_DOCUMENT_PROBLEM =
+            "Generate-document action configuration v0 is outdated; "
+                    + "open and save this action to upgrade to v1";
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -370,6 +373,63 @@ class EpistolaAdminServiceTest {
         }
 
         @Test
+        void shouldReportMissingGenerateDocumentConfigurationVersionAsOutdated() {
+            ObjectNode props = createLegacyActionProps("cat-1", "tmpl-1");
+            singleGenerateDocLink(props);
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenThrow(new RuntimeException("unreachable"));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems())
+                    .containsExactly(OUTDATED_GENERATE_DOCUMENT_PROBLEM);
+        }
+
+        @Test
+        void shouldReportNullGenerateDocumentConfigurationVersionAsOutdated() {
+            ObjectNode props = createLegacyActionProps("cat-1", "tmpl-1");
+            props.putNull("actionConfigVersion");
+            singleGenerateDocLink(props);
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenThrow(new RuntimeException("unreachable"));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems())
+                    .containsExactly(OUTDATED_GENERATE_DOCUMENT_PROBLEM);
+        }
+
+        @Test
+        void shouldReportExplicitV0GenerateDocumentConfigurationAsOutdated() {
+            ObjectNode props = createLegacyActionProps("cat-1", "tmpl-1");
+            props.put("actionConfigVersion", 0);
+            singleGenerateDocLink(props);
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenThrow(new RuntimeException("unreachable"));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems())
+                    .containsExactly(OUTDATED_GENERATE_DOCUMENT_PROBLEM);
+        }
+
+        @Test
+        void shouldKeepUnsupportedVersionCompatibilityErrorWithoutSaveAdvice() {
+            ObjectNode props = createActionProps("cat-1", "tmpl-1");
+            props.put("actionConfigVersion", 2);
+            singleGenerateDocLink(props);
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems())
+                    .singleElement()
+                    .satisfies(problem -> {
+                        assertThat(problem).contains("Unsupported epistola-generate-document actionConfigVersion 2");
+                        assertThat(problem).doesNotContain("open and save");
+                    });
+        }
+
+        @Test
         void shouldDetectMissingTemplateId() {
             ProcessDefinition processDef = mockProcessDefinition("my-process", "My Process");
             mockProcessDefinitionQuery(List.of(processDef));
@@ -549,7 +609,7 @@ class EpistolaAdminServiceTest {
 
         @Test
         void shouldDetectMissingVariant() {
-            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "nl"));
+            singleGenerateDocLink(createLegacyActionProps("cat-1", "tmpl-1", "nl"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
                     .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
             when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
@@ -560,7 +620,9 @@ class EpistolaAdminServiceTest {
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
 
             assertThat(entries.get(0).problems())
-                    .contains("Variant 'nl' does not exist for template 'tmpl-1'");
+                    .contains(
+                            OUTDATED_GENERATE_DOCUMENT_PROBLEM,
+                            "Variant 'nl' does not exist for template 'tmpl-1'");
         }
 
         @Test
@@ -1115,9 +1177,10 @@ class EpistolaAdminServiceTest {
 
     private ObjectNode createActionProps(String catalogId, String templateId, String variantId) {
         ObjectNode props = objectMapper.createObjectNode();
+        props.put("actionConfigVersion", 1);
         props.put("dataMapping", "{}");
-        props.put("outputFormat", "PDF");
-        props.put("filename", "letter.pdf");
+        props.put("outputFormat", "\"PDF\"");
+        props.put("filename", "\"letter.pdf\"");
         props.put("resultProcessVariable", "generationResult");
         if (catalogId != null) {
             props.put("catalogId", catalogId);
@@ -1128,6 +1191,18 @@ class EpistolaAdminServiceTest {
         if (variantId != null) {
             props.put("variantId", variantId);
         }
+        return props;
+    }
+
+    private ObjectNode createLegacyActionProps(String catalogId, String templateId) {
+        return createLegacyActionProps(catalogId, templateId, null);
+    }
+
+    private ObjectNode createLegacyActionProps(String catalogId, String templateId, String variantId) {
+        ObjectNode props = createActionProps(catalogId, templateId, variantId);
+        props.remove("actionConfigVersion");
+        props.put("outputFormat", "PDF");
+        props.put("filename", "letter.pdf");
         return props;
     }
 

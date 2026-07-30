@@ -628,6 +628,21 @@ public class EpistolaAdminService {
     private List<String> detectProblems(PluginProcessLink link, EpistolaReferenceCache refCache) {
         List<String> problems = new ArrayList<>();
 
+        GenerateDocumentActionConfiguration actionConfig = null;
+        if ("epistola-generate-document".equals(link.getPluginActionDefinitionKey())) {
+            try {
+                actionConfig = GenerateDocumentActionConfigurationRegistry.parse(link.getActionProperties());
+                if (actionConfig.version() < GenerateDocumentActionConfigurationRegistry.LATEST_VERSION) {
+                    problems.add("Generate-document action configuration v" + actionConfig.version()
+                            + " is outdated; open and save this action to upgrade to v"
+                            + GenerateDocumentActionConfigurationRegistry.LATEST_VERSION);
+                }
+            } catch (IllegalArgumentException exception) {
+                problems.add(exception.getMessage());
+                return problems;
+            }
+        }
+
         EpistolaPlugin plugin;
         try {
             plugin = (EpistolaPlugin) pluginService.createInstance(link.getPluginConfigurationId());
@@ -636,15 +651,7 @@ public class EpistolaAdminService {
             return problems;
         }
 
-        if ("epistola-generate-document".equals(link.getPluginActionDefinitionKey())) {
-            GenerateDocumentActionConfiguration actionConfig;
-            try {
-                actionConfig = GenerateDocumentActionConfigurationRegistry.parse(link.getActionProperties());
-            } catch (IllegalArgumentException exception) {
-                problems.add(exception.getMessage());
-                return problems;
-            }
-
+        if (actionConfig != null) {
             String catalogId = actionConfig.catalogId();
             String templateId = actionConfig.templateId();
             String variantId = actionConfig.variantId() instanceof LiteralScalar literal
