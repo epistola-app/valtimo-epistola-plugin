@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **GitHub Actions now run on supported Node.js 24 action runtimes.** Checkout, Node/pnpm/mise setup, artifact transfer, CodeQL, Helm, Docker registry/build, and Gradle setup actions use their Node 24-compatible majors across CI, CodeQL, chart, and plugin-release workflows. Gradle setup intentionally stays on v5 because v6 introduces separate proprietary caching terms; v5 removes the Node 20 deprecation without changing the repository's current action licensing.
 
+### Fixed
+
+- **The ESM test application can run its Karma suite again.** Its CommonJS Karma configuration now uses a `.cjs` extension, the obsolete webpack `require.context` bootstrap is removed, and CI selects headless Chrome with a single run instead of failing during setup or waiting in watch mode.
+
 ## [0.16.0] - 2026-07-30
 
 ### Changed
