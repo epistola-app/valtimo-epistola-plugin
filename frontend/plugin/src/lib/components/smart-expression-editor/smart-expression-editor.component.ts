@@ -712,6 +712,29 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     this.emitSimpleExpression();
     element.focus();
     this.focusAtLogicalOffset(nextOffset);
+    this.restoreCaretAfterPickerCloses(element, nextOffset);
+  }
+
+  private restoreCaretAfterPickerCloses(element: HTMLDivElement, offset: number): void {
+    this.zone.runOutsideAngular(() => {
+      const restore = () => {
+        if (
+          this.mode !== 'simple' ||
+          this.surface?.nativeElement !== element ||
+          !element.isConnected
+        ) {
+          return;
+        }
+        element.focus({ preventScroll: true });
+        this.focusAtLogicalOffset(offset);
+      };
+
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(restore);
+      } else {
+        queueMicrotask(restore);
+      }
+    });
   }
 
   private selectActiveOption(): void {

@@ -259,6 +259,34 @@ describe('SmartExpressionEditorComponent', () => {
     destroy();
   });
 
+  it('restores the caret after the picker closing focus cycle', () => {
+    const animationFrames: FrameRequestCallback[] = [];
+    const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = jest.fn((callback: FrameRequestCallback) => {
+      animationFrames.push(callback);
+      return animationFrames.length;
+    });
+    const { component, surface, destroy } = createComponent("'prefix-suffix'");
+    setCaret(surface.firstChild!, 'prefix-'.length);
+    component.onSurfaceFocus();
+
+    component.openInsertPicker();
+    component.selectReference(
+      component.flatReferenceOptions.find((option) => option.expression === '$doc.name')!,
+    );
+
+    setCaret(surface.firstChild!, 0);
+    animationFrames[0](0);
+
+    const selection = window.getSelection()!;
+    expect((component as any).logicalOffsetAtRange(selection.getRangeAt(0))).toBe(
+      'prefix-'.length + 1,
+    );
+
+    destroy();
+    globalThis.requestAnimationFrame = originalRequestAnimationFrame;
+  });
+
   it('opens the insert picker on mouse down without losing the saved cursor', () => {
     const { component, surface, destroy } = createComponent(`'prefix-'`);
     setCaret(surface.firstChild!, 'prefix-'.length);
