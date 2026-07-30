@@ -1,0 +1,237 @@
+/*
+ * SPDX-FileCopyrightText: Epistola Nederland B.V.
+ *
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
+.smart-expression {
+  position: relative;
+  width: 100%;
+  font-size: 0.875rem;
+}
+
+.smart-expression__toolbar {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 1.5rem;
+}
+
+.smart-expression__mode {
+  display: inline-flex;
+}
+
+.smart-expression__mode-button {
+  padding: 0.125rem 0.4rem;
+  border: 0;
+  background: transparent;
+  color: #525252;
+  cursor: pointer;
+  font-size: 0.7rem;
+
+  &:hover:not(:disabled),
+  &--active {
+    color: #0f62fe;
+    text-decoration: underline;
+  }
+
+  &:disabled {
+    color: #a8a8a8;
+    cursor: not-allowed;
+  }
+}
+
+.smart-expression__surface-wrap {
+  display: flex;
+  min-height: 2.5rem;
+  border: 1px solid #8d8d8d;
+  background: #f4f4f4;
+
+  &:focus-within {
+    outline: 2px solid #0f62fe;
+    outline-offset: -2px;
+  }
+}
+
+.smart-expression__surface {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  outline: none;
+  line-height: 1.35rem;
+  overflow-x: auto;
+  white-space: pre;
+
+  &:empty::before {
+    color: #8d8d8d;
+    content: attr(data-placeholder);
+    pointer-events: none;
+  }
+}
+
+.smart-expression__insert {
+  width: 2.5rem;
+  border: 0;
+  border-left: 1px solid #c6c6c6;
+  background: #e8e8e8;
+  color: #0f62fe;
+  cursor: pointer;
+  font-size: 1.25rem;
+
+  &:hover:not(:disabled) {
+    background: #dcdcdc;
+  }
+}
+
+:host ::ng-deep .smart-expression__chip {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 0.125rem;
+  padding: 0.05rem 0.4rem;
+  border: 1px solid #78a9ff;
+  border-radius: 0.75rem;
+  background: #edf5ff;
+  color: #0043ce;
+  cursor: pointer;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.75rem;
+  line-height: 1.1rem;
+  vertical-align: baseline;
+
+  &:focus {
+    outline: 2px solid #0f62fe;
+    outline-offset: 1px;
+  }
+
+  &--typed {
+    border-color: #be95ff;
+    background: #f6f2ff;
+    color: #6929c4;
+  }
+}
+
+.smart-expression__picker {
+  position: absolute;
+  z-index: 1000;
+  width: min(28rem, calc(100vw - 3rem));
+  max-height: 20rem;
+  border: 1px solid #8d8d8d;
+  background: #fff;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.2);
+  overflow: auto;
+}
+
+.smart-expression__search {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  border-bottom: 1px solid #c6c6c6;
+  outline: none;
+
+  &:focus {
+    box-shadow: inset 0 0 0 2px #0f62fe;
+  }
+}
+
+.smart-expression__group-label {
+  padding: 0.4rem 0.75rem 0.2rem;
+  color: #6f6f6f;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.smart-expression__option {
+  display: flex;
+  width: 100%;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 0.75rem;
+  border: 0;
+  background: #fff;
+  color: #161616;
+  cursor: pointer;
+  text-align: left;
+
+  code {
+    color: #6f6f6f;
+    font-size: 0.7rem;
+  }
+
+  &:hover,
+  &--active {
+    background: #e8e8e8;
+  }
+}
+
+.smart-expression__empty {
+  padding: 0.75rem;
+  color: #6f6f6f;
+}
+
+.smart-expression__values {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid #e0e0e0;
+
+  button {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid #c6c6c6;
+    background: #f4f4f4;
+    cursor: pointer;
+  }
+}
+
+.smart-expression__number-entry {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem;
+
+  label {
+    flex: 1;
+  }
+}
+
+.smart-expression__raw {
+  width: 100%;
+  min-height: 4.5rem;
+  max-height: 15rem;
+  resize: vertical;
+  border: 1px solid #8d8d8d;
+  background: #f4f4f4;
+  padding: 0.55rem 0.75rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.3rem;
+
+  &:focus {
+    outline: 2px solid #0f62fe;
+    outline-offset: -2px;
+  }
+
+  &--invalid {
+    border-color: #da1e28;
+  }
+}
+
+.smart-expression__hint {
+  margin-top: 0.2rem;
+  color: #6f6f6f;
+  font-size: 0.7rem;
+}
+
+.smart-expression__error {
+  margin-top: 0.25rem;
+  color: #da1e28;
+  font-size: 0.75rem;
+}
+
+.smart-expression--disabled {
+  opacity: 0.6;
+
+  .smart-expression__surface-wrap {
+    background: #e0e0e0;
+  }
+}
