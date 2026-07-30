@@ -250,9 +250,10 @@ public class EpistolaPlugin {
      *                              when not specified or when the expression resolves to null/blank)
      * @param dataMapping           JSONata expression that produces the template data payload.
      *                              Has access to $doc (document data), $pv (process variables), $case (case data).
-     * @param outputFormat          The desired output format (PDF or HTML)
+     * @param outputFormat          The output-format value in v0 or JSONata expression in v1.
+     *                              v1 expressions must resolve to PDF.
      * @param filename              The filename for the generated document
-     * @param correlationId         Optional correlation ID for tracking across systems
+     * @param correlationId         Optional correlation ID in v0 or JSONata expression in v1
      * @param resultProcessVariable The name of the process variable to store the request ID in
      */
     @PluginAction(
@@ -270,7 +271,7 @@ public class EpistolaPlugin {
             @PluginActionProperty List<Map<String, Object>> variantAttributes,
             @PluginActionProperty String environmentId,
             @PluginActionProperty String dataMapping,
-            @PluginActionProperty FileFormat outputFormat,
+            @PluginActionProperty String outputFormat,
             @PluginActionProperty String filename,
             @PluginActionProperty String correlationId,
             @PluginActionProperty String resultProcessVariable
@@ -332,6 +333,17 @@ public class EpistolaPlugin {
         }
 
         var scalarEvalContext = buildEvalCtx(execution, null);
+        String resolvedOutputFormat = actionConfig.outputFormat().resolve(jsonataMappingService, scalarEvalContext);
+        FileFormat effectiveOutputFormat;
+        try {
+            effectiveOutputFormat = FileFormat.valueOf(resolvedOutputFormat);
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException(
+                    "outputFormat must resolve to a supported file format", exception);
+        }
+        if (actionConfig.version() >= 1 && effectiveOutputFormat != FileFormat.PDF) {
+            throw new IllegalArgumentException("outputFormat must resolve to PDF for action configuration v1");
+        }
         String resolvedFilename = actionConfig.filename().resolve(jsonataMappingService, scalarEvalContext);
 
         // Resolve a dynamic action-level environment and fall back to the plugin default
@@ -346,6 +358,9 @@ public class EpistolaPlugin {
         // Resolve variantId if it uses a JSONata expression
         String resolvedVariantId = hasVariantId
                 ? actionConfig.variantId().resolve(jsonataMappingService, scalarEvalContext)
+                : null;
+        String resolvedCorrelationId = actionConfig.correlationId().isConfigured()
+                ? actionConfig.correlationId().resolve(jsonataMappingService, scalarEvalContext)
                 : null;
 
         // Build variant selection attributes, resolving each value as a JSONata expression
@@ -363,8 +378,8 @@ public class EpistolaPlugin {
         // If the collector hasn't completed its first poll yet (cold start) this returns null,
         // in which case the server falls back to the requestId as the routing key — the
         // result then routes by hash, which may land on another node and bypass us.
-        String baseRoutingKey = correlationId != null && !correlationId.isBlank()
-                ? correlationId
+        String baseRoutingKey = resolvedCorrelationId != null && !resolvedCorrelationId.isBlank()
+                ? resolvedCorrelationId
                 : java.util.UUID.randomUUID().toString();
         String routingKey = resultCollectorRunner.routingKeyFor(baseUrl, apiKey, tenantId, baseRoutingKey);
 
@@ -381,9 +396,9 @@ public class EpistolaPlugin {
                     resolvedAttributes,
                     effectiveEnvironmentId,
                     resolvedData,
-                    outputFormat,
+                    effectiveOutputFormat,
                     resolvedFilename,
-                    correlationId,
+                    resolvedCorrelationId,
                     routingKey
             );
         } catch (Exception e) {

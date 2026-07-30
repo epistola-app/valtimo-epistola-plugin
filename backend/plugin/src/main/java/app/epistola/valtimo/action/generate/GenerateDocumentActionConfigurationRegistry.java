@@ -17,7 +17,6 @@
  */
 package app.epistola.valtimo.action.generate;
 
-import app.epistola.valtimo.domain.FileFormat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
@@ -70,7 +69,7 @@ public final class GenerateDocumentActionConfigurationRegistry {
                 attributesOrNull(properties.get("variantAttributes")),
                 textOrNull(properties, "environmentId"),
                 requiredText(properties, "dataMapping"),
-                enumOrNull(properties, "outputFormat", FileFormat.class),
+                textOrNull(properties, "outputFormat"),
                 textOrNull(properties, "filename"),
                 textOrNull(properties, "correlationId"),
                 textOrNull(properties, "resultProcessVariable")));
@@ -104,22 +103,6 @@ public final class GenerateDocumentActionConfigurationRegistry {
             throw invalidField(field, "must be a string");
         }
         return node.textValue();
-    }
-
-    private static <T extends Enum<T>> T enumOrNull(
-            ObjectNode properties,
-            String field,
-            Class<T> enumType
-    ) {
-        String value = textOrNull(properties, field);
-        if (value == null) {
-            return null;
-        }
-        try {
-            return Enum.valueOf(enumType, value);
-        } catch (IllegalArgumentException exception) {
-            throw invalidField(field, "contains unsupported value '" + value + "'");
-        }
     }
 
     private static Object attributesOrNull(JsonNode node) {

@@ -19,7 +19,6 @@ package app.epistola.valtimo.action.generate;
 
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.JsonataScalar;
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.LiteralScalar;
-import app.epistola.valtimo.domain.FileFormat;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -68,6 +67,8 @@ class GenerateDocumentActionConfigurationRegistryTest {
 
         assertThat(config.filename()).isInstanceOf(JsonataScalar.class);
         assertThat(config.variantId()).isInstanceOf(JsonataScalar.class);
+        assertThat(config.outputFormat()).isInstanceOf(JsonataScalar.class);
+        assertThat(config.correlationId()).isInstanceOf(JsonataScalar.class);
     }
 
     @Test
@@ -118,9 +119,9 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 variantAttributes,
                 null,
                 "{}",
-                FileFormat.PDF,
+                version == null ? "PDF" : "\"PDF\"",
                 filename,
-                null,
+                version == null ? null : "$pv.correlationId",
                 "result");
     }
 }

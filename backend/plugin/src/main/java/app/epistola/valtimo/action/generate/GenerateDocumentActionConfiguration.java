@@ -17,7 +17,6 @@
  */
 package app.epistola.valtimo.action.generate;
 
-import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 
@@ -31,9 +30,9 @@ public record GenerateDocumentActionConfiguration(
         List<VariantAttribute> variantAttributes,
         ConfiguredScalar environmentId,
         String dataMapping,
-        FileFormat outputFormat,
+        ConfiguredScalar outputFormat,
         ConfiguredScalar filename,
-        String correlationId,
+        ConfiguredScalar correlationId,
         String resultProcessVariable
 ) {
 

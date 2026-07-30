@@ -25,8 +25,10 @@ import java.util.Map;
  */
 public record ValidateJsonataRequest(
         String dataMapping,
+        String outputFormat,
         String filename,
         String variantId,
         String environmentId,
+        String correlationId,
         Map<String, String> variantAttributeValues
 ) {}

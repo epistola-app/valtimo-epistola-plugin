@@ -107,7 +107,7 @@ class EpistolaPluginGenerateDocumentTest {
                 null,
                 null,
                 "{}",
-                FileFormat.PDF,
+                "PDF",
                 "\"document.pdf\"",
                 null,
                 "pv:some-value"))
@@ -132,7 +132,7 @@ class EpistolaPluginGenerateDocumentTest {
                 null,
                 "$pv.environmentId",
                 "{}",
-                FileFormat.PDF,
+                "PDF",
                 "document.pdf",
                 null,
                 "epistolaResult");
@@ -156,7 +156,7 @@ class EpistolaPluginGenerateDocumentTest {
                 null,
                 "$doc.environmentId",
                 "{}",
-                FileFormat.PDF,
+                "PDF",
                 "document.pdf",
                 null,
                 "epistolaResult");
@@ -180,7 +180,7 @@ class EpistolaPluginGenerateDocumentTest {
                 null,
                 null,
                 "{}",
-                FileFormat.PDF,
+                "PDF",
                 "template-segment.pdf",
                 null,
                 "epistolaResult");
@@ -189,5 +189,70 @@ class EpistolaPluginGenerateDocumentTest {
                 eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), eq("catalog"), eq("template"),
                 isNull(), isNull(), eq("default"), anyMap(), eq(FileFormat.PDF),
                 eq("template-segment.pdf"), isNull(), isNull());
+    }
+
+    @Test
+    void v1ResolvesPdfAndCorrelationExpressions() {
+        when(jsonataMappingService.evaluate(any())).thenReturn(Map.of());
+        when(jsonataMappingService.evaluateScalar(any())).thenAnswer(invocation -> {
+            EvaluationContext context = invocation.getArgument(0);
+            return switch (context.getExpression()) {
+                case "\"PDF\"" -> "PDF";
+                case "\"document.pdf\"" -> "document.pdf";
+                case "$pv.correlationId" -> "request-123";
+                default -> null;
+            };
+        });
+        when(epistolaService.submitGenerationJob(
+                anyString(), anyString(), anyString(), anyString(), anyString(),
+                isNull(), isNull(), any(), anyMap(), eq(FileFormat.PDF), anyString(),
+                eq("request-123"), isNull()))
+                .thenReturn(GenerationJobResult.builder().requestId("request-1").status("PENDING").build());
+
+        plugin().generateDocument(
+                execution,
+                1,
+                "catalog",
+                "template",
+                null,
+                null,
+                null,
+                "{}",
+                "\"PDF\"",
+                "\"document.pdf\"",
+                "$pv.correlationId",
+                "epistolaResult");
+
+        verify(epistolaService).submitGenerationJob(
+                eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), eq("catalog"), eq("template"),
+                isNull(), isNull(), eq("default"), anyMap(), eq(FileFormat.PDF),
+                eq("document.pdf"), eq("request-123"), isNull());
+    }
+
+    @Test
+    void v1RejectsOutputFormatsOtherThanPdf() {
+        when(jsonataMappingService.evaluate(any())).thenReturn(Map.of());
+        when(jsonataMappingService.evaluateScalar(any())).thenAnswer(invocation -> {
+            EvaluationContext context = invocation.getArgument(0);
+            return context.getExpression().equals("\"HTML\"") ? "HTML" : "document.pdf";
+        });
+
+        assertThatThrownBy(() -> plugin().generateDocument(
+                execution,
+                1,
+                "catalog",
+                "template",
+                null,
+                null,
+                null,
+                "{}",
+                "\"HTML\"",
+                "\"document.pdf\"",
+                null,
+                "epistolaResult"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("must resolve to PDF");
+
+        verifyNoInteractions(epistolaService);
     }
 }

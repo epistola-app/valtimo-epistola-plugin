@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Generate-document v1 now treats correlation ID and output format consistently as JSONata expressions.** The editor's fx toggle reveals the quoted expression for an existing literal instead of an empty field, while output format is fixed to the JSONata literal `"PDF"` and HTML is no longer offered or accepted by v1. Unversioned v0 actions retain their historical literal and HTML compatibility.
 - **Generate-document action configurations are now explicitly versioned.** Existing unversioned actions execute as v0 with their mixed literal/JSONata scalar semantics, while the configurator upgrades them locally to v1 when opened and persists `actionConfigVersion: 1` on save. In v1, filename, variant, environment, and variant-attribute values are always JSONata, with ordinary UI values stored as escaped JSONata string literals. The backend keeps version-specific execution for already-deployed links and rejects unsupported future versions clearly.
 - **Bumped the Epistola contract client `app.epistola.contract:client-spring3-restclient` from `0.14.0` to `0.15.0`.** Contract `0.15.0` replaces the generated portable catalog graph `*Dto` models with canonical model names; the plugin does not consume those renamed graph types, so its client integration remains source-compatible. The Prism mock-server image used by local docker-compose and backend integration tests now uses the matching `mock-server:0.15.0` image.
 

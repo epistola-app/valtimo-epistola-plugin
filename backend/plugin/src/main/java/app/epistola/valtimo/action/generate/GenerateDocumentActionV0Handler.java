@@ -46,4 +46,14 @@ final class GenerateDocumentActionV0Handler extends AbstractGenerateDocumentActi
             return new LiteralScalar(value);
         }
     }
+
+    @Override
+    protected ConfiguredScalar outputFormat(String value) {
+        return new LiteralScalar(value);
+    }
+
+    @Override
+    protected ConfiguredScalar correlationId(String value) {
+        return new LiteralScalar(value);
+    }
 }

@@ -120,6 +120,7 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     component.filenameValue = 'letter.pdf';
     component.environmentIdValue = 'production';
     component.variantIdValue = 'formal';
+    component.correlationIdValue = 'request-123';
     component.dataMapping$.next('{}');
     (component as any).formValue$.next({
       templateId: 'template',
@@ -136,17 +137,33 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     expect(service.validateJsonata).toHaveBeenCalledWith(
       expect.objectContaining({
         filename: '"letter.pdf"',
+        outputFormat: '"PDF"',
         variantId: '"formal"',
         environmentId: '"production"',
+        correlationId: '"request-123"',
       }),
     );
     expect(emitted).toEqual([
       expect.objectContaining({
         actionConfigVersion: 1,
+        outputFormat: '"PDF"',
         filename: '"letter.pdf"',
         variantId: '"formal"',
         environmentId: '"production"',
+        correlationId: '"request-123"',
       }),
     ]);
+  });
+
+  it('shows the encoded literal when switching a plain field to fx mode', () => {
+    const { component } = createComponent();
+    component.filenameValue = 'letter.pdf';
+    component.correlationIdValue = 'request-123';
+
+    component.toggleFilenameExpressionMode();
+    component.toggleCorrelationIdExpressionMode();
+
+    expect(component.filenameExpression).toBe('"letter.pdf"');
+    expect(component.correlationIdExpression).toBe('"request-123"');
   });
 });

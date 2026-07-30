@@ -17,8 +17,6 @@
  */
 package app.epistola.valtimo.action.generate;
 
-import app.epistola.valtimo.domain.FileFormat;
-
 public record RawGenerateDocumentActionConfiguration(
         Integer actionConfigVersion,
         String catalogId,
@@ -27,7 +25,7 @@ public record RawGenerateDocumentActionConfiguration(
         Object variantAttributes,
         String environmentId,
         String dataMapping,
-        FileFormat outputFormat,
+        String outputFormat,
         String filename,
         String correlationId,
         String resultProcessVariable

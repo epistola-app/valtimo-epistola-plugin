@@ -40,7 +40,6 @@ export function isGenerateDocumentConfigValid(
     options.selectedCatalogId &&
     config &&
     config.templateId &&
-    config.outputFormat &&
     options.filename &&
     options.filename.trim() &&
     isProcessVariableNameValid(config.resultProcessVariable)

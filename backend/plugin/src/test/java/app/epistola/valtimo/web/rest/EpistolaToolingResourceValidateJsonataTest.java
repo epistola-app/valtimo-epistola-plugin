@@ -77,9 +77,11 @@ class EpistolaToolingResourceValidateJsonataTest {
     void allValidExpressionsReturnSuccess() {
         var request = new ValidateJsonataRequest(
                 "{ \"name\": $doc.customer.name }",
+                "\"PDF\"",
                 "\"besluit-\" & $doc.lastName & \".pdf\"",
                 "$pv.variantId",
                 "$pv.environmentId",
+                "$pv.correlationId",
                 Map.of("color", "$pv.color"));
 
         ResponseEntity<JsonataValidationResult> response = resource.validateJsonata(request);
@@ -92,7 +94,7 @@ class EpistolaToolingResourceValidateJsonataTest {
 
     @Test
     void blankAndNullExpressionsAreSkipped() {
-        var request = new ValidateJsonataRequest(null, "  ", null, null, null);
+        var request = new ValidateJsonataRequest(null, null, "  ", null, null, null, null);
 
         var body = resource.validateJsonata(request).getBody();
 
@@ -104,7 +106,8 @@ class EpistolaToolingResourceValidateJsonataTest {
     @Test
     void dataMappingSyntaxErrorIsReported() {
         // Missing closing brace
-        var request = new ValidateJsonataRequest("{ \"x\": $pv.foo", null, null, null, null);
+        var request = new ValidateJsonataRequest(
+                "{ \"x\": $pv.foo", null, null, null, null, null, null);
 
         var body = resource.validateJsonata(request).getBody();
 
@@ -118,7 +121,8 @@ class EpistolaToolingResourceValidateJsonataTest {
 
     @Test
     void filenameSyntaxErrorIsReported() {
-        var request = new ValidateJsonataRequest(null, "$pv.foo &", null, null, null);
+        var request = new ValidateJsonataRequest(
+                null, null, "$pv.foo &", null, null, null, null);
 
         var body = resource.validateJsonata(request).getBody();
 
@@ -130,7 +134,8 @@ class EpistolaToolingResourceValidateJsonataTest {
 
     @Test
     void environmentIdSyntaxErrorIsReported() {
-        var request = new ValidateJsonataRequest(null, null, null, "$pv.environment &", null);
+        var request = new ValidateJsonataRequest(
+                null, null, null, null, "$pv.environment &", null, null);
 
         var body = resource.validateJsonata(request).getBody();
 
@@ -143,7 +148,7 @@ class EpistolaToolingResourceValidateJsonataTest {
     @Test
     void variantAttributeErrorsUseCompositeFieldName() {
         var request = new ValidateJsonataRequest(
-                null, null, null, null,
+                null, null, null, null, null, null,
                 Map.of("color", "$pv.color &"));  // syntax error
 
         var body = resource.validateJsonata(request).getBody();
@@ -158,7 +163,9 @@ class EpistolaToolingResourceValidateJsonataTest {
     void multipleFieldErrorsAreAllReported() {
         var request = new ValidateJsonataRequest(
                 "{ broken",            // dataMapping invalid
+                null,
                 "$pv.foo &",           // filename invalid
+                null,
                 null,
                 null,
                 Map.of("k", "$doc.x"));

@@ -65,9 +65,11 @@ export interface GenerateDocumentConfigV0 {
  */
 export interface GenerateDocumentConfigV1 extends Omit<
   GenerateDocumentConfigV0,
-  'actionConfigVersion'
+  'actionConfigVersion' | 'outputFormat'
 > {
   actionConfigVersion: 1;
+  /** JSONata expression; the current editor always stores the fixed value as `"PDF"`. */
+  outputFormat: string;
 }
 
 export type GenerateDocumentConfigVersioned = GenerateDocumentConfigV0 | GenerateDocumentConfigV1;
@@ -143,9 +145,11 @@ export interface EvaluationResult {
  */
 export interface ValidateJsonataRequest {
   dataMapping?: string | null;
+  outputFormat?: string | null;
   filename?: string | null;
   variantId?: string | null;
   environmentId?: string | null;
+  correlationId?: string | null;
   variantAttributeValues?: Record<string, string> | null;
 }
 

@@ -58,17 +58,27 @@ export function migrateGenerateDocumentConfig(raw: unknown): GenerateDocumentCon
 
   validateCommonShape(config);
   if (version === 1) {
-    validateV1Scalars(config);
-    return { ...(config as unknown as GenerateDocumentConfigV1), actionConfigVersion: 1 };
+    const normalized = {
+      ...config,
+      actionConfigVersion: 1,
+      // Early v1 builds still wrote these two fields using their v0 representation.
+      outputFormat: encodeJsonataStringLiteral('PDF'),
+      correlationId: migrateOptionalV0Scalar(config.correlationId as string | undefined),
+    };
+    validateV1Scalars(normalized);
+    return normalized as unknown as GenerateDocumentConfigV1;
   }
 
   const v0 = config as unknown as GenerateDocumentConfigV0;
   return {
     ...v0,
     actionConfigVersion: 1,
+    outputFormat: encodeJsonataStringLiteral('PDF'),
     filename: migrateV0Scalar(v0.filename),
     variantId: migrateOptionalV0Scalar(v0.variantId),
     environmentId: migrateOptionalV0Scalar(v0.environmentId),
+    correlationId:
+      v0.correlationId === undefined ? undefined : encodeJsonataStringLiteral(v0.correlationId),
     variantAttributes: v0.variantAttributes?.map((attribute) => ({
       ...attribute,
       value: migrateV0Scalar(attribute.value),
@@ -110,9 +120,6 @@ function validateCommonShape(config: Record<string, unknown>): void {
       throw new GenerateDocumentConfigVersionError(`${field} must be a string.`);
     }
   }
-  if (config.outputFormat !== 'PDF' && config.outputFormat !== 'HTML') {
-    throw new GenerateDocumentConfigVersionError('outputFormat must be PDF or HTML.');
-  }
   for (const field of ['variantId', 'environmentId', 'correlationId']) {
     if (config[field] != null && typeof config[field] !== 'string') {
       throw new GenerateDocumentConfigVersionError(`${field} must be a string when present.`);
@@ -141,8 +148,9 @@ function validateAttribute(attribute: unknown, index: number): void {
 
 function validateV1Scalars(config: Record<string, unknown>): void {
   validateJsonata('dataMapping', config.dataMapping as string);
+  validateJsonata('outputFormat', config.outputFormat as string);
   validateJsonata('filename', config.filename as string);
-  for (const field of ['variantId', 'environmentId']) {
+  for (const field of ['variantId', 'environmentId', 'correlationId']) {
     const value = config[field];
     if (typeof value === 'string' && value.trim()) {
       validateJsonata(field, value);

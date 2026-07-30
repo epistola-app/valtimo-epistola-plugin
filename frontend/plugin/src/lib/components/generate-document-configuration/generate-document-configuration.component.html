@@ -334,19 +334,6 @@
     {{ obs.environments.error }}
   </div>
 
-  <v-select
-    name="outputFormat"
-    data-testid="epistola-generate-output-format"
-    [title]="'outputFormat' | pluginTranslate: pluginId | async"
-    [tooltip]="'outputFormatTooltip' | pluginTranslate: pluginId | async"
-    [margin]="true"
-    [items]="outputFormatOptions"
-    [defaultSelectionId]="obs.prefill?.outputFormat || 'PDF'"
-    [disabled]="obs.disabled"
-    [required]="true"
-  >
-  </v-select>
-
   <div class="field-with-fx">
     <v-input
       *ngIf="!filenameExpressionMode"
@@ -384,17 +371,44 @@
     </button>
   </div>
 
-  <v-input
-    name="correlationId"
-    data-testid="epistola-generate-correlation-id"
-    [title]="'correlationId' | pluginTranslate: pluginId | async"
-    [tooltip]="'correlationIdTooltip' | pluginTranslate: pluginId | async"
-    [margin]="true"
-    [defaultValue]="obs.prefill?.correlationId"
-    [disabled]="obs.disabled"
-    [required]="false"
-  >
-  </v-input>
+  <div class="field-with-fx">
+    <v-input
+      *ngIf="!correlationIdExpressionMode"
+      data-testid="epistola-generate-correlation-id"
+      [title]="'correlationId' | pluginTranslate: pluginId | async"
+      [tooltip]="'correlationIdTooltip' | pluginTranslate: pluginId | async"
+      [margin]="true"
+      [defaultValue]="correlationIdValue"
+      (valueChange)="onCorrelationIdValueChange($event)"
+      [disabled]="obs.disabled"
+      [required]="false"
+    >
+    </v-input>
+    <div *ngIf="correlationIdExpressionMode" class="fx-input-group">
+      <label class="fx-input-label">{{
+        'correlationId' | pluginTranslate: pluginId | async
+      }}</label>
+      <input
+        type="text"
+        class="fx-input"
+        data-testid="epistola-generate-correlation-id-expression"
+        [ngModel]="correlationIdExpression"
+        (ngModelChange)="correlationIdExpression = $event; onCorrelationIdExpressionChange()"
+        [disabled]="obs.disabled"
+        placeholder="$pv.correlationId"
+      />
+    </div>
+    <button
+      type="button"
+      class="fx-toggle"
+      data-testid="epistola-generate-correlation-id-fx-toggle"
+      (click)="toggleCorrelationIdExpressionMode()"
+      [disabled]="obs.disabled"
+      [title]="correlationIdExpressionMode ? 'Switch to plain input' : 'Switch to expression'"
+    >
+      {{ correlationIdExpressionMode ? '·' : 'fx' }}
+    </button>
+  </div>
 
   <v-input
     name="resultProcessVariable"

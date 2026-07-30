@@ -38,15 +38,18 @@ describe('generate-document action configuration versioning', () => {
       v0Config({
         variantId: 'formal',
         environmentId: 'production',
+        correlationId: 'request-123',
         variantAttributes: [{ key: 'language', value: 'nl', required: true }],
       }),
     );
 
     expect(migrated).toMatchObject({
       actionConfigVersion: 1,
+      outputFormat: '"PDF"',
       filename: '"value.pdf"',
       variantId: '"formal"',
       environmentId: '"production"',
+      correlationId: '"request-123"',
       variantAttributes: [{ key: 'language', value: '"nl"', required: true }],
     });
   });
@@ -66,6 +69,12 @@ describe('generate-document action configuration versioning', () => {
     expect(migrated.variantId).toBe('$pv.variant');
   });
 
+  it('preserves v0 correlation IDs as literals during migration', () => {
+    expect(
+      migrateGenerateDocumentConfig(v0Config({ correlationId: '$pv.correlationId' })).correlationId,
+    ).toBe('"$pv.correlationId"');
+  });
+
   it('treats ambiguous and malformed v0 values as literals', () => {
     expect(migrateGenerateDocumentConfig(v0Config({ filename: 'value.pdf' })).filename).toBe(
       '"value.pdf"',
@@ -81,11 +90,29 @@ describe('generate-document action configuration versioning', () => {
   it('keeps a valid v1 configuration unchanged', () => {
     const config = v0Config({
       actionConfigVersion: 1,
+      outputFormat: '"PDF"',
       filename: '"value.pdf"',
       environmentId: '$pv.environment',
+      correlationId: '$pv.correlationId',
     });
 
     expect(migrateGenerateDocumentConfig(config)).toEqual(config);
+  });
+
+  it('normalizes transitional v1 output and correlation fields', () => {
+    expect(
+      migrateGenerateDocumentConfig(
+        v0Config({
+          actionConfigVersion: 1,
+          filename: '"value.pdf"',
+          correlationId: 'request-123',
+        }),
+      ),
+    ).toMatchObject({
+      actionConfigVersion: 1,
+      outputFormat: '"PDF"',
+      correlationId: '"request-123"',
+    });
   });
 
   it('rejects future versions and deprecated object attributes', () => {

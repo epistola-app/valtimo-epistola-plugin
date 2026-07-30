@@ -134,11 +134,6 @@ export class GenerateDocumentConfigurationComponent
   toolsCollapsed = true;
   activeToolTab: 'schema' | 'preview' = 'preview';
 
-  outputFormatOptions: SelectItem[] = [
-    { id: 'PDF', text: 'PDF' },
-    { id: 'HTML', text: 'HTML' },
-  ];
-
   readonly selectedCatalogId$ = new BehaviorSubject<string>('');
   /** Composite ID: "catalogId/templateId" */
   readonly selectedTemplateId$ = new BehaviorSubject<string>('');
@@ -171,6 +166,10 @@ export class GenerateDocumentConfigurationComponent
   environmentIdExpression = '';
   /** Plain-mode environment id. Tracked outside `<v-form>` because the field has an fx wrapper. */
   environmentIdValue = '';
+  correlationIdExpressionMode = false;
+  correlationIdExpression = '';
+  /** Plain-mode correlation id. Tracked outside `<v-form>` because the field has an fx wrapper. */
+  correlationIdValue = '';
   variantAttributeEntries: {
     key: string;
     value: string;
@@ -214,6 +213,7 @@ export class GenerateDocumentConfigurationComponent
     this.initPluginConfiguration();
     this.initCascade();
     this.initEnvironmentPrefill();
+    this.initCorrelationIdPrefill();
     this.loadExpressionFunctions();
     this.openSaveSubscription();
   }
@@ -277,17 +277,55 @@ export class GenerateDocumentConfigurationComponent
   }
 
   toggleFilenameExpressionMode(): void {
+    if (this.filenameExpressionMode) {
+      const literal = decodeJsonataStringLiteral(this.filenameExpression);
+      if (literal === undefined) return;
+      this.filenameValue = literal;
+    } else {
+      this.filenameExpression = encodeJsonataStringLiteral(this.filenameValue);
+    }
     this.filenameExpressionMode = !this.filenameExpressionMode;
     this.revalidate();
   }
 
   toggleVariantIdExpressionMode(): void {
+    if (this.variantIdExpressionMode) {
+      const literal = decodeJsonataStringLiteral(this.variantIdExpression);
+      if (literal === undefined) return;
+      this.variantIdValue = literal;
+    } else {
+      this.variantIdExpression = encodeJsonataStringLiteral(this.variantIdValue);
+    }
     this.variantIdExpressionMode = !this.variantIdExpressionMode;
     this.revalidate();
   }
 
   toggleEnvironmentIdExpressionMode(): void {
+    if (this.environmentIdExpressionMode) {
+      const literal = decodeJsonataStringLiteral(this.environmentIdExpression);
+      if (literal === undefined) return;
+      this.environmentIdValue = literal;
+    } else {
+      this.environmentIdExpression = encodeJsonataStringLiteral(this.environmentIdValue);
+    }
     this.environmentIdExpressionMode = !this.environmentIdExpressionMode;
+    this.revalidate();
+  }
+
+  onCorrelationIdValueChange(value: string | undefined): void {
+    this.correlationIdValue = value ?? '';
+    this.revalidate();
+  }
+
+  toggleCorrelationIdExpressionMode(): void {
+    if (this.correlationIdExpressionMode) {
+      const literal = decodeJsonataStringLiteral(this.correlationIdExpression);
+      if (literal === undefined) return;
+      this.correlationIdValue = literal;
+    } else {
+      this.correlationIdExpression = encodeJsonataStringLiteral(this.correlationIdValue);
+    }
+    this.correlationIdExpressionMode = !this.correlationIdExpressionMode;
     this.revalidate();
   }
 
@@ -325,6 +363,10 @@ export class GenerateDocumentConfigurationComponent
   }
 
   onEnvironmentIdExpressionChange(): void {
+    this.revalidate();
+  }
+
+  onCorrelationIdExpressionChange(): void {
     this.revalidate();
   }
 
@@ -400,6 +442,22 @@ export class GenerateDocumentConfigurationComponent
         this.environmentIdExpression = config.environmentId;
       } else {
         this.environmentIdValue = literal;
+      }
+      this.cdr.markForCheck();
+    });
+  }
+
+  private initCorrelationIdPrefill(): void {
+    this.prefill$.pipe(takeUntil(this.destroy$), take(1)).subscribe((config) => {
+      if (!config?.correlationId) {
+        return;
+      }
+      const literal = decodeJsonataStringLiteral(config.correlationId);
+      if (literal === undefined) {
+        this.correlationIdExpressionMode = true;
+        this.correlationIdExpression = config.correlationId;
+      } else {
+        this.correlationIdValue = literal;
       }
       this.cdr.markForCheck();
     });
@@ -732,11 +790,15 @@ export class GenerateDocumentConfigurationComponent
                   ? encodeJsonataStringLiteral(this.environmentIdValue)
                   : undefined,
               dataMapping: dataMapping,
-              outputFormat: formValue.outputFormat as 'PDF' | 'HTML',
+              outputFormat: encodeJsonataStringLiteral('PDF'),
               filename: this.filenameExpressionMode
                 ? this.filenameExpression
                 : encodeJsonataStringLiteral(this.filenameValue),
-              correlationId: formValue.correlationId || undefined,
+              correlationId: this.correlationIdExpressionMode
+                ? this.correlationIdExpression || undefined
+                : this.correlationIdValue
+                  ? encodeJsonataStringLiteral(this.correlationIdValue)
+                  : undefined,
               resultProcessVariable: formValue.resultProcessVariable!,
             };
 
@@ -779,9 +841,11 @@ export class GenerateDocumentConfigurationComponent
 
     const request: ValidateJsonataRequest = {
       dataMapping: config.dataMapping || null,
+      outputFormat: config.outputFormat,
       filename: config.filename,
       variantId: config.variantId || null,
       environmentId: config.environmentId || null,
+      correlationId: config.correlationId || null,
       variantAttributeValues:
         Object.keys(variantAttributeValues).length > 0 ? variantAttributeValues : null,
     };

@@ -45,13 +45,21 @@ abstract class AbstractGenerateDocumentActionVersionHandler implements GenerateD
                 attributes,
                 scalar("environmentId", raw.environmentId()),
                 raw.dataMapping(),
-                raw.outputFormat(),
+                outputFormat(raw.outputFormat()),
                 scalar("filename", raw.filename()),
-                raw.correlationId(),
+                correlationId(raw.correlationId()),
                 raw.resultProcessVariable());
     }
 
     protected abstract ConfiguredScalar scalar(String field, String value);
+
+    protected ConfiguredScalar outputFormat(String value) {
+        return scalar("outputFormat", value);
+    }
+
+    protected ConfiguredScalar correlationId(String value) {
+        return scalar("correlationId", value);
+    }
 
     private List<VariantAttribute> parseAttributes(Object rawAttributes) {
         if (rawAttributes == null) {
