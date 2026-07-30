@@ -53,13 +53,15 @@
   </div>
 
   <div *ngIf="mode === 'simple'" class="smart-expression__simple">
-    <label
+    <v-input-label
       *ngIf="title"
-      class="smart-expression__label"
-      [id]="testId + '-label'"
-      [title]="tooltip"
-      >{{ title }}</label
-    >
+      [attr.id]="testId + '-label'"
+      [name]="testId + '-input'"
+      [title]="title"
+      [tooltip]="tooltip"
+      [required]="required"
+      [disabled]="disabled"
+    ></v-input-label>
     <div class="smart-expression__surface-wrap">
       <div
         #surface
@@ -257,13 +259,15 @@
   </div>
 
   <div *ngIf="mode === 'advanced'" class="smart-expression__advanced">
-    <label
+    <v-input-label
       *ngIf="title"
-      class="smart-expression__label"
-      [for]="testId + '-advanced'"
-      [title]="tooltip"
-      >{{ title }}</label
-    >
+      [attr.id]="testId + '-label'"
+      [name]="testId + '-advanced'"
+      [title]="title"
+      [tooltip]="tooltip"
+      [required]="required"
+      [disabled]="disabled"
+    ></v-input-label>
     <div class="smart-expression__raw-wrap" [class.smart-expression__raw-wrap--invalid]="rawError">
       <textarea
         #rawTextarea
@@ -271,6 +275,10 @@
         [id]="testId + '-advanced'"
         [disabled]="disabled"
         [required]="required"
+        [attr.aria-labelledby]="title ? testId + '-label' : null"
+        [attr.aria-label]="
+          title ? null : ('expressionEditorInput' | pluginTranslate: 'epistola' | async)
+        "
         [attr.aria-invalid]="!!rawError"
         [attr.aria-errormessage]="rawError ? testId + '-error' : null"
         [attr.aria-describedby]="rawError ? testId + '-error' : null"

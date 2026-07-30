@@ -40,7 +40,10 @@ jest.mock('@angular/core', () => ({
 }));
 jest.mock('@angular/common', () => ({ CommonModule: class {} }));
 jest.mock('@angular/forms', () => ({ FormsModule: class {} }));
-jest.mock('@valtimo/components', () => ({ SelectModule: class {} }));
+jest.mock('@valtimo/components', () => ({
+  InputLabelModule: class {},
+  SelectModule: class {},
+}));
 jest.mock('@valtimo/plugin', () => ({ PluginTranslatePipeModule: class {} }));
 
 import { SmartExpressionEditorComponent } from './smart-expression-editor.component';

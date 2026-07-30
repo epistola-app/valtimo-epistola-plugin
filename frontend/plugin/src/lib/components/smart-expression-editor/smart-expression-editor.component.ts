@@ -34,7 +34,7 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SelectedValue, SelectItem, SelectModule } from '@valtimo/components';
+import { InputLabelModule, SelectedValue, SelectItem, SelectModule } from '@valtimo/components';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
 import * as _jsonata from 'jsonata';
@@ -72,7 +72,7 @@ interface ReferenceGroup {
 @Component({
   selector: 'epistola-smart-expression-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, SelectModule, PluginTranslatePipeModule],
+  imports: [CommonModule, FormsModule, InputLabelModule, SelectModule, PluginTranslatePipeModule],
   templateUrl: './smart-expression-editor.component.html',
   styleUrls: ['./smart-expression-editor.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

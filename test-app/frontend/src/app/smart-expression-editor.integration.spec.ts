@@ -20,7 +20,7 @@ import { CommonModule } from '@angular/common';
 import { Component, forwardRef, Input, Pipe, PipeTransform } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { SelectItem, SelectModule } from '@valtimo/components';
+import { InputLabelModule, SelectItem, SelectModule } from '@valtimo/components';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { of } from 'rxjs';
 import { SmartExpressionEditorComponent } from '../../../../frontend/plugin/src/lib/components/smart-expression-editor/smart-expression-editor.component';
@@ -30,6 +30,19 @@ class TestPluginTranslatePipe implements PipeTransform {
   transform(key: string) {
     return of(key);
   }
+}
+
+@Component({
+  selector: 'v-input-label',
+  standalone: true,
+  template: `<span>{{ title }}</span>`,
+})
+class TestInputLabelComponent {
+  @Input() name = '';
+  @Input() title = '';
+  @Input() tooltip = '';
+  @Input() required = false;
+  @Input() disabled = false;
 }
 
 @Component({
@@ -105,10 +118,10 @@ describe('SmartExpressionEditorComponent integration', () => {
     });
     TestBed.overrideComponent(SmartExpressionEditorComponent, {
       remove: {
-        imports: [SelectModule, PluginTranslatePipeModule],
+        imports: [InputLabelModule, SelectModule, PluginTranslatePipeModule],
       },
       add: {
-        imports: [TestSelectComponent, TestPluginTranslatePipe],
+        imports: [TestInputLabelComponent, TestSelectComponent, TestPluginTranslatePipe],
       },
     });
     await TestBed.compileComponents();
@@ -196,13 +209,14 @@ describe('SmartExpressionEditorComponent integration', () => {
   it('associates an invalid Advanced expression with its label and error', async () => {
     const component = await render('$doc.[broken');
     const textarea = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
-    const label = fixture.nativeElement.querySelector('label') as HTMLLabelElement;
+    const label = fixture.nativeElement.querySelector('v-input-label') as HTMLElement;
     const error = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement;
     const modeButton = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
 
     expect(component.mode).toBe('advanced');
-    expect(label.htmlFor).toBe('environment-expression-advanced');
+    expect(label.id).toBe('environment-expression-label');
     expect(textarea.id).toBe('environment-expression-advanced');
+    expect(textarea.getAttribute('aria-labelledby')).toBe('environment-expression-label');
     expect(textarea.getAttribute('aria-invalid')).toBe('true');
     expect(textarea.getAttribute('aria-errormessage')).toBe('environment-expression-error');
     expect(textarea.getAttribute('aria-describedby')).toBe('environment-expression-error');
