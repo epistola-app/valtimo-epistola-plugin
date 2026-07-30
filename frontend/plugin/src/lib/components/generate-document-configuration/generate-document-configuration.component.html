@@ -116,8 +116,8 @@
   <!--
     The v-select / v-input here is intentionally NOT named into the v-form: v-form's
     @ContentChildren queries default to descendants:false and would skip anything nested
-    in this `field-with-fx` wrapper. The value is tracked via (selectedChange)/(valueChange)
-    on the component, see variantIdValue / filenameValue.
+    in this `field-with-fx` wrapper. The value is tracked through standalone ngModel/value
+    bindings on the component, see variantIdValue / filenameValue.
   -->
   <div *ngIf="variantSelectionMode === 'explicit'" class="field-with-fx">
     <v-select
@@ -127,9 +127,10 @@
       [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
       [margin]="true"
       [items]="obs.variants.data"
-      [defaultSelectionId]="variantIdValue"
+      [ngModel]="variantIdValue"
+      [ngModelOptions]="{ standalone: true }"
       [clearSelectionSubject$]="clearVariantId$"
-      (selectedChange)="onVariantIdValueChange($event)"
+      (ngModelChange)="onVariantIdValueChange($event)"
       [disabled]="obs.disabled || obs.variants.loading || !obs.selectedTemplateId"
       [required]="false"
       [loading]="obs.variants.loading"
@@ -288,8 +289,9 @@
       [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
       [margin]="true"
       [items]="obs.environments.data"
-      [defaultSelectionId]="environmentIdValue"
-      (selectedChange)="onEnvironmentIdValueChange($event)"
+      [ngModel]="environmentIdValue"
+      [ngModelOptions]="{ standalone: true }"
+      (ngModelChange)="onEnvironmentIdValueChange($event)"
       [disabled]="obs.disabled || obs.environments.loading"
       [required]="false"
       [loading]="obs.environments.loading"
