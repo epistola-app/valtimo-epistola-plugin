@@ -78,7 +78,7 @@ final class GenerateDocumentActionV0Parser implements GenerateDocumentActionVers
     }
 
     private ConfiguredScalar scalar(String field, String value) {
-        if (value == null || !JSONATA_MARKER.matcher(value).find()) {
+        if (value == null || (!value.startsWith("\"") && !JSONATA_MARKER.matcher(value).find())) {
             return new LiteralScalar(value);
         }
         try {

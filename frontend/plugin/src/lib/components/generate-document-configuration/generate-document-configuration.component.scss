@@ -10,6 +10,20 @@
   color: #dc3545;
 }
 
+.legacy-configuration-notice {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #0f62fe;
+  background: #edf5ff;
+  color: #161616;
+  font-size: 0.875rem;
+
+  strong {
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+}
+
 .field-validation-error {
   margin: -0.5rem 0 0.75rem;
   padding: 0 0.75rem;

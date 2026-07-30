@@ -16,11 +16,30 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import {
   decodeJsonataStringLiteral,
   encodeJsonataStringLiteral,
+  isLegacyGenerateDocumentConfig,
   migrateGenerateDocumentConfig,
 } from './generate-document-config-version';
+
+interface V0ScalarCompatibilityFixture {
+  name: string;
+  value: string;
+  interpretation: 'literal' | 'expression';
+}
+
+const v0ScalarCompatibilityFixtures = JSON.parse(
+  readFileSync(
+    resolve(
+      __dirname,
+      '../../../../../../test-fixtures/generate-document-v0-scalar-compatibility.json',
+    ),
+    'utf8',
+  ),
+) as V0ScalarCompatibilityFixture[];
 
 const v0Config = (patch: Record<string, unknown> = {}) => ({
   catalogId: 'catalog',
@@ -33,6 +52,25 @@ const v0Config = (patch: Record<string, unknown> = {}) => ({
 });
 
 describe('generate-document action configuration versioning', () => {
+  it.each(v0ScalarCompatibilityFixtures)(
+    'classifies shared v0 scalar fixture: $name',
+    ({ value, interpretation }) => {
+      const migrated = migrateGenerateDocumentConfig(v0Config({ filename: value }));
+
+      expect(migrated.filename).toBe(
+        interpretation === 'expression' ? value : encodeJsonataStringLiteral(value),
+      );
+    },
+  );
+
+  it('identifies only missing, null, and zero versions as legacy', () => {
+    expect(isLegacyGenerateDocumentConfig(v0Config())).toBe(true);
+    expect(isLegacyGenerateDocumentConfig(v0Config({ actionConfigVersion: null }))).toBe(true);
+    expect(isLegacyGenerateDocumentConfig(v0Config({ actionConfigVersion: 0 }))).toBe(true);
+    expect(isLegacyGenerateDocumentConfig(v0Config({ actionConfigVersion: 1 }))).toBe(false);
+    expect(isLegacyGenerateDocumentConfig(null)).toBe(false);
+  });
+
   it('migrates v0 literals to JSONata string literals', () => {
     const migrated = migrateGenerateDocumentConfig(
       v0Config({

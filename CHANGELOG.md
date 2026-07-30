@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Legacy generate-document upgrades are now visible and guarded by shared compatibility fixtures.** Opening a valid v0 action shows a localized notice that saving persists v1 while cancelling leaves storage unchanged. Frontend and backend tests consume the same v0 scalar corpus so their separate JSONata parsers cannot silently disagree about literal and expression interpretation.
 - **Generate-document environments can now be selected dynamically with JSONata.** The action configurator keeps the Epistola-backed environment dropdown and adds an `fx` mode for expressions using `$doc`, `$pv`, `$case`, and registered functions. Expressions are syntax-checked when the process link is saved and resolved consistently for generation and preview; null or blank results fall back to the plugin's default environment. Existing literal environment selections and saved process links remain compatible.
 - **All tracked first-party files now carry EUPL-1.2 licensing metadata.** Source files declare SPDX metadata inline where their format supports comments; documentation, configuration, generated resources, and binary assets are covered through `REUSE.toml`. The REUSE CLI is pinned through mise, and CI and release builds reject incomplete license metadata.
 
@@ -32,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Explicitly quoted JSONata strings retain their v0 runtime meaning.** The legacy backend parser now recognizes values such as `"letter.pdf"` as expressions, matching both the frontend migration and the pre-versioning generate action instead of returning the quote characters as part of the generated filename.
 - **JSONata failures during document generation and preview now identify their source.** Exceptions include the generate-action version, configuration field or variant-attribute path, a bounded expression snippet, operation, and available process/activity/document identifiers while excluding process-variable and document values. Expressions are also compiled only once per evaluation.
 - **Expression-backed variant and environment selectors now explain why dropdown mode is unavailable.** Dynamic expressions and quoted values that no longer match a loaded option remain safely in expression mode; the disabled toggle is accompanied by a localized hint instead of silently ignoring the click.
 - **Generate-document migrations now respect the configuration version boundary.** The frontend migrates the complete v0 action object to v1 once; configurations already marked as v1 are only validated and are never passed through legacy per-field inference, so expressions such as `customer.id` retain their meaning when the editor is reopened.

@@ -7,7 +7,7 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "lib": ["ES2022", "dom"],
-    "types": ["jest"],
+    "types": ["jest", "node"],
     "strict": false
   },
   "include": ["src/**/*.spec.ts"]

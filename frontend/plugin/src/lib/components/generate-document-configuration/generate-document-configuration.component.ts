@@ -90,6 +90,7 @@ import {
 } from './generate-document-config.util';
 import {
   encodeJsonataStringLiteral,
+  isLegacyGenerateDocumentConfig,
   migrateGenerateDocumentConfig,
 } from './generate-document-config-version';
 import {
@@ -190,6 +191,7 @@ export class GenerateDocumentConfigurationComponent
   prefillDataMapping: Record<string, any> = {};
   validationErrors$ = new BehaviorSubject<JsonataFieldError[]>([]);
   configurationVersionError$ = new BehaviorSubject<string | null>(null);
+  legacyConfigurationLoaded$ = new BehaviorSubject<boolean>(false);
   resultProcessVariableInvalid$ = new BehaviorSubject<boolean>(false);
 
   private readonly destroy$ = new Subject<void>();
@@ -404,8 +406,16 @@ export class GenerateDocumentConfigurationComponent
     }
     return this.prefillConfiguration$.pipe(
       take(1),
-      map((config) => (config ? migrateGenerateDocumentConfig(config) : null)),
+      map((config) => {
+        if (!config) {
+          return null;
+        }
+        const migrated = migrateGenerateDocumentConfig(config);
+        this.legacyConfigurationLoaded$.next(isLegacyGenerateDocumentConfig(config));
+        return migrated;
+      }),
       catchError((error: unknown) => {
+        this.legacyConfigurationLoaded$.next(false);
         this.configurationVersionError$.next(
           error instanceof Error ? error.message : 'Invalid generate-document configuration.',
         );

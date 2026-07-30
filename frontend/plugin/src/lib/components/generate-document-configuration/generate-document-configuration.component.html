@@ -13,9 +13,19 @@
     selectedTemplateId: selectedTemplateId$ | async,
     validationErrors: validationErrors$ | async,
     configurationVersionError: configurationVersionError$ | async,
+    legacyConfigurationLoaded: legacyConfigurationLoaded$ | async,
     resultProcessVariableInvalid: resultProcessVariableInvalid$ | async,
   } as obs"
 >
+  <div
+    *ngIf="obs.legacyConfigurationLoaded"
+    class="legacy-configuration-notice"
+    data-testid="epistola-generate-legacy-configuration-notice"
+    role="status"
+  >
+    <strong>{{ 'legacyGenerateConfigurationHeading' | pluginTranslate: pluginId | async }}</strong>
+    {{ 'legacyGenerateConfigurationDescription' | pluginTranslate: pluginId | async }}
+  </div>
   <div
     *ngIf="obs.configurationVersionError"
     class="jsonata-validation-errors"

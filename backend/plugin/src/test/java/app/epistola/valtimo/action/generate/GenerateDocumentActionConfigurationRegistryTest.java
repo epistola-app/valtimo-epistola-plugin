@@ -21,10 +21,12 @@ import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.LiteralScalar;
 import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import org.junit.jupiter.api.Test;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -35,6 +37,35 @@ import static org.mockito.Mockito.when;
 
 @SuppressWarnings("removal")
 class GenerateDocumentActionConfigurationRegistryTest {
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    @Test
+    void frontendAndBackendShareV0ScalarCompatibilitySemantics() throws IOException {
+        V0ScalarCompatibilityFixture[] fixtures;
+        try (var input = getClass().getResourceAsStream(
+                "/compatibility-fixtures/generate-document-v0-scalar-compatibility.json")) {
+            assertThat(input).as("shared v0 scalar compatibility fixture").isNotNull();
+            fixtures = OBJECT_MAPPER.readValue(input, V0ScalarCompatibilityFixture[].class);
+        }
+
+        for (V0ScalarCompatibilityFixture fixture : fixtures) {
+            var config = GenerateDocumentActionConfigurationRegistry.parse(properties(
+                    null,
+                    fixture.value(),
+                    null,
+                    null));
+            Class<?> expectedType = fixture.interpretation().equals("expression")
+                    ? JsonataScalar.class
+                    : LiteralScalar.class;
+
+            assertThat(config.filename())
+                    .as(fixture.name())
+                    .isInstanceOf(expectedType)
+                    .extracting(GenerateDocumentActionConfiguration.ConfiguredScalar::source)
+                    .isEqualTo(fixture.value());
+        }
+    }
 
     @Test
     void missingVersionUsesV0LiteralOrExpressionSemantics() {
@@ -351,4 +382,6 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 version == null || version == 0 ? null : "$pv.correlationId",
                 "result");
     }
+
+    private record V0ScalarCompatibilityFixture(String name, String value, String interpretation) {}
 }

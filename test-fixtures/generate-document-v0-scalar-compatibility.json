@@ -1,0 +1,47 @@
+[
+  {
+    "name": "plain filename",
+    "value": "value.pdf",
+    "interpretation": "literal"
+  },
+  {
+    "name": "plain dotted path",
+    "value": "customer.id",
+    "interpretation": "literal"
+  },
+  {
+    "name": "quoted JSONata string",
+    "value": "\"letter.pdf\"",
+    "interpretation": "expression"
+  },
+  {
+    "name": "process variable",
+    "value": "$pv.filename",
+    "interpretation": "expression"
+  },
+  {
+    "name": "JSONata concatenation",
+    "value": "\"letter-\" & $pv.number & \".pdf\"",
+    "interpretation": "expression"
+  },
+  {
+    "name": "malformed expression-like value",
+    "value": "$pv.[broken",
+    "interpretation": "literal"
+  },
+  {
+    "name": "Valtimo-style literal",
+    "value": "pv:filename",
+    "interpretation": "literal"
+  },
+  {
+    "name": "parseable ampersand expression",
+    "value": "R&D.pdf",
+    "interpretation": "expression"
+  },
+  {
+    "name": "parseable parenthesized expression",
+    "value": "report (final).pdf",
+    "interpretation": "expression"
+  }
+]

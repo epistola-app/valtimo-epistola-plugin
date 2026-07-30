@@ -9,7 +9,7 @@ versions.
 
 | Stored version          | Status        | Backend interpretation                                                           | Editor behaviour                           |
 | ----------------------- | ------------- | -------------------------------------------------------------------------------- | ------------------------------------------ |
-| Missing, `null`, or `0` | Deprecated v0 | Historical mixed literal/JSONata scalar semantics; PDF and HTML remain supported | Upgraded to v1 in memory when opened       |
+| Missing, `null`, or `0` | Deprecated v0 | Historical mixed literal/JSONata scalar semantics; PDF and HTML remain supported | Upgraded to v1 in memory with a notice     |
 | `1`                     | Current v1    | Expression-capable scalar values are JSONata; output must resolve to PDF         | Edited and saved directly as v1            |
 | Any other value         | Unsupported   | Rejected with a compatibility error                                              | Never silently downgraded or treated as v0 |
 
@@ -32,8 +32,22 @@ other scalar fields use the historical expression-detection behaviour.
 
 Opening a v0 action in the Valtimo editor converts the complete action to v1 in
 frontend memory. This does not call a migration endpoint or update PostgreSQL.
-Saving the containing process persists the v1 representation; cancelling leaves
-the stored v0 action unchanged.
+The editor shows a notice while this in-memory upgrade is pending. Saving the
+containing process persists the v1 representation; cancelling leaves the stored
+v0 action unchanged.
+
+The historical scalar heuristic is intentionally compatibility behaviour rather
+than a general-purpose expression detector. Explicitly quoted JSONata strings
+and syntactically valid values containing legacy markers are expressions;
+ordinary values and malformed expression-like values are literals. This means
+some surprising strings containing `&` or parentheses can be interpreted as
+expressions in v0. V1 avoids that ambiguity by requiring string literals to be
+quoted explicitly.
+
+Frontend and backend tests consume
+`test-fixtures/generate-document-v0-scalar-compatibility.json`. Any required v0
+compatibility correction must update or extend this shared corpus so the
+JavaScript and Java JSONata parsers remain aligned.
 
 ## Current v1 behaviour
 

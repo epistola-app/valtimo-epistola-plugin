@@ -128,6 +128,24 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
       filename: '"letter.pdf"',
     });
     expect(component.configurationVersionError$.value).toBeNull();
+    expect(component.legacyConfigurationLoaded$.value).toBe(true);
+  });
+
+  it('does not show the upgrade notice for an existing v1 prefill', async () => {
+    const { component } = createComponent();
+    component.prefillConfiguration$ = of({
+      actionConfigVersion: 1,
+      catalogId: 'catalog',
+      templateId: 'template',
+      dataMapping: '{}',
+      outputFormat: '"PDF"',
+      filename: '"letter.pdf"',
+      resultProcessVariable: 'result',
+    });
+
+    await firstValueFrom((component as any).resolvePrefill$());
+
+    expect(component.legacyConfigurationLoaded$.value).toBe(false);
   });
 
   it('blocks an unsupported future configuration version', async () => {
@@ -146,6 +164,7 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
 
     expect(await firstValueFrom((component as any).resolvePrefill$())).toBeNull();
     expect(component.configurationVersionError$.value).toContain('supports up to version 1');
+    expect(component.legacyConfigurationLoaded$.value).toBe(false);
     expect(validity).toEqual([false]);
   });
 

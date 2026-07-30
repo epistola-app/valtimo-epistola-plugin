@@ -125,6 +125,9 @@ importers:
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
+      '@types/node':
+        specifier: ^22.15.3
+        version: 22.15.3
       '@valtimo/components':
         specifier: 13.38.0
         version: 13.38.0(03a40c4340cfb08b0d641fb3d4f3ed55)

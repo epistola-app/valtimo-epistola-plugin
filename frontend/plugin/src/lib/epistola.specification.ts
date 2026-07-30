@@ -65,6 +65,9 @@ const epistolaPluginSpecification: PluginSpecification = {
       templateSyncEnabledTooltip:
         'Synchroniseer template definities automatisch van het classpath naar Epistola bij het opstarten',
       'epistola-generate-document': 'Genereer Document',
+      legacyGenerateConfigurationHeading: 'Verouderde actieconfiguratie',
+      legacyGenerateConfigurationDescription:
+        'Deze actie is alleen in de editor bijgewerkt naar versie 1. Sla de proceskoppeling op om de bijgewerkte configuratie te bewaren; annuleren laat de opgeslagen configuratie ongewijzigd.',
       catalogId: 'Catalogus',
       catalogIdTooltip: 'Selecteer de catalogus waaruit een template gekozen wordt',
       templateId: 'Template',
@@ -309,6 +312,9 @@ const epistolaPluginSpecification: PluginSpecification = {
       templateSyncEnabledTooltip:
         'Automatically synchronize template definitions from classpath to Epistola on startup',
       'epistola-generate-document': 'Generate Document',
+      legacyGenerateConfigurationHeading: 'Legacy action configuration',
+      legacyGenerateConfigurationDescription:
+        'This action has only been upgraded to version 1 inside the editor. Save the process link to persist the upgraded configuration; cancelling leaves the stored configuration unchanged.',
       catalogId: 'Catalog',
       catalogIdTooltip: 'Select the catalog to choose a template from',
       templateId: 'Template',

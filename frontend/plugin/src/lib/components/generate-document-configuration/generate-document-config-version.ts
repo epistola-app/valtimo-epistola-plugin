@@ -46,6 +46,14 @@ export function decodeJsonataStringLiteral(expression: string): string | undefin
   }
 }
 
+export function isLegacyGenerateDocumentConfig(raw: unknown): boolean {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return false;
+  }
+  const version = (raw as Record<string, unknown>).actionConfigVersion;
+  return version === undefined || version === null || version === 0;
+}
+
 export function migrateGenerateDocumentConfig(raw: unknown): GenerateDocumentConfigV1 {
   const config = requireObject(raw);
   const version = readVersion(config.actionConfigVersion);
