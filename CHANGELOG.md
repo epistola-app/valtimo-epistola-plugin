@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Bumped the Epistola contract client `app.epistola.contract:client-spring3-restclient` from `0.15.0` to `0.16.1`.** Contract `0.16.0` advances the portable catalog wire format to v5 and replaces stencil draft flags with exact draft-version provenance; `0.16.1` fixes migration of JSON Schema objects whose `type` is itself an object. The plugin does not consume the changed portable catalog model directly, and its existing wire-v4 bundled catalogs remain accepted through the contract's explicit v4-to-v5 migration. The Prism mock-server image used by local docker-compose and backend integration tests now uses the matching `mock-server:0.16.1` image.
+
 ### Added
 
 - **Plugin releases now trigger the demo infrastructure pin bump.** After both
