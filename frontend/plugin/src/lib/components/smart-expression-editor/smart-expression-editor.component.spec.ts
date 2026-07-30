@@ -150,6 +150,35 @@ describe('SmartExpressionEditorComponent', () => {
     destroy();
   });
 
+  it('replaces a typed + trigger at the cursor instead of inserting at the start', () => {
+    const { component, surface, destroy } = createComponent(`'beforeafter'`);
+    surface.textContent = 'before+after';
+    setCaret(surface.firstChild!, 'before+'.length);
+
+    component.onSurfaceInput();
+    expect(component.pickerOpen).toBe(true);
+    component.selectReference(
+      component.flatReferenceOptions.find((option) => option.expression === '$doc.name')!,
+    );
+
+    expect(component.expression).toBe(`'before' & $doc.name & 'after'`);
+    destroy();
+  });
+
+  it('replaces an @ query in the middle of literal text at its cursor position', () => {
+    const { component, surface, destroy } = createComponent(`'beforeafter'`);
+    surface.textContent = 'before@nameafter';
+    setCaret(surface.firstChild!, 'before@name'.length);
+
+    component.onSurfaceInput();
+    component.selectReference(
+      component.flatReferenceOptions.find((option) => option.expression === '$doc.name')!,
+    );
+
+    expect(component.expression).toBe(`'before' & $doc.name & 'after'`);
+    destroy();
+  });
+
   it('keeps a dismissed @ query as literal text', () => {
     const { component, surface, destroy } = createComponent('');
     const expressions: string[] = [];
@@ -222,6 +251,25 @@ describe('SmartExpressionEditorComponent', () => {
     expect(component.expression).toBe('$doc.name');
     expect(component.pickerOpen).toBe(false);
     expect(surface.querySelector('[data-expression-chip]')?.textContent).toBe('$doc.name');
+    destroy();
+  });
+
+  it('replaces only the clicked chip in a compound expression', () => {
+    const { component, surface, destroy } = createComponent(
+      `$pv.filename & '-' & $doc.address.street`,
+    );
+    const chips = surface.querySelectorAll<HTMLElement>('[data-expression-chip]');
+    component.onSurfaceClick({
+      target: chips[1],
+      preventDefault: jest.fn(),
+    } as unknown as MouseEvent);
+
+    component.onReferenceMouseDown(
+      new MouseEvent('mousedown', { bubbles: true, cancelable: true }),
+      component.flatReferenceOptions.find((option) => option.expression === '$doc.name')!,
+    );
+
+    expect(component.expression).toBe(`$pv.filename & '-' & $doc.name`);
     destroy();
   });
 

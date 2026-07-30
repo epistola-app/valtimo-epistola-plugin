@@ -113,10 +113,10 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   private readonly destroy$ = new Subject<void>();
   private readonly validateRaw$ = new Subject<string>();
   private viewInitialized = false;
-  private savedRange: Range | null = null;
+  private savedCaretOffset: number | null = null;
+  private insertionRange: { start: number; end: number } | null = null;
   atTrigger: { node: Text; offset: number } | null = null;
   private dismissedAtTrigger: { node: Text; offset: number } | null = null;
-  private replacementChip: HTMLElement | null = null;
   private lastEmittedExpression: string | null = null;
   private composing = false;
   private lastValidity: boolean | null = null;
@@ -324,9 +324,10 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
 
   openInsertPicker(): void {
     if (this.disabled) return;
-    this.restoreSelection();
+    this.syncSegmentsFromSurface();
+    const offset = this.savedCaretOffset ?? this.expressionLength();
+    this.insertionRange = { start: offset, end: offset };
     this.atTrigger = null;
-    this.replacementChip = null;
     this.pickerQuery = '';
     this.numberEntryOpen = false;
     this.pickerOpen = true;
@@ -453,13 +454,13 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   closePicker(restoreFocus = false): void {
     this.pickerOpen = false;
     this.numberEntryOpen = false;
-    this.replacementChip = null;
+    this.insertionRange = null;
     this.atTrigger = null;
     this.cdr.markForCheck();
     if (restoreFocus) {
       queueMicrotask(() => {
-        this.restoreSelection();
         this.surface?.nativeElement.focus();
+        this.focusAtLogicalOffset(this.savedCaretOffset ?? this.expressionLength());
       });
     }
   }
@@ -628,7 +629,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
 
     const node = range.startContainer as Text;
     const beforeCaret = (node.textContent || '').slice(0, range.startOffset);
-    const match = beforeCaret.match(/@([^\s@]*)$/);
+    const match = beforeCaret.match(/([@+])([^\s@+]*)$/);
     if (!match) {
       return;
     }
@@ -638,8 +639,13 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     }
 
     this.atTrigger = { node, offset };
-    this.replacementChip = null;
-    this.pickerQuery = match[1];
+    const caretOffset = this.logicalOffsetAtRange(range);
+    if (caretOffset === null) return;
+    this.insertionRange = {
+      start: Math.max(0, caretOffset - match[0].length),
+      end: caretOffset,
+    };
+    this.pickerQuery = match[2];
     this.pickerOpen = true;
     this.numberEntryOpen = false;
     this.activeOptionIndex = 0;
@@ -648,9 +654,11 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   }
 
   private openPickerForChip(chip: HTMLElement): void {
-    this.replacementChip = chip;
+    this.syncSegmentsFromSurface();
+    const offset = this.logicalOffsetBeforeNode(chip);
+    if (offset === null) return;
+    this.insertionRange = { start: offset, end: offset + 1 };
     this.atTrigger = null;
-    this.savedRange = null;
     this.pickerQuery = '';
     this.pickerOpen = true;
     this.numberEntryOpen = false;
@@ -663,41 +671,19 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   private insertSegment(segment: Exclude<SimpleExpressionSegment, { kind: 'text' }>): void {
     const element = this.surface?.nativeElement;
     if (!element) return;
-    const chip = this.createChipElement(segment);
-
-    if (this.replacementChip?.isConnected) {
-      this.replacementChip.replaceWith(chip);
-    } else {
-      this.restoreSelection();
-      const selection = window.getSelection();
-      const range =
-        selection?.rangeCount && element.contains(selection.anchorNode)
-          ? selection.getRangeAt(0)
-          : this.rangeAtEnd(element);
-
-      if (
-        this.atTrigger?.node.isConnected &&
-        element.contains(this.atTrigger.node) &&
-        range.startContainer === this.atTrigger.node
-      ) {
-        range.setStart(this.atTrigger.node, this.atTrigger.offset);
-      }
-      range.deleteContents();
-      const after = document.createTextNode(CARET_MARKER);
-      range.insertNode(after);
-      range.insertNode(chip);
-      range.setStart(after, after.length);
-      range.collapse(true);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-    }
+    this.syncSegmentsFromSurface();
+    const insertion = this.insertionRange ?? {
+      start: this.savedCaretOffset ?? this.expressionLength(),
+      end: this.savedCaretOffset ?? this.expressionLength(),
+    };
+    const nextOffset = this.replaceExpressionRange(insertion.start, insertion.end, segment);
 
     this.dismissedAtTrigger = null;
     this.closePicker(false);
-    this.syncSegmentsFromSurface();
+    this.renderSurface();
     this.emitSimpleExpression();
     element.focus();
-    this.captureSelection();
+    this.focusAtLogicalOffset(nextOffset);
   }
 
   private selectActiveOption(): void {
@@ -788,21 +774,115 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     if (!element || !selection?.rangeCount || !element.contains(selection.anchorNode)) {
       return;
     }
-    this.savedRange = selection.getRangeAt(0).cloneRange();
+    this.savedCaretOffset = this.logicalOffsetAtRange(selection.getRangeAt(0));
   }
 
-  private restoreSelection(): void {
+  private logicalOffsetAtRange(range: Range): number | null {
+    const element = this.surface?.nativeElement;
+    if (!element || !element.contains(range.startContainer)) return null;
+    const preceding = document.createRange();
+    preceding.selectNodeContents(element);
+    preceding.setEnd(range.startContainer, range.startOffset);
+    return this.logicalLength(preceding.cloneContents());
+  }
+
+  private logicalOffsetBeforeNode(node: Node): number | null {
+    const element = this.surface?.nativeElement;
+    if (!element || !element.contains(node)) return null;
+    const preceding = document.createRange();
+    preceding.selectNodeContents(element);
+    preceding.setEndBefore(node);
+    return this.logicalLength(preceding.cloneContents());
+  }
+
+  private logicalLength(node: Node): number {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return (node.textContent || '').split(CARET_MARKER).join('').length;
+    }
+    const htmlNode = node as HTMLElement;
+    if (htmlNode.dataset?.['expressionChip']) {
+      return 1;
+    }
+    return Array.from(node.childNodes).reduce(
+      (length, child) => length + this.logicalLength(child),
+      0,
+    );
+  }
+
+  private expressionLength(): number {
+    return this.segments.reduce(
+      (length, segment) => length + (segment.kind === 'text' ? segment.value.length : 1),
+      0,
+    );
+  }
+
+  private replaceExpressionRange(
+    start: number,
+    end: number,
+    segment: Exclude<SimpleExpressionSegment, { kind: 'text' }>,
+  ): number {
+    const atoms: SimpleExpressionSegment[] = [];
+    for (const item of this.segments) {
+      if (item.kind === 'text') {
+        atoms.push(...item.value.split('').map((value) => textExpressionSegment(value)));
+      } else {
+        atoms.push(item);
+      }
+    }
+    const safeStart = Math.max(0, Math.min(start, atoms.length));
+    const safeEnd = Math.max(safeStart, Math.min(end, atoms.length));
+    atoms.splice(safeStart, safeEnd - safeStart, segment);
+
+    this.segments = [];
+    for (const atom of atoms) {
+      const previous = this.segments.at(-1);
+      if (atom.kind === 'text' && previous?.kind === 'text') {
+        previous.value += atom.value;
+      } else {
+        this.segments.push(atom);
+      }
+    }
+    return safeStart + 1;
+  }
+
+  private focusAtLogicalOffset(offset: number): void {
     const element = this.surface?.nativeElement;
     if (!element) return;
-    const range =
-      this.savedRange &&
-      this.savedRange.startContainer.isConnected &&
-      element.contains(this.savedRange.startContainer)
-        ? this.savedRange
-        : this.rangeAtEnd(element);
+    const range = this.rangeAtLogicalOffset(element, offset);
     const selection = window.getSelection();
     selection?.removeAllRanges();
     selection?.addRange(range);
+    this.savedCaretOffset = offset;
+  }
+
+  private rangeAtLogicalOffset(element: HTMLElement, requestedOffset: number): Range {
+    let remaining = Math.max(0, requestedOffset);
+    const range = document.createRange();
+    const childNodes = Array.from(element.childNodes);
+    for (let index = 0; index < childNodes.length; index++) {
+      const node = childNodes[index];
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent || '';
+        const logicalText = text.split(CARET_MARKER).join('');
+        if (remaining <= logicalText.length && logicalText.length > 0) {
+          range.setStart(node, Math.min(remaining, text.length));
+          range.collapse(true);
+          return range;
+        }
+        remaining -= logicalText.length;
+        continue;
+      }
+      const htmlNode = node as HTMLElement;
+      if (htmlNode.dataset?.['expressionChip']) {
+        if (remaining === 0) {
+          range.setStart(element, index);
+          range.collapse(true);
+          return range;
+        }
+        remaining--;
+      }
+    }
+    return this.rangeAtEnd(element);
   }
 
   private focusAtEnd(): void {
@@ -813,7 +893,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     const selection = window.getSelection();
     selection?.removeAllRanges();
     selection?.addRange(range);
-    this.savedRange = range.cloneRange();
+    this.savedCaretOffset = this.expressionLength();
   }
 
   private rangeAtEnd(element: HTMLElement): Range {
