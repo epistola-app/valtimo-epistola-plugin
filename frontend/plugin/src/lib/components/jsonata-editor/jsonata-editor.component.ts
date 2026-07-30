@@ -17,6 +17,7 @@
  */
 
 import {
+  AfterViewInit,
   Component,
   EventEmitter,
   Input,
@@ -34,6 +35,7 @@ import { jsonataCompletionData, registerJsonataLanguage } from '../../utils/json
 
 import * as _jsonata from 'jsonata';
 const jsonata = (_jsonata as any).default || _jsonata;
+let nextEditorModelId = 0;
 
 @Component({
   selector: 'epistola-jsonata-editor',
@@ -89,7 +91,7 @@ const jsonata = (_jsonata as any).default || _jsonata;
     `,
   ],
 })
-export class JsonataEditorComponent implements OnChanges, OnDestroy {
+export class JsonataEditorComponent implements OnChanges, AfterViewInit, OnDestroy {
   @Input() expression: string = '';
   @Input() disabled: boolean = false;
   /**
@@ -105,7 +107,12 @@ export class JsonataEditorComponent implements OnChanges, OnDestroy {
   @Output() expressionChange = new EventEmitter<string>();
   @Output() validChange = new EventEmitter<boolean>();
 
-  editorModel: { value: string; language: string } = { value: '', language: 'jsonata' };
+  private readonly modelUri = `inmemory://epistola/jsonata-${++nextEditorModelId}.jsonata`;
+  editorModel: { value: string; language: string; uri: string } = {
+    value: '',
+    language: 'jsonata',
+    uri: this.modelUri,
+  };
   editorOptions: Record<string, any> = {
     minimap: { enabled: false },
     lineNumbers: 'on',
@@ -120,8 +127,10 @@ export class JsonataEditorComponent implements OnChanges, OnDestroy {
 
   private destroy$ = new Subject<void>();
   private validate$ = new Subject<string>();
-  private suppressChange = false;
+  private lastEmittedExpression: string | null = null;
   private languageRegistered = false;
+  private languageRegistrationFrame: number | null = null;
+  private destroyed = false;
 
   constructor() {
     this.validate$.pipe(debounceTime(300), takeUntil(this.destroy$)).subscribe((value) => {
@@ -133,9 +142,17 @@ export class JsonataEditorComponent implements OnChanges, OnDestroy {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['expression'] && !this.suppressChange) {
-      this.editorModel = { value: this.expression || '', language: 'jsonata' };
-      this.validate$.next(this.expression);
+    if (changes['expression']) {
+      const next = this.expression || '';
+      if (next === this.lastEmittedExpression) {
+        this.lastEmittedExpression = null;
+      } else {
+        this.lastEmittedExpression = null;
+        if (next !== this.editorModel.value) {
+          this.editorModel = { value: next, language: 'jsonata', uri: this.modelUri };
+        }
+        this.validate$.next(next);
+      }
     }
     if (changes['contextVariables']) {
       jsonataCompletionData.variables = this.contextVariables || {};
@@ -145,33 +162,61 @@ export class JsonataEditorComponent implements OnChanges, OnDestroy {
     }
   }
 
+  ngAfterViewInit(): void {
+    this.ensureLanguageRegistered();
+  }
+
   ngOnDestroy(): void {
+    this.destroyed = true;
+    if (this.languageRegistrationFrame !== null && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this.languageRegistrationFrame);
+    }
     this.destroy$.next();
     this.destroy$.complete();
   }
 
   onEditorValueChange(value: string): void {
     // Register language on first editor event (Monaco is now loaded)
-    if (!this.languageRegistered) {
-      this.tryRegisterLanguage();
-    }
-
-    if (this.suppressChange) return;
-    this.suppressChange = true;
+    this.ensureLanguageRegistered();
+    if (value === this.expression) return;
     this.expression = value;
+    this.editorModel.value = value;
+    this.lastEmittedExpression = value;
     this.expressionChange.emit(value);
     this.validate$.next(value);
-    setTimeout(() => (this.suppressChange = false));
   }
 
-  private tryRegisterLanguage(): void {
-    const m = (window as any).monaco;
-    if (m) {
-      registerJsonataLanguage(m);
-      this.languageRegistered = true;
-      jsonataCompletionData.variables = this.contextVariables || {};
-      jsonataCompletionData.functions = this.functions;
+  private ensureLanguageRegistered(): void {
+    if (this.languageRegistered || this.destroyed) return;
+    if (this.tryRegisterLanguage()) return;
+    if (typeof requestAnimationFrame === 'function') {
+      this.languageRegistrationFrame = requestAnimationFrame(() => {
+        this.languageRegistrationFrame = null;
+        this.ensureLanguageRegistered();
+      });
     }
+  }
+
+  private tryRegisterLanguage(): boolean {
+    const m = (window as any).monaco;
+    if (!m) return false;
+
+    registerJsonataLanguage(m);
+    this.languageRegistered = true;
+    jsonataCompletionData.variables = this.contextVariables || {};
+    jsonataCompletionData.functions = this.functions;
+    this.refreshModelLanguage(m);
+    return true;
+  }
+
+  private refreshModelLanguage(monacoInstance: any): void {
+    const model = monacoInstance.editor?.getModel(monacoInstance.Uri.parse(this.modelUri));
+    if (!model) return;
+
+    if (model.getLanguageId?.() === 'jsonata') {
+      monacoInstance.editor.setModelLanguage(model, 'plaintext');
+    }
+    monacoInstance.editor.setModelLanguage(model, 'jsonata');
   }
 
   private validateExpression(value: string): void {

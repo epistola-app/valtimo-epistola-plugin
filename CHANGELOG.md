@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The visual expression caret now remains after an inserted value.** Closing the picker can no longer move the cursor back to the start of the content-editable field during its final focus cycle.
 - **The expression picker now has consistent popover focus, placement, and dismissal.** Opening it places the popover below the input and moves keyboard focus to its search field; clicking anywhere outside closes it, clicking `+` again toggles it closed, and selecting an entry closes it while returning the caret to the expression.
 - **Visual and Advanced expression modes now use an inline two-state icon control.** Structured-block and code icons make both states visible in the input chrome alongside the `+` action, and the Visual option remains disabled in Advanced mode when the expression cannot be represented losslessly.
+- **The whole-mapping Advanced editor now keeps a stable Monaco model while typing.** Parent input echoes no longer recreate the model and disrupt cursor-relative edits, while deferred JSONata language registration retokenizes the initial model so syntax highlighting works on the first opening.
 - **The ESM test application can run its Karma suite again.** Its CommonJS Karma configuration now uses a `.cjs` extension, the obsolete webpack `require.context` bootstrap is removed, and CI selects headless Chrome with a single run instead of failing during setup or waiting in watch mode.
 
 ## [0.16.0] - 2026-07-30
