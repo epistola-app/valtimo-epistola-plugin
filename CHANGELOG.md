@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The municipality demo catalog now follows the current portable-template schema.** Release `1.2.0` uses a valid SemVer version, layout tables declare numeric dimensions and header rows, and loop/conditional content uses `body` slots so Suite can import and deploy the bundled templates.
 - **Plain unversioned filenames and slugs are no longer parsed as JSONata paths.** Values such as `value.pdf` retain their literal meaning in v0, preventing generation-only parser failures that did not appear in preview.
 
 ## [0.15.0] - 2026-07-25

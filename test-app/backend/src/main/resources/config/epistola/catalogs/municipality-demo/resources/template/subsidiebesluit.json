@@ -748,19 +748,19 @@
         "s-decision-granted-children": {
           "id": "s-decision-granted-children",
           "nodeId": "n-decision-granted",
-          "name": "children",
+          "name": "body",
           "children": ["n-granted-text"]
         },
         "s-decision-rejected-children": {
           "id": "s-decision-rejected-children",
           "nodeId": "n-decision-rejected",
-          "name": "children",
+          "name": "body",
           "children": ["n-rejected-text"]
         },
         "s-conditions-children": {
           "id": "s-conditions-children",
           "nodeId": "n-conditions-section",
-          "name": "children",
+          "name": "body",
           "children": ["n-conditions-header", "n-conditions-text"]
         }
       }
