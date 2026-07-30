@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Bundled demo generate-document actions now use explicit v1 configuration semantics.** All 18 first-party process-link fixtures set `actionConfigVersion: 1`, encode fixed filenames and PDF output as JSONata string literals, and are guarded by a regression test that parses every action through the latest backend version handler.
 - **GitHub Actions now run on supported Node.js 24 action runtimes.** Checkout, Node/pnpm/mise setup, artifact transfer, CodeQL, Helm, Docker registry/build, and Gradle setup actions use their Node 24-compatible majors across CI, CodeQL, chart, and plugin-release workflows. Gradle setup intentionally stays on v5 because v6 introduces separate proprietary caching terms; v5 removes the Node 20 deprecation without changing the repository's current action licensing.
 
 ### Fixed

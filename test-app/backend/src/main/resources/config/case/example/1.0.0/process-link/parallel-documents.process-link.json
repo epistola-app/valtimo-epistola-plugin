@@ -12,9 +12,10 @@
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
     "pluginActionDefinitionKey": "epistola-generate-document",
     "actionProperties": {
+      "actionConfigVersion": 1,
       "templateId": "example-template",
-      "outputFormat": "PDF",
-      "filename": "example-document-a.pdf",
+      "outputFormat": "\"PDF\"",
+      "filename": "\"example-document-a.pdf\"",
       "resultProcessVariable": "resultA",
       "dataMapping": "{\n  \"firstName\": $doc.firstName\n}",
       "catalogId": "municipality-demo"
@@ -27,9 +28,10 @@
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
     "pluginActionDefinitionKey": "epistola-generate-document",
     "actionProperties": {
+      "actionConfigVersion": 1,
       "templateId": "example-template",
-      "outputFormat": "PDF",
-      "filename": "example-document-b.pdf",
+      "outputFormat": "\"PDF\"",
+      "filename": "\"example-document-b.pdf\"",
       "resultProcessVariable": "resultB",
       "dataMapping": "{\n  \"firstName\": $doc.firstName\n}",
       "catalogId": "municipality-demo"
