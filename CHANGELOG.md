@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-07-30
+
 ### Added
 
 - **Generate-document expressions now have a source-preserving visual model.** Persisted JSONata string literals, typed literals, arbitrary simple variable references such as `$doc.name` or `$external.payload`, and simple concatenations can be represented without rewriting untouched source, while newly typed values are always serialized as explicit single-quoted strings instead of being guessed from ambiguous text such as `$pv.filename` or `value.pdf`.
