@@ -210,9 +210,10 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(ProcessVariableDiscoveryService.class)
     public ProcessVariableDiscoveryService processVariableDiscoveryService(
             HistoryService historyService,
-            RepositoryService repositoryService
+            RepositoryService repositoryService,
+            ProcessLinkService processLinkService
     ) {
-        return new ProcessVariableDiscoveryService(historyService, repositoryService);
+        return new ProcessVariableDiscoveryService(historyService, repositoryService, processLinkService);
     }
 
     @Bean
