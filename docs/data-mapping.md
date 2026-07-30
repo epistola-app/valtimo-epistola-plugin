@@ -149,10 +149,11 @@ fields. The visual mode is intended for non-programmers:
 - typing `@` searches document, process, and case variables inline, while the
   `+` button opens the complete insert menu; selected variables become
   semantic chips;
-- any unlisted JSONata variable can still be inserted by typing its name, for
-  example `@paymentReference` becomes `$paymentReference` and
-  `@external.payload` becomes `$external.payload`; use `@pv.paymentReference`
-  when the intended root is specifically `$pv`;
+- any unlisted name can still be inserted by typing it. For example,
+  `@paymentReference` offers `$case.paymentReference`,
+  `$pv.paymentReference`, `$doc.paymentReference`, and the independent JSONata
+  variable `$paymentReference`; an explicitly scoped entry such as
+  `@pv.paymentReference` is kept as `$pv.paymentReference`;
 - numbers, booleans, and `null` are explicit typed chips rather than inferred
   from ambiguous input;
 - simple concatenations combine text and chips while still producing JSONata.

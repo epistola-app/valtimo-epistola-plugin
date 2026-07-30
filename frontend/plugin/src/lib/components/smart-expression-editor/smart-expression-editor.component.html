@@ -165,7 +165,7 @@
         </ng-container>
 
         <div
-          *ngIf="customReferenceOption as option"
+          *ngIf="customReferenceOptions.length > 0"
           class="smart-expression__group smart-expression__group--custom"
           role="group"
         >
@@ -173,6 +173,7 @@
             {{ 'expressionEditorUnlistedVariable' | pluginTranslate: 'epistola' | async }}
           </div>
           <button
+            *ngFor="let option of customReferenceOptions"
             type="button"
             class="smart-expression__option"
             role="option"
@@ -184,14 +185,14 @@
             (click)="onReferenceClick(option)"
           >
             <span>
-              {{ 'expressionEditorUseUnlistedVariable' | pluginTranslate: 'epistola' | async }}
+              {{ customReferenceLabelKey(option) | pluginTranslate: 'epistola' | async }}
             </span>
             <code>{{ option.expression }}</code>
           </button>
         </div>
 
         <div
-          *ngIf="referenceGroups.length === 0 && !customReferenceOption"
+          *ngIf="referenceGroups.length === 0 && customReferenceOptions.length === 0"
           class="smart-expression__empty"
         >
           {{ 'expressionEditorNoReferences' | pluginTranslate: 'epistola' | async }}

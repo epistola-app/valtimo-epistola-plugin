@@ -165,8 +165,15 @@ describe('SmartExpressionEditorComponent', () => {
     component.onSurfaceInput();
 
     expect(component.flatReferenceOptions).toHaveLength(0);
-    expect(component.customReferenceOption?.expression).toBe('$paymentReference');
-    component.selectReference(component.customReferenceOption!);
+    expect(component.customReferenceOptions.map((option) => option.expression)).toEqual([
+      '$case.paymentReference',
+      '$pv.paymentReference',
+      '$doc.paymentReference',
+      '$paymentReference',
+    ]);
+    component.selectReference(
+      component.customReferenceOptions.find((option) => option.expression === '$paymentReference')!,
+    );
 
     expect(component.expression).toBe('$paymentReference');
     expect(surface.querySelector('[data-expression-chip]')?.textContent).toBe('$paymentReference');
@@ -180,8 +187,12 @@ describe('SmartExpressionEditorComponent', () => {
 
     component.onSurfaceInput();
 
-    expect(component.customReferenceOption?.expression).toBe('$external.payload');
-    component.selectReference(component.customReferenceOption!);
+    expect(component.customReferenceOptions.map((option) => option.expression)).toContain(
+      '$external.payload',
+    );
+    component.selectReference(
+      component.customReferenceOptions.find((option) => option.expression === '$external.payload')!,
+    );
 
     expect(component.expression).toBe('$external.payload');
     destroy();
@@ -194,8 +205,10 @@ describe('SmartExpressionEditorComponent', () => {
 
     component.onSurfaceInput();
 
-    expect(component.customReferenceOption?.expression).toBe('$case.owner.name');
-    component.selectReference(component.customReferenceOption!);
+    expect(component.customReferenceOptions.map((option) => option.expression)).toEqual([
+      '$case.owner.name',
+    ]);
+    component.selectReference(component.customReferenceOptions[0]);
 
     expect(component.expression).toBe('$case.owner.name');
     destroy();
@@ -211,7 +224,9 @@ describe('SmartExpressionEditorComponent', () => {
     expect(component.flatReferenceOptions.map((option) => option.expression)).toContain(
       '$pv.filename',
     );
-    expect(component.customReferenceOption).toBeNull();
+    expect(component.customReferenceOptions.map((option) => option.expression)).not.toContain(
+      '$pv.filename',
+    );
     destroy();
   });
 

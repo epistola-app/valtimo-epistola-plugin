@@ -190,30 +190,58 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     return this.referenceGroups.flatMap((group) => group.options);
   }
 
-  get customReferenceOption(): ReferenceOption | null {
+  get customReferenceOptions(): ReferenceOption[] {
     const query = this.pickerQuery.trim().replace(/^\$/, '');
-    if (!query) return null;
+    if (!query) return [];
 
-    const [variable, ...pathSegments] = query.split('.');
-    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(variable)) return null;
-    if (pathSegments.some((segment) => !segment)) return null;
+    const [root, ...pathSegments] = query.split('.');
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(root)) return [];
+    if (pathSegments.some((segment) => !segment)) return [];
 
     const path = pathSegments.join('.');
-    const expression = path ? renderJsonataPath(variable, path) : `$${variable}`;
-    if (this.flatReferenceOptions.some((option) => option.expression === expression)) {
-      return null;
-    }
+    const explicitlyScoped = ['case', 'pv', 'doc'].includes(root) && !!path;
+    const candidates = explicitlyScoped
+      ? [referenceExpressionSegment(root, path)]
+      : [
+          referenceExpressionSegment('case', query),
+          referenceExpressionSegment('pv', query),
+          referenceExpressionSegment('doc', query),
+          referenceExpressionSegment(root, path),
+        ];
+    const knownExpressions = new Set(this.flatReferenceOptions.map((option) => option.expression));
+    const seen = new Set<string>();
 
-    return {
-      ...referenceExpressionSegment(variable, path),
-      label: query,
-      expression,
-    };
+    return candidates.flatMap((candidate) => {
+      const expression = candidate.path
+        ? renderJsonataPath(candidate.variable, candidate.path)
+        : `$${candidate.variable}`;
+      if (knownExpressions.has(expression) || seen.has(expression)) return [];
+      seen.add(expression);
+      return [
+        {
+          ...candidate,
+          label: query,
+          expression,
+        },
+      ];
+    });
+  }
+
+  customReferenceLabelKey(option: ReferenceOption): string {
+    switch (option.variable) {
+      case 'case':
+        return 'caseProperties';
+      case 'pv':
+        return 'processVariables';
+      case 'doc':
+        return 'documentFields';
+      default:
+        return 'expressionEditorJsonataVariable';
+    }
   }
 
   get selectableReferenceOptions(): ReferenceOption[] {
-    const custom = this.customReferenceOption;
-    return custom ? [...this.flatReferenceOptions, custom] : this.flatReferenceOptions;
+    return [...this.flatReferenceOptions, ...this.customReferenceOptions];
   }
 
   get advancedValid(): boolean {
