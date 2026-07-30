@@ -123,6 +123,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       expressionEditorSearch: 'Zoek document- of procesgegevens',
       expressionEditorReferences: 'Beschikbare gegevens',
       expressionEditorNoReferences: 'Geen overeenkomende gegevens gevonden',
+      expressionEditorUnlistedVariable: 'Niet-vermelde variabele',
+      expressionEditorUseUnlistedVariable: 'Deze variabele toch gebruiken',
       expressionEditorNumber: 'Getal',
       expressionEditorAdvancedOnly:
         'Deze expressie kan niet zonder informatieverlies visueel worden weergegeven.',
@@ -376,6 +378,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       expressionEditorSearch: 'Search document or process data',
       expressionEditorReferences: 'Available data',
       expressionEditorNoReferences: 'No matching data found',
+      expressionEditorUnlistedVariable: 'Unlisted variable',
+      expressionEditorUseUnlistedVariable: 'Use this variable anyway',
       expressionEditorNumber: 'Number',
       expressionEditorAdvancedOnly:
         'This expression cannot be represented visually without losing information.',

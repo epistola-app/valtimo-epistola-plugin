@@ -149,6 +149,9 @@ fields. The visual mode is intended for non-programmers:
 - typing `@` searches document, process, and case variables inline, while the
   `+` button opens the complete insert menu; selected variables become
   semantic chips;
+- an unlisted process variable can still be inserted by typing its name, for
+  example `@paymentReference`; use an explicit `doc.`, `pv.`, or `case.` prefix
+  to choose a different scope;
 - numbers, booleans, and `null` are explicit typed chips rather than inferred
   from ambiguous input;
 - simple concatenations combine text and chips while still producing JSONata.

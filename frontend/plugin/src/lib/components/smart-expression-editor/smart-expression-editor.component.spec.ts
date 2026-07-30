@@ -150,6 +150,52 @@ describe('SmartExpressionEditorComponent', () => {
     destroy();
   });
 
+  it('offers an unlisted name as a process variable', () => {
+    const { component, surface, destroy } = createComponent('');
+    surface.textContent = '@paymentReference';
+    setCaret(surface.firstChild!, '@paymentReference'.length);
+
+    component.onSurfaceInput();
+
+    expect(component.flatReferenceOptions).toHaveLength(0);
+    expect(component.customReferenceOption?.expression).toBe('$pv.paymentReference');
+    component.selectReference(component.customReferenceOption!);
+
+    expect(component.expression).toBe('$pv.paymentReference');
+    expect(surface.querySelector('[data-expression-chip]')?.textContent).toBe(
+      '$pv.paymentReference',
+    );
+    destroy();
+  });
+
+  it('accepts an explicit scope for an unlisted variable', () => {
+    const { component, surface, destroy } = createComponent('');
+    surface.textContent = '@case.owner.name';
+    setCaret(surface.firstChild!, '@case.owner.name'.length);
+
+    component.onSurfaceInput();
+
+    expect(component.customReferenceOption?.expression).toBe('$case.owner.name');
+    component.selectReference(component.customReferenceOption!);
+
+    expect(component.expression).toBe('$case.owner.name');
+    destroy();
+  });
+
+  it('does not duplicate an exact known variable as an unlisted option', () => {
+    const { component, surface, destroy } = createComponent('');
+    surface.textContent = '@pv.filename';
+    setCaret(surface.firstChild!, '@pv.filename'.length);
+
+    component.onSurfaceInput();
+
+    expect(component.flatReferenceOptions.map((option) => option.expression)).toContain(
+      '$pv.filename',
+    );
+    expect(component.customReferenceOption).toBeNull();
+    destroy();
+  });
+
   it('treats a typed + as text instead of duplicating the insert button shortcut', () => {
     const { component, surface, destroy } = createComponent(`'beforeafter'`);
     const expressions: string[] = [];

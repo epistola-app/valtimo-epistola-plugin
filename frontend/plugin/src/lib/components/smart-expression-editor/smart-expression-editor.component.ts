@@ -37,6 +37,7 @@ import { FormsModule } from '@angular/forms';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
 import * as _jsonata from 'jsonata';
+import { renderJsonataPath } from '../../utils/jsonata-path';
 import {
   ReferenceExpressionSegment,
   SimpleExpressionSegment,
@@ -187,6 +188,32 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
 
   get flatReferenceOptions(): ReferenceOption[] {
     return this.referenceGroups.flatMap((group) => group.options);
+  }
+
+  get customReferenceOption(): ReferenceOption | null {
+    const query = this.pickerQuery.trim();
+    if (!query) return null;
+
+    const scoped = query.match(/^\$?(doc|pv|case)\.(.+)$/i);
+    const variable = (scoped?.[1] || 'pv').toLocaleLowerCase();
+    const path = (scoped?.[2] || query.replace(/^\$/, '')).trim();
+    if (!path || path.split('.').some((segment) => !segment)) return null;
+
+    const expression = renderJsonataPath(variable, path);
+    if (this.flatReferenceOptions.some((option) => option.expression === expression)) {
+      return null;
+    }
+
+    return {
+      ...referenceExpressionSegment(variable, path),
+      label: path,
+      expression,
+    };
+  }
+
+  get selectableReferenceOptions(): ReferenceOption[] {
+    const custom = this.customReferenceOption;
+    return custom ? [...this.flatReferenceOptions, custom] : this.flatReferenceOptions;
   }
 
   get advancedValid(): boolean {
@@ -688,14 +715,14 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   }
 
   private selectActiveOption(): void {
-    const option = this.flatReferenceOptions[this.activeOptionIndex];
+    const option = this.selectableReferenceOptions[this.activeOptionIndex];
     if (option) {
       this.selectReference(option);
     }
   }
 
   private moveActiveOption(delta: number): void {
-    const count = this.flatReferenceOptions.length;
+    const count = this.selectableReferenceOptions.length;
     if (count === 0) return;
     this.activeOptionIndex = (this.activeOptionIndex + delta + count) % count;
     this.cdr.markForCheck();

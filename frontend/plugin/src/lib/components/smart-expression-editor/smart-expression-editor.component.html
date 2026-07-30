@@ -125,9 +125,9 @@
               class="smart-expression__option"
               role="option"
               [class.smart-expression__option--active]="
-                flatReferenceOptions[activeOptionIndex] === option
+                selectableReferenceOptions[activeOptionIndex] === option
               "
-              [attr.aria-selected]="flatReferenceOptions[activeOptionIndex] === option"
+              [attr.aria-selected]="selectableReferenceOptions[activeOptionIndex] === option"
               (mousedown)="onReferenceMouseDown($event, option)"
               (click)="onReferenceClick(option)"
             >
@@ -137,7 +137,36 @@
           </div>
         </ng-container>
 
-        <div *ngIf="referenceGroups.length === 0" class="smart-expression__empty">
+        <div
+          *ngIf="customReferenceOption as option"
+          class="smart-expression__group smart-expression__group--custom"
+          role="group"
+        >
+          <div class="smart-expression__group-label">
+            {{ 'expressionEditorUnlistedVariable' | pluginTranslate: 'epistola' | async }}
+          </div>
+          <button
+            type="button"
+            class="smart-expression__option"
+            role="option"
+            [class.smart-expression__option--active]="
+              selectableReferenceOptions[activeOptionIndex] === option
+            "
+            [attr.aria-selected]="selectableReferenceOptions[activeOptionIndex] === option"
+            (mousedown)="onReferenceMouseDown($event, option)"
+            (click)="onReferenceClick(option)"
+          >
+            <span>
+              {{ 'expressionEditorUseUnlistedVariable' | pluginTranslate: 'epistola' | async }}
+            </span>
+            <code>{{ option.expression }}</code>
+          </button>
+        </div>
+
+        <div
+          *ngIf="referenceGroups.length === 0 && !customReferenceOption"
+          class="smart-expression__empty"
+        >
           {{ 'expressionEditorNoReferences' | pluginTranslate: 'epistola' | async }}
         </div>
       </div>
