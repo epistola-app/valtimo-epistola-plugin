@@ -127,6 +127,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       expressionEditorNoReferences: 'Geen overeenkomende gegevens gevonden',
       expressionEditorUnlistedVariable: 'Niet-vermelde variabele',
       expressionEditorUseUnlistedVariable: 'Deze variabele toch gebruiken',
+      expressionEditorUseAtLiterally: '@ als tekst gebruiken',
       expressionEditorNumber: 'Getal',
       expressionEditorAdvancedOnly:
         'Deze expressie kan niet zonder informatieverlies visueel worden weergegeven.',
@@ -384,6 +385,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       expressionEditorNoReferences: 'No matching data found',
       expressionEditorUnlistedVariable: 'Unlisted variable',
       expressionEditorUseUnlistedVariable: 'Use this variable anyway',
+      expressionEditorUseAtLiterally: 'Use @ as text',
       expressionEditorNumber: 'Number',
       expressionEditorAdvancedOnly:
         'This expression cannot be represented visually without losing information.',

@@ -246,6 +246,42 @@ describe('SmartExpressionEditorComponent', () => {
     destroy();
   });
 
+  it('keeps typing literal after Escape dismisses an @ search', () => {
+    const { component, surface, destroy } = createComponent('');
+    const expressions: string[] = [];
+    component.expressionChange.subscribe((value) => expressions.push(value));
+    surface.textContent = '@';
+    setCaret(surface.firstChild!, 1);
+    component.onSurfaceInput();
+
+    component.onPickerSearchKeydown(
+      new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }),
+    );
+    const textNode = surface.firstChild!;
+    textNode.textContent = '@example.com';
+    setCaret(textNode, '@example.com'.length);
+    component.onSurfaceInput();
+
+    expect(component.pickerOpen).toBe(false);
+    expect(expressions.at(-1)).toBe("'@example.com'");
+    destroy();
+  });
+
+  it('offers an explicit action that keeps @ as literal text', () => {
+    const { component, surface, destroy } = createComponent('');
+    surface.textContent = '@';
+    setCaret(surface.firstChild!, 1);
+    component.onSurfaceInput();
+    const event = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+
+    component.onLiteralAtMouseDown(event);
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(component.pickerOpen).toBe(false);
+    expect(component.expression).toBe("'@'");
+    destroy();
+  });
+
   it('inserts references and typed values at the saved cursor', () => {
     const { component, surface, destroy } = createComponent("'prefix-'");
     const expressions: string[] = [];

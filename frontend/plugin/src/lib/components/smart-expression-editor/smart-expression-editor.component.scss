@@ -160,7 +160,8 @@
   text-transform: uppercase;
 }
 
-.smart-expression__group--custom {
+.smart-expression__group--custom,
+.smart-expression__group--literal {
   border-top: 1px solid #e0e0e0;
 }
 

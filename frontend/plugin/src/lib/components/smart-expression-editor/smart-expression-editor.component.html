@@ -120,6 +120,20 @@
         </button>
       </div>
 
+      <div *ngIf="atTrigger" class="smart-expression__group smart-expression__group--literal">
+        <button
+          type="button"
+          class="smart-expression__option"
+          (mousedown)="onLiteralAtMouseDown($event)"
+          (click)="onLiteralAtClick()"
+        >
+          <span>
+            {{ 'expressionEditorUseAtLiterally' | pluginTranslate: 'epistola' | async }}
+          </span>
+          <code>'&#64;'</code>
+        </button>
+      </div>
+
       <div
         *ngIf="!numberEntryOpen"
         [id]="optionsId"

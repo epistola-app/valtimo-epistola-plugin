@@ -395,7 +395,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   onPickerSearchKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape') {
       event.preventDefault();
-      this.closePicker(true);
+      this.useAtTriggerAsLiteral();
     } else if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       this.moveActiveOption(event.key === 'ArrowDown' ? 1 : -1);
@@ -408,6 +408,18 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   onPickerQueryChange(value: string): void {
     this.pickerQuery = value;
     this.activeOptionIndex = 0;
+  }
+
+  onLiteralAtMouseDown(event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.useAtTriggerAsLiteral();
+  }
+
+  onLiteralAtClick(): void {
+    if (this.pickerOpen) {
+      this.useAtTriggerAsLiteral();
+    }
   }
 
   selectReference(option: ReferenceOption): void {
@@ -506,6 +518,20 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
         this.focusAtLogicalOffset(this.savedCaretOffset ?? this.expressionLength());
       });
     }
+  }
+
+  private useAtTriggerAsLiteral(): void {
+    if (!this.atTrigger) {
+      this.closePicker(true);
+      return;
+    }
+    this.dismissedAtTrigger = this.atTrigger;
+    const offset = this.insertionRange?.end ?? this.savedCaretOffset ?? this.expressionLength();
+    this.closePicker(false);
+    queueMicrotask(() => {
+      this.surface?.nativeElement.focus();
+      this.focusAtLogicalOffset(offset);
+    });
   }
 
   @HostListener('document:mousedown', ['$event'])
