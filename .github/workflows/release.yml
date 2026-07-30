@@ -298,6 +298,24 @@ jobs:
           sarif_file: trivy-image-frontend.sarif
           category: trivy-image-frontend
 
+  promote-demo:
+    name: Trigger demo pin bump
+    needs: [version, docker-backend, docker-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger infra pin bump
+        env:
+          GH_TOKEN: ${{ secrets.INFRA_DISPATCH_TOKEN }}
+        run: |
+          # Pin only after both images have been published and signed. --ref main
+          # avoids a default-branch metadata lookup that an Actions-only token
+          # cannot perform.
+          gh workflow run app-pin-bump.yml \
+            -R epistola-app/epistola-nix-infra \
+            --ref main \
+            -f app=valtimo \
+            -f tag="${{ needs.version.outputs.version }}"
+
   update-release:
     name: Update GitHub Release
     needs: [version, docker-backend, docker-frontend]

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Plugin releases now trigger the demo infrastructure pin bump.** After both
+  demo images are published and signed, the release workflow dispatches the
+  infrastructure promotion workflow with the exact release version.
+
 ## [0.17.0] - 2026-07-30
 
 ### Added
