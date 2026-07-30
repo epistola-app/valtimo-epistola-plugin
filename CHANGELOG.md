@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Generate-document migrations now respect the configuration version boundary.** The frontend migrates the complete v0 action object to v1 once; configurations already marked as v1 are only validated and are never passed through legacy per-field inference, so expressions such as `customer.id` retain their meaning when the editor is reopened.
 - **Variant and environment prefills now choose dropdown or fx mode from the loaded options.** A saved JSONata string literal uses the dropdown only when its decoded value exactly matches an available option ID; dynamic expressions and unmatched literals remain visible in fx mode instead of producing an unselected dropdown.
 - **Variant and environment dropdowns now remain stable and retain their selected values in the generate-document editor.** The fx-wrapped selectors use Angular's controlled-value binding and render their Carbon popup outside the process-link modal's inline flow, preventing the menu from closing and reopening above the field while choosing an item.
 - **The municipality demo catalog now follows the current portable-template schema.** Release `1.2.0` uses a valid SemVer version, layout tables declare numeric dimensions and header rows, and loop/conditional content uses `body` slots so Suite can import and deploy the bundled templates.

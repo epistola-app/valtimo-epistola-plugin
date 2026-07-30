@@ -58,19 +58,16 @@ export function migrateGenerateDocumentConfig(raw: unknown): GenerateDocumentCon
 
   validateCommonShape(config);
   if (version === 1) {
-    const normalized = {
-      ...config,
-      actionConfigVersion: 1,
-      // Early v1 builds still wrote these two fields using their v0 representation.
-      outputFormat: encodeJsonataStringLiteral('PDF'),
-      correlationId: migrateOptionalV0Scalar(config.correlationId as string | undefined),
-    };
-    validateV1Scalars(normalized);
-    return normalized as unknown as GenerateDocumentConfigV1;
+    const v1 = config as unknown as GenerateDocumentConfigV1;
+    validateV1Scalars(v1);
+    return v1;
   }
 
-  const v0 = config as unknown as GenerateDocumentConfigV0;
-  return {
+  return migrateV0ToV1(config as unknown as GenerateDocumentConfigV0);
+}
+
+function migrateV0ToV1(v0: GenerateDocumentConfigV0): GenerateDocumentConfigV1 {
+  const migrated: GenerateDocumentConfigV1 = {
     ...v0,
     actionConfigVersion: 1,
     outputFormat: encodeJsonataStringLiteral('PDF'),
@@ -84,6 +81,8 @@ export function migrateGenerateDocumentConfig(raw: unknown): GenerateDocumentCon
       value: migrateV0Scalar(attribute.value),
     })),
   };
+  validateV1Scalars(migrated);
+  return migrated;
 }
 
 function readVersion(value: unknown): 0 | 1 | number {
@@ -120,7 +119,7 @@ function validateCommonShape(config: Record<string, unknown>): void {
       throw new GenerateDocumentConfigVersionError(`${field} must be a string.`);
     }
   }
-  for (const field of ['variantId', 'environmentId', 'correlationId']) {
+  for (const field of ['variantId', 'environmentId', 'correlationId'] as const) {
     if (config[field] != null && typeof config[field] !== 'string') {
       throw new GenerateDocumentConfigVersionError(`${field} must be a string when present.`);
     }
@@ -146,17 +145,22 @@ function validateAttribute(attribute: unknown, index: number): void {
   }
 }
 
-function validateV1Scalars(config: Record<string, unknown>): void {
-  validateJsonata('dataMapping', config.dataMapping as string);
-  validateJsonata('outputFormat', config.outputFormat as string);
-  validateJsonata('filename', config.filename as string);
-  for (const field of ['variantId', 'environmentId', 'correlationId']) {
+function validateV1Scalars(config: GenerateDocumentConfigV1): void {
+  validateJsonata('dataMapping', config.dataMapping);
+  validateJsonata('outputFormat', config.outputFormat);
+  if (config.outputFormat !== encodeJsonataStringLiteral('PDF')) {
+    throw new GenerateDocumentConfigVersionError(
+      'outputFormat must be the JSONata string literal "PDF" in version 1.',
+    );
+  }
+  validateJsonata('filename', config.filename);
+  for (const field of ['variantId', 'environmentId', 'correlationId'] as const) {
     const value = config[field];
     if (typeof value === 'string' && value.trim()) {
       validateJsonata(field, value);
     }
   }
-  (config.variantAttributes as VariantAttributeEntry[] | undefined)?.forEach((attribute) =>
+  config.variantAttributes?.forEach((attribute: VariantAttributeEntry) =>
     validateJsonata(`variantAttributes.${attribute.key}`, attribute.value),
   );
 }
@@ -174,8 +178,7 @@ function migrateOptionalV0Scalar(value: string | undefined): string | undefined 
 }
 
 function migrateV0Scalar(value: string): string {
-  // Already-encoded JSONata string literals must remain stable when a v1
-  // configuration is reopened; encoding them again would surface \"...\" in the UI.
+  // A v0 value may already contain an explicitly quoted JSONata literal.
   if (decodeJsonataStringLiteral(value) !== undefined) {
     return value;
   }

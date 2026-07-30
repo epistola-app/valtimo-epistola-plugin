@@ -87,20 +87,38 @@ describe('generate-document action configuration versioning', () => {
     );
   });
 
-  it('keeps a valid v1 configuration unchanged', () => {
+  it.each(['$pv.correlationId', 'customer.id', 'test', '$uppercase(customer.name)'])(
+    'keeps the valid v1 correlation expression %s unchanged',
+    (correlationId) => {
+      const config = v0Config({
+        actionConfigVersion: 1,
+        outputFormat: '"PDF"',
+        filename: '"value.pdf"',
+        environmentId: '$pv.environment',
+        correlationId,
+      });
+
+      expect(migrateGenerateDocumentConfig(config)).toEqual(config);
+    },
+  );
+
+  it('keeps a valid v1 configuration unchanged across repeated opens', () => {
     const config = v0Config({
       actionConfigVersion: 1,
       outputFormat: '"PDF"',
       filename: '"value.pdf"',
       environmentId: '$pv.environment',
-      correlationId: '$pv.correlationId',
+      correlationId: 'customer.id',
     });
 
-    expect(migrateGenerateDocumentConfig(config)).toEqual(config);
+    const reopened = migrateGenerateDocumentConfig(config);
+
+    expect(reopened).toEqual(config);
+    expect(migrateGenerateDocumentConfig(reopened)).toEqual(config);
   });
 
-  it('normalizes transitional v1 output and correlation fields', () => {
-    expect(
+  it('rejects v0 field representations inside an explicitly versioned v1 configuration', () => {
+    expect(() =>
       migrateGenerateDocumentConfig(
         v0Config({
           actionConfigVersion: 1,
@@ -108,11 +126,7 @@ describe('generate-document action configuration versioning', () => {
           correlationId: 'request-123',
         }),
       ),
-    ).toMatchObject({
-      actionConfigVersion: 1,
-      outputFormat: '"PDF"',
-      correlationId: '"request-123"',
-    });
+    ).toThrow('outputFormat must be the JSONata string literal "PDF" in version 1');
   });
 
   it('does not encode a quoted v1 correlation expression again when reopened', () => {
