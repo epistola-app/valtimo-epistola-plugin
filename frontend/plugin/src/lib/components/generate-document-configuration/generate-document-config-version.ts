@@ -35,12 +35,9 @@ export function encodeJsonataStringLiteral(value: string): string {
 }
 
 export function decodeJsonataStringLiteral(expression: string): string | undefined {
-  if (!expression.startsWith('"')) {
-    return undefined;
-  }
   try {
-    const value = JSON.parse(expression);
-    return typeof value === 'string' ? value : undefined;
+    const ast = (jsonata(expression) as any).ast();
+    return ast?.type === 'string' && typeof ast.value === 'string' ? ast.value : undefined;
   } catch {
     return undefined;
   }

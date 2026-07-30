@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Generate-document expressions now have a source-preserving visual model.** Persisted JSONata string literals, typed literals, `$doc`/`$pv`/`$case` references, and simple concatenations can be represented without rewriting untouched source, while newly typed values are always serialized as explicit single-quoted strings instead of being guessed from ambiguous text such as `$pv.filename` or `value.pdf`.
+
 ### Changed
 
 - **GitHub Actions now run on supported Node.js 24 action runtimes.** Checkout, Node/pnpm/mise setup, artifact transfer, CodeQL, Helm, Docker registry/build, and Gradle setup actions use their Node 24-compatible majors across CI, CodeQL, chart, and plugin-release workflows. Gradle setup intentionally stays on v5 because v6 introduces separate proprietary caching terms; v5 removes the Node 20 deprecation without changing the repository's current action licensing.
