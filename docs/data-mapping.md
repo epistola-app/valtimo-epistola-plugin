@@ -169,12 +169,13 @@ Existing quote style and expression source are retained while the visual value
 is untouched. Editing a visual expression serializes it to a canonical JSONata
 form.
 
-Every guided field also has an Advanced mode, selected with the inline mode
-button. The button shows the destination: Code in Visual mode and Visual blocks
-in Advanced mode. Unsupported or complex expressions open in Advanced
-automatically and are edited in a growing textarea as validated raw JSONata.
-Switching to Visual is disabled when that conversion would lose expression
-structure:
+The inline mode button cycles through the views that can represent the current
+expression without changing it. Ordinary fields cycle between Visual and
+Advanced. A field supplied with resource options, such as variant or
+environment, can additionally use Select. Unsupported or complex expressions
+open in Advanced automatically and are edited in a growing textarea as
+validated raw JSONata. The mode action is disabled when no other lossless view
+is available:
 
 ```jsonata
 $doc.language = "nl" ? "nederlands" : "engels"
@@ -195,10 +196,11 @@ context. Values that identify an Epistola resource must evaluate to a string;
 filename and correlation ID must produce their documented scalar runtime types.
 Variant and environment dropdown selections are serialized as JSONata string
 literals. An exact string literal matching an available variant or environment
-is presented in the dropdown. Dynamic expressions and unmatched literals open
-in a validated raw-expression textarea; they can return to the dropdown only
-after they become empty or exactly match an available option. Output format is
-fixed to the JSONata string `"PDF"`.
+prefers Select and can cycle through Select, Visual, and Advanced. Simple
+dynamic expressions and unmatched literals cycle between Visual and Advanced,
+skipping Select. Complex JSONata remains in Advanced. All three are views over
+the same expression; switching views never rewrites it. Output format is fixed
+to the JSONata string `"PDF"`.
 
 In process-link JSON, JSONata remains an escaped JSON string:
 

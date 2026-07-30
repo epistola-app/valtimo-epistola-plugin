@@ -17,22 +17,13 @@
  */
 
 import { CommonModule } from '@angular/common';
-import {
-  Component,
-  EventEmitter,
-  forwardRef,
-  Input,
-  Output,
-  Pipe,
-  PipeTransform,
-} from '@angular/core';
+import { Component, forwardRef, Input, Pipe, PipeTransform } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ControlValueAccessor, FormsModule, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { By } from '@angular/platform-browser';
 import { SelectItem, SelectModule } from '@valtimo/components';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { of } from 'rxjs';
-import { ExpressionSelectEditorComponent } from '../../../../frontend/plugin/src/lib/components/expression-select-editor/expression-select-editor.component';
+import { SmartExpressionEditorComponent } from '../../../../frontend/plugin/src/lib/components/smart-expression-editor/smart-expression-editor.component';
 
 @Pipe({ name: 'pluginTranslate', standalone: true })
 class TestPluginTranslatePipe implements PipeTransform {
@@ -77,7 +68,6 @@ class TestSelectComponent implements ControlValueAccessor {
   @Input() name = '';
   @Input() title = '';
   @Input() tooltip = '';
-  @Output() selectedChange = new EventEmitter<string>();
 
   value = '';
   private onChange: (value: string) => void = () => undefined;
@@ -103,18 +93,17 @@ class TestSelectComponent implements ControlValueAccessor {
     this.value = value;
     this.onChange(value);
     this.onTouched();
-    this.selectedChange.emit(value);
   }
 }
 
-describe('ExpressionSelectEditorComponent integration', () => {
-  let fixture: ComponentFixture<ExpressionSelectEditorComponent>;
+describe('SmartExpressionEditorComponent integration', () => {
+  let fixture: ComponentFixture<SmartExpressionEditorComponent>;
 
   beforeEach(async () => {
     TestBed.configureTestingModule({
-      imports: [ExpressionSelectEditorComponent, FormsModule],
+      imports: [SmartExpressionEditorComponent, FormsModule],
     });
-    TestBed.overrideComponent(ExpressionSelectEditorComponent, {
+    TestBed.overrideComponent(SmartExpressionEditorComponent, {
       remove: {
         imports: [SelectModule, PluginTranslatePipeModule],
       },
@@ -125,26 +114,34 @@ describe('ExpressionSelectEditorComponent integration', () => {
     await TestBed.compileComponents();
   });
 
-  async function render(expression: string): Promise<ExpressionSelectEditorComponent> {
-    fixture = TestBed.createComponent(ExpressionSelectEditorComponent);
+  async function render(expression: string): Promise<SmartExpressionEditorComponent> {
+    fixture = TestBed.createComponent(SmartExpressionEditorComponent);
     fixture.componentRef.setInput('title', 'Environment');
     fixture.componentRef.setInput('tooltip', 'Choose an environment');
     fixture.componentRef.setInput('testId', 'environment-expression');
-    fixture.componentRef.setInput('items', [
+    fixture.componentRef.setInput('contextVariables', { pv: ['environment'] });
+    fixture.componentRef.setInput('selectOptions', [
       { id: 'default', text: 'Default' },
       { id: 'production', text: 'Production' },
     ]);
     fixture.componentRef.setInput('expression', expression);
     fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
+    await settle();
     return fixture.componentInstance;
   }
 
-  it('renders an exact expression through the labelled select and persists a selection', async () => {
+  async function settle(): Promise<void> {
+    await fixture.whenStable();
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  it('renders and updates an exact expression through the labelled Select view', async () => {
     const component = await render('"production"');
     const select = fixture.nativeElement.querySelector('select') as HTMLSelectElement;
     const label = fixture.nativeElement.querySelector('label') as HTMLLabelElement;
+    const modeButton = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
     const emitted = jasmine.createSpy('expressionChange');
     component.expressionChange.subscribe(emitted);
 
@@ -152,60 +149,64 @@ describe('ExpressionSelectEditorComponent integration', () => {
     expect(label.htmlFor).toBe('environment-expression-select');
     expect(select.id).toBe('environment-expression-select');
     expect(select.value).toBe('production');
+    expect(getComputedStyle(modeButton).height).toBe('40px');
 
     select.value = 'default';
     select.dispatchEvent(new Event('change'));
-    await fixture.whenStable();
-    fixture.detectChanges();
+    await settle();
 
     expect(emitted).toHaveBeenCalledWith('"default"');
   });
 
+  it('cycles Select, Visual, and Advanced without changing the expression', async () => {
+    const component = await render('"production"');
+    const original = component.expression;
+
+    (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
+    await settle();
+    expect(component.mode).toBe('simple');
+    expect(component.expression).toBe(original);
+    expect(fixture.nativeElement.querySelector('[role="textbox"]')).not.toBeNull();
+
+    (fixture.nativeElement.querySelector('button:last-of-type') as HTMLButtonElement).click();
+    await settle();
+    expect(component.mode).toBe('advanced');
+    expect(component.expression).toBe(original);
+    expect(fixture.nativeElement.querySelector('textarea')).not.toBeNull();
+
+    (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
+    await settle();
+    expect(component.mode).toBe('select');
+    expect(component.expression).toBe(original);
+  });
+
+  it('skips Select for an unmatched dynamic expression', async () => {
+    const component = await render('$pv.environment');
+    expect(component.mode).toBe('simple');
+
+    (fixture.nativeElement.querySelector('button:last-of-type') as HTMLButtonElement).click();
+    await settle();
+    expect(component.mode).toBe('advanced');
+
+    (fixture.nativeElement.querySelector('button') as HTMLButtonElement).click();
+    await settle();
+    expect(component.mode).toBe('simple');
+  });
+
   it('associates an invalid Advanced expression with its label and error', async () => {
-    await render('$doc.[broken');
+    const component = await render('$doc.[broken');
     const textarea = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
     const label = fixture.nativeElement.querySelector('label') as HTMLLabelElement;
     const error = fixture.nativeElement.querySelector('[role="alert"]') as HTMLElement;
-    const modeButton = fixture.debugElement.query(By.css('button'))
-      .nativeElement as HTMLButtonElement;
+    const modeButton = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
 
+    expect(component.mode).toBe('advanced');
     expect(label.htmlFor).toBe('environment-expression-advanced');
     expect(textarea.id).toBe('environment-expression-advanced');
     expect(textarea.getAttribute('aria-invalid')).toBe('true');
     expect(textarea.getAttribute('aria-errormessage')).toBe('environment-expression-error');
     expect(textarea.getAttribute('aria-describedby')).toBe('environment-expression-error');
     expect(error.id).toBe('environment-expression-error');
-    expect(modeButton.getAttribute('aria-describedby')).toBe('environment-expression-error');
     expect(modeButton.disabled).toBe(true);
-  });
-
-  it('returns to the dropdown only after the expression exactly matches an option', async () => {
-    const component = await render('$pv.environment');
-    const textarea = fixture.nativeElement.querySelector('textarea') as HTMLTextAreaElement;
-    const modeButton = fixture.debugElement.query(By.css('button'))
-      .nativeElement as HTMLButtonElement;
-
-    expect(modeButton.disabled).toBe(true);
-    expect(textarea.getAttribute('aria-describedby')).toBe(
-      'environment-expression-expression-hint',
-    );
-
-    textarea.value = '"default"';
-    textarea.dispatchEvent(new Event('input'));
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(component.canUseSelect).toBe(true);
-    expect(modeButton.disabled).toBe(false);
-    modeButton.click();
-    await fixture.whenStable();
-    fixture.detectChanges();
-    await fixture.whenStable();
-    fixture.detectChanges();
-
-    expect(component.mode).toBe('select');
-    expect((fixture.nativeElement.querySelector('select') as HTMLSelectElement).value).toBe(
-      'default',
-    );
   });
 });

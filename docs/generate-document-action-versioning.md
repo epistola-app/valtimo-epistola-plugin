@@ -67,11 +67,12 @@ control's validated, growing Advanced textarea. The data-mapping Simple mode
 uses the same control for each statically named object field; mappings with a
 dynamic outer structure use the Monaco-based whole-mapping Advanced editor.
 
-Variant and environment expressions use a resource-aware variation of this
-mode switch. An exact string literal matching a loaded option is shown in the
-dropdown. Dynamic expressions and unmatched literals open in the validated raw
-textarea and can switch back only when they become empty or exactly match a
-loaded option.
+Variant and environment use the same editor with resource options enabled,
+adding a Select view to Visual and Advanced. The single mode action cycles in
+the order Select → Visual → Advanced while skipping any view that cannot
+represent the current expression losslessly. An exact loaded string can use all
+three views, a simple dynamic or unmatched expression uses Visual and Advanced,
+and complex JSONata remains Advanced-only.
 
 This editor representation does not introduce a new action configuration
 version. Both visual and Advanced modes read and write the same v1 JSONata

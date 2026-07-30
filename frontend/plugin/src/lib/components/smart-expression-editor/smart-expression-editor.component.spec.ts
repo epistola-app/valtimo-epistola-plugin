@@ -40,6 +40,7 @@ jest.mock('@angular/core', () => ({
 }));
 jest.mock('@angular/common', () => ({ CommonModule: class {} }));
 jest.mock('@angular/forms', () => ({ FormsModule: class {} }));
+jest.mock('@valtimo/components', () => ({ SelectModule: class {} }));
 jest.mock('@valtimo/plugin', () => ({ PluginTranslatePipeModule: class {} }));
 
 import { SmartExpressionEditorComponent } from './smart-expression-editor.component';
@@ -62,7 +63,10 @@ describe('SmartExpressionEditorComponent', () => {
     }
   });
 
-  const createComponent = (expression = '') => {
+  const createComponent = (
+    expression = '',
+    selectOptions: Array<{ id: string; text: string }> | null = null,
+  ) => {
     const component = new SmartExpressionEditorComponent(
       { markForCheck: jest.fn() } as any,
       { runOutsideAngular: (callback: () => void) => callback() } as any,
@@ -72,6 +76,7 @@ describe('SmartExpressionEditorComponent', () => {
       pv: ['filename'],
       case: [],
     };
+    component.selectOptions = selectOptions;
     component.expression = expression;
     component.ngOnChanges({
       expression: {
@@ -123,6 +128,139 @@ describe('SmartExpressionEditorComponent', () => {
     expect(chip?.getAttribute('role')).toBe('button');
     expect(chip?.getAttribute('aria-label')).toContain('Delete to remove');
 
+    destroy();
+  });
+
+  it('starts in Select when an exact string literal matches an available option', () => {
+    const { component, destroy } = createComponent('"production"', [
+      { id: 'default', text: 'Default' },
+      { id: 'production', text: 'Production' },
+    ]);
+
+    expect(component.mode).toBe('select');
+    expect(component.selectedValue).toBe('production');
+    expect(component.availableModes).toEqual(['select', 'simple', 'advanced']);
+    destroy();
+  });
+
+  it('cycles through all lossless views when an exact option is selected', () => {
+    const { component, destroy } = createComponent('"production"', [
+      { id: 'production', text: 'Production' },
+    ]);
+
+    expect(component.mode).toBe('select');
+    expect(component.nextMode).toBe('simple');
+    component.toggleMode();
+    expect(component.mode).toBe('simple');
+    expect(component.nextMode).toBe('advanced');
+    component.toggleMode();
+    expect(component.mode).toBe('advanced');
+    expect(component.nextMode).toBe('select');
+    component.toggleMode();
+    expect(component.mode).toBe('select');
+    destroy();
+  });
+
+  it('skips Select when a simple expression does not exactly match an option', () => {
+    const { component, destroy } = createComponent('$pv.environment', [
+      { id: 'production', text: 'Production' },
+    ]);
+
+    expect(component.mode).toBe('simple');
+    expect(component.availableModes).toEqual(['simple', 'advanced']);
+    component.toggleMode();
+    expect(component.mode).toBe('advanced');
+    expect(component.nextMode).toBe('simple');
+    component.toggleMode();
+    expect(component.mode).toBe('simple');
+    destroy();
+  });
+
+  it('keeps a complex expression in Advanced as its only lossless view', () => {
+    const { component, destroy } = createComponent('$uppercase($doc.name)', [
+      { id: 'production', text: 'Production' },
+    ]);
+
+    expect(component.mode).toBe('advanced');
+    expect(component.availableModes).toEqual(['advanced']);
+    expect(component.nextMode).toBeNull();
+    component.toggleMode();
+    expect(component.mode).toBe('advanced');
+    destroy();
+  });
+
+  it('stores a selected option as a JSONata string literal', () => {
+    const { component, destroy } = createComponent('', [{ id: 'production', text: 'Production' }]);
+    const expressions: string[] = [];
+    component.expressionChange.subscribe((value) => expressions.push(value));
+
+    component.onSelectedValueChange('production');
+
+    expect(component.rawExpression).toBe('"production"');
+    expect(expressions).toEqual(['"production"']);
+    destroy();
+  });
+
+  it('adopts Select after asynchronously loaded options provide an exact match', () => {
+    const { component, destroy } = createComponent('"production"', []);
+    expect(component.mode).toBe('simple');
+
+    const previous = component.selectOptions;
+    component.selectOptions = [{ id: 'production', text: 'Production' }];
+    component.ngOnChanges({
+      selectOptions: {
+        currentValue: component.selectOptions,
+        previousValue: previous,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    expect(component.mode).toBe('select');
+    expect(component.selectedValue).toBe('production');
+    destroy();
+  });
+
+  it('preserves an explicitly chosen view when select options load later', () => {
+    const { component, destroy } = createComponent('"production"', []);
+    component.toggleMode();
+    expect(component.mode).toBe('advanced');
+
+    const previous = component.selectOptions;
+    component.selectOptions = [{ id: 'production', text: 'Production' }];
+    component.ngOnChanges({
+      selectOptions: {
+        currentValue: component.selectOptions,
+        previousValue: previous,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    expect(component.mode).toBe('advanced');
+    expect(component.nextMode).toBe('select');
+    destroy();
+  });
+
+  it('falls back to Visual when the selected option disappears', () => {
+    const { component, destroy } = createComponent('"production"', [
+      { id: 'production', text: 'Production' },
+    ]);
+    expect(component.mode).toBe('select');
+
+    const previous = component.selectOptions;
+    component.selectOptions = [{ id: 'default', text: 'Default' }];
+    component.ngOnChanges({
+      selectOptions: {
+        currentValue: component.selectOptions,
+        previousValue: previous,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    expect(component.mode).toBe('simple');
+    expect(component.expression).toBe('"production"');
     destroy();
   });
 

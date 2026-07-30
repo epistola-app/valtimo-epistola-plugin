@@ -60,9 +60,6 @@ jest.mock('../mapping-preview/mapping-preview.component', () => ({
 jest.mock('../smart-expression-editor/smart-expression-editor.component', () => ({
   SmartExpressionEditorComponent: class {},
 }));
-jest.mock('../expression-select-editor/expression-select-editor.component', () => ({
-  ExpressionSelectEditorComponent: class {},
-}));
 
 import { GenerateDocumentConfigurationComponent } from './generate-document-configuration.component';
 

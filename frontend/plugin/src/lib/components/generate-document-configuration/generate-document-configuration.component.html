@@ -122,19 +122,21 @@
     </div>
   </div>
 
-  <epistola-expression-select-editor
+  <epistola-smart-expression-editor
     *ngIf="variantSelectionMode === 'explicit'"
     [expression]="variantIdExpression"
-    [items]="obs.variants.data"
+    [contextVariables]="editorContextVariables"
+    [selectOptions]="obs.variants.data"
+    [selectLoading]="obs.variants.loading"
     [title]="'variantId' | pluginTranslate: pluginId | async"
     [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
     [placeholder]="'$pv.letterType'"
+    [allowTypedValues]="false"
     [disabled]="obs.disabled || obs.variants.loading || !obs.selectedTemplateId"
-    [loading]="obs.variants.loading"
     testId="epistola-generate-variant-id"
     (expressionChange)="onVariantIdExpressionChange($event)"
     (validChange)="onExpressionValidityChange('variantId', $event)"
-  ></epistola-expression-select-editor>
+  ></epistola-smart-expression-editor>
   <div
     *ngIf="obs.variants.error"
     class="loading-error"
@@ -246,18 +248,20 @@
     </button>
   </div>
 
-  <epistola-expression-select-editor
+  <epistola-smart-expression-editor
     [expression]="environmentIdExpression"
-    [items]="obs.environments.data"
+    [contextVariables]="editorContextVariables"
+    [selectOptions]="obs.environments.data"
+    [selectLoading]="obs.environments.loading"
     [title]="'environmentId' | pluginTranslate: pluginId | async"
     [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
     [placeholder]="'$pv.environmentId'"
+    [allowTypedValues]="false"
     [disabled]="obs.disabled || obs.environments.loading"
-    [loading]="obs.environments.loading"
     testId="epistola-generate-environment-id"
     (expressionChange)="onEnvironmentIdExpressionChange($event)"
     (validChange)="onExpressionValidityChange('environmentId', $event)"
-  ></epistola-expression-select-editor>
+  ></epistola-smart-expression-editor>
   <div
     *ngIf="obs.environments.error"
     class="loading-error"

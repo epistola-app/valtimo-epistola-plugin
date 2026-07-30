@@ -34,9 +34,14 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { SelectedValue, SelectItem, SelectModule } from '@valtimo/components';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
 import * as _jsonata from 'jsonata';
+import {
+  decodeJsonataStringLiteral,
+  encodeJsonataStringLiteral,
+} from '../../utils/jsonata-literal';
 import { renderJsonataPath } from '../../utils/jsonata-path';
 import {
   ReferenceExpressionSegment,
@@ -50,6 +55,9 @@ import {
 
 const jsonata = (_jsonata as any).default || _jsonata;
 const CARET_MARKER = '\u200b';
+const MODE_ORDER = ['select', 'simple', 'advanced'] as const;
+
+type ExpressionEditorMode = (typeof MODE_ORDER)[number];
 
 interface ReferenceOption extends ReferenceExpressionSegment {
   label: string;
@@ -64,7 +72,7 @@ interface ReferenceGroup {
 @Component({
   selector: 'epistola-smart-expression-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, PluginTranslatePipeModule],
+  imports: [CommonModule, FormsModule, SelectModule, PluginTranslatePipeModule],
   templateUrl: './smart-expression-editor.component.html',
   styleUrls: ['./smart-expression-editor.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -79,6 +87,11 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   @Input() allowNull = true;
   @Input() placeholder = '';
   @Input() testId = 'epistola-smart-expression';
+  @Input() title = '';
+  @Input() tooltip = '';
+  /** Null disables the Select view; an empty array keeps it available for an empty expression. */
+  @Input() selectOptions: SelectItem[] | null = null;
+  @Input() selectLoading = false;
   @Output() expressionChange = new EventEmitter<string>();
   @Output() validChange = new EventEmitter<boolean>();
 
@@ -99,7 +112,8 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     }
   }
 
-  mode: 'simple' | 'advanced' = 'simple';
+  mode: ExpressionEditorMode = 'simple';
+  selectedValue = '';
   segments: SimpleExpressionSegment[] = [];
   pickerOpen = false;
   pickerQuery = '';
@@ -124,6 +138,8 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   private lastValidity: boolean | null = null;
   private simpleOriginalSource = '';
   private simpleDirty = false;
+  private modeChosenByUser = false;
+  private selectCompatible = false;
 
   constructor(
     private readonly cdr: ChangeDetectorRef,
@@ -140,8 +156,12 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
       if (next === this.lastEmittedExpression) {
         this.lastEmittedExpression = null;
       } else {
+        this.modeChosenByUser = false;
         this.loadExpression(next);
       }
+    }
+    if (changes['selectOptions']) {
+      this.reconcileSelectView();
     }
     if (changes['contextVariables'] && this.pickerOpen) {
       this.activeOptionIndex = 0;
@@ -248,6 +268,38 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     return !this.rawError && (!this.required || !!this.rawExpression.trim());
   }
 
+  get availableModes(): ExpressionEditorMode[] {
+    return MODE_ORDER.filter((mode) => this.canUseMode(mode));
+  }
+
+  get nextMode(): ExpressionEditorMode | null {
+    const available = this.availableModes;
+    if (available.length <= 1) return null;
+
+    const currentIndex = MODE_ORDER.indexOf(this.mode);
+    for (let offset = 1; offset <= MODE_ORDER.length; offset++) {
+      const candidate = MODE_ORDER[(currentIndex + offset) % MODE_ORDER.length];
+      if (available.includes(candidate)) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  get nextModeTranslationKey(): string {
+    switch (this.nextMode) {
+      case null:
+        return 'expressionEditorAdvancedOnly';
+      case 'select':
+        return 'switchToDropdown';
+      case 'simple':
+        return 'expressionEditorSwitchVisual';
+      case 'advanced':
+      default:
+        return 'expressionEditorSwitchAdvanced';
+    }
+  }
+
   get optionsId(): string {
     return `${this.testId}-options`;
   }
@@ -272,6 +324,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
       ? serializeSimpleJsonataSegments(this.segments)
       : this.simpleOriginalSource;
     this.mode = 'advanced';
+    this.rawRepresentable = true;
     this.closePicker(false);
     this.validateRaw$.next(this.rawExpression);
     this.cdr.markForCheck();
@@ -303,16 +356,52 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     });
   }
 
+  switchToSelect(): void {
+    if (this.disabled || !this.canUseMode('select')) return;
+    this.selectedValue = decodeJsonataStringLiteral(this.currentExpressionSource()) || '';
+    this.rawExpression = this.currentExpressionSource();
+    this.mode = 'select';
+    this.rawError = null;
+    this.closePicker(false);
+    this.emitValidity(!this.required || !!this.selectedValue);
+    this.cdr.markForCheck();
+  }
+
   toggleMode(): void {
-    if (this.mode === 'simple') {
-      this.switchToAdvanced();
-    } else {
-      this.switchToSimple();
+    const next = this.nextMode;
+    if (!next || this.disabled) return;
+
+    this.modeChosenByUser = true;
+    switch (next) {
+      case 'select':
+        this.switchToSelect();
+        break;
+      case 'simple':
+        this.switchToSimple();
+        break;
+      case 'advanced':
+        this.switchToAdvanced();
+        break;
     }
+  }
+
+  onSelectedValueChange(value: SelectedValue | undefined): void {
+    this.modeChosenByUser = true;
+    this.selectedValue = value == null || Array.isArray(value) ? '' : String(value);
+    const expression = this.selectedValue ? encodeJsonataStringLiteral(this.selectedValue) : '';
+    this.rawExpression = expression;
+    this.rawRepresentable = true;
+    this.selectCompatible = this.computeSelectCompatibility(expression);
+    this.segments = this.selectedValue ? [textExpressionSegment(this.selectedValue)] : [];
+    this.simpleOriginalSource = expression;
+    this.simpleDirty = false;
+    this.emitExpression(expression);
+    this.emitValidity(!this.required || !!this.selectedValue);
   }
 
   onSurfaceInput(): void {
     if (this.composing) return;
+    this.modeChosenByUser = true;
     this.syncSegmentsFromSurface();
     this.captureSelection();
     this.openPickerForAtTrigger();
@@ -519,9 +608,11 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   }
 
   onRawInput(value: string, textarea: HTMLTextAreaElement): void {
+    this.modeChosenByUser = true;
     this.rawExpression = value;
     this.rawError = null;
     this.rawRepresentable = false;
+    this.selectCompatible = false;
     this.emitExpression(value);
     this.emitValidity(false);
     this.validateRaw$.next(value);
@@ -577,8 +668,17 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     this.rawExpression = source;
     this.rawError = parsed.error ?? null;
     this.rawRepresentable = parsed.representable;
-    if (parsed.representable && parsed.expression) {
+    this.selectCompatible = this.computeSelectCompatibility(source);
+    if (this.selectCompatible) {
+      this.mode = 'select';
+      this.selectedValue = decodeJsonataStringLiteral(source) || '';
+      this.segments = parsed.expression?.segments || [];
+      this.simpleOriginalSource = source;
+      this.simpleDirty = false;
+      this.emitValidity(!this.required || !!this.selectedValue);
+    } else if (parsed.representable && parsed.expression) {
       this.mode = 'simple';
+      this.selectedValue = '';
       this.segments = parsed.expression.segments;
       this.simpleOriginalSource = source;
       this.simpleDirty = false;
@@ -588,6 +688,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
       }
     } else {
       this.mode = 'advanced';
+      this.selectedValue = '';
       this.segments = [];
       this.emitValidity(false);
       this.validateRaw$.next(source);
@@ -596,6 +697,48 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
       }
     }
     this.cdr.markForCheck();
+  }
+
+  private reconcileSelectView(): void {
+    this.selectCompatible = this.computeSelectCompatibility(this.currentExpressionSource());
+    if (this.mode === 'select' && !this.canUseMode('select')) {
+      this.loadExpression(this.currentExpressionSource());
+      return;
+    }
+    if (!this.modeChosenByUser && this.selectCompatible) {
+      this.loadExpression(this.currentExpressionSource());
+    }
+  }
+
+  private canUseMode(mode: ExpressionEditorMode): boolean {
+    switch (mode) {
+      case 'select':
+        return this.selectCompatible;
+      case 'simple':
+        return this.rawRepresentable;
+      case 'advanced':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  private computeSelectCompatibility(source: string): boolean {
+    if (this.selectOptions === null) return false;
+    if (!source.trim()) return true;
+    const literal = decodeJsonataStringLiteral(source);
+    return (
+      literal !== undefined && this.selectOptions.some((option) => String(option.id) === literal)
+    );
+  }
+
+  private currentExpressionSource(): string {
+    if (this.mode === 'simple') {
+      return this.simpleDirty
+        ? serializeSimpleJsonataSegments(this.segments)
+        : this.simpleOriginalSource;
+    }
+    return this.rawExpression;
   }
 
   private renderSurface(): void {
@@ -686,6 +829,8 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   private emitSimpleExpression(): void {
     this.simpleDirty = true;
     const expression = serializeSimpleJsonataSegments(this.segments);
+    this.rawRepresentable = true;
+    this.selectCompatible = this.computeSelectCompatibility(expression);
     this.emitExpression(expression);
     this.emitValidity(this.isSimpleValid());
   }
@@ -882,6 +1027,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     if (!value.trim()) {
       this.rawError = this.required ? 'A value is required.' : null;
       this.rawRepresentable = true;
+      this.selectCompatible = this.computeSelectCompatibility(value);
       this.emitValidity(!this.required);
       this.cdr.markForCheck();
       return;
@@ -891,10 +1037,12 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
       jsonata(value);
       this.rawError = null;
       this.rawRepresentable = parseSimpleJsonataExpression(value).representable;
+      this.selectCompatible = this.computeSelectCompatibility(value);
       this.emitValidity(true);
     } catch (error: any) {
       this.rawError = error?.message || 'Invalid JSONata expression';
       this.rawRepresentable = false;
+      this.selectCompatible = false;
       this.emitValidity(false);
     }
     this.cdr.markForCheck();

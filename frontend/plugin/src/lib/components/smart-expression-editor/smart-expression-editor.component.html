@@ -8,38 +8,58 @@
     <button
       type="button"
       class="smart-expression__mode-toggle"
-      [disabled]="disabled || (mode === 'advanced' && !rawRepresentable)"
-      [attr.aria-label]="
-        (mode === 'simple' ? 'expressionEditorSwitchAdvanced' : 'expressionEditorSwitchVisual')
-          | pluginTranslate: 'epistola'
-          | async
-      "
-      [attr.title]="
-        (mode === 'simple' ? 'expressionEditorSwitchAdvanced' : 'expressionEditorSwitchVisual')
-          | pluginTranslate: 'epistola'
-          | async
-      "
+      [disabled]="disabled || !nextMode"
+      [attr.aria-label]="nextModeTranslationKey | pluginTranslate: 'epistola' | async"
+      [attr.title]="nextModeTranslationKey | pluginTranslate: 'epistola' | async"
       [attr.aria-describedby]="
-        mode === 'advanced' && !rawRepresentable && !rawError ? testId + '-advanced-only' : null
+        mode === 'advanced' && !nextMode && !rawError ? testId + '-advanced-only' : null
       "
       [attr.data-testid]="testId + '-mode'"
       (click)="toggleMode()"
     >
-      <ng-container *ngIf="mode === 'advanced'; else codeModeIcon">
-        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+      <ng-container [ngSwitch]="nextMode">
+        <svg *ngSwitchCase="'select'" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M2 3.5h8M2 7.5h8M2 11.5h8M12 6l2 2-2 2"></path>
+        </svg>
+        <svg *ngSwitchCase="'advanced'" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M6 3.5 1.5 8 6 12.5M10 3.5 14.5 8 10 12.5"></path>
+        </svg>
+        <svg *ngSwitchDefault viewBox="0 0 16 16" aria-hidden="true" focusable="false">
           <rect x="1.5" y="2.5" width="5" height="4" rx="1"></rect>
           <path d="M8.5 4.5h6M1.5 9.5h5M8.5 9.5h6M1.5 13.5h9"></path>
         </svg>
       </ng-container>
-      <ng-template #codeModeIcon>
-        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-          <path d="M6 3.5 1.5 8 6 12.5M10 3.5 14.5 8 10 12.5"></path>
-        </svg>
-      </ng-template>
     </button>
   </ng-template>
 
+  <div *ngIf="mode === 'select'" class="smart-expression__select-wrap">
+    <v-select
+      [name]="testId + '-select'"
+      [title]="title"
+      [tooltip]="tooltip"
+      [items]="selectOptions || []"
+      [appendInline]="false"
+      [dropUp]="false"
+      [margin]="false"
+      [ngModel]="selectedValue"
+      [ngModelOptions]="{ standalone: true }"
+      (ngModelChange)="onSelectedValueChange($event)"
+      [disabled]="disabled"
+      [loading]="selectLoading"
+      [required]="required"
+      [dataTestId]="testId + '-select'"
+    ></v-select>
+    <ng-container *ngTemplateOutlet="modeControl"></ng-container>
+  </div>
+
   <div *ngIf="mode === 'simple'" class="smart-expression__simple">
+    <label
+      *ngIf="title"
+      class="smart-expression__label"
+      [id]="testId + '-label'"
+      [title]="tooltip"
+      >{{ title }}</label
+    >
     <div class="smart-expression__surface-wrap">
       <div
         #surface
@@ -48,7 +68,10 @@
         aria-multiline="false"
         [attr.aria-required]="required"
         [attr.aria-disabled]="disabled"
-        [attr.aria-label]="'expressionEditorInput' | pluginTranslate: 'epistola' | async"
+        [attr.aria-labelledby]="title ? testId + '-label' : null"
+        [attr.aria-label]="
+          title ? null : ('expressionEditorInput' | pluginTranslate: 'epistola' | async)
+        "
         [attr.data-placeholder]="placeholder"
         [attr.contenteditable]="disabled ? 'false' : 'true'"
         [attr.data-testid]="testId + '-input'"
@@ -234,13 +257,22 @@
   </div>
 
   <div *ngIf="mode === 'advanced'" class="smart-expression__advanced">
+    <label
+      *ngIf="title"
+      class="smart-expression__label"
+      [for]="testId + '-advanced'"
+      [title]="tooltip"
+      >{{ title }}</label
+    >
     <div class="smart-expression__raw-wrap" [class.smart-expression__raw-wrap--invalid]="rawError">
       <textarea
         #rawTextarea
         class="smart-expression__raw"
+        [id]="testId + '-advanced'"
         [disabled]="disabled"
         [required]="required"
         [attr.aria-invalid]="!!rawError"
+        [attr.aria-errormessage]="rawError ? testId + '-error' : null"
         [attr.aria-describedby]="rawError ? testId + '-error' : null"
         [attr.data-testid]="testId + '-advanced'"
         [ngModel]="rawExpression"

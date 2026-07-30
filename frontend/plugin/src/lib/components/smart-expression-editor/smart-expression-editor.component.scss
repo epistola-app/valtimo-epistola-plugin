@@ -10,6 +10,32 @@
   font-size: 0.875rem;
 }
 
+.smart-expression__label {
+  display: block;
+  margin-bottom: 0.25rem;
+  color: #525252;
+  font-size: 0.875rem;
+}
+
+.smart-expression__select-wrap {
+  display: flex;
+  width: 100%;
+  align-items: flex-end;
+
+  v-select {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .smart-expression__mode-toggle {
+    align-self: flex-end;
+  }
+}
+
+:host ::ng-deep .smart-expression__select-wrap .v-select-container {
+  width: 100%;
+}
+
 .smart-expression__surface-wrap {
   display: flex;
   min-height: 2.5rem;
@@ -69,7 +95,10 @@
 .smart-expression__mode-toggle {
   display: grid;
   width: 2.5rem;
+  height: 2.5rem;
+  min-height: 2.5rem;
   flex: none;
+  align-self: flex-start;
   place-items: center;
   border: 0;
   border-left: 1px solid #c6c6c6;
@@ -291,6 +320,8 @@
 
   .smart-expression__mode-toggle {
     width: 2rem;
+    height: 2rem;
+    min-height: 2rem;
   }
 
   .smart-expression__insert {

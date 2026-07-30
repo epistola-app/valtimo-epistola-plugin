@@ -69,7 +69,6 @@ import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.compone
 import { ExpectedStructureComponent } from '../expected-structure/expected-structure.component';
 import { MappingBuilderComponent } from '../mapping-builder/mapping-builder.component';
 import { MappingPreviewComponent } from '../mapping-preview/mapping-preview.component';
-import { ExpressionSelectEditorComponent } from '../expression-select-editor/expression-select-editor.component';
 import { SmartExpressionEditorComponent } from '../smart-expression-editor/smart-expression-editor.component';
 import {
   isGenerateDocumentConfigValid,
@@ -106,7 +105,6 @@ import {
     MappingBuilderComponent,
     MappingPreviewComponent,
     SmartExpressionEditorComponent,
-    ExpressionSelectEditorComponent,
   ],
 })
 export class GenerateDocumentConfigurationComponent

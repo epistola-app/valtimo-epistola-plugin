@@ -16,12 +16,16 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-import * as _jsonata from 'jsonata';
 import {
   GenerateDocumentConfigV0,
   GenerateDocumentConfigV1,
   VariantAttributeEntry,
 } from '../../models';
+import * as _jsonata from 'jsonata';
+import {
+  decodeJsonataStringLiteral,
+  encodeJsonataStringLiteral,
+} from '../../utils/jsonata-literal';
 
 const jsonata = (_jsonata as any).default || _jsonata;
 const LEGACY_JSONATA_MARKER = /[$&({?\[]/;
@@ -30,18 +34,7 @@ export const LATEST_GENERATE_DOCUMENT_CONFIG_VERSION = 1;
 
 export class GenerateDocumentConfigVersionError extends Error {}
 
-export function encodeJsonataStringLiteral(value: string): string {
-  return JSON.stringify(value);
-}
-
-export function decodeJsonataStringLiteral(expression: string): string | undefined {
-  try {
-    const ast = (jsonata(expression) as any).ast();
-    return ast?.type === 'string' && typeof ast.value === 'string' ? ast.value : undefined;
-  } catch {
-    return undefined;
-  }
-}
+export { decodeJsonataStringLiteral, encodeJsonataStringLiteral };
 
 export function isLegacyGenerateDocumentConfig(raw: unknown): boolean {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {

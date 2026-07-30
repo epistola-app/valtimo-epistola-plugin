@@ -93,9 +93,6 @@ const epistolaPluginSpecification: PluginSpecification = {
       environmentIdTooltip:
         'Selecteer de doelomgeving of gebruik een JSONata-expressie (optioneel)',
       switchToDropdown: 'Schakel naar keuzelijst',
-      switchToExpression: 'Schakel naar expressie',
-      expressionDropdownUnavailable:
-        'Deze expressie kan niet als keuze worden weergegeven. Gebruik de expressiemodus of voer een beschikbare waarde tussen dubbele aanhalingstekens in.',
       correlationId: 'Correlatie ID',
       correlationIdTooltip: 'Een optioneel correlatie ID voor het traceren van dit verzoek',
       dataMapping: 'Data Mapping',
@@ -355,9 +352,6 @@ const epistolaPluginSpecification: PluginSpecification = {
       environmentId: 'Environment',
       environmentIdTooltip: 'Select the target environment or use a JSONata expression (optional)',
       switchToDropdown: 'Switch to dropdown',
-      switchToExpression: 'Switch to expression',
-      expressionDropdownUnavailable:
-        'This expression cannot be represented as a selection. Keep expression mode or enter an available value in double quotes.',
       correlationId: 'Correlation ID',
       correlationIdTooltip: 'An optional correlation ID for tracking this request',
       dataMapping: 'Data Mapping',
