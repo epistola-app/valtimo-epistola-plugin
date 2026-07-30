@@ -21,7 +21,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.operaton.bpm.engine.HistoryService;
 import org.operaton.bpm.engine.RepositoryService;
-import org.operaton.bpm.engine.history.HistoricVariableInstance;
 import org.operaton.bpm.engine.repository.ProcessDefinition;
 import org.operaton.bpm.model.bpmn.BpmnModelInstance;
 import org.operaton.bpm.model.bpmn.instance.FlowElement;
@@ -31,6 +30,7 @@ import org.operaton.bpm.model.bpmn.instance.operaton.OperatonOutputParameter;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -45,6 +45,8 @@ import java.util.stream.Collectors;
 @Slf4j
 @RequiredArgsConstructor
 public class ProcessVariableDiscoveryService {
+
+    private static final int MAX_NESTED_DEPTH = 8;
 
     private final HistoryService historyService;
     private final RepositoryService repositoryService;
@@ -69,16 +71,55 @@ public class ProcessVariableDiscoveryService {
 
     private Set<String> discoverFromHistory(String processDefinitionKey) {
         try {
-            return historyService.createHistoricVariableInstanceQuery()
+            Set<String> variables = new LinkedHashSet<>();
+            Set<String> sampledVariables = new LinkedHashSet<>();
+
+            historyService.createHistoricVariableInstanceQuery()
                     .processDefinitionKey(processDefinitionKey)
                     .list()
-                    .stream()
-                    .map(HistoricVariableInstance::getName)
-                    .collect(Collectors.toCollection(LinkedHashSet::new));
+                    .forEach(variable -> {
+                        String name = variable.getName();
+                        variables.add(name);
+
+                        // A process variable may hold a JSON-like object. Sample one non-null
+                        // historic value per variable name and expose its children as dotted
+                        // paths (for example epistolaResult.documentId).
+                        if (!sampledVariables.contains(name)) {
+                            try {
+                                Object value = variable.getValue();
+                                if (value != null) {
+                                    sampledVariables.add(name);
+                                    extractNestedPaths(value, name, variables, 0);
+                                }
+                            } catch (Exception e) {
+                                log.debug("Could not inspect historic value for process variable '{}': {}",
+                                        name, e.getMessage());
+                            }
+                        }
+                    });
+            return variables;
         } catch (Exception e) {
             log.warn("Failed to discover variables from history for process definition '{}': {}",
                     processDefinitionKey, e.getMessage());
             return Set.of();
+        }
+    }
+
+    private void extractNestedPaths(Object value, String prefix, Set<String> paths, int depth) {
+        if (depth >= MAX_NESTED_DEPTH) {
+            return;
+        }
+
+        if (value instanceof Map<?, ?> map) {
+            map.forEach((key, childValue) -> {
+                if (key instanceof String childName && !childName.isBlank()) {
+                    String childPath = prefix + "." + childName;
+                    paths.add(childPath);
+                    if (childValue != null) {
+                        extractNestedPaths(childValue, childPath, paths, depth + 1);
+                    }
+                }
+            });
         }
     }
 
