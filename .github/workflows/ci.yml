@@ -15,7 +15,7 @@ jobs:
     name: Backend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Check contract version
         if: github.event_name == 'pull_request'
@@ -26,9 +26,9 @@ jobs:
             echo "::warning::Contract version '$VERSION' is a snapshot/feature-stamped version. Update to a released version before merging."
           fi
 
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v4
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
 
       - name: Build plugin
         env:
@@ -42,7 +42,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-test-results
           path: backend/plugin/build/reports/tests/
@@ -52,11 +52,11 @@ jobs:
     name: Backend E2E (Testcontainers)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v4
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v5
 
       # Boots the real test-app against Testcontainers Postgres + Keycloak (Docker is
       # available on GitHub-hosted runners). Epistola itself is mocked, so no external
@@ -69,7 +69,7 @@ jobs:
 
       - name: Upload E2E test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-backend-test-results
           path: test-app/backend/build/reports/tests/
@@ -79,11 +79,11 @@ jobs:
     name: Frontend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -97,7 +97,7 @@ jobs:
       - name: Check format
         run: pnpm format:check
 
-      - uses: jdx/mise-action@v2
+      - uses: jdx/mise-action@v4
 
       - name: Check license metadata
         run: pnpm license:check
@@ -124,7 +124,7 @@ jobs:
       contents: read
       security-events: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Trivy filesystem scan
         uses: aquasecurity/trivy-action@v0.36.0
@@ -139,7 +139,7 @@ jobs:
 
       - name: Upload SARIF to GitHub Security
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: trivy-fs.sarif
           category: trivy-fs
