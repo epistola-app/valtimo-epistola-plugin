@@ -1,0 +1,79 @@
+<div class="expression-select" [class.expression-select--disabled]="disabled">
+  <label class="expression-select__label" [title]="tooltip">{{ title }}</label>
+
+  <div *ngIf="mode === 'select'" class="expression-select__control">
+    <v-select
+      [items]="items"
+      [appendInline]="false"
+      [dropUp]="false"
+      [margin]="false"
+      [ngModel]="selectedValue"
+      [ngModelOptions]="{ standalone: true }"
+      (ngModelChange)="onSelectedValueChange($event)"
+      [disabled]="disabled"
+      [loading]="loading"
+      [required]="false"
+      [dataTestId]="testId + '-select'"
+    ></v-select>
+    <button
+      type="button"
+      class="expression-select__mode-toggle"
+      [disabled]="disabled"
+      [attr.aria-label]="'switchToExpression' | pluginTranslate: 'epistola' | async"
+      [attr.title]="'switchToExpression' | pluginTranslate: 'epistola' | async"
+      [attr.data-testid]="testId + '-mode'"
+      (click)="toggleMode()"
+    >
+      <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+        <path d="M6 3.5 1.5 8 6 12.5M10 3.5 14.5 8 10 12.5"></path>
+      </svg>
+    </button>
+  </div>
+
+  <div *ngIf="mode === 'advanced'">
+    <div
+      class="expression-select__control expression-select__control--advanced"
+      [class.expression-select__control--invalid]="rawError"
+    >
+      <textarea
+        #rawTextarea
+        class="expression-select__raw"
+        [disabled]="disabled"
+        [placeholder]="placeholder"
+        [attr.aria-invalid]="!!rawError"
+        [attr.data-testid]="testId + '-advanced'"
+        [ngModel]="rawExpression"
+        (ngModelChange)="onRawInput($event, rawTextarea)"
+      ></textarea>
+      <button
+        type="button"
+        class="expression-select__mode-toggle"
+        [disabled]="disabled || !canUseSelect"
+        [attr.aria-label]="'switchToDropdown' | pluginTranslate: 'epistola' | async"
+        [attr.title]="'switchToDropdown' | pluginTranslate: 'epistola' | async"
+        [attr.data-testid]="testId + '-mode'"
+        (click)="toggleMode()"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <rect x="1.5" y="2.5" width="5" height="4" rx="1"></rect>
+          <path d="M8.5 4.5h6M1.5 9.5h5M8.5 9.5h6M1.5 13.5h9"></path>
+        </svg>
+      </button>
+    </div>
+    <div
+      *ngIf="rawError"
+      class="expression-select__error"
+      role="alert"
+      [attr.data-testid]="testId + '-error'"
+    >
+      {{ rawError }}
+    </div>
+    <div
+      *ngIf="!rawError && !canUseSelect"
+      class="expression-select__hint"
+      [attr.data-testid]="testId + '-expression-hint'"
+    >
+      {{ 'expressionDropdownUnavailable' | pluginTranslate: 'epistola' | async }}
+    </div>
+  </div>
+</div>

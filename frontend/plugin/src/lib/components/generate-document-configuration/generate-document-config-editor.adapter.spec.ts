@@ -19,10 +19,8 @@
 import {
   buildGenerateDocumentConfig,
   buildValidateJsonataRequest,
-  canRepresentExpressionAsSelection,
   createVariantAttributeEditorEntries,
   formatVariantAttributes,
-  resolveExpressionSelectPrefill,
 } from './generate-document-config-editor.adapter';
 
 const baseInput = () => ({
@@ -32,54 +30,14 @@ const baseInput = () => ({
   dataMapping: '{}',
   filenameExpression: '"letter.pdf"',
   correlationIdExpression: 'customer.id',
-  environment: {
-    expressionMode: false,
-    expression: '',
-    value: 'production',
-  },
+  environmentExpression: '"production"',
   variantSelectionMode: 'explicit' as const,
-  variant: {
-    expressionMode: false,
-    expression: '',
-    value: 'formal',
-  },
+  variantExpression: '"formal"',
   variantAttributes: [],
 });
 
 describe('generate-document editor adapter', () => {
-  it('prefills a selector only for an exact JSONata string literal match', () => {
-    const options = [
-      { id: 'default', text: 'Default' },
-      { id: 'production', text: 'Production' },
-    ];
-
-    expect(resolveExpressionSelectPrefill('"production"', options)).toEqual({
-      expressionMode: false,
-      expression: '',
-      value: 'production',
-    });
-    expect(resolveExpressionSelectPrefill('customer.environment', options)).toEqual({
-      expressionMode: true,
-      expression: 'customer.environment',
-      value: '',
-    });
-    expect(resolveExpressionSelectPrefill('"missing"', options)).toEqual({
-      expressionMode: true,
-      expression: '"missing"',
-      value: '',
-    });
-  });
-
-  it('allows switching to a dropdown only for empty or exactly matching literal expressions', () => {
-    const options = [{ id: 'production', text: 'Production' }];
-
-    expect(canRepresentExpressionAsSelection('', options)).toBe(true);
-    expect(canRepresentExpressionAsSelection('"production"', options)).toBe(true);
-    expect(canRepresentExpressionAsSelection('"removed"', options)).toBe(false);
-    expect(canRepresentExpressionAsSelection('customer.environment', options)).toBe(false);
-  });
-
-  it('serializes dropdown values and direct expressions to v1 JSONata', () => {
+  it('preserves the canonical JSONata expressions selected by the editor', () => {
     expect(buildGenerateDocumentConfig(baseInput())).toEqual({
       actionConfigVersion: 1,
       catalogId: 'catalog',

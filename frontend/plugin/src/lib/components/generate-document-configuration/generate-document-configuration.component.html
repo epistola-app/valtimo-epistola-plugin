@@ -122,66 +122,19 @@
     </div>
   </div>
 
-  <!-- Explicit variant selection (dropdown or expression) -->
-  <!--
-    The v-select / v-input here is intentionally NOT named into the v-form: v-form's
-    @ContentChildren queries default to descendants:false and would skip anything nested
-    in this `field-with-fx` wrapper. The value is tracked through standalone ngModel/value
-    bindings on the component, see variantIdValue.
-  -->
-  <div *ngIf="variantSelectionMode === 'explicit'" class="field-with-fx">
-    <v-select
-      *ngIf="!variantIdExpressionMode"
-      data-testid="epistola-generate-variant-id"
-      [title]="'variantId' | pluginTranslate: pluginId | async"
-      [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
-      [margin]="true"
-      [items]="obs.variants.data"
-      [appendInline]="false"
-      [dropUp]="false"
-      [ngModel]="variantIdValue"
-      [ngModelOptions]="{ standalone: true }"
-      [clearSelectionSubject$]="clearVariantId$"
-      (ngModelChange)="onVariantIdValueChange($event)"
-      [disabled]="obs.disabled || obs.variants.loading || !obs.selectedTemplateId"
-      [required]="false"
-      [loading]="obs.variants.loading"
-    >
-    </v-select>
-    <div *ngIf="variantIdExpressionMode" class="fx-input-group">
-      <label class="fx-input-label">{{ 'variantId' | pluginTranslate: pluginId | async }}</label>
-      <epistola-smart-expression-editor
-        [expression]="variantIdExpression"
-        [contextVariables]="editorContextVariables"
-        [disabled]="obs.disabled"
-        [placeholder]="'$pv.letterType'"
-        testId="epistola-generate-variant-id-expression"
-        (expressionChange)="onVariantIdExpressionChange($event)"
-        (validChange)="onExpressionValidityChange('variantId', $event)"
-      ></epistola-smart-expression-editor>
-      <small
-        *ngIf="!canSwitchVariantIdToDropdown()"
-        class="fx-mode-hint"
-        data-testid="epistola-generate-variant-id-expression-hint"
-      >
-        {{ 'expressionDropdownUnavailable' | pluginTranslate: pluginId | async }}
-      </small>
-    </div>
-    <button
-      type="button"
-      class="fx-toggle"
-      data-testid="epistola-generate-variant-id-fx-toggle"
-      (click)="toggleVariantIdExpressionMode()"
-      [disabled]="obs.disabled || (variantIdExpressionMode && !canSwitchVariantIdToDropdown())"
-      [title]="
-        (variantIdExpressionMode ? 'switchToDropdown' : 'switchToExpression')
-          | pluginTranslate: pluginId
-          | async
-      "
-    >
-      {{ variantIdExpressionMode ? '·' : 'fx' }}
-    </button>
-  </div>
+  <epistola-expression-select-editor
+    *ngIf="variantSelectionMode === 'explicit'"
+    [expression]="variantIdExpression"
+    [items]="obs.variants.data"
+    [title]="'variantId' | pluginTranslate: pluginId | async"
+    [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
+    [placeholder]="'$pv.letterType'"
+    [disabled]="obs.disabled || obs.variants.loading || !obs.selectedTemplateId"
+    [loading]="obs.variants.loading"
+    testId="epistola-generate-variant-id"
+    (expressionChange)="onVariantIdExpressionChange($event)"
+    (validChange)="onExpressionValidityChange('variantId', $event)"
+  ></epistola-expression-select-editor>
   <div
     *ngIf="obs.variants.error"
     class="loading-error"
@@ -293,62 +246,18 @@
     </button>
   </div>
 
-  <div class="field-with-fx">
-    <v-select
-      *ngIf="!environmentIdExpressionMode"
-      data-testid="epistola-generate-environment-id"
-      [title]="'environmentId' | pluginTranslate: pluginId | async"
-      [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
-      [margin]="true"
-      [items]="obs.environments.data"
-      [appendInline]="false"
-      [dropUp]="false"
-      [ngModel]="environmentIdValue"
-      [ngModelOptions]="{ standalone: true }"
-      (ngModelChange)="onEnvironmentIdValueChange($event)"
-      [disabled]="obs.disabled || obs.environments.loading"
-      [required]="false"
-      [loading]="obs.environments.loading"
-    >
-    </v-select>
-    <div *ngIf="environmentIdExpressionMode" class="fx-input-group">
-      <label class="fx-input-label">{{
-        'environmentId' | pluginTranslate: pluginId | async
-      }}</label>
-      <epistola-smart-expression-editor
-        [expression]="environmentIdExpression"
-        [contextVariables]="editorContextVariables"
-        [disabled]="obs.disabled"
-        [placeholder]="'$pv.environmentId'"
-        testId="epistola-generate-environment-id-expression"
-        (expressionChange)="onEnvironmentIdExpressionChange($event)"
-        (validChange)="onExpressionValidityChange('environmentId', $event)"
-      ></epistola-smart-expression-editor>
-      <small
-        *ngIf="!canSwitchEnvironmentIdToDropdown()"
-        class="fx-mode-hint"
-        data-testid="epistola-generate-environment-id-expression-hint"
-      >
-        {{ 'expressionDropdownUnavailable' | pluginTranslate: pluginId | async }}
-      </small>
-    </div>
-    <button
-      type="button"
-      class="fx-toggle"
-      data-testid="epistola-generate-environment-id-fx-toggle"
-      (click)="toggleEnvironmentIdExpressionMode()"
-      [disabled]="
-        obs.disabled || (environmentIdExpressionMode && !canSwitchEnvironmentIdToDropdown())
-      "
-      [title]="
-        (environmentIdExpressionMode ? 'switchToDropdown' : 'switchToExpression')
-          | pluginTranslate: pluginId
-          | async
-      "
-    >
-      {{ environmentIdExpressionMode ? '·' : 'fx' }}
-    </button>
-  </div>
+  <epistola-expression-select-editor
+    [expression]="environmentIdExpression"
+    [items]="obs.environments.data"
+    [title]="'environmentId' | pluginTranslate: pluginId | async"
+    [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
+    [placeholder]="'$pv.environmentId'"
+    [disabled]="obs.disabled || obs.environments.loading"
+    [loading]="obs.environments.loading"
+    testId="epistola-generate-environment-id"
+    (expressionChange)="onEnvironmentIdExpressionChange($event)"
+    (validChange)="onExpressionValidityChange('environmentId', $event)"
+  ></epistola-expression-select-editor>
   <div
     *ngIf="obs.environments.error"
     class="loading-error"

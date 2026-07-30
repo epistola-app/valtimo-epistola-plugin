@@ -16,28 +16,18 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-import { SelectItem } from '@valtimo/components';
 import {
   GenerateDocumentConfig,
   ValidateJsonataRequest,
   VariantAttributeEntry,
 } from '../../models';
-import {
-  decodeJsonataStringLiteral,
-  encodeJsonataStringLiteral,
-} from './generate-document-config-version';
+import { encodeJsonataStringLiteral } from './generate-document-config-version';
 
 export type VariantSelectionMode = 'explicit' | 'attributes';
 
 export interface VariantAttributeEditorEntry extends VariantAttributeEntry {
   _customKey?: boolean;
   _editorId?: string;
-}
-
-export interface ExpressionSelectPrefill {
-  expressionMode: boolean;
-  expression: string;
-  value: string;
 }
 
 export interface BuildGenerateDocumentConfigInput {
@@ -47,42 +37,10 @@ export interface BuildGenerateDocumentConfigInput {
   dataMapping: string;
   filenameExpression: string;
   correlationIdExpression: string;
-  environment: {
-    expressionMode: boolean;
-    expression: string;
-    value: string;
-  };
+  environmentExpression: string;
   variantSelectionMode: VariantSelectionMode;
-  variant: {
-    expressionMode: boolean;
-    expression: string;
-    value: string;
-  };
+  variantExpression: string;
   variantAttributes: VariantAttributeEditorEntry[];
-}
-
-export function resolveExpressionSelectPrefill(
-  expression: string | undefined,
-  options: SelectItem[],
-): ExpressionSelectPrefill {
-  if (!expression) {
-    return { expressionMode: false, expression: '', value: '' };
-  }
-
-  const literal = decodeJsonataStringLiteral(expression);
-  const exactMatch =
-    literal !== undefined && options.some((option) => String(option.id) === literal);
-
-  return exactMatch
-    ? { expressionMode: false, expression: '', value: literal }
-    : { expressionMode: true, expression, value: '' };
-}
-
-export function canRepresentExpressionAsSelection(
-  expression: string,
-  options: SelectItem[],
-): boolean {
-  return !resolveExpressionSelectPrefill(expression || undefined, options).expressionMode;
 }
 
 export function createVariantAttributeEditorEntries(
@@ -101,7 +59,7 @@ export function buildGenerateDocumentConfig(
     actionConfigVersion: 1,
     catalogId: input.catalogId,
     templateId: input.templateId,
-    environmentId: expressionSelectValue(input.environment),
+    environmentId: input.environmentExpression || undefined,
     dataMapping: input.dataMapping,
     outputFormat: encodeJsonataStringLiteral('PDF'),
     filename: input.filenameExpression,
@@ -110,7 +68,7 @@ export function buildGenerateDocumentConfig(
   };
 
   if (input.variantSelectionMode === 'explicit') {
-    config.variantId = expressionSelectValue(input.variant);
+    config.variantId = input.variantExpression || undefined;
   } else {
     config.variantAttributes = input.variantAttributes
       .filter((entry) => entry.key && entry.value)
@@ -149,15 +107,4 @@ export function formatVariantAttributes(attributes: Record<string, string>): str
     return '';
   }
   return ` (${entries.map(([key, value]) => `${key}=${value}`).join(', ')})`;
-}
-
-function expressionSelectValue(value: {
-  expressionMode: boolean;
-  expression: string;
-  value: string;
-}): string | undefined {
-  if (value.expressionMode) {
-    return value.expression || undefined;
-  }
-  return value.value ? encodeJsonataStringLiteral(value.value) : undefined;
 }

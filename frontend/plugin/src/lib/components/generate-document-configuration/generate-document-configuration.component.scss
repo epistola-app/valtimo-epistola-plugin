@@ -256,37 +256,6 @@
   }
 }
 
-.field-with-fx {
-  display: flex;
-  align-items: flex-start;
-  gap: 4px;
-
-  > *:first-child {
-    flex: 1;
-    min-width: 0;
-  }
-}
-
-.fx-toggle {
-  width: 28px;
-  height: 28px;
-  margin-top: 22px; // align with input field (below label)
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  background: #fff;
-  cursor: pointer;
-  font-family: monospace;
-  font-size: 0.8em;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-
-  &:hover {
-    background: #f4f4f4;
-  }
-}
-
 .fx-input-group {
   flex: 1;
   min-width: 0;
@@ -298,14 +267,6 @@
   font-size: 0.875rem;
   margin-bottom: 0.25rem;
   color: #525252;
-}
-
-.fx-mode-hint {
-  display: block;
-  margin-top: 0.25rem;
-  color: #525252;
-  font-size: 0.75rem;
-  line-height: 1.25;
 }
 
 .attribute-expression {
