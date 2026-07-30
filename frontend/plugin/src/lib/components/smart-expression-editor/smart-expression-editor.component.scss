@@ -235,3 +235,37 @@
     background: #e0e0e0;
   }
 }
+
+.smart-expression--compact {
+  .smart-expression__toolbar {
+    min-height: 1.125rem;
+  }
+
+  .smart-expression__mode-button {
+    padding: 0 0.3rem 0.125rem;
+    font-size: 0.6875rem;
+  }
+
+  .smart-expression__surface-wrap {
+    min-height: 2rem;
+  }
+
+  .smart-expression__surface {
+    padding: 0.3rem 0.5rem;
+    line-height: 1.25rem;
+  }
+
+  .smart-expression__insert {
+    width: 2rem;
+    font-size: 1rem;
+  }
+
+  .smart-expression__hint {
+    display: none;
+  }
+
+  .smart-expression__raw {
+    min-height: 3.5rem;
+    padding: 0.4rem 0.5rem;
+  }
+}

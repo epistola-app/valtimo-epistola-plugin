@@ -73,6 +73,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   @Input() contextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
   @Input() disabled = false;
   @Input() required = false;
+  @Input() compact = false;
   @Input() allowTypedValues = true;
   @Input() allowNull = true;
   @Input() placeholder = '';
@@ -629,7 +630,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
 
     const node = range.startContainer as Text;
     const beforeCaret = (node.textContent || '').slice(0, range.startOffset);
-    const match = beforeCaret.match(/([@+])([^\s@+]*)$/);
+    const match = beforeCaret.match(/@([^\s@]*)$/);
     if (!match) {
       return;
     }
@@ -645,7 +646,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
       start: Math.max(0, caretOffset - match[0].length),
       end: caretOffset,
     };
-    this.pickerQuery = match[2];
+    this.pickerQuery = match[1];
     this.pickerOpen = true;
     this.numberEntryOpen = false;
     this.activeOptionIndex = 0;

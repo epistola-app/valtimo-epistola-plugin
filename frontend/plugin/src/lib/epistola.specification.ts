@@ -118,7 +118,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       expressionEditorSimple: 'Visueel',
       expressionEditorInput: 'JSONata expressiewaarde',
       expressionEditorInsert: 'Waarde of variabele invoegen',
-      expressionEditorHint: 'Typ tekst of gebruik @ / + om een variabele in te voegen',
+      expressionEditorHint:
+        'Typ tekst, gebruik @ om een variabele te zoeken of + om het invoegmenu te openen',
       expressionEditorSearch: 'Zoek document- of procesgegevens',
       expressionEditorReferences: 'Beschikbare gegevens',
       expressionEditorNoReferences: 'Geen overeenkomende gegevens gevonden',
@@ -371,7 +372,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       expressionEditorSimple: 'Visual',
       expressionEditorInput: 'JSONata expression value',
       expressionEditorInsert: 'Insert a value or variable',
-      expressionEditorHint: 'Type text or use @ / + to insert a variable',
+      expressionEditorHint: 'Type text, use @ to find a variable, or + to open the insert menu',
       expressionEditorSearch: 'Search document or process data',
       expressionEditorReferences: 'Available data',
       expressionEditorNoReferences: 'No matching data found',

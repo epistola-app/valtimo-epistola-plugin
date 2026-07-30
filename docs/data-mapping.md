@@ -146,8 +146,9 @@ filename, correlation ID, dynamic variant/environment, and variant-attribute
 fields. The visual mode is intended for non-programmers:
 
 - text typed directly into the field is always a string literal;
-- document, process, and case values are inserted as semantic chips from the
-  `@`/`+` picker;
+- typing `@` searches document, process, and case variables inline, while the
+  `+` button opens the complete insert menu; selected variables become
+  semantic chips;
 - numbers, booleans, and `null` are explicit typed chips rather than inferred
   from ambiguous input;
 - simple concatenations combine text and chips while still producing JSONata.

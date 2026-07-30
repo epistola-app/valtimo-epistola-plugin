@@ -30,6 +30,7 @@ import { SmartExpressionEditorComponent } from '../../smart-expression-editor/sm
       <div
         class="builder-field__name"
         [class.builder-field__name--clickable]="field.children"
+        [class.builder-field__name--object]="field.children"
         (click)="field.children && collapseToggle.emit(path)"
         [attr.data-testid]="'epistola-mapping-field-name-' + field.name"
       >
@@ -67,6 +68,7 @@ import { SmartExpressionEditorComponent } from '../../smart-expression-editor/sm
           [contextVariables]="contextVariables"
           [disabled]="disabled"
           [required]="false"
+          [compact]="true"
           [testId]="'epistola-mapping-field-input-' + field.name"
           (expressionChange)="valueChange.emit({ path: path, value: $event })"
           (validChange)="validityChange.emit({ path: path, valid: $event })"
@@ -97,10 +99,15 @@ import { SmartExpressionEditorComponent } from '../../smart-expression-editor/sm
   styles: [
     `
       .builder-field {
-        margin-bottom: 4px;
+        display: grid;
+        grid-template-columns: minmax(8rem, 12rem) minmax(0, 1fr);
+        column-gap: 12px;
+        align-items: start;
+        margin-bottom: 6px;
       }
       .builder-field__name {
-        margin-bottom: 2px;
+        min-width: 0;
+        padding-top: 1.3rem;
       }
       .builder-field__name--clickable {
         cursor: pointer;
@@ -114,8 +121,9 @@ import { SmartExpressionEditorComponent } from '../../smart-expression-editor/sm
         margin-right: 4px;
       }
       .builder-field__label {
-        font-weight: 500;
-        font-size: 0.9em;
+        font-weight: 600;
+        font-size: 0.875rem;
+        overflow-wrap: anywhere;
       }
       .builder-field__required {
         color: #da1e28;
@@ -130,15 +138,33 @@ import { SmartExpressionEditorComponent } from '../../smart-expression-editor/sm
         display: flex;
         align-items: center;
         gap: 4px;
+        min-width: 0;
       }
       .builder-field__editor {
         flex: 1;
         min-width: 0;
       }
       .builder-field__children {
+        grid-column: 1 / -1;
         border-left: 2px solid #e0e0e0;
         padding-left: 12px;
-        margin-top: 4px;
+        margin-top: 6px;
+      }
+      .builder-field__name--object {
+        grid-column: 1 / -1;
+        padding-top: 0.25rem;
+      }
+      @media (max-width: 48rem) {
+        .builder-field {
+          grid-template-columns: 1fr;
+        }
+        .builder-field__name {
+          padding-top: 0;
+          margin-bottom: 2px;
+        }
+        .builder-field__children {
+          grid-column: 1;
+        }
       }
     `,
   ],

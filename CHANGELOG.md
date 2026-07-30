@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **The guided expression editor now handles insertion, replacement, and mode changes reliably.** Typing `+` or `@`, using the `+` button, and replacing an existing chip use durable logical expression offsets instead of browser ranges that become invalid when the picker takes focus. Selections therefore remain at the cursor in Carbon modals, while returning from Advanced mode repaints the Visual surface when Angular reattaches it.
+- **The guided expression editor now handles insertion, replacement, and mode changes reliably.** Typing `@`, using the `+` button, and replacing an existing chip use durable logical expression offsets instead of browser ranges that become invalid when the picker takes focus. Selections therefore remain at the cursor in Carbon modals, while returning from Advanced mode repaints the Visual surface when Angular reattaches it.
+- **Data-mapping expression rows now use a compact visual hierarchy.** Field names have greater emphasis, leaf fields align labels and editors horizontally, and the repeated editor chrome takes less vertical space. The interaction model now distinguishes `@` as inline variable search from the `+` button that opens the complete insert menu.
 - **The ESM test application can run its Karma suite again.** Its CommonJS Karma configuration now uses a `.cjs` extension, the obsolete webpack `require.context` bootstrap is removed, and CI selects headless Chrome with a single run instead of failing during setup or waiting in watch mode.
 
 ## [0.16.0] - 2026-07-30

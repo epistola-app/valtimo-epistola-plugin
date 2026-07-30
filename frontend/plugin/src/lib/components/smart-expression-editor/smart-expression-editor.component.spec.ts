@@ -150,18 +150,17 @@ describe('SmartExpressionEditorComponent', () => {
     destroy();
   });
 
-  it('replaces a typed + trigger at the cursor instead of inserting at the start', () => {
+  it('treats a typed + as text instead of duplicating the insert button shortcut', () => {
     const { component, surface, destroy } = createComponent(`'beforeafter'`);
+    const expressions: string[] = [];
+    component.expressionChange.subscribe((value) => expressions.push(value));
     surface.textContent = 'before+after';
     setCaret(surface.firstChild!, 'before+'.length);
 
     component.onSurfaceInput();
-    expect(component.pickerOpen).toBe(true);
-    component.selectReference(
-      component.flatReferenceOptions.find((option) => option.expression === '$doc.name')!,
-    );
 
-    expect(component.expression).toBe(`'before' & $doc.name & 'after'`);
+    expect(component.pickerOpen).toBe(false);
+    expect(expressions.at(-1)).toBe(`'before+after'`);
     destroy();
   });
 
