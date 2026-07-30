@@ -68,11 +68,16 @@ describe('simple JSONata expression model', () => {
   it('supports array-preserving and numeric-index reference paths', () => {
     expect(parseSimpleJsonataExpression('$doc.items[].name').representable).toBe(true);
     expect(parseSimpleJsonataExpression('$doc.items[0].name').representable).toBe(true);
+    expect(parseSimpleJsonataExpression('$external.payload').expression?.segments).toEqual([
+      referenceExpressionSegment('external', 'payload'),
+    ]);
+    expect(parseSimpleJsonataExpression('$paymentReference').expression?.segments).toEqual([
+      referenceExpressionSegment('paymentReference', ''),
+    ]);
   });
 
   it.each([
     'value.pdf',
-    '$unknown.value',
     '$uppercase($doc.name)',
     '$doc.amount + 1',
     '$doc.enabled ? "yes" : "no"',

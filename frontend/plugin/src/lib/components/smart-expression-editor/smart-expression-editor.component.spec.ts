@@ -157,7 +157,7 @@ describe('SmartExpressionEditorComponent', () => {
     destroy();
   });
 
-  it('offers an unlisted name as a process variable', () => {
+  it('preserves an unlisted name as its own JSONata variable root', () => {
     const { component, surface, destroy } = createComponent('');
     surface.textContent = '@paymentReference';
     setCaret(surface.firstChild!, '@paymentReference'.length);
@@ -165,13 +165,25 @@ describe('SmartExpressionEditorComponent', () => {
     component.onSurfaceInput();
 
     expect(component.flatReferenceOptions).toHaveLength(0);
-    expect(component.customReferenceOption?.expression).toBe('$pv.paymentReference');
+    expect(component.customReferenceOption?.expression).toBe('$paymentReference');
     component.selectReference(component.customReferenceOption!);
 
-    expect(component.expression).toBe('$pv.paymentReference');
-    expect(surface.querySelector('[data-expression-chip]')?.textContent).toBe(
-      '$pv.paymentReference',
-    );
+    expect(component.expression).toBe('$paymentReference');
+    expect(surface.querySelector('[data-expression-chip]')?.textContent).toBe('$paymentReference');
+    destroy();
+  });
+
+  it('accepts an arbitrary unlisted variable root with a path', () => {
+    const { component, surface, destroy } = createComponent('');
+    surface.textContent = '@external.payload';
+    setCaret(surface.firstChild!, '@external.payload'.length);
+
+    component.onSurfaceInput();
+
+    expect(component.customReferenceOption?.expression).toBe('$external.payload');
+    component.selectReference(component.customReferenceOption!);
+
+    expect(component.expression).toBe('$external.payload');
     destroy();
   });
 
@@ -200,6 +212,14 @@ describe('SmartExpressionEditorComponent', () => {
       '$pv.filename',
     );
     expect(component.customReferenceOption).toBeNull();
+    destroy();
+  });
+
+  it('reopens an arbitrary persisted variable as a visual chip', () => {
+    const { component, surface, destroy } = createComponent('$external.payload');
+
+    expect(component.mode).toBe('simple');
+    expect(surface.querySelector('[data-expression-chip]')?.textContent).toBe('$external.payload');
     destroy();
   });
 

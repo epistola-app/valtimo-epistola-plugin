@@ -191,22 +191,22 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   }
 
   get customReferenceOption(): ReferenceOption | null {
-    const query = this.pickerQuery.trim();
+    const query = this.pickerQuery.trim().replace(/^\$/, '');
     if (!query) return null;
 
-    const scoped = query.match(/^\$?(doc|pv|case)\.(.+)$/i);
-    const variable = (scoped?.[1] || 'pv').toLocaleLowerCase();
-    const path = (scoped?.[2] || query.replace(/^\$/, '')).trim();
-    if (!path || path.split('.').some((segment) => !segment)) return null;
+    const [variable, ...pathSegments] = query.split('.');
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(variable)) return null;
+    if (pathSegments.some((segment) => !segment)) return null;
 
-    const expression = renderJsonataPath(variable, path);
+    const path = pathSegments.join('.');
+    const expression = path ? renderJsonataPath(variable, path) : `$${variable}`;
     if (this.flatReferenceOptions.some((option) => option.expression === expression)) {
       return null;
     }
 
     return {
       ...referenceExpressionSegment(variable, path),
-      label: path,
+      label: query,
       expression,
     };
   }
@@ -255,10 +255,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
 
   switchToSimple(): void {
     if (this.disabled) return;
-    const parsed = parseSimpleJsonataExpression(
-      this.rawExpression,
-      Object.keys(this.contextVariables || {}),
-    );
+    const parsed = parseSimpleJsonataExpression(this.rawExpression);
     if (!parsed.representable || !parsed.expression) return;
 
     this.segments = parsed.expression.segments;
@@ -547,7 +544,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   }
 
   private loadExpression(source: string): void {
-    const parsed = parseSimpleJsonataExpression(source, Object.keys(this.contextVariables || {}));
+    const parsed = parseSimpleJsonataExpression(source);
     this.rawExpression = source;
     this.rawError = parsed.error ?? null;
     this.rawRepresentable = parsed.representable;
@@ -864,10 +861,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     try {
       jsonata(value);
       this.rawError = null;
-      this.rawRepresentable = parseSimpleJsonataExpression(
-        value,
-        Object.keys(this.contextVariables || {}),
-      ).representable;
+      this.rawRepresentable = parseSimpleJsonataExpression(value).representable;
       this.emitValidity(true);
     } catch (error: any) {
       this.rawError = error?.message || 'Invalid JSONata expression';

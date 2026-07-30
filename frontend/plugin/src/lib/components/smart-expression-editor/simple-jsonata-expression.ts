@@ -67,7 +67,6 @@ export interface SimpleExpressionParseResult {
  */
 export function parseSimpleJsonataExpression(
   source: string | null | undefined,
-  allowedVariables: readonly string[] = ['doc', 'pv', 'case'],
 ): SimpleExpressionParseResult {
   const expressionSource = source ?? '';
   if (!expressionSource.trim()) {
@@ -93,7 +92,7 @@ export function parseSimpleJsonataExpression(
 
   const segments: SimpleExpressionSegment[] = [];
   for (const termSource of termSources) {
-    const segment = parseTerm(termSource, allowedVariables);
+    const segment = parseTerm(termSource);
     if (!segment) {
       return { representable: false };
     }
@@ -177,10 +176,7 @@ export function encodeSingleQuotedJsonataString(value: string): string {
   return `${encoded}'`;
 }
 
-function parseTerm(
-  source: string,
-  allowedVariables: readonly string[],
-): SimpleExpressionSegment | null {
+function parseTerm(source: string): SimpleExpressionSegment | null {
   const trimmed = source.trim();
   if (!trimmed) {
     return null;
@@ -206,24 +202,19 @@ function parseTerm(
     return typedExpressionSegment('null', null);
   }
 
-  const reference = parseReference(ast, trimmed, allowedVariables);
+  const reference = parseReference(ast, trimmed);
   return reference;
 }
 
-function parseReference(
-  ast: any,
-  source: string,
-  allowedVariables: readonly string[],
-): ReferenceExpressionSegment | null {
+function parseReference(ast: any, source: string): ReferenceExpressionSegment | null {
   if (ast.type === 'variable') {
-    return allowedVariables.includes(ast.value) ? referenceExpressionSegment(ast.value, '') : null;
+    return referenceExpressionSegment(ast.value, '');
   }
   if (
     ast.type !== 'path' ||
     !Array.isArray(ast.steps) ||
     ast.steps.length < 2 ||
-    ast.steps[0]?.type !== 'variable' ||
-    !allowedVariables.includes(ast.steps[0].value)
+    ast.steps[0]?.type !== 'variable'
   ) {
     return null;
   }
