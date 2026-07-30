@@ -99,8 +99,8 @@ describe('generate-document editor adapter', () => {
       ...baseInput(),
       variantSelectionMode: 'attributes' as const,
       variantAttributes: [
-        { key: 'language', value: 'nl', required: true, _expressionMode: false },
-        { key: 'channel', value: 'customer.channel', required: false, _expressionMode: true },
+        { key: 'language', value: '"nl"', required: true },
+        { key: 'channel', value: 'customer.channel', required: false },
         { key: '', value: '', required: true, _customKey: true },
       ],
     };
@@ -111,19 +111,18 @@ describe('generate-document editor adapter', () => {
     ]);
   });
 
-  it('converts persisted attributes back to editor entries', () => {
+  it('preserves persisted attribute expressions when creating editor entries', () => {
     expect(
       createVariantAttributeEditorEntries([
         { key: 'language', value: '"nl"', required: true },
         { key: 'channel', value: 'customer.channel', required: false },
       ]),
     ).toEqual([
-      { key: 'language', value: 'nl', required: true, _expressionMode: false },
+      { key: 'language', value: '"nl"', required: true },
       {
         key: 'channel',
         value: 'customer.channel',
         required: false,
-        _expressionMode: true,
       },
     ]);
   });
@@ -132,7 +131,7 @@ describe('generate-document editor adapter', () => {
     const config = buildGenerateDocumentConfig({
       ...baseInput(),
       variantSelectionMode: 'attributes',
-      variantAttributes: [{ key: 'language', value: 'nl', required: true, _expressionMode: false }],
+      variantAttributes: [{ key: 'language', value: '"nl"', required: true }],
     });
 
     expect(buildValidateJsonataRequest(config)).toEqual({

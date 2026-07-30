@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Variant-attribute values are now consistently JSONata-only inputs.** The per-row literal/fx toggle has been removed; saved expressions are displayed and persisted unchanged, and literal attribute values use explicit JSONata strings such as `"nl"`, matching filename, correlation ID, and simple data-mapping semantics.
 - **The generate-document editor now separates configuration logic from Angular presentation state.** Prefill interpretation, expression/select serialization, variant-attribute conversion, option-label formatting, and JSONata validation-request construction live in a pure adapter with focused tests, leaving the component responsible for UI orchestration.
 - **Generate-document v1 now treats filename, correlation ID, and output format consistently as JSONata expressions.** Filename and correlation ID are shown directly as expression inputs without an fx/plain mode, while output format is fixed to the JSONata literal `"PDF"` and HTML is no longer offered or accepted by v1. Unversioned v0 actions retain their historical literal and HTML compatibility.
 - **The simple data-mapping builder now accepts JSONata expressions directly per template field.** Its per-field fx toggles and autocomplete datalists have been removed, while advanced mode and context retrieval remain available.

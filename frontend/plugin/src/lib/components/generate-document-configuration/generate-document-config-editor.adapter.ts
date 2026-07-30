@@ -31,7 +31,6 @@ export type VariantSelectionMode = 'explicit' | 'attributes';
 
 export interface VariantAttributeEditorEntry extends VariantAttributeEntry {
   _customKey?: boolean;
-  _expressionMode?: boolean;
 }
 
 export interface ExpressionSelectPrefill {
@@ -88,14 +87,7 @@ export function canRepresentExpressionAsSelection(
 export function createVariantAttributeEditorEntries(
   attributes: VariantAttributeEntry[] | undefined,
 ): VariantAttributeEditorEntry[] {
-  return (attributes ?? []).map((attribute) => {
-    const literal = decodeJsonataStringLiteral(attribute.value);
-    return {
-      ...attribute,
-      value: literal ?? attribute.value,
-      _expressionMode: literal === undefined,
-    };
-  });
+  return (attributes ?? []).map((attribute) => ({ ...attribute }));
 }
 
 export function buildGenerateDocumentConfig(
@@ -120,7 +112,7 @@ export function buildGenerateDocumentConfig(
       .filter((entry) => entry.key && entry.value)
       .map((entry) => ({
         key: entry.key,
-        value: entry._expressionMode ? entry.value : encodeJsonataStringLiteral(entry.value),
+        value: entry.value,
         required: entry.required,
       }));
   }

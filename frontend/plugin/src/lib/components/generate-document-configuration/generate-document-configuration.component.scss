@@ -271,10 +271,6 @@
   &:hover {
     background: #f4f4f4;
   }
-
-  &--inline {
-    margin-top: 0;
-  }
 }
 
 .fx-input-group {
@@ -308,10 +304,9 @@
   line-height: 1.25;
 }
 
-.attribute-value-with-fx {
+.attribute-expression {
   display: flex;
   align-items: center;
-  gap: 4px;
   flex: 1;
   min-width: 0;
 

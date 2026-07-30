@@ -231,31 +231,18 @@
             &times;
           </button>
         </div>
-        <div class="attribute-value-with-fx">
+        <div class="attribute-expression">
           <input
             type="text"
             class="variant-attribute-input"
             [attr.data-testid]="'epistola-generate-attribute-value-' + i"
-            [class.fx-input]="entry._expressionMode"
             [placeholder]="
-              entry._expressionMode
-                ? '$pv.language'
-                : ('attributeValue' | pluginTranslate: pluginId | async)
+              'attributeValueExpressionPlaceholder' | pluginTranslate: pluginId | async
             "
             [(ngModel)]="entry.value"
             (ngModelChange)="onAttributeEntryChange()"
             [disabled]="obs.disabled"
           />
-          <button
-            type="button"
-            class="fx-toggle fx-toggle--inline"
-            [attr.data-testid]="'epistola-generate-attribute-value-fx-toggle-' + i"
-            (click)="entry._expressionMode = !entry._expressionMode"
-            [disabled]="obs.disabled"
-            [title]="entry._expressionMode ? 'Switch to plain value' : 'Switch to expression'"
-          >
-            {{ entry._expressionMode ? '·' : 'fx' }}
-          </button>
         </div>
         <label class="variant-attribute-required-toggle">
           <input
