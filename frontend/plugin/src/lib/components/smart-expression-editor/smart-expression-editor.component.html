@@ -4,6 +4,49 @@
   [class.smart-expression--disabled]="disabled"
   [attr.data-testid]="testId"
 >
+  <ng-template #modeControl>
+    <div
+      class="smart-expression__mode-switch"
+      role="group"
+      [attr.aria-label]="'expressionEditorModes' | pluginTranslate: 'epistola' | async"
+    >
+      <button
+        type="button"
+        class="smart-expression__mode-option"
+        [class.smart-expression__mode-option--active]="mode === 'simple'"
+        [disabled]="disabled || (mode === 'advanced' && !rawRepresentable)"
+        [attr.aria-pressed]="mode === 'simple'"
+        [attr.aria-label]="'expressionEditorSimple' | pluginTranslate: 'epistola' | async"
+        [attr.title]="'expressionEditorSimple' | pluginTranslate: 'epistola' | async"
+        [attr.aria-describedby]="
+          mode === 'advanced' && !rawRepresentable && !rawError ? testId + '-advanced-only' : null
+        "
+        [attr.data-testid]="testId + '-mode-visual'"
+        (click)="mode === 'advanced' && switchToSimple()"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <rect x="1.5" y="2.5" width="5" height="4" rx="1"></rect>
+          <path d="M8.5 4.5h6M1.5 9.5h5M8.5 9.5h6M1.5 13.5h9"></path>
+        </svg>
+      </button>
+      <button
+        type="button"
+        class="smart-expression__mode-option"
+        [class.smart-expression__mode-option--active]="mode === 'advanced'"
+        [disabled]="disabled"
+        [attr.aria-pressed]="mode === 'advanced'"
+        [attr.aria-label]="'mappingModeAdvanced' | pluginTranslate: 'epistola' | async"
+        [attr.title]="'mappingModeAdvanced' | pluginTranslate: 'epistola' | async"
+        [attr.data-testid]="testId + '-mode-advanced'"
+        (click)="mode === 'simple' && switchToAdvanced()"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M6 3.5 1.5 8 6 12.5M10 3.5 14.5 8 10 12.5"></path>
+        </svg>
+      </button>
+    </div>
+  </ng-template>
+
   <div *ngIf="mode === 'simple'" class="smart-expression__simple">
     <div class="smart-expression__surface-wrap">
       <div
@@ -40,18 +83,7 @@
       >
         +
       </button>
-      <button
-        type="button"
-        class="smart-expression__control smart-expression__mode-toggle"
-        [disabled]="disabled"
-        [attr.aria-label]="'mappingModeAdvanced' | pluginTranslate: 'epistola' | async"
-        [attr.title]="'mappingModeAdvanced' | pluginTranslate: 'epistola' | async"
-        aria-pressed="false"
-        [attr.data-testid]="testId + '-mode'"
-        (click)="switchToAdvanced()"
-      >
-        fx
-      </button>
+      <ng-container *ngTemplateOutlet="modeControl"></ng-container>
     </div>
     <div class="smart-expression__hint">
       {{ 'expressionEditorHint' | pluginTranslate: 'epistola' | async }}
@@ -208,19 +240,7 @@
         (ngModelChange)="onRawInput($event, rawTextarea)"
         (blur)="onRawBlur()"
       ></textarea>
-      <button
-        type="button"
-        class="smart-expression__control smart-expression__mode-toggle smart-expression__mode-toggle--active"
-        [disabled]="disabled || !rawRepresentable"
-        [attr.aria-label]="'expressionEditorSimple' | pluginTranslate: 'epistola' | async"
-        [attr.title]="'expressionEditorSimple' | pluginTranslate: 'epistola' | async"
-        [attr.aria-describedby]="!rawRepresentable && !rawError ? testId + '-advanced-only' : null"
-        aria-pressed="true"
-        [attr.data-testid]="testId + '-mode'"
-        (click)="switchToSimple()"
-      >
-        fx
-      </button>
+      <ng-container *ngTemplateOutlet="modeControl"></ng-container>
     </div>
     <div
       *ngIf="rawError"

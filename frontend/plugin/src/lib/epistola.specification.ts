@@ -116,6 +116,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       mappingModeSimple: 'Eenvoudig',
       mappingModeAdvanced: 'Geavanceerd',
       expressionEditorSimple: 'Visueel',
+      expressionEditorModes: 'Expressie-editorweergave',
       expressionEditorInput: 'JSONata expressiewaarde',
       expressionEditorInsert: 'Waarde of variabele invoegen',
       expressionEditorHint:
@@ -372,6 +373,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       mappingModeSimple: 'Simple',
       mappingModeAdvanced: 'Advanced',
       expressionEditorSimple: 'Visual',
+      expressionEditorModes: 'Expression editor mode',
       expressionEditorInput: 'JSONata expression value',
       expressionEditorInsert: 'Insert a value or variable',
       expressionEditorHint: 'Type text, use @ to find a variable, or + to open the insert menu',
