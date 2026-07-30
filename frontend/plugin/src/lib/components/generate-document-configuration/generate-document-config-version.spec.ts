@@ -115,6 +115,20 @@ describe('generate-document action configuration versioning', () => {
     });
   });
 
+  it('does not encode a quoted v1 correlation expression again when reopened', () => {
+    const config = v0Config({
+      actionConfigVersion: 1,
+      outputFormat: '"PDF"',
+      filename: '"value.pdf"',
+      correlationId: '"test"',
+    });
+
+    const reopened = migrateGenerateDocumentConfig(config);
+
+    expect(reopened.correlationId).toBe('"test"');
+    expect(migrateGenerateDocumentConfig(reopened)).toEqual(reopened);
+  });
+
   it('rejects future versions and deprecated object attributes', () => {
     expect(() => migrateGenerateDocumentConfig(v0Config({ actionConfigVersion: 2 }))).toThrow(
       'supports up to version 1',

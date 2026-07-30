@@ -112,15 +112,15 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     expect(validity).toEqual([false]);
   });
 
-  it('always emits v1 and encodes plain controls as JSONata literals', () => {
+  it('always emits v1 and preserves direct expression fields', () => {
     const { component, service } = createComponent();
     const save$ = new Subject<void>();
     component.save$ = save$;
     component.selectedCatalogId$.next('catalog');
-    component.filenameValue = 'letter.pdf';
+    component.filenameExpression = '"letter.pdf"';
     component.environmentIdValue = 'production';
     component.variantIdValue = 'formal';
-    component.correlationIdValue = 'request-123';
+    component.correlationIdExpression = '"request-123"';
     component.dataMapping$.next('{}');
     (component as any).formValue$.next({
       templateId: 'template',
@@ -153,17 +153,5 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
         correlationId: '"request-123"',
       }),
     ]);
-  });
-
-  it('shows the encoded literal when switching a plain field to fx mode', () => {
-    const { component } = createComponent();
-    component.filenameValue = 'letter.pdf';
-    component.correlationIdValue = 'request-123';
-
-    component.toggleFilenameExpressionMode();
-    component.toggleCorrelationIdExpressionMode();
-
-    expect(component.filenameExpression).toBe('"letter.pdf"');
-    expect(component.correlationIdExpression).toBe('"request-123"');
   });
 });

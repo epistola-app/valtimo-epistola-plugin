@@ -62,42 +62,14 @@ import { BuilderField } from '../../../utils/jsonata-converter';
         [attr.data-testid]="'epistola-mapping-field-value-' + field.name"
       >
         <input
-          *ngIf="field.mode === 'ref'"
           type="text"
           class="builder-field__input"
           [ngModel]="field.value"
           (ngModelChange)="valueChange.emit({ path: path, value: $event })"
           [disabled]="disabled"
-          placeholder="$doc.path.to.field"
-          [attr.list]="'suggestions-' + path.join('-')"
-          [attr.data-testid]="'epistola-mapping-field-input-ref-' + field.name"
-        />
-        <datalist
-          *ngIf="field.mode === 'ref'"
-          [id]="'suggestions-' + path.join('-')"
-          [attr.data-testid]="'epistola-mapping-field-suggestions-' + field.name"
-        >
-          <option *ngFor="let s of suggestions" [value]="s"></option>
-        </datalist>
-        <input
-          *ngIf="field.mode === 'raw'"
-          type="text"
-          class="builder-field__input builder-field__input--raw"
-          [ngModel]="field.value"
-          (ngModelChange)="valueChange.emit({ path: path, value: $event })"
-          [disabled]="disabled"
           placeholder="JSONata expression"
-          [attr.data-testid]="'epistola-mapping-field-input-raw-' + field.name"
+          [attr.data-testid]="'epistola-mapping-field-input-' + field.name"
         />
-        <button
-          class="builder-field__mode-toggle"
-          (click)="modeToggle.emit(path)"
-          [disabled]="disabled"
-          [title]="field.mode === 'ref' ? 'Switch to raw JSONata' : 'Switch to reference'"
-          [attr.data-testid]="'epistola-mapping-field-mode-toggle-' + field.name"
-        >
-          {{ field.mode === 'ref' ? 'fx' : '·' }}
-        </button>
       </div>
 
       <div
@@ -109,13 +81,11 @@ import { BuilderField } from '../../../utils/jsonata-converter';
           *ngFor="let child of field.children; let j = index"
           [field]="child"
           [path]="path.concat(j)"
-          [suggestions]="suggestions"
           [disabled]="disabled"
           [collapsed]="isChildCollapsed(j)"
           [collapsedPaths]="collapsedPaths"
           [required]="false"
           (valueChange)="valueChange.emit($event)"
-          (modeToggle)="modeToggle.emit($event)"
           (collapseToggle)="collapseToggle.emit($event)"
         ></epistola-builder-field>
       </div>
@@ -170,25 +140,6 @@ import { BuilderField } from '../../../utils/jsonata-converter';
         outline: 2px solid #0f62fe;
         border-color: #0f62fe;
       }
-      .builder-field__input--raw {
-        background: #f4f4f4;
-      }
-      .builder-field__mode-toggle {
-        width: 28px;
-        height: 28px;
-        border: 1px solid #e0e0e0;
-        border-radius: 4px;
-        background: #fff;
-        cursor: pointer;
-        font-family: monospace;
-        font-size: 0.8em;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .builder-field__mode-toggle:hover {
-        background: #f4f4f4;
-      }
       .builder-field__children {
         border-left: 2px solid #e0e0e0;
         padding-left: 12px;
@@ -200,13 +151,11 @@ import { BuilderField } from '../../../utils/jsonata-converter';
 export class BuilderFieldComponent {
   @Input() field!: BuilderField;
   @Input() path: number[] = [];
-  @Input() suggestions: string[] = [];
   @Input() disabled = false;
   @Input() collapsed = false;
   @Input() required = false;
   @Input() collapsedPaths: Set<string> = new Set();
   @Output() valueChange = new EventEmitter<{ path: number[]; value: string }>();
-  @Output() modeToggle = new EventEmitter<number[]>();
   @Output() collapseToggle = new EventEmitter<number[]>();
 
   isChildCollapsed(childIndex: number): boolean {

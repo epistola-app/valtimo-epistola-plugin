@@ -158,18 +158,12 @@ export class GenerateDocumentConfigurationComponent
    * children (Angular defaults `descendants: false`).
    */
   variantIdValue = '';
-  filenameExpressionMode = false;
   filenameExpression = '';
-  /** Plain-mode filename. Tracked outside `<v-form>` for the same reason as `variantIdValue`. */
-  filenameValue = '';
   environmentIdExpressionMode = false;
   environmentIdExpression = '';
   /** Plain-mode environment id. Tracked outside `<v-form>` because the field has an fx wrapper. */
   environmentIdValue = '';
-  correlationIdExpressionMode = false;
   correlationIdExpression = '';
-  /** Plain-mode correlation id. Tracked outside `<v-form>` because the field has an fx wrapper. */
-  correlationIdValue = '';
   variantAttributeEntries: {
     key: string;
     value: string;
@@ -259,11 +253,6 @@ export class GenerateDocumentConfigurationComponent
     this.revalidate();
   }
 
-  onFilenameValueChange(value: string | undefined): void {
-    this.filenameValue = value ?? '';
-    this.revalidate();
-  }
-
   onVariantIdValueChange(value: SelectedValue | undefined): void {
     // v-select is single-select here, so SelectedValue narrows to string | number;
     // our variant ids are always strings — coerce defensively.
@@ -273,18 +262,6 @@ export class GenerateDocumentConfigurationComponent
 
   onEnvironmentIdValueChange(value: SelectedValue | undefined): void {
     this.environmentIdValue = value == null || Array.isArray(value) ? '' : String(value);
-    this.revalidate();
-  }
-
-  toggleFilenameExpressionMode(): void {
-    if (this.filenameExpressionMode) {
-      const literal = decodeJsonataStringLiteral(this.filenameExpression);
-      if (literal === undefined) return;
-      this.filenameValue = literal;
-    } else {
-      this.filenameExpression = encodeJsonataStringLiteral(this.filenameValue);
-    }
-    this.filenameExpressionMode = !this.filenameExpressionMode;
     this.revalidate();
   }
 
@@ -309,23 +286,6 @@ export class GenerateDocumentConfigurationComponent
       this.environmentIdExpression = encodeJsonataStringLiteral(this.environmentIdValue);
     }
     this.environmentIdExpressionMode = !this.environmentIdExpressionMode;
-    this.revalidate();
-  }
-
-  onCorrelationIdValueChange(value: string | undefined): void {
-    this.correlationIdValue = value ?? '';
-    this.revalidate();
-  }
-
-  toggleCorrelationIdExpressionMode(): void {
-    if (this.correlationIdExpressionMode) {
-      const literal = decodeJsonataStringLiteral(this.correlationIdExpression);
-      if (literal === undefined) return;
-      this.correlationIdValue = literal;
-    } else {
-      this.correlationIdExpression = encodeJsonataStringLiteral(this.correlationIdValue);
-    }
-    this.correlationIdExpressionMode = !this.correlationIdExpressionMode;
     this.revalidate();
   }
 
@@ -449,17 +409,10 @@ export class GenerateDocumentConfigurationComponent
 
   private initCorrelationIdPrefill(): void {
     this.prefill$.pipe(takeUntil(this.destroy$), take(1)).subscribe((config) => {
-      if (!config?.correlationId) {
-        return;
-      }
-      const literal = decodeJsonataStringLiteral(config.correlationId);
-      if (literal === undefined) {
-        this.correlationIdExpressionMode = true;
+      if (config?.correlationId) {
         this.correlationIdExpression = config.correlationId;
-      } else {
-        this.correlationIdValue = literal;
+        this.cdr.markForCheck();
       }
-      this.cdr.markForCheck();
     });
   }
 
@@ -682,15 +635,9 @@ export class GenerateDocumentConfigurationComponent
           }
         }
 
-        // Detect expression mode for filename
+        // Filename is always represented directly as JSONata.
         if (config.filename) {
-          const literal = decodeJsonataStringLiteral(config.filename);
-          if (literal === undefined) {
-            this.filenameExpressionMode = true;
-            this.filenameExpression = config.filename;
-          } else {
-            this.filenameValue = literal;
-          }
+          this.filenameExpression = config.filename;
         }
 
         // Apply dataMapping prefill (JSONata expression string)
@@ -763,7 +710,7 @@ export class GenerateDocumentConfigurationComponent
       !this.configurationVersionError$.getValue() &&
       isGenerateDocumentConfigValid(formValue, {
         selectedCatalogId: this.selectedCatalogId$.getValue(),
-        filename: this.filenameExpressionMode ? this.filenameExpression : this.filenameValue,
+        filename: this.filenameExpression,
         variantSelectionMode: this.variantSelectionMode,
         variantAttributeEntries: this.variantAttributeEntries,
       });
@@ -791,14 +738,8 @@ export class GenerateDocumentConfigurationComponent
                   : undefined,
               dataMapping: dataMapping,
               outputFormat: encodeJsonataStringLiteral('PDF'),
-              filename: this.filenameExpressionMode
-                ? this.filenameExpression
-                : encodeJsonataStringLiteral(this.filenameValue),
-              correlationId: this.correlationIdExpressionMode
-                ? this.correlationIdExpression || undefined
-                : this.correlationIdValue
-                  ? encodeJsonataStringLiteral(this.correlationIdValue)
-                  : undefined,
+              filename: this.filenameExpression,
+              correlationId: this.correlationIdExpression || undefined,
               resultProcessVariable: formValue.resultProcessVariable!,
             };
 

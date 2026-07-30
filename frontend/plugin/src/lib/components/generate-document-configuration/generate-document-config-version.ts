@@ -174,6 +174,11 @@ function migrateOptionalV0Scalar(value: string | undefined): string | undefined 
 }
 
 function migrateV0Scalar(value: string): string {
+  // Already-encoded JSONata string literals must remain stable when a v1
+  // configuration is reopened; encoding them again would surface \"...\" in the UI.
+  if (decodeJsonataStringLiteral(value) !== undefined) {
+    return value;
+  }
   if (LEGACY_JSONATA_MARKER.test(value)) {
     try {
       jsonata(value);

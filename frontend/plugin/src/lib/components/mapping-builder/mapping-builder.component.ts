@@ -20,7 +20,7 @@ import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
-import { TemplateField, VariableSuggestions } from '../../models';
+import { TemplateField } from '../../models';
 import { BuilderFieldComponent } from './builder-field/builder-field.component';
 import {
   BuilderField,
@@ -47,13 +47,11 @@ import {
         [attr.data-testid]="'epistola-mapping-row-' + field.name"
         [field]="field"
         [path]="[i]"
-        [suggestions]="allSuggestions"
         [disabled]="disabled"
         [collapsed]="isCollapsed([i])"
         [collapsedPaths]="collapsedPaths"
         [required]="isRequired(field.name)"
         (valueChange)="onNestedValueChange($event.path, $event.value)"
-        (modeToggle)="onNestedModeToggle($event)"
         (collapseToggle)="toggleCollapse($event)"
       ></epistola-builder-field>
     </div>
@@ -116,25 +114,6 @@ import {
         outline: 2px solid #0f62fe;
         border-color: #0f62fe;
       }
-      .mapping-builder__input--raw {
-        background: #f4f4f4;
-      }
-      .mapping-builder__mode-toggle {
-        width: 28px;
-        height: 28px;
-        border: 1px solid #e0e0e0;
-        border-radius: 4px;
-        background: #fff;
-        cursor: pointer;
-        font-family: monospace;
-        font-size: 0.8em;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .mapping-builder__mode-toggle:hover {
-        background: #f4f4f4;
-      }
       .mapping-builder__children {
         border-left: 2px solid #e0e0e0;
         padding-left: 12px;
@@ -146,12 +125,10 @@ import {
 export class MappingBuilderComponent implements OnChanges {
   @Input() expression: string = '';
   @Input() templateFields: TemplateField[] = [];
-  @Input() suggestions: VariableSuggestions | null = null;
   @Input() disabled: boolean = false;
   @Output() expressionChange = new EventEmitter<string>();
 
   fields: BuilderField[] = [];
-  allSuggestions: string[] = [];
   collapsedPaths = new Set<string>();
   private initialCollapseApplied = false;
 
@@ -170,23 +147,12 @@ export class MappingBuilderComponent implements OnChanges {
         this.initialCollapseApplied = true;
       }
     }
-    if (changes['suggestions']) {
-      this.buildSuggestionList();
-    }
   }
 
   onNestedValueChange(path: number[], value: string): void {
     const field = this.getFieldAtPath(path);
     if (field) {
       field.value = value;
-      this.emit();
-    }
-  }
-
-  onNestedModeToggle(path: number[]): void {
-    const field = this.getFieldAtPath(path);
-    if (field) {
-      field.mode = field.mode === 'ref' ? 'raw' : 'ref';
       this.emit();
     }
   }
@@ -240,20 +206,6 @@ export class MappingBuilderComponent implements OnChanges {
   private emit(): void {
     const jsonata = builderToJsonata(this.fields);
     this.expressionChange.emit(jsonata);
-  }
-
-  /**
-   * Ensure all template fields have a corresponding builder field.
-   * Adds missing fields with empty values.
-   */
-  private buildSuggestionList(): void {
-    if (!this.suggestions) {
-      this.allSuggestions = [];
-      return;
-    }
-    const docSuggestions = (this.suggestions.doc || []).map((p) => `$doc.${p}`);
-    const pvSuggestions = (this.suggestions.pv || []).map((p) => `$pv.${p}`);
-    this.allSuggestions = [...docSuggestions, ...pvSuggestions];
   }
 
   /**

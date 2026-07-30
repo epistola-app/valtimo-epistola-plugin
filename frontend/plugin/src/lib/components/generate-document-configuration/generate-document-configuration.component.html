@@ -117,7 +117,7 @@
     The v-select / v-input here is intentionally NOT named into the v-form: v-form's
     @ContentChildren queries default to descendants:false and would skip anything nested
     in this `field-with-fx` wrapper. The value is tracked through standalone ngModel/value
-    bindings on the component, see variantIdValue / filenameValue.
+    bindings on the component, see variantIdValue.
   -->
   <div *ngIf="variantSelectionMode === 'explicit'" class="field-with-fx">
     <v-select
@@ -334,80 +334,30 @@
     {{ obs.environments.error }}
   </div>
 
-  <div class="field-with-fx">
-    <v-input
-      *ngIf="!filenameExpressionMode"
-      data-testid="epistola-generate-filename"
-      [title]="'filename' | pluginTranslate: pluginId | async"
-      [tooltip]="'filenameTooltip' | pluginTranslate: pluginId | async"
-      [margin]="true"
-      [defaultValue]="filenameValue"
-      (valueChange)="onFilenameValueChange($event)"
+  <div class="fx-input-group">
+    <label class="fx-input-label">{{ 'filename' | pluginTranslate: pluginId | async }}</label>
+    <input
+      type="text"
+      class="fx-input"
+      data-testid="epistola-generate-filename-expression"
+      [ngModel]="filenameExpression"
+      (ngModelChange)="filenameExpression = $event; onFilenameExpressionChange()"
       [disabled]="obs.disabled"
-      [required]="true"
-    >
-    </v-input>
-    <div *ngIf="filenameExpressionMode" class="fx-input-group">
-      <label class="fx-input-label">{{ 'filename' | pluginTranslate: pluginId | async }}</label>
-      <input
-        type="text"
-        class="fx-input"
-        data-testid="epistola-generate-filename-expression"
-        [ngModel]="filenameExpression"
-        (ngModelChange)="filenameExpression = $event; onFilenameExpressionChange()"
-        [disabled]="obs.disabled"
-        placeholder='"besluit-" & $doc.name & ".pdf"'
-      />
-    </div>
-    <button
-      type="button"
-      class="fx-toggle"
-      data-testid="epistola-generate-filename-fx-toggle"
-      (click)="toggleFilenameExpressionMode()"
-      [disabled]="obs.disabled"
-      [title]="filenameExpressionMode ? 'Switch to plain input' : 'Switch to expression'"
-    >
-      {{ filenameExpressionMode ? '·' : 'fx' }}
-    </button>
+      placeholder='"besluit-" & $doc.name & ".pdf"'
+    />
   </div>
 
-  <div class="field-with-fx">
-    <v-input
-      *ngIf="!correlationIdExpressionMode"
-      data-testid="epistola-generate-correlation-id"
-      [title]="'correlationId' | pluginTranslate: pluginId | async"
-      [tooltip]="'correlationIdTooltip' | pluginTranslate: pluginId | async"
-      [margin]="true"
-      [defaultValue]="correlationIdValue"
-      (valueChange)="onCorrelationIdValueChange($event)"
+  <div class="fx-input-group">
+    <label class="fx-input-label">{{ 'correlationId' | pluginTranslate: pluginId | async }}</label>
+    <input
+      type="text"
+      class="fx-input"
+      data-testid="epistola-generate-correlation-id-expression"
+      [ngModel]="correlationIdExpression"
+      (ngModelChange)="correlationIdExpression = $event; onCorrelationIdExpressionChange()"
       [disabled]="obs.disabled"
-      [required]="false"
-    >
-    </v-input>
-    <div *ngIf="correlationIdExpressionMode" class="fx-input-group">
-      <label class="fx-input-label">{{
-        'correlationId' | pluginTranslate: pluginId | async
-      }}</label>
-      <input
-        type="text"
-        class="fx-input"
-        data-testid="epistola-generate-correlation-id-expression"
-        [ngModel]="correlationIdExpression"
-        (ngModelChange)="correlationIdExpression = $event; onCorrelationIdExpressionChange()"
-        [disabled]="obs.disabled"
-        placeholder="$pv.correlationId"
-      />
-    </div>
-    <button
-      type="button"
-      class="fx-toggle"
-      data-testid="epistola-generate-correlation-id-fx-toggle"
-      (click)="toggleCorrelationIdExpressionMode()"
-      [disabled]="obs.disabled"
-      [title]="correlationIdExpressionMode ? 'Switch to plain input' : 'Switch to expression'"
-    >
-      {{ correlationIdExpressionMode ? '·' : 'fx' }}
-    </button>
+      placeholder="$pv.correlationId"
+    />
   </div>
 
   <v-input
@@ -465,7 +415,6 @@
     *ngIf="mappingMode === 'simple'"
     [expression]="dataMapping$ | async"
     [templateFields]="(templateFields$ | async)?.data ?? []"
-    [suggestions]="variableSuggestions"
     [disabled]="!!(disabled$ | async)"
     (expressionChange)="onDataMappingChange($event)"
   ></epistola-mapping-builder>
