@@ -72,6 +72,11 @@ class ProcessLinkMappingServiceTest {
 
     private PluginProcessLink linkWithDataMapping(String dataMapping) {
         ObjectNode actionProps = objectMapper.createObjectNode();
+        actionProps.put("catalogId", "catalog");
+        actionProps.put("templateId", "template");
+        actionProps.put("outputFormat", "PDF");
+        actionProps.put("filename", "mapping.pdf");
+        actionProps.put("resultProcessVariable", "generationResult");
         if (dataMapping != null) {
             actionProps.put("dataMapping", dataMapping);
         }

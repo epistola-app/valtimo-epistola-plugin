@@ -27,9 +27,12 @@ abstract class AbstractGenerateDocumentActionVersionHandler implements GenerateD
 
     @Override
     public GenerateDocumentActionConfiguration parse(RawGenerateDocumentActionConfiguration raw) {
-        if (raw.dataMapping() == null) {
-            throw invalid("dataMapping must be a JSONata string");
-        }
+        requireNonBlank(raw.catalogId(), "No catalog configured: catalogId must be a non-blank string");
+        requireNonBlank(raw.templateId(), "No template configured: templateId must be a non-blank string");
+        requireNonBlank(raw.dataMapping(), "dataMapping must be a non-blank JSONata string");
+        requireNonBlank(raw.outputFormat(), "outputFormat must be a non-blank string");
+        requireNonBlank(raw.filename(), "filename must be a non-blank string");
+        requireNonBlank(raw.resultProcessVariable(), "resultProcessVariable must be a non-blank string");
 
         List<VariantAttribute> attributes = parseAttributes(raw.variantAttributes());
         ConfiguredScalar variantId = scalar("variantId", raw.variantId());
@@ -59,6 +62,12 @@ abstract class AbstractGenerateDocumentActionVersionHandler implements GenerateD
 
     protected ConfiguredScalar correlationId(String value) {
         return scalar("correlationId", value);
+    }
+
+    private void requireNonBlank(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw invalid(message);
+        }
     }
 
     private List<VariantAttribute> parseAttributes(Object rawAttributes) {

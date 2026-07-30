@@ -105,6 +105,44 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 .hasMessageContaining("variantAttributes.required must be a boolean");
     }
 
+    @Test
+    void rejectsMissingRequiredFieldsAtTheVersionBoundary() {
+        for (int version : List.of(0, 1)) {
+            assertMissingRequired(version, "catalogId", rawMissing(version, "catalogId"));
+            assertMissingRequired(version, "templateId", rawMissing(version, "templateId"));
+            assertMissingRequired(version, "dataMapping", rawMissing(version, "dataMapping"));
+            assertMissingRequired(version, "outputFormat", rawMissing(version, "outputFormat"));
+            assertMissingRequired(version, "filename", rawMissing(version, "filename"));
+            assertMissingRequired(version, "resultProcessVariable", rawMissing(version, "resultProcessVariable"));
+        }
+    }
+
+    private static void assertMissingRequired(
+            int version,
+            String field,
+            RawGenerateDocumentActionConfiguration raw
+    ) {
+        assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(raw))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("configuration v" + version)
+                .hasMessageContaining(field);
+    }
+
+    private static RawGenerateDocumentActionConfiguration rawMissing(int version, String field) {
+        return new RawGenerateDocumentActionConfiguration(
+                version,
+                field.equals("catalogId") ? " " : "catalog",
+                field.equals("templateId") ? null : "template",
+                null,
+                null,
+                null,
+                field.equals("dataMapping") ? "" : "{}",
+                field.equals("outputFormat") ? " " : version == 0 ? "PDF" : "\"PDF\"",
+                field.equals("filename") ? null : version == 0 ? "value.pdf" : "\"value.pdf\"",
+                null,
+                field.equals("resultProcessVariable") ? "" : "result");
+    }
+
     private static RawGenerateDocumentActionConfiguration raw(
             Integer version,
             String filename,

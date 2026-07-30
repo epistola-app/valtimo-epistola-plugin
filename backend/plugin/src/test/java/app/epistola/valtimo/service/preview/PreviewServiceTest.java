@@ -256,6 +256,9 @@ class PreviewServiceTest {
             actionProps.put("catalogId", "default");
             actionProps.put("templateId", "template-123");
             actionProps.put("dataMapping", "{}");
+            actionProps.put("outputFormat", "PDF");
+            actionProps.put("filename", "preview.pdf");
+            actionProps.put("resultProcessVariable", "generationResult");
 
             PluginProcessLink processLink = mock(PluginProcessLink.class);
             when(processLink.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
@@ -301,6 +304,9 @@ class PreviewServiceTest {
             actionProps.put("catalogId", "default");
             actionProps.put("templateId", "template-123");
             actionProps.put("dataMapping", "$spread($doc)");
+            actionProps.put("outputFormat", "PDF");
+            actionProps.put("filename", "preview.pdf");
+            actionProps.put("resultProcessVariable", "generationResult");
 
             PluginProcessLink processLink = mock(PluginProcessLink.class);
             when(processLink.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");

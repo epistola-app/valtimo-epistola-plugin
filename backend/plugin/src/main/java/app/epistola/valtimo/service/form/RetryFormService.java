@@ -77,15 +77,18 @@ public class RetryFormService {
         PluginProcessLink originalLink = resolveSourceProcessLink(
                 processDefinitionId, processInstanceId, sourceActivityId);
 
-        var actionConfig = GenerateDocumentActionConfigurationRegistry.parse(originalLink.getActionProperties());
-        String catalogId = actionConfig.catalogId();
-        String templateId = actionConfig.templateId();
-        String dataMapping = actionConfig.dataMapping();
-        if (templateId == null || templateId.isBlank()) {
+        ObjectNode actionProperties = originalLink.getActionProperties();
+        String configuredTemplateId = actionProperties.path("templateId").asText(null);
+        if (configuredTemplateId == null || configuredTemplateId.isBlank()) {
             throw new RetryFormException(RetryFormException.Reason.MISSING_TEMPLATE,
                     "No templateId found in process link action properties for activity '"
                             + originalLink.getActivityId() + "'");
         }
+
+        var actionConfig = GenerateDocumentActionConfigurationRegistry.parse(actionProperties);
+        String catalogId = actionConfig.catalogId();
+        String templateId = actionConfig.templateId();
+        String dataMapping = actionConfig.dataMapping();
 
         String effectiveDocumentId = resolveDocumentId(documentId, processInstance);
         var evalCtx = app.epistola.valtimo.mapping.EvaluationContext.builder()

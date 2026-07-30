@@ -385,7 +385,8 @@ class EpistolaAdminServiceTest {
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
 
             assertThat(entries).hasSize(1);
-            assertThat(entries.get(0).problems()).contains("No template configured");
+            assertThat(entries.get(0).problems())
+                    .anyMatch(problem -> problem.contains("No template configured"));
         }
 
         @Test
@@ -404,7 +405,8 @@ class EpistolaAdminServiceTest {
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
 
             assertThat(entries).hasSize(1);
-            assertThat(entries.get(0).problems()).contains("No catalog configured");
+            assertThat(entries.get(0).problems())
+                    .anyMatch(problem -> problem.contains("No catalog configured"));
         }
 
         @Test
@@ -1114,6 +1116,9 @@ class EpistolaAdminServiceTest {
     private ObjectNode createActionProps(String catalogId, String templateId, String variantId) {
         ObjectNode props = objectMapper.createObjectNode();
         props.put("dataMapping", "{}");
+        props.put("outputFormat", "PDF");
+        props.put("filename", "letter.pdf");
+        props.put("resultProcessVariable", "generationResult");
         if (catalogId != null) {
             props.put("catalogId", catalogId);
         }

@@ -340,6 +340,9 @@ class RetryFormServiceTest {
 
         ObjectNode actionProps = objectMapper.createObjectNode();
         actionProps.put("catalogId", CATALOG_ID);
+        actionProps.put("outputFormat", "PDF");
+        actionProps.put("filename", "retry.pdf");
+        actionProps.put("resultProcessVariable", "generationResult");
         if (templateId != null) {
             actionProps.put("templateId", templateId);
         }
