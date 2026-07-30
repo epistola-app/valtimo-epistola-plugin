@@ -28,6 +28,14 @@ import java.util.regex.Pattern;
 
 import static com.dashjoin.jsonata.Jsonata.jsonata;
 
+/**
+ * Parses legacy unversioned generate-document actions.
+ *
+ * @deprecated Retained only for executing existing v0 process links. New and
+ * resaved actions must use v1.
+ */
+@Deprecated(forRemoval = true)
+@SuppressWarnings("removal")
 final class GenerateDocumentActionV0Parser implements GenerateDocumentActionVersionParser {
 
     private static final Pattern JSONATA_MARKER = Pattern.compile("[$&({?\\[]");

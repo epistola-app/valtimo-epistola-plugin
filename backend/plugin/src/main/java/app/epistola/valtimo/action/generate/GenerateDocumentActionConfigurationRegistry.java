@@ -35,6 +35,7 @@ public final class GenerateDocumentActionConfigurationRegistry {
 
     private GenerateDocumentActionConfigurationRegistry() {}
 
+    @SuppressWarnings("removal")
     private static Map<Integer, GenerateDocumentActionVersionParser> createParsers() {
         return List.<GenerateDocumentActionVersionParser>of(
                         new GenerateDocumentActionV0Parser(),

@@ -44,6 +44,9 @@ export interface VariantAttributeEntry {
 /**
  * Original unversioned generate-document action shape. Expression-capable
  * scalar fields contain either literals or JSONata expressions.
+ *
+ * @deprecated Retained only to migrate existing v0 process links in memory.
+ * New and resaved actions use GenerateDocumentConfigV1.
  */
 export interface GenerateDocumentConfigV0 {
   actionConfigVersion?: 0 | null;

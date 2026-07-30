@@ -62,6 +62,13 @@ public record GenerateDocumentActionConfiguration(
         }
     }
 
+    /**
+     * A scalar using the literal interpretation rules of legacy v0 actions.
+     *
+     * @deprecated Only v0 action configurations may contain literal scalars.
+     * V1 values are JSONata expressions.
+     */
+    @Deprecated(forRemoval = true)
     public record LiteralScalar(String source) implements ConfiguredScalar {
 
         @Override

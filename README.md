@@ -11,6 +11,8 @@ Epistola document generation plugin for Valtimo.
 
 See [COMPATIBILITY.md](COMPATIBILITY.md) for which Valtimo platform versions each plugin release is tested against and expected to be compatible with. The current release targets the Valtimo 13.x line.
 
+The generate-document action has its own persisted configuration-version lifecycle. See [Generate-document action versioning](docs/generate-document-action-versioning.md) for v0 compatibility, v1 semantics, editor upgrades, and deprecation policy.
+
 ## Installation
 
 ### Backend

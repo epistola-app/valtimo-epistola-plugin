@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Generate-document environments can now be selected dynamically with JSONata.** The action configurator keeps the Epistola-backed environment dropdown and adds an `fx` mode for expressions using `$doc`, `$pv`, `$case`, and registered functions. Expressions are syntax-checked when the process link is saved and resolved consistently for generation and preview; null or blank results fall back to the plugin's default environment. Existing literal environment selections and saved process links remain compatible.
 - **All tracked first-party files now carry EUPL-1.2 licensing metadata.** Source files declare SPDX metadata inline where their format supports comments; documentation, configuration, generated resources, and binary assets are covered through `REUSE.toml`. The REUSE CLI is pinned through mise, and CI and release builds reject incomplete license metadata.
 
+### Deprecated
+
+- **Generate-document action configuration v0 is deprecated for eventual removal in a future major release.** The backend continues to execute existing unversioned process links, and the frontend upgrades them in memory when opened, but all new and resaved actions use v1. `LiteralScalar` remains only as the backend representation of v0 literal semantics.
+
 ### Removed
 
 - **Deprecated generate-document action shapes are no longer accepted.** `dataMapping` must be a JSONata string, `variantAttributes` must be the typed entry array, and the old map/object normalization paths have been removed.

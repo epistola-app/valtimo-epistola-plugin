@@ -624,6 +624,7 @@ public class EpistolaAdminService {
         return configurationId.toString();
     }
 
+    @SuppressWarnings("removal")
     private List<String> detectProblems(PluginProcessLink link, EpistolaReferenceCache refCache) {
         List<String> problems = new ArrayList<>();
 
