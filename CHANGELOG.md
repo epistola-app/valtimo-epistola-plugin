@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Visual and Advanced expression modes now use a single inline action button.** Its code or structured-block icon shows the destination mode alongside the `+` action, and switching to Visual remains disabled when the Advanced expression cannot be represented losslessly.
 - **The whole-mapping Advanced editor now keeps a stable Monaco model while typing.** Parent input echoes no longer recreate the model and disrupt cursor-relative edits, while deferred JSONata language registration retokenizes the initial model so syntax highlighting works on the first opening.
 - **An `@` trigger can now be kept as literal text.** Escape or the explicit picker action closes variable search, restores the caret after `@`, and prevents continued literal typing from reopening the same trigger.
+- **The expression picker search now updates through its native input event.** OnPush rendering is explicitly refreshed so known variable suggestions filter immediately, unmatched custom-scope options follow the current query, and clearing search restores the complete list.
 - **The ESM test application can run its Karma suite again.** Its CommonJS Karma configuration now uses a `.cjs` extension, the obsolete webpack `require.context` bootstrap is removed, and CI selects headless Chrome with a single run instead of failing during setup or waiting in watch mode.
 
 ## [0.16.0] - 2026-07-30

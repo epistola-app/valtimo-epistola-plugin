@@ -230,6 +230,32 @@ describe('SmartExpressionEditorComponent', () => {
     destroy();
   });
 
+  it('filters known picker suggestions and restores them when search is cleared', () => {
+    const { component, destroy } = createComponent('');
+
+    component.onPickerQueryChange('address');
+    expect(component.flatReferenceOptions.map((option) => option.expression)).toEqual([
+      '$doc.address.street',
+    ]);
+
+    component.onPickerQueryChange('missing');
+    expect(component.flatReferenceOptions).toHaveLength(0);
+    expect(component.customReferenceOptions.map((option) => option.expression)).toEqual([
+      '$case.missing',
+      '$pv.missing',
+      '$doc.missing',
+      '$missing',
+    ]);
+
+    component.onPickerQueryChange('');
+    expect(component.flatReferenceOptions.map((option) => option.expression)).toEqual([
+      '$doc.name',
+      '$doc.address.street',
+      '$pv.filename',
+    ]);
+    destroy();
+  });
+
   it('reopens an arbitrary persisted variable as a visual chip', () => {
     const { component, surface, destroy } = createComponent('$external.payload');
 

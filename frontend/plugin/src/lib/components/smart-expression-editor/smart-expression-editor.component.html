@@ -99,8 +99,8 @@
         [attr.aria-controls]="optionsId"
         [attr.aria-expanded]="pickerOpen"
         [placeholder]="'expressionEditorSearch' | pluginTranslate: 'epistola' | async"
-        [ngModel]="pickerQuery"
-        (ngModelChange)="onPickerQueryChange($event)"
+        [value]="pickerQuery"
+        (input)="onPickerQueryChange($any($event.target).value)"
         (keydown)="onPickerSearchKeydown($event)"
       />
 

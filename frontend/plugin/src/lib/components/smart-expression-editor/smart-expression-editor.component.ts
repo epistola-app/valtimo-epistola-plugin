@@ -433,6 +433,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   onPickerQueryChange(value: string): void {
     this.pickerQuery = value;
     this.activeOptionIndex = 0;
+    this.cdr.markForCheck();
   }
 
   onLiteralAtMouseDown(event: MouseEvent): void {
