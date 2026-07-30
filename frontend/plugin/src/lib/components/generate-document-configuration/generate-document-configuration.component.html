@@ -3,7 +3,7 @@
   (valueChange)="formValueChange($event)"
   *ngIf="{
     disabled: disabled$ | async,
-    prefill: prefillConfiguration$ ? (prefillConfiguration$ | async) : null,
+    prefill: effectivePrefill$ ? (effectivePrefill$ | async) : null,
     catalogs: catalogs$ | async,
     templates: templates$ | async,
     variants: variants$ | async,
@@ -12,9 +12,17 @@
     selectedCatalogId: selectedCatalogId$ | async,
     selectedTemplateId: selectedTemplateId$ | async,
     validationErrors: validationErrors$ | async,
+    configurationVersionError: configurationVersionError$ | async,
     resultProcessVariableInvalid: resultProcessVariableInvalid$ | async,
   } as obs"
 >
+  <div
+    *ngIf="obs.configurationVersionError"
+    class="jsonata-validation-errors"
+    data-testid="epistola-generate-version-error"
+  >
+    {{ obs.configurationVersionError }}
+  </div>
   <div
     *ngIf="obs.validationErrors && obs.validationErrors.length > 0"
     class="jsonata-validation-errors"

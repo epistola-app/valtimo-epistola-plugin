@@ -17,6 +17,9 @@
  */
 package app.epistola.valtimo.service.admin;
 
+import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration;
+import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.LiteralScalar;
+import app.epistola.valtimo.action.generate.GenerateDocumentActionConfigurationRegistry;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.domain.CatalogInfo;
@@ -57,8 +60,6 @@ import org.operaton.bpm.engine.repository.ProcessDefinition;
 import org.operaton.bpm.engine.runtime.Execution;
 import org.operaton.bpm.model.bpmn.BpmnModelInstance;
 import org.operaton.bpm.model.bpmn.instance.FlowElement;
-
-import com.fasterxml.jackson.databind.JsonNode;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -623,12 +624,6 @@ public class EpistolaAdminService {
         return configurationId.toString();
     }
 
-    /**
-     * Mirrors the frontend {@code isExpression()} rule in preview-utils.ts: a value
-     * is a JSONata expression (not a literal) if it contains any of {@code $ & ( { ? [}.
-     */
-    private static final Pattern JSONATA_MARKER = Pattern.compile("[$&({?\\[]");
-
     private List<String> detectProblems(PluginProcessLink link, EpistolaReferenceCache refCache) {
         List<String> problems = new ArrayList<>();
 
@@ -640,11 +635,20 @@ public class EpistolaAdminService {
             return problems;
         }
 
-        var props = link.getActionProperties();
         if ("epistola-generate-document".equals(link.getPluginActionDefinitionKey())) {
-            String catalogId = textOrNull(props, "catalogId");
-            String templateId = textOrNull(props, "templateId");
-            String variantId = textOrNull(props, "variantId");
+            GenerateDocumentActionConfiguration actionConfig;
+            try {
+                actionConfig = GenerateDocumentActionConfigurationRegistry.parse(link.getActionProperties());
+            } catch (IllegalArgumentException exception) {
+                problems.add(exception.getMessage());
+                return problems;
+            }
+
+            String catalogId = actionConfig.catalogId();
+            String templateId = actionConfig.templateId();
+            String variantId = actionConfig.variantId() instanceof LiteralScalar literal
+                    ? literal.source()
+                    : null;
 
             boolean catalogConfigured = catalogId != null && !catalogId.isBlank();
             boolean templateConfigured = templateId != null && !templateId.isBlank();
@@ -678,7 +682,7 @@ public class EpistolaAdminService {
                             if (!templateIds.get().contains(templateId)) {
                                 problems.add("Template '" + templateId
                                         + "' does not exist in catalog '" + catalogId + "'");
-                            } else if (isLiteralVariantId(variantId)) {
+                            } else if (variantId != null && !variantId.isBlank()) {
                                 Optional<Set<String>> variantIds =
                                         refCache.variantIds(configId, catalogId, templateId, plugin);
                                 if (variantIds.isPresent() && !variantIds.get().contains(variantId)) {
@@ -693,21 +697,6 @@ public class EpistolaAdminService {
         }
 
         return problems;
-    }
-
-    private static String textOrNull(JsonNode props, String field) {
-        return props != null && props.hasNonNull(field) ? props.get(field).asText() : null;
-    }
-
-    /**
-     * A {@code variantId} is a verifiable literal only when present, non-blank and free
-     * of JSONata markers. Absent/blank means default-variant mode (not a problem); a
-     * JSONata expression is resolved at runtime and silently skipped.
-     */
-    private static boolean isLiteralVariantId(String variantId) {
-        return variantId != null
-                && !variantId.isBlank()
-                && !JSONATA_MARKER.matcher(variantId).find();
     }
 
     /**

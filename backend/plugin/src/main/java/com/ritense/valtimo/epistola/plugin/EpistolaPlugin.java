@@ -18,6 +18,8 @@
 package com.ritense.valtimo.epistola.plugin;
 
 import app.epistola.client.model.VariantSelectionAttribute;
+import app.epistola.valtimo.action.generate.GenerateDocumentActionConfigurationRegistry;
+import app.epistola.valtimo.action.generate.RawGenerateDocumentActionConfiguration;
 import app.epistola.valtimo.domain.DocumentStorageTarget;
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.FileFormat;
@@ -238,6 +240,7 @@ public class EpistolaPlugin {
      * variantId and variantAttributes are mutually exclusive.
      *
      * @param execution             The process execution context
+     * @param actionConfigVersion   The generate-document action configuration schema version
      * @param catalogId             The ID of the catalog containing the template
      * @param templateId            The ID of the template to use for document generation
      * @param variantId             The ID of the template variant (optional — omit to use default or attribute selection)
@@ -260,10 +263,11 @@ public class EpistolaPlugin {
     )
     public void generateDocument(
             DelegateExecution execution,
+            @PluginActionProperty Integer actionConfigVersion,
             @PluginActionProperty String catalogId,
             @PluginActionProperty String templateId,
             @PluginActionProperty String variantId,
-            @PluginActionProperty Object variantAttributes,
+            @PluginActionProperty List<Map<String, Object>> variantAttributes,
             @PluginActionProperty String environmentId,
             @PluginActionProperty String dataMapping,
             @PluginActionProperty FileFormat outputFormat,
@@ -271,21 +275,27 @@ public class EpistolaPlugin {
             @PluginActionProperty String correlationId,
             @PluginActionProperty String resultProcessVariable
     ) {
+        var actionConfig = GenerateDocumentActionConfigurationRegistry.parse(
+                new RawGenerateDocumentActionConfiguration(
+                        actionConfigVersion,
+                        catalogId,
+                        templateId,
+                        variantId,
+                        variantAttributes,
+                        environmentId,
+                        dataMapping,
+                        outputFormat,
+                        filename,
+                        correlationId,
+                        resultProcessVariable));
+
         log.debug("Starting document generation: catalogId={}, templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
                 catalogId, templateId, variantId, variantAttributes, outputFormat, filename);
 
-        validateProcessVariableName("resultProcessVariable", resultProcessVariable);
+        validateProcessVariableName("resultProcessVariable", actionConfig.resultProcessVariable());
 
-        // Normalize variant attributes from either old (Map<String, String>) or new (List<Map>) format
-        List<NormalizedAttribute> normalizedAttributes = normalizeVariantAttributes(variantAttributes);
-
-        // Validate: variantId and variantAttributes are mutually exclusive.
-        // If neither is provided, the API will use the template's default variant.
-        boolean hasVariantId = variantId != null && !variantId.isBlank();
-        boolean hasAttributes = !normalizedAttributes.isEmpty();
-        if (hasVariantId && hasAttributes) {
-            throw new IllegalArgumentException("Cannot specify both variantId and variantAttributes");
-        }
+        boolean hasVariantId = actionConfig.variantId().isConfigured();
+        boolean hasAttributes = !actionConfig.variantAttributes().isEmpty();
 
         // Check if this is a retry with user-edited data from the fallback form.
         Object rawEditedData = execution.getVariable(EpistolaProcessVariables.EDITED_DATA);
@@ -311,7 +321,7 @@ public class EpistolaPlugin {
         } else {
             // Evaluate JSONata expression to produce the template data
             var evalCtx = app.epistola.valtimo.mapping.EvaluationContext.builder()
-                    .expression(dataMapping != null ? dataMapping : "")
+                    .expression(actionConfig.dataMapping())
                     .documentResolver(this::loadDocumentContent)
                     .processVariableResolver(execution::getVariable)
                     .processVariableEnumerator(execution::getVariables)
@@ -321,13 +331,13 @@ public class EpistolaPlugin {
             resolvedData = jsonataMappingService.evaluate(evalCtx);
         }
 
-        // Resolve the filename as a JSONata expression
-        String resolvedFilename = jsonataMappingService.evaluateScalar(buildEvalCtx(execution, filename));
+        var scalarEvalContext = buildEvalCtx(execution, null);
+        String resolvedFilename = actionConfig.filename().resolve(jsonataMappingService, scalarEvalContext);
 
         // Resolve a dynamic action-level environment and fall back to the plugin default
         // when no usable override is configured or produced.
-        String resolvedEnvironmentId = (environmentId != null && !environmentId.isBlank())
-                ? jsonataMappingService.resolveScalar(buildEvalCtx(execution, environmentId))
+        String resolvedEnvironmentId = actionConfig.environmentId().isConfigured()
+                ? actionConfig.environmentId().resolve(jsonataMappingService, scalarEvalContext)
                 : null;
         String effectiveEnvironmentId = (resolvedEnvironmentId != null && !resolvedEnvironmentId.isBlank())
                 ? resolvedEnvironmentId
@@ -335,15 +345,15 @@ public class EpistolaPlugin {
 
         // Resolve variantId if it uses a JSONata expression
         String resolvedVariantId = hasVariantId
-                ? jsonataMappingService.evaluateScalar(buildEvalCtx(execution, variantId))
+                ? actionConfig.variantId().resolve(jsonataMappingService, scalarEvalContext)
                 : null;
 
         // Build variant selection attributes, resolving each value as a JSONata expression
         List<VariantSelectionAttribute> resolvedAttributes = hasAttributes
-                ? normalizedAttributes.stream()
+                ? actionConfig.variantAttributes().stream()
                         .map(attr -> new VariantSelectionAttribute(
                                 attr.key(),
-                                jsonataMappingService.evaluateScalar(buildEvalCtx(execution, attr.value())),
+                                attr.value().resolve(jsonataMappingService, scalarEvalContext),
                                 null,
                                 attr.required()))
                         .toList()
@@ -609,49 +619,6 @@ public class EpistolaPlugin {
                 .execution(execution)
                 .documentId(execution.getBusinessKey())
                 .build();
-    }
-
-    /**
-     * Internal representation of a variant attribute entry, supporting both old and new config formats.
-     */
-    record NormalizedAttribute(String key, String value, Boolean required) {}
-
-    /**
-     * Normalize variant attributes from either the old format (Map&lt;String, String&gt;)
-     * or the new format (List of objects with key, value, required).
-     */
-    @SuppressWarnings("unchecked")
-    List<NormalizedAttribute> normalizeVariantAttributes(Object raw) {
-        if (raw == null) {
-            return List.of();
-        }
-        if (raw instanceof List<?> list) {
-            // New format: List<{key, value, required}>
-            return list.stream()
-                    .filter(item -> item instanceof Map)
-                    .map(item -> {
-                        Map<String, Object> map = (Map<String, Object>) item;
-                        String key = map.get("key") != null ? String.valueOf(map.get("key")) : "";
-                        String value = map.get("value") != null ? String.valueOf(map.get("value")) : "";
-                        Boolean required = map.get("required") instanceof Boolean b ? b : null;
-                        return new NormalizedAttribute(key, value, required);
-                    })
-                    .filter(a -> !a.key().isEmpty() && !a.value().isEmpty())
-                    .toList();
-        }
-        if (raw instanceof Map<?, ?> map) {
-            // Old format: Map<String, String> — treat all as required (null = API default true)
-            return map.entrySet().stream()
-                    .map(entry -> new NormalizedAttribute(
-                            String.valueOf(entry.getKey()),
-                            String.valueOf(entry.getValue()),
-                            null
-                    ))
-                    .filter(a -> !a.key().isEmpty() && !a.value().isEmpty())
-                    .toList();
-        }
-        log.warn("Unexpected variantAttributes type: {}", raw.getClass().getName());
-        return List.of();
     }
 
 }

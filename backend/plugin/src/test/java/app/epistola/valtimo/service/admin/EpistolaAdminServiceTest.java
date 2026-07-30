@@ -1113,6 +1113,7 @@ class EpistolaAdminServiceTest {
 
     private ObjectNode createActionProps(String catalogId, String templateId, String variantId) {
         ObjectNode props = objectMapper.createObjectNode();
+        props.put("dataMapping", "{}");
         if (catalogId != null) {
             props.put("catalogId", catalogId);
         }

@@ -42,16 +42,11 @@ export interface VariantAttributeEntry {
 }
 
 /**
- * Action configuration for the generate-document action.
- * Contains all parameters needed to generate a document.
- *
- * Variant selection supports two modes:
- * - Explicit: set variantId directly
- * - By attributes: set variantAttributes with key-value pairs (values can be JSONata expressions)
- *
- * environmentId may be a literal environment id or a JSONata expression.
+ * Original unversioned generate-document action shape. Expression-capable
+ * scalar fields contain either literals or JSONata expressions.
  */
-export interface GenerateDocumentConfig {
+export interface GenerateDocumentConfigV0 {
+  actionConfigVersion?: 0 | null;
   catalogId: string;
   templateId: string;
   variantId?: string;
@@ -63,6 +58,22 @@ export interface GenerateDocumentConfig {
   correlationId?: string;
   resultProcessVariable: string;
 }
+
+/**
+ * Current generate-document action shape. Every expression-capable scalar is
+ * JSONata; literal values are represented as JSONata string literals.
+ */
+export interface GenerateDocumentConfigV1 extends Omit<
+  GenerateDocumentConfigV0,
+  'actionConfigVersion'
+> {
+  actionConfigVersion: 1;
+}
+
+export type GenerateDocumentConfigVersioned = GenerateDocumentConfigV0 | GenerateDocumentConfigV1;
+
+/** Current shape used when creating or saving a generate-document action. */
+export type GenerateDocumentConfig = GenerateDocumentConfigV1;
 
 /**
  * Action configuration for the check-job-status action.

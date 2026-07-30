@@ -117,7 +117,7 @@ class ProcessLinkMappingServiceTest {
     }
 
     @Test
-    void returnsEmptyForLegacyObjectFormatMapping() {
+    void rejectsDeprecatedObjectFormatMapping() {
         mockLatestDefinition("my-process", "def-1");
         ObjectNode actionProps = objectMapper.createObjectNode();
         actionProps.putObject("dataMapping").put("name", "$doc.name");

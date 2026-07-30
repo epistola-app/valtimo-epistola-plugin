@@ -255,7 +255,7 @@ class PreviewServiceTest {
             ObjectNode actionProps = objectMapper.createObjectNode();
             actionProps.put("catalogId", "default");
             actionProps.put("templateId", "template-123");
-            actionProps.putObject("dataMapping");
+            actionProps.put("dataMapping", "{}");
 
             PluginProcessLink processLink = mock(PluginProcessLink.class);
             when(processLink.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
@@ -427,7 +427,7 @@ class PreviewServiceTest {
 
             when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
                     .thenReturn(new LinkedHashMap<>());
-            when(jsonataMappingService.resolveScalar(any(EvaluationContext.class)))
+            when(jsonataMappingService.evaluateScalar(any(EvaluationContext.class)))
                     .thenReturn("production");
 
             PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
@@ -449,7 +449,7 @@ class PreviewServiceTest {
 
             when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
                     .thenReturn(new LinkedHashMap<>());
-            when(jsonataMappingService.resolveScalar(any(EvaluationContext.class))).thenReturn(" ");
+            when(jsonataMappingService.evaluateScalar(any(EvaluationContext.class))).thenReturn(" ");
 
             PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
 

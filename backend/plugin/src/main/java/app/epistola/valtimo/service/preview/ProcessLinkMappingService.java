@@ -17,7 +17,7 @@
  */
 package app.epistola.valtimo.service.preview;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import app.epistola.valtimo.action.generate.GenerateDocumentActionConfigurationRegistry;
 import com.ritense.plugin.domain.PluginProcessLink;
 import com.ritense.processlink.service.ProcessLinkService;
 import lombok.RequiredArgsConstructor;
@@ -75,7 +75,7 @@ public class ProcessLinkMappingService {
                 return "";
             }
 
-            return extractDataMapping(link);
+            return GenerateDocumentActionConfigurationRegistry.parse(link.getActionProperties()).dataMapping();
         } catch (Exception e) {
             log.warn("Failed to resolve dataMapping for {}/{}: {}",
                     processDefinitionKey, activityId, e.getMessage());
@@ -83,23 +83,4 @@ public class ProcessLinkMappingService {
         }
     }
 
-    /**
-     * Read the textual {@code dataMapping} from a plugin process link's action properties.
-     * Legacy object-format mappings (pre-JSONata) are unsupported and yield {@code ""}.
-     * Shared with {@link PreviewService}.
-     */
-    static String extractDataMapping(PluginProcessLink link) {
-        ObjectNode actionProps = link.getActionProperties();
-        if (!actionProps.has("dataMapping")) {
-            return "";
-        }
-        var node = actionProps.get("dataMapping");
-        if (node.isTextual()) {
-            return node.asText("");
-        }
-        // Legacy: dataMapping stored as JSON object — not supported with JSONata
-        log.warn("Process link {} has dataMapping in legacy object format. " +
-                "Please redeploy process links to use JSONata string format.", link.getId());
-        return "";
-    }
 }

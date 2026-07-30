@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.service.preview;
 
+import app.epistola.valtimo.action.generate.GenerateDocumentActionConfigurationRegistry;
 import app.epistola.valtimo.service.EpistolaService;
 
 import app.epistola.valtimo.mapping.JsonataMappingService;
@@ -72,9 +73,18 @@ public class PreviewService {
         String processDefinitionId = resolveProcessDefinitionId(processInstanceId);
         PluginProcessLink processLink = resolveProcessLink(processDefinitionId, request.sourceActivityId());
 
-        String catalogId = extractCatalogId(processLink);
-        String templateId = extractTemplateId(processLink);
-        String dataMapping = ProcessLinkMappingService.extractDataMapping(processLink);
+        var actionConfig = GenerateDocumentActionConfigurationRegistry.parse(processLink.getActionProperties());
+        String catalogId = actionConfig.catalogId();
+        String templateId = actionConfig.templateId();
+        String dataMapping = actionConfig.dataMapping();
+        if (catalogId == null || catalogId.isBlank()) {
+            throw new PreviewException(PreviewException.Reason.MISSING_CONTEXT,
+                    "No catalogId in process link for activity '" + processLink.getActivityId() + "'");
+        }
+        if (templateId == null || templateId.isBlank()) {
+            throw new PreviewException(PreviewException.Reason.MISSING_TEMPLATE,
+                    "No templateId in process link for activity '" + processLink.getActivityId() + "'");
+        }
 
         // Build resolvers with input-level overrides layered on top.
         // The OverlayMap checks overrides first; non-overridden paths fall through
@@ -121,21 +131,13 @@ public class PreviewService {
         EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
                 processLink.getPluginConfigurationId());
 
-        ObjectNode actionProps = processLink.getActionProperties();
-        String variantIdExpr = actionProps.has("variantId") && !actionProps.get("variantId").isNull()
-                ? actionProps.get("variantId").asText() : null;
-        String variantId = variantIdExpr != null
-                ? jsonataMappingService.evaluateScalar(evalCtxBuilder.build().withExpression(variantIdExpr))
+        var scalarEvalContext = evalCtxBuilder.build();
+        String variantId = actionConfig.variantId().isConfigured()
+                ? actionConfig.variantId().resolve(jsonataMappingService, scalarEvalContext)
                 : null;
-        String configuredEnvironmentId =
-                actionProps.has("environmentId") && !actionProps.get("environmentId").isNull()
-                        ? actionProps.get("environmentId").asText()
-                        : null;
-        String resolvedEnvironmentId =
-                configuredEnvironmentId != null && !configuredEnvironmentId.isBlank()
-                        ? jsonataMappingService.resolveScalar(
-                                evalCtxBuilder.build().withExpression(configuredEnvironmentId))
-                        : null;
+        String resolvedEnvironmentId = actionConfig.environmentId().isConfigured()
+                ? actionConfig.environmentId().resolve(jsonataMappingService, scalarEvalContext)
+                : null;
         String environmentId =
                 resolvedEnvironmentId != null && !resolvedEnvironmentId.isBlank()
                         ? resolvedEnvironmentId
@@ -194,24 +196,6 @@ public class PreviewService {
         }
 
         return generateLinks.get(0);
-    }
-
-    private String extractCatalogId(PluginProcessLink link) {
-        ObjectNode actionProps = link.getActionProperties();
-        if (!actionProps.has("catalogId") || actionProps.get("catalogId").isNull()) {
-            throw new PreviewException(PreviewException.Reason.MISSING_CONTEXT,
-                    "No catalogId in process link for activity '" + link.getActivityId() + "'");
-        }
-        return actionProps.get("catalogId").asText();
-    }
-
-    private String extractTemplateId(PluginProcessLink link) {
-        ObjectNode actionProps = link.getActionProperties();
-        if (!actionProps.has("templateId") || actionProps.get("templateId").isNull()) {
-            throw new PreviewException(PreviewException.Reason.MISSING_TEMPLATE,
-                    "No templateId in process link for activity '" + link.getActivityId() + "'");
-        }
-        return actionProps.get("templateId").asText();
     }
 
     @SuppressWarnings("unchecked")
