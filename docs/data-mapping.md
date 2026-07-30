@@ -142,8 +142,8 @@ A valid mapping for that schema returns:
 ## Guided Expression Editing
 
 Each simple mapping field uses the same guided editor as the generate action's
-filename, correlation ID, dynamic variant/environment, and variant-attribute
-fields. The visual mode is intended for non-programmers:
+filename, correlation ID, and variant-attribute fields. The visual mode is
+intended for non-programmers:
 
 - text typed directly into the field is always a string literal;
 - typing `@` searches document, process, and case variables inline, while the
@@ -169,11 +169,12 @@ Existing quote style and expression source are retained while the visual value
 is untouched. Editing a visual expression serializes it to a canonical JSONata
 form.
 
-Every field also has an Advanced mode, selected with the inline mode button.
-The button shows the destination: Code in Visual mode and Visual blocks in
-Advanced mode. Unsupported or complex expressions open in Advanced
-automatically and are edited as validated raw JSONata. Switching to Visual is
-disabled when that conversion would lose expression structure:
+Every guided field also has an Advanced mode, selected with the inline mode
+button. The button shows the destination: Code in Visual mode and Visual blocks
+in Advanced mode. Unsupported or complex expressions open in Advanced
+automatically and are edited in a growing textarea as validated raw JSONata.
+Switching to Visual is disabled when that conversion would lose expression
+structure:
 
 ```jsonata
 $doc.language = "nl" ? "nederlands" : "engels"
@@ -183,7 +184,8 @@ The complete mapping can use Simple mode whenever its outer structure is a
 statically keyed object. Individual values may still be arbitrarily complex;
 their field editor opens in Advanced mode without reconstructing or rewriting
 the value source. Mappings whose structure is itself dynamic, such as a
-top-level `$merge(...)`, remain in the whole-mapping Advanced editor.
+top-level `$merge(...)`, remain in the whole-mapping Advanced editor, which
+uses Monaco for syntax highlighting and completion.
 
 ## Scalar Expressions
 
@@ -192,7 +194,11 @@ variant-attribute values are JSONata expressions evaluated with the same
 context. Values that identify an Epistola resource must evaluate to a string;
 filename and correlation ID must produce their documented scalar runtime types.
 Variant and environment dropdown selections are serialized as JSONata string
-literals. Output format is fixed to the JSONata string `"PDF"`.
+literals. An exact string literal matching an available variant or environment
+is presented in the dropdown. Dynamic expressions and unmatched literals open
+in a validated raw-expression textarea; they can return to the dropdown only
+after they become empty or exactly match an available option. Output format is
+fixed to the JSONata string `"PDF"`.
 
 In process-link JSON, JSONata remains an escaped JSON string:
 

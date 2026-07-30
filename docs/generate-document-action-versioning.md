@@ -59,13 +59,19 @@ selections for variants and environments are serialized in that form.
 Data mapping is always JSONata. Output format is stored as the fixed JSONata
 expression `"PDF"` and must resolve to PDF at runtime.
 
-The v1 editor presents these expressions through a guided visual control where
-plain typing creates a quoted JSONata string, references are inserted as
+The v1 editor presents free-form expressions through a guided visual control
+where plain typing creates a quoted JSONata string, references are inserted as
 semantic `$doc`/`$pv`/`$case` chips, and simple concatenations can be assembled
-without writing syntax. Complex expressions remain editable in the control's
-validated Advanced mode. The data-mapping Simple mode uses the same control for
-each statically named object field; mappings with a dynamic outer structure use
-the whole-mapping Advanced editor.
+without writing syntax. Complex scalar expressions remain editable in the
+control's validated, growing Advanced textarea. The data-mapping Simple mode
+uses the same control for each statically named object field; mappings with a
+dynamic outer structure use the Monaco-based whole-mapping Advanced editor.
+
+Variant and environment expressions use a resource-aware variation of this
+mode switch. An exact string literal matching a loaded option is shown in the
+dropdown. Dynamic expressions and unmatched literals open in the validated raw
+textarea and can switch back only when they become empty or exactly match a
+loaded option.
 
 This editor representation does not introduce a new action configuration
 version. Both visual and Advanced modes read and write the same v1 JSONata
