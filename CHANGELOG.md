@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-07-30
+
 ### Changed
 
 - **Generate-document action versions now use independent Java parsers.** Valtimo-injected and persisted action properties share a clearly named immutable carrier, while complete v0 and v1 parsing workflows implement a small version-parser interface without an abstract template that could accidentally change frozen legacy semantics.
