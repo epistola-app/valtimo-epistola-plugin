@@ -4,29 +4,6 @@
   [class.smart-expression--disabled]="disabled"
   [attr.data-testid]="testId"
 >
-  <div class="smart-expression__toolbar">
-    <div class="smart-expression__mode" role="group">
-      <button
-        type="button"
-        class="smart-expression__mode-button"
-        [class.smart-expression__mode-button--active]="mode === 'simple'"
-        [disabled]="disabled || (mode === 'advanced' && !rawRepresentable)"
-        (click)="switchToSimple()"
-      >
-        {{ 'expressionEditorSimple' | pluginTranslate: 'epistola' | async }}
-      </button>
-      <button
-        type="button"
-        class="smart-expression__mode-button"
-        [class.smart-expression__mode-button--active]="mode === 'advanced'"
-        [disabled]="disabled"
-        (click)="switchToAdvanced()"
-      >
-        {{ 'mappingModeAdvanced' | pluginTranslate: 'epistola' | async }}
-      </button>
-    </div>
-  </div>
-
   <div *ngIf="mode === 'simple'" class="smart-expression__simple">
     <div class="smart-expression__surface-wrap">
       <div
@@ -52,7 +29,7 @@
       ></div>
       <button
         type="button"
-        class="smart-expression__insert"
+        class="smart-expression__control smart-expression__insert"
         [disabled]="disabled"
         [attr.aria-label]="'expressionEditorInsert' | pluginTranslate: 'epistola' | async"
         aria-haspopup="listbox"
@@ -62,6 +39,18 @@
         (click)="onInsertClick($event)"
       >
         +
+      </button>
+      <button
+        type="button"
+        class="smart-expression__control smart-expression__mode-toggle"
+        [disabled]="disabled"
+        [attr.aria-label]="'mappingModeAdvanced' | pluginTranslate: 'epistola' | async"
+        [attr.title]="'mappingModeAdvanced' | pluginTranslate: 'epistola' | async"
+        aria-pressed="false"
+        [attr.data-testid]="testId + '-mode'"
+        (click)="switchToAdvanced()"
+      >
+        fx
       </button>
     </div>
     <div class="smart-expression__hint">
@@ -206,19 +195,33 @@
   </div>
 
   <div *ngIf="mode === 'advanced'" class="smart-expression__advanced">
-    <textarea
-      #rawTextarea
-      class="smart-expression__raw"
-      [class.smart-expression__raw--invalid]="rawError"
-      [disabled]="disabled"
-      [required]="required"
-      [attr.aria-invalid]="!!rawError"
-      [attr.aria-describedby]="rawError ? testId + '-error' : null"
-      [attr.data-testid]="testId + '-advanced'"
-      [ngModel]="rawExpression"
-      (ngModelChange)="onRawInput($event, rawTextarea)"
-      (blur)="onRawBlur()"
-    ></textarea>
+    <div class="smart-expression__raw-wrap" [class.smart-expression__raw-wrap--invalid]="rawError">
+      <textarea
+        #rawTextarea
+        class="smart-expression__raw"
+        [disabled]="disabled"
+        [required]="required"
+        [attr.aria-invalid]="!!rawError"
+        [attr.aria-describedby]="rawError ? testId + '-error' : null"
+        [attr.data-testid]="testId + '-advanced'"
+        [ngModel]="rawExpression"
+        (ngModelChange)="onRawInput($event, rawTextarea)"
+        (blur)="onRawBlur()"
+      ></textarea>
+      <button
+        type="button"
+        class="smart-expression__control smart-expression__mode-toggle smart-expression__mode-toggle--active"
+        [disabled]="disabled || !rawRepresentable"
+        [attr.aria-label]="'expressionEditorSimple' | pluginTranslate: 'epistola' | async"
+        [attr.title]="'expressionEditorSimple' | pluginTranslate: 'epistola' | async"
+        [attr.aria-describedby]="!rawRepresentable && !rawError ? testId + '-advanced-only' : null"
+        aria-pressed="true"
+        [attr.data-testid]="testId + '-mode'"
+        (click)="switchToSimple()"
+      >
+        fx
+      </button>
+    </div>
     <div
       *ngIf="rawError"
       class="smart-expression__error"
@@ -228,7 +231,11 @@
     >
       {{ rawError }}
     </div>
-    <div *ngIf="!rawRepresentable && !rawError" class="smart-expression__hint">
+    <div
+      *ngIf="!rawRepresentable && !rawError"
+      class="smart-expression__hint"
+      [id]="testId + '-advanced-only'"
+    >
       {{ 'expressionEditorAdvancedOnly' | pluginTranslate: 'epistola' | async }}
     </div>
   </div>

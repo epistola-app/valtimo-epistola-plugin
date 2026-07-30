@@ -107,7 +107,7 @@ import { SmartExpressionEditorComponent } from '../../smart-expression-editor/sm
       }
       .builder-field__name {
         min-width: 0;
-        padding-top: 1.3rem;
+        padding-top: 0.4rem;
       }
       .builder-field__name--clickable {
         cursor: pointer;

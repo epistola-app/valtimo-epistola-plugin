@@ -447,6 +447,17 @@ describe('SmartExpressionEditorComponent', () => {
     jest.useRealTimers();
   });
 
+  it('keeps a complex expression in Advanced mode', () => {
+    const { component, destroy } = createComponent('$uppercase($doc.name)');
+
+    expect(component.rawRepresentable).toBe(false);
+    component.switchToSimple();
+
+    expect(component.mode).toBe('advanced');
+    expect(component.expression).toBe('$uppercase($doc.name)');
+    destroy();
+  });
+
   it('renders the expression when Angular reattaches the Visual surface', () => {
     const { component, surface, destroy } = createComponent(`"letter-" & $doc.name`);
     component.switchToAdvanced();
