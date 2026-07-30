@@ -193,6 +193,8 @@ describe('generate-document action configuration versioning', () => {
   it('round-trips escaped JSONata string literals', () => {
     const encoded = encodeJsonataStringLiteral('a "quoted" value\\file.pdf');
     expect(decodeJsonataStringLiteral(encoded)).toBe('a "quoted" value\\file.pdf');
+    expect(decodeJsonataStringLiteral("'production'")).toBe('production');
+    expect(decodeJsonataStringLiteral("'prod' & 'uction'")).toBeUndefined();
     expect(decodeJsonataStringLiteral('$pv.filename')).toBeUndefined();
   });
 });

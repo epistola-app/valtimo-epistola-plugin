@@ -18,18 +18,19 @@
 
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { BuilderField } from '../../../utils/jsonata-converter';
+import { SmartExpressionEditorComponent } from '../../smart-expression-editor/smart-expression-editor.component';
 
 @Component({
   selector: 'epistola-builder-field',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, SmartExpressionEditorComponent],
   template: `
     <div class="builder-field" [attr.data-testid]="'epistola-mapping-field-' + field.name">
       <div
         class="builder-field__name"
         [class.builder-field__name--clickable]="field.children"
+        [class.builder-field__name--object]="field.children"
         (click)="field.children && collapseToggle.emit(path)"
         [attr.data-testid]="'epistola-mapping-field-name-' + field.name"
       >
@@ -61,15 +62,17 @@ import { BuilderField } from '../../../utils/jsonata-converter';
         *ngIf="!field.children"
         [attr.data-testid]="'epistola-mapping-field-value-' + field.name"
       >
-        <input
-          type="text"
-          class="builder-field__input"
-          [ngModel]="field.value"
-          (ngModelChange)="valueChange.emit({ path: path, value: $event })"
+        <epistola-smart-expression-editor
+          class="builder-field__editor"
+          [expression]="field.value"
+          [contextVariables]="contextVariables"
           [disabled]="disabled"
-          placeholder="JSONata expression"
-          [attr.data-testid]="'epistola-mapping-field-input-' + field.name"
-        />
+          [required]="false"
+          [compact]="true"
+          [testId]="'epistola-mapping-field-input-' + field.name"
+          (expressionChange)="valueChange.emit({ path: path, value: $event })"
+          (validChange)="validityChange.emit({ path: path, valid: $event })"
+        ></epistola-smart-expression-editor>
       </div>
 
       <div
@@ -85,7 +88,9 @@ import { BuilderField } from '../../../utils/jsonata-converter';
           [collapsed]="isChildCollapsed(j)"
           [collapsedPaths]="collapsedPaths"
           [required]="false"
+          [contextVariables]="contextVariables"
           (valueChange)="valueChange.emit($event)"
+          (validityChange)="validityChange.emit($event)"
           (collapseToggle)="collapseToggle.emit($event)"
         ></epistola-builder-field>
       </div>
@@ -94,10 +99,15 @@ import { BuilderField } from '../../../utils/jsonata-converter';
   styles: [
     `
       .builder-field {
-        margin-bottom: 4px;
+        display: grid;
+        grid-template-columns: minmax(8rem, 12rem) minmax(0, 1fr);
+        column-gap: 12px;
+        align-items: start;
+        margin-bottom: 6px;
       }
       .builder-field__name {
-        margin-bottom: 2px;
+        min-width: 0;
+        padding-top: 0.4rem;
       }
       .builder-field__name--clickable {
         cursor: pointer;
@@ -111,8 +121,9 @@ import { BuilderField } from '../../../utils/jsonata-converter';
         margin-right: 4px;
       }
       .builder-field__label {
-        font-weight: 500;
-        font-size: 0.9em;
+        font-weight: 600;
+        font-size: 0.875rem;
+        overflow-wrap: anywhere;
       }
       .builder-field__required {
         color: #da1e28;
@@ -127,23 +138,33 @@ import { BuilderField } from '../../../utils/jsonata-converter';
         display: flex;
         align-items: center;
         gap: 4px;
+        min-width: 0;
       }
-      .builder-field__input {
+      .builder-field__editor {
         flex: 1;
-        padding: 6px 8px;
-        border: 1px solid #e0e0e0;
-        border-radius: 4px;
-        font-size: 0.85em;
-        font-family: 'IBM Plex Mono', monospace;
-      }
-      .builder-field__input:focus {
-        outline: 2px solid #0f62fe;
-        border-color: #0f62fe;
+        min-width: 0;
       }
       .builder-field__children {
+        grid-column: 1 / -1;
         border-left: 2px solid #e0e0e0;
         padding-left: 12px;
-        margin-top: 4px;
+        margin-top: 6px;
+      }
+      .builder-field__name--object {
+        grid-column: 1 / -1;
+        padding-top: 0.25rem;
+      }
+      @media (max-width: 48rem) {
+        .builder-field {
+          grid-template-columns: 1fr;
+        }
+        .builder-field__name {
+          padding-top: 0;
+          margin-bottom: 2px;
+        }
+        .builder-field__children {
+          grid-column: 1;
+        }
       }
     `,
   ],
@@ -154,8 +175,10 @@ export class BuilderFieldComponent {
   @Input() disabled = false;
   @Input() collapsed = false;
   @Input() required = false;
+  @Input() contextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
   @Input() collapsedPaths: Set<string> = new Set();
   @Output() valueChange = new EventEmitter<{ path: number[]; value: string }>();
+  @Output() validityChange = new EventEmitter<{ path: number[]; valid: boolean }>();
   @Output() collapseToggle = new EventEmitter<number[]>();
 
   isChildCollapsed(childIndex: number): boolean {

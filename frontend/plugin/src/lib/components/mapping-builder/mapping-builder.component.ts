@@ -18,7 +18,6 @@
 
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { TemplateField } from '../../models';
 import { BuilderFieldComponent } from './builder-field/builder-field.component';
@@ -31,7 +30,7 @@ import {
 @Component({
   selector: 'epistola-mapping-builder',
   standalone: true,
-  imports: [CommonModule, FormsModule, PluginTranslatePipeModule, BuilderFieldComponent],
+  imports: [CommonModule, PluginTranslatePipeModule, BuilderFieldComponent],
   template: `
     <div class="mapping-builder" data-testid="epistola-mapping-builder">
       <div
@@ -51,7 +50,9 @@ import {
         [collapsed]="isCollapsed([i])"
         [collapsedPaths]="collapsedPaths"
         [required]="isRequired(field.name)"
+        [contextVariables]="contextVariables"
         (valueChange)="onNestedValueChange($event.path, $event.value)"
+        (validityChange)="onNestedValidityChange($event.path, $event.valid)"
         (collapseToggle)="toggleCollapse($event)"
       ></epistola-builder-field>
     </div>
@@ -126,21 +127,30 @@ export class MappingBuilderComponent implements OnChanges {
   @Input() expression: string = '';
   @Input() templateFields: TemplateField[] = [];
   @Input() disabled: boolean = false;
+  @Input() contextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
   @Output() expressionChange = new EventEmitter<string>();
+  @Output() validChange = new EventEmitter<boolean>();
 
   fields: BuilderField[] = [];
   collapsedPaths = new Set<string>();
   private initialCollapseApplied = false;
+  private readonly fieldValidity = new Map<string, boolean>();
+  private lastEmittedExpression: string | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
-    // Skip re-parse only when expression alone changed (from our own emit)
     const expressionChanged = !!changes['expression'];
     const templateFieldsChanged = !!changes['templateFields'];
 
-    if (expressionChanged && !templateFieldsChanged && !changes['expression'].firstChange) {
-      return; // Don't re-parse when we emit changes ourselves
+    if (
+      expressionChanged &&
+      !templateFieldsChanged &&
+      changes['expression'].currentValue === this.lastEmittedExpression
+    ) {
+      this.lastEmittedExpression = null;
+      return;
     }
     if (expressionChanged || templateFieldsChanged) {
+      this.fieldValidity.clear();
       this.rebuildFields();
       if (!this.initialCollapseApplied && this.fields.length > 0) {
         this.collapseAll();
@@ -153,8 +163,14 @@ export class MappingBuilderComponent implements OnChanges {
     const field = this.getFieldAtPath(path);
     if (field) {
       field.value = value;
+      field.present = !!value.trim();
       this.emit();
     }
+  }
+
+  onNestedValidityChange(path: number[], valid: boolean): void {
+    this.fieldValidity.set(path.join('.'), valid);
+    this.validChange.emit([...this.fieldValidity.values()].every(Boolean));
   }
 
   isRequired(fieldName: string): boolean {
@@ -205,6 +221,7 @@ export class MappingBuilderComponent implements OnChanges {
 
   private emit(): void {
     const jsonata = builderToJsonata(this.fields);
+    this.lastEmittedExpression = jsonata;
     this.expressionChange.emit(jsonata);
   }
 
@@ -233,10 +250,11 @@ export class MappingBuilderComponent implements OnChanges {
           name: tf.name,
           mode: 'ref' as const,
           value: '',
-          children: tf.children.map((c) => ({ name: c.name, mode: 'ref' as const, value: '' })),
+          present: false,
+          children: tf.children.map((child) => this.emptyBuilderField(child)),
         };
       }
-      return { name: tf.name, mode: 'ref' as const, value: '' };
+      return { name: tf.name, mode: 'ref' as const, value: '', present: false };
     });
 
     // Include extra fields from expression not in the template schema
@@ -245,5 +263,23 @@ export class MappingBuilderComponent implements OnChanges {
         this.fields.push(p);
       }
     }
+  }
+
+  private emptyBuilderField(templateField: TemplateField): BuilderField {
+    if (templateField.fieldType === 'OBJECT' && templateField.children?.length) {
+      return {
+        name: templateField.name,
+        mode: 'ref',
+        value: '',
+        present: false,
+        children: templateField.children.map((child) => this.emptyBuilderField(child)),
+      };
+    }
+    return {
+      name: templateField.name,
+      mode: 'ref',
+      value: '',
+      present: false,
+    };
   }
 }

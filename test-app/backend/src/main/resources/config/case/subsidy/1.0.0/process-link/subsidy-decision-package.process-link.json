@@ -12,9 +12,10 @@
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
     "pluginActionDefinitionKey": "epistola-generate-document",
     "actionProperties": {
+      "actionConfigVersion": 1,
       "templateId": "subsidiebesluit",
-      "outputFormat": "PDF",
-      "filename": "subsidiebesluit.pdf",
+      "outputFormat": "\"PDF\"",
+      "filename": "\"subsidiebesluit.pdf\"",
       "resultProcessVariable": "requestId1",
       "dataMapping": "{\n  \"beneficiary\": {\n    \"name\": $doc.beneficiary.name,\n    \"address\": {\n      \"street\": $doc.beneficiary.address.street,\n      \"houseNumber\": $doc.beneficiary.address.houseNumber,\n      \"postalCode\": $doc.beneficiary.address.postalCode,\n      \"city\": $doc.beneficiary.address.city\n    }\n  },\n  \"subsidy\": {\n    \"programName\": $doc.subsidy.programName,\n    \"amount\": $doc.subsidy.amount,\n    \"decision\": $doc.subsidy.decision,\n    \"conditions\": $doc.subsidy.conditions\n  }\n}",
       "catalogId": "municipality-demo"
@@ -39,9 +40,10 @@
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
     "pluginActionDefinitionKey": "epistola-generate-document",
     "actionProperties": {
+      "actionConfigVersion": 1,
       "templateId": "financieel-overzicht",
-      "outputFormat": "PDF",
-      "filename": "financieel-overzicht.pdf",
+      "outputFormat": "\"PDF\"",
+      "filename": "\"financieel-overzicht.pdf\"",
       "resultProcessVariable": "requestId2",
       "dataMapping": "{\n  \"beneficiary\": {\n    \"name\": $doc.beneficiary.name\n  },\n  \"subsidy\": {\n    \"programName\": $doc.subsidy.programName,\n    \"amount\": $doc.subsidy.amount\n  }\n}",
       "catalogId": "municipality-demo"
@@ -66,9 +68,10 @@
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
     "pluginActionDefinitionKey": "epistola-generate-document",
     "actionProperties": {
+      "actionConfigVersion": 1,
       "templateId": "voorwaarden-bijlage",
-      "outputFormat": "PDF",
-      "filename": "voorwaarden-bijlage.pdf",
+      "outputFormat": "\"PDF\"",
+      "filename": "\"voorwaarden-bijlage.pdf\"",
       "resultProcessVariable": "requestId3",
       "dataMapping": "{\n  \"beneficiary\": {\n    \"name\": $doc.beneficiary.name\n  },\n  \"subsidy\": {\n    \"programName\": $doc.subsidy.programName,\n    \"conditions\": $doc.subsidy.conditions\n  }\n}",
       "catalogId": "municipality-demo"

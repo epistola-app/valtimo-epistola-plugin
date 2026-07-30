@@ -59,6 +59,27 @@ selections for variants and environments are serialized in that form.
 Data mapping is always JSONata. Output format is stored as the fixed JSONata
 expression `"PDF"` and must resolve to PDF at runtime.
 
+The v1 editor presents free-form expressions through a guided visual control
+where plain typing creates a quoted JSONata string, references are inserted as
+semantic `$doc`/`$pv`/`$case` chips, and simple concatenations can be assembled
+without writing syntax. Complex scalar expressions remain editable in the
+control's validated, growing Advanced textarea. The data-mapping Simple mode
+uses the same control for each statically named object field; mappings with a
+dynamic outer structure use the Monaco-based whole-mapping Advanced editor.
+
+Variant and environment use the same editor with resource options enabled,
+adding a Select view to Visual and Advanced. The single mode action cycles in
+the order Select → Visual → Advanced while skipping any view that cannot
+represent the current expression losslessly. An exact loaded string can use all
+three views, a simple dynamic or unmatched expression uses Visual and Advanced,
+and complex JSONata remains Advanced-only.
+
+This editor representation does not introduce a new action configuration
+version. Both visual and Advanced modes read and write the same v1 JSONata
+strings, so switching presentation mode does not change the persisted schema or
+backend behaviour. A future `actionConfigVersion` is needed only when the
+meaning or shape of the complete stored action changes.
+
 ## Removal policy
 
 The Java v0 parser, backend `LiteralScalar`, and frontend v0 configuration type

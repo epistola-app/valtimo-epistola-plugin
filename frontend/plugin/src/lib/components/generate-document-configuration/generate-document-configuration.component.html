@@ -122,66 +122,21 @@
     </div>
   </div>
 
-  <!-- Explicit variant selection (dropdown or expression) -->
-  <!--
-    The v-select / v-input here is intentionally NOT named into the v-form: v-form's
-    @ContentChildren queries default to descendants:false and would skip anything nested
-    in this `field-with-fx` wrapper. The value is tracked through standalone ngModel/value
-    bindings on the component, see variantIdValue.
-  -->
-  <div *ngIf="variantSelectionMode === 'explicit'" class="field-with-fx">
-    <v-select
-      *ngIf="!variantIdExpressionMode"
-      data-testid="epistola-generate-variant-id"
-      [title]="'variantId' | pluginTranslate: pluginId | async"
-      [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
-      [margin]="true"
-      [items]="obs.variants.data"
-      [appendInline]="false"
-      [dropUp]="false"
-      [ngModel]="variantIdValue"
-      [ngModelOptions]="{ standalone: true }"
-      [clearSelectionSubject$]="clearVariantId$"
-      (ngModelChange)="onVariantIdValueChange($event)"
-      [disabled]="obs.disabled || obs.variants.loading || !obs.selectedTemplateId"
-      [required]="false"
-      [loading]="obs.variants.loading"
-    >
-    </v-select>
-    <div *ngIf="variantIdExpressionMode" class="fx-input-group">
-      <label class="fx-input-label">{{ 'variantId' | pluginTranslate: pluginId | async }}</label>
-      <input
-        type="text"
-        class="fx-input"
-        data-testid="epistola-generate-variant-id-expression"
-        [ngModel]="variantIdExpression"
-        (ngModelChange)="variantIdExpression = $event; onVariantIdExpressionChange()"
-        [disabled]="obs.disabled"
-        placeholder="$pv.letterType"
-      />
-      <small
-        *ngIf="!canSwitchVariantIdToDropdown()"
-        class="fx-mode-hint"
-        data-testid="epistola-generate-variant-id-expression-hint"
-      >
-        {{ 'expressionDropdownUnavailable' | pluginTranslate: pluginId | async }}
-      </small>
-    </div>
-    <button
-      type="button"
-      class="fx-toggle"
-      data-testid="epistola-generate-variant-id-fx-toggle"
-      (click)="toggleVariantIdExpressionMode()"
-      [disabled]="obs.disabled || (variantIdExpressionMode && !canSwitchVariantIdToDropdown())"
-      [title]="
-        (variantIdExpressionMode ? 'switchToDropdown' : 'switchToExpression')
-          | pluginTranslate: pluginId
-          | async
-      "
-    >
-      {{ variantIdExpressionMode ? '·' : 'fx' }}
-    </button>
-  </div>
+  <epistola-smart-expression-editor
+    *ngIf="variantSelectionMode === 'explicit'"
+    [expression]="variantIdExpression"
+    [contextVariables]="editorContextVariables"
+    [selectOptions]="obs.variants.data"
+    [selectLoading]="obs.variants.loading"
+    [title]="'variantId' | pluginTranslate: pluginId | async"
+    [tooltip]="'variantIdTooltip' | pluginTranslate: pluginId | async"
+    [placeholder]="'$pv.letterType'"
+    [allowTypedValues]="false"
+    [disabled]="obs.disabled || obs.variants.loading || !obs.selectedTemplateId"
+    testId="epistola-generate-variant-id"
+    (expressionChange)="onVariantIdExpressionChange($event)"
+    (validChange)="onExpressionValidityChange('variantId', $event)"
+  ></epistola-smart-expression-editor>
   <div
     *ngIf="obs.variants.error"
     class="loading-error"
@@ -242,17 +197,19 @@
           </button>
         </div>
         <div class="attribute-expression">
-          <input
-            type="text"
-            class="variant-attribute-input"
-            [attr.data-testid]="'epistola-generate-attribute-value-' + i"
+          <epistola-smart-expression-editor
+            [expression]="entry.value"
+            [contextVariables]="editorContextVariables"
+            [disabled]="obs.disabled"
             [placeholder]="
               'attributeValueExpressionPlaceholder' | pluginTranslate: pluginId | async
             "
-            [(ngModel)]="entry.value"
-            (ngModelChange)="onAttributeEntryChange()"
-            [disabled]="obs.disabled"
-          />
+            [testId]="'epistola-generate-attribute-value-' + i"
+            (expressionChange)="onAttributeExpressionChange(entry, $event)"
+            (validChange)="
+              onExpressionValidityChange('variantAttribute:' + entry._editorId, $event)
+            "
+          ></epistola-smart-expression-editor>
         </div>
         <label class="variant-attribute-required-toggle">
           <input
@@ -291,62 +248,20 @@
     </button>
   </div>
 
-  <div class="field-with-fx">
-    <v-select
-      *ngIf="!environmentIdExpressionMode"
-      data-testid="epistola-generate-environment-id"
-      [title]="'environmentId' | pluginTranslate: pluginId | async"
-      [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
-      [margin]="true"
-      [items]="obs.environments.data"
-      [appendInline]="false"
-      [dropUp]="false"
-      [ngModel]="environmentIdValue"
-      [ngModelOptions]="{ standalone: true }"
-      (ngModelChange)="onEnvironmentIdValueChange($event)"
-      [disabled]="obs.disabled || obs.environments.loading"
-      [required]="false"
-      [loading]="obs.environments.loading"
-    >
-    </v-select>
-    <div *ngIf="environmentIdExpressionMode" class="fx-input-group">
-      <label class="fx-input-label">{{
-        'environmentId' | pluginTranslate: pluginId | async
-      }}</label>
-      <input
-        type="text"
-        class="fx-input"
-        data-testid="epistola-generate-environment-id-expression"
-        [ngModel]="environmentIdExpression"
-        (ngModelChange)="environmentIdExpression = $event; onEnvironmentIdExpressionChange()"
-        [disabled]="obs.disabled"
-        placeholder="$pv.environmentId"
-      />
-      <small
-        *ngIf="!canSwitchEnvironmentIdToDropdown()"
-        class="fx-mode-hint"
-        data-testid="epistola-generate-environment-id-expression-hint"
-      >
-        {{ 'expressionDropdownUnavailable' | pluginTranslate: pluginId | async }}
-      </small>
-    </div>
-    <button
-      type="button"
-      class="fx-toggle"
-      data-testid="epistola-generate-environment-id-fx-toggle"
-      (click)="toggleEnvironmentIdExpressionMode()"
-      [disabled]="
-        obs.disabled || (environmentIdExpressionMode && !canSwitchEnvironmentIdToDropdown())
-      "
-      [title]="
-        (environmentIdExpressionMode ? 'switchToDropdown' : 'switchToExpression')
-          | pluginTranslate: pluginId
-          | async
-      "
-    >
-      {{ environmentIdExpressionMode ? '·' : 'fx' }}
-    </button>
-  </div>
+  <epistola-smart-expression-editor
+    [expression]="environmentIdExpression"
+    [contextVariables]="editorContextVariables"
+    [selectOptions]="obs.environments.data"
+    [selectLoading]="obs.environments.loading"
+    [title]="'environmentId' | pluginTranslate: pluginId | async"
+    [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
+    [placeholder]="'$pv.environmentId'"
+    [allowTypedValues]="false"
+    [disabled]="obs.disabled || obs.environments.loading"
+    testId="epistola-generate-environment-id"
+    (expressionChange)="onEnvironmentIdExpressionChange($event)"
+    (validChange)="onExpressionValidityChange('environmentId', $event)"
+  ></epistola-smart-expression-editor>
   <div
     *ngIf="obs.environments.error"
     class="loading-error"
@@ -355,31 +270,31 @@
     {{ obs.environments.error }}
   </div>
 
-  <div class="fx-input-group">
-    <label class="fx-input-label">{{ 'filename' | pluginTranslate: pluginId | async }}</label>
-    <input
-      type="text"
-      class="fx-input"
-      data-testid="epistola-generate-filename-expression"
-      [ngModel]="filenameExpression"
-      (ngModelChange)="filenameExpression = $event; onFilenameExpressionChange()"
-      [disabled]="obs.disabled"
-      placeholder='"besluit-" & $doc.name & ".pdf"'
-    />
-  </div>
+  <epistola-smart-expression-editor
+    [expression]="filenameExpression"
+    [contextVariables]="editorContextVariables"
+    [title]="'filename' | pluginTranslate: pluginId | async"
+    [tooltip]="'filenameTooltip' | pluginTranslate: pluginId | async"
+    [disabled]="obs.disabled"
+    [required]="true"
+    [allowNull]="false"
+    [placeholder]="'besluit-'"
+    testId="epistola-generate-filename-expression"
+    (expressionChange)="onFilenameExpressionChange($event)"
+    (validChange)="onExpressionValidityChange('filename', $event)"
+  ></epistola-smart-expression-editor>
 
-  <div class="fx-input-group">
-    <label class="fx-input-label">{{ 'correlationId' | pluginTranslate: pluginId | async }}</label>
-    <input
-      type="text"
-      class="fx-input"
-      data-testid="epistola-generate-correlation-id-expression"
-      [ngModel]="correlationIdExpression"
-      (ngModelChange)="correlationIdExpression = $event; onCorrelationIdExpressionChange()"
-      [disabled]="obs.disabled"
-      placeholder="$pv.correlationId"
-    />
-  </div>
+  <epistola-smart-expression-editor
+    [expression]="correlationIdExpression"
+    [contextVariables]="editorContextVariables"
+    [title]="'correlationId' | pluginTranslate: pluginId | async"
+    [tooltip]="'correlationIdTooltip' | pluginTranslate: pluginId | async"
+    [disabled]="obs.disabled"
+    [placeholder]="'$pv.correlationId'"
+    testId="epistola-generate-correlation-id-expression"
+    (expressionChange)="onCorrelationIdExpressionChange($event)"
+    (validChange)="onExpressionValidityChange('correlationId', $event)"
+  ></epistola-smart-expression-editor>
 
   <v-input
     name="resultProcessVariable"
@@ -414,18 +329,21 @@
   </p>
   <div class="mapping-mode-toggle">
     <button
+      type="button"
       class="mapping-mode-toggle__btn"
       data-testid="epistola-generate-mapping-mode-simple"
       [class.mapping-mode-toggle__btn--active]="mappingMode === 'simple'"
-      (click)="mappingMode = 'simple'"
+      [disabled]="mappingMode === 'advanced' && !canUseSimpleMapping()"
+      (click)="onMappingModeChange('simple')"
     >
       {{ 'mappingModeSimple' | pluginTranslate: pluginId | async }}
     </button>
     <button
+      type="button"
       class="mapping-mode-toggle__btn"
       data-testid="epistola-generate-mapping-mode-advanced"
       [class.mapping-mode-toggle__btn--active]="mappingMode === 'advanced'"
-      (click)="mappingMode = 'advanced'"
+      (click)="onMappingModeChange('advanced')"
     >
       {{ 'mappingModeAdvanced' | pluginTranslate: pluginId | async }}
     </button>
@@ -436,8 +354,10 @@
     *ngIf="mappingMode === 'simple'"
     [expression]="dataMapping$ | async"
     [templateFields]="(templateFields$ | async)?.data ?? []"
+    [contextVariables]="editorContextVariables"
     [disabled]="!!(disabled$ | async)"
     (expressionChange)="onDataMappingChange($event)"
+    (validChange)="onDataMappingValidityChange($event)"
   ></epistola-mapping-builder>
 
   <epistola-jsonata-editor
@@ -447,6 +367,7 @@
     [contextVariables]="editorContextVariables"
     [functions]="expressionFunctions"
     (expressionChange)="onDataMappingChange($event)"
+    (validChange)="onDataMappingValidityChange($event)"
   ></epistola-jsonata-editor>
 
   <!-- Bottom tabs: Schema + Preview (collapsible) -->

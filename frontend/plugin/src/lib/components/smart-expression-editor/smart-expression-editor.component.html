@@ -1,0 +1,309 @@
+<div
+  class="smart-expression"
+  [class.smart-expression--compact]="compact"
+  [class.smart-expression--disabled]="disabled"
+  [attr.data-testid]="testId"
+>
+  <ng-template #modeControl>
+    <button
+      type="button"
+      class="smart-expression__mode-toggle"
+      [disabled]="disabled || !nextMode"
+      [attr.aria-label]="nextModeTranslationKey | pluginTranslate: 'epistola' | async"
+      [attr.title]="nextModeTranslationKey | pluginTranslate: 'epistola' | async"
+      [attr.aria-describedby]="
+        mode === 'advanced' && !nextMode && !rawError ? testId + '-advanced-only' : null
+      "
+      [attr.data-testid]="testId + '-mode'"
+      (click)="toggleMode()"
+    >
+      <ng-container [ngSwitch]="nextMode">
+        <svg *ngSwitchCase="'select'" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M2 3.5h8M2 7.5h8M2 11.5h8M12 6l2 2-2 2"></path>
+        </svg>
+        <svg *ngSwitchCase="'advanced'" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M6 3.5 1.5 8 6 12.5M10 3.5 14.5 8 10 12.5"></path>
+        </svg>
+        <svg *ngSwitchDefault viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <rect x="1.5" y="2.5" width="5" height="4" rx="1"></rect>
+          <path d="M8.5 4.5h6M1.5 9.5h5M8.5 9.5h6M1.5 13.5h9"></path>
+        </svg>
+      </ng-container>
+    </button>
+  </ng-template>
+
+  <div *ngIf="mode === 'select'" class="smart-expression__select-wrap">
+    <v-select
+      [name]="testId + '-select'"
+      [title]="title"
+      [tooltip]="tooltip"
+      [items]="selectOptions || []"
+      [appendInline]="false"
+      [dropUp]="false"
+      [margin]="false"
+      [ngModel]="selectedValue"
+      [ngModelOptions]="{ standalone: true }"
+      (ngModelChange)="onSelectedValueChange($event)"
+      [disabled]="disabled"
+      [loading]="selectLoading"
+      [required]="required"
+      [dataTestId]="testId + '-select'"
+    ></v-select>
+    <ng-container *ngTemplateOutlet="modeControl"></ng-container>
+  </div>
+
+  <div *ngIf="mode === 'simple'" class="smart-expression__simple">
+    <v-input-label
+      *ngIf="title"
+      [attr.id]="testId + '-label'"
+      [name]="testId + '-input'"
+      [title]="title"
+      [tooltip]="tooltip"
+      [required]="required"
+      [disabled]="disabled"
+    ></v-input-label>
+    <div class="smart-expression__surface-wrap">
+      <div
+        #surface
+        class="smart-expression__surface"
+        role="textbox"
+        aria-multiline="false"
+        [attr.aria-required]="required"
+        [attr.aria-disabled]="disabled"
+        [attr.aria-labelledby]="title ? testId + '-label' : null"
+        [attr.aria-label]="
+          title ? null : ('expressionEditorInput' | pluginTranslate: 'epistola' | async)
+        "
+        [attr.data-placeholder]="placeholder"
+        [attr.contenteditable]="disabled ? 'false' : 'true'"
+        [attr.data-testid]="testId + '-input'"
+        (input)="onSurfaceInput()"
+        (keydown)="onSurfaceKeydown($event)"
+        (click)="onSurfaceClick($event)"
+        (keyup)="onSurfaceFocus()"
+        (mouseup)="onSurfaceFocus()"
+        (focus)="onSurfaceFocus()"
+        (paste)="onPaste($event)"
+        (compositionstart)="onCompositionStart()"
+        (compositionend)="onCompositionEnd()"
+      ></div>
+      <button
+        type="button"
+        class="smart-expression__control smart-expression__insert"
+        [disabled]="disabled"
+        [attr.aria-label]="'expressionEditorInsert' | pluginTranslate: 'epistola' | async"
+        aria-haspopup="listbox"
+        [attr.aria-expanded]="pickerOpen"
+        [attr.data-testid]="testId + '-insert'"
+        (mousedown)="onInsertMouseDown($event)"
+        (click)="onInsertClick($event)"
+      >
+        +
+      </button>
+      <ng-container *ngTemplateOutlet="modeControl"></ng-container>
+    </div>
+    <div class="smart-expression__hint">
+      {{ 'expressionEditorHint' | pluginTranslate: 'epistola' | async }}
+    </div>
+
+    <div
+      *ngIf="pickerOpen"
+      class="smart-expression__picker"
+      [style.left.px]="popoverLeft"
+      [style.top.px]="popoverTop"
+      [attr.data-testid]="testId + '-picker'"
+      (mousedown)="$event.stopPropagation()"
+    >
+      <input
+        #pickerSearch
+        *ngIf="!numberEntryOpen"
+        type="search"
+        class="smart-expression__search"
+        role="combobox"
+        aria-autocomplete="list"
+        [attr.aria-controls]="optionsId"
+        [attr.aria-expanded]="pickerOpen"
+        [placeholder]="'expressionEditorSearch' | pluginTranslate: 'epistola' | async"
+        [value]="pickerQuery"
+        (input)="onPickerQueryChange($any($event.target).value)"
+        (keydown)="onPickerSearchKeydown($event)"
+      />
+
+      <div *ngIf="numberEntryOpen" class="smart-expression__number-entry">
+        <label>
+          {{ 'expressionEditorNumber' | pluginTranslate: 'epistola' | async }}
+          <input
+            type="number"
+            class="smart-expression__search"
+            [(ngModel)]="numberDraft"
+            (keydown.enter)="insertNumber()"
+            (keydown.escape)="closePicker(true)"
+          />
+        </label>
+        <button type="button" [disabled]="numberDraft === null" (click)="insertNumber()">
+          {{ 'expressionEditorInsert' | pluginTranslate: 'epistola' | async }}
+        </button>
+      </div>
+
+      <div *ngIf="atTrigger" class="smart-expression__group smart-expression__group--literal">
+        <button
+          type="button"
+          class="smart-expression__option"
+          (mousedown)="onLiteralAtMouseDown($event)"
+          (click)="onLiteralAtClick()"
+        >
+          <span>
+            {{ 'expressionEditorUseAtLiterally' | pluginTranslate: 'epistola' | async }}
+          </span>
+          <code>'&#64;'</code>
+        </button>
+      </div>
+
+      <div
+        *ngIf="!numberEntryOpen"
+        [id]="optionsId"
+        class="smart-expression__options"
+        role="listbox"
+        [attr.aria-label]="'expressionEditorReferences' | pluginTranslate: 'epistola' | async"
+      >
+        <ng-container *ngFor="let group of referenceGroups">
+          <div class="smart-expression__group" role="group">
+            <div class="smart-expression__group-label">
+              {{ groupTranslationKey(group.variable) | pluginTranslate: 'epistola' | async }}
+            </div>
+            <button
+              *ngFor="let option of group.options"
+              type="button"
+              class="smart-expression__option"
+              role="option"
+              [class.smart-expression__option--active]="
+                selectableReferenceOptions[activeOptionIndex] === option
+              "
+              [attr.aria-selected]="selectableReferenceOptions[activeOptionIndex] === option"
+              (mousedown)="onReferenceMouseDown($event, option)"
+              (click)="onReferenceClick(option)"
+            >
+              <span>{{ option.label }}</span>
+              <code>{{ option.expression }}</code>
+            </button>
+          </div>
+        </ng-container>
+
+        <div
+          *ngIf="customReferenceOptions.length > 0"
+          class="smart-expression__group smart-expression__group--custom"
+          role="group"
+        >
+          <div class="smart-expression__group-label">
+            {{ 'expressionEditorUnlistedVariable' | pluginTranslate: 'epistola' | async }}
+          </div>
+          <button
+            *ngFor="let option of customReferenceOptions"
+            type="button"
+            class="smart-expression__option"
+            role="option"
+            [class.smart-expression__option--active]="
+              selectableReferenceOptions[activeOptionIndex] === option
+            "
+            [attr.aria-selected]="selectableReferenceOptions[activeOptionIndex] === option"
+            (mousedown)="onReferenceMouseDown($event, option)"
+            (click)="onReferenceClick(option)"
+          >
+            <span>
+              {{ customReferenceLabelKey(option) | pluginTranslate: 'epistola' | async }}
+            </span>
+            <code>{{ option.expression }}</code>
+          </button>
+        </div>
+
+        <div
+          *ngIf="referenceGroups.length === 0 && customReferenceOptions.length === 0"
+          class="smart-expression__empty"
+        >
+          {{ 'expressionEditorNoReferences' | pluginTranslate: 'epistola' | async }}
+        </div>
+      </div>
+
+      <div *ngIf="allowTypedValues && !numberEntryOpen" class="smart-expression__values">
+        <button
+          type="button"
+          (mousedown)="onTypedValueMouseDown($event, 'number')"
+          (click)="onTypedValueClick('number')"
+        >
+          {{ 'expressionEditorNumber' | pluginTranslate: 'epistola' | async }}
+        </button>
+        <button
+          type="button"
+          (mousedown)="onTypedValueMouseDown($event, 'true')"
+          (click)="onTypedValueClick('true')"
+        >
+          true
+        </button>
+        <button
+          type="button"
+          (mousedown)="onTypedValueMouseDown($event, 'false')"
+          (click)="onTypedValueClick('false')"
+        >
+          false
+        </button>
+        <button
+          *ngIf="allowNull"
+          type="button"
+          (mousedown)="onTypedValueMouseDown($event, 'null')"
+          (click)="onTypedValueClick('null')"
+        >
+          null
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div *ngIf="mode === 'advanced'" class="smart-expression__advanced">
+    <v-input-label
+      *ngIf="title"
+      [attr.id]="testId + '-label'"
+      [name]="testId + '-advanced'"
+      [title]="title"
+      [tooltip]="tooltip"
+      [required]="required"
+      [disabled]="disabled"
+    ></v-input-label>
+    <div class="smart-expression__raw-wrap" [class.smart-expression__raw-wrap--invalid]="rawError">
+      <textarea
+        #rawTextarea
+        class="smart-expression__raw"
+        [id]="testId + '-advanced'"
+        [disabled]="disabled"
+        [required]="required"
+        [attr.aria-labelledby]="title ? testId + '-label' : null"
+        [attr.aria-label]="
+          title ? null : ('expressionEditorInput' | pluginTranslate: 'epistola' | async)
+        "
+        [attr.aria-invalid]="!!rawError"
+        [attr.aria-errormessage]="rawError ? testId + '-error' : null"
+        [attr.aria-describedby]="rawError ? testId + '-error' : null"
+        [attr.data-testid]="testId + '-advanced'"
+        [ngModel]="rawExpression"
+        (ngModelChange)="onRawInput($event, rawTextarea)"
+        (blur)="onRawBlur()"
+      ></textarea>
+      <ng-container *ngTemplateOutlet="modeControl"></ng-container>
+    </div>
+    <div
+      *ngIf="rawError"
+      class="smart-expression__error"
+      role="alert"
+      [id]="testId + '-error'"
+      [attr.data-testid]="testId + '-error'"
+    >
+      {{ rawError }}
+    </div>
+    <div
+      *ngIf="!rawRepresentable && !rawError"
+      class="smart-expression__hint"
+      [id]="testId + '-advanced-only'"
+    >
+      {{ 'expressionEditorAdvancedOnly' | pluginTranslate: 'epistola' | async }}
+    </div>
+  </div>
+</div>

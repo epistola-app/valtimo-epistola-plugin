@@ -17,6 +17,7 @@ const copyright = `${copyrightMarker} Epistola Nederland B.V.`;
 const license = `${licenseMarker} EUPL-1.2`;
 
 const lineComments = new Map([
+  ['.cjs', '//'],
   ['.gradle', '//'],
   ['.java', '//'],
   ['.js', '//'],

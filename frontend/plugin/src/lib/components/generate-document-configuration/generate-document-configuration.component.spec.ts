@@ -57,45 +57,11 @@ jest.mock('../mapping-builder/mapping-builder.component', () => ({
 jest.mock('../mapping-preview/mapping-preview.component', () => ({
   MappingPreviewComponent: class {},
 }));
+jest.mock('../smart-expression-editor/smart-expression-editor.component', () => ({
+  SmartExpressionEditorComponent: class {},
+}));
 
-import { resolveExpressionSelectPrefill } from './generate-document-config-editor.adapter';
 import { GenerateDocumentConfigurationComponent } from './generate-document-configuration.component';
-
-describe('resolveExpressionSelectPrefill', () => {
-  const options = [
-    { id: 'default', text: 'Default' },
-    { id: 'production', text: 'Production' },
-  ];
-
-  it('uses the select only for an exact decoded option id', () => {
-    expect(resolveExpressionSelectPrefill('"production"', options)).toEqual({
-      expressionMode: false,
-      expression: '',
-      value: 'production',
-    });
-  });
-
-  it('uses fx mode for dynamic expressions and unmatched literals', () => {
-    expect(resolveExpressionSelectPrefill('$pv.environment', options)).toEqual({
-      expressionMode: true,
-      expression: '$pv.environment',
-      value: '',
-    });
-    expect(resolveExpressionSelectPrefill('"staging"', options)).toEqual({
-      expressionMode: true,
-      expression: '"staging"',
-      value: '',
-    });
-  });
-
-  it('keeps an unconfigured field in select mode', () => {
-    expect(resolveExpressionSelectPrefill(undefined, options)).toEqual({
-      expressionMode: false,
-      expression: '',
-      value: '',
-    });
-  });
-});
 
 describe('GenerateDocumentConfigurationComponent versioning', () => {
   const createComponent = () => {
@@ -174,8 +140,8 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     component.save$ = save$;
     component.selectedCatalogId$.next('catalog');
     component.filenameExpression = '"letter.pdf"';
-    component.environmentIdValue = 'production';
-    component.variantIdValue = 'formal';
+    component.environmentIdExpression = '"production"';
+    component.variantIdExpression = '"formal"';
     component.correlationIdExpression = '"request-123"';
     component.dataMapping$.next('{}');
     (component as any).formValue$.next({
@@ -211,7 +177,7 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     ]);
   });
 
-  it('applies exact-match selection only after environment and variant options load', () => {
+  it('preserves environment and variant expressions while the option lists load independently', () => {
     const { component } = createComponent();
     (component as any).prefill$ = of({
       actionConfigVersion: 1,
@@ -228,35 +194,40 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     (component as any).initEnvironmentPrefill();
     (component as any).initVariantPrefill();
 
-    (component as any).loadedEnvironmentOptions$.next([{ id: 'production', text: 'Production' }]);
-    (component as any).loadedVariantOptions$.next([{ id: 'default', text: 'Default' }]);
-
-    expect(component.environmentIdExpressionMode).toBe(false);
-    expect(component.environmentIdValue).toBe('production');
-    expect(component.variantIdExpressionMode).toBe(true);
+    expect(component.environmentIdExpression).toBe('"production"');
     expect(component.variantIdExpression).toBe('"missing-variant"');
   });
 
-  it('switches an expression back to a dropdown only when it exactly matches an option', () => {
+  it('includes inline expression validity in the action validity', () => {
     const { component } = createComponent();
-    component.variants$.next({
-      data: [{ id: 'default', text: 'Default' }],
-      loading: false,
-      error: null,
+    const validity: boolean[] = [];
+    component.valid.subscribe((value) => validity.push(value));
+    component.selectedCatalogId$.next('catalog');
+    component.filenameExpression = '"letter.pdf"';
+    (component as any).formValue$.next({
+      templateId: 'template',
+      outputFormat: 'PDF',
+      resultProcessVariable: 'result',
     });
-    component.variantIdExpressionMode = true;
-    component.variantIdExpression = 'customer.variant';
 
-    expect(component.canSwitchVariantIdToDropdown()).toBe(false);
-    component.toggleVariantIdExpressionMode();
-    expect(component.variantIdExpressionMode).toBe(true);
-    expect(component.variantIdValue).toBe('');
+    component.onExpressionValidityChange('filename', false);
+    component.onExpressionValidityChange('filename', true);
 
-    component.variantIdExpression = '"default"';
+    expect(validity).toEqual([false, true]);
+  });
 
-    expect(component.canSwitchVariantIdToDropdown()).toBe(true);
-    component.toggleVariantIdExpressionMode();
-    expect(component.variantIdExpressionMode).toBe(false);
-    expect(component.variantIdValue).toBe('default');
+  it('does not switch an unsupported whole mapping to simple mode', () => {
+    const { component } = createComponent();
+    component.mappingMode = 'advanced';
+    component.dataMapping$.next('$merge([{"name": $doc.name}, $pv.extra])');
+
+    expect(component.canUseSimpleMapping()).toBe(false);
+    component.onMappingModeChange('simple');
+    expect(component.mappingMode).toBe('advanced');
+
+    component.dataMapping$.next('{"name": $uppercase($doc.name)}');
+    expect(component.canUseSimpleMapping()).toBe(true);
+    component.onMappingModeChange('simple');
+    expect(component.mappingMode).toBe('simple');
   });
 });
