@@ -217,4 +217,27 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     expect(component.variantIdExpressionMode).toBe(true);
     expect(component.variantIdExpression).toBe('"missing-variant"');
   });
+
+  it('switches an expression back to a dropdown only when it exactly matches an option', () => {
+    const { component } = createComponent();
+    component.variants$.next({
+      data: [{ id: 'default', text: 'Default' }],
+      loading: false,
+      error: null,
+    });
+    component.variantIdExpressionMode = true;
+    component.variantIdExpression = 'customer.variant';
+
+    expect(component.canSwitchVariantIdToDropdown()).toBe(false);
+    component.toggleVariantIdExpressionMode();
+    expect(component.variantIdExpressionMode).toBe(true);
+    expect(component.variantIdValue).toBe('');
+
+    component.variantIdExpression = '"default"';
+
+    expect(component.canSwitchVariantIdToDropdown()).toBe(true);
+    component.toggleVariantIdExpressionMode();
+    expect(component.variantIdExpressionMode).toBe(false);
+    expect(component.variantIdValue).toBe('default');
+  });
 });

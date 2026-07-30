@@ -149,14 +149,25 @@
         [disabled]="obs.disabled"
         placeholder="$pv.letterType"
       />
+      <small
+        *ngIf="!canSwitchVariantIdToDropdown()"
+        class="fx-mode-hint"
+        data-testid="epistola-generate-variant-id-expression-hint"
+      >
+        {{ 'expressionDropdownUnavailable' | pluginTranslate: pluginId | async }}
+      </small>
     </div>
     <button
       type="button"
       class="fx-toggle"
       data-testid="epistola-generate-variant-id-fx-toggle"
       (click)="toggleVariantIdExpressionMode()"
-      [disabled]="obs.disabled"
-      [title]="variantIdExpressionMode ? 'Switch to dropdown' : 'Switch to expression'"
+      [disabled]="obs.disabled || (variantIdExpressionMode && !canSwitchVariantIdToDropdown())"
+      [title]="
+        (variantIdExpressionMode ? 'switchToDropdown' : 'switchToExpression')
+          | pluginTranslate: pluginId
+          | async
+      "
     >
       {{ variantIdExpressionMode ? '·' : 'fx' }}
     </button>
@@ -314,14 +325,27 @@
         [disabled]="obs.disabled"
         placeholder="$pv.environmentId"
       />
+      <small
+        *ngIf="!canSwitchEnvironmentIdToDropdown()"
+        class="fx-mode-hint"
+        data-testid="epistola-generate-environment-id-expression-hint"
+      >
+        {{ 'expressionDropdownUnavailable' | pluginTranslate: pluginId | async }}
+      </small>
     </div>
     <button
       type="button"
       class="fx-toggle"
       data-testid="epistola-generate-environment-id-fx-toggle"
       (click)="toggleEnvironmentIdExpressionMode()"
-      [disabled]="obs.disabled"
-      [title]="environmentIdExpressionMode ? 'Switch to dropdown' : 'Switch to expression'"
+      [disabled]="
+        obs.disabled || (environmentIdExpressionMode && !canSwitchEnvironmentIdToDropdown())
+      "
+      [title]="
+        (environmentIdExpressionMode ? 'switchToDropdown' : 'switchToExpression')
+          | pluginTranslate: pluginId
+          | async
+      "
     >
       {{ environmentIdExpressionMode ? '·' : 'fx' }}
     </button>

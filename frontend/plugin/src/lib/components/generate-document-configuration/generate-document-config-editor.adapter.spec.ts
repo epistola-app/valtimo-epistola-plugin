@@ -19,6 +19,7 @@
 import {
   buildGenerateDocumentConfig,
   buildValidateJsonataRequest,
+  canRepresentExpressionAsSelection,
   createVariantAttributeEditorEntries,
   formatVariantAttributes,
   resolveExpressionSelectPrefill,
@@ -67,6 +68,15 @@ describe('generate-document editor adapter', () => {
       expression: '"missing"',
       value: '',
     });
+  });
+
+  it('allows switching to a dropdown only for empty or exactly matching literal expressions', () => {
+    const options = [{ id: 'production', text: 'Production' }];
+
+    expect(canRepresentExpressionAsSelection('', options)).toBe(true);
+    expect(canRepresentExpressionAsSelection('"production"', options)).toBe(true);
+    expect(canRepresentExpressionAsSelection('"removed"', options)).toBe(false);
+    expect(canRepresentExpressionAsSelection('customer.environment', options)).toBe(false);
   });
 
   it('serializes dropdown values and direct expressions to v1 JSONata', () => {

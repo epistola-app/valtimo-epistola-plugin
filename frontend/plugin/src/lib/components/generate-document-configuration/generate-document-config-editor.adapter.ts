@@ -78,6 +78,13 @@ export function resolveExpressionSelectPrefill(
     : { expressionMode: true, expression, value: '' };
 }
 
+export function canRepresentExpressionAsSelection(
+  expression: string,
+  options: SelectItem[],
+): boolean {
+  return !resolveExpressionSelectPrefill(expression || undefined, options).expressionMode;
+}
+
 export function createVariantAttributeEditorEntries(
   attributes: VariantAttributeEntry[] | undefined,
 ): VariantAttributeEditorEntry[] {

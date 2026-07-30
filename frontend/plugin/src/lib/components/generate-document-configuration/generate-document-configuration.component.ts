@@ -89,13 +89,13 @@ import {
   isProcessVariableNameValid,
 } from './generate-document-config.util';
 import {
-  decodeJsonataStringLiteral,
   encodeJsonataStringLiteral,
   migrateGenerateDocumentConfig,
 } from './generate-document-config-version';
 import {
   buildGenerateDocumentConfig,
   buildValidateJsonataRequest,
+  canRepresentExpressionAsSelection,
   createVariantAttributeEditorEntries,
   formatVariantAttributes,
   resolveExpressionSelectPrefill,
@@ -279,9 +279,12 @@ export class GenerateDocumentConfigurationComponent
 
   toggleVariantIdExpressionMode(): void {
     if (this.variantIdExpressionMode) {
-      const literal = decodeJsonataStringLiteral(this.variantIdExpression);
-      if (literal === undefined) return;
-      this.variantIdValue = literal;
+      const selection = resolveExpressionSelectPrefill(
+        this.variantIdExpression,
+        this.variants$.getValue().data,
+      );
+      if (selection.expressionMode) return;
+      this.variantIdValue = selection.value;
     } else {
       this.variantIdExpression = encodeJsonataStringLiteral(this.variantIdValue);
     }
@@ -291,14 +294,31 @@ export class GenerateDocumentConfigurationComponent
 
   toggleEnvironmentIdExpressionMode(): void {
     if (this.environmentIdExpressionMode) {
-      const literal = decodeJsonataStringLiteral(this.environmentIdExpression);
-      if (literal === undefined) return;
-      this.environmentIdValue = literal;
+      const selection = resolveExpressionSelectPrefill(
+        this.environmentIdExpression,
+        this.environments$.getValue().data,
+      );
+      if (selection.expressionMode) return;
+      this.environmentIdValue = selection.value;
     } else {
       this.environmentIdExpression = encodeJsonataStringLiteral(this.environmentIdValue);
     }
     this.environmentIdExpressionMode = !this.environmentIdExpressionMode;
     this.revalidate();
+  }
+
+  canSwitchVariantIdToDropdown(): boolean {
+    return canRepresentExpressionAsSelection(
+      this.variantIdExpression,
+      this.variants$.getValue().data,
+    );
+  }
+
+  canSwitchEnvironmentIdToDropdown(): boolean {
+    return canRepresentExpressionAsSelection(
+      this.environmentIdExpression,
+      this.environments$.getValue().data,
+    );
   }
 
   onVariantSelectionModeChange(mode: VariantSelectionMode): void {
