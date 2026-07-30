@@ -1,8 +1,9 @@
 <div class="expression-select" [class.expression-select--disabled]="disabled">
-  <label class="expression-select__label" [title]="tooltip">{{ title }}</label>
-
   <div *ngIf="mode === 'select'" class="expression-select__control">
     <v-select
+      [name]="testId + '-select'"
+      [title]="title"
+      [tooltip]="tooltip"
       [items]="items"
       [appendInline]="false"
       [dropUp]="false"
@@ -31,6 +32,9 @@
   </div>
 
   <div *ngIf="mode === 'advanced'">
+    <label class="expression-select__label" [for]="testId + '-advanced'" [title]="tooltip">{{
+      title
+    }}</label>
     <div
       class="expression-select__control expression-select__control--advanced"
       [class.expression-select__control--invalid]="rawError"
@@ -38,9 +42,14 @@
       <textarea
         #rawTextarea
         class="expression-select__raw"
+        [id]="testId + '-advanced'"
         [disabled]="disabled"
         [placeholder]="placeholder"
         [attr.aria-invalid]="!!rawError"
+        [attr.aria-errormessage]="rawError ? testId + '-error' : null"
+        [attr.aria-describedby]="
+          rawError ? testId + '-error' : !canUseSelect ? testId + '-expression-hint' : null
+        "
         [attr.data-testid]="testId + '-advanced'"
         [ngModel]="rawExpression"
         (ngModelChange)="onRawInput($event, rawTextarea)"
@@ -51,6 +60,9 @@
         [disabled]="disabled || !canUseSelect"
         [attr.aria-label]="'switchToDropdown' | pluginTranslate: 'epistola' | async"
         [attr.title]="'switchToDropdown' | pluginTranslate: 'epistola' | async"
+        [attr.aria-describedby]="
+          rawError ? testId + '-error' : !canUseSelect ? testId + '-expression-hint' : null
+        "
         [attr.data-testid]="testId + '-mode'"
         (click)="toggleMode()"
       >
@@ -64,6 +76,7 @@
       *ngIf="rawError"
       class="expression-select__error"
       role="alert"
+      [id]="testId + '-error'"
       [attr.data-testid]="testId + '-error'"
     >
       {{ rawError }}
@@ -71,6 +84,7 @@
     <div
       *ngIf="!rawError && !canUseSelect"
       class="expression-select__hint"
+      [id]="testId + '-expression-hint'"
       [attr.data-testid]="testId + '-expression-hint'"
     >
       {{ 'expressionDropdownUnavailable' | pluginTranslate: 'epistola' | async }}

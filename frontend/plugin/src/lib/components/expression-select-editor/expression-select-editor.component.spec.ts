@@ -102,4 +102,18 @@ describe('ExpressionSelectEditorComponent', () => {
     expect(component.mode).toBe('select');
     expect(component.selectedValue).toBe('');
   });
+
+  it('keeps mode and expression state isolated between instances', () => {
+    const first = createComponent('"default"');
+    const second = createComponent('"production"');
+
+    first.toggleMode();
+    first.onRawInput('$pv.environment', { style: {}, scrollHeight: 40 } as HTMLTextAreaElement);
+
+    expect(first.mode).toBe('advanced');
+    expect(first.rawExpression).toBe('$pv.environment');
+    expect(second.mode).toBe('select');
+    expect(second.selectedValue).toBe('production');
+    expect(second.rawExpression).toBe('"production"');
+  });
 });

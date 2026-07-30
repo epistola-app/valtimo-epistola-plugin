@@ -111,6 +111,11 @@ jobs:
       - name: Test plugin
         run: pnpm --filter @epistola.app/valtimo-plugin test
 
+      - name: Test rendered frontend integration
+        env:
+          CI: "true"
+        run: pnpm --filter gzac-frontend-template test --watch=false
+
       - name: Build plugin
         run: pnpm --filter @epistola.app/valtimo-plugin build
 
