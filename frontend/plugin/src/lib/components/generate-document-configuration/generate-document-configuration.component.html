@@ -150,15 +150,15 @@
     </v-select>
     <div *ngIf="variantIdExpressionMode" class="fx-input-group">
       <label class="fx-input-label">{{ 'variantId' | pluginTranslate: pluginId | async }}</label>
-      <input
-        type="text"
-        class="fx-input"
-        data-testid="epistola-generate-variant-id-expression"
-        [ngModel]="variantIdExpression"
-        (ngModelChange)="variantIdExpression = $event; onVariantIdExpressionChange()"
+      <epistola-smart-expression-editor
+        [expression]="variantIdExpression"
+        [contextVariables]="editorContextVariables"
         [disabled]="obs.disabled"
-        placeholder="$pv.letterType"
-      />
+        [placeholder]="'$pv.letterType'"
+        testId="epistola-generate-variant-id-expression"
+        (expressionChange)="onVariantIdExpressionChange($event)"
+        (validChange)="onExpressionValidityChange('variantId', $event)"
+      ></epistola-smart-expression-editor>
       <small
         *ngIf="!canSwitchVariantIdToDropdown()"
         class="fx-mode-hint"
@@ -242,17 +242,19 @@
           </button>
         </div>
         <div class="attribute-expression">
-          <input
-            type="text"
-            class="variant-attribute-input"
-            [attr.data-testid]="'epistola-generate-attribute-value-' + i"
+          <epistola-smart-expression-editor
+            [expression]="entry.value"
+            [contextVariables]="editorContextVariables"
+            [disabled]="obs.disabled"
             [placeholder]="
               'attributeValueExpressionPlaceholder' | pluginTranslate: pluginId | async
             "
-            [(ngModel)]="entry.value"
-            (ngModelChange)="onAttributeEntryChange()"
-            [disabled]="obs.disabled"
-          />
+            [testId]="'epistola-generate-attribute-value-' + i"
+            (expressionChange)="onAttributeExpressionChange(entry, $event)"
+            (validChange)="
+              onExpressionValidityChange('variantAttribute:' + entry._editorId, $event)
+            "
+          ></epistola-smart-expression-editor>
         </div>
         <label class="variant-attribute-required-toggle">
           <input
@@ -313,15 +315,15 @@
       <label class="fx-input-label">{{
         'environmentId' | pluginTranslate: pluginId | async
       }}</label>
-      <input
-        type="text"
-        class="fx-input"
-        data-testid="epistola-generate-environment-id-expression"
-        [ngModel]="environmentIdExpression"
-        (ngModelChange)="environmentIdExpression = $event; onEnvironmentIdExpressionChange()"
+      <epistola-smart-expression-editor
+        [expression]="environmentIdExpression"
+        [contextVariables]="editorContextVariables"
         [disabled]="obs.disabled"
-        placeholder="$pv.environmentId"
-      />
+        [placeholder]="'$pv.environmentId'"
+        testId="epistola-generate-environment-id-expression"
+        (expressionChange)="onEnvironmentIdExpressionChange($event)"
+        (validChange)="onExpressionValidityChange('environmentId', $event)"
+      ></epistola-smart-expression-editor>
       <small
         *ngIf="!canSwitchEnvironmentIdToDropdown()"
         class="fx-mode-hint"
@@ -357,28 +359,30 @@
 
   <div class="fx-input-group">
     <label class="fx-input-label">{{ 'filename' | pluginTranslate: pluginId | async }}</label>
-    <input
-      type="text"
-      class="fx-input"
-      data-testid="epistola-generate-filename-expression"
-      [ngModel]="filenameExpression"
-      (ngModelChange)="filenameExpression = $event; onFilenameExpressionChange()"
+    <epistola-smart-expression-editor
+      [expression]="filenameExpression"
+      [contextVariables]="editorContextVariables"
       [disabled]="obs.disabled"
-      placeholder='"besluit-" & $doc.name & ".pdf"'
-    />
+      [required]="true"
+      [allowNull]="false"
+      [placeholder]="'besluit-'"
+      testId="epistola-generate-filename-expression"
+      (expressionChange)="onFilenameExpressionChange($event)"
+      (validChange)="onExpressionValidityChange('filename', $event)"
+    ></epistola-smart-expression-editor>
   </div>
 
   <div class="fx-input-group">
     <label class="fx-input-label">{{ 'correlationId' | pluginTranslate: pluginId | async }}</label>
-    <input
-      type="text"
-      class="fx-input"
-      data-testid="epistola-generate-correlation-id-expression"
-      [ngModel]="correlationIdExpression"
-      (ngModelChange)="correlationIdExpression = $event; onCorrelationIdExpressionChange()"
+    <epistola-smart-expression-editor
+      [expression]="correlationIdExpression"
+      [contextVariables]="editorContextVariables"
       [disabled]="obs.disabled"
-      placeholder="$pv.correlationId"
-    />
+      [placeholder]="'$pv.correlationId'"
+      testId="epistola-generate-correlation-id-expression"
+      (expressionChange)="onCorrelationIdExpressionChange($event)"
+      (validChange)="onExpressionValidityChange('correlationId', $event)"
+    ></epistola-smart-expression-editor>
   </div>
 
   <v-input
@@ -414,18 +418,21 @@
   </p>
   <div class="mapping-mode-toggle">
     <button
+      type="button"
       class="mapping-mode-toggle__btn"
       data-testid="epistola-generate-mapping-mode-simple"
       [class.mapping-mode-toggle__btn--active]="mappingMode === 'simple'"
-      (click)="mappingMode = 'simple'"
+      [disabled]="mappingMode === 'advanced' && !canUseSimpleMapping()"
+      (click)="onMappingModeChange('simple')"
     >
       {{ 'mappingModeSimple' | pluginTranslate: pluginId | async }}
     </button>
     <button
+      type="button"
       class="mapping-mode-toggle__btn"
       data-testid="epistola-generate-mapping-mode-advanced"
       [class.mapping-mode-toggle__btn--active]="mappingMode === 'advanced'"
-      (click)="mappingMode = 'advanced'"
+      (click)="onMappingModeChange('advanced')"
     >
       {{ 'mappingModeAdvanced' | pluginTranslate: pluginId | async }}
     </button>
@@ -436,8 +443,10 @@
     *ngIf="mappingMode === 'simple'"
     [expression]="dataMapping$ | async"
     [templateFields]="(templateFields$ | async)?.data ?? []"
+    [contextVariables]="editorContextVariables"
     [disabled]="!!(disabled$ | async)"
     (expressionChange)="onDataMappingChange($event)"
+    (validChange)="onDataMappingValidityChange($event)"
   ></epistola-mapping-builder>
 
   <epistola-jsonata-editor
@@ -447,6 +456,7 @@
     [contextVariables]="editorContextVariables"
     [functions]="expressionFunctions"
     (expressionChange)="onDataMappingChange($event)"
+    (validChange)="onDataMappingValidityChange($event)"
   ></epistola-jsonata-editor>
 
   <!-- Bottom tabs: Schema + Preview (collapsible) -->

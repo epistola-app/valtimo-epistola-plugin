@@ -31,6 +31,7 @@ export type VariantSelectionMode = 'explicit' | 'attributes';
 
 export interface VariantAttributeEditorEntry extends VariantAttributeEntry {
   _customKey?: boolean;
+  _editorId?: string;
 }
 
 export interface ExpressionSelectPrefill {
@@ -87,7 +88,10 @@ export function canRepresentExpressionAsSelection(
 export function createVariantAttributeEditorEntries(
   attributes: VariantAttributeEntry[] | undefined,
 ): VariantAttributeEditorEntry[] {
-  return (attributes ?? []).map((attribute) => ({ ...attribute }));
+  return (attributes ?? []).map((attribute, index) => ({
+    ...attribute,
+    _editorId: `persisted-${index}`,
+  }));
 }
 
 export function buildGenerateDocumentConfig(

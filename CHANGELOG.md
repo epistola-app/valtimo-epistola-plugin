@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Generate-document expressions now have a source-preserving visual model.** Persisted JSONata string literals, typed literals, `$doc`/`$pv`/`$case` references, and simple concatenations can be represented without rewriting untouched source, while newly typed values are always serialized as explicit single-quoted strings instead of being guessed from ambiguous text such as `$pv.filename` or `value.pdf`.
 - **A guided inline JSONata editor now supports text, semantic variable chips, and explicit typed values.** Authors can insert grouped document/process/case references with `@` or `+`, edit naturally with a cursor, and fall back to a growing raw textarea with debounced syntax validation when an expression is too complex for the visual representation.
+- **The guided expression editor is available throughout the generate-document action.** Filename, correlation ID, dynamic variant/environment selection, variant attributes, and each simple data-mapping field now share the same visual JSONata experience and process-context suggestions. Static mapping objects retain complex leaf expressions without rewriting them, while structurally dynamic mappings remain in the whole-mapping advanced editor.
 
 ### Changed
 

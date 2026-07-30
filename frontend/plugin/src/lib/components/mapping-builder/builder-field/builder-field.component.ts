@@ -18,13 +18,13 @@
 
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { BuilderField } from '../../../utils/jsonata-converter';
+import { SmartExpressionEditorComponent } from '../../smart-expression-editor/smart-expression-editor.component';
 
 @Component({
   selector: 'epistola-builder-field',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, SmartExpressionEditorComponent],
   template: `
     <div class="builder-field" [attr.data-testid]="'epistola-mapping-field-' + field.name">
       <div
@@ -61,15 +61,16 @@ import { BuilderField } from '../../../utils/jsonata-converter';
         *ngIf="!field.children"
         [attr.data-testid]="'epistola-mapping-field-value-' + field.name"
       >
-        <input
-          type="text"
-          class="builder-field__input"
-          [ngModel]="field.value"
-          (ngModelChange)="valueChange.emit({ path: path, value: $event })"
+        <epistola-smart-expression-editor
+          class="builder-field__editor"
+          [expression]="field.value"
+          [contextVariables]="contextVariables"
           [disabled]="disabled"
-          placeholder="JSONata expression"
-          [attr.data-testid]="'epistola-mapping-field-input-' + field.name"
-        />
+          [required]="false"
+          [testId]="'epistola-mapping-field-input-' + field.name"
+          (expressionChange)="valueChange.emit({ path: path, value: $event })"
+          (validChange)="validityChange.emit({ path: path, valid: $event })"
+        ></epistola-smart-expression-editor>
       </div>
 
       <div
@@ -85,7 +86,9 @@ import { BuilderField } from '../../../utils/jsonata-converter';
           [collapsed]="isChildCollapsed(j)"
           [collapsedPaths]="collapsedPaths"
           [required]="false"
+          [contextVariables]="contextVariables"
           (valueChange)="valueChange.emit($event)"
+          (validityChange)="validityChange.emit($event)"
           (collapseToggle)="collapseToggle.emit($event)"
         ></epistola-builder-field>
       </div>
@@ -128,17 +131,9 @@ import { BuilderField } from '../../../utils/jsonata-converter';
         align-items: center;
         gap: 4px;
       }
-      .builder-field__input {
+      .builder-field__editor {
         flex: 1;
-        padding: 6px 8px;
-        border: 1px solid #e0e0e0;
-        border-radius: 4px;
-        font-size: 0.85em;
-        font-family: 'IBM Plex Mono', monospace;
-      }
-      .builder-field__input:focus {
-        outline: 2px solid #0f62fe;
-        border-color: #0f62fe;
+        min-width: 0;
       }
       .builder-field__children {
         border-left: 2px solid #e0e0e0;
@@ -154,8 +149,10 @@ export class BuilderFieldComponent {
   @Input() disabled = false;
   @Input() collapsed = false;
   @Input() required = false;
+  @Input() contextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
   @Input() collapsedPaths: Set<string> = new Set();
   @Output() valueChange = new EventEmitter<{ path: number[]; value: string }>();
+  @Output() validityChange = new EventEmitter<{ path: number[]; valid: boolean }>();
   @Output() collapseToggle = new EventEmitter<number[]>();
 
   isChildCollapsed(childIndex: number): boolean {

@@ -16,7 +16,12 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-import { parseJsonataToBuilder, builderToJsonata, BuilderField } from './jsonata-converter';
+import {
+  parseJsonataToBuilder,
+  builderToJsonata,
+  BuilderField,
+  isBuilderCompatible,
+} from './jsonata-converter';
 
 describe('jsonata-converter', () => {
   describe('parseJsonataToBuilder', () => {
@@ -58,18 +63,18 @@ describe('jsonata-converter', () => {
       expect(fields[0].children![1]).toEqual({ name: 'email', mode: 'ref', value: '$pv.email' });
     });
 
-    it('should fall back to raw for unsupported expressions', () => {
+    it('should preserve complex leaf source for field-level editing', () => {
       const expr =
         '{ "name": $doc.first & " " & $doc.last, "type": $doc.isVip ? "premium" : "standard" }';
       const fields = parseJsonataToBuilder(expr);
 
       expect(fields).toHaveLength(2);
       expect(fields[0].name).toBe('name');
-      expect(fields[0].mode).toBe('raw');
-      expect(fields[0].value).toContain('&');
+      expect(fields[0].mode).toBe('ref');
+      expect(fields[0].value).toBe('$doc.first & " " & $doc.last');
       expect(fields[1].name).toBe('type');
       expect(fields[1].mode).toBe('raw');
-      expect(fields[1].value).toContain('?');
+      expect(fields[1].value).toBe('$doc.isVip ? "premium" : "standard"');
     });
 
     it('should return empty array for empty expression', () => {
@@ -164,6 +169,16 @@ describe('jsonata-converter', () => {
 
       expect(result).toContain('"status": "active"');
     });
+
+    it('omits untouched schema placeholders instead of adding null fields', () => {
+      const fields: BuilderField[] = [
+        { name: 'mapped', mode: 'ref', value: '$doc.name' },
+        { name: 'unmapped', mode: 'ref', value: '', present: false },
+      ];
+
+      expect(builderToJsonata(fields)).toContain('"mapped": $doc.name');
+      expect(builderToJsonata(fields)).not.toContain('unmapped');
+    });
   });
 
   describe('round-trip', () => {
@@ -197,12 +212,49 @@ describe('jsonata-converter', () => {
       const fields = parseJsonataToBuilder(original);
 
       expect(fields[0].mode).toBe('ref');
-      expect(fields[1].mode).toBe('raw');
+      expect(fields[1].mode).toBe('ref');
       expect(fields[2].mode).toBe('ref');
 
       const regenerated = builderToJsonata(fields);
       const reparsed = parseJsonataToBuilder(regenerated);
       expect(reparsed).toEqual(fields);
     });
+
+    it('preserves arbitrary leaf expressions exactly through a round-trip', () => {
+      const original = `{
+  "value": $map($pv.items, function($item) {{"id": $item.id, "label": $uppercase($item.name)}}),
+  "conditional": $doc.enabled ? 'yes' : "no"
+}`;
+
+      const fields = parseJsonataToBuilder(original);
+      expect(fields[0].value).toBe(
+        '$map($pv.items, function($item) {{"id": $item.id, "label": $uppercase($item.name)}})',
+      );
+      expect(fields[1].value).toBe(`$doc.enabled ? 'yes' : "no"`);
+      expect(parseJsonataToBuilder(builderToJsonata(fields))).toEqual(fields);
+    });
+
+    it('preserves regex literals containing object delimiters', () => {
+      const original = `{"matches": $match($doc.value, /a{2},b/i), "name": $doc.name}`;
+
+      const fields = parseJsonataToBuilder(original);
+
+      expect(fields).toHaveLength(2);
+      expect(fields[0].value).toBe('$match($doc.value, /a{2},b/i)');
+      expect(parseJsonataToBuilder(builderToJsonata(fields))).toEqual(fields);
+    });
+  });
+
+  describe('isBuilderCompatible', () => {
+    it('accepts static objects even when their leaf values are complex', () => {
+      expect(isBuilderCompatible('{"name": $uppercase($doc.name)}')).toBe(true);
+    });
+
+    it.each(['$doc', '["one", "two"]', '{"same": 1, "same": 2}', '{invalid'])(
+      'rejects non-static mapping %s',
+      (expression) => {
+        expect(isBuilderCompatible(expression)).toBe(false);
+      },
+    );
   });
 });

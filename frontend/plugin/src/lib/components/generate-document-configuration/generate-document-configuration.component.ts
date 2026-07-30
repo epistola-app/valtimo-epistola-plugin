@@ -60,6 +60,7 @@ import {
   filter,
   map,
   shareReplay,
+  startWith,
   switchMap,
   take,
   takeUntil,
@@ -77,13 +78,14 @@ import {
   loadingResource,
   successResource,
   TemplateField,
-  VariableSuggestions,
 } from '../../models';
+import { isBuilderCompatible } from '../../utils/jsonata-converter';
 import { EpistolaPluginService } from '../../services';
 import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
 import { ExpectedStructureComponent } from '../expected-structure/expected-structure.component';
 import { MappingBuilderComponent } from '../mapping-builder/mapping-builder.component';
 import { MappingPreviewComponent } from '../mapping-preview/mapping-preview.component';
+import { SmartExpressionEditorComponent } from '../smart-expression-editor/smart-expression-editor.component';
 import {
   isGenerateDocumentConfigValid,
   isProcessVariableNameValid,
@@ -121,6 +123,7 @@ import {
     JsonataEditorComponent,
     MappingBuilderComponent,
     MappingPreviewComponent,
+    SmartExpressionEditorComponent,
   ],
 })
 export class GenerateDocumentConfigurationComponent
@@ -183,9 +186,7 @@ export class GenerateDocumentConfigurationComponent
   variantAttributeEntries: VariantAttributeEditorEntry[] = [];
   availableAttributeKeys: string[] = [];
   caseDefinitionKey: string | null = null;
-  processVariables: string[] = [];
   expressionFunctions: ExpressionFunctionInfo[] = [];
-  variableSuggestions: VariableSuggestions | null = null;
   /** Context variables for the JSONata editor's autocomplete ($doc/$pv/$case). */
   editorContextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
   prefillDataMapping: Record<string, any> = {};
@@ -201,6 +202,8 @@ export class GenerateDocumentConfigurationComponent
   private pluginConfigurationId$ = new BehaviorSubject<string>('');
   private readonly loadedEnvironmentOptions$ = new ReplaySubject<SelectItem[]>(1);
   private readonly loadedVariantOptions$ = new ReplaySubject<SelectItem[]>(1);
+  private readonly expressionValidity = new Map<string, boolean>();
+  private nextAttributeEditorId = 0;
 
   /** Resolves once with the prefill config (or empty config if none). */
   private prefill$!: Observable<GenerateDocumentConfigV1 | null>;
@@ -267,6 +270,28 @@ export class GenerateDocumentConfigurationComponent
     this.revalidate();
   }
 
+  onDataMappingValidityChange(valid: boolean): void {
+    this.onExpressionValidityChange('dataMapping', valid);
+  }
+
+  onMappingModeChange(mode: 'simple' | 'advanced'): void {
+    if (mode === 'simple' && !this.canUseSimpleMapping()) {
+      return;
+    }
+    this.mappingMode = mode;
+    this.expressionValidity.delete('dataMapping');
+    this.revalidate();
+  }
+
+  canUseSimpleMapping(): boolean {
+    return isBuilderCompatible(this.dataMapping$.getValue());
+  }
+
+  onExpressionValidityChange(field: string, valid: boolean): void {
+    this.expressionValidity.set(field, valid);
+    this.revalidate();
+  }
+
   onVariantIdValueChange(value: SelectedValue | undefined): void {
     // v-select is single-select here, so SelectedValue narrows to string | number;
     // our variant ids are always strings — coerce defensively.
@@ -287,6 +312,7 @@ export class GenerateDocumentConfigurationComponent
       );
       if (selection.expressionMode) return;
       this.variantIdValue = selection.value;
+      this.expressionValidity.delete('variantId');
     } else {
       this.variantIdExpression = encodeJsonataStringLiteral(this.variantIdValue);
     }
@@ -302,6 +328,7 @@ export class GenerateDocumentConfigurationComponent
       );
       if (selection.expressionMode) return;
       this.environmentIdValue = selection.value;
+      this.expressionValidity.delete('environmentId');
     } else {
       this.environmentIdExpression = encodeJsonataStringLiteral(this.environmentIdValue);
     }
@@ -325,8 +352,24 @@ export class GenerateDocumentConfigurationComponent
 
   onVariantSelectionModeChange(mode: VariantSelectionMode): void {
     this.variantSelectionMode = mode;
+    if (mode === 'explicit') {
+      for (const key of [...this.expressionValidity.keys()]) {
+        if (key.startsWith('variantAttribute:')) {
+          this.expressionValidity.delete(key);
+        }
+      }
+    } else {
+      this.expressionValidity.delete('variantId');
+    }
     if (mode === 'attributes' && this.variantAttributeEntries.length === 0) {
-      this.variantAttributeEntries = [{ key: '', value: '', required: true }];
+      this.variantAttributeEntries = [
+        {
+          key: '',
+          value: '',
+          required: true,
+          _editorId: this.newAttributeEditorId(),
+        },
+      ];
     }
     this.revalidate();
   }
@@ -334,12 +377,21 @@ export class GenerateDocumentConfigurationComponent
   addAttributeEntry(): void {
     this.variantAttributeEntries = [
       ...this.variantAttributeEntries,
-      { key: '', value: '', required: true },
+      {
+        key: '',
+        value: '',
+        required: true,
+        _editorId: this.newAttributeEditorId(),
+      },
     ];
     this.revalidate();
   }
 
   removeAttributeEntry(index: number): void {
+    const removed = this.variantAttributeEntries[index];
+    if (removed?._editorId) {
+      this.expressionValidity.delete(`variantAttribute:${removed._editorId}`);
+    }
     this.variantAttributeEntries = this.variantAttributeEntries.filter((_, i) => i !== index);
     this.revalidate();
   }
@@ -348,19 +400,28 @@ export class GenerateDocumentConfigurationComponent
     this.revalidate();
   }
 
-  onVariantIdExpressionChange(): void {
+  onAttributeExpressionChange(entry: VariantAttributeEditorEntry, value: string): void {
+    entry.value = value;
     this.revalidate();
   }
 
-  onFilenameExpressionChange(): void {
+  onVariantIdExpressionChange(value: string): void {
+    this.variantIdExpression = value;
     this.revalidate();
   }
 
-  onEnvironmentIdExpressionChange(): void {
+  onFilenameExpressionChange(value: string): void {
+    this.filenameExpression = value;
     this.revalidate();
   }
 
-  onCorrelationIdExpressionChange(): void {
+  onEnvironmentIdExpressionChange(value: string): void {
+    this.environmentIdExpression = value;
+    this.revalidate();
+  }
+
+  onCorrelationIdExpressionChange(value: string): void {
+    this.correlationIdExpression = value;
     this.revalidate();
   }
 
@@ -393,6 +454,10 @@ export class GenerateDocumentConfigurationComponent
     if (currentFormValue) {
       this.handleValid(currentFormValue);
     }
+  }
+
+  private newAttributeEditorId(): string {
+    return `new-${this.nextAttributeEditorId++}`;
   }
 
   /**
@@ -464,17 +529,48 @@ export class GenerateDocumentConfigurationComponent
   }
 
   private initContext(): void {
-    if (this.context$) {
-      this.context$
-        .pipe(
-          takeUntil(this.destroy$),
-          filter(([context]) => context === 'case'),
+    const caseDefinitionKey$ = this.context$
+      ? this.context$.pipe(
+          map(([context, params]) => (context === 'case' ? params.caseDefinitionKey : null)),
+          startWith(null),
         )
-        .subscribe(([, params]) => {
-          this.caseDefinitionKey = params.caseDefinitionKey;
-          this.cdr.markForCheck();
-        });
-    }
+      : of(null);
+    const processDefinitionKey$ = this.processLinkStateService.modalParams$.pipe(
+      map((params) => params?.processDefinitionKey || null),
+      startWith(null),
+    );
+
+    combineLatest([caseDefinitionKey$, processDefinitionKey$])
+      .pipe(
+        takeUntil(this.destroy$),
+        distinctUntilChanged(
+          ([previousCase, previousProcess], [nextCase, nextProcess]) =>
+            previousCase === nextCase && previousProcess === nextProcess,
+        ),
+        tap(([caseDefinitionKey]) => {
+          this.caseDefinitionKey = caseDefinitionKey;
+        }),
+        filter(
+          ([caseDefinitionKey, processDefinitionKey]) =>
+            !!caseDefinitionKey || !!processDefinitionKey,
+        ),
+        switchMap(([caseDefinitionKey, processDefinitionKey]) =>
+          this.epistolaPluginService
+            .getVariableSuggestions(
+              caseDefinitionKey ?? undefined,
+              processDefinitionKey ?? undefined,
+            )
+            .pipe(catchError(() => of({ doc: [], pv: [] }))),
+        ),
+      )
+      .subscribe((suggestions) => {
+        this.editorContextVariables = {
+          doc: suggestions.doc || [],
+          pv: suggestions.pv || [],
+          case: [],
+        };
+        this.cdr.markForCheck();
+      });
   }
 
   private initPluginConfiguration(): void {
@@ -639,8 +735,6 @@ export class GenerateDocumentConfigurationComponent
         takeUntil(this.destroy$),
         tap(() => {
           this.templateFields$.next(loadingResource(this.templateFields$.getValue().data));
-          this.loadProcessVariables();
-          this.loadVariableSuggestions();
         }),
         switchMap(([configurationId, catalogId, templateId]) =>
           this.epistolaPluginService
@@ -682,6 +776,9 @@ export class GenerateDocumentConfigurationComponent
         if (config.dataMapping) {
           const expr = typeof config.dataMapping === 'string' ? config.dataMapping : '';
           this.dataMapping$.next(expr);
+          if (!isBuilderCompatible(expr)) {
+            this.mappingMode = 'advanced';
+          }
         } else {
           this.cdr.detectChanges();
         }
@@ -701,43 +798,6 @@ export class GenerateDocumentConfigurationComponent
       });
   }
 
-  private loadProcessVariables(): void {
-    if (this.caseDefinitionKey) {
-      this.epistolaPluginService
-        .getProcessVariables(this.caseDefinitionKey)
-        .pipe(
-          takeUntil(this.destroy$),
-          catchError(() => of([])),
-        )
-        .subscribe((variables) => {
-          this.processVariables = variables;
-          this.cdr.markForCheck();
-        });
-    }
-  }
-
-  private loadVariableSuggestions(): void {
-    this.epistolaPluginService
-      .getVariableSuggestions(
-        this.caseDefinitionKey ?? undefined,
-        this.caseDefinitionKey ?? undefined,
-      )
-      .pipe(
-        takeUntil(this.destroy$),
-        catchError(() => of({ doc: [], pv: [] })),
-      )
-      .subscribe((suggestions) => {
-        this.variableSuggestions = suggestions;
-        // `$case` is a valid (currently-empty) binding — keep it offered.
-        this.editorContextVariables = {
-          doc: suggestions.doc || [],
-          pv: suggestions.pv || [],
-          case: [],
-        };
-        this.cdr.markForCheck();
-      });
-  }
-
   private handleValid(formValue: Partial<GenerateDocumentConfig & { catalogId: string }>): void {
     this.resultProcessVariableInvalid$.next(
       !!formValue?.resultProcessVariable &&
@@ -746,6 +806,7 @@ export class GenerateDocumentConfigurationComponent
 
     const valid =
       !this.configurationVersionError$.getValue() &&
+      [...this.expressionValidity.values()].every(Boolean) &&
       isGenerateDocumentConfigValid(formValue, {
         selectedCatalogId: this.selectedCatalogId$.getValue(),
         filename: this.filenameExpression,

@@ -57,6 +57,9 @@ jest.mock('../mapping-builder/mapping-builder.component', () => ({
 jest.mock('../mapping-preview/mapping-preview.component', () => ({
   MappingPreviewComponent: class {},
 }));
+jest.mock('../smart-expression-editor/smart-expression-editor.component', () => ({
+  SmartExpressionEditorComponent: class {},
+}));
 
 import { resolveExpressionSelectPrefill } from './generate-document-config-editor.adapter';
 import { GenerateDocumentConfigurationComponent } from './generate-document-configuration.component';
@@ -258,5 +261,38 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     component.toggleVariantIdExpressionMode();
     expect(component.variantIdExpressionMode).toBe(false);
     expect(component.variantIdValue).toBe('default');
+  });
+
+  it('includes inline expression validity in the action validity', () => {
+    const { component } = createComponent();
+    const validity: boolean[] = [];
+    component.valid.subscribe((value) => validity.push(value));
+    component.selectedCatalogId$.next('catalog');
+    component.filenameExpression = '"letter.pdf"';
+    (component as any).formValue$.next({
+      templateId: 'template',
+      outputFormat: 'PDF',
+      resultProcessVariable: 'result',
+    });
+
+    component.onExpressionValidityChange('filename', false);
+    component.onExpressionValidityChange('filename', true);
+
+    expect(validity).toEqual([false, true]);
+  });
+
+  it('does not switch an unsupported whole mapping to simple mode', () => {
+    const { component } = createComponent();
+    component.mappingMode = 'advanced';
+    component.dataMapping$.next('$merge([{"name": $doc.name}, $pv.extra])');
+
+    expect(component.canUseSimpleMapping()).toBe(false);
+    component.onMappingModeChange('simple');
+    expect(component.mappingMode).toBe('advanced');
+
+    component.dataMapping$.next('{"name": $uppercase($doc.name)}');
+    expect(component.canUseSimpleMapping()).toBe(true);
+    component.onMappingModeChange('simple');
+    expect(component.mappingMode).toBe('simple');
   });
 });

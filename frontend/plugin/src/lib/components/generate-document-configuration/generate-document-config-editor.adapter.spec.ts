@@ -118,11 +118,12 @@ describe('generate-document editor adapter', () => {
         { key: 'channel', value: 'customer.channel', required: false },
       ]),
     ).toEqual([
-      { key: 'language', value: '"nl"', required: true },
+      { key: 'language', value: '"nl"', required: true, _editorId: 'persisted-0' },
       {
         key: 'channel',
         value: 'customer.channel',
         required: false,
+        _editorId: 'persisted-1',
       },
     ]);
   });

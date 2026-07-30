@@ -482,7 +482,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     const segments: SimpleExpressionSegment[] = [];
     let text = '';
     const flushText = () => {
-      const clean = text.replaceAll(CARET_MARKER, '');
+      const clean = text.split(CARET_MARKER).join('');
       if (clean) {
         const previous = segments.at(-1);
         if (previous?.kind === 'text') {
