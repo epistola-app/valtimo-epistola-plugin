@@ -21,6 +21,7 @@ import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 
 import java.util.List;
+import java.util.Map;
 
 public record GenerateDocumentActionConfiguration(
         int version,
@@ -37,6 +38,18 @@ public record GenerateDocumentActionConfiguration(
 ) {
 
     public record VariantAttribute(String key, ConfiguredScalar value, boolean required) {}
+
+    public Map<String, Object> evaluateDataMapping(
+            JsonataMappingService mappingService,
+            EvaluationContext context
+    ) {
+        try {
+            return mappingService.evaluate(context.withExpression(dataMapping));
+        } catch (RuntimeException exception) {
+            throw GenerateDocumentExpressionException.evaluationFailed(
+                    version, "dataMapping", dataMapping, context, exception);
+        }
+    }
 
     public sealed interface ConfiguredScalar permits LiteralScalar, JsonataScalar {
 
@@ -57,11 +70,16 @@ public record GenerateDocumentActionConfiguration(
         }
     }
 
-    public record JsonataScalar(String source) implements ConfiguredScalar {
+    public record JsonataScalar(int version, String field, String source) implements ConfiguredScalar {
 
         @Override
         public String resolve(JsonataMappingService mappingService, EvaluationContext context) {
-            return mappingService.evaluateScalar(context.withExpression(source));
+            try {
+                return mappingService.evaluateScalar(context.withExpression(source));
+            } catch (RuntimeException exception) {
+                throw GenerateDocumentExpressionException.evaluationFailed(
+                        version, field, source, context, exception);
+            }
         }
     }
 }

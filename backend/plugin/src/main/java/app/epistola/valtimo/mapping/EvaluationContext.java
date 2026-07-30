@@ -38,6 +38,10 @@ public class EvaluationContext {
     private final Supplier<Map<String, Object>> processVariableEnumerator;
     private final String documentId;
     private final DelegateExecution execution;
+    private final String operation;
+    private final String processDefinitionId;
+    private final String processInstanceId;
+    private final String activityId;
 
     private EvaluationContext(Builder builder) {
         this.expression = builder.expression;
@@ -46,6 +50,10 @@ public class EvaluationContext {
         this.processVariableEnumerator = builder.processVariableEnumerator;
         this.documentId = builder.documentId;
         this.execution = builder.execution;
+        this.operation = builder.operation;
+        this.processDefinitionId = builder.processDefinitionId;
+        this.processInstanceId = builder.processInstanceId;
+        this.activityId = builder.activityId;
     }
 
     public String getExpression() { return expression; }
@@ -54,6 +62,10 @@ public class EvaluationContext {
     public Supplier<Map<String, Object>> getProcessVariableEnumerator() { return processVariableEnumerator; }
     public String getDocumentId() { return documentId; }
     public DelegateExecution getExecution() { return execution; }
+    public String getOperation() { return operation; }
+    public String getProcessDefinitionId() { return processDefinitionId; }
+    public String getProcessInstanceId() { return processInstanceId; }
+    public String getActivityId() { return activityId; }
 
     /** Return a copy with a different expression, keeping all resolvers. */
     public EvaluationContext withExpression(String newExpression) {
@@ -64,6 +76,10 @@ public class EvaluationContext {
                 .processVariableEnumerator(this.processVariableEnumerator)
                 .documentId(this.documentId)
                 .execution(this.execution)
+                .operation(this.operation)
+                .processDefinitionId(this.processDefinitionId)
+                .processInstanceId(this.processInstanceId)
+                .activityId(this.activityId)
                 .build();
     }
 
@@ -76,6 +92,10 @@ public class EvaluationContext {
         private Supplier<Map<String, Object>> processVariableEnumerator;
         private String documentId;
         private DelegateExecution execution;
+        private String operation;
+        private String processDefinitionId;
+        private String processInstanceId;
+        private String activityId;
 
         public Builder expression(String expression) {
             this.expression = expression;
@@ -108,6 +128,26 @@ public class EvaluationContext {
 
         public Builder execution(DelegateExecution execution) {
             this.execution = execution;
+            return this;
+        }
+
+        public Builder operation(String operation) {
+            this.operation = operation;
+            return this;
+        }
+
+        public Builder processDefinitionId(String processDefinitionId) {
+            this.processDefinitionId = processDefinitionId;
+            return this;
+        }
+
+        public Builder processInstanceId(String processInstanceId) {
+            this.processInstanceId = processInstanceId;
+            return this;
+        }
+
+        public Builder activityId(String activityId) {
+            this.activityId = activityId;
             return this;
         }
 

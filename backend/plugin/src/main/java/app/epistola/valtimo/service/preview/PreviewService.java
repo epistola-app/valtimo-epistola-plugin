@@ -98,7 +98,11 @@ public class PreviewService {
                     Map<String, Object> doc = loadDocumentContent(docId);
                     return docOverrides != null ? new OverlayMap(docOverrides, doc) : doc;
                 })
-                .documentId(documentId);
+                .documentId(documentId)
+                .operation("preview")
+                .processDefinitionId(processDefinitionId)
+                .processInstanceId(processInstanceId)
+                .activityId(processLink.getActivityId());
 
         // Add process variable resolver (with override fallback)
         if (pvOverrides != null || processInstanceId != null) {
@@ -120,7 +124,8 @@ public class PreviewService {
             });
         }
 
-        Map<String, Object> resolvedData = jsonataMappingService.evaluate(evalCtxBuilder.build());
+        Map<String, Object> resolvedData = actionConfig.evaluateDataMapping(
+                jsonataMappingService, evalCtxBuilder.build());
 
         // Deep-merge with output-level overrides (overrides win) — used by retry-form
         if (request.overrides() != null && !request.overrides().isEmpty()) {

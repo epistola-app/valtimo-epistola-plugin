@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **JSONata failures during document generation and preview now identify their source.** Exceptions include the generate-action version, configuration field or variant-attribute path, a bounded expression snippet, operation, and available process/activity/document identifiers while excluding process-variable and document values. Expressions are also compiled only once per evaluation.
 - **Expression-backed variant and environment selectors now explain why dropdown mode is unavailable.** Dynamic expressions and quoted values that no longer match a loaded option remain safely in expression mode; the disabled toggle is accompanied by a localized hint instead of silently ignoring the click.
 - **Generate-document migrations now respect the configuration version boundary.** The frontend migrates the complete v0 action object to v1 once; configurations already marked as v1 are only validated and are never passed through legacy per-field inference, so expressions such as `customer.id` retain their meaning when the editor is reopened.
 - **Invalid generate-document actions now fail at the backend configuration boundary.** Both v0 and v1 reject missing or blank catalog, template, data mapping, output format, filename, and result-variable fields with version-specific diagnostics instead of failing later during JSONata evaluation, job submission, or process-variable storage.

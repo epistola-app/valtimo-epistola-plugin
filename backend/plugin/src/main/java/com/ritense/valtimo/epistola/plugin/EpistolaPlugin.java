@@ -334,8 +334,9 @@ public class EpistolaPlugin {
                     .processVariableEnumerator(execution::getVariables)
                     .execution(execution)
                     .documentId(execution.getBusinessKey())
+                    .operation("execution")
                     .build();
-            resolvedData = jsonataMappingService.evaluate(evalCtx);
+            resolvedData = actionConfig.evaluateDataMapping(jsonataMappingService, evalCtx);
         }
 
         var scalarEvalContext = buildEvalCtx(execution, null);
@@ -639,6 +640,7 @@ public class EpistolaPlugin {
                 .processVariableEnumerator(execution::getVariables)
                 .execution(execution)
                 .documentId(execution.getBusinessKey())
+                .operation("execution")
                 .build();
     }
 

@@ -19,13 +19,18 @@ package app.epistola.valtimo.action.generate;
 
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.JsonataScalar;
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.LiteralScalar;
+import app.epistola.valtimo.mapping.EvaluationContext;
+import app.epistola.valtimo.mapping.JsonataMappingService;
 import org.junit.jupiter.api.Test;
+import org.operaton.bpm.engine.delegate.DelegateExecution;
 
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class GenerateDocumentActionConfigurationRegistryTest {
 
@@ -115,6 +120,118 @@ class GenerateDocumentActionConfigurationRegistryTest {
             assertMissingRequired(version, "filename", rawMissing(version, "filename"));
             assertMissingRequired(version, "resultProcessVariable", rawMissing(version, "resultProcessVariable"));
         }
+    }
+
+    @Test
+    void syntaxErrorIdentifiesVersionFieldAndExpression() {
+        RawGenerateDocumentActionConfiguration valid = raw(1, "\"value.pdf\"", null, null);
+        var invalid = new RawGenerateDocumentActionConfiguration(
+                valid.actionConfigVersion(),
+                valid.catalogId(),
+                valid.templateId(),
+                valid.variantId(),
+                valid.variantAttributes(),
+                valid.environmentId(),
+                valid.dataMapping(),
+                valid.outputFormat(),
+                "<filename>",
+                valid.correlationId(),
+                valid.resultProcessVariable());
+
+        assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(invalid))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("configuration v1")
+                .hasMessageContaining("filename")
+                .hasMessageContaining("<filename>")
+                .hasCauseInstanceOf(RuntimeException.class);
+    }
+
+    @Test
+    void runtimeErrorIdentifiesFieldAndExecutionWithoutIncludingRuntimeValues() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(raw(
+                1,
+                "\"value.pdf\"",
+                null,
+                null));
+        JsonataMappingService mappingService = mock(JsonataMappingService.class);
+        RuntimeException parserFailure = new RuntimeException("Syntax error: \"filename\"");
+        when(mappingService.evaluateScalar(org.mockito.ArgumentMatchers.any()))
+                .thenThrow(parserFailure);
+
+        DelegateExecution execution = mock(DelegateExecution.class);
+        when(execution.getProcessDefinitionId()).thenReturn("letters:3:definition");
+        when(execution.getProcessInstanceId()).thenReturn("process-123");
+        when(execution.getCurrentActivityId()).thenReturn("generate-letter");
+        EvaluationContext context = EvaluationContext.builder()
+                .operation("execution")
+                .execution(execution)
+                .documentId("document-456")
+                .processVariableResolver(name -> "secret-runtime-value")
+                .build();
+
+        assertThatThrownBy(() -> config.filename().resolve(mappingService, context))
+                .isInstanceOf(GenerateDocumentExpressionException.class)
+                .hasMessageContaining("epistola-generate-document v1")
+                .hasMessageContaining("field 'filename'")
+                .hasMessageContaining("expression='\"value.pdf\"'")
+                .hasMessageContaining("operation=execution")
+                .hasMessageContaining("processDefinitionId=letters:3:definition")
+                .hasMessageContaining("processInstanceId=process-123")
+                .hasMessageContaining("activityId=generate-letter")
+                .hasMessageContaining("documentId=document-456")
+                .hasMessageContaining("Syntax error")
+                .hasMessageNotContaining("secret-runtime-value")
+                .hasCause(parserFailure);
+    }
+
+    @Test
+    void dataMappingRuntimeErrorIdentifiesFieldAndPreviewContext() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(raw(
+                1,
+                "\"value.pdf\"",
+                null,
+                null));
+        JsonataMappingService mappingService = mock(JsonataMappingService.class);
+        RuntimeException evaluationFailure = new RuntimeException("Custom function failed");
+        when(mappingService.evaluate(org.mockito.ArgumentMatchers.any()))
+                .thenThrow(evaluationFailure);
+        EvaluationContext context = EvaluationContext.builder()
+                .operation("preview")
+                .processDefinitionId("letters:3:definition")
+                .processInstanceId("process-123")
+                .activityId("generate-letter")
+                .documentId("document-456")
+                .build();
+
+        assertThatThrownBy(() -> config.evaluateDataMapping(mappingService, context))
+                .isInstanceOf(GenerateDocumentExpressionException.class)
+                .hasMessageContaining("field 'dataMapping'")
+                .hasMessageContaining("operation=preview")
+                .hasMessageContaining("processDefinitionId=letters:3:definition")
+                .hasMessageContaining("activityId=generate-letter")
+                .hasCause(evaluationFailure);
+    }
+
+    @Test
+    void variantAttributeRuntimeErrorUsesTheAttributeKeyAsFieldPath() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(raw(
+                1,
+                "\"value.pdf\"",
+                null,
+                List.of(Map.of(
+                        "key", "language",
+                        "value", "$pv.language",
+                        "required", true))));
+        JsonataMappingService mappingService = mock(JsonataMappingService.class);
+        when(mappingService.evaluateScalar(org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new RuntimeException("Evaluation failed"));
+
+        assertThatThrownBy(() -> config.variantAttributes().getFirst().value().resolve(
+                mappingService,
+                EvaluationContext.builder().operation("execution").build()))
+                .isInstanceOf(GenerateDocumentExpressionException.class)
+                .hasMessageContaining("field 'variantAttributes.language'")
+                .hasMessageContaining("expression='$pv.language'");
     }
 
     private static void assertMissingRequired(

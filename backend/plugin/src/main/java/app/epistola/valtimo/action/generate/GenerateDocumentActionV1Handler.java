@@ -32,18 +32,16 @@ final class GenerateDocumentActionV1Handler extends AbstractGenerateDocumentActi
     @Override
     protected ConfiguredScalar scalar(String field, String value) {
         if (value == null || value.isBlank()) {
-            return new JsonataScalar(value);
+            return new JsonataScalar(version(), field, value);
         }
         try {
             jsonata(value);
-            return new JsonataScalar(value);
+            return new JsonataScalar(version(), field, value);
         } catch (RuntimeException exception) {
-            throw invalid(field + " must contain valid JSONata", exception);
+            throw invalid(
+                    field + " must contain valid JSONata (expression='"
+                            + GenerateDocumentExpressionException.expressionSnippet(value) + "')",
+                    exception);
         }
-    }
-
-    private IllegalArgumentException invalid(String message, RuntimeException cause) {
-        return new IllegalArgumentException(
-                "Invalid epistola-generate-document action configuration v1: " + message, cause);
     }
 }

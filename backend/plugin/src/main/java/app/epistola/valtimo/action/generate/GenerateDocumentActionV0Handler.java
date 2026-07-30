@@ -41,7 +41,7 @@ final class GenerateDocumentActionV0Handler extends AbstractGenerateDocumentActi
         }
         try {
             jsonata(value);
-            return new JsonataScalar(value);
+            return new JsonataScalar(version(), field, value);
         } catch (RuntimeException ignored) {
             return new LiteralScalar(value);
         }

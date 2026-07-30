@@ -23,6 +23,8 @@ import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.
 import java.util.List;
 import java.util.Map;
 
+import static com.dashjoin.jsonata.Jsonata.jsonata;
+
 abstract class AbstractGenerateDocumentActionVersionHandler implements GenerateDocumentActionVersionHandler {
 
     @Override
@@ -33,6 +35,7 @@ abstract class AbstractGenerateDocumentActionVersionHandler implements GenerateD
         requireNonBlank(raw.outputFormat(), "outputFormat must be a non-blank string");
         requireNonBlank(raw.filename(), "filename must be a non-blank string");
         requireNonBlank(raw.resultProcessVariable(), "resultProcessVariable must be a non-blank string");
+        validateDataMapping(raw.dataMapping());
 
         List<VariantAttribute> attributes = parseAttributes(raw.variantAttributes());
         ConfiguredScalar variantId = scalar("variantId", raw.variantId());
@@ -70,6 +73,17 @@ abstract class AbstractGenerateDocumentActionVersionHandler implements GenerateD
         }
     }
 
+    private void validateDataMapping(String expression) {
+        try {
+            jsonata(expression);
+        } catch (RuntimeException exception) {
+            throw invalid(
+                    "dataMapping must contain valid JSONata (expression='"
+                            + GenerateDocumentExpressionException.expressionSnippet(expression) + "')",
+                    exception);
+        }
+    }
+
     private List<VariantAttribute> parseAttributes(Object rawAttributes) {
         if (rawAttributes == null) {
             return List.of();
@@ -103,5 +117,11 @@ abstract class AbstractGenerateDocumentActionVersionHandler implements GenerateD
     protected IllegalArgumentException invalid(String message) {
         return new IllegalArgumentException(
                 "Invalid epistola-generate-document action configuration v" + version() + ": " + message);
+    }
+
+    protected IllegalArgumentException invalid(String message, RuntimeException cause) {
+        return new IllegalArgumentException(
+                "Invalid epistola-generate-document action configuration v" + version() + ": " + message,
+                cause);
     }
 }

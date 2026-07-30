@@ -59,8 +59,8 @@ public class JsonataMappingService {
             return Map.of();
         }
 
-        Frame frame = buildFrame(ctx);
         Jsonata jsonataExpr = jsonata(expression);
+        Frame frame = buildFrame(ctx, jsonataExpr);
         Object result = jsonataExpr.evaluate(Map.of(), frame);
         if (result instanceof Map<?, ?> map) {
             return (Map<String, Object>) map;
@@ -84,8 +84,8 @@ public class JsonataMappingService {
             return expression;
         }
 
-        Frame frame = buildFrame(ctx);
         Jsonata jsonataExpr = jsonata(expression);
+        Frame frame = buildFrame(ctx, jsonataExpr);
         Object result = jsonataExpr.evaluate(Map.of(), frame);
         return result != null ? result.toString() : null;
     }
@@ -102,7 +102,7 @@ public class JsonataMappingService {
         return evaluateWithMaps(expression, documentData, processVariables, caseData, null);
     }
 
-    private Frame buildFrame(EvaluationContext ctx) {
+    private Frame buildFrame(EvaluationContext ctx, Jsonata jsonataExpr) {
         Map<String, Object> docMap = buildDocumentMap(ctx);
         Map<String, Object> pvMap = buildProcessVariableMap(ctx);
 
@@ -114,8 +114,6 @@ public class JsonataMappingService {
                 Map.of()
         );
 
-        String expression = ctx.getExpression();
-        Jsonata jsonataExpr = jsonata(expression);
         Frame frame = jsonataExpr.createFrame();
         frame.setRuntimeBounds(TIMEOUT_MS, MAX_RECURSION_DEPTH);
 
