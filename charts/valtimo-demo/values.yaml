@@ -311,6 +311,12 @@ externalEpistola:
 epistola:
   enabled: true
 
+  # This chart is intended for demo environments, so credential encryption is
+  # disabled by default. Enable it and configure a Secret-backed keyset for any
+  # production-like deployment; see the chart README's Keycloak SSO example.
+  encryption:
+    enabled: false
+
   # Override epistola subchart values here, e.g.:
   # service:
   #   port: 8080

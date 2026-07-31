@@ -96,7 +96,7 @@ The chart handles this split-horizon problem with:
    consistent regardless of how Keycloak is accessed
 2. **KC_HOSTNAME_BACKCHANNEL_DYNAMIC=true** so Keycloak accepts
    server-to-server requests on the internal service URL
-3. **epistola.keycloak.backchannelBaseUrl** so Epistola uses the internal
+3. **epistola.oidc.backchannelBaseUrl** so Epistola uses the internal
    URL for token exchange, JWK fetching, and userinfo calls
 
 ### Example: full deployment with Keycloak SSO
@@ -105,17 +105,25 @@ The chart handles this split-horizon problem with:
 helm install demo charts/valtimo-demo \
   --set publicUrls.frontend="https://valtimo.example.com" \
   --set publicUrls.keycloak="https://auth.example.com/auth" \
-  --set epistola.keycloak.enabled=true \
-  --set epistola.keycloak.issuerUri="https://auth.example.com/auth/realms/valtimo" \
-  --set epistola.keycloak.backchannelBaseUrl="http://demo-keycloak/auth" \
-  --set epistola.keycloak.existingSecret="epistola-keycloak-secret" \
-  --set epistola.config.profiles="demo,prod"
+  --set secrets.epistolaClientSecret.secretRef.name="epistola-keycloak-secret" \
+  --set epistola.oidc.enabled=true \
+  --set epistola.oidc.issuerUri="https://auth.example.com/auth/realms/valtimo" \
+  --set epistola.oidc.backchannelBaseUrl="http://demo-keycloak/auth" \
+  --set epistola.oidc.existingSecret="epistola-keycloak-secret" \
+  --set epistola.encryption.enabled=true \
+  --set epistola.encryption.primaryKeyId="k1" \
+  --set 'epistola.encryption.keys[0].id=k1' \
+  --set 'epistola.encryption.keys[0].existingSecret=epistola-encryption' \
+  --set-string 'epistola.config.profiles=demo\,prod'
 ```
 
-Create the Epistola client secret beforehand:
+Create the Epistola client and encryption secrets beforehand:
+
 ```bash
 kubectl create secret generic epistola-keycloak-secret \
   --from-literal=client-secret="your-secret-here"
+kubectl create secret generic epistola-encryption \
+  --from-literal=k1="$(openssl rand -base64 32)"
 ```
 
 ### External database mode
