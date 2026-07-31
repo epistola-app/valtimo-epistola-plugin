@@ -17,6 +17,8 @@
  */
 
 import { firstValueFrom, of, Subject } from 'rxjs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 jest.mock('@angular/core', () => ({
   ChangeDetectionStrategy: { OnPush: 'OnPush' },
@@ -62,6 +64,31 @@ jest.mock('../smart-expression-editor/smart-expression-editor.component', () => 
 }));
 
 import { GenerateDocumentConfigurationComponent } from './generate-document-configuration.component';
+
+describe('GenerateDocumentConfigurationComponent selectors', () => {
+  it.each(['catalogId', 'templateId'])(
+    'renders the %s popup outside the process-link modal inline flow',
+    (name) => {
+      const template = readFileSync(
+        join(
+          process.cwd(),
+          'src/lib/components/generate-document-configuration/generate-document-configuration.component.html',
+        ),
+        'utf8',
+      );
+      const matches = template.match(
+        new RegExp(`<v-select\\s+name="${name}"[\\s\\S]*?</v-select>`),
+      );
+      if (!matches) {
+        throw new Error(`Missing ${name} selector markup`);
+      }
+      const [selectMarkup] = matches;
+
+      expect(selectMarkup).toContain('[appendInline]="false"');
+      expect(selectMarkup).toContain('[dropUp]="false"');
+    },
+  );
+});
 
 describe('GenerateDocumentConfigurationComponent versioning', () => {
   const createComponent = () => {
@@ -214,6 +241,28 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     component.onExpressionValidityChange('filename', true);
 
     expect(validity).toEqual([false, true]);
+  });
+
+  it('keeps catalog and template selections in the reactive cascade', () => {
+    const { component } = createComponent();
+    const templateCleared = jest.fn();
+    component.clearTemplateId$.subscribe(templateCleared);
+
+    component.formValueChange({
+      catalogId: 'catalog',
+    } as Parameters<typeof component.formValueChange>[0]);
+
+    expect(component.selectedCatalogId$.value).toBe('catalog');
+    expect(component.selectedTemplateId$.value).toBe('');
+    expect(templateCleared).toHaveBeenCalledTimes(1);
+
+    component.formValueChange({
+      catalogId: 'catalog',
+      templateId: 'template',
+    } as Parameters<typeof component.formValueChange>[0]);
+
+    expect(component.selectedCatalogId$.value).toBe('catalog');
+    expect(component.selectedTemplateId$.value).toBe('template');
   });
 
   it('does not switch an unsupported whole mapping to simple mode', () => {
