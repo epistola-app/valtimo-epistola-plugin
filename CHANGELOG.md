@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Catalog and template dropdowns now remain stable in the generate-document editor.** Both selectors render their Carbon popup outside the process-link modal's inline flow, matching the existing variant and environment selector behavior and preventing the menu from disappearing while choosing an item.
+
 ## [0.17.1] - 2026-07-30
 
 ### Changed
