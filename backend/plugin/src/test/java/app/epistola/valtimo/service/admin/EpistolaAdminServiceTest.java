@@ -141,7 +141,7 @@ class EpistolaAdminServiceTest {
             assertThat(status.tenantId()).isEqualTo(TENANT_ID);
             assertThat(status.errorMessage()).isNull();
             assertThat(status.latencyMs()).isGreaterThanOrEqualTo(0);
-            assertThat(status.contractVersion()).isEqualTo("0.16.1");
+            assertThat(status.contractVersion()).isEqualTo("1.0.0");
             assertThat(status.serverContractVersion()).isNull();
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
@@ -153,29 +153,29 @@ class EpistolaAdminServiceTest {
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("0.26.3", "0.16.2"));
+                    .thenReturn(new EpistolaService.SystemInfo("0.26.3", "1.0.1"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
             ConnectionStatus status = results.get(0);
             assertThat(status.serverVersion()).isEqualTo("0.26.3");
-            assertThat(status.contractVersion()).isEqualTo("0.16.1");
-            assertThat(status.serverContractVersion()).isEqualTo("0.16.2");
+            assertThat(status.contractVersion()).isEqualTo("1.0.0");
+            assertThat(status.serverContractVersion()).isEqualTo("1.0.1");
             assertThat(status.contractCompatibilitySeverity()).isEqualTo(ContractCompatibilitySeverity.OK);
         }
 
         @Test
-        void shouldWarnWhenServerContractMinorIsOlderThanPluginContractMinor() {
+        void shouldReportErrorWhenServerContractMajorIsOlderThanPluginContractMajor() {
             mockSinglePluginConfiguration();
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("0.25.9", "0.12.9"));
+                    .thenReturn(new EpistolaService.SystemInfo("0.26.3", "0.16.1"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
             assertThat(results.get(0).contractCompatibilitySeverity())
-                    .isEqualTo(ContractCompatibilitySeverity.WARNING);
+                    .isEqualTo(ContractCompatibilitySeverity.ERROR);
         }
 
         @Test
@@ -184,7 +184,7 @@ class EpistolaAdminServiceTest {
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("1.0.0", "1.0.0"));
+                    .thenReturn(new EpistolaService.SystemInfo("2.0.0", "2.0.0"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
@@ -198,7 +198,7 @@ class EpistolaAdminServiceTest {
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("0.28.0", "0.16.0-SNAPSHOT"));
+                    .thenReturn(new EpistolaService.SystemInfo("1.1.0", "1.1.0"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
@@ -237,7 +237,7 @@ class EpistolaAdminServiceTest {
             ConnectionStatus status = results.get(0);
             assertThat(status.reachable()).isFalse();
             assertThat(status.errorMessage()).isEqualTo("Connection refused");
-            assertThat(status.contractVersion()).isEqualTo("0.16.1");
+            assertThat(status.contractVersion()).isEqualTo("1.0.0");
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
         }

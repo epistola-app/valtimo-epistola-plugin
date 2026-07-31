@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Upgraded the Epistola contract client `app.epistola.contract:client-spring3-restclient` from `0.16.1` to `1.0.0`.** The plugin, Prism mock-server fixtures, and compatibility metadata now target the GA contract release; compatibility checks treat older `0.x` servers as a major-version mismatch while accepting newer `1.x` minor and patch releases.
+
 - **Upgraded the bundled demo deployment to the latest Epistola releases.** The Valtimo demo backend and frontend images now default to plugin release `0.17.2`, and the Epistola Suite dependency advances from chart `0.7.0` to `0.11.0` with the released Suite `1.0.0` image explicitly pinned over the chart's stale `1.0.0-RC3` app version. The parent chart version is bumped from `0.4.1` to `0.4.2`; its demo defaults explicitly disable Suite credential encryption, while the production-like SSO example documents the new `oidc` values and Secret-backed encryption keyset required by the current Suite chart.
 
 ## [0.17.2] - 2026-07-31
