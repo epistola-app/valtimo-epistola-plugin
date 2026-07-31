@@ -311,6 +311,11 @@ externalEpistola:
 epistola:
   enabled: true
 
+  # Chart 0.11.0 still declares Suite 1.0.0-RC3 as its appVersion. Pin the
+  # released image explicitly until the Suite chart catches up.
+  image:
+    tag: "1.0.0"
+
   # This chart is intended for demo environments, so credential encryption is
   # disabled by default. Enable it and configure a Secret-backed keyset for any
   # production-like deployment; see the chart README's Keycloak SSO example.
