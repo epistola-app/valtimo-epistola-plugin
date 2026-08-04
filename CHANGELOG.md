@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.3] - 2026-08-04
+
 ### Changed
 
 - **Upgraded the Epistola contract client `app.epistola.contract:client-spring3-restclient` from `0.16.1` to `1.0.1`.** The plugin, Prism mock-server fixtures, and compatibility metadata now target the patched GA contract release; compatibility checks treat older `0.x` servers as a major-version mismatch while accepting newer `1.x` minor and patch releases.
