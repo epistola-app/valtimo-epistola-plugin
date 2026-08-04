@@ -141,7 +141,7 @@ class EpistolaAdminServiceTest {
             assertThat(status.tenantId()).isEqualTo(TENANT_ID);
             assertThat(status.errorMessage()).isNull();
             assertThat(status.latencyMs()).isGreaterThanOrEqualTo(0);
-            assertThat(status.contractVersion()).isEqualTo("1.0.0");
+            assertThat(status.contractVersion()).isEqualTo("1.0.1");
             assertThat(status.serverContractVersion()).isNull();
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
@@ -159,7 +159,7 @@ class EpistolaAdminServiceTest {
 
             ConnectionStatus status = results.get(0);
             assertThat(status.serverVersion()).isEqualTo("0.26.3");
-            assertThat(status.contractVersion()).isEqualTo("1.0.0");
+            assertThat(status.contractVersion()).isEqualTo("1.0.1");
             assertThat(status.serverContractVersion()).isEqualTo("1.0.1");
             assertThat(status.contractCompatibilitySeverity()).isEqualTo(ContractCompatibilitySeverity.OK);
         }
@@ -237,7 +237,7 @@ class EpistolaAdminServiceTest {
             ConnectionStatus status = results.get(0);
             assertThat(status.reachable()).isFalse();
             assertThat(status.errorMessage()).isEqualTo("Connection refused");
-            assertThat(status.contractVersion()).isEqualTo("1.0.0");
+            assertThat(status.contractVersion()).isEqualTo("1.0.1");
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
         }
