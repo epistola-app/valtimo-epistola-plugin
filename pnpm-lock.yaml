@@ -18,7 +18,7 @@ overrides:
   '@angular/router': 19.2.25
   ajv@>=8: '>=8.18.0'
   axios: '>=1.18.1'
-  brace-expansion@<2: 1.1.16
+  brace-expansion@<2: 1.1.18
   sass: 1.98.0
   brace-expansion@>=2: '>=5.0.7'
   devalue: '>=5.8.2'
@@ -208,7 +208,7 @@ importers:
         version: 1.23.6(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@epistola.app/valtimo-plugin':
         specifier: workspace:*
-        version: file:frontend/plugin(69643397109d5ef94ad39ed6925547ae)
+        version: link:../../frontend/plugin
       '@formio/angular':
         specifier: 7.0.0
         version: 7.0.0(c150ca8a43035968948abde96c21d2f9)
@@ -1521,26 +1521,6 @@ packages:
 
   '@emnapi/wasi-threads@1.2.0':
     resolution: {integrity: sha512-N10dEJNSsUx41Z6pZsXU8FjPjpBEplgH24sfkmITrBED1/U2Esum9F3lfLrMjKHHjmi557zQn7kR9R+XWXu5Rg==}
-
-  '@epistola.app/valtimo-plugin@file:frontend/plugin':
-    resolution: {directory: frontend/plugin, type: directory}
-    peerDependencies:
-      '@angular/common': 19.2.25
-      '@angular/core': 19.2.25
-      '@angular/elements': 19.2.25
-      '@angular/forms': 19.2.25
-      '@angular/platform-browser': 19.2.25
-      '@angular/router': 19.2.25
-      '@formio/angular': 7.0.0
-      '@valtimo/components': '>=13.21.0 <14'
-      '@valtimo/plugin': '>=13.21.0 <14'
-      '@valtimo/process-link': '>=13.21.0 <14'
-      '@valtimo/security': '>=13.21.0 <14'
-      '@valtimo/shared': '>=13.21.0 <14'
-      carbon-components-angular: 5.57.6
-      formiojs: 4.19.5
-      monaco-editor: '>=0.40.0 <1'
-      rxjs: ^7.8.0
 
   '@esbuild/aix-ppc64@0.25.12':
     resolution: {integrity: sha512-Hhmwd6CInZ3dwpuGTF8fJG6yoWmsToE+vYgD4nytZVxcu1ulHpUQRAB1UJ8+N1Am3Mz4+xOByoQoSZf4D+CpkA==}
@@ -4584,8 +4564,8 @@ packages:
     resolution: {integrity: sha512-dr5s3vtOG8NkVSwa8CC55XBIKKwajomSZRb0RiMOOOF6TpqZBZvtbDjpzWICvdd/plDF6uOtaRfSgblPQLAioQ==}
     engines: {node: '>= 18'}
 
-  brace-expansion@1.1.16:
-    resolution: {integrity: sha512-IDw48K2/2kRkg9LdJxurvq3lV3aBgq0REY89duEqFRthjlPdXHKMj7EnQOXVckxzgisinf3nHfrcE2FufFLXMw==}
+  brace-expansion@1.1.18:
+    resolution: {integrity: sha512-Edep/X9fGqVNmzKBVsDYIOtD+z1tuezV70LBjdCst9Tqu76lsnvRiZ6oTic1n+/BIwX6QDGAO94PN4N2SADvtw==}
 
   brace-expansion@5.0.7:
     resolution: {integrity: sha512-7oFy703dxfY3/NLxC1fh2SUCQ0H9rmAY+5EpDVfXjUTTs+HEwR2nYaqLv+GWcTsumwxPfiz6CzCNkwXwBUwqCA==}
@@ -11016,27 +10996,6 @@ snapshots:
       tslib: 2.8.1
     optional: true
 
-  '@epistola.app/valtimo-plugin@file:frontend/plugin(69643397109d5ef94ad39ed6925547ae)':
-    dependencies:
-      '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
-      '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
-      '@angular/elements': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
-      '@angular/forms': 19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2)
-      '@angular/platform-browser': 19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
-      '@angular/router': 19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2)
-      '@formio/angular': 7.0.0(c150ca8a43035968948abde96c21d2f9)
-      '@valtimo/components': 13.38.0(03a40c4340cfb08b0d641fb3d4f3ed55)
-      '@valtimo/plugin': 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
-      '@valtimo/process-link': 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
-      '@valtimo/security': 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
-      '@valtimo/shared': 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
-      carbon-components-angular: 5.57.6(@carbon/styles@1.80.0(sass@1.98.0))
-      formiojs: 4.19.5(encoding@0.1.13)
-      jsonata: 2.2.2
-      monaco-editor: 0.50.0
-      rxjs: 7.8.2
-      tslib: 2.8.1
-
   '@esbuild/aix-ppc64@0.25.12':
     optional: true
 
@@ -14240,7 +14199,7 @@ snapshots:
       moddle: 7.2.0
       moddle-xml: 11.0.0(moddle@7.2.0)
 
-  brace-expansion@1.1.16:
+  brace-expansion@1.1.18:
     dependencies:
       balanced-match: 1.0.2
       concat-map: 0.0.1
@@ -17522,11 +17481,11 @@ snapshots:
 
   minimatch@3.0.5:
     dependencies:
-      brace-expansion: 1.1.16
+      brace-expansion: 1.1.18
 
   minimatch@3.1.5:
     dependencies:
-      brace-expansion: 1.1.16
+      brace-expansion: 1.1.18
 
   minimatch@9.0.9:
     dependencies:
