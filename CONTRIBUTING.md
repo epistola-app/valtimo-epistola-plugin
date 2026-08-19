@@ -141,7 +141,14 @@ Run tests locally:
 
 # Frontend
 cd frontend/plugin && pnpm test
+
+# Test-app browser integration suite (headless, single run)
+CI=true pnpm --filter gzac-frontend-template test
 ```
+
+The Karma test application uses `CHROME_BIN` when it is provided. Otherwise it
+checks common Brave stable, beta, and nightly installation paths on macOS, Linux,
+and Windows. Set `BRAVE_BIN` when Brave is installed elsewhere.
 
 ## Pull Request Process
 
