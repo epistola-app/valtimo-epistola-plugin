@@ -20,6 +20,7 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { BuilderField } from '../../../utils/jsonata-converter';
 import { SmartExpressionEditorComponent } from '../../smart-expression-editor/smart-expression-editor.component';
+import { ExpressionFunctionInfo } from '../../../models';
 
 @Component({
   selector: 'epistola-builder-field',
@@ -66,6 +67,7 @@ import { SmartExpressionEditorComponent } from '../../smart-expression-editor/sm
           class="builder-field__editor"
           [expression]="field.value"
           [contextVariables]="contextVariables"
+          [functions]="functions"
           [disabled]="disabled"
           [required]="false"
           [compact]="true"
@@ -89,6 +91,7 @@ import { SmartExpressionEditorComponent } from '../../smart-expression-editor/sm
           [collapsedPaths]="collapsedPaths"
           [required]="false"
           [contextVariables]="contextVariables"
+          [functions]="functions"
           (valueChange)="valueChange.emit($event)"
           (validityChange)="validityChange.emit($event)"
           (collapseToggle)="collapseToggle.emit($event)"
@@ -176,6 +179,7 @@ export class BuilderFieldComponent {
   @Input() collapsed = false;
   @Input() required = false;
   @Input() contextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
+  @Input() functions: ExpressionFunctionInfo[] = [];
   @Input() collapsedPaths: Set<string> = new Set();
   @Output() valueChange = new EventEmitter<{ path: number[]; value: string }>();
   @Output() validityChange = new EventEmitter<{ path: number[]; valid: boolean }>();

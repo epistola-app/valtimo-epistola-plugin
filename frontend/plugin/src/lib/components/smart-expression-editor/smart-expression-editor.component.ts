@@ -38,6 +38,11 @@ import { InputLabelModule, SelectedValue, SelectItem, SelectModule } from '@valt
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
 import * as _jsonata from 'jsonata';
+import { ExpressionFunctionInfo } from '../../models';
+import {
+  FunctionSchemaField,
+  expressionFunctionSchemaSources,
+} from '../../utils/expression-function-schema';
 import {
   decodeJsonataStringLiteral,
   encodeJsonataStringLiteral,
@@ -46,6 +51,7 @@ import { renderJsonataPath } from '../../utils/jsonata-path';
 import {
   ReferenceExpressionSegment,
   SimpleExpressionSegment,
+  functionReferenceExpressionSegment,
   parseSimpleJsonataExpression,
   referenceExpressionSegment,
   serializeSimpleJsonataSegments,
@@ -62,10 +68,20 @@ type ExpressionEditorMode = (typeof MODE_ORDER)[number];
 interface ReferenceOption extends ReferenceExpressionSegment {
   label: string;
   expression: string;
+  description?: string;
+  schemaField?: FunctionSchemaField;
+  insertable?: boolean;
 }
 
 interface ReferenceGroup {
   variable: string;
+  options: ReferenceOption[];
+}
+
+interface FunctionReferenceGroup {
+  id: string;
+  signature: string;
+  description: string;
   options: ReferenceOption[];
 }
 
@@ -80,6 +96,7 @@ interface ReferenceGroup {
 export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit, OnDestroy {
   @Input() expression = '';
   @Input() contextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
+  @Input() functions: ExpressionFunctionInfo[] = [];
   @Input() disabled = false;
   @Input() required = false;
   @Input() compact = false;
@@ -140,6 +157,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   private simpleDirty = false;
   private modeChosenByUser = false;
   private selectCompatible = false;
+  private readonly expandedFunctionFields = new Set<string>();
 
   constructor(
     private readonly cdr: ChangeDetectorRef,
@@ -163,7 +181,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     if (changes['selectOptions']) {
       this.reconcileSelectView();
     }
-    if (changes['contextVariables'] && this.pickerOpen) {
+    if ((changes['contextVariables'] || changes['functions']) && this.pickerOpen) {
       this.activeOptionIndex = 0;
     }
     if (changes['disabled'] && this.disabled) {
@@ -210,6 +228,61 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     return this.referenceGroups.flatMap((group) => group.options);
   }
 
+  get functionReferenceGroups(): FunctionReferenceGroup[] {
+    const query = this.pickerQuery.trim().toLocaleLowerCase();
+    return expressionFunctionSchemaSources(this.functions || [])
+      .map((source) => ({
+        id: source.id,
+        signature: source.signature,
+        description: source.description,
+        options: source.fields
+          .filter((field) =>
+            query
+              ? [field.path, field.expression, field.description || '', source.signature].some(
+                  (value) => value.toLocaleLowerCase().includes(query),
+                )
+              : field.parentIds.every((parentId) => this.expandedFunctionFields.has(parentId)),
+          )
+          .map((field) => ({
+            ...functionReferenceExpressionSegment(source.functionName, field.path),
+            label: field.path,
+            expression: field.expression,
+            description: field.description,
+            schemaField: field,
+            insertable: field.insertable,
+          })),
+      }))
+      .filter((group) => group.options.length > 0);
+  }
+
+  get functionSchemaDiagnostics(): Array<{ signature: string; message: string }> {
+    return (this.functions || []).flatMap((func) =>
+      func.overloads.flatMap((overload) =>
+        overload.schemaDiagnostic
+          ? [{ signature: `$${func.name}()`, message: overload.schemaDiagnostic.message }]
+          : [],
+      ),
+    );
+  }
+
+  isFunctionFieldExpanded(option: ReferenceOption): boolean {
+    return !!option.schemaField && this.expandedFunctionFields.has(option.schemaField.id);
+  }
+
+  toggleFunctionField(event: MouseEvent, option: ReferenceOption): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = option.schemaField?.id;
+    if (!id) return;
+    if (this.expandedFunctionFields.has(id)) {
+      this.expandedFunctionFields.delete(id);
+    } else {
+      this.expandedFunctionFields.add(id);
+    }
+    this.activeOptionIndex = 0;
+    this.cdr.markForCheck();
+  }
+
   get customReferenceOptions(): ReferenceOption[] {
     const query = this.pickerQuery.trim().replace(/^\$/, '');
     if (!query) return [];
@@ -228,7 +301,12 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
           referenceExpressionSegment('doc', query),
           referenceExpressionSegment(root, path),
         ];
-    const knownExpressions = new Set(this.flatReferenceOptions.map((option) => option.expression));
+    const knownExpressions = new Set(
+      [
+        ...this.flatReferenceOptions,
+        ...this.functionReferenceGroups.flatMap((group) => group.options),
+      ].map((option) => option.expression),
+    );
     const seen = new Set<string>();
 
     return candidates.flatMap((candidate) => {
@@ -261,7 +339,13 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   }
 
   get selectableReferenceOptions(): ReferenceOption[] {
-    return [...this.flatReferenceOptions, ...this.customReferenceOptions];
+    return [
+      ...this.flatReferenceOptions,
+      ...this.functionReferenceGroups
+        .flatMap((group) => group.options)
+        .filter((option) => option.insertable !== false),
+      ...this.customReferenceOptions,
+    ];
   }
 
   get advancedValid(): boolean {
@@ -538,6 +622,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   }
 
   selectReference(option: ReferenceOption): void {
+    if (option.insertable === false) return;
     this.insertSegment(option);
   }
 
@@ -775,9 +860,13 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
 
     const label =
       segment.kind === 'reference'
-        ? segment.path
-          ? `$${segment.variable}.${segment.path}`
-          : `$${segment.variable}`
+        ? segment.rootExpression
+          ? segment.path
+            ? `${segment.rootExpression}.${segment.path}`
+            : segment.rootExpression
+          : segment.path
+            ? `$${segment.variable}.${segment.path}`
+            : `$${segment.variable}`
         : String(segment.value);
     chip.textContent = label;
     chip.setAttribute('aria-label', `${label}. Press Enter to change or Delete to remove.`);

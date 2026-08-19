@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Custom JSONata functions can publish overload-specific result schemas.** Host applications can annotate an `execute` overload with `ExpressionFunctionResultSchema` to expose a versioned classpath JSON Schema through the expression-functions endpoint without executing the function. Missing and malformed resources produce per-overload diagnostics without hiding unrelated functions.
+- **Schema-backed custom functions appear as expression sources in the process-link editor.** Mapping authors can browse and expand described object and array fields, see required, optional, and nullable metadata, search nested paths, and insert zero-argument function paths such as `$inwonerplan().activiteiten`; functions without schemas remain available in Advanced JSONata editing.
 
 ## [0.17.3] - 2026-08-04
 

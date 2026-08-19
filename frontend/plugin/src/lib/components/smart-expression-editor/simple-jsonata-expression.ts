@@ -17,7 +17,7 @@
  */
 
 import * as _jsonata from 'jsonata';
-import { renderJsonataPath } from '../../utils/jsonata-path';
+import { renderJsonataPath, renderJsonataPathTail } from '../../utils/jsonata-path';
 
 const jsonata = (_jsonata as any).default || _jsonata;
 
@@ -35,6 +35,8 @@ export interface ReferenceExpressionSegment {
   kind: 'reference';
   variable: string;
   path: string;
+  /** Alternate JSONata root, used for schema-backed zero-argument function calls. */
+  rootExpression?: string;
 }
 
 export interface TypedExpressionSegment {
@@ -135,6 +137,18 @@ export function referenceExpressionSegment(
   return { kind: 'reference', variable, path };
 }
 
+export function functionReferenceExpressionSegment(
+  functionName: string,
+  path: string,
+): ReferenceExpressionSegment {
+  return {
+    kind: 'reference',
+    variable: functionName,
+    path,
+    rootExpression: `$${functionName}()`,
+  };
+}
+
 export function typedExpressionSegment(
   valueType: TypedExpressionSegment['valueType'],
   value: number | boolean | null,
@@ -202,8 +216,24 @@ function parseTerm(source: string): SimpleExpressionSegment | null {
     return typedExpressionSegment('null', null);
   }
 
+  const functionReference = parseFunctionReferenceSource(trimmed);
+  if (functionReference) {
+    return functionReference;
+  }
+
   const reference = parseReference(ast, trimmed);
   return reference;
+}
+
+function parseFunctionReferenceSource(source: string): ReferenceExpressionSegment | null {
+  const match = source.match(/^\$([A-Za-z_]\w*)\(\)\.(.+)$/);
+  if (!match || !isSimplePathSource(match[2])) return null;
+  return functionReferenceExpressionSegment(match[1], match[2]);
+}
+
+function isSimplePathSource(path: string): boolean {
+  const segment = String.raw`(?:[A-Za-z_]\w*|\`[^\`]+\`)(?:\[\d*\])*`;
+  return new RegExp(String.raw`^${segment}(?:\.${segment})*$`).test(path);
 }
 
 function parseReference(ast: any, source: string): ReferenceExpressionSegment | null {
@@ -252,6 +282,11 @@ function serializeSegment(segment: SimpleExpressionSegment): string {
     case 'text':
       return encodeSingleQuotedJsonataString(segment.value);
     case 'reference':
+      if (segment.rootExpression) {
+        return segment.path
+          ? `${segment.rootExpression}.${renderJsonataPathTail(segment.path)}`
+          : segment.rootExpression;
+      }
       return segment.path
         ? renderJsonataPath(segment.variable, segment.path)
         : `$${segment.variable}`;

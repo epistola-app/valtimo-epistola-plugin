@@ -504,6 +504,111 @@ describe('SmartExpressionEditorComponent', () => {
     destroy();
   });
 
+  it('discovers, expands, and inserts schema-backed function fields', () => {
+    const { component, surface, destroy } = createComponent('');
+    component.functions = [
+      {
+        name: 'inwonerplan',
+        description: 'Resident plan',
+        overloads: [
+          {
+            arguments: [],
+            returnType: 'Map',
+            resultSchema: {
+              type: 'object',
+              properties: {
+                inwoner: {
+                  type: 'object',
+                  required: ['naam'],
+                  properties: { naam: { type: 'string', description: 'Full name' } },
+                },
+                activiteiten: {
+                  type: 'array',
+                  items: { type: 'object', properties: { titel: { type: 'string' } } },
+                },
+              },
+            },
+          },
+        ],
+      },
+      {
+        name: 'plain',
+        description: 'No schema',
+        overloads: [{ arguments: [], returnType: 'String' }],
+      },
+    ];
+    component.ngOnChanges({
+      functions: {
+        currentValue: component.functions,
+        previousValue: [],
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    expect(component.functionReferenceGroups).toHaveLength(1);
+    expect(component.functionReferenceGroups[0].signature).toBe('$inwonerplan()');
+    expect(component.functionReferenceGroups[0].options.map((option) => option.label)).toEqual([
+      'inwoner',
+      'activiteiten',
+    ]);
+
+    const inwoner = component.functionReferenceGroups[0].options[0];
+    component.toggleFunctionField(new MouseEvent('mousedown', { cancelable: true }), inwoner);
+    expect(component.functionReferenceGroups[0].options).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          label: 'inwoner.naam',
+          description: 'Full name',
+          expression: '$inwonerplan().inwoner.naam',
+        }),
+      ]),
+    );
+
+    setCaret(surface.firstChild!, 0);
+    component.onSurfaceFocus();
+    component.openInsertPicker();
+    const activities = component.functionReferenceGroups[0].options.find(
+      (option) => option.label === 'activiteiten',
+    )!;
+    component.selectReference(activities);
+
+    expect(component.expression).toBe('$inwonerplan().activiteiten');
+    expect(surface.querySelector('[data-expression-chip]')?.textContent).toBe(
+      '$inwonerplan().activiteiten',
+    );
+    destroy();
+  });
+
+  it('shows schema diagnostics without removing ordinary function metadata', () => {
+    const { component, destroy } = createComponent('');
+    component.functions = [
+      {
+        name: 'broken',
+        description: '',
+        overloads: [
+          {
+            arguments: [],
+            returnType: 'Map',
+            schemaDiagnostic: { code: 'MALFORMED_JSON_SCHEMA', message: 'Malformed schema' },
+          },
+        ],
+      },
+      {
+        name: 'plain',
+        description: '',
+        overloads: [{ arguments: [], returnType: 'String' }],
+      },
+    ];
+
+    expect(component.functionReferenceGroups).toEqual([]);
+    expect(component.functionSchemaDiagnostics).toEqual([
+      { signature: '$broken()', message: 'Malformed schema' },
+    ]);
+    expect(component.functions.find((func) => func.name === 'plain')).toBeDefined();
+    destroy();
+  });
+
   it('restores the caret after the picker closing focus cycle', () => {
     const animationFrames: FrameRequestCallback[] = [];
     const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
