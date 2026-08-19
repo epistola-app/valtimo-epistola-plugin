@@ -31,6 +31,7 @@ import app.epistola.valtimo.service.admin.EpistolaLegacyOverrideScanService; // 
 import app.epistola.valtimo.service.completion.EpistolaCatchEventStartListener;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import app.epistola.valtimo.expression.functions.FormatDateFunction;
 import app.epistola.valtimo.expression.functions.StringFunctions;
 import app.epistola.valtimo.mapping.JsonataMappingService;
@@ -159,9 +160,10 @@ public class EpistolaPluginAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(ExpressionFunctionRegistry.class)
     public ExpressionFunctionRegistry expressionFunctionRegistry(
-            List<EpistolaExpressionFunction> functions
+            List<EpistolaExpressionFunction> functions,
+            ObjectMapper objectMapper
     ) {
-        return new ExpressionFunctionRegistry(functions);
+        return new ExpressionFunctionRegistry(functions, objectMapper);
     }
 
     @Bean

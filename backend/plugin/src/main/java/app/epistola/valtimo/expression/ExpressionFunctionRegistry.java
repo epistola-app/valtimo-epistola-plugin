@@ -17,8 +17,13 @@
  */
 package app.epistola.valtimo.expression;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
@@ -36,8 +41,17 @@ import java.util.Map;
 public class ExpressionFunctionRegistry {
 
     private final Map<String, RegisteredFunction> functions = new LinkedHashMap<>();
+    private final ObjectMapper objectMapper;
 
     public ExpressionFunctionRegistry(List<EpistolaExpressionFunction> functionBeans) {
+        this(functionBeans, new ObjectMapper());
+    }
+
+    public ExpressionFunctionRegistry(
+            List<EpistolaExpressionFunction> functionBeans,
+            ObjectMapper objectMapper
+    ) {
+        this.objectMapper = objectMapper;
         for (EpistolaExpressionFunction bean : functionBeans) {
             String name = bean.name();
             if (functions.containsKey(name)) {
@@ -83,15 +97,57 @@ public class ExpressionFunctionRegistry {
                             params[i].getType().getSimpleName()
                     ));
                 }
+                SchemaMetadata schemaMetadata = loadResultSchema(bean, method);
                 overloads.add(new ExpressionFunctionInfo.OverloadInfo(
                         args,
-                        method.getReturnType().getSimpleName()
+                        method.getReturnType().getSimpleName(),
+                        schemaMetadata.schema(),
+                        schemaMetadata.diagnostic()
                 ));
             }
 
             result.add(new ExpressionFunctionInfo(bean.name(), bean.description(), overloads));
         }
         return result;
+    }
+
+    private SchemaMetadata loadResultSchema(EpistolaExpressionFunction bean, Method method) {
+        ExpressionFunctionResultSchema annotation = method.getAnnotation(ExpressionFunctionResultSchema.class);
+        if (annotation == null) {
+            return SchemaMetadata.empty();
+        }
+
+        String resourceName = annotation.value().replaceFirst("^/", "");
+        try (InputStream input = bean.getClass().getClassLoader().getResourceAsStream(resourceName)) {
+            if (input == null) {
+                return SchemaMetadata.error(
+                        "SCHEMA_RESOURCE_NOT_FOUND",
+                        "Result schema resource '" + annotation.value() + "' was not found"
+                );
+            }
+            JsonNode schema = objectMapper.readTree(input);
+            if (schema == null || (!schema.isObject() && !schema.isBoolean())) {
+                return SchemaMetadata.error(
+                        "INVALID_JSON_SCHEMA",
+                        "Result schema resource '" + annotation.value()
+                                + "' must contain a JSON object or boolean schema"
+                );
+            }
+            return new SchemaMetadata(schema, null);
+        } catch (JsonProcessingException e) {
+            return SchemaMetadata.error(
+                    "MALFORMED_JSON_SCHEMA",
+                    "Result schema resource '" + annotation.value() + "' contains malformed JSON: "
+                            + e.getOriginalMessage()
+            );
+        } catch (IOException | RuntimeException e) {
+            log.warn("Could not load result schema '{}' for expression function '{}': {}",
+                    annotation.value(), bean.name(), e.getMessage());
+            return SchemaMetadata.error(
+                    "UNREADABLE_JSON_SCHEMA",
+                    "Result schema resource '" + annotation.value() + "' could not be read: " + e.getMessage()
+            );
+        }
     }
 
     /**
@@ -215,4 +271,17 @@ public class ExpressionFunctionRegistry {
      * Result of overload matching: the bean to invoke and the matched method.
      */
     public record MethodMatch(EpistolaExpressionFunction bean, Method method) {}
+
+    private record SchemaMetadata(
+            JsonNode schema,
+            ExpressionFunctionInfo.SchemaDiagnostic diagnostic
+    ) {
+        private static SchemaMetadata empty() {
+            return new SchemaMetadata(null, null);
+        }
+
+        private static SchemaMetadata error(String code, String message) {
+            return new SchemaMetadata(null, new ExpressionFunctionInfo.SchemaDiagnostic(code, message));
+        }
+    }
 }

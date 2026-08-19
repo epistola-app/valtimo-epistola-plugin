@@ -18,6 +18,7 @@
 package app.epistola.valtimo.web.rest;
 
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
+import app.epistola.valtimo.expression.ExpressionFunctionInfo;
 import app.epistola.valtimo.service.preview.ProcessLinkMappingService;
 import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
@@ -71,6 +72,36 @@ class EpistolaToolingResourceValidateJsonataTest {
 
         assertThat(body).isNotNull();
         assertThat(body.dataMapping()).isEmpty();
+    }
+
+    @Test
+    void expressionFunctionsEndpointReturnsExtendedMetadata() throws Exception {
+        var registry = mock(ExpressionFunctionRegistry.class);
+        var expected = new ExpressionFunctionInfo(
+                "person",
+                "Returns a person",
+                List.of(new ExpressionFunctionInfo.OverloadInfo(
+                        List.of(),
+                        "Map",
+                        new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode().put("type", "object"),
+                        null
+                ))
+        );
+        resource = new EpistolaToolingResource(
+                mock(ProcessVariableDiscoveryService.class),
+                mock(VariableSuggestionService.class),
+                registry,
+                processLinkMappingService);
+        when(registry.listFunctions()).thenReturn(List.of(expected));
+
+        var body = resource.getExpressionFunctions().getBody();
+
+        assertThat(body).containsExactly(expected);
+        assertThat(body.getFirst().overloads().getFirst().resultSchema().path("type").asText())
+                .isEqualTo("object");
+        assertThat(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(body))
+                .contains("\"resultSchema\":{\"type\":\"object\"}")
+                .contains("\"schemaDiagnostic\":null");
     }
 
     @Test

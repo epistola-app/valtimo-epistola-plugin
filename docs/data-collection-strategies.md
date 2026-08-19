@@ -105,11 +105,24 @@ public class BrpPersonFunction implements EpistolaExpressionFunction {
         return "brpPerson";
     }
 
+    @ExpressionFunctionResultSchema("schemas/brp-person-result-v1.schema.json")
     public Person execute(ExpressionContext ctx, String bsn) {
         return brpClient.getPerson(bsn);
     }
 }
 ```
+
+`ExpressionFunctionResultSchema` is optional and belongs on an individual `execute`
+overload, so overloaded functions can publish a different result contract for each
+signature. The value names a classpath JSON Schema resource. Schema discovery reads
+that resource without invoking the function or loading case data. If a resource is
+missing or malformed, the expression-functions endpoint reports a diagnostic for that
+overload while continuing to return every other function.
+
+Treat result schemas as versioned API contracts: use a versioned resource name, keep
+old resources available while saved mappings depend on them, and add a contract test
+that validates representative runtime output against the published schema. The schema
+is authoring metadata; it does not add runtime validation or authorization.
 
 The data mapping stays clean — no intermediary process variables, no extra service tasks:
 
