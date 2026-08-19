@@ -201,7 +201,7 @@ class ExpressionFunctionRegistryTest {
             return "Malformed schema fixture";
         }
 
-        @ExpressionFunctionResultSchema("expression-schemas/malformed.schema.json")
+        @ExpressionFunctionResultSchema("expression-schemas/malformed.schema.txt")
         public Map<String, Object> execute(ExpressionContext context) {
             return Map.of();
         }
