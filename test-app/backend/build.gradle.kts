@@ -88,6 +88,7 @@ dependencies {
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.kotlin)
+    testImplementation(libs.json.schema.validator)
     testImplementation(libs.testcontainers.postgresql)
 }
 

@@ -19,12 +19,16 @@ package com.ritense.valtimo.expression
 
 import app.epistola.valtimo.expression.ExpressionContext
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.networknt.schema.SchemaRegistry
+import com.networknt.schema.dialect.Dialects
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
 
 class GetCustomDataFunctionTest {
     private val function = GetCustomDataFunction()
+    private val objectMapper = ObjectMapper()
 
     @Test
     fun `returns representative custom data`() {
@@ -60,5 +64,22 @@ class GetCustomDataFunctionTest {
                 .path("type")
                 .asText(),
         ).isEqualTo("string")
+    }
+
+    @Test
+    fun `runtime result conforms to its published schema`() {
+        val overload =
+            ExpressionFunctionRegistry(listOf(function))
+                .listFunctions()
+                .single()
+                .overloads()
+                .single()
+        val schema =
+            SchemaRegistry
+                .withDefaultDialect(Dialects.getDraft202012())
+                .getSchema(overload.resultSchema())
+        val runtimeResult = function.execute(mock<ExpressionContext>())
+
+        assertThat(schema.validate(objectMapper.valueToTree(runtimeResult))).isEmpty()
     }
 }
