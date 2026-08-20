@@ -21,6 +21,7 @@ import app.epistola.valtimo.expression.functions.FormatDateFunction;
 import app.epistola.valtimo.expression.functions.StringFunctions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.aop.framework.ProxyFactory;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -185,7 +186,40 @@ class ExpressionFunctionRegistryTest {
         verify(resolver, times(1)).resolve(function, method);
     }
 
-    private static class SchemaFunction implements EpistolaExpressionFunction {
+    @Test
+    void shouldDiscoverTargetMethodsAndAnnotationsOnClassBasedProxy() {
+        SchemaFunction target = new SchemaFunction();
+        ProxyFactory proxyFactory = new ProxyFactory(target);
+        proxyFactory.setProxyTargetClass(true);
+        EpistolaExpressionFunction proxy = (EpistolaExpressionFunction) proxyFactory.getProxy();
+
+        ExpressionFunctionRegistry proxyRegistry = new ExpressionFunctionRegistry(List.of(proxy));
+
+        ExpressionFunctionInfo.OverloadInfo mapOverload = proxyRegistry.listFunctions().getFirst().overloads().stream()
+                .filter(overload -> "Map".equals(overload.returnType()))
+                .findFirst()
+                .orElseThrow();
+        assertNotNull(mapOverload.resultSchema());
+        assertEquals(SchemaFunction.class,
+                proxyRegistry.getFunction("person").methods().getFirst().getDeclaringClass());
+    }
+
+    @Test
+    void shouldRejectJdkProxyWithActionableDiagnostic() {
+        ProxyFactory proxyFactory = new ProxyFactory(new SchemaFunction());
+        proxyFactory.setInterfaces(EpistolaExpressionFunction.class);
+        EpistolaExpressionFunction proxy = (EpistolaExpressionFunction) proxyFactory.getProxy();
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> new ExpressionFunctionRegistry(List.of(proxy)));
+
+        assertTrue(exception.getMessage().contains("JDK dynamic proxy"));
+        assertTrue(exception.getMessage().contains("class-based proxying"));
+        assertTrue(exception.getMessage().contains(SchemaFunction.class.getName()));
+    }
+
+    static class SchemaFunction implements EpistolaExpressionFunction {
         private int invocations;
 
         @Override

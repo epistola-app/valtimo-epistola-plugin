@@ -27,6 +27,7 @@ import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.dialect.Dialect;
 import com.networknt.schema.dialect.Dialects;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -71,13 +72,14 @@ public class ExpressionFunctionSchemaResolver {
      * Resolve the optional schema annotation on an overload without invoking the function.
      */
     public Result resolve(EpistolaExpressionFunction bean, Method method) {
-        ExpressionFunctionResultSchema annotation = method.getAnnotation(ExpressionFunctionResultSchema.class);
+        ExpressionFunctionResultSchema annotation =
+                AnnotatedElementUtils.findMergedAnnotation(method, ExpressionFunctionResultSchema.class);
         if (annotation == null) {
             return Result.empty();
         }
 
         String resourceName = annotation.value().replaceFirst("^/", "");
-        try (InputStream input = bean.getClass().getClassLoader().getResourceAsStream(resourceName)) {
+        try (InputStream input = method.getDeclaringClass().getClassLoader().getResourceAsStream(resourceName)) {
             if (input == null) {
                 return Result.error(
                         "SCHEMA_RESOURCE_NOT_FOUND",

@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The test-app Karma suite can use Brave when Chrome is unavailable.** Local headless runs preserve explicit `CHROME_BIN` configuration, then search an optional `BRAVE_BIN` override and common Brave stable, beta, and nightly locations across macOS, Linux, and Windows.
 - Brave discovery now requires an executable binary and has platform-independent unit coverage for PATH, package-manager, system, and per-user installation locations.
 
+### Fixed
+
+- Custom expression functions wrapped in Spring class-based proxies now retain overload discovery, result-schema metadata, and evaluation-cache annotations; unsupported JDK proxies fail at startup with an actionable diagnostic.
+
 ## [0.17.3] - 2026-08-04
 
 ### Changed

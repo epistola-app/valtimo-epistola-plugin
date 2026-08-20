@@ -25,6 +25,7 @@ import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.springframework.aop.framework.ProxyFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -429,6 +430,24 @@ class JsonataMappingServiceTest {
         }
 
         @Test
+        void shouldInvokeAndCacheAnnotatedFunctionThroughClassBasedProxy() {
+            CachedLookupFunction target = new CachedLookupFunction();
+            ProxyFactory proxyFactory = new ProxyFactory(target);
+            proxyFactory.setProxyTargetClass(true);
+            EpistolaExpressionFunction proxy = (EpistolaExpressionFunction) proxyFactory.getProxy();
+            service = new JsonataMappingService(new ExpressionFunctionRegistry(List.of(proxy)));
+
+            Map<String, Object> result = service.evaluate(
+                    "{ \"first\": $lookup('same'), \"second\": $lookup('same') }",
+                    Map.of(), Map.of(), Map.of());
+
+            assertThat(result)
+                    .containsEntry("first", "same-1")
+                    .containsEntry("second", "same-1");
+            assertThat(target.invocations).isEqualTo(1);
+        }
+
+        @Test
         void shouldCallUnannotatedFunctionForEveryReference() {
             UncachedLookupFunction function = new UncachedLookupFunction();
             service = new JsonataMappingService(new ExpressionFunctionRegistry(List.of(function)));
@@ -544,7 +563,7 @@ class JsonataMappingServiceTest {
                     .hasMessageContaining("myCustomFunc");
         }
 
-        private class CachedLookupFunction implements EpistolaExpressionFunction {
+        class CachedLookupFunction implements EpistolaExpressionFunction {
             private int invocations;
 
             @Override

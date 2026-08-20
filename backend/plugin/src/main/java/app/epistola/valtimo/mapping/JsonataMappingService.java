@@ -26,6 +26,7 @@ import com.dashjoin.jsonata.Jsonata;
 import com.dashjoin.jsonata.Jsonata.Frame;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -205,7 +206,8 @@ public class JsonataMappingService {
                 Object[] argsArray = args != null ? args.toArray() : new Object[0];
                 try {
                     var match = functionRegistry.findMatchingOverload(name, argsArray);
-                    boolean cacheResult = match.method().isAnnotationPresent(CacheResultForEvaluation.class);
+                    boolean cacheResult = AnnotatedElementUtils.hasAnnotation(
+                            match.method(), CacheResultForEvaluation.class);
                     FunctionInvocationKey cacheKey = cacheResult
                             ? new FunctionInvocationKey(name, match.method(), argsArray)
                             : null;

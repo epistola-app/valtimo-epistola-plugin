@@ -19,6 +19,7 @@ package app.epistola.valtimo.expression;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.aop.support.AopUtils;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -56,6 +57,12 @@ public class ExpressionFunctionRegistry {
     ) {
         for (EpistolaExpressionFunction bean : functionBeans) {
             String name = bean.name();
+            if (AopUtils.isJdkDynamicProxy(bean)) {
+                throw new IllegalStateException(
+                        "Expression function '" + name + "' uses a JDK dynamic proxy, which cannot expose its "
+                                + "execute methods. Configure class-based proxying for "
+                                + AopUtils.getTargetClass(bean).getName());
+            }
             if (functions.containsKey(name)) {
                 log.warn("Duplicate expression function name '{}', overwriting with {}", name, bean.getClass().getName());
             }
@@ -182,7 +189,8 @@ public class ExpressionFunctionRegistry {
     }
 
     private List<Method> discoverExecuteMethods(EpistolaExpressionFunction bean) {
-        return Arrays.stream(bean.getClass().getMethods())
+        Class<?> targetClass = AopUtils.getTargetClass(bean);
+        return Arrays.stream(targetClass.getMethods())
                 .filter(m -> "execute".equals(m.getName()))
                 .filter(m -> m.getParameterCount() >= 1)
                 .filter(m -> ExpressionContext.class.isAssignableFrom(m.getParameterTypes()[0]))
