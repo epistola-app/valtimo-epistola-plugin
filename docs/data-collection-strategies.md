@@ -105,11 +105,40 @@ public class BrpPersonFunction implements EpistolaExpressionFunction {
         return "brpPerson";
     }
 
+    @CacheResultForEvaluation
+    @ExpressionFunctionResultSchema("schemas/brp-person-result-v1.schema.json")
     public Person execute(ExpressionContext ctx, String bsn) {
         return brpClient.getPerson(bsn);
     }
 }
 ```
+
+`ExpressionFunctionResultSchema` is optional and belongs on an individual `execute`
+overload, so overloaded functions can publish a different result contract for each
+signature. The value names a classpath JSON Schema resource. Schema discovery reads
+that resource without invoking the function or loading case data. If a resource is
+missing or malformed, the expression-functions endpoint reports a diagnostic for that
+overload while continuing to return every other function.
+
+`CacheResultForEvaluation` is optional and also belongs on an individual `execute`
+overload. Equal calls to an annotated overload reuse the first successful result only
+within one JSONata evaluation. Separate document generations and separate scalar
+expressions never share entries; unannotated overloads continue to run for every
+reference. Use application-level caching when values should live longer than one
+evaluation.
+
+Treat result schemas as versioned API contracts: use a versioned resource name, keep
+old resources available while saved mappings depend on them, and add a contract test
+that validates representative runtime output against the published schema. The schema
+is authoring metadata; it does not add runtime validation or authorization.
+
+The expression editor intentionally supports the structural subset needed for source
+browsing: object `properties`, `required`, `description`, scalar and nullable `type`,
+homogeneous array `items`, local `$ref` references, and `allOf`/`anyOf`/`oneOf` object
+composition. Recursive trees stop after a safe depth. Schemas using external or dynamic
+references, tuple arrays, pattern properties, dependencies, or conditional schemas
+receive an `UNSUPPORTED_EXPRESSION_AUTHORING_SCHEMA` diagnostic instead of a partial,
+potentially misleading source tree.
 
 The data mapping stays clean — no intermediary process variables, no extra service tasks:
 
@@ -129,7 +158,7 @@ The data mapping stays clean — no intermediary process variables, no extra ser
 - **Hidden complexity** — API calls happen implicitly during resolution; failures are harder to trace
 - **No per-source error handling** — all resolution happens in one batch; a single failure can block the entire mapping
 - **Development effort** — each external system needs a function implementation
-- **Caching concerns** — the same BSN might be resolved multiple times if multiple fields reference it; functions need internal caching to avoid redundant API calls
+- **Caching policy** — function authors must explicitly decide whether repeated equal calls are stable enough for `CacheResultForEvaluation`; longer-lived caching still belongs in the host application
 - **Runtime coupling** — external calls now happen during JSONata evaluation, so function latency directly affects the generate action
 
 ### Batch implications

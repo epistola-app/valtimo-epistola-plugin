@@ -17,7 +17,9 @@
  */
 package app.epistola.valtimo.expression;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.aop.support.AopUtils;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
@@ -36,10 +38,31 @@ import java.util.Map;
 public class ExpressionFunctionRegistry {
 
     private final Map<String, RegisteredFunction> functions = new LinkedHashMap<>();
+    private final List<ExpressionFunctionInfo> functionMetadata;
 
     public ExpressionFunctionRegistry(List<EpistolaExpressionFunction> functionBeans) {
+        this(functionBeans, new ObjectMapper());
+    }
+
+    public ExpressionFunctionRegistry(
+            List<EpistolaExpressionFunction> functionBeans,
+            ObjectMapper objectMapper
+    ) {
+        this(functionBeans, new ExpressionFunctionSchemaResolver(objectMapper));
+    }
+
+    public ExpressionFunctionRegistry(
+            List<EpistolaExpressionFunction> functionBeans,
+            ExpressionFunctionSchemaResolver schemaResolver
+    ) {
         for (EpistolaExpressionFunction bean : functionBeans) {
             String name = bean.name();
+            if (AopUtils.isJdkDynamicProxy(bean)) {
+                throw new IllegalStateException(
+                        "Expression function '" + name + "' uses a JDK dynamic proxy, which cannot expose its "
+                                + "execute methods. Configure class-based proxying for "
+                                + AopUtils.getTargetClass(bean).getName());
+            }
             if (functions.containsKey(name)) {
                 log.warn("Duplicate expression function name '{}', overwriting with {}", name, bean.getClass().getName());
             }
@@ -52,6 +75,7 @@ public class ExpressionFunctionRegistry {
             functions.put(name, new RegisteredFunction(bean, executeMethods));
             log.debug("Registered expression function '{}' with {} overload(s)", name, executeMethods.size());
         }
+        functionMetadata = buildFunctionMetadata(schemaResolver);
     }
 
     /**
@@ -67,6 +91,10 @@ public class ExpressionFunctionRegistry {
      * List all registered functions with their overload metadata, for the REST API.
      */
     public List<ExpressionFunctionInfo> listFunctions() {
+        return functionMetadata;
+    }
+
+    private List<ExpressionFunctionInfo> buildFunctionMetadata(ExpressionFunctionSchemaResolver schemaResolver) {
         List<ExpressionFunctionInfo> result = new ArrayList<>();
         for (var entry : functions.entrySet()) {
             RegisteredFunction rf = entry.getValue();
@@ -83,15 +111,18 @@ public class ExpressionFunctionRegistry {
                             params[i].getType().getSimpleName()
                     ));
                 }
+                ExpressionFunctionSchemaResolver.Result schemaMetadata = schemaResolver.resolve(bean, method);
                 overloads.add(new ExpressionFunctionInfo.OverloadInfo(
                         args,
-                        method.getReturnType().getSimpleName()
+                        method.getReturnType().getSimpleName(),
+                        schemaMetadata.schema(),
+                        schemaMetadata.diagnostic()
                 ));
             }
 
             result.add(new ExpressionFunctionInfo(bean.name(), bean.description(), overloads));
         }
-        return result;
+        return List.copyOf(result);
     }
 
     /**
@@ -158,7 +189,8 @@ public class ExpressionFunctionRegistry {
     }
 
     private List<Method> discoverExecuteMethods(EpistolaExpressionFunction bean) {
-        return Arrays.stream(bean.getClass().getMethods())
+        Class<?> targetClass = AopUtils.getTargetClass(bean);
+        return Arrays.stream(targetClass.getMethods())
                 .filter(m -> "execute".equals(m.getName()))
                 .filter(m -> m.getParameterCount() >= 1)
                 .filter(m -> ExpressionContext.class.isAssignableFrom(m.getParameterTypes()[0]))
@@ -215,4 +247,5 @@ public class ExpressionFunctionRegistry {
      * Result of overload matching: the bean to invoke and the matched method.
      */
     public record MethodMatch(EpistolaExpressionFunction bean, Method method) {}
+
 }

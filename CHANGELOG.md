@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Custom expression-function overloads can opt into memoization with `@CacheResultForEvaluation`. Equal calls reuse successful results only within one JSONata evaluation; existing unannotated functions remain uncached. See ADR 0003.
+- The test application now verifies that `$getCustomData()` is invoked during document generation and that its scalar and string-array results reach the submitted template data.
+- The test application validates the actual `$getCustomData()` result against its published JSON Schema to prevent metadata/runtime contract drift.
+- The test application now registers a schema-backed `$getCustomData()` JSONata function with scalar fields and a string-array field for manual expression-editor testing.
+- **Custom JSONata functions can publish overload-specific result schemas.** Host applications can annotate an `execute` overload with `ExpressionFunctionResultSchema` to expose a versioned classpath JSON Schema through the expression-functions endpoint without executing the function. Missing and malformed resources produce per-overload diagnostics without hiding unrelated functions.
+- Result schemas are now loaded once when functions are registered and validated against JSON Schema drafts 4, 6, 7, 2019-09, or 2020-12. Schemas without a `$schema` declaration default to draft 2020-12; invalid and unsupported schemas produce overload-specific diagnostics.
+- Schema-backed expression suggestions now preserve literal property names, stop recursive references safely, merge `allOf` constraints, and avoid treating fields required by only one `anyOf`/`oneOf` alternative as universally required.
+- Schema suggestion trees and Monaco completion metadata are now normalized once per function-metadata update, keeping option identities stable across Angular change detection and avoiding repeated schema traversal.
+- Schema-backed function picker state now lives in a dedicated catalog model, separating metadata normalization, expansion, search, insertion eligibility, and diagnostics from the smart editor's DOM and caret responsibilities.
+- **Schema-backed custom functions appear as expression sources in the process-link editor.** Mapping authors can browse and expand described object and array fields, see required, optional, and nullable metadata, search nested paths, and insert zero-argument function paths such as `$inwonerplan().activiteiten`; functions without schemas remain available in Advanced JSONata editing.
+
+### Changed
+
+- **The test-app Karma suite can use Brave when Chrome is unavailable.** Local headless runs preserve explicit `CHROME_BIN` configuration, then search an optional `BRAVE_BIN` override and common Brave stable, beta, and nightly locations across macOS, Linux, and Windows.
+- Brave discovery now requires an executable binary and has platform-independent unit coverage for PATH, package-manager, system, and per-user installation locations.
+
+### Fixed
+
+- Custom expression functions wrapped in Spring class-based proxies now retain overload discovery, result-schema metadata, and evaluation-cache annotations; unsupported JDK proxies fail at startup with an actionable diagnostic.
+- Valid JSON Schemas using structures the expression editor cannot faithfully represent now produce an explicit authoring-schema diagnostic instead of incomplete field suggestions; local `$ref` siblings are merged correctly.
+- Evaluation-cache keys now snapshot nested JSON-like arguments, so mutable maps, collections, and arrays cannot invalidate cached function results; unknown object types use safe identity semantics.
+
 ## [0.17.3] - 2026-08-04
 
 ### Changed

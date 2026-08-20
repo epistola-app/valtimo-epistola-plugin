@@ -189,6 +189,15 @@
           </div>
         </ng-container>
 
+        <epistola-function-reference-picker
+          [groups]="functionReferenceGroups"
+          [diagnostics]="functionSchemaDiagnostics"
+          [activeOption]="activeFunctionReferenceOption"
+          (toggleField)="toggleFunctionField($event.event, $event.option)"
+          (optionMouseDown)="onReferenceMouseDown($event.event, $event.option)"
+          (optionClick)="onReferenceClick($event)"
+        />
+
         <div
           *ngIf="customReferenceOptions.length > 0"
           class="smart-expression__group smart-expression__group--custom"
@@ -217,7 +226,11 @@
         </div>
 
         <div
-          *ngIf="referenceGroups.length === 0 && customReferenceOptions.length === 0"
+          *ngIf="
+            referenceGroups.length === 0 &&
+            functionReferenceGroups.length === 0 &&
+            customReferenceOptions.length === 0
+          "
           class="smart-expression__empty"
         >
           {{ 'expressionEditorNoReferences' | pluginTranslate: 'epistola' | async }}

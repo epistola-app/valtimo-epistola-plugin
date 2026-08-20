@@ -1,0 +1,82 @@
+/*
+ * SPDX-FileCopyrightText: Epistola Nederland B.V.
+ *
+ * SPDX-License-Identifier: EUPL-1.2
+ */
+
+:host {
+  display: block;
+}
+
+.function-reference__group {
+  border-top: 1px solid #e0e0e0;
+}
+
+.function-reference__group-label {
+  padding: 0.4rem 0.75rem 0.2rem;
+  color: #6f6f6f;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.function-reference__row {
+  display: flex;
+  align-items: stretch;
+}
+
+.function-reference__expand {
+  width: 1.75rem;
+  flex: none;
+  border: 0;
+  background: #fff;
+  color: #525252;
+  cursor: pointer;
+  font-size: 0.65rem;
+}
+
+.function-reference__option {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex: 1;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.45rem 0.75rem;
+  border: 0;
+  background: #fff;
+  color: #161616;
+  cursor: pointer;
+  text-align: left;
+
+  > span {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+  }
+
+  code,
+  small {
+    color: #6f6f6f;
+    font-size: 0.68rem;
+  }
+
+  &:hover,
+  &--active {
+    background: #e8e8e8;
+  }
+
+  &:disabled {
+    color: #8d8d8d;
+    cursor: not-allowed;
+  }
+}
+
+.function-reference__diagnostic {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid #f1c21b;
+  background: #fff8e1;
+  color: #6f4e00;
+  font-size: 0.75rem;
+}

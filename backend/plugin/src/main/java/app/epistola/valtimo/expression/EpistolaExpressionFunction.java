@@ -32,6 +32,9 @@ package app.epistola.valtimo.expression;
  *   <li>Remaining parameters are the user-provided arguments (typed)</li>
  *   <li>Multiple overloads are supported</li>
  *   <li>Return type is the expression result</li>
+ *   <li>An execute method may declare an optional {@link ExpressionFunctionResultSchema}</li>
+ *   <li>An execute method may opt into evaluation-scoped result caching with
+ *       {@link CacheResultForEvaluation}</li>
  * </ul>
  * <p>
  * Example usage in a data mapping value:

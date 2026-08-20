@@ -18,6 +18,7 @@
 
 import {
   encodeSingleQuotedJsonataString,
+  functionReferenceExpressionSegment,
   parseSimpleJsonataExpression,
   referenceExpressionSegment,
   serializeSimpleJsonataExpression,
@@ -76,6 +77,31 @@ describe('simple JSONata expression model', () => {
     ]);
   });
 
+  it('parses and serializes schema-backed zero-argument function references', () => {
+    const result = parseSimpleJsonataExpression('$inwonerplan().activiteiten[].titel');
+
+    expect(result.expression?.segments).toEqual([
+      functionReferenceExpressionSegment('inwonerplan', 'activiteiten[].titel'),
+    ]);
+    expect(
+      serializeSimpleJsonataSegments([
+        functionReferenceExpressionSegment('inwonerplan', 'activiteiten'),
+      ]),
+    ).toBe('$inwonerplan().activiteiten');
+  });
+
+  it('serializes schema paths without splitting dots inside property names', () => {
+    expect(
+      serializeSimpleJsonataSegments([
+        functionReferenceExpressionSegment(
+          'lookup',
+          'address.city.postal-code',
+          '`address.city`.`postal-code`',
+        ),
+      ]),
+    ).toBe('$lookup().`address.city`.`postal-code`');
+  });
+
   it.each([
     'value.pdf',
     '$uppercase($doc.name)',
@@ -84,6 +110,7 @@ describe('simple JSONata expression model', () => {
     '($doc.name & ".pdf")',
     '{"name": $doc.name}',
     '$doc.items[$pv.index].name',
+    '$lookup().items[$pv.index].name',
   ])('leaves unsupported expression %s in Advanced mode', (source) => {
     expect(parseSimpleJsonataExpression(source).representable).toBe(false);
   });

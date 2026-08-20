@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.mapping;
 
+import app.epistola.valtimo.expression.CacheResultForEvaluation;
 import app.epistola.valtimo.expression.DefaultExpressionContext;
 import app.epistola.valtimo.expression.ExpressionContext;
 import app.epistola.valtimo.expression.ExpressionEvaluationException;
@@ -25,8 +26,10 @@ import com.dashjoin.jsonata.Jsonata;
 import com.dashjoin.jsonata.Jsonata.Frame;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.annotation.AnnotatedElementUtils;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.HashMap;
 import java.util.Map;
 
 import static com.dashjoin.jsonata.Jsonata.jsonata;
@@ -187,6 +190,8 @@ public class JsonataMappingService {
     }
 
     private void registerCustomFunctions(Frame frame, ExpressionContext exprCtx) {
+        Map<ExpressionFunctionInvocationKey, Object> evaluationCache = new HashMap<>();
+
         for (var funcInfo : functionRegistry.listFunctions()) {
             String name = funcInfo.name();
             var registeredFunc = functionRegistry.getFunction(name);
@@ -198,10 +203,23 @@ public class JsonataMappingService {
                 Object[] argsArray = args != null ? args.toArray() : new Object[0];
                 try {
                     var match = functionRegistry.findMatchingOverload(name, argsArray);
+                    boolean cacheResult = AnnotatedElementUtils.hasAnnotation(
+                            match.method(), CacheResultForEvaluation.class);
+                    ExpressionFunctionInvocationKey cacheKey = cacheResult
+                            ? ExpressionFunctionInvocationKey.of(name, match.method(), argsArray)
+                            : null;
+                    if (cacheResult && evaluationCache.containsKey(cacheKey)) {
+                        return evaluationCache.get(cacheKey);
+                    }
+
                     Object[] fullArgs = new Object[argsArray.length + 1];
                     fullArgs[0] = exprCtx;
                     System.arraycopy(argsArray, 0, fullArgs, 1, argsArray.length);
-                    return match.method().invoke(match.bean(), fullArgs);
+                    Object result = match.method().invoke(match.bean(), fullArgs);
+                    if (cacheResult) {
+                        evaluationCache.put(cacheKey, result);
+                    }
+                    return result;
                 } catch (InvocationTargetException e) {
                     Throwable cause = e.getTargetException();
                     throw new ExpressionEvaluationException(
@@ -217,4 +235,5 @@ public class JsonataMappingService {
             frame.bind(name, jFunc);
         }
     }
+
 }

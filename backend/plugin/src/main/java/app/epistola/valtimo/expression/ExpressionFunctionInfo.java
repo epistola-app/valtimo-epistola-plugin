@@ -17,6 +17,8 @@
  */
 package app.epistola.valtimo.expression;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import java.util.List;
 
 /**
@@ -33,7 +35,17 @@ public record ExpressionFunctionInfo(
      */
     public record OverloadInfo(
             List<ArgumentInfo> arguments,
-            String returnType
+            String returnType,
+            JsonNode resultSchema,
+            SchemaDiagnostic schemaDiagnostic
+    ) {}
+
+    /**
+     * Describes why an annotated result schema could not be published.
+     */
+    public record SchemaDiagnostic(
+            String code,
+            String message
     ) {}
 
     /**

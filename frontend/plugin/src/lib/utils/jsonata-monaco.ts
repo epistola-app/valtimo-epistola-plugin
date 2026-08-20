@@ -17,6 +17,7 @@
  */
 
 import { ExpressionFunctionInfo } from '../models';
+import { expressionFunctionSchemaSources } from './expression-function-schema';
 import { renderJsonataPathTail } from './jsonata-path';
 
 /**
@@ -32,6 +33,17 @@ export const jsonataCompletionData = {
   variables: {} as Record<string, string[]>,
   functions: [] as ExpressionFunctionInfo[],
 };
+
+let schemaSourceFunctions: ExpressionFunctionInfo[] | null = null;
+let cachedSchemaSources: ReturnType<typeof expressionFunctionSchemaSources> = [];
+
+function currentSchemaSources() {
+  if (schemaSourceFunctions !== jsonataCompletionData.functions) {
+    schemaSourceFunctions = jsonataCompletionData.functions;
+    cachedSchemaSources = expressionFunctionSchemaSources(schemaSourceFunctions);
+  }
+  return cachedSchemaSources;
+}
 
 /**
  * Register the JSONata language in Monaco editor.
@@ -206,6 +218,40 @@ export function registerJsonataLanguage(monaco: any): void {
             // whole dotted key.
             insertText: renderJsonataPathTail(field),
             detail: `$${fieldMatch[1]} field`,
+          });
+        }
+      }
+
+      // After a schema-backed zero-argument function call, suggest fields from
+      // that overload's declared result contract without executing the function.
+      const functionFieldMatch = textUntilPosition.match(
+        /\$([a-zA-Z_]\w*)\(\)\.([a-zA-Z0-9_.\[\]`]*)$/,
+      );
+      if (functionFieldMatch) {
+        const functionName = functionFieldMatch[1];
+        const typedPath = functionFieldMatch[2];
+        const separator = typedPath.lastIndexOf('.');
+        const parentPath = separator >= 0 ? typedPath.slice(0, separator) : '';
+        const partialName = separator >= 0 ? typedPath.slice(separator + 1) : typedPath;
+        const sources = currentSchemaSources().filter(
+          (source) => source.functionName === functionName,
+        );
+        for (const field of sources.flatMap((source) => source.fields)) {
+          const fieldSeparator = field.path.lastIndexOf('.');
+          const fieldParent = fieldSeparator >= 0 ? field.path.slice(0, fieldSeparator) : '';
+          if (fieldParent !== parentPath || !field.name.startsWith(partialName)) continue;
+          suggestions.push({
+            label: field.name,
+            kind: CompletionItemKind.Field,
+            insertText: renderJsonataPathTail(field.name),
+            detail: [
+              field.type,
+              field.required ? 'required' : 'optional',
+              field.nullable ? 'nullable' : null,
+            ]
+              .filter(Boolean)
+              .join(' · '),
+            documentation: field.description,
           });
         }
       }

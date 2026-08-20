@@ -21,11 +21,18 @@ import app.epistola.valtimo.expression.functions.FormatDateFunction;
 import app.epistola.valtimo.expression.functions.StringFunctions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.aop.framework.ProxyFactory;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 class ExpressionFunctionRegistryTest {
 
@@ -116,5 +123,158 @@ class ExpressionFunctionRegistryTest {
         ExpressionFunctionRegistry.MethodMatch match =
                 registry.findMatchingOverload("str", new Object[]{null});
         assertNotNull(match);
+    }
+
+    @Test
+    void shouldPublishOverloadSpecificResultSchemasWithoutInvokingFunctions() {
+        SchemaFunction function = new SchemaFunction();
+        ExpressionFunctionRegistry schemaRegistry = new ExpressionFunctionRegistry(List.of(function));
+
+        ExpressionFunctionInfo info = schemaRegistry.listFunctions().getFirst();
+        ExpressionFunctionInfo.OverloadInfo stringOverload = info.overloads().stream()
+                .filter(overload -> "String".equals(overload.returnType()))
+                .findFirst()
+                .orElseThrow();
+        ExpressionFunctionInfo.OverloadInfo mapOverload = info.overloads().stream()
+                .filter(overload -> "Map".equals(overload.returnType()))
+                .findFirst()
+                .orElseThrow();
+
+        assertNotNull(mapOverload.resultSchema());
+        assertEquals("object", mapOverload.resultSchema().path("type").asText());
+        assertEquals("Full name", mapOverload.resultSchema().path("properties").path("name")
+                .path("description").asText());
+        assertNull(mapOverload.schemaDiagnostic());
+        assertNull(stringOverload.resultSchema());
+        assertNull(stringOverload.schemaDiagnostic());
+        assertEquals(0, function.invocations);
+    }
+
+    @Test
+    void shouldReportMalformedAndMissingSchemasWithoutBreakingOtherFunctions() {
+        ExpressionFunctionRegistry schemaRegistry = new ExpressionFunctionRegistry(List.of(
+                new MalformedSchemaFunction(),
+                new MissingSchemaFunction(),
+                new StringFunctions()
+        ));
+
+        List<ExpressionFunctionInfo> functions = schemaRegistry.listFunctions();
+        assertEquals(3, functions.size());
+        assertEquals("MALFORMED_JSON_SCHEMA", functions.stream()
+                .filter(info -> "malformedSchema".equals(info.name()))
+                .findFirst().orElseThrow().overloads().getFirst().schemaDiagnostic().code());
+        assertEquals("SCHEMA_RESOURCE_NOT_FOUND", functions.stream()
+                .filter(info -> "missingSchema".equals(info.name()))
+                .findFirst().orElseThrow().overloads().getFirst().schemaDiagnostic().code());
+        assertNull(functions.stream()
+                .filter(info -> "str".equals(info.name()))
+                .findFirst().orElseThrow().overloads().getFirst().schemaDiagnostic());
+    }
+
+    @Test
+    void shouldCacheSchemaMetadataAtRegistrationTime() throws Exception {
+        SchemaFunction function = new SchemaFunction();
+        ExpressionFunctionSchemaResolver resolver = mock(ExpressionFunctionSchemaResolver.class);
+        var method = SchemaFunction.class.getMethod("execute", ExpressionContext.class);
+        when(resolver.resolve(any(), any())).thenReturn(new ExpressionFunctionSchemaResolver.Result(null, null));
+        when(resolver.resolve(function, method)).thenReturn(new ExpressionFunctionSchemaResolver.Result(null, null));
+
+        ExpressionFunctionRegistry schemaRegistry = new ExpressionFunctionRegistry(List.of(function), resolver);
+        schemaRegistry.listFunctions();
+        schemaRegistry.listFunctions();
+
+        verify(resolver, times(1)).resolve(function, method);
+    }
+
+    @Test
+    void shouldDiscoverTargetMethodsAndAnnotationsOnClassBasedProxy() {
+        SchemaFunction target = new SchemaFunction();
+        ProxyFactory proxyFactory = new ProxyFactory(target);
+        proxyFactory.setProxyTargetClass(true);
+        EpistolaExpressionFunction proxy = (EpistolaExpressionFunction) proxyFactory.getProxy();
+
+        ExpressionFunctionRegistry proxyRegistry = new ExpressionFunctionRegistry(List.of(proxy));
+
+        ExpressionFunctionInfo.OverloadInfo mapOverload = proxyRegistry.listFunctions().getFirst().overloads().stream()
+                .filter(overload -> "Map".equals(overload.returnType()))
+                .findFirst()
+                .orElseThrow();
+        assertNotNull(mapOverload.resultSchema());
+        assertEquals(SchemaFunction.class,
+                proxyRegistry.getFunction("person").methods().getFirst().getDeclaringClass());
+    }
+
+    @Test
+    void shouldRejectJdkProxyWithActionableDiagnostic() {
+        ProxyFactory proxyFactory = new ProxyFactory(new SchemaFunction());
+        proxyFactory.setInterfaces(EpistolaExpressionFunction.class);
+        EpistolaExpressionFunction proxy = (EpistolaExpressionFunction) proxyFactory.getProxy();
+
+        IllegalStateException exception = assertThrows(
+                IllegalStateException.class,
+                () -> new ExpressionFunctionRegistry(List.of(proxy)));
+
+        assertTrue(exception.getMessage().contains("JDK dynamic proxy"));
+        assertTrue(exception.getMessage().contains("class-based proxying"));
+        assertTrue(exception.getMessage().contains(SchemaFunction.class.getName()));
+    }
+
+    static class SchemaFunction implements EpistolaExpressionFunction {
+        private int invocations;
+
+        @Override
+        public String name() {
+            return "person";
+        }
+
+        @Override
+        public String description() {
+            return "Returns a person";
+        }
+
+        @ExpressionFunctionResultSchema("expression-schemas/person-result.schema.json")
+        public Map<String, Object> execute(ExpressionContext context) {
+            invocations++;
+            return Map.of();
+        }
+
+        public String execute(ExpressionContext context, String id) {
+            invocations++;
+            return id;
+        }
+    }
+
+    private static class MalformedSchemaFunction implements EpistolaExpressionFunction {
+        @Override
+        public String name() {
+            return "malformedSchema";
+        }
+
+        @Override
+        public String description() {
+            return "Malformed schema fixture";
+        }
+
+        @ExpressionFunctionResultSchema("expression-schemas/malformed.schema.txt")
+        public Map<String, Object> execute(ExpressionContext context) {
+            return Map.of();
+        }
+    }
+
+    private static class MissingSchemaFunction implements EpistolaExpressionFunction {
+        @Override
+        public String name() {
+            return "missingSchema";
+        }
+
+        @Override
+        public String description() {
+            return "Missing schema fixture";
+        }
+
+        @ExpressionFunctionResultSchema("expression-schemas/does-not-exist.schema.json")
+        public Map<String, Object> execute(ExpressionContext context) {
+            return Map.of();
+        }
     }
 }

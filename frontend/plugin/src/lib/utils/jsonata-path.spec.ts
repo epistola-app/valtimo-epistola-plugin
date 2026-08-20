@@ -16,7 +16,11 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-import { renderJsonataPath, renderJsonataPathTail } from './jsonata-path';
+import {
+  renderJsonataPath,
+  renderJsonataPathSegments,
+  renderJsonataPathTail,
+} from './jsonata-path';
 
 describe('jsonata-path', () => {
   it('keeps dotted paths as path traversal', () => {
@@ -33,5 +37,17 @@ describe('jsonata-path', () => {
 
   it('renders a tail for completion insert text', () => {
     expect(renderJsonataPathTail('doc:adres.straat')).toBe('`doc:adres`.straat');
+  });
+});
+
+describe('renderJsonataPathSegments', () => {
+  it('does not split dots that are part of a schema property name', () => {
+    expect(
+      renderJsonataPathSegments([
+        { name: 'address.city' },
+        { name: 'residents', array: true },
+        { name: 'postal-code' },
+      ]),
+    ).toBe('`address.city`.residents[].`postal-code`');
   });
 });

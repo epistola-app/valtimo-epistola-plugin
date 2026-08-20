@@ -38,11 +38,18 @@ import { InputLabelModule, SelectedValue, SelectItem, SelectModule } from '@valt
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { Subject, debounceTime, takeUntil } from 'rxjs';
 import * as _jsonata from 'jsonata';
+import { ExpressionFunctionInfo } from '../../models';
 import {
   decodeJsonataStringLiteral,
   encodeJsonataStringLiteral,
 } from '../../utils/jsonata-literal';
 import { renderJsonataPath } from '../../utils/jsonata-path';
+import {
+  FunctionReferenceCatalog,
+  FunctionReferenceGroup,
+  FunctionReferenceOption,
+} from './function-reference-catalog';
+import { FunctionReferencePickerComponent } from './function-reference-picker.component';
 import {
   ReferenceExpressionSegment,
   SimpleExpressionSegment,
@@ -62,6 +69,9 @@ type ExpressionEditorMode = (typeof MODE_ORDER)[number];
 interface ReferenceOption extends ReferenceExpressionSegment {
   label: string;
   expression: string;
+  description?: string;
+  schemaField?: FunctionReferenceOption['schemaField'];
+  insertable?: boolean;
 }
 
 interface ReferenceGroup {
@@ -72,7 +82,14 @@ interface ReferenceGroup {
 @Component({
   selector: 'epistola-smart-expression-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, InputLabelModule, SelectModule, PluginTranslatePipeModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    InputLabelModule,
+    SelectModule,
+    PluginTranslatePipeModule,
+    FunctionReferencePickerComponent,
+  ],
   templateUrl: './smart-expression-editor.component.html',
   styleUrls: ['./smart-expression-editor.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -80,6 +97,7 @@ interface ReferenceGroup {
 export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit, OnDestroy {
   @Input() expression = '';
   @Input() contextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
+  @Input() functions: ExpressionFunctionInfo[] = [];
   @Input() disabled = false;
   @Input() required = false;
   @Input() compact = false;
@@ -140,6 +158,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   private simpleDirty = false;
   private modeChosenByUser = false;
   private selectCompatible = false;
+  private readonly functionReferenceCatalog = new FunctionReferenceCatalog();
 
   constructor(
     private readonly cdr: ChangeDetectorRef,
@@ -163,7 +182,10 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     if (changes['selectOptions']) {
       this.reconcileSelectView();
     }
-    if (changes['contextVariables'] && this.pickerOpen) {
+    if (changes['functions']) {
+      this.rebuildFunctionReferenceSources();
+    }
+    if ((changes['contextVariables'] || changes['functions']) && this.pickerOpen) {
       this.activeOptionIndex = 0;
     }
     if (changes['disabled'] && this.disabled) {
@@ -210,6 +232,33 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     return this.referenceGroups.flatMap((group) => group.options);
   }
 
+  get functionReferenceGroups(): FunctionReferenceGroup[] {
+    return this.functionReferenceCatalog.groups(this.pickerQuery);
+  }
+
+  get functionSchemaDiagnostics(): Array<{ signature: string; message: string }> {
+    return this.functionReferenceCatalog.diagnostics;
+  }
+
+  get activeFunctionReferenceOption(): FunctionReferenceOption | null {
+    const option = this.selectableReferenceOptions[this.activeOptionIndex];
+    return option?.schemaField ? (option as FunctionReferenceOption) : null;
+  }
+
+  private rebuildFunctionReferenceSources(): void {
+    this.functionReferenceCatalog.update(this.functions || []);
+  }
+
+  toggleFunctionField(event: MouseEvent, option: ReferenceOption): void {
+    event.preventDefault();
+    event.stopPropagation();
+    const id = option.schemaField?.id;
+    if (!id) return;
+    this.functionReferenceCatalog.toggle(id);
+    this.activeOptionIndex = 0;
+    this.cdr.markForCheck();
+  }
+
   get customReferenceOptions(): ReferenceOption[] {
     const query = this.pickerQuery.trim().replace(/^\$/, '');
     if (!query) return [];
@@ -228,7 +277,12 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
           referenceExpressionSegment('doc', query),
           referenceExpressionSegment(root, path),
         ];
-    const knownExpressions = new Set(this.flatReferenceOptions.map((option) => option.expression));
+    const knownExpressions = new Set(
+      [
+        ...this.flatReferenceOptions,
+        ...this.functionReferenceGroups.flatMap((group) => group.options),
+      ].map((option) => option.expression),
+    );
     const seen = new Set<string>();
 
     return candidates.flatMap((candidate) => {
@@ -261,7 +315,13 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   }
 
   get selectableReferenceOptions(): ReferenceOption[] {
-    return [...this.flatReferenceOptions, ...this.customReferenceOptions];
+    return [
+      ...this.flatReferenceOptions,
+      ...this.functionReferenceGroups
+        .flatMap((group) => group.options)
+        .filter((option) => option.insertable !== false),
+      ...this.customReferenceOptions,
+    ];
   }
 
   get advancedValid(): boolean {
@@ -538,6 +598,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   }
 
   selectReference(option: ReferenceOption): void {
+    if (option.insertable === false) return;
     this.insertSegment(option);
   }
 
@@ -775,9 +836,13 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
 
     const label =
       segment.kind === 'reference'
-        ? segment.path
-          ? `$${segment.variable}.${segment.path}`
-          : `$${segment.variable}`
+        ? segment.rootExpression
+          ? segment.path
+            ? `${segment.rootExpression}.${segment.path}`
+            : segment.rootExpression
+          : segment.path
+            ? `$${segment.variable}.${segment.path}`
+            : `$${segment.variable}`
         : String(segment.value);
     chip.textContent = label;
     chip.setAttribute('aria-label', `${label}. Press Enter to change or Delete to remove.`);

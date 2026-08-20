@@ -130,6 +130,7 @@
     *ngIf="variantSelectionMode === 'explicit'"
     [expression]="variantIdExpression"
     [contextVariables]="editorContextVariables"
+    [functions]="expressionFunctions"
     [selectOptions]="obs.variants.data"
     [selectLoading]="obs.variants.loading"
     [title]="'variantId' | pluginTranslate: pluginId | async"
@@ -204,6 +205,7 @@
           <epistola-smart-expression-editor
             [expression]="entry.value"
             [contextVariables]="editorContextVariables"
+            [functions]="expressionFunctions"
             [disabled]="obs.disabled"
             [placeholder]="
               'attributeValueExpressionPlaceholder' | pluginTranslate: pluginId | async
@@ -255,6 +257,7 @@
   <epistola-smart-expression-editor
     [expression]="environmentIdExpression"
     [contextVariables]="editorContextVariables"
+    [functions]="expressionFunctions"
     [selectOptions]="obs.environments.data"
     [selectLoading]="obs.environments.loading"
     [title]="'environmentId' | pluginTranslate: pluginId | async"
@@ -277,6 +280,7 @@
   <epistola-smart-expression-editor
     [expression]="filenameExpression"
     [contextVariables]="editorContextVariables"
+    [functions]="expressionFunctions"
     [title]="'filename' | pluginTranslate: pluginId | async"
     [tooltip]="'filenameTooltip' | pluginTranslate: pluginId | async"
     [disabled]="obs.disabled"
@@ -291,6 +295,7 @@
   <epistola-smart-expression-editor
     [expression]="correlationIdExpression"
     [contextVariables]="editorContextVariables"
+    [functions]="expressionFunctions"
     [title]="'correlationId' | pluginTranslate: pluginId | async"
     [tooltip]="'correlationIdTooltip' | pluginTranslate: pluginId | async"
     [disabled]="obs.disabled"
@@ -359,6 +364,7 @@
     [expression]="dataMapping$ | async"
     [templateFields]="(templateFields$ | async)?.data ?? []"
     [contextVariables]="editorContextVariables"
+    [functions]="expressionFunctions"
     [disabled]="!!(disabled$ | async)"
     (expressionChange)="onDataMappingChange($event)"
     (validChange)="onDataMappingValidityChange($event)"

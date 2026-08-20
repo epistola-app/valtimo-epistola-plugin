@@ -18,15 +18,19 @@
 package app.epistola.valtimo.web.rest;
 
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
+import app.epistola.valtimo.expression.ExpressionFunctionInfo;
 import app.epistola.valtimo.service.preview.ProcessLinkMappingService;
 import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
 import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
 import app.epistola.valtimo.web.rest.dto.JsonataValidationResult;
 import app.epistola.valtimo.web.rest.dto.ProcessLinkMappingResponse;
 import app.epistola.valtimo.web.rest.dto.ValidateJsonataRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 import java.util.Map;
@@ -34,6 +38,9 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class EpistolaToolingResourceValidateJsonataTest {
 
@@ -71,6 +78,38 @@ class EpistolaToolingResourceValidateJsonataTest {
 
         assertThat(body).isNotNull();
         assertThat(body.dataMapping()).isEmpty();
+    }
+
+    @Test
+    void expressionFunctionsEndpointReturnsExtendedMetadata() throws Exception {
+        var registry = mock(ExpressionFunctionRegistry.class);
+        var expected = new ExpressionFunctionInfo(
+                "person",
+                "Returns a person",
+                List.of(new ExpressionFunctionInfo.OverloadInfo(
+                        List.of(),
+                        "Map",
+                        new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode().put("type", "object"),
+                        null
+                ))
+        );
+        resource = new EpistolaToolingResource(
+                mock(ProcessVariableDiscoveryService.class),
+                mock(VariableSuggestionService.class),
+                registry,
+                processLinkMappingService);
+        when(registry.listFunctions()).thenReturn(List.of(expected));
+
+        var mockMvc = MockMvcBuilders.standaloneSetup(resource)
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(new ObjectMapper()))
+                .build();
+
+        mockMvc.perform(get("/api/v1/plugin/epistola/expression-functions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("person"))
+                .andExpect(jsonPath("$[0].overloads[0].returnType").value("Map"))
+                .andExpect(jsonPath("$[0].overloads[0].resultSchema.type").value("object"))
+                .andExpect(jsonPath("$[0].overloads[0].schemaDiagnostic").doesNotExist());
     }
 
     @Test

@@ -4,6 +4,7 @@ valtimo = "13.38.0.RELEASE"
 epistola-client = "1.0.1"
 lombok = "1.18.42"
 jsonata = "0.9.9"
+json-schema-validator = "2.0.4"
 testcontainers = "2.0.3"
 postgresql = "42.7.5"
 netty-resolver-dns-macos = "4.2.0.Final"
@@ -56,6 +57,7 @@ valtimo-catalogi-api = { module = "com.ritense.valtimo:catalogi-api" }
 
 # JSONata
 jsonata = { module = "com.dashjoin:jsonata", version.ref = "jsonata" }
+json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
 
 # Lombok
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }

@@ -25,9 +25,30 @@ export interface ExpressionFunctionInfo {
 export interface OverloadInfo {
   arguments: ArgumentInfo[];
   returnType: string;
+  resultSchema?: JsonSchema | boolean | null;
+  schemaDiagnostic?: SchemaDiagnostic | null;
 }
 
 export interface ArgumentInfo {
   name: string;
   type: string;
+}
+
+export interface SchemaDiagnostic {
+  code: string;
+  message: string;
+}
+
+export interface JsonSchema {
+  $ref?: string;
+  $defs?: Record<string, JsonSchema | boolean>;
+  definitions?: Record<string, JsonSchema | boolean>;
+  type?: string | string[];
+  description?: string;
+  properties?: Record<string, JsonSchema | boolean>;
+  required?: string[];
+  items?: JsonSchema | boolean;
+  allOf?: Array<JsonSchema | boolean>;
+  anyOf?: Array<JsonSchema | boolean>;
+  oneOf?: Array<JsonSchema | boolean>;
 }

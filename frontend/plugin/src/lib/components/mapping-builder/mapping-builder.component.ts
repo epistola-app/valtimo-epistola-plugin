@@ -19,7 +19,7 @@
 import { Component, EventEmitter, Input, OnChanges, Output, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
-import { TemplateField } from '../../models';
+import { ExpressionFunctionInfo, TemplateField } from '../../models';
 import { BuilderFieldComponent } from './builder-field/builder-field.component';
 import {
   BuilderField,
@@ -51,6 +51,7 @@ import {
         [collapsedPaths]="collapsedPaths"
         [required]="isRequired(field.name)"
         [contextVariables]="contextVariables"
+        [functions]="functions"
         (valueChange)="onNestedValueChange($event.path, $event.value)"
         (validityChange)="onNestedValidityChange($event.path, $event.valid)"
         (collapseToggle)="toggleCollapse($event)"
@@ -128,6 +129,7 @@ export class MappingBuilderComponent implements OnChanges {
   @Input() templateFields: TemplateField[] = [];
   @Input() disabled: boolean = false;
   @Input() contextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
+  @Input() functions: ExpressionFunctionInfo[] = [];
   @Output() expressionChange = new EventEmitter<string>();
   @Output() validChange = new EventEmitter<boolean>();
 
