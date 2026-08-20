@@ -606,6 +606,14 @@ describe('SmartExpressionEditorComponent', () => {
         overloads: [{ arguments: [], returnType: 'String' }],
       },
     ];
+    component.ngOnChanges({
+      functions: {
+        currentValue: component.functions,
+        previousValue: [],
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
 
     expect(component.functionReferenceGroups).toEqual([]);
     expect(component.functionSchemaDiagnostics).toEqual([

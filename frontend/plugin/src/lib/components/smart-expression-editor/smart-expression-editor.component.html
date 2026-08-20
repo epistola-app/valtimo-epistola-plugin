@@ -189,66 +189,14 @@
           </div>
         </ng-container>
 
-        <ng-container
-          *ngFor="let group of functionReferenceGroups; trackBy: trackFunctionReferenceGroup"
-        >
-          <div class="smart-expression__group smart-expression__group--function" role="group">
-            <div class="smart-expression__group-label" [attr.title]="group.description">
-              {{ group.signature }}
-            </div>
-            <div
-              *ngFor="let option of group.options; trackBy: trackFunctionReferenceOption"
-              class="smart-expression__function-row"
-              [style.padding-left.rem]="option.schemaField ? option.schemaField.depth * 1.1 : 0"
-            >
-              <button
-                *ngIf="option.schemaField?.expandable"
-                type="button"
-                class="smart-expression__expand"
-                [attr.aria-label]="option.label"
-                [attr.aria-expanded]="isFunctionFieldExpanded(option)"
-                (mousedown)="toggleFunctionField($event, option)"
-              >
-                {{ isFunctionFieldExpanded(option) ? '&#x25BC;' : '&#x25B6;' }}
-              </button>
-              <span *ngIf="!option.schemaField?.expandable" class="smart-expression__expand"></span>
-              <button
-                type="button"
-                class="smart-expression__option smart-expression__option--schema"
-                role="option"
-                [disabled]="option.insertable === false"
-                [class.smart-expression__option--active]="
-                  selectableReferenceOptions[activeOptionIndex] === option
-                "
-                [attr.aria-selected]="selectableReferenceOptions[activeOptionIndex] === option"
-                [attr.title]="option.description || group.description"
-                (mousedown)="onReferenceMouseDown($event, option)"
-                (click)="onReferenceClick(option)"
-              >
-                <span>
-                  {{ option.schemaField?.name }}
-                  <small>
-                    {{ option.schemaField?.type }}
-                    <ng-container *ngIf="option.schemaField?.required"> · required</ng-container>
-                    <ng-container *ngIf="!option.schemaField?.required"> · optional</ng-container>
-                    <ng-container *ngIf="option.schemaField?.nullable"> · nullable</ng-container>
-                  </small>
-                  <small *ngIf="option.description">{{ option.description }}</small>
-                </span>
-                <code>{{ option.expression }}</code>
-              </button>
-            </div>
-          </div>
-        </ng-container>
-
-        <div
-          *ngFor="let diagnostic of functionSchemaDiagnostics"
-          class="smart-expression__schema-diagnostic"
-          role="status"
-        >
-          <strong>{{ diagnostic.signature }}</strong
-          >: {{ diagnostic.message }}
-        </div>
+        <epistola-function-reference-picker
+          [groups]="functionReferenceGroups"
+          [diagnostics]="functionSchemaDiagnostics"
+          [activeOption]="activeFunctionReferenceOption"
+          (toggleField)="toggleFunctionField($event.event, $event.option)"
+          (optionMouseDown)="onReferenceMouseDown($event.event, $event.option)"
+          (optionClick)="onReferenceClick($event)"
+        />
 
         <div
           *ngIf="customReferenceOptions.length > 0"

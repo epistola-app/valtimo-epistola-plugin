@@ -40,20 +40,19 @@ import { Subject, debounceTime, takeUntil } from 'rxjs';
 import * as _jsonata from 'jsonata';
 import { ExpressionFunctionInfo } from '../../models';
 import {
-  FunctionSchemaField,
-  FunctionSchemaSource,
-  expressionFunctionSignature,
-  expressionFunctionSchemaSources,
-} from '../../utils/expression-function-schema';
-import {
   decodeJsonataStringLiteral,
   encodeJsonataStringLiteral,
 } from '../../utils/jsonata-literal';
-import { renderJsonataPath, renderJsonataPathSegments } from '../../utils/jsonata-path';
+import { renderJsonataPath } from '../../utils/jsonata-path';
+import {
+  FunctionReferenceCatalog,
+  FunctionReferenceGroup,
+  FunctionReferenceOption,
+} from './function-reference-catalog';
+import { FunctionReferencePickerComponent } from './function-reference-picker.component';
 import {
   ReferenceExpressionSegment,
   SimpleExpressionSegment,
-  functionReferenceExpressionSegment,
   parseSimpleJsonataExpression,
   referenceExpressionSegment,
   serializeSimpleJsonataSegments,
@@ -71,7 +70,7 @@ interface ReferenceOption extends ReferenceExpressionSegment {
   label: string;
   expression: string;
   description?: string;
-  schemaField?: FunctionSchemaField;
+  schemaField?: FunctionReferenceOption['schemaField'];
   insertable?: boolean;
 }
 
@@ -80,21 +79,17 @@ interface ReferenceGroup {
   options: ReferenceOption[];
 }
 
-interface FunctionReferenceGroup {
-  id: string;
-  signature: string;
-  description: string;
-  options: ReferenceOption[];
-}
-
-interface FunctionReferenceSource extends Omit<FunctionSchemaSource, 'fields'> {
-  options: ReferenceOption[];
-}
-
 @Component({
   selector: 'epistola-smart-expression-editor',
   standalone: true,
-  imports: [CommonModule, FormsModule, InputLabelModule, SelectModule, PluginTranslatePipeModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    InputLabelModule,
+    SelectModule,
+    PluginTranslatePipeModule,
+    FunctionReferencePickerComponent,
+  ],
   templateUrl: './smart-expression-editor.component.html',
   styleUrls: ['./smart-expression-editor.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -163,8 +158,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   private simpleDirty = false;
   private modeChosenByUser = false;
   private selectCompatible = false;
-  private readonly expandedFunctionFields = new Set<string>();
-  private functionReferenceSources: FunctionReferenceSource[] = [];
+  private readonly functionReferenceCatalog = new FunctionReferenceCatalog();
 
   constructor(
     private readonly cdr: ChangeDetectorRef,
@@ -239,73 +233,20 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   }
 
   get functionReferenceGroups(): FunctionReferenceGroup[] {
-    const query = this.pickerQuery.trim().toLocaleLowerCase();
-    return this.functionReferenceSources
-      .map((source) => ({
-        id: source.id,
-        signature: source.signature,
-        description: source.description,
-        options: source.options.filter((option) =>
-          query
-            ? [option.label, option.expression, option.description || '', source.signature].some(
-                (value) => value.toLocaleLowerCase().includes(query),
-              )
-            : option.schemaField!.parentIds.every((parentId) =>
-                this.expandedFunctionFields.has(parentId),
-              ),
-        ),
-      }))
-      .filter((group) => group.options.length > 0);
+    return this.functionReferenceCatalog.groups(this.pickerQuery);
   }
 
   get functionSchemaDiagnostics(): Array<{ signature: string; message: string }> {
-    return (this.functions || []).flatMap((func) =>
-      func.overloads.flatMap((overload) =>
-        overload.schemaDiagnostic
-          ? [
-              {
-                signature: expressionFunctionSignature(func.name, overload),
-                message: overload.schemaDiagnostic.message,
-              },
-            ]
-          : [],
-      ),
-    );
+    return this.functionReferenceCatalog.diagnostics;
+  }
+
+  get activeFunctionReferenceOption(): FunctionReferenceOption | null {
+    const option = this.selectableReferenceOptions[this.activeOptionIndex];
+    return option?.schemaField ? (option as FunctionReferenceOption) : null;
   }
 
   private rebuildFunctionReferenceSources(): void {
-    this.functionReferenceSources = expressionFunctionSchemaSources(this.functions || []).map(
-      (source) => ({
-        id: source.id,
-        functionName: source.functionName,
-        signature: source.signature,
-        description: source.description,
-        options: source.fields.map((field) => ({
-          ...functionReferenceExpressionSegment(
-            source.functionName,
-            field.path,
-            renderJsonataPathSegments(field.pathSegments),
-          ),
-          label: field.path,
-          expression: field.expression,
-          description: field.description,
-          schemaField: field,
-          insertable: field.insertable,
-        })),
-      }),
-    );
-  }
-
-  trackFunctionReferenceGroup(_index: number, group: FunctionReferenceGroup): string {
-    return group.id;
-  }
-
-  trackFunctionReferenceOption(_index: number, option: ReferenceOption): string {
-    return option.schemaField?.id || option.expression;
-  }
-
-  isFunctionFieldExpanded(option: ReferenceOption): boolean {
-    return !!option.schemaField && this.expandedFunctionFields.has(option.schemaField.id);
+    this.functionReferenceCatalog.update(this.functions || []);
   }
 
   toggleFunctionField(event: MouseEvent, option: ReferenceOption): void {
@@ -313,11 +254,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     event.stopPropagation();
     const id = option.schemaField?.id;
     if (!id) return;
-    if (this.expandedFunctionFields.has(id)) {
-      this.expandedFunctionFields.delete(id);
-    } else {
-      this.expandedFunctionFields.add(id);
-    }
+    this.functionReferenceCatalog.toggle(id);
     this.activeOptionIndex = 0;
     this.cdr.markForCheck();
   }

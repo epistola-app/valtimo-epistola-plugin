@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Result schemas are now loaded once when functions are registered and validated against JSON Schema drafts 4, 6, 7, 2019-09, or 2020-12. Schemas without a `$schema` declaration default to draft 2020-12; invalid and unsupported schemas produce overload-specific diagnostics.
 - Schema-backed expression suggestions now preserve literal property names, stop recursive references safely, merge `allOf` constraints, and avoid treating fields required by only one `anyOf`/`oneOf` alternative as universally required.
 - Schema suggestion trees and Monaco completion metadata are now normalized once per function-metadata update, keeping option identities stable across Angular change detection and avoiding repeated schema traversal.
+- Schema-backed function picker state now lives in a dedicated catalog model, separating metadata normalization, expansion, search, insertion eligibility, and diagnostics from the smart editor's DOM and caret responsibilities.
 - **Schema-backed custom functions appear as expression sources in the process-link editor.** Mapping authors can browse and expand described object and array fields, see required, optional, and nullable metadata, search nested paths, and insert zero-argument function paths such as `$inwonerplan().activiteiten`; functions without schemas remain available in Advanced JSONata editing.
 
 ### Changed
