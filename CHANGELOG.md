@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A dedicated custom-expression-function guide now documents Spring registration, typed arguments and overloads, automatically supplied evaluation context, external service access, result schemas, evaluation-scoped caching, proxy behavior, and testing expectations.
 - Custom expression-function overloads can opt into memoization with `@CacheResultForEvaluation`. Equal calls reuse successful results only within one JSONata evaluation; existing unannotated functions remain uncached. See ADR 0003.
 - The test application now verifies that `$getCustomData()` is invoked during document generation and that its scalar and string-array results reach the submitted template data.
 - The test application validates the actual `$getCustomData()` result against its published JSON Schema to prevent metadata/runtime contract drift.

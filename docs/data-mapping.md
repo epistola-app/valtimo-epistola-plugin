@@ -242,6 +242,10 @@ These functions are available in mappings alongside native JSONata functions.
 Failures from custom functions are surfaced as expression evaluation errors so
 wrong template data is not silently generated.
 
+See [Custom expression functions](custom-expression-functions.md) for registration,
+typed arguments, automatically supplied evaluation context, external data access,
+result schemas, and evaluation-scoped caching.
+
 ## Key Files
 
 | File                                                                 | Role                                               |

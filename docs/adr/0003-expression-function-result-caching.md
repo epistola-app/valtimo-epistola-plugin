@@ -62,9 +62,11 @@ independently.
 
 `JsonataMappingService` owns a fresh invocation cache for every public `evaluate` or
 `evaluateScalar` call. A cache key consists of the registered function, matched `execute` method,
-and evaluated arguments using deep equality for array arguments. The first successful invocation
-stores its value; subsequent matching invocations in that evaluation reuse it. `null` is a valid
-cached value. Exceptions are never cached. A new mapper call always starts with an empty cache.
+and immutable snapshots of evaluated JSON-like arguments. Maps, iterables, and arrays are copied
+recursively; unknown object types use identity semantics so they can cause a safe cache miss but
+never an unsafe cache hit. The first successful invocation stores its value; subsequent matching
+invocations in that evaluation reuse it. `null` is a valid cached value. Exceptions are never
+cached. A new mapper call always starts with an empty cache.
 
 The cache returns the same object instance and does not defensively copy it. An annotated function
 therefore promises that its returned value is stable for the evaluation and will not be mutated in

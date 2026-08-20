@@ -80,6 +80,9 @@ The process variable approach fundamentally assumes a single execution context. 
 
 Register custom expression functions that fetch data on-the-fly during JSONata evaluation.
 
+See [Custom expression functions](custom-expression-functions.md) for the complete host-application
+SPI, argument and overload rules, evaluation context, schema metadata, caching, and testing guidance.
+
 ### How it works
 
 The plugin bridges functions from `ExpressionFunctionRegistry` into JSONata. A custom function such as `$brpPerson($doc.applicant.bsn)` or `$zaakStatus($doc.zaakUrl)` can call an external system and return structured data to the mapping expression.
