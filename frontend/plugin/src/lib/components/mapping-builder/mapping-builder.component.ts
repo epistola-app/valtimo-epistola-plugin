@@ -49,7 +49,7 @@ import {
         [disabled]="disabled"
         [collapsed]="isCollapsed([i])"
         [collapsedPaths]="collapsedPaths"
-        [required]="isRequired(field.name)"
+        [required]="field.required ?? isRequired(field.name)"
         [contextVariables]="contextVariables"
         [functions]="functions"
         (valueChange)="onNestedValueChange($event.path, $event.value)"
@@ -242,22 +242,9 @@ export class MappingBuilderComponent implements OnChanges {
     }
 
     // Template fields drive the structure
-    this.fields = this.templateFields.map((tf) => {
-      const existing = parsedByName.get(tf.name);
-      if (existing) {
-        return existing;
-      }
-      if (tf.fieldType === 'OBJECT' && tf.children?.length) {
-        return {
-          name: tf.name,
-          mode: 'ref' as const,
-          value: '',
-          present: false,
-          children: tf.children.map((child) => this.emptyBuilderField(child)),
-        };
-      }
-      return { name: tf.name, mode: 'ref' as const, value: '', present: false };
-    });
+    this.fields = this.templateFields.map((tf) =>
+      this.mergeTemplateField(tf, parsedByName.get(tf.name)),
+    );
 
     // Include extra fields from expression not in the template schema
     for (const p of parsed) {
@@ -274,6 +261,7 @@ export class MappingBuilderComponent implements OnChanges {
         mode: 'ref',
         value: '',
         present: false,
+        required: templateField.required,
         children: templateField.children.map((child) => this.emptyBuilderField(child)),
       };
     }
@@ -282,6 +270,39 @@ export class MappingBuilderComponent implements OnChanges {
       mode: 'ref',
       value: '',
       present: false,
+      required: templateField.required,
+    };
+  }
+
+  private mergeTemplateField(
+    templateField: TemplateField,
+    existing: BuilderField | undefined,
+  ): BuilderField {
+    if (!existing) {
+      return this.emptyBuilderField(templateField);
+    }
+    if (
+      templateField.fieldType !== 'OBJECT' ||
+      !templateField.children?.length ||
+      !existing.children
+    ) {
+      return { ...existing, required: templateField.required };
+    }
+
+    const existingByName = new Map(existing.children.map((child) => [child.name, child]));
+    const children = templateField.children.map((child) =>
+      this.mergeTemplateField(child, existingByName.get(child.name)),
+    );
+    for (const child of existing.children) {
+      if (!templateField.children.some((candidate) => candidate.name === child.name)) {
+        children.push(child);
+      }
+    }
+
+    return {
+      ...existing,
+      required: templateField.required,
+      children,
     };
   }
 }

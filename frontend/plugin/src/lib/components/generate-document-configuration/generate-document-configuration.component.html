@@ -380,6 +380,37 @@
     (validChange)="onDataMappingValidityChange($event)"
   ></epistola-jsonata-editor>
 
+  <ng-container *ngIf="dataMappingCompleteness$ | async as dataMappingCompleteness">
+    <div
+      *ngIf="
+        dataMappingCompleteness.staticallyAnalyzable &&
+        dataMappingCompleteness.totalRequiredFields > 0
+      "
+      class="validation-summary"
+      data-testid="epistola-generate-mapping-validation-summary"
+    >
+      <span
+        *ngIf="
+          dataMappingCompleteness.mappedRequiredFields ===
+          dataMappingCompleteness.totalRequiredFields
+        "
+        class="validation-complete"
+      >
+        {{ 'requiredFieldsComplete' | pluginTranslate: pluginId | async }}
+      </span>
+      <span
+        *ngIf="
+          dataMappingCompleteness.mappedRequiredFields < dataMappingCompleteness.totalRequiredFields
+        "
+        class="validation-incomplete"
+      >
+        {{ dataMappingCompleteness.mappedRequiredFields }} /
+        {{ dataMappingCompleteness.totalRequiredFields }}
+        {{ 'validationSummary' | pluginTranslate: pluginId | async }}
+      </span>
+    </div>
+  </ng-container>
+
   <!-- Bottom tabs: Schema + Preview (collapsible) -->
   <div class="mapping-tools" [class.mapping-tools--collapsed]="toolsCollapsed">
     <div

@@ -34,6 +34,7 @@ export interface BuilderField {
   value: string;
   children?: BuilderField[];
   present?: boolean;
+  required?: boolean;
 }
 
 interface ObjectSourceEntry {
@@ -89,6 +90,18 @@ export function isBuilderCompatible(expression: string): boolean {
   }
   const fields = parseJsonataToBuilder(expression);
   return !(fields.length === 1 && fields[0].name === '_root' && fields[0].mode === 'raw');
+}
+
+export function isJsonataExpressionValid(expression: string): boolean {
+  if (!expression.trim()) {
+    return false;
+  }
+  try {
+    jsonata(expression);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function toBuilderField(entry: ObjectSourceEntry): BuilderField {

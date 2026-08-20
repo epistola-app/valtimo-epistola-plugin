@@ -31,6 +31,7 @@ const jsonata = (_jsonata as any).default || _jsonata;
 const LEGACY_JSONATA_MARKER = /[$&({?\[]/;
 
 export const LATEST_GENERATE_DOCUMENT_CONFIG_VERSION = 1;
+export const DEFAULT_GENERATE_DOCUMENT_DATA_MAPPING = '{}';
 
 export class GenerateDocumentConfigVersionError extends Error {}
 
@@ -56,7 +57,11 @@ export function migrateGenerateDocumentConfig(raw: unknown): GenerateDocumentCon
 
   validateCommonShape(config);
   if (version === 1) {
-    const v1 = config as unknown as GenerateDocumentConfigV1;
+    const current = config as unknown as GenerateDocumentConfigV1;
+    const v1 = {
+      ...current,
+      dataMapping: normalizeDataMapping(current.dataMapping),
+    };
     validateV1Scalars(v1);
     return v1;
   }
@@ -68,6 +73,7 @@ function migrateV0ToV1(v0: GenerateDocumentConfigV0): GenerateDocumentConfigV1 {
   const migrated: GenerateDocumentConfigV1 = {
     ...v0,
     actionConfigVersion: 1,
+    dataMapping: normalizeDataMapping(v0.dataMapping),
     outputFormat: encodeJsonataStringLiteral('PDF'),
     filename: migrateV0Scalar(v0.filename),
     variantId: migrateOptionalV0Scalar(v0.variantId),
@@ -81,6 +87,10 @@ function migrateV0ToV1(v0: GenerateDocumentConfigV0): GenerateDocumentConfigV1 {
   };
   validateV1Scalars(migrated);
   return migrated;
+}
+
+function normalizeDataMapping(value: string): string {
+  return value.trim() ? value : DEFAULT_GENERATE_DOCUMENT_DATA_MAPPING;
 }
 
 function readVersion(value: unknown): 0 | 1 | number {
