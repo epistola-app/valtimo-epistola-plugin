@@ -34,6 +34,17 @@ export const jsonataCompletionData = {
   functions: [] as ExpressionFunctionInfo[],
 };
 
+let schemaSourceFunctions: ExpressionFunctionInfo[] | null = null;
+let cachedSchemaSources: ReturnType<typeof expressionFunctionSchemaSources> = [];
+
+function currentSchemaSources() {
+  if (schemaSourceFunctions !== jsonataCompletionData.functions) {
+    schemaSourceFunctions = jsonataCompletionData.functions;
+    cachedSchemaSources = expressionFunctionSchemaSources(schemaSourceFunctions);
+  }
+  return cachedSchemaSources;
+}
+
 /**
  * Register the JSONata language in Monaco editor.
  * Call this once when Monaco is available (e.g., in editor component OnInit).
@@ -222,7 +233,7 @@ export function registerJsonataLanguage(monaco: any): void {
         const separator = typedPath.lastIndexOf('.');
         const parentPath = separator >= 0 ? typedPath.slice(0, separator) : '';
         const partialName = separator >= 0 ? typedPath.slice(separator + 1) : typedPath;
-        const sources = expressionFunctionSchemaSources(jsonataCompletionData.functions).filter(
+        const sources = currentSchemaSources().filter(
           (source) => source.functionName === functionName,
         );
         for (const field of sources.flatMap((source) => source.fields)) {

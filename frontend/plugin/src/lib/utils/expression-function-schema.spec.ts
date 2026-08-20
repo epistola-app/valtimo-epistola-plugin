@@ -132,4 +132,108 @@ describe('expression function schema sources', () => {
       ]),
     ).toEqual([]);
   });
+
+  it('keeps alternative-only required fields optional', () => {
+    const [source] = expressionFunctionSchemaSources([
+      {
+        name: 'choice',
+        description: '',
+        overloads: [
+          {
+            arguments: [],
+            returnType: 'Object',
+            resultSchema: {
+              oneOf: [
+                {
+                  type: 'object',
+                  required: ['personalName'],
+                  properties: { personalName: { type: 'string' } },
+                },
+                {
+                  type: 'object',
+                  required: ['companyName'],
+                  properties: { companyName: { type: 'string' } },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ]);
+
+    expect(source.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'personalName', required: false }),
+        expect.objectContaining({ name: 'companyName', required: false }),
+      ]),
+    );
+  });
+
+  it('preserves property boundaries for dots and other unsafe JSONata names', () => {
+    const [source] = expressionFunctionSchemaSources([
+      {
+        name: 'unsafe',
+        description: '',
+        overloads: [
+          {
+            arguments: [],
+            returnType: 'Object',
+            resultSchema: {
+              type: 'object',
+              properties: {
+                'address.city': {
+                  type: 'object',
+                  properties: { 'postal-code': { type: 'string' } },
+                },
+              },
+            },
+          },
+        ],
+      },
+    ]);
+
+    expect(source.fields[0]).toEqual(
+      expect.objectContaining({
+        expression: '$unsafe().`address.city`',
+        pathSegments: [{ name: 'address.city' }],
+      }),
+    );
+    expect(source.fields[1]).toEqual(
+      expect.objectContaining({
+        expression: '$unsafe().`address.city`.`postal-code`',
+        pathSegments: [{ name: 'address.city' }, { name: 'postal-code' }],
+      }),
+    );
+    expect(source.fields[0].id).not.toBe(source.fields[1].id);
+  });
+
+  it('stops recursive local references without dropping the recursive property', () => {
+    const [source] = expressionFunctionSchemaSources([
+      {
+        name: 'tree',
+        description: '',
+        overloads: [
+          {
+            arguments: [],
+            returnType: 'Node',
+            resultSchema: {
+              $ref: '#/$defs/node',
+              $defs: {
+                node: {
+                  type: 'object',
+                  properties: {
+                    value: { type: 'string' },
+                    next: { $ref: '#/$defs/node' },
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    ]);
+
+    expect(source.fields.map((field) => field.path)).toEqual(['value', 'next']);
+    expect(source.fields[1].expandable).toBe(false);
+  });
 });

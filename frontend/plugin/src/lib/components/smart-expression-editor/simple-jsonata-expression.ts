@@ -37,6 +37,8 @@ export interface ReferenceExpressionSegment {
   path: string;
   /** Alternate JSONata root, used for schema-backed zero-argument function calls. */
   rootExpression?: string;
+  /** Already segmented JSONata path for schema properties whose names may contain dots. */
+  pathExpression?: string;
 }
 
 export interface TypedExpressionSegment {
@@ -140,12 +142,14 @@ export function referenceExpressionSegment(
 export function functionReferenceExpressionSegment(
   functionName: string,
   path: string,
+  pathExpression?: string,
 ): ReferenceExpressionSegment {
   return {
     kind: 'reference',
     variable: functionName,
     path,
     rootExpression: `$${functionName}()`,
+    pathExpression,
   };
 }
 
@@ -284,7 +288,7 @@ function serializeSegment(segment: SimpleExpressionSegment): string {
     case 'reference':
       if (segment.rootExpression) {
         return segment.path
-          ? `${segment.rootExpression}.${renderJsonataPathTail(segment.path)}`
+          ? `${segment.rootExpression}.${segment.pathExpression || renderJsonataPathTail(segment.path)}`
           : segment.rootExpression;
       }
       return segment.path

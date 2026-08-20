@@ -18,6 +18,21 @@
 
 const BARE_PATH_SEGMENT = /^[A-Za-z_][A-Za-z0-9_]*(\[\d*\])*$/;
 
+export interface JsonataPathSegment {
+  name: string;
+  array?: boolean;
+}
+
+export function renderJsonataPathSegment(name: string): string {
+  return BARE_PATH_SEGMENT.test(name) ? name : '`' + name.replace(/`/g, '``') + '`';
+}
+
+export function renderJsonataPathSegments(segments: JsonataPathSegment[]): string {
+  return segments
+    .map((segment) => `${renderJsonataPathSegment(segment.name)}${segment.array ? '[]' : ''}`)
+    .join('.');
+}
+
 /**
  * Render a JSONata path tail for a Formio-style dotted key.
  *
@@ -26,10 +41,7 @@ const BARE_PATH_SEGMENT = /^[A-Za-z_][A-Za-z0-9_]*(\[\d*\])*$/;
  * only the segment that needs it, not the whole dotted key.
  */
 export function renderJsonataPathTail(key: string): string {
-  return key
-    .split('.')
-    .map((segment) => (BARE_PATH_SEGMENT.test(segment) ? segment : '`' + segment + '`'))
-    .join('.');
+  return key.split('.').map(renderJsonataPathSegment).join('.');
 }
 
 export function renderJsonataPath(variableName: string, key: string): string {

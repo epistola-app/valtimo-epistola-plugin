@@ -41,13 +41,15 @@ import * as _jsonata from 'jsonata';
 import { ExpressionFunctionInfo } from '../../models';
 import {
   FunctionSchemaField,
+  FunctionSchemaSource,
+  expressionFunctionSignature,
   expressionFunctionSchemaSources,
 } from '../../utils/expression-function-schema';
 import {
   decodeJsonataStringLiteral,
   encodeJsonataStringLiteral,
 } from '../../utils/jsonata-literal';
-import { renderJsonataPath } from '../../utils/jsonata-path';
+import { renderJsonataPath, renderJsonataPathSegments } from '../../utils/jsonata-path';
 import {
   ReferenceExpressionSegment,
   SimpleExpressionSegment,
@@ -82,6 +84,10 @@ interface FunctionReferenceGroup {
   id: string;
   signature: string;
   description: string;
+  options: ReferenceOption[];
+}
+
+interface FunctionReferenceSource extends Omit<FunctionSchemaSource, 'fields'> {
   options: ReferenceOption[];
 }
 
@@ -158,6 +164,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   private modeChosenByUser = false;
   private selectCompatible = false;
   private readonly expandedFunctionFields = new Set<string>();
+  private functionReferenceSources: FunctionReferenceSource[] = [];
 
   constructor(
     private readonly cdr: ChangeDetectorRef,
@@ -180,6 +187,9 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     }
     if (changes['selectOptions']) {
       this.reconcileSelectView();
+    }
+    if (changes['functions']) {
+      this.rebuildFunctionReferenceSources();
     }
     if ((changes['contextVariables'] || changes['functions']) && this.pickerOpen) {
       this.activeOptionIndex = 0;
@@ -230,27 +240,20 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
 
   get functionReferenceGroups(): FunctionReferenceGroup[] {
     const query = this.pickerQuery.trim().toLocaleLowerCase();
-    return expressionFunctionSchemaSources(this.functions || [])
+    return this.functionReferenceSources
       .map((source) => ({
         id: source.id,
         signature: source.signature,
         description: source.description,
-        options: source.fields
-          .filter((field) =>
-            query
-              ? [field.path, field.expression, field.description || '', source.signature].some(
-                  (value) => value.toLocaleLowerCase().includes(query),
-                )
-              : field.parentIds.every((parentId) => this.expandedFunctionFields.has(parentId)),
-          )
-          .map((field) => ({
-            ...functionReferenceExpressionSegment(source.functionName, field.path),
-            label: field.path,
-            expression: field.expression,
-            description: field.description,
-            schemaField: field,
-            insertable: field.insertable,
-          })),
+        options: source.options.filter((option) =>
+          query
+            ? [option.label, option.expression, option.description || '', source.signature].some(
+                (value) => value.toLocaleLowerCase().includes(query),
+              )
+            : option.schemaField!.parentIds.every((parentId) =>
+                this.expandedFunctionFields.has(parentId),
+              ),
+        ),
       }))
       .filter((group) => group.options.length > 0);
   }
@@ -259,10 +262,46 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     return (this.functions || []).flatMap((func) =>
       func.overloads.flatMap((overload) =>
         overload.schemaDiagnostic
-          ? [{ signature: `$${func.name}()`, message: overload.schemaDiagnostic.message }]
+          ? [
+              {
+                signature: expressionFunctionSignature(func.name, overload),
+                message: overload.schemaDiagnostic.message,
+              },
+            ]
           : [],
       ),
     );
+  }
+
+  private rebuildFunctionReferenceSources(): void {
+    this.functionReferenceSources = expressionFunctionSchemaSources(this.functions || []).map(
+      (source) => ({
+        id: source.id,
+        functionName: source.functionName,
+        signature: source.signature,
+        description: source.description,
+        options: source.fields.map((field) => ({
+          ...functionReferenceExpressionSegment(
+            source.functionName,
+            field.path,
+            renderJsonataPathSegments(field.pathSegments),
+          ),
+          label: field.path,
+          expression: field.expression,
+          description: field.description,
+          schemaField: field,
+          insertable: field.insertable,
+        })),
+      }),
+    );
+  }
+
+  trackFunctionReferenceGroup(_index: number, group: FunctionReferenceGroup): string {
+    return group.id;
+  }
+
+  trackFunctionReferenceOption(_index: number, option: ReferenceOption): string {
+    return option.schemaField?.id || option.expression;
   }
 
   isFunctionFieldExpanded(option: ReferenceOption): boolean {

@@ -17,7 +17,7 @@
  */
 
 import { ExpressionFunctionInfo, JsonSchema, OverloadInfo } from '../models';
-import { renderJsonataPathTail } from './jsonata-path';
+import { JsonataPathSegment, renderJsonataPathSegments } from './jsonata-path';
 
 const MAX_SCHEMA_DEPTH = 12;
 
@@ -26,6 +26,7 @@ export interface FunctionSchemaField {
   parentIds: string[];
   name: string;
   path: string;
+  pathSegments: JsonataPathSegment[];
   expression: string;
   depth: number;
   type: string;
@@ -55,7 +56,7 @@ export function expressionFunctionSchemaSources(
         {
           id: sourceId,
           functionName: func.name,
-          signature: functionSignature(func.name, overload),
+          signature: expressionFunctionSignature(func.name, overload),
           description: func.description,
           fields: flattenObjectProperties(
             overload.resultSchema,
@@ -63,6 +64,8 @@ export function expressionFunctionSchemaSources(
             `$${func.name}()`,
             sourceId,
             overload.arguments.length === 0,
+            [],
+            new Set(),
           ),
         },
       ];
@@ -76,22 +79,24 @@ function flattenObjectProperties(
   rootExpression: string,
   sourceId: string,
   insertable: boolean,
-  parentPath = '',
+  pathSegments: JsonataPathSegment[],
+  referenceStack: Set<string>,
   parentIds: string[] = [],
   depth = 0,
 ): FunctionSchemaField[] {
-  const resolved = effectiveSchema(schema, rootSchema);
+  const resolved = effectiveSchema(schema, rootSchema, referenceStack);
   const required = new Set(resolved.required || []);
   return Object.entries(resolved.properties || {}).flatMap(([name, childValue]) => {
     if (!isSchemaObject(childValue)) return [];
-    const child = effectiveSchema(childValue, rootSchema);
+    const child = effectiveSchema(childValue, rootSchema, resolved.referenceStack);
     const arrayItems =
       isArraySchema(child) && isSchemaObject(child.items)
-        ? effectiveSchema(child.items, rootSchema)
+        ? effectiveSchema(child.items, rootSchema, child.referenceStack)
         : null;
     const nestedSchema = arrayItems || child;
-    const path = parentPath ? `${parentPath}.${name}` : name;
-    const id = `${sourceId}:${path}`;
+    const fieldSegments = [...pathSegments, { name }];
+    const path = displayPath(fieldSegments);
+    const id = `${sourceId}:${fieldSegments.map((segment) => jsonPointerSegment(segment.name)).join('/')}`;
     const expandable =
       depth < MAX_SCHEMA_DEPTH && !!Object.keys(nestedSchema.properties || {}).length;
     const field: FunctionSchemaField = {
@@ -99,7 +104,8 @@ function flattenObjectProperties(
       parentIds,
       name,
       path,
-      expression: `${rootExpression}.${renderJsonataPathTail(path)}`,
+      pathSegments: fieldSegments,
+      expression: `${rootExpression}.${renderJsonataPathSegments(fieldSegments)}`,
       depth,
       type: schemaTypeLabel(child, arrayItems),
       description: child.description,
@@ -117,7 +123,8 @@ function flattenObjectProperties(
         rootExpression,
         sourceId,
         insertable,
-        arrayItems ? `${path}[]` : path,
+        arrayItems ? [...pathSegments, { name, array: true }] : fieldSegments,
+        nestedSchema.referenceStack,
         [...parentIds, id],
         depth + 1,
       ),
@@ -125,26 +132,74 @@ function flattenObjectProperties(
   });
 }
 
-function effectiveSchema(schema: JsonSchema, rootSchema: JsonSchema): JsonSchema {
-  const referenced = schema.$ref ? resolveLocalReference(rootSchema, schema.$ref) : schema;
-  const variants = [
-    ...(referenced.allOf || []),
-    ...(referenced.anyOf || []),
-    ...(referenced.oneOf || []),
-  ]
+interface EffectiveSchema extends JsonSchema {
+  referenceStack: Set<string>;
+}
+
+function effectiveSchema(
+  schema: JsonSchema,
+  rootSchema: JsonSchema,
+  referenceStack: Set<string>,
+): EffectiveSchema {
+  let referenced = schema;
+  let nextReferenceStack = referenceStack;
+  if (schema.$ref) {
+    if (referenceStack.has(schema.$ref)) return { referenceStack };
+    referenced = resolveLocalReference(rootSchema, schema.$ref);
+    nextReferenceStack = new Set(referenceStack).add(schema.$ref);
+  }
+
+  let combined: EffectiveSchema = {
+    ...referenced,
+    properties: { ...(referenced.properties || {}) },
+    required: [...(referenced.required || [])],
+    referenceStack: nextReferenceStack,
+  };
+
+  for (const variant of (referenced.allOf || []).filter(isSchemaObject)) {
+    combined = mergeConjunctive(combined, effectiveSchema(variant, rootSchema, nextReferenceStack));
+  }
+
+  const alternatives = [...(referenced.anyOf || []), ...(referenced.oneOf || [])]
     .filter(isSchemaObject)
-    .map((variant) => effectiveSchema(variant, rootSchema));
-  return variants.reduce(
-    (combined, variant) => ({
+    .map((variant) => effectiveSchema(variant, rootSchema, nextReferenceStack))
+    .filter(isObjectShape);
+  if (alternatives.length) {
+    const alternativeRequired = alternatives
+      .map((variant) => new Set(variant.required || []))
+      .reduce(
+        (intersection, required) => new Set([...intersection].filter((name) => required.has(name))),
+      );
+    combined = {
       ...combined,
-      ...variant,
-      type: combined.type || variant.type,
-      description: combined.description || variant.description,
-      properties: { ...combined.properties, ...variant.properties },
-      required: [...new Set([...(combined.required || []), ...(variant.required || [])])],
-    }),
-    referenced,
-  );
+      properties: Object.assign(
+        {},
+        combined.properties,
+        ...alternatives.map((item) => item.properties),
+      ),
+      required: [...new Set([...(combined.required || []), ...alternativeRequired])],
+      type: combined.type || alternatives[0].type,
+      description: combined.description || alternatives[0].description,
+    };
+  }
+  return combined;
+}
+
+function mergeConjunctive(left: EffectiveSchema, right: EffectiveSchema): EffectiveSchema {
+  return {
+    ...left,
+    type: left.type || right.type,
+    description: left.description || right.description,
+    items: left.items || right.items,
+    properties: { ...left.properties, ...right.properties },
+    required: [...new Set([...(left.required || []), ...(right.required || [])])],
+    referenceStack: new Set([...left.referenceStack, ...right.referenceStack]),
+  };
+}
+
+function isObjectShape(schema: JsonSchema): boolean {
+  const types = Array.isArray(schema.type) ? schema.type : schema.type ? [schema.type] : [];
+  return types.includes('object') || !!schema.properties;
 }
 
 function resolveLocalReference(rootSchema: JsonSchema, reference: string): JsonSchema {
@@ -163,7 +218,15 @@ function resolveLocalReference(rootSchema: JsonSchema, reference: string): JsonS
   return isSchemaObject(resolved) ? resolved : {};
 }
 
-function functionSignature(name: string, overload: OverloadInfo): string {
+function displayPath(segments: JsonataPathSegment[]): string {
+  return segments.map((segment) => `${segment.name}${segment.array ? '[]' : ''}`).join('.');
+}
+
+function jsonPointerSegment(segment: string): string {
+  return segment.replace(/~/g, '~0').replace(/\//g, '~1');
+}
+
+export function expressionFunctionSignature(name: string, overload: OverloadInfo): string {
   const argumentsLabel = overload.arguments
     .map((argument) => `${argument.name}: ${argument.type}`)
     .join(', ');

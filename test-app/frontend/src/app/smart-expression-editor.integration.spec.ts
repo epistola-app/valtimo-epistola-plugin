@@ -223,4 +223,69 @@ describe('SmartExpressionEditorComponent integration', () => {
     expect(error.id).toBe('environment-expression-error');
     expect(modeButton.disabled).toBe(true);
   });
+
+  it('renders, expands, and inserts a schema-backed function field', async () => {
+    const component = await render('');
+    fixture.componentRef.setInput('functions', [
+      {
+        name: 'resident',
+        description: 'Loads a resident',
+        overloads: [
+          {
+            arguments: [],
+            returnType: 'Map',
+            resultSchema: {
+              type: 'object',
+              required: ['person'],
+              properties: {
+                person: {
+                  type: 'object',
+                  required: ['name'],
+                  properties: {
+                    name: { type: ['string', 'null'], description: 'Full name' },
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    ]);
+    await settle();
+    if (component.mode === 'select') {
+      component.toggleMode();
+      await settle();
+    }
+
+    (
+      fixture.nativeElement.querySelector(
+        '[data-testid="environment-expression-insert"]',
+      ) as HTMLButtonElement
+    ).click();
+    await settle();
+
+    const group = fixture.nativeElement.querySelector(
+      '.smart-expression__group--function',
+    ) as HTMLElement;
+    const expand = group.querySelector('.smart-expression__expand') as HTMLButtonElement;
+    expect(group.textContent).toContain('$resident()');
+    expect(group.textContent).toContain('person');
+    expect(group.textContent).toContain('required');
+    expect(expand.getAttribute('aria-expanded')).toBe('false');
+
+    expand.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    await settle();
+
+    expect(expand.getAttribute('aria-expanded')).toBe('true');
+    expect(group.textContent).toContain('Full name');
+    expect(group.textContent).toContain('nullable');
+
+    const nameOption = Array.from(
+      group.querySelectorAll<HTMLButtonElement>('.smart-expression__option--schema'),
+    ).find((option) => option.textContent?.includes('Full name'))!;
+    nameOption.click();
+    await settle();
+
+    expect(component.expression).toBe('$resident().person.name');
+  });
 });

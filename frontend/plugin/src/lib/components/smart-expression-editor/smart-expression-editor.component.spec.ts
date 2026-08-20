@@ -554,6 +554,7 @@ describe('SmartExpressionEditorComponent', () => {
     ]);
 
     const inwoner = component.functionReferenceGroups[0].options[0];
+    const activitiesBeforeExpansion = component.functionReferenceGroups[0].options[1];
     component.toggleFunctionField(new MouseEvent('mousedown', { cancelable: true }), inwoner);
     expect(component.functionReferenceGroups[0].options).toEqual(
       expect.arrayContaining([
@@ -564,6 +565,11 @@ describe('SmartExpressionEditorComponent', () => {
         }),
       ]),
     );
+    expect(
+      component.functionReferenceGroups[0].options.find(
+        (option) => option.label === 'activiteiten',
+      ),
+    ).toBe(activitiesBeforeExpansion);
 
     setCaret(surface.firstChild!, 0);
     component.onSurfaceFocus();
@@ -588,7 +594,7 @@ describe('SmartExpressionEditorComponent', () => {
         description: '',
         overloads: [
           {
-            arguments: [],
+            arguments: [{ name: 'id', type: 'String' }],
             returnType: 'Map',
             schemaDiagnostic: { code: 'MALFORMED_JSON_SCHEMA', message: 'Malformed schema' },
           },
@@ -603,7 +609,7 @@ describe('SmartExpressionEditorComponent', () => {
 
     expect(component.functionReferenceGroups).toEqual([]);
     expect(component.functionSchemaDiagnostics).toEqual([
-      { signature: '$broken()', message: 'Malformed schema' },
+      { signature: '$broken(id: String)', message: 'Malformed schema' },
     ]);
     expect(component.functions.find((func) => func.name === 'plain')).toBeDefined();
     destroy();

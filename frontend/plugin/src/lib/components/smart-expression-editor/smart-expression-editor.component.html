@@ -189,13 +189,15 @@
           </div>
         </ng-container>
 
-        <ng-container *ngFor="let group of functionReferenceGroups">
+        <ng-container
+          *ngFor="let group of functionReferenceGroups; trackBy: trackFunctionReferenceGroup"
+        >
           <div class="smart-expression__group smart-expression__group--function" role="group">
             <div class="smart-expression__group-label" [attr.title]="group.description">
               {{ group.signature }}
             </div>
             <div
-              *ngFor="let option of group.options"
+              *ngFor="let option of group.options; trackBy: trackFunctionReferenceOption"
               class="smart-expression__function-row"
               [style.padding-left.rem]="option.schemaField ? option.schemaField.depth * 1.1 : 0"
             >

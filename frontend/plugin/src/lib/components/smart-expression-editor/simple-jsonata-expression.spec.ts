@@ -90,6 +90,18 @@ describe('simple JSONata expression model', () => {
     ).toBe('$inwonerplan().activiteiten');
   });
 
+  it('serializes schema paths without splitting dots inside property names', () => {
+    expect(
+      serializeSimpleJsonataSegments([
+        functionReferenceExpressionSegment(
+          'lookup',
+          'address.city.postal-code',
+          '`address.city`.`postal-code`',
+        ),
+      ]),
+    ).toBe('$lookup().`address.city`.`postal-code`');
+  });
+
   it.each([
     'value.pdf',
     '$uppercase($doc.name)',
