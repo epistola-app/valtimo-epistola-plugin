@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Custom expression functions wrapped in Spring class-based proxies now retain overload discovery, result-schema metadata, and evaluation-cache annotations; unsupported JDK proxies fail at startup with an actionable diagnostic.
 - Valid JSON Schemas using structures the expression editor cannot faithfully represent now produce an explicit authoring-schema diagnostic instead of incomplete field suggestions; local `$ref` siblings are merged correctly.
+- Evaluation-cache keys now snapshot nested JSON-like arguments, so mutable maps, collections, and arrays cannot invalidate cached function results; unknown object types use safe identity semantics.
 
 ## [0.17.3] - 2026-08-04
 

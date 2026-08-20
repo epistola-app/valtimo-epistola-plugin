@@ -29,11 +29,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.AnnotatedElementUtils;
 
 import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 import static com.dashjoin.jsonata.Jsonata.jsonata;
 
@@ -193,7 +190,7 @@ public class JsonataMappingService {
     }
 
     private void registerCustomFunctions(Frame frame, ExpressionContext exprCtx) {
-        Map<FunctionInvocationKey, Object> evaluationCache = new HashMap<>();
+        Map<ExpressionFunctionInvocationKey, Object> evaluationCache = new HashMap<>();
 
         for (var funcInfo : functionRegistry.listFunctions()) {
             String name = funcInfo.name();
@@ -208,8 +205,8 @@ public class JsonataMappingService {
                     var match = functionRegistry.findMatchingOverload(name, argsArray);
                     boolean cacheResult = AnnotatedElementUtils.hasAnnotation(
                             match.method(), CacheResultForEvaluation.class);
-                    FunctionInvocationKey cacheKey = cacheResult
-                            ? new FunctionInvocationKey(name, match.method(), argsArray)
+                    ExpressionFunctionInvocationKey cacheKey = cacheResult
+                            ? ExpressionFunctionInvocationKey.of(name, match.method(), argsArray)
                             : null;
                     if (cacheResult && evaluationCache.containsKey(cacheKey)) {
                         return evaluationCache.get(cacheKey);
@@ -239,33 +236,4 @@ public class JsonataMappingService {
         }
     }
 
-    private static final class FunctionInvocationKey {
-        private final String functionName;
-        private final Method method;
-        private final Object[] arguments;
-
-        private FunctionInvocationKey(String functionName, Method method, Object[] arguments) {
-            this.functionName = functionName;
-            this.method = method;
-            this.arguments = arguments.clone();
-        }
-
-        @Override
-        public boolean equals(Object other) {
-            if (this == other) {
-                return true;
-            }
-            if (!(other instanceof FunctionInvocationKey that)) {
-                return false;
-            }
-            return functionName.equals(that.functionName)
-                    && method.equals(that.method)
-                    && Arrays.deepEquals(arguments, that.arguments);
-        }
-
-        @Override
-        public int hashCode() {
-            return 31 * Objects.hash(functionName, method) + Arrays.deepHashCode(arguments);
-        }
-    }
 }
