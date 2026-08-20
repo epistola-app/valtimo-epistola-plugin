@@ -265,9 +265,9 @@ describe('SmartExpressionEditorComponent integration', () => {
     await settle();
 
     const group = fixture.nativeElement.querySelector(
-      '.smart-expression__group--function',
+      '.function-reference__group',
     ) as HTMLElement;
-    const expand = group.querySelector('.smart-expression__expand') as HTMLButtonElement;
+    const expand = group.querySelector('.function-reference__expand') as HTMLButtonElement;
     expect(group.textContent).toContain('$resident()');
     expect(group.textContent).toContain('person');
     expect(group.textContent).toContain('required');
@@ -281,7 +281,7 @@ describe('SmartExpressionEditorComponent integration', () => {
     expect(group.textContent).toContain('nullable');
 
     const nameOption = Array.from(
-      group.querySelectorAll<HTMLButtonElement>('.smart-expression__option--schema'),
+      group.querySelectorAll<HTMLButtonElement>('.function-reference__option'),
     ).find((option) => option.textContent?.includes('Full name'))!;
     nameOption.click();
     await settle();
