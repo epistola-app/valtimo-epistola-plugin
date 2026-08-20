@@ -25,9 +25,12 @@ import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
 import app.epistola.valtimo.web.rest.dto.JsonataValidationResult;
 import app.epistola.valtimo.web.rest.dto.ProcessLinkMappingResponse;
 import app.epistola.valtimo.web.rest.dto.ValidateJsonataRequest;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 import java.util.Map;
@@ -35,6 +38,9 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class EpistolaToolingResourceValidateJsonataTest {
 
@@ -94,14 +100,16 @@ class EpistolaToolingResourceValidateJsonataTest {
                 processLinkMappingService);
         when(registry.listFunctions()).thenReturn(List.of(expected));
 
-        var body = resource.getExpressionFunctions().getBody();
+        var mockMvc = MockMvcBuilders.standaloneSetup(resource)
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(new ObjectMapper()))
+                .build();
 
-        assertThat(body).containsExactly(expected);
-        assertThat(body.getFirst().overloads().getFirst().resultSchema().path("type").asText())
-                .isEqualTo("object");
-        assertThat(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(body))
-                .contains("\"resultSchema\":{\"type\":\"object\"}")
-                .contains("\"schemaDiagnostic\":null");
+        mockMvc.perform(get("/api/v1/plugin/epistola/expression-functions"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("person"))
+                .andExpect(jsonPath("$[0].overloads[0].returnType").value("Map"))
+                .andExpect(jsonPath("$[0].overloads[0].resultSchema.type").value("object"))
+                .andExpect(jsonPath("$[0].overloads[0].schemaDiagnostic").doesNotExist());
     }
 
     @Test

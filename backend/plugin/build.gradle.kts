@@ -41,6 +41,9 @@ dependencies {
     // JSONata (JSON transformation language)
     api(libs.jsonata)
 
+    // Validate custom-function result schemas against bundled JSON Schema meta-schemas
+    implementation(libs.json.schema.validator)
+
     // Valtimo dependencies (compileOnly - provided by implementing application)
     compileOnly(libs.valtimo.core)
     compileOnly(libs.valtimo.contract)

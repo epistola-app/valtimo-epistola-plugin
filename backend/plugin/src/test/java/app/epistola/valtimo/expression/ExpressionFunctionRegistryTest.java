@@ -27,6 +27,11 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
 
 class ExpressionFunctionRegistryTest {
 
@@ -163,6 +168,21 @@ class ExpressionFunctionRegistryTest {
         assertNull(functions.stream()
                 .filter(info -> "str".equals(info.name()))
                 .findFirst().orElseThrow().overloads().getFirst().schemaDiagnostic());
+    }
+
+    @Test
+    void shouldCacheSchemaMetadataAtRegistrationTime() throws Exception {
+        SchemaFunction function = new SchemaFunction();
+        ExpressionFunctionSchemaResolver resolver = mock(ExpressionFunctionSchemaResolver.class);
+        var method = SchemaFunction.class.getMethod("execute", ExpressionContext.class);
+        when(resolver.resolve(any(), any())).thenReturn(new ExpressionFunctionSchemaResolver.Result(null, null));
+        when(resolver.resolve(function, method)).thenReturn(new ExpressionFunctionSchemaResolver.Result(null, null));
+
+        ExpressionFunctionRegistry schemaRegistry = new ExpressionFunctionRegistry(List.of(function), resolver);
+        schemaRegistry.listFunctions();
+        schemaRegistry.listFunctions();
+
+        verify(resolver, times(1)).resolve(function, method);
     }
 
     private static class SchemaFunction implements EpistolaExpressionFunction {
