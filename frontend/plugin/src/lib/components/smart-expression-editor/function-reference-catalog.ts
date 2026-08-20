@@ -65,26 +65,33 @@ export class FunctionReferenceCatalog {
   private cachedQuery: string | null = null;
   private cachedGroups: FunctionReferenceGroup[] = [];
 
-  diagnostics: FunctionSchemaDiagnostic[] = [];
+  public diagnostics: FunctionSchemaDiagnostic[] = [];
 
-  update(functions: ExpressionFunctionInfo[]): void {
+  public update(functions: ExpressionFunctionInfo[]): void {
     this.sources = expressionFunctionSchemaSources(functions || []).map((source) => ({
       id: source.id,
       signature: source.signature,
       description: source.description,
-      options: source.fields.map((field) => ({
-        ...functionReferenceExpressionSegment(
+      options: source.fields.map((field) => {
+        const segment = functionReferenceExpressionSegment(
           source.functionName,
           field.path,
           renderJsonataPathSegments(field.pathSegments),
-        ),
-        label: field.path,
-        expression: field.expression,
-        description: field.description,
-        schemaField: field,
-        insertable: field.insertable,
-        expanded: this.expandedFieldIds.has(field.id),
-      })),
+        );
+        return {
+          kind: segment.kind,
+          variable: segment.variable,
+          path: segment.path,
+          rootExpression: segment.rootExpression,
+          pathExpression: segment.pathExpression,
+          label: field.path,
+          expression: field.expression,
+          description: field.description,
+          schemaField: field,
+          insertable: field.insertable,
+          expanded: this.expandedFieldIds.has(field.id),
+        };
+      }),
     }));
     this.diagnostics = (functions || []).flatMap((func) =>
       func.overloads.flatMap((overload) =>
@@ -105,15 +112,15 @@ export class FunctionReferenceCatalog {
     for (const id of this.expandedFieldIds) {
       if (!currentFieldIds.has(id)) this.expandedFieldIds.delete(id);
     }
-    this.sources.forEach((source) =>
-      source.options.forEach((option) => {
+    for (const source of this.sources) {
+      for (const option of source.options) {
         option.expanded = this.expandedFieldIds.has(option.schemaField.id);
-      }),
-    );
+      }
+    }
     this.invalidate();
   }
 
-  groups(query: string): FunctionReferenceGroup[] {
+  public groups(query: string): FunctionReferenceGroup[] {
     const normalizedQuery = query.trim().toLocaleLowerCase();
     if (normalizedQuery === this.cachedQuery) return this.cachedGroups;
 
@@ -135,17 +142,17 @@ export class FunctionReferenceCatalog {
     return this.cachedGroups;
   }
 
-  toggle(id: string): void {
+  public toggle(id: string): void {
     if (this.expandedFieldIds.has(id)) {
       this.expandedFieldIds.delete(id);
     } else {
       this.expandedFieldIds.add(id);
     }
-    this.sources.forEach((source) =>
-      source.options.forEach((option) => {
+    for (const source of this.sources) {
+      for (const option of source.options) {
         if (option.schemaField.id === id) option.expanded = this.expandedFieldIds.has(id);
-      }),
-    );
+      }
+    }
     this.invalidate();
   }
 

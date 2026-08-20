@@ -264,9 +264,7 @@ describe('SmartExpressionEditorComponent integration', () => {
     ).click();
     await settle();
 
-    const group = fixture.nativeElement.querySelector(
-      '.function-reference__group',
-    ) as HTMLElement;
+    const group = fixture.nativeElement.querySelector('.function-reference__group') as HTMLElement;
     const expand = group.querySelector('.function-reference__expand') as HTMLButtonElement;
     expect(group.textContent).toContain('$resident()');
     expect(group.textContent).toContain('person');

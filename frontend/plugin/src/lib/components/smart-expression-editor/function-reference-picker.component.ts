@@ -33,25 +33,26 @@ import {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class FunctionReferencePickerComponent {
-  @Input() groups: FunctionReferenceGroup[] = [];
-  @Input() diagnostics: FunctionSchemaDiagnostic[] = [];
-  @Input() activeOption: FunctionReferenceOption | null = null;
+  @Input() public groups: FunctionReferenceGroup[] = [];
+  @Input() public diagnostics: FunctionSchemaDiagnostic[] = [];
+  @Input() public activeOption: FunctionReferenceOption | null = null;
 
-  @Output() toggleField = new EventEmitter<{
+  @Output() public toggleField = new EventEmitter<{
     event: MouseEvent;
     option: FunctionReferenceOption;
   }>();
-  @Output() optionMouseDown = new EventEmitter<{
+  @Output() public optionMouseDown = new EventEmitter<{
     event: MouseEvent;
     option: FunctionReferenceOption;
   }>();
-  @Output() optionClick = new EventEmitter<FunctionReferenceOption>();
+  @Output() public optionClick = new EventEmitter<FunctionReferenceOption>();
 
-  trackGroup(_index: number, group: FunctionReferenceGroup): string {
-    return group.id;
-  }
+  // Angular templates require trackBy callbacks on the component instance.
+  // eslint-disable-next-line class-methods-use-this
+  public readonly trackGroup = (_index: number, group: FunctionReferenceGroup): string => group.id;
 
-  trackOption(_index: number, option: FunctionReferenceOption): string {
-    return option.schemaField.id;
-  }
+  // Angular templates require trackBy callbacks on the component instance.
+  // eslint-disable-next-line class-methods-use-this
+  public readonly trackOption = (_index: number, option: FunctionReferenceOption): string =>
+    option.schemaField.id;
 }

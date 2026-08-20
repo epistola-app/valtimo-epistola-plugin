@@ -16,39 +16,40 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
+import { ExpressionFunctionInfo } from '../../models';
 import { FunctionReferenceCatalog } from './function-reference-catalog';
 
-describe('FunctionReferenceCatalog', () => {
-  function functions() {
-    return [
-      {
-        name: 'customData',
-        description: 'Custom data',
-        overloads: [
-          {
-            arguments: [],
-            returnType: 'Map',
-            resultSchema: {
-              type: 'object',
-              properties: {
-                customer: {
-                  type: 'object',
-                  properties: { name: { type: 'string' } },
-                },
-                status: { type: 'string' },
+function functions(): ExpressionFunctionInfo[] {
+  return [
+    {
+      name: 'customData',
+      description: 'Custom data',
+      overloads: [
+        {
+          arguments: [],
+          returnType: 'Map',
+          resultSchema: {
+            type: 'object',
+            properties: {
+              customer: {
+                type: 'object',
+                properties: { name: { type: 'string' } },
               },
+              status: { type: 'string' },
             },
           },
-          {
-            arguments: [{ name: 'id', type: 'String' }],
-            returnType: 'Map',
-            schemaDiagnostic: { code: 'BROKEN', message: 'Broken schema' },
-          },
-        ],
-      },
-    ];
-  }
+        },
+        {
+          arguments: [{ name: 'id', type: 'String' }],
+          returnType: 'Map',
+          schemaDiagnostic: { code: 'BROKEN', message: 'Broken schema' },
+        },
+      ],
+    },
+  ];
+}
 
+describe('FunctionReferenceCatalog', () => {
   it('owns expansion, search, insertion, and diagnostic state', () => {
     const catalog = new FunctionReferenceCatalog();
     catalog.update(functions());
