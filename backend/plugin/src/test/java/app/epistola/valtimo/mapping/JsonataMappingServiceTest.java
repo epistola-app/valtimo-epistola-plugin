@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.mapping;
 
+import app.epistola.valtimo.expression.CacheResultForEvaluation;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionContext;
 import app.epistola.valtimo.expression.ExpressionEvaluationException;
@@ -406,6 +407,98 @@ class JsonataMappingServiceTest {
         }
 
         @Test
+        void shouldCacheAnnotatedFunctionResultsForOneEvaluation() {
+            CachedLookupFunction function = new CachedLookupFunction();
+            service = new JsonataMappingService(new ExpressionFunctionRegistry(List.of(function)));
+
+            Map<String, Object> firstEvaluation = service.evaluate(
+                    "{ \"first\": $lookup('same'), \"second\": $lookup('same'), \"other\": $lookup('other') }",
+                    Map.of(), Map.of(), Map.of());
+
+            assertThat(firstEvaluation)
+                    .containsEntry("first", "same-1")
+                    .containsEntry("second", "same-1")
+                    .containsEntry("other", "other-2");
+            assertThat(function.invocations).isEqualTo(2);
+
+            Map<String, Object> secondEvaluation = service.evaluate(
+                    "{ \"value\": $lookup('same') }", Map.of(), Map.of(), Map.of());
+
+            assertThat(secondEvaluation).containsEntry("value", "same-3");
+            assertThat(function.invocations).isEqualTo(3);
+        }
+
+        @Test
+        void shouldCallUnannotatedFunctionForEveryReference() {
+            UncachedLookupFunction function = new UncachedLookupFunction();
+            service = new JsonataMappingService(new ExpressionFunctionRegistry(List.of(function)));
+
+            Map<String, Object> result = service.evaluate(
+                    "{ \"first\": $lookup('same'), \"second\": $lookup('same') }",
+                    Map.of(), Map.of(), Map.of());
+
+            assertThat(result)
+                    .containsEntry("first", "same-1")
+                    .containsEntry("second", "same-2");
+            assertThat(function.invocations).isEqualTo(2);
+        }
+
+        @Test
+        void shouldApplyCachingPerOverload() {
+            PartiallyCachedFunction function = new PartiallyCachedFunction();
+            service = new JsonataMappingService(new ExpressionFunctionRegistry(List.of(function)));
+
+            service.evaluate(
+                    "{ \"cachedOne\": $partial('same'), \"cachedTwo\": $partial('same'),"
+                            + " \"uncachedOne\": $partial(1), \"uncachedTwo\": $partial(1) }",
+                    Map.of(), Map.of(), Map.of());
+
+            assertThat(function.cachedInvocations).isEqualTo(1);
+            assertThat(function.uncachedInvocations).isEqualTo(2);
+        }
+
+        @Test
+        void shouldCacheAnnotatedFunctionResultsForScalarEvaluation() {
+            CachedLookupFunction function = new CachedLookupFunction();
+            service = new JsonataMappingService(new ExpressionFunctionRegistry(List.of(function)));
+
+            String result = service.evaluateScalar(EvaluationContext.builder()
+                    .expression("$lookup('same') & $lookup('same')")
+                    .build());
+
+            assertThat(result).isEqualTo("same-1same-1");
+            assertThat(function.invocations).isEqualTo(1);
+        }
+
+        @Test
+        void shouldCacheNullFunctionResults() {
+            CachedNullFunction function = new CachedNullFunction();
+            service = new JsonataMappingService(new ExpressionFunctionRegistry(List.of(function)));
+
+            service.evaluate(
+                    "{ \"first\": $nullable(), \"second\": $nullable() }",
+                    Map.of(), Map.of(), Map.of());
+
+            assertThat(function.invocations).isEqualTo(1);
+        }
+
+        @Test
+        void shouldNotCacheFunctionExceptions() {
+            FailsOnceFunction function = new FailsOnceFunction();
+            service = new JsonataMappingService(new ExpressionFunctionRegistry(List.of(function)));
+
+            assertThatThrownBy(() -> service.evaluate(
+                    "{ \"value\": $failsOnce() }", Map.of(), Map.of(), Map.of()))
+                    .isInstanceOf(ExpressionEvaluationException.class);
+
+            Map<String, Object> result = service.evaluate(
+                    "{ \"value\": $failsOnce() }", Map.of(), Map.of(), Map.of());
+
+            assertThat(result).containsEntry("value", "recovered");
+            assertThat(function.invocations).isEqualTo(2);
+        }
+
+        @Test
         void shouldRethrowCustomFunctionExceptionWithCause() {
             EpistolaExpressionFunction throwing = new EpistolaExpressionFunction() {
                 @Override
@@ -449,6 +542,94 @@ class JsonataMappingServiceTest {
                     "{ \"x\": $myCustomFunc('hi') }", Map.of(), Map.of(), Map.of()))
                     .isInstanceOf(ExpressionEvaluationException.class)
                     .hasMessageContaining("myCustomFunc");
+        }
+
+        private class CachedLookupFunction implements EpistolaExpressionFunction {
+            private int invocations;
+
+            @Override
+            public String name() { return "lookup"; }
+
+            @Override
+            public String description() { return "Cached lookup"; }
+
+            @CacheResultForEvaluation
+            public String execute(ExpressionContext context, String input) {
+                invocations++;
+                return input + "-" + invocations;
+            }
+        }
+
+        private class UncachedLookupFunction implements EpistolaExpressionFunction {
+            private int invocations;
+
+            @Override
+            public String name() { return "lookup"; }
+
+            @Override
+            public String description() { return "Uncached lookup"; }
+
+            public String execute(ExpressionContext context, String input) {
+                invocations++;
+                return input + "-" + invocations;
+            }
+        }
+
+        private class CachedNullFunction implements EpistolaExpressionFunction {
+            private int invocations;
+
+            @Override
+            public String name() { return "nullable"; }
+
+            @Override
+            public String description() { return "Cached null"; }
+
+            @CacheResultForEvaluation
+            public Object execute(ExpressionContext context) {
+                invocations++;
+                return null;
+            }
+        }
+
+        private class PartiallyCachedFunction implements EpistolaExpressionFunction {
+            private int cachedInvocations;
+            private int uncachedInvocations;
+
+            @Override
+            public String name() { return "partial"; }
+
+            @Override
+            public String description() { return "Partially cached"; }
+
+            @CacheResultForEvaluation
+            public String execute(ExpressionContext context, String input) {
+                cachedInvocations++;
+                return input;
+            }
+
+            public Integer execute(ExpressionContext context, Integer input) {
+                uncachedInvocations++;
+                return input;
+            }
+        }
+
+        private class FailsOnceFunction implements EpistolaExpressionFunction {
+            private int invocations;
+
+            @Override
+            public String name() { return "failsOnce"; }
+
+            @Override
+            public String description() { return "Fails once"; }
+
+            @CacheResultForEvaluation
+            public String execute(ExpressionContext context) {
+                invocations++;
+                if (invocations == 1) {
+                    throw new IllegalStateException("first call failed");
+                }
+                return "recovered";
+            }
         }
     }
 }

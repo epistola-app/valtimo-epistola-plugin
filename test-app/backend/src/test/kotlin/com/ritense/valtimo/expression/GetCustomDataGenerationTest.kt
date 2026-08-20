@@ -100,14 +100,11 @@ class GetCustomDataGenerationTest {
             null,
             null,
             """
-            (
-                ${'$'}customData := ${'$'}getCustomData();
-                {
-                    "customerName": ${'$'}customData.customerName,
-                    "status": ${'$'}customData.status,
-                    "tags": ${'$'}customData.tags
-                }
-            )
+            {
+                "customerName": ${'$'}getCustomData().customerName,
+                "status": ${'$'}getCustomData().status,
+                "tags": ${'$'}getCustomData().tags
+            }
             """.trimIndent(),
             "PDF",
             "document.pdf",

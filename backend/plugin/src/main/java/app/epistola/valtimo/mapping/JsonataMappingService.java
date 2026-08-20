@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.mapping;
 
+import app.epistola.valtimo.expression.CacheResultForEvaluation;
 import app.epistola.valtimo.expression.DefaultExpressionContext;
 import app.epistola.valtimo.expression.ExpressionContext;
 import app.epistola.valtimo.expression.ExpressionEvaluationException;
@@ -27,7 +28,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 
 import static com.dashjoin.jsonata.Jsonata.jsonata;
 
@@ -187,6 +192,8 @@ public class JsonataMappingService {
     }
 
     private void registerCustomFunctions(Frame frame, ExpressionContext exprCtx) {
+        Map<FunctionInvocationKey, Object> evaluationCache = new HashMap<>();
+
         for (var funcInfo : functionRegistry.listFunctions()) {
             String name = funcInfo.name();
             var registeredFunc = functionRegistry.getFunction(name);
@@ -198,10 +205,22 @@ public class JsonataMappingService {
                 Object[] argsArray = args != null ? args.toArray() : new Object[0];
                 try {
                     var match = functionRegistry.findMatchingOverload(name, argsArray);
+                    boolean cacheResult = match.method().isAnnotationPresent(CacheResultForEvaluation.class);
+                    FunctionInvocationKey cacheKey = cacheResult
+                            ? new FunctionInvocationKey(name, match.method(), argsArray)
+                            : null;
+                    if (cacheResult && evaluationCache.containsKey(cacheKey)) {
+                        return evaluationCache.get(cacheKey);
+                    }
+
                     Object[] fullArgs = new Object[argsArray.length + 1];
                     fullArgs[0] = exprCtx;
                     System.arraycopy(argsArray, 0, fullArgs, 1, argsArray.length);
-                    return match.method().invoke(match.bean(), fullArgs);
+                    Object result = match.method().invoke(match.bean(), fullArgs);
+                    if (cacheResult) {
+                        evaluationCache.put(cacheKey, result);
+                    }
+                    return result;
                 } catch (InvocationTargetException e) {
                     Throwable cause = e.getTargetException();
                     throw new ExpressionEvaluationException(
@@ -215,6 +234,36 @@ public class JsonataMappingService {
             };
             Jsonata.JFunction jFunc = new Jsonata.JFunction(callable, null);
             frame.bind(name, jFunc);
+        }
+    }
+
+    private static final class FunctionInvocationKey {
+        private final String functionName;
+        private final Method method;
+        private final Object[] arguments;
+
+        private FunctionInvocationKey(String functionName, Method method, Object[] arguments) {
+            this.functionName = functionName;
+            this.method = method;
+            this.arguments = arguments.clone();
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            if (this == other) {
+                return true;
+            }
+            if (!(other instanceof FunctionInvocationKey that)) {
+                return false;
+            }
+            return functionName.equals(that.functionName)
+                    && method.equals(that.method)
+                    && Arrays.deepEquals(arguments, that.arguments);
+        }
+
+        @Override
+        public int hashCode() {
+            return 31 * Objects.hash(functionName, method) + Arrays.deepHashCode(arguments);
         }
     }
 }

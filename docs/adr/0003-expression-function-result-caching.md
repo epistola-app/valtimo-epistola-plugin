@@ -1,6 +1,6 @@
 # ADR 0003 — How custom expression functions opt into result caching
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-08-20
 - **Deciders:** Epistola plugin maintainers
 - **Related:** `EpistolaExpressionFunction`, `ExpressionFunctionRegistry`, `JsonataMappingService`, `docs/data-collection-strategies.md`, issue #100
@@ -42,14 +42,14 @@ rather than emerging from an implementation detail in the test application.
 - **Small safe surface.** Cross-evaluation, time-based, global, or distributed caching have
   invalidation and data-isolation concerns that this plugin should not own implicitly.
 
-## Proposed decision
+## Decision outcome
 
-Add a runtime method annotation, provisionally named `@CacheExpressionFunctionResult`, which a
+Add a runtime method annotation named `@CacheResultForEvaluation`, which a
 function author can place on an individual `execute` overload:
 
 ```java
 @ExpressionFunctionResultSchema("schemas/brp-person-result-v1.schema.json")
-@CacheExpressionFunctionResult
+@CacheResultForEvaluation
 public Person execute(ExpressionContext context, String bsn) {
     return brpClient.getPerson(bsn);
 }
@@ -126,7 +126,7 @@ should not depend on every mapping author noticing repeated invocations.
   return types.
 - Cache behavior is fixed for an overload rather than selected dynamically per returned value.
 - Cache lifetime and failure behavior are deterministic and testable.
-- The implementation needs focused tests for uncached defaults, repeated equal calls, distinct
-  arguments, separate evaluations, `null` values, and exceptions.
+- Focused tests cover uncached defaults, overload-specific behavior, object and scalar evaluations,
+  repeated equal calls, distinct arguments, separate evaluations, `null` values, and exceptions.
 - Documentation should tell authors to opt in only for values stable within one evaluation and to
   use application-level caching for longer lifetimes.

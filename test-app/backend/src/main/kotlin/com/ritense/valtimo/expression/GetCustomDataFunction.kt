@@ -17,6 +17,7 @@
  */
 package com.ritense.valtimo.expression
 
+import app.epistola.valtimo.expression.CacheResultForEvaluation
 import app.epistola.valtimo.expression.EpistolaExpressionFunction
 import app.epistola.valtimo.expression.ExpressionContext
 import app.epistola.valtimo.expression.ExpressionFunctionResultSchema
@@ -31,6 +32,7 @@ class GetCustomDataFunction : EpistolaExpressionFunction {
 
     override fun description() = "Returns example custom data for manual expression-editor testing"
 
+    @CacheResultForEvaluation
     @ExpressionFunctionResultSchema("expression-schemas/get-custom-data.schema.json")
     fun execute(
         @Suppress("UNUSED_PARAMETER") context: ExpressionContext,
