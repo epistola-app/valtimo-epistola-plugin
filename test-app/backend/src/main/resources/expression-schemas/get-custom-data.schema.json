@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Custom data",
+  "description": "Example result returned by the test-app getCustomData function",
+  "type": "object",
+  "required": ["customerName", "status", "tags"],
+  "properties": {
+    "customerName": {
+      "type": "string",
+      "description": "Display name of the example customer"
+    },
+    "status": {
+      "type": "string",
+      "description": "Current custom-data status"
+    },
+    "tags": {
+      "type": "array",
+      "description": "Labels associated with the custom data",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}
