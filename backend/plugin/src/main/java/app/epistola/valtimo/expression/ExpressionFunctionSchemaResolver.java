@@ -113,6 +113,15 @@ public class ExpressionFunctionSchemaResolver {
                                 + dialect.getSpecificationVersion() + " schema: " + summarize(errors)
                 );
             }
+            var authoringProblem = ExpressionFunctionAuthoringSchemaValidator.validate(schema);
+            if (authoringProblem.isPresent()) {
+                var problem = authoringProblem.get();
+                return Result.error(
+                        "UNSUPPORTED_EXPRESSION_AUTHORING_SCHEMA",
+                        "Result schema resource '" + annotation.value() + "' uses " + problem.feature()
+                                + " at " + problem.path() + ", which the expression editor cannot represent"
+                );
+            }
             return new Result(schema, null);
         } catch (JsonProcessingException e) {
             return Result.error(

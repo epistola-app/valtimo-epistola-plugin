@@ -236,4 +236,43 @@ describe('expression function schema sources', () => {
     expect(source.fields.map((field) => field.path)).toEqual(['value', 'next']);
     expect(source.fields[1].expandable).toBe(false);
   });
+
+  it('combines local reference fields with sibling fields', () => {
+    const [source] = expressionFunctionSchemaSources([
+      {
+        name: 'person',
+        description: '',
+        overloads: [
+          {
+            arguments: [],
+            returnType: 'Person',
+            resultSchema: {
+              type: 'object',
+              properties: {
+                person: {
+                  $ref: '#/$defs/basePerson',
+                  properties: { nickname: { type: 'string' } },
+                  required: ['nickname'],
+                },
+              },
+              $defs: {
+                basePerson: {
+                  type: 'object',
+                  properties: { legalName: { type: 'string' } },
+                  required: ['legalName'],
+                },
+              },
+            },
+          },
+        ],
+      },
+    ]);
+
+    expect(source.fields).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ path: 'person.legalName', required: true }),
+        expect.objectContaining({ path: 'person.nickname', required: true }),
+      ]),
+    );
+  });
 });

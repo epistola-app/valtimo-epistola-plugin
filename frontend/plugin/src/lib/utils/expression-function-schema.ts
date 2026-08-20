@@ -145,7 +145,19 @@ function effectiveSchema(
   let nextReferenceStack = referenceStack;
   if (schema.$ref) {
     if (referenceStack.has(schema.$ref)) return { referenceStack };
-    referenced = resolveLocalReference(rootSchema, schema.$ref);
+    const resolvedReference = resolveLocalReference(rootSchema, schema.$ref);
+    const { $ref: _reference, ...referenceSiblings } = schema;
+    referenced = {
+      ...resolvedReference,
+      ...referenceSiblings,
+      properties: {
+        ...(resolvedReference.properties || {}),
+        ...(referenceSiblings.properties || {}),
+      },
+      required: [
+        ...new Set([...(resolvedReference.required || []), ...(referenceSiblings.required || [])]),
+      ],
+    };
     nextReferenceStack = new Set(referenceStack).add(schema.$ref);
   }
 

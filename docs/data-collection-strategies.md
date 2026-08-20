@@ -132,6 +132,14 @@ old resources available while saved mappings depend on them, and add a contract 
 that validates representative runtime output against the published schema. The schema
 is authoring metadata; it does not add runtime validation or authorization.
 
+The expression editor intentionally supports the structural subset needed for source
+browsing: object `properties`, `required`, `description`, scalar and nullable `type`,
+homogeneous array `items`, local `$ref` references, and `allOf`/`anyOf`/`oneOf` object
+composition. Recursive trees stop after a safe depth. Schemas using external or dynamic
+references, tuple arrays, pattern properties, dependencies, or conditional schemas
+receive an `UNSUPPORTED_EXPRESSION_AUTHORING_SCHEMA` diagnostic instead of a partial,
+potentially misleading source tree.
+
 The data mapping stays clean — no intermediary process variables, no extra service tasks:
 
 ```

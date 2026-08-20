@@ -53,6 +53,17 @@ class ExpressionFunctionSchemaResolverTest {
         assertThat(result.diagnostic().code()).isEqualTo("UNSUPPORTED_JSON_SCHEMA_DIALECT");
     }
 
+    @Test
+    void rejectsValidSchemasThatTheExpressionEditorCannotRepresent() throws Exception {
+        var result = resolve("unsupportedAuthoring");
+
+        assertThat(result.schema()).isNull();
+        assertThat(result.diagnostic().code()).isEqualTo("UNSUPPORTED_EXPRESSION_AUTHORING_SCHEMA");
+        assertThat(result.diagnostic().message())
+                .contains("external references")
+                .contains("#/properties/remotePerson/$ref");
+    }
+
     private ExpressionFunctionSchemaResolver.Result resolve(String methodName) throws Exception {
         SchemaFixtures bean = new SchemaFixtures();
         Method method = SchemaFixtures.class.getMethod(methodName, ExpressionContext.class);
@@ -87,6 +98,11 @@ class ExpressionFunctionSchemaResolverTest {
 
         @ExpressionFunctionResultSchema("expression-schemas/unsupported.schema.json")
         public Map<String, Object> unsupported(ExpressionContext context) {
+            return Map.of();
+        }
+
+        @ExpressionFunctionResultSchema("expression-schemas/unsupported-authoring.schema.json")
+        public Map<String, Object> unsupportedAuthoring(ExpressionContext context) {
             return Map.of();
         }
     }
