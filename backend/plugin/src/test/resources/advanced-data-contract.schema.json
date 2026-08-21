@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "$defs": {
+    "address": {
+      "type": "object",
+      "properties": {
+        "street": { "type": "string" },
+        "postalCode": { "type": "string" },
+        "city": { "type": "string" }
+      },
+      "required": ["street", "postalCode", "city"]
+    },
+    "contactDetails": {
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "phoneNumber": { "type": "string" }
+      },
+      "required": ["email"]
+    },
+    "person": {
+      "type": "object",
+      "allOf": [{ "$ref": "#/$defs/contactDetails" }],
+      "properties": {
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "address": { "$ref": "#/$defs/address" }
+      },
+      "required": ["firstName", "lastName", "address"]
+    },
+    "organization": {
+      "type": "object",
+      "allOf": [{ "$ref": "#/$defs/contactDetails" }],
+      "properties": {
+        "organizationName": { "type": "string" },
+        "registrationNumber": { "type": "string" },
+        "address": { "$ref": "#/$defs/address" }
+      },
+      "required": ["organizationName", "registrationNumber", "address"]
+    }
+  },
+  "properties": {
+    "caseReference": { "type": "string" },
+    "applicant": { "$ref": "#/$defs/person" },
+    "subject": {
+      "oneOf": [
+        { "$ref": "#/$defs/person" },
+        { "$ref": "#/$defs/organization" }
+      ]
+    },
+    "alternateSubjects": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "$ref": "#/$defs/person" },
+          { "$ref": "#/$defs/organization" }
+        ]
+      }
+    },
+    "correspondenceAddress": {
+      "anyOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/address" }
+      ]
+    },
+    "deliveryRoutes": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": { "$ref": "#/$defs/address" }
+      }
+    }
+  },
+  "required": [
+    "caseReference",
+    "applicant",
+    "subject",
+    "alternateSubjects",
+    "deliveryRoutes"
+  ]
+}

@@ -30,6 +30,9 @@ import java.util.List;
  * @param required    Whether this field is required for document generation
  * @param description Optional description of the field's purpose
  * @param children    Child fields for OBJECT and ARRAY-of-object types (empty list for SCALAR)
+ * @param complex     Whether Simple mode must map this entire value with one expression
+ * @param complexityReason User-facing explanation of why the field is mapped as a whole value
+ * @param nullable    Whether the schema permits a null value
  */
 public record TemplateField(
         String name,
@@ -38,8 +41,23 @@ public record TemplateField(
         FieldType fieldType,
         boolean required,
         String description,
-        List<TemplateField> children
+        List<TemplateField> children,
+        boolean complex,
+        String complexityReason,
+        boolean nullable
 ) {
+    public TemplateField(
+            String name,
+            String path,
+            String type,
+            FieldType fieldType,
+            boolean required,
+            String description,
+            List<TemplateField> children
+    ) {
+        this(name, path, type, fieldType, required, description, children, false, null, false);
+    }
+
     public enum FieldType {
         SCALAR,
         OBJECT,
