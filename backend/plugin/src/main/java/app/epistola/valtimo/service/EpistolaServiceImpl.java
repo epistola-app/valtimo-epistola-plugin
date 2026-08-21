@@ -29,6 +29,7 @@ import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
+import app.epistola.valtimo.schema.JsonSchemaMappingAnalyzer;
 import app.epistola.client.api.AttributesApi;
 import app.epistola.client.api.CatalogsApi;
 import app.epistola.client.api.EnvironmentsApi;

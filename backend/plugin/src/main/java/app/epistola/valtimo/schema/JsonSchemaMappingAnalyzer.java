@@ -15,7 +15,7 @@
  *
  * SPDX-License-Identifier: EUPL-1.2
  */
-package app.epistola.valtimo.service;
+package app.epistola.valtimo.schema;
 
 import app.epistola.valtimo.domain.SimpleMappingSupport;
 import app.epistola.valtimo.domain.TemplateField;
@@ -33,14 +33,14 @@ import java.util.Set;
  * Resolves the structural subset of JSON Schema used by the Simple data mapper.
  * Validation-only keywords remain available through the raw schema and are deliberately ignored here.
  */
-final class JsonSchemaMappingAnalyzer {
+public final class JsonSchemaMappingAnalyzer {
 
     private static final int MAX_DEPTH = 32;
     private static final Set<String> CONDITIONAL_KEYWORDS = Set.of(
             "if", "then", "else", "dependentSchemas", "dependentRequired"
     );
 
-    Analysis analyze(Object schema) {
+    public Analysis analyze(Object schema) {
         if (!(schema instanceof Map<?, ?> schemaMap)) {
             return new Analysis(
                     Collections.emptyList(),
@@ -602,7 +602,7 @@ final class JsonSchemaMappingAnalyzer {
         return value != null ? String.valueOf(value) : null;
     }
 
-    record Analysis(List<TemplateField> fields, SimpleMappingSupport support) {
+    public record Analysis(List<TemplateField> fields, SimpleMappingSupport support) {
     }
 
     private record ResolvedSchema(
