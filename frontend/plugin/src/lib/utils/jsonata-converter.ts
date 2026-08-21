@@ -35,6 +35,11 @@ export interface BuilderField {
   children?: BuilderField[];
   present?: boolean;
   required?: boolean;
+  type?: string;
+  description?: string;
+  complex?: boolean;
+  complexityReason?: string;
+  nullable?: boolean;
 }
 
 interface ObjectSourceEntry {

@@ -17,13 +17,13 @@
  */
 
 import { GenerateDocumentConfig, TemplateField } from '../../models';
-import {
-  BuilderField,
-  isBuilderCompatible,
-  isJsonataExpressionValid,
-  parseJsonataToBuilder,
-} from '../../utils/jsonata-converter';
+import { isJsonataExpressionValid } from '../../utils/jsonata-converter';
+import { analyzeDataMappingCompleteness } from '../../schema/data-mapping-completeness';
+import type { DataMappingCompleteness } from '../../schema/data-mapping-completeness';
 import type { VariantSelectionMode } from './generate-document-config-editor.adapter';
+
+export { analyzeDataMappingCompleteness };
+export type { DataMappingCompleteness };
 
 export interface GenerateDocumentValidationOptions {
   selectedCatalogId?: string | null;
@@ -33,13 +33,6 @@ export interface GenerateDocumentValidationOptions {
   templateFieldsReady?: boolean;
   variantSelectionMode?: VariantSelectionMode;
   variantAttributeEntries?: { key: string; value: string }[];
-}
-
-export interface DataMappingCompleteness {
-  staticallyAnalyzable: boolean;
-  mappedRequiredFields: number;
-  totalRequiredFields: number;
-  missingRequiredFields: string[];
 }
 
 export const PROCESS_VARIABLE_NAME_PATTERN = /^[A-Za-z0-9]+$/;
@@ -81,33 +74,6 @@ export function isGenerateDocumentConfigValid(
   return baseComplete && mappingComplete && variantValid;
 }
 
-export function analyzeDataMappingCompleteness(
-  expression: string | null | undefined,
-  templateFields: TemplateField[],
-): DataMappingCompleteness {
-  const requiredPaths = collectRequiredPaths(templateFields);
-  if (!expression?.trim() || !isBuilderCompatible(expression)) {
-    return {
-      staticallyAnalyzable: !expression?.trim(),
-      mappedRequiredFields: 0,
-      totalRequiredFields: requiredPaths.length,
-      missingRequiredFields: expression?.trim() ? [] : requiredPaths.map((path) => path.join('.')),
-    };
-  }
-
-  const mappingFields = parseJsonataToBuilder(expression);
-  const missingRequiredFields = requiredPaths
-    .filter((path) => !isPathMapped(mappingFields, path))
-    .map((path) => path.join('.'));
-
-  return {
-    staticallyAnalyzable: true,
-    mappedRequiredFields: requiredPaths.length - missingRequiredFields.length,
-    totalRequiredFields: requiredPaths.length,
-    missingRequiredFields,
-  };
-}
-
 function isDataMappingComplete(
   expression: string | null | undefined,
   templateFields: TemplateField[],
@@ -125,23 +91,4 @@ function isDataMappingComplete(
     return true;
   }
   return templateFieldsReady && completeness.missingRequiredFields.length === 0;
-}
-
-function collectRequiredPaths(fields: TemplateField[], parentPath: string[] = []): string[][] {
-  return fields.flatMap((field) => {
-    const path = [...parentPath, field.name];
-    return [...(field.required ? [path] : []), ...collectRequiredPaths(field.children ?? [], path)];
-  });
-}
-
-function isPathMapped(fields: BuilderField[], path: string[]): boolean {
-  const [head, ...tail] = path;
-  const field = fields.find((candidate) => candidate.name === head);
-  if (!field) {
-    return false;
-  }
-  if (tail.length === 0 || !field.children) {
-    return true;
-  }
-  return isPathMapped(field.children, tail);
 }

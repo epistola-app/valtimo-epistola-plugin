@@ -358,6 +358,23 @@
     </button>
   </div>
 
+  <ng-container *ngIf="simpleMappingSupport$ | async as schemaSupport">
+    <div
+      *ngIf="schemaSupport.level === 'PARTIAL'"
+      class="mapping-schema-notice mapping-schema-notice--partial"
+      data-testid="epistola-generate-mapping-schema-partial"
+    >
+      {{ 'mappingSchemaPartial' | pluginTranslate: pluginId | async }}
+    </div>
+    <div
+      *ngIf="schemaSupport.level === 'UNSUPPORTED'"
+      class="mapping-schema-notice mapping-schema-notice--unsupported"
+      data-testid="epistola-generate-mapping-schema-unsupported"
+    >
+      {{ 'mappingSchemaUnsupported' | pluginTranslate: pluginId | async }}
+    </div>
+  </ng-container>
+
   <!-- Editor area (full width) -->
   <epistola-mapping-builder
     *ngIf="mappingMode === 'simple'"
@@ -444,6 +461,7 @@
       <epistola-expected-structure
         *ngIf="activeToolTab === 'schema'"
         [templateFields]="(templateFields$ | async)?.data ?? []"
+        [schema]="templateSchema$ | async"
       ></epistola-expected-structure>
 
       <epistola-mapping-preview

@@ -25,10 +25,17 @@ import java.util.List;
  * @param id     The unique identifier of the template
  * @param name   The display name of the template
  * @param fields The list of fields that can be mapped for this template
+ * @param schema The original JSON Schema received from Epistola
+ * @param simpleMappingSupport Whether and how the schema can be represented by the Simple mapper
  */
 public record TemplateDetails(
         String id,
         String name,
-        List<TemplateField> fields
+        List<TemplateField> fields,
+        Object schema,
+        SimpleMappingSupport simpleMappingSupport
 ) {
+    public TemplateDetails(String id, String name, List<TemplateField> fields) {
+        this(id, name, fields, null, SimpleMappingSupport.full());
+    }
 }

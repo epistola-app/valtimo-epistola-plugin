@@ -129,6 +129,60 @@ describe('MappingBuilderComponent', () => {
       mode: 'ref',
       value: '$doc.customer',
       required: true,
+      type: 'object',
+      description: undefined,
+      complex: undefined,
+      complexityReason: undefined,
+      nullable: undefined,
     });
+  });
+
+  it('renders complex structured fields as one whole-value input', () => {
+    const component = new MappingBuilderComponent();
+    component.expression = '{}';
+    component.templateFields = [
+      {
+        name: 'subjects',
+        path: 'subjects',
+        type: 'array<oneOf<person | organization>>',
+        fieldType: 'ARRAY',
+        required: true,
+        complex: true,
+        complexityReason: 'Multiple alternatives',
+        children: [
+          {
+            name: 'firstName',
+            path: 'subjects[].firstName',
+            type: 'string',
+            fieldType: 'SCALAR',
+            required: true,
+          },
+        ],
+      },
+    ];
+
+    component.ngOnChanges({
+      expression: {
+        currentValue: component.expression,
+        previousValue: '',
+        firstChange: true,
+        isFirstChange: () => true,
+      },
+      templateFields: {
+        currentValue: component.templateFields,
+        previousValue: [],
+        firstChange: true,
+        isFirstChange: () => true,
+      },
+    });
+
+    expect(component.fields[0]).toMatchObject({
+      name: 'subjects',
+      value: '',
+      required: true,
+      complex: true,
+      type: 'array<oneOf<person | organization>>',
+    });
+    expect(component.fields[0].children).toBeUndefined();
   });
 });

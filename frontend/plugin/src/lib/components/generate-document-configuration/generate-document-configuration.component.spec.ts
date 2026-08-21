@@ -345,4 +345,47 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     component.onMappingModeChange('simple');
     expect(component.mappingMode).toBe('simple');
   });
+
+  it('forces Advanced mode only when the schema root is unsupported', () => {
+    const { component } = createComponent();
+    component.dataMapping$.next('{}');
+
+    (component as any).applyTemplateSchemaDetails({
+      id: 'template',
+      name: 'Template',
+      fields: [],
+      schema: { oneOf: [{ type: 'object' }, { type: 'array' }] },
+      simpleMappingSupport: { level: 'UNSUPPORTED', reason: 'Root union' },
+    });
+
+    expect(component.mappingMode).toBe('advanced');
+    expect(component.canUseSimpleMapping()).toBe(false);
+
+    (component as any).applyTemplateSchemaDetails({
+      id: 'template-2',
+      name: 'Template 2',
+      fields: [],
+      schema: { type: 'object', properties: {} },
+      simpleMappingSupport: { level: 'FULL' },
+    });
+
+    expect(component.mappingMode).toBe('simple');
+    expect(component.canUseSimpleMapping()).toBe(true);
+  });
+
+  it('keeps Simple mode for partially supported schemas', () => {
+    const { component } = createComponent();
+
+    (component as any).applyTemplateSchemaDetails({
+      id: 'template',
+      name: 'Template',
+      fields: [],
+      schema: { type: 'object', properties: { subject: { oneOf: [] } } },
+      simpleMappingSupport: { level: 'PARTIAL', reason: 'Complex field' },
+    });
+
+    expect(component.mappingMode).toBe('simple');
+    expect(component.simpleMappingSupport$.value.level).toBe('PARTIAL');
+    expect(component.templateSchema$.value).toMatchObject({ type: 'object' });
+  });
 });

@@ -164,6 +164,15 @@ const epistolaPluginSpecification: PluginSpecification = {
       itemFieldMappingTitle: 'Veldkoppeling per item:',
       sourceFieldPlaceholder: 'Bronveldnaam',
       noTemplateFields: 'Geen template velden beschikbaar',
+      complexMappingField: 'Complex veld',
+      complexMappingFieldHelp:
+        'Koppel de volledige waarde met één JSONata-expressie. Gebruik Geavanceerd voor conditionele opbouw.',
+      mappingSchemaPartial:
+        'Dit schema bevat complexe velden. Deze worden als volledige waarden gekoppeld.',
+      mappingSchemaUnsupported:
+        'Dit schema is te complex voor de eenvoudige mapper. Gebruik Geavanceerd.',
+      resolvedSchema: 'Opgelost',
+      rawSchema: 'Ruw schema',
       // Check job status action
       'epistola-check-job-status': 'Controleer Taakstatus',
       requestIdVariable: 'Request ID Variabele',
@@ -421,6 +430,14 @@ const epistolaPluginSpecification: PluginSpecification = {
       itemFieldMappingTitle: 'Item field mapping:',
       sourceFieldPlaceholder: 'Source field name',
       noTemplateFields: 'No template fields available',
+      complexMappingField: 'Complex field',
+      complexMappingFieldHelp:
+        'Map the complete value with one JSONata expression. Use Advanced for conditional construction.',
+      mappingSchemaPartial:
+        'This schema contains complex fields. They are mapped as complete values.',
+      mappingSchemaUnsupported: 'This schema is too complex for the Simple mapper. Use Advanced.',
+      resolvedSchema: 'Resolved',
+      rawSchema: 'Raw schema',
       // Check job status action
       'epistola-check-job-status': 'Check Job Status',
       requestIdVariable: 'Request ID Variable',
