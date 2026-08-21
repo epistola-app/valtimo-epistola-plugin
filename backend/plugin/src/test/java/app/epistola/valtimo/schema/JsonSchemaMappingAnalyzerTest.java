@@ -72,6 +72,7 @@ class JsonSchemaMappingAnalyzerTest {
 
         TemplateField deliveryRoutes = field(analysis.fields(), "deliveryRoutes");
         assertTrue(deliveryRoutes.complex());
+        assertEquals("array<array<address>>", deliveryRoutes.type());
         assertTrue(deliveryRoutes.complexityReason().contains("Nested arrays"));
     }
 

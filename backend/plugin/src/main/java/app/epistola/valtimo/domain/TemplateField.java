@@ -31,7 +31,7 @@ import java.util.List;
  * @param description Optional description of the field's purpose
  * @param children    Child fields for OBJECT and ARRAY-of-object types (empty list for SCALAR)
  * @param complex     Whether Simple mode must map this entire value with one expression
- * @param complexityReason User-facing explanation of why the field is mapped as a whole value
+ * @param complexityReason Diagnostic explanation of why the field is mapped as a whole value
  * @param nullable    Whether the schema permits a null value
  */
 public record TemplateField(

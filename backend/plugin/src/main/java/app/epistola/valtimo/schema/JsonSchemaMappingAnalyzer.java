@@ -212,10 +212,13 @@ public final class JsonSchemaMappingAnalyzer {
             );
         }
 
+        Map<String, Object> rawItemsSchema = stringMap(itemsMap);
         ResolvedSchema items = resolve(
-                stringMap(itemsMap), root, arraySchema.referenceStack(), depth + 1
+                rawItemsSchema, root, arraySchema.referenceStack(), depth + 1
         );
-        String type = "array<" + items.typeLabel() + ">";
+        String type = "array<" + collectionItemTypeLabel(
+                items, rawItemsSchema, root, depth + 1
+        ) + ">";
         if (items.complex()) {
             return complexField(
                     name,
@@ -506,6 +509,31 @@ public final class JsonSchemaMappingAnalyzer {
                 reason,
                 nullable
         );
+    }
+
+    private String collectionItemTypeLabel(
+            ResolvedSchema items,
+            Map<String, Object> rawItemsSchema,
+            Map<String, Object> root,
+            int depth
+    ) {
+        if (items.complex()) {
+            return items.typeLabel();
+        }
+        if (rawItemsSchema.get("$ref") instanceof String reference) {
+            return referenceLabel(reference);
+        }
+        if (!isArraySchema(items.schema())
+                || !(rawItemsSchema.get("items") instanceof Map<?, ?> nestedItems)) {
+            return items.typeLabel();
+        }
+        Map<String, Object> nestedItemsSchema = stringMap(nestedItems);
+        ResolvedSchema nested = resolve(
+                nestedItemsSchema, root, items.referenceStack(), depth + 1
+        );
+        return "array<" + collectionItemTypeLabel(
+                nested, nestedItemsSchema, root, depth + 1
+        ) + ">";
     }
 
     private ResolvedSchema complex(

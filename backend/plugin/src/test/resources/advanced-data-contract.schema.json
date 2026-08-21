@@ -44,25 +44,16 @@
     "caseReference": { "type": "string" },
     "applicant": { "$ref": "#/$defs/person" },
     "subject": {
-      "oneOf": [
-        { "$ref": "#/$defs/person" },
-        { "$ref": "#/$defs/organization" }
-      ]
+      "oneOf": [{ "$ref": "#/$defs/person" }, { "$ref": "#/$defs/organization" }]
     },
     "alternateSubjects": {
       "type": "array",
       "items": {
-        "oneOf": [
-          { "$ref": "#/$defs/person" },
-          { "$ref": "#/$defs/organization" }
-        ]
+        "oneOf": [{ "$ref": "#/$defs/person" }, { "$ref": "#/$defs/organization" }]
       }
     },
     "correspondenceAddress": {
-      "anyOf": [
-        { "type": "null" },
-        { "$ref": "#/$defs/address" }
-      ]
+      "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/address" }]
     },
     "deliveryRoutes": {
       "type": "array",
@@ -72,11 +63,5 @@
       }
     }
   },
-  "required": [
-    "caseReference",
-    "applicant",
-    "subject",
-    "alternateSubjects",
-    "deliveryRoutes"
-  ]
+  "required": ["caseReference", "applicant", "subject", "alternateSubjects", "deliveryRoutes"]
 }
