@@ -21,6 +21,7 @@ import { resolve } from 'node:path';
 import {
   decodeJsonataStringLiteral,
   encodeJsonataStringLiteral,
+  DEFAULT_GENERATE_DOCUMENT_DATA_MAPPING,
   isLegacyGenerateDocumentConfig,
   migrateGenerateDocumentConfig,
 } from './generate-document-config-version';
@@ -97,6 +98,21 @@ describe('generate-document action configuration versioning', () => {
       migrateGenerateDocumentConfig(v0Config({ actionConfigVersion: 0 })).actionConfigVersion,
     ).toBe(1);
   });
+
+  it.each([undefined, 0, 1])(
+    'opens a blank data mapping from version %s with the empty-object default',
+    (actionConfigVersion) => {
+      const migrated = migrateGenerateDocumentConfig(
+        v0Config({
+          actionConfigVersion,
+          dataMapping: '   ',
+          ...(actionConfigVersion === 1 ? { outputFormat: '"PDF"', filename: '"value.pdf"' } : {}),
+        }),
+      );
+
+      expect(migrated.dataMapping).toBe(DEFAULT_GENERATE_DOCUMENT_DATA_MAPPING);
+    },
+  );
 
   it('preserves syntactically valid historical expressions', () => {
     const migrated = migrateGenerateDocumentConfig(

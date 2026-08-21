@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Generate-document mappings can no longer be saved with required template fields missing.** Simple-compatible mappings are checked recursively against the template schema, while dynamic Advanced mappings remain valid when their JSONata syntax is valid. Previously saved blank mappings now reopen as an editable `{}` mapping instead of reporting misleading invalid JSONata.
 - Custom expression functions wrapped in Spring class-based proxies now retain overload discovery, result-schema metadata, and evaluation-cache annotations; unsupported JDK proxies fail at startup with an actionable diagnostic.
 - Valid JSON Schemas using structures the expression editor cannot faithfully represent now produce an explicit authoring-schema diagnostic instead of incomplete field suggestions; local `$ref` siblings are merged correctly.
 - Evaluation-cache keys now snapshot nested JSON-like arguments, so mutable maps, collections, and arrays cannot invalidate cached function results; unknown object types use safe identity semantics.

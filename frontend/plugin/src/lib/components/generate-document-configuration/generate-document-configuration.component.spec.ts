@@ -141,6 +141,26 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     expect(component.legacyConfigurationLoaded$.value).toBe(false);
   });
 
+  it('opens an existing blank mapping as an editable empty object', async () => {
+    const { component } = createComponent();
+    component.prefillConfiguration$ = of({
+      actionConfigVersion: 1,
+      catalogId: 'catalog',
+      templateId: 'template',
+      dataMapping: '',
+      outputFormat: '"PDF"',
+      filename: '"letter.pdf"',
+      resultProcessVariable: 'result',
+    });
+
+    const reopened = (await firstValueFrom((component as any).resolvePrefill$())) as {
+      dataMapping: string;
+    } | null;
+
+    expect(reopened?.dataMapping).toBe('{}');
+    expect(component.configurationVersionError$.value).toBeNull();
+  });
+
   it('blocks an unsupported future configuration version', async () => {
     const { component } = createComponent();
     const validity: boolean[] = [];
@@ -231,6 +251,8 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     component.valid.subscribe((value) => validity.push(value));
     component.selectedCatalogId$.next('catalog');
     component.filenameExpression = '"letter.pdf"';
+    component.dataMapping$.next('{}');
+    (component as any).templateFieldsLoadedForTemplateId = 'template';
     (component as any).formValue$.next({
       templateId: 'template',
       outputFormat: 'PDF',
@@ -241,6 +263,50 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     component.onExpressionValidityChange('filename', true);
 
     expect(validity).toEqual([false, true]);
+  });
+
+  it('blocks save until required Simple mapping fields have values', () => {
+    const { component, service } = createComponent();
+    const save$ = new Subject<void>();
+    component.save$ = save$;
+    component.selectedCatalogId$.next('catalog');
+    component.filenameExpression = '"letter.pdf"';
+    component.templateFields$.next({
+      data: [
+        {
+          name: 'name',
+          path: 'name',
+          type: 'string',
+          fieldType: 'SCALAR',
+          required: true,
+        },
+      ],
+      loading: false,
+      error: null,
+    });
+    (component as any).templateFieldsLoadedForTemplateId = 'template';
+    const formValue = {
+      templateId: 'template',
+      resultProcessVariable: 'result',
+    };
+    (component as any).formValue$.next(formValue);
+    (component as any).openSaveSubscription();
+
+    component.dataMapping$.next('{}');
+    (component as any).handleValid(formValue);
+    save$.next();
+
+    expect(service.validateJsonata).not.toHaveBeenCalled();
+    expect(component.dataMappingCompleteness$.value).toMatchObject({
+      mappedRequiredFields: 0,
+      totalRequiredFields: 1,
+      missingRequiredFields: ['name'],
+    });
+
+    component.onDataMappingChange('{"name": $doc.name}');
+    save$.next();
+
+    expect(service.validateJsonata).toHaveBeenCalledTimes(1);
   });
 
   it('keeps catalog and template selections in the reactive cascade', () => {

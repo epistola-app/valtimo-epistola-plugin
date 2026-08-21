@@ -14,9 +14,11 @@ The current data mapping pipeline is:
    expression that returns the template payload. Simple mode presents one guided
    expression editor per schema field; Advanced mode exposes the complete
    mapping.
-3. **Save-time syntax validation** — `POST /api/v1/plugin/epistola/validate-jsonata`
-   parses the data mapping and scalar expressions before the process link is
-   saved.
+3. **Save-time validation** — Simple-compatible mappings must provide every
+   template field marked as required. Dynamic mappings whose outer structure is
+   only representable in Advanced mode cannot be checked statically, so they
+   require valid, nonblank JSONata. `POST /api/v1/plugin/epistola/validate-jsonata`
+   parses the mapping and scalar expressions before the process link is saved.
 4. **Runtime evaluation** — `JsonataMappingService` evaluates the expression and
    sends the resulting object to Epistola.
 
@@ -187,6 +189,13 @@ their field editor opens in Advanced mode without reconstructing or rewriting
 the value source. Mappings whose structure is itself dynamic, such as a
 top-level `$merge(...)`, remain in the whole-mapping Advanced editor, which
 uses Monaco for syntax highlighting and completion.
+
+Simple-compatible mappings are saveable only after every schema-required field
+has a value. Required nested paths are checked recursively; mapping an entire
+object or array with one expression satisfies its required subtree. Optional
+fields may remain empty. A new or historically blank mapping opens as `{}`;
+that empty object is saveable only when the selected template has no required
+fields.
 
 ## Scalar Expressions
 

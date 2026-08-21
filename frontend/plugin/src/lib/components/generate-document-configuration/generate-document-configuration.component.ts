@@ -71,10 +71,13 @@ import { MappingBuilderComponent } from '../mapping-builder/mapping-builder.comp
 import { MappingPreviewComponent } from '../mapping-preview/mapping-preview.component';
 import { SmartExpressionEditorComponent } from '../smart-expression-editor/smart-expression-editor.component';
 import {
+  analyzeDataMappingCompleteness,
+  DataMappingCompleteness,
   isGenerateDocumentConfigValid,
   isProcessVariableNameValid,
 } from './generate-document-config.util';
 import {
+  DEFAULT_GENERATE_DOCUMENT_DATA_MAPPING,
   isLegacyGenerateDocumentConfig,
   migrateGenerateDocumentConfig,
 } from './generate-document-config-version';
@@ -129,7 +132,7 @@ export class GenerateDocumentConfigurationComponent
   environments$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   templateFields$ = new BehaviorSubject<AsyncResource<TemplateField[]>>(initialResource([]));
 
-  dataMapping$ = new BehaviorSubject<string>('');
+  dataMapping$ = new BehaviorSubject<string>(DEFAULT_GENERATE_DOCUMENT_DATA_MAPPING);
   mappingMode: 'simple' | 'advanced' = 'simple';
   toolsCollapsed = true;
   activeToolTab: 'schema' | 'preview' = 'preview';
@@ -162,6 +165,12 @@ export class GenerateDocumentConfigurationComponent
   configurationVersionError$ = new BehaviorSubject<string | null>(null);
   legacyConfigurationLoaded$ = new BehaviorSubject<boolean>(false);
   resultProcessVariableInvalid$ = new BehaviorSubject<boolean>(false);
+  dataMappingCompleteness$ = new BehaviorSubject<DataMappingCompleteness>({
+    staticallyAnalyzable: true,
+    mappedRequiredFields: 0,
+    totalRequiredFields: 0,
+    missingRequiredFields: [],
+  });
 
   private readonly destroy$ = new Subject<void>();
   private saveSubscription!: Subscription;
@@ -170,6 +179,7 @@ export class GenerateDocumentConfigurationComponent
   private pluginConfigurationId$ = new BehaviorSubject<string>('');
   private readonly expressionValidity = new Map<string, boolean>();
   private nextAttributeEditorId = 0;
+  private templateFieldsLoadedForTemplateId: string | null = null;
 
   /** Resolves once with the prefill config (or empty config if none). */
   private prefill$!: Observable<GenerateDocumentConfigV1 | null>;
@@ -624,7 +634,9 @@ export class GenerateDocumentConfigurationComponent
       .pipe(
         takeUntil(this.destroy$),
         tap(() => {
+          this.templateFieldsLoadedForTemplateId = null;
           this.templateFields$.next(loadingResource(this.templateFields$.getValue().data));
+          this.revalidate();
         }),
         switchMap(([configurationId, catalogId, templateId]) =>
           this.epistolaPluginService
@@ -637,7 +649,14 @@ export class GenerateDocumentConfigurationComponent
             ),
         ),
       )
-      .subscribe((resource) => this.templateFields$.next(resource));
+      .subscribe((resource) => {
+        this.templateFields$.next(resource);
+        this.templateFieldsLoadedForTemplateId = resource.error
+          ? null
+          : this.selectedTemplateId$.getValue();
+        this.revalidate();
+        this.cdr.markForCheck();
+      });
 
     // ── Seed expression-capable fields from the locally migrated prefill ──
     this.prefill$
@@ -694,12 +713,24 @@ export class GenerateDocumentConfigurationComponent
         !isProcessVariableNameValid(formValue.resultProcessVariable),
     );
 
+    const dataMapping = this.dataMapping$.getValue();
+    const templateFieldsResource = this.templateFields$.getValue();
+    const templateFieldsReady =
+      !templateFieldsResource.loading &&
+      !templateFieldsResource.error &&
+      this.templateFieldsLoadedForTemplateId === formValue.templateId;
+    const templateFields = templateFieldsReady ? templateFieldsResource.data : [];
+    this.dataMappingCompleteness$.next(analyzeDataMappingCompleteness(dataMapping, templateFields));
+
     const valid =
       !this.configurationVersionError$.getValue() &&
       [...this.expressionValidity.values()].every(Boolean) &&
       isGenerateDocumentConfigValid(formValue, {
         selectedCatalogId: this.selectedCatalogId$.getValue(),
+        dataMapping,
         filename: this.filenameExpression,
+        templateFields,
+        templateFieldsReady,
         variantSelectionMode: this.variantSelectionMode,
         variantAttributeEntries: this.variantAttributeEntries,
       });

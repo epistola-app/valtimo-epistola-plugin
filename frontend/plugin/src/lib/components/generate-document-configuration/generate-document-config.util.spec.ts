@@ -17,11 +17,13 @@
  */
 
 import {
+  analyzeDataMappingCompleteness,
   isGenerateDocumentConfigValid,
   isProcessVariableNameValid,
 } from './generate-document-config.util';
 import type { GenerateDocumentValidationOptions } from './generate-document-config.util';
 import type { GenerateDocumentConfig } from '../../models';
+import type { TemplateField } from '../../models';
 
 describe('generate-document-config.util', () => {
   describe('isProcessVariableNameValid', () => {
@@ -55,7 +57,10 @@ describe('generate-document-config.util', () => {
     };
     const validOptions = {
       selectedCatalogId: 'catalog',
+      dataMapping: '{}',
       filename: 'document.pdf',
+      templateFields: [] as TemplateField[],
+      templateFieldsReady: true,
       variantSelectionMode: 'explicit' as const,
     };
     const config = (patch: Partial<GenerateDocumentConfig>): Partial<GenerateDocumentConfig> =>
@@ -83,6 +88,7 @@ describe('generate-document-config.util', () => {
         false,
       );
       expect(isGenerateDocumentConfigValid(validConfig, options({ filename: '' }))).toBe(false);
+      expect(isGenerateDocumentConfigValid(validConfig, options({ dataMapping: '' }))).toBe(false);
     });
 
     it('requires attribute rows to be complete in attribute selection mode', () => {
@@ -102,6 +108,126 @@ describe('generate-document-config.util', () => {
             variantSelectionMode: 'attributes',
             variantAttributeEntries: [{ key: 'language', value: '' }],
           }),
+        ),
+      ).toBe(false);
+    });
+
+    it('requires every schema-required field in a Simple-compatible mapping', () => {
+      const templateFields: TemplateField[] = [
+        {
+          name: 'requiredValue',
+          path: 'requiredValue',
+          type: 'string',
+          fieldType: 'SCALAR',
+          required: true,
+        },
+        {
+          name: 'optionalValue',
+          path: 'optionalValue',
+          type: 'string',
+          fieldType: 'SCALAR',
+          required: false,
+        },
+      ];
+
+      expect(
+        isGenerateDocumentConfigValid(validConfig, options({ dataMapping: '{}', templateFields })),
+      ).toBe(false);
+      expect(
+        isGenerateDocumentConfigValid(
+          validConfig,
+          options({
+            dataMapping: '{"requiredValue": $doc.value}',
+            templateFields,
+          }),
+        ),
+      ).toBe(true);
+    });
+
+    it('allows an empty object when the template has no required fields', () => {
+      const templateFields: TemplateField[] = [
+        {
+          name: 'optionalValue',
+          path: 'optionalValue',
+          type: 'string',
+          fieldType: 'SCALAR',
+          required: false,
+        },
+      ];
+
+      expect(
+        isGenerateDocumentConfigValid(validConfig, options({ dataMapping: '{}', templateFields })),
+      ).toBe(true);
+    });
+
+    it('checks nested required paths and accepts a direct ancestor expression', () => {
+      const templateFields: TemplateField[] = [
+        {
+          name: 'customer',
+          path: 'customer',
+          type: 'object',
+          fieldType: 'OBJECT',
+          required: true,
+          children: [
+            {
+              name: 'name',
+              path: 'customer.name',
+              type: 'string',
+              fieldType: 'SCALAR',
+              required: true,
+            },
+          ],
+        },
+      ];
+
+      expect(
+        analyzeDataMappingCompleteness('{"customer": {}}', templateFields).missingRequiredFields,
+      ).toEqual(['customer.name']);
+      expect(
+        isGenerateDocumentConfigValid(
+          validConfig,
+          options({ dataMapping: '{"customer": $doc.customer}', templateFields }),
+        ),
+      ).toBe(true);
+    });
+
+    it('accepts Advanced-only mappings without static schema completeness checks', () => {
+      const templateFields: TemplateField[] = [
+        {
+          name: 'requiredValue',
+          path: 'requiredValue',
+          type: 'string',
+          fieldType: 'SCALAR',
+          required: true,
+        },
+      ];
+
+      expect(
+        isGenerateDocumentConfigValid(
+          validConfig,
+          options({
+            dataMapping: '$merge([$doc.payload, $pv.overrides])',
+            templateFields,
+            templateFieldsReady: false,
+          }),
+        ),
+      ).toBe(true);
+    });
+
+    it('rejects invalid Advanced JSONata even when it cannot be analyzed statically', () => {
+      expect(
+        isGenerateDocumentConfigValid(
+          validConfig,
+          options({ dataMapping: '$merge([', templateFieldsReady: false }),
+        ),
+      ).toBe(false);
+    });
+
+    it('blocks statically analyzable mappings until the template schema is available', () => {
+      expect(
+        isGenerateDocumentConfigValid(
+          validConfig,
+          options({ dataMapping: '{}', templateFieldsReady: false }),
         ),
       ).toBe(false);
     });

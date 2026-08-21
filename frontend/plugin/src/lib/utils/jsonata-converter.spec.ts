@@ -21,9 +21,18 @@ import {
   builderToJsonata,
   BuilderField,
   isBuilderCompatible,
+  isJsonataExpressionValid,
 } from './jsonata-converter';
 
 describe('jsonata-converter', () => {
+  describe('isJsonataExpressionValid', () => {
+    it('distinguishes valid, invalid, and blank expressions', () => {
+      expect(isJsonataExpressionValid('$merge([$doc, $pv])')).toBe(true);
+      expect(isJsonataExpressionValid('$merge([')).toBe(false);
+      expect(isJsonataExpressionValid('   ')).toBe(false);
+    });
+  });
+
   describe('parseJsonataToBuilder', () => {
     it('should parse simple doc references', () => {
       const expr = '{ "name": $doc.customer.name, "email": $doc.customer.email }';
