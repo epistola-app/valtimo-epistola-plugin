@@ -20,7 +20,7 @@ overrides:
   "@angular/router": 19.2.25
   "ajv@>=8": ">=8.18.0"
   axios: ">=1.18.1"
-  "brace-expansion@<2": 1.1.16
+  "brace-expansion@<2": 1.1.18
   sass: 1.98.0
   "brace-expansion@>=2": ">=5.0.7"
   devalue: ">=5.8.2"
