@@ -19,7 +19,11 @@
 import { Component, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
-import { TemplateField } from '../../models';
+import { JsonSchema, TemplateField } from '../../models';
+import {
+  buildResolvedTemplateStructure,
+  serializeTemplateSchema,
+} from '../../schema/template-schema';
 
 @Component({
   selector: 'epistola-expected-structure',
@@ -28,20 +32,46 @@ import { TemplateField } from '../../models';
   template: `
     <div class="expected" data-testid="epistola-schema-panel">
       <div class="expected__header" data-testid="epistola-schema-header">
-        {{ 'expectedStructure' | pluginTranslate: 'epistola' | async }}
+        <span>{{ 'expectedStructure' | pluginTranslate: 'epistola' | async }}</span>
+        <div *ngIf="schema !== null && schema !== undefined" class="expected__modes">
+          <button
+            type="button"
+            class="expected__mode"
+            [class.expected__mode--active]="viewMode === 'resolved'"
+            data-testid="epistola-schema-mode-resolved"
+            (click)="viewMode = 'resolved'"
+          >
+            {{ 'resolvedSchema' | pluginTranslate: 'epistola' | async }}
+          </button>
+          <button
+            type="button"
+            class="expected__mode"
+            [class.expected__mode--active]="viewMode === 'raw'"
+            data-testid="epistola-schema-mode-raw"
+            (click)="viewMode = 'raw'"
+          >
+            {{ 'rawSchema' | pluginTranslate: 'epistola' | async }}
+          </button>
+        </div>
       </div>
       <div
-        *ngIf="!templateFields || templateFields.length === 0"
+        *ngIf="viewMode === 'resolved' && (!templateFields || templateFields.length === 0)"
         class="expected__empty"
         data-testid="epistola-schema-empty"
       >
         {{ 'expectedStructureLoading' | pluginTranslate: 'epistola' | async }}
       </div>
       <pre
-        *ngIf="templateFields && templateFields.length > 0"
+        *ngIf="viewMode === 'resolved' && templateFields && templateFields.length > 0"
         class="expected__code"
         data-testid="epistola-schema-code"
         >{{ structureText }}</pre
+      >
+      <pre
+        *ngIf="viewMode === 'raw'"
+        class="expected__code"
+        data-testid="epistola-schema-raw-code"
+        >{{ rawSchemaText }}</pre
       >
     </div>
   `,
@@ -56,6 +86,10 @@ import { TemplateField } from '../../models';
         flex-direction: column;
       }
       .expected__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
         padding: 6px 12px;
         background: #f4f4f4;
         border-bottom: 1px solid #e0e0e0;
@@ -63,6 +97,24 @@ import { TemplateField } from '../../models';
         color: #6f6f6f;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+      }
+      .expected__modes {
+        display: flex;
+        gap: 2px;
+      }
+      .expected__mode {
+        border: 0;
+        border-bottom: 2px solid transparent;
+        background: transparent;
+        color: #525252;
+        cursor: pointer;
+        font: inherit;
+        padding: 2px 4px;
+        text-transform: none;
+      }
+      .expected__mode--active {
+        border-bottom-color: #0f62fe;
+        color: #0f62fe;
       }
       .expected__code {
         flex: 1;
@@ -85,36 +137,18 @@ import { TemplateField } from '../../models';
 })
 export class ExpectedStructureComponent implements OnChanges {
   @Input() templateFields: TemplateField[] = [];
+  @Input() schema: JsonSchema | boolean | null = null;
 
   structureText: string = '{}';
+  rawSchemaText: string = '{}';
+  viewMode: 'resolved' | 'raw' = 'resolved';
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['templateFields']) {
-      this.structureText = this.buildStructure(this.templateFields, 0);
+      this.structureText = buildResolvedTemplateStructure(this.templateFields);
     }
-  }
-
-  private buildStructure(fields: TemplateField[], depth: number): string {
-    if (!fields || fields.length === 0) return '{}';
-    const indent = '  '.repeat(depth + 1);
-    const closing = '  '.repeat(depth);
-
-    const lines = fields.map((f) => {
-      const req = f.required ? ' (required)' : '';
-      if (f.fieldType === 'OBJECT' && f.children?.length) {
-        const nested = this.buildStructure(f.children, depth + 1);
-        return `${indent}"${f.name}": ${nested}${req}`;
-      }
-      if (f.fieldType === 'ARRAY') {
-        if (f.children?.length) {
-          const itemStructure = this.buildStructure(f.children, depth + 2);
-          return `${indent}"${f.name}": [${itemStructure}]${req}`;
-        }
-        return `${indent}"${f.name}": array${req}`;
-      }
-      return `${indent}"${f.name}": ${f.type || 'any'}${req}`;
-    });
-
-    return `{\n${lines.join(',\n')}\n${closing}}`;
+    if (changes['schema']) {
+      this.rawSchemaText = serializeTemplateSchema(this.schema);
+    }
   }
 }

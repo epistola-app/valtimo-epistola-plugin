@@ -255,13 +255,18 @@ export class MappingBuilderComponent implements OnChanges {
   }
 
   private emptyBuilderField(templateField: TemplateField): BuilderField {
-    if (templateField.fieldType === 'OBJECT' && templateField.children?.length) {
+    const metadata = this.builderMetadata(templateField);
+    if (
+      templateField.fieldType === 'OBJECT' &&
+      !templateField.complex &&
+      templateField.children?.length
+    ) {
       return {
         name: templateField.name,
         mode: 'ref',
         value: '',
         present: false,
-        required: templateField.required,
+        ...metadata,
         children: templateField.children.map((child) => this.emptyBuilderField(child)),
       };
     }
@@ -270,7 +275,7 @@ export class MappingBuilderComponent implements OnChanges {
       mode: 'ref',
       value: '',
       present: false,
-      required: templateField.required,
+      ...metadata,
     };
   }
 
@@ -283,10 +288,11 @@ export class MappingBuilderComponent implements OnChanges {
     }
     if (
       templateField.fieldType !== 'OBJECT' ||
+      templateField.complex ||
       !templateField.children?.length ||
       !existing.children
     ) {
-      return { ...existing, required: templateField.required };
+      return { ...existing, ...this.builderMetadata(templateField) };
     }
 
     const existingByName = new Map(existing.children.map((child) => [child.name, child]));
@@ -301,8 +307,19 @@ export class MappingBuilderComponent implements OnChanges {
 
     return {
       ...existing,
-      required: templateField.required,
+      ...this.builderMetadata(templateField),
       children,
+    };
+  }
+
+  private builderMetadata(templateField: TemplateField): Partial<BuilderField> {
+    return {
+      required: templateField.required,
+      type: templateField.type,
+      description: templateField.description,
+      complex: templateField.complex,
+      complexityReason: templateField.complexityReason,
+      nullable: templateField.nullable,
     };
   }
 }

@@ -367,3 +367,18 @@
     }
   }
 }
+
+.mapping-schema-notice {
+  margin: 8px 0 12px;
+  padding: 8px 12px;
+  border-left: 3px solid #f1c21b;
+  background: #fff8e1;
+  color: #684e00;
+  font-size: 0.85rem;
+
+  &--unsupported {
+    border-left-color: #da1e28;
+    background: #fff1f1;
+    color: #750e13;
+  }
+}
