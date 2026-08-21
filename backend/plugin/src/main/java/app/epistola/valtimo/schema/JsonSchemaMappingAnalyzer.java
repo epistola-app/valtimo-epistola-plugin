@@ -201,7 +201,7 @@ public final class JsonSchemaMappingAnalyzer {
             return new TemplateField(
                     name,
                     path,
-                    "array<value>",
+                    "array",
                     TemplateField.FieldType.SCALAR,
                     required,
                     description,
@@ -216,14 +216,14 @@ public final class JsonSchemaMappingAnalyzer {
         ResolvedSchema items = resolve(
                 rawItemsSchema, root, arraySchema.referenceStack(), depth + 1
         );
-        String type = "array<" + collectionItemTypeLabel(
+        String complexType = "array<" + collectionItemTypeLabel(
                 items, rawItemsSchema, root, depth + 1
         ) + ">";
         if (items.complex()) {
             return complexField(
                     name,
                     path,
-                    type,
+                    complexType,
                     TemplateField.FieldType.ARRAY,
                     required,
                     description,
@@ -235,7 +235,7 @@ public final class JsonSchemaMappingAnalyzer {
             return complexField(
                     name,
                     path,
-                    type,
+                    complexType,
                     TemplateField.FieldType.ARRAY,
                     required,
                     description,
@@ -250,7 +250,7 @@ public final class JsonSchemaMappingAnalyzer {
             return new TemplateField(
                     name,
                     path,
-                    type,
+                    "array",
                     TemplateField.FieldType.ARRAY,
                     required,
                     description,
@@ -263,7 +263,7 @@ public final class JsonSchemaMappingAnalyzer {
         return new TemplateField(
                 name,
                 path,
-                type,
+                "array",
                 TemplateField.FieldType.SCALAR,
                 required,
                 description,
