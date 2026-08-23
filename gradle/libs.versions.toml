@@ -20,7 +20,7 @@ foojay-resolver = "1.0.0"
 idea-ext = "1.1.8"
 ktlint-gradle = "12.1.2"
 spotless = "6.25.0"
-docker-compose = "0.17.12"
+docker-compose = "0.17.21"
 cyclonedx-gradle = "1.10.0"
 
 [libraries]
