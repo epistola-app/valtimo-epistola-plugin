@@ -23,6 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Upgraded the supported Valtimo development baseline from 13.38.0 to 13.42.0.** Backend dependencies now use `13.42.0.RELEASE` with Spring Boot 3.5.16, all frontend `@valtimo/*` packages use 13.42.0, and the compatibility review continues to support Valtimo `>=13.21.0, <14`.
+- **Consolidated the open Renovate dependency updates.** The Docker Compose Gradle plugin, `deepmerge-ts`, `ng-packagr`, and the pinned CodeQL action digest are updated, together with patched DOMPurify, fast-uri, and js-yaml overrides.
 - **The test-app Karma suite can use Brave when Chrome is unavailable.** Local headless runs preserve explicit `CHROME_BIN` configuration, then search an optional `BRAVE_BIN` override and common Brave stable, beta, and nightly locations across macOS, Linux, and Windows.
 - Brave discovery now requires an executable binary and has platform-independent unit coverage for PATH, package-manager, system, and per-user installation locations.
 
