@@ -58,11 +58,15 @@ import {
   GenerateDocumentConfigV1,
   GenerateDocumentConfigVersioned,
   initialResource,
+  JsonSchema,
   JsonataFieldError,
   loadingResource,
+  SimpleMappingSupport,
   successResource,
+  TemplateDetails,
   TemplateField,
 } from '../../models';
+import { FULL_SIMPLE_MAPPING_SUPPORT, supportsSimpleMapping } from '../../schema/template-schema';
 import { isBuilderCompatible } from '../../utils/jsonata-converter';
 import { EpistolaPluginService } from '../../services';
 import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
@@ -131,6 +135,8 @@ export class GenerateDocumentConfigurationComponent
   variants$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   environments$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   templateFields$ = new BehaviorSubject<AsyncResource<TemplateField[]>>(initialResource([]));
+  templateSchema$ = new BehaviorSubject<JsonSchema | boolean | null>(null);
+  simpleMappingSupport$ = new BehaviorSubject<SimpleMappingSupport>(FULL_SIMPLE_MAPPING_SUPPORT);
 
   dataMapping$ = new BehaviorSubject<string>(DEFAULT_GENERATE_DOCUMENT_DATA_MAPPING);
   mappingMode: 'simple' | 'advanced' = 'simple';
@@ -180,6 +186,7 @@ export class GenerateDocumentConfigurationComponent
   private readonly expressionValidity = new Map<string, boolean>();
   private nextAttributeEditorId = 0;
   private templateFieldsLoadedForTemplateId: string | null = null;
+  private mappingModeForcedBySchema = false;
 
   /** Resolves once with the prefill config (or empty config if none). */
   private prefill$!: Observable<GenerateDocumentConfigV1 | null>;
@@ -253,12 +260,16 @@ export class GenerateDocumentConfigurationComponent
       return;
     }
     this.mappingMode = mode;
+    this.mappingModeForcedBySchema = false;
     this.expressionValidity.delete('dataMapping');
     this.revalidate();
   }
 
   canUseSimpleMapping(): boolean {
-    return isBuilderCompatible(this.dataMapping$.getValue());
+    return (
+      supportsSimpleMapping(this.simpleMappingSupport$.getValue()) &&
+      isBuilderCompatible(this.dataMapping$.getValue())
+    );
   }
 
   onExpressionValidityChange(field: string, valid: boolean): void {
@@ -635,6 +646,8 @@ export class GenerateDocumentConfigurationComponent
         takeUntil(this.destroy$),
         tap(() => {
           this.templateFieldsLoadedForTemplateId = null;
+          this.templateSchema$.next(null);
+          this.simpleMappingSupport$.next(FULL_SIMPLE_MAPPING_SUPPORT);
           this.templateFields$.next(loadingResource(this.templateFields$.getValue().data));
           this.revalidate();
         }),
@@ -642,6 +655,7 @@ export class GenerateDocumentConfigurationComponent
           this.epistolaPluginService
             .getTemplateDetails(configurationId, templateId, catalogId)
             .pipe(
+              tap((details) => this.applyTemplateSchemaDetails(details)),
               map((details) => successResource(details.fields || [])),
               catchError(() =>
                 of(errorResource<TemplateField[]>([], 'Failed to load template fields')),
@@ -692,6 +706,22 @@ export class GenerateDocumentConfigurationComponent
           this.cdr.detectChanges();
         }
       });
+  }
+
+  private applyTemplateSchemaDetails(details: TemplateDetails): void {
+    this.templateSchema$.next(details.schema ?? null);
+    const support = details.simpleMappingSupport ?? FULL_SIMPLE_MAPPING_SUPPORT;
+    this.simpleMappingSupport$.next(support);
+
+    if (support.level === 'UNSUPPORTED') {
+      this.mappingMode = 'advanced';
+      this.mappingModeForcedBySchema = true;
+      return;
+    }
+    if (this.mappingModeForcedBySchema && isBuilderCompatible(this.dataMapping$.getValue())) {
+      this.mappingMode = 'simple';
+      this.mappingModeForcedBySchema = false;
+    }
   }
 
   private loadExpressionFunctions(): void {

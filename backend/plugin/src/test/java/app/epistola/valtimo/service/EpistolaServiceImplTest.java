@@ -99,6 +99,8 @@ class EpistolaServiceImplTest {
         assertNotNull(details.name());
         assertNotNull(details.fields());
         assertFalse(details.fields().isEmpty(), "Template should have parsed fields from schema");
+        assertNotNull(details.schema(), "The complete source schema should remain available");
+        assertNotNull(details.simpleMappingSupport());
     }
 
     @Test

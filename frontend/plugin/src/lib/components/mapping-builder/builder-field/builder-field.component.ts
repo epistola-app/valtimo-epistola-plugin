@@ -18,6 +18,7 @@
 
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { BuilderField } from '../../../utils/jsonata-converter';
 import { SmartExpressionEditorComponent } from '../../smart-expression-editor/smart-expression-editor.component';
 import { ExpressionFunctionInfo } from '../../../models';
@@ -25,7 +26,7 @@ import { ExpressionFunctionInfo } from '../../../models';
 @Component({
   selector: 'epistola-builder-field',
   standalone: true,
-  imports: [CommonModule, SmartExpressionEditorComponent],
+  imports: [CommonModule, PluginTranslatePipeModule, SmartExpressionEditorComponent],
   template: `
     <div class="builder-field" [attr.data-testid]="'epistola-mapping-field-' + field.name">
       <div
@@ -51,11 +52,18 @@ import { ExpressionFunctionInfo } from '../../../models';
           >*</span
         >
         <span
-          *ngIf="field.children"
+          *ngIf="field.type"
           class="builder-field__type"
           [attr.data-testid]="'epistola-mapping-field-type-' + field.name"
-          >(object)</span
+          >({{ field.type }}{{ field.nullable ? ' | null' : '' }})</span
         >
+        <span
+          *ngIf="field.complex"
+          class="builder-field__complex-badge"
+          [attr.data-testid]="'epistola-mapping-field-complex-' + field.name"
+        >
+          {{ 'complexMappingField' | pluginTranslate: 'epistola' | async }}
+        </span>
       </div>
 
       <div
@@ -75,6 +83,13 @@ import { ExpressionFunctionInfo } from '../../../models';
           (expressionChange)="valueChange.emit({ path: path, value: $event })"
           (validChange)="validityChange.emit({ path: path, valid: $event })"
         ></epistola-smart-expression-editor>
+        <div
+          *ngIf="field.complex"
+          class="builder-field__complex-help"
+          [attr.data-testid]="'epistola-mapping-field-complex-help-' + field.name"
+        >
+          {{ 'complexMappingFieldHelp' | pluginTranslate: 'epistola' | async }}
+        </div>
       </div>
 
       <div
@@ -138,14 +153,27 @@ import { ExpressionFunctionInfo } from '../../../models';
         margin-left: 4px;
       }
       .builder-field__value {
-        display: flex;
-        align-items: center;
+        display: grid;
         gap: 4px;
         min-width: 0;
       }
       .builder-field__editor {
-        flex: 1;
         min-width: 0;
+      }
+      .builder-field__complex-badge {
+        display: inline-block;
+        margin-left: 6px;
+        padding: 1px 6px;
+        border-radius: 10px;
+        background: #fff1f1;
+        color: #a2191f;
+        font-size: 0.72rem;
+        font-weight: 600;
+      }
+      .builder-field__complex-help {
+        color: #6f6f6f;
+        font-size: 0.75rem;
+        line-height: 1.35;
       }
       .builder-field__children {
         grid-column: 1 / -1;

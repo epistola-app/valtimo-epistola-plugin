@@ -16,6 +16,8 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
+import type { JsonSchema } from './expression';
+
 /**
  * Basic information about an Epistola template.
  */
@@ -34,6 +36,13 @@ export interface TemplateDetails {
   id: string;
   name: string;
   fields: TemplateField[];
+  schema?: JsonSchema | boolean | null;
+  simpleMappingSupport?: SimpleMappingSupport;
+}
+
+export interface SimpleMappingSupport {
+  level: 'FULL' | 'PARTIAL' | 'UNSUPPORTED';
+  reason?: string | null;
 }
 
 /**
@@ -48,6 +57,9 @@ export interface TemplateField {
   required: boolean;
   description?: string;
   children?: TemplateField[];
+  complex?: boolean;
+  complexityReason?: string;
+  nullable?: boolean;
 }
 
 /**

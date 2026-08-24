@@ -71,7 +71,25 @@ This example matches the permit confirmation process link in the test app:
 When a template is selected, the backend fetches its JSON Schema and parses it
 into a `TemplateField` tree. The frontend uses that tree to show the expected
 shape while the JSONata editor remains the source of truth for the stored
-mapping.
+mapping. The Expected Structure panel offers both the resolved field tree and
+the complete raw schema, so unsupported constructs are never silently omitted.
+
+The guided mapper deliberately supports a practical subset of JSON Schema:
+
+| Schema construct                                                        | Simple-mode behavior                                                                    |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Objects, scalars, and arrays                                            | Expanded into guided fields                                                             |
+| Local `$ref` through `$defs` or `definitions`                           | Resolved, including escaped JSON Pointer segments                                       |
+| Object `allOf`                                                          | Combined when the branches have compatible shapes                                       |
+| A nullable `oneOf`/`anyOf` or `type` array                              | Reduced to its single non-null shape and marked nullable                                |
+| Multiple alternatives, recursive/external references, and nested arrays | Shown as one clearly marked complex field that accepts a whole-value JSONata expression |
+| An unsupported root shape                                               | Simple mode is unavailable and the mapping opens in Advanced mode                       |
+
+Schemas with only isolated complex subtrees remain usable in Simple mode. The
+mapper never guesses which alternative to construct: the affected field is
+mapped as one complete value, while ordinary sibling fields remain guided. A
+depth limit and reference-cycle detection keep malformed or recursive schemas
+safe to inspect.
 
 Example schema:
 
@@ -190,12 +208,13 @@ the value source. Mappings whose structure is itself dynamic, such as a
 top-level `$merge(...)`, remain in the whole-mapping Advanced editor, which
 uses Monaco for syntax highlighting and completion.
 
-Simple-compatible mappings are saveable only after every schema-required field
-has a value. Required nested paths are checked recursively; mapping an entire
-object or array with one expression satisfies its required subtree. Optional
-fields may remain empty. A new or historically blank mapping opens as `{}`;
-that empty object is saveable only when the selected template has no required
-fields.
+Simple-compatible mappings are saveable only after every active schema-required
+field has a value. Required nested paths are checked recursively; mapping an
+entire object, array, or marked complex field with one expression satisfies its
+required subtree. Required children of an optional object become active only
+when that optional object is included in the mapping. Other optional fields may
+remain empty. A new or historically blank mapping opens as `{}`; that empty
+object is saveable only when the selected template has no required fields.
 
 ## Scalar Expressions
 

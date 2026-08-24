@@ -191,6 +191,88 @@ describe('generate-document-config.util', () => {
       ).toBe(true);
     });
 
+    it('requires nested fields only when an optional object is constructed', () => {
+      const templateFields: TemplateField[] = [
+        {
+          name: 'address',
+          path: 'address',
+          type: 'object',
+          fieldType: 'OBJECT',
+          required: false,
+          children: [
+            {
+              name: 'street',
+              path: 'address.street',
+              type: 'string',
+              fieldType: 'SCALAR',
+              required: true,
+            },
+            {
+              name: 'city',
+              path: 'address.city',
+              type: 'string',
+              fieldType: 'SCALAR',
+              required: true,
+            },
+          ],
+        },
+      ];
+
+      expect(analyzeDataMappingCompleteness('{}', templateFields)).toMatchObject({
+        totalRequiredFields: 0,
+        missingRequiredFields: [],
+      });
+      expect(
+        analyzeDataMappingCompleteness('{"address": {"street": $doc.street}}', templateFields),
+      ).toMatchObject({
+        totalRequiredFields: 2,
+        mappedRequiredFields: 1,
+        missingRequiredFields: ['address.city'],
+      });
+      expect(
+        analyzeDataMappingCompleteness('{"address": $doc.address}', templateFields),
+      ).toMatchObject({
+        totalRequiredFields: 2,
+        mappedRequiredFields: 2,
+        missingRequiredFields: [],
+      });
+    });
+
+    it('validates a complex whole-value field without inspecting its child shape', () => {
+      const templateFields: TemplateField[] = [
+        {
+          name: 'subjects',
+          path: 'subjects',
+          type: 'array<object>',
+          fieldType: 'ARRAY',
+          required: true,
+          complex: true,
+          children: [
+            {
+              name: 'name',
+              path: 'subjects[].name',
+              type: 'string',
+              fieldType: 'SCALAR',
+              required: true,
+            },
+          ],
+        },
+      ];
+
+      expect(analyzeDataMappingCompleteness('{}', templateFields)).toMatchObject({
+        totalRequiredFields: 1,
+        mappedRequiredFields: 0,
+        missingRequiredFields: ['subjects'],
+      });
+      expect(
+        analyzeDataMappingCompleteness('{"subjects": $doc.subjects}', templateFields),
+      ).toMatchObject({
+        totalRequiredFields: 1,
+        mappedRequiredFields: 1,
+        missingRequiredFields: [],
+      });
+    });
+
     it('accepts Advanced-only mappings without static schema completeness checks', () => {
       const templateFields: TemplateField[] = [
         {
