@@ -156,7 +156,7 @@ importers:
         specifier: ^30.4.1
         version: 30.4.1(supports-color@8.1.1)
       ng-packagr:
-        specifier: ^19.0.0
+        specifier: ^19.2.2
         version: 19.2.2(@angular/compiler-cli@19.2.25(@angular/compiler@19.2.25)(supports-color@8.1.1)(typescript@5.8.3))(tslib@2.8.1)(typescript@5.8.3)
       ts-jest:
         specifier: ^29.4.9
@@ -14128,7 +14128,7 @@ snapshots:
       domhandler: 5.0.3
       htmlparser2: 10.1.0
       picocolors: 1.1.1
-      postcss: 8.5.2
+      postcss: 8.5.8
       postcss-media-query-parser: 0.2.3
 
   big.js@5.2.2: {}

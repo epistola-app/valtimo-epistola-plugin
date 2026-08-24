@@ -35,7 +35,7 @@
     "formiojs": "4.19.5",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.4.1",
-    "ng-packagr": "^19.0.0",
+    "ng-packagr": "^19.2.2",
     "ts-jest": "^29.4.9"
   },
   "peerDependencies": {
