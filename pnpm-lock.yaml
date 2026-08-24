@@ -22,13 +22,13 @@ overrides:
   sass: 1.98.0
   brace-expansion@>=2: '>=5.0.9'
   devalue: '>=5.8.2'
-  dompurify: '>=3.4.12'
-  fast-uri@>=3 <4: '>=3.1.4'
-  fast-uri@>=4: '>=4.1.1'
+  dompurify: '>=3.4.14'
+  fast-uri@>=3 <4: '>=3.1.6'
+  fast-uri@>=4: '>=4.1.3'
   follow-redirects: '>=1.16.0'
   form-data: '>=4.0.6'
   immutable: 4.3.9
-  js-yaml@>=4: 4.3.0
+  js-yaml@>=4: 4.3.1
   jsonata: '>=2.2.2'
   lodash: '>=4.18.1'
   lodash-es: '>=4.18.1'
@@ -59,14 +59,14 @@ importers:
         specifier: 19.2.25
         version: 19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2)
       '@valtimo/components':
-        specifier: 13.38.0
-        version: 13.38.0(03a40c4340cfb08b0d641fb3d4f3ed55)
+        specifier: 13.42.0
+        version: 13.42.0(03a40c4340cfb08b0d641fb3d4f3ed55)
       '@valtimo/plugin':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/shared':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       oxfmt:
         specifier: ^0.46.0
         version: 0.46.0
@@ -129,20 +129,20 @@ importers:
         specifier: ^22.15.3
         version: 22.15.3
       '@valtimo/components':
-        specifier: 13.38.0
-        version: 13.38.0(03a40c4340cfb08b0d641fb3d4f3ed55)
+        specifier: 13.42.0
+        version: 13.42.0(03a40c4340cfb08b0d641fb3d4f3ed55)
       '@valtimo/plugin':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/process-link':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/security':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/shared':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       carbon-components-angular:
         specifier: 5.57.6
         version: 5.57.6(@carbon/styles@1.80.0(sass@1.98.0))
@@ -156,7 +156,7 @@ importers:
         specifier: ^30.4.1
         version: 30.4.1(supports-color@8.1.1)
       ng-packagr:
-        specifier: ^19.0.0
+        specifier: ^19.2.2
         version: 19.2.2(@angular/compiler-cli@19.2.25(@angular/compiler@19.2.25)(supports-color@8.1.1)(typescript@5.8.3))(tslib@2.8.1)(typescript@5.8.3)
       ts-jest:
         specifier: ^29.4.9
@@ -225,116 +225,116 @@ importers:
         specifier: 16.0.1
         version: 16.0.1(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/access-control':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/access-control-management':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/account':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/analyse':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/bootstrap':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/case':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@valtimo/case-management':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/case-migration':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/choice-field':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/components':
-        specifier: 13.38.0
-        version: 13.38.0(03a40c4340cfb08b0d641fb3d4f3ed55)
+        specifier: 13.42.0
+        version: 13.42.0(03a40c4340cfb08b0d641fb3d4f3ed55)
       '@valtimo/dashboard':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/dashboard-management':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/decision':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/document':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/form':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/form-flow-management':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/form-management':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/keycloak':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/router@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/router@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))
       '@valtimo/layout':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/logging':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/migration':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/milestone':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/forms@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/forms@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))
       '@valtimo/object':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/object-management':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/plugin':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/plugin-management':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/process':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/process-link':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/process-management':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(diagram-js@15.3.0)(zeebe-bpmn-moddle@1.12.0)
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(diagram-js@15.3.0)(zeebe-bpmn-moddle@1.12.0)
       '@valtimo/resource':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/security':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/shared':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/sse':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/swagger':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       '@valtimo/task':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/task-management':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@valtimo/teams':
-        specifier: 13.38.0
-        version: 13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+        specifier: 13.42.0
+        version: 13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@webcomponents/custom-elements':
         specifier: 1.6.0
         version: 1.6.0
@@ -463,8 +463,8 @@ importers:
         specifier: 6.0.2
         version: 6.0.2(@angular/compiler@19.2.25)(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(tslint@6.1.3(typescript@5.8.3))
       deepmerge-ts:
-        specifier: 7.1.5
-        version: 7.1.5
+        specifier: 7.1.6
+        version: 7.1.6
       dotenv:
         specifier: 16.4.5
         version: 16.4.5
@@ -3929,225 +3929,225 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@valtimo/access-control-management@13.38.0':
-    resolution: {integrity: sha512-Ptt2fQR4zvreniIElP4lj0sSRU4tA8nSrxVXBTN6EcTh8dWRDv2RR8Yyyo9sggFs9Aaji1ypp63OEX7HMUnJjg==}
+  '@valtimo/access-control-management@13.42.0':
+    resolution: {integrity: sha512-s+uOayMQL2piaDYLsTyA2YZ7gwNZqjtkJvBVYC+mnVSTQKwtLX6OMw97hsLfuj2Pq6CGHoFhu+p4QzQkRKLNAA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/access-control@13.38.0':
-    resolution: {integrity: sha512-j9Rvd1g7nOpsHmRFsKzMyRtOoBeoIBLVoSgzb4DaOGr8KN1bVCanXrsTKk2AESo0MsNVvCRyCNk6y3ZlNMaNLg==}
+  '@valtimo/access-control@13.42.0':
+    resolution: {integrity: sha512-D2Ki8Yh2G65DUhwFJ6tQ8uHpppNLqLheQhDy9bGSsMHmhmyQc4Si+McxIzsF2Ts2whQP4WXad+RTjsNaSMP0tQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/account@13.38.0':
-    resolution: {integrity: sha512-YogR+MDfINLSeFlQIZpVbpg99ubYzXOcTN3d/8A9Vi8u7fta5lgLZdWd3EFrVYU9W4zy5N6kmCGNwnMl44GvCA==}
+  '@valtimo/account@13.42.0':
+    resolution: {integrity: sha512-u1uhgFpoF93pandEbFhqFoAfEAtjXUxkQ/ZQshUodwOUIpRmKtmvEVlYZtg9hwvSY9mCdZuYxq3MO/y7Z7Gp1g==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/analyse@13.38.0':
-    resolution: {integrity: sha512-Zrse514ay6KmQu2A+7e8eFCZf5RFxy9uw/JCQ+PpmLxoM6xcvPPug79JrBpLL4izk6wujUVGFketvN6qCQ6IYw==}
+  '@valtimo/analyse@13.42.0':
+    resolution: {integrity: sha512-EYTGbFjz+ArSU+C248Zz+Bt3Os9AXg6ESydJgyLpRB1nN3MHfMzK3IGreU1eHBKi310SEkYi0ZmOI1gUAG0L+g==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/bootstrap@13.38.0':
-    resolution: {integrity: sha512-5rpR9eVgjcsPx7Wi32z67GsGIIGvld/sWGriLhZwQAsJXYo4f728dPq1m0wQiXzh59aQPqjvSPj4vtU8/PpAFw==}
+  '@valtimo/bootstrap@13.42.0':
+    resolution: {integrity: sha512-bGTJV4qj72SF1Au3GqR+zRSIWqFaF9poOcDu7rjT1fzuf2+ghmvqTffcvcM4MuAQBX9UVxATLH+oK6cVMxnp/A==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/case-management@13.38.0':
-    resolution: {integrity: sha512-R5X8KX35aGUFmVd9cIpgQySDQqB+7/PNHGshu6uRRGQRXfaREBjZ0wA9Ft4wnntGZbAUrVvvrmHpxNai6DZBOw==}
+  '@valtimo/case-management@13.42.0':
+    resolution: {integrity: sha512-z5yEDvvTFX5lIbg0JB6iv1DKGlGC+iw4Y7ONw1DnscAmYrDWyvNLgKXj44VrCPTys98uWAflNK31v6JK0Y7gKg==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/case-migration@13.38.0':
-    resolution: {integrity: sha512-k3QWvhq1/eavxLp1IMHc/6U6/iFpG5Knapiq7j8F/nfDj3KIBQJABwj8VgpDbXXorzNUAM7SkVMiDS1155hOVw==}
+  '@valtimo/case-migration@13.42.0':
+    resolution: {integrity: sha512-TXmvZdzmOhge9X2kcTi6QNCnvRQuClHvo/dUNkDqnce92J3ZwKtYTTGZ9znvNABkOIGUbw96dj9wAkOlo26Plg==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/case@13.38.0':
-    resolution: {integrity: sha512-PT7hfSOKzLTxSfrqc4xk1wFcWt7e7FhXgbM9JVojSF2SgIlLAE4y8Xu5KHlvbPVny3akoYfviSVLH22uiBHbwQ==}
+  '@valtimo/case@13.42.0':
+    resolution: {integrity: sha512-CMUx1b4BBLsnzN4wd6cFA/rScCH6lQTVaZHT56ukRc2354zutpxqul/1F65xI5Tt65DZ3fkFfovvpWMQjoI2Cw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/choice-field@13.38.0':
-    resolution: {integrity: sha512-QNwEBRBxA9vX0TL8I4tQlcRZJTaZKKoi3nhG2JfZ0V2a63rsrDVl9IgimIwRTnXC/cdrnvXyyVrXSRDz1IN1tw==}
+  '@valtimo/choice-field@13.42.0':
+    resolution: {integrity: sha512-LBn5K0FcnJ7R0clCAhnD2kkCU1HLwWYluOgozKNqbAcYBgpJlJ2FEp6u9wzWEfWhxqGxoWEbgN6OehUUgOzhiQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/components@13.38.0':
-    resolution: {integrity: sha512-H3Dw2LoDVe73RMJ+ExIRxMvHidq/JX7Zvfc9lU+lVERvDvv+28SsRW3Xx2wwKSC26VVHixq8ZtboP9HixAhC5Q==}
+  '@valtimo/components@13.42.0':
+    resolution: {integrity: sha512-2L4+4vl+mEJUjdKKK4y2E56ubF712oDz4cDfPee/j+BPikcN9ulPzgGfPFcytj/kG8fnv9hc5cNsF5/ON/rCHQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
       '@angular/elements': 19.2.25
 
-  '@valtimo/dashboard-management@13.38.0':
-    resolution: {integrity: sha512-iFNEOOpXHTTczq8tx9oPUZ4LOYx9y9eeFaJQT+zjkJqCbrZJDy53mZtkhKov+nIUrToBQh0RuGaboygSAn0eRQ==}
+  '@valtimo/dashboard-management@13.42.0':
+    resolution: {integrity: sha512-ThzC22vbSObztCIOSPYphWfyGfhoCA7sgn55wU+H6ZqdGKEGBnL93+k4V95M4ejznFOA4naIJn0CEEDgBv5uRA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/dashboard@13.38.0':
-    resolution: {integrity: sha512-Yswh/nIVU0TaOqLorRD9i42CGFeMu+vjELuj+Vz8fUKwlVYPI1+y5viQLktAY6MJrcLYe5q9Ph0ruHbx+rV+cA==}
+  '@valtimo/dashboard@13.42.0':
+    resolution: {integrity: sha512-q99LjLL9ReFEBJNb7wLnDmRJw4CO4RH3K0n8i4zO8s7wt3OJldCYT+DdqEGC6K0x96wFV1k9x1tcerekfexWcA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/decision@13.38.0':
-    resolution: {integrity: sha512-gKG+dPGv+KXCAjGhnfi32id8oWzlMNAwP6wy1eDPHltUl1Qy26MnZ3lf6XWQ+9WAguttCwBbIjpJqukeM1wORQ==}
+  '@valtimo/decision@13.42.0':
+    resolution: {integrity: sha512-PN5hXbxicH5q7CLK7rAUxZBMLNJVRWXb0lFrMG8rU+ADwWPG2TjKhG8PrP7KzBGoIffpqNonxzoQfUyUF2Rp3A==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/document@13.38.0':
-    resolution: {integrity: sha512-mQmxg5gwgv9bd1nGvoCeok8z2j7y3o8YFONh857RwT41nlk4qpt/dVUHTVfilB/gwvy9h/5UviBxXLU++NxuDg==}
+  '@valtimo/document@13.42.0':
+    resolution: {integrity: sha512-3cLo9QidA+SSOsH/G4ohz8hK6Rbs5V54iaEwRc+x9kl69V7fVEkugV5ul5n+c3pgq13D3yIpI28PfT5o26QLlw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/form-flow-management@13.38.0':
-    resolution: {integrity: sha512-01N2eXcnedYqMqO7h4ULjODg/moLSYwqg3ty7yX7KUwmby6twT1z67N8Bh82/C/ulZyvIAnK4H1ykw7seI4g2g==}
+  '@valtimo/form-flow-management@13.42.0':
+    resolution: {integrity: sha512-qdjItinvKqCntDkUR2zc/uaOsOcvPscbAC3QohLek+7xEbguRzsxAuYUnKaJhS1Sj5Aiz+hhI3CT38WKtxlZEQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/form-management@13.38.0':
-    resolution: {integrity: sha512-Sgf6ER9MJadgGaXIa4jwqmFzn8iJ6jNN/aFf5+Z/Hr1XtsGyYw+dgsG2Wy/nSgWaopzmjLl8XcjAXnWgH4XnJQ==}
+  '@valtimo/form-management@13.42.0':
+    resolution: {integrity: sha512-c1l5hbm/C4y1hMWvFl+su4ulU4g5DjQd0sEUEZ8+dOY4M8k6deo+GMATavAdBnKCg8CJQ9slhd0M2UZq3drNFQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/form@13.38.0':
-    resolution: {integrity: sha512-yBMqLNYU0I4Fqz1is55ZAXK75jxqb4sb1d7DGaEfPkkxMSiI5Iw/BeMLkFE/jtJ7KQzjaAYGYCBv1hzbYDFVjA==}
+  '@valtimo/form@13.42.0':
+    resolution: {integrity: sha512-qhnUhpoQXKb9A3FYfjo9xX6bpB9k/A0VOg7OxGb3km80T3IPsaTPsoSLbLXe734WEkwwl8ISMPSNgDXY3MxTgw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/keycloak@13.38.0':
-    resolution: {integrity: sha512-VbfI3rHOQe8bHpLSAiTisWS7c6Z9h+IperRxFP/EdL7i+gFHtJIwG5TKM4udOtGC7imICQWnVQ35yXvIQ0pOoA==}
+  '@valtimo/keycloak@13.42.0':
+    resolution: {integrity: sha512-uJqJBriIM/L3E5yO3QQta3OlCZgS9a1yk+P5DswPCHvC0hg0BWe4RQFZsn0wkTG7m0bOBARvuVTAegcOZ0hBOQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/layout@13.38.0':
-    resolution: {integrity: sha512-U2oXciCdWq675QLf0wv8l0NWKcQuSHcIYV0sKBcIBjijAW8gJvIvpDksnVoXiNYwpG3phEX/2yZUrgI2L2u7tw==}
+  '@valtimo/layout@13.42.0':
+    resolution: {integrity: sha512-NHpgUOJPVhFFwTfOVHVWdJs4WVQC0GsICQHenru2rhDw9De8zhvkSOXEDezA8EiDGv/qZXXBhb420UbGxoDwkA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/logging@13.38.0':
-    resolution: {integrity: sha512-1GURu3uZ9arAvs4s9drV7C55Ej7nc/jkUCPBE1anqqTs+TWmaYsxznyhvmlGFPLX+sgIV9oxYB6Cmeosg8MiiQ==}
+  '@valtimo/logging@13.42.0':
+    resolution: {integrity: sha512-p9VrzN//+DKifhhEzKp0MJCdXmurSdlgmOa6HnDw4PBdnOql+sJQL+LbM4+9ZKP0smQvLVgaF4x1SajClKV/ag==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/migration@13.38.0':
-    resolution: {integrity: sha512-QD4f8S0OK6ZrmKO3tdcftMrqU9Kz+cuq0dpSQpA2cJpdhVK5/K0hcHH7G2oI2qW+CeTAHCE3UOwJzZMCn06Hjg==}
+  '@valtimo/migration@13.42.0':
+    resolution: {integrity: sha512-hS9rT7fZ9PEOUIh/nB27Ud8aoDUhWumJNBUYCjTDDnm0aIfn/yPjSrkGXQZ4R9xRUrqwRlTyHxyXjdvl500xsg==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/milestone@13.38.0':
-    resolution: {integrity: sha512-PdWM/TuRMwqkDNUCL5ak9DZeiIrZjKA7tcPIJQpo3ihGn+QATq7a8iPh/4EmCKGouEqJ1tEoTmK2r1FnxyH7FQ==}
+  '@valtimo/milestone@13.42.0':
+    resolution: {integrity: sha512-+KWtmStR66yiH505EiZA2O45xW5zd//1KMm1gyx9CirLXTBxlw1Y3wEk1YKFSuHPOc0X304A9t2pQL3H5qQjyw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/object-management@13.38.0':
-    resolution: {integrity: sha512-kmTfgUxJAjmF9Z7oLjMC5Yl6aORmQukY94jnSgH67kfWHmYVkxv5S+tIL4rSsK5VCYYEnE6JVMZiy93Clfb7Sg==}
+  '@valtimo/object-management@13.42.0':
+    resolution: {integrity: sha512-+/UZ3dsgaFzdfZLuV5IN2AUFJyUcSWf2GIpRBs8EL3yHlg9r3GIsaYQmSzMwGX5b2RbGFAPfm4wEYG9WMfyLjQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/object@13.38.0':
-    resolution: {integrity: sha512-kVH86rtCROMAfKYts2YbsnW9Qi2VEV4QIzDRnhNUszSiqkTxW/NSz3ARE1yMsJ5CbsqVxXoJSvHPPuhZTwiYug==}
+  '@valtimo/object@13.42.0':
+    resolution: {integrity: sha512-mFLPgGKUxmowltRGFOCesnFgCgf+r8jGzljaHhAKNHIRK5HM1pMUs0/12kxO1np2p+a3jY1ltkTSWCkC2T4jLg==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/plugin-management@13.38.0':
-    resolution: {integrity: sha512-q4jqFb+y9ccAvlNmqZyuS7uJAvfwkfDAol4ALJxnT1OtaNsTzSokR1si8fzfDmZOw3Chtw5qZW8j3VhDR8PIVQ==}
+  '@valtimo/plugin-management@13.42.0':
+    resolution: {integrity: sha512-fmFEjzmEl4XyweQ0uqfCJLJxw05FFU5tQj84I1OnHijRfJ6A1PU7g1/PNdDqTDUxqKehYD/KsSCU5IFE5Y+l4g==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/plugin@13.38.0':
-    resolution: {integrity: sha512-bjuXPcpmql6Je/eIQZ6wsubUqUB6kBFSl5x8QMXaOo0rE+Djl7ABgF2DHTr7QlhZJWMpRhciKdz5/vPHkstdFQ==}
+  '@valtimo/plugin@13.42.0':
+    resolution: {integrity: sha512-I2uuUcXqvvol0T2R7loV4Xz/Tjle5zeVj52IRIVR7UZrhPPCn4LfOAVy5ZBVXauLO6Nhuxt/tE7N4pLNvVGdMA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/process-link@13.38.0':
-    resolution: {integrity: sha512-mr3Zlm9C8FKl29+vpIJ/0abTM3aXTktvzfPtLEzr2m2bCCLZXD23l/GFz9xRT/UdZTATGJZTNbLoSzCmE5h0QA==}
+  '@valtimo/process-link@13.42.0':
+    resolution: {integrity: sha512-Drsa0lCTY7uGIE8oQWn15mzEFQNXyrvRlxgMpGI003CnR/wTIFbZZqoVq2dKP7Z+TAGfYL2IoGNJ9LQjPhvsJA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/process-management@13.38.0':
-    resolution: {integrity: sha512-wnhdbpo7afxU8o+ArO/APVC+RndoN89jMpRDEmoFYtyLnUGq834sdB8woQ+lF+Dx4vsgOAcUC9/r25BYEC7cRg==}
+  '@valtimo/process-management@13.42.0':
+    resolution: {integrity: sha512-XSCkjH1UZc0CRHc0NYVQSMLojWUKedBknLszSvpi/5Yhj0zwDqa94gki6BG4Doq2moHDaXl33e7wtC06zG9tGQ==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/process@13.38.0':
-    resolution: {integrity: sha512-bgLt+HdEqW0uLc5fhUudy9r7eUoiHG+NZ8CRAl8Nswq8XfkhR41+Xj97vLv0b04ZA72L7qZ48Pf8AOdGyJ5Yhw==}
+  '@valtimo/process@13.42.0':
+    resolution: {integrity: sha512-GVWNFQsdkB8pd3iu1Lxo5+35IcnJtWMD3mWHkzRDE1uWb2H1IijNoTzUMpWxcWcKCFxpvccKn8PXIhdJPy/RBw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/resource@13.38.0':
-    resolution: {integrity: sha512-WZ6/ZvvTA3BXmEwXJmhbimN5d6MQvE1iizSmkDBAIe4QsYgwJs1mTLskVr6/3hhDfZBWAaD86lCCIDT678HLuA==}
+  '@valtimo/resource@13.42.0':
+    resolution: {integrity: sha512-FfkNshgJ2BuUUGuXob4JeG3nt+9APeOqCsy1m2Gdevtdw+dZb1YQ6on6yKNBg+DYTkRu6xWdDwM4iZUCA8fCvg==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/security@13.38.0':
-    resolution: {integrity: sha512-eR5pzr+KHuZs8T8XL5a83n6kCI+1UOXKJkkduOPOGMh8Yg4B6fFBTy/FwZhbCYkLRy2yXCHEdLulvMy9Csr7JQ==}
+  '@valtimo/security@13.42.0':
+    resolution: {integrity: sha512-ssIum5Ih8MQ00bom+BzvcS0Kd/OFmLqgf/EqYwziLNrLjxQ6yoYUPcpHp/nGSnhngngV3u2lPQOdKec5kzKjLA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/shared@13.38.0':
-    resolution: {integrity: sha512-fPZ2y8hAvQDI3h0n5k99R/7PYfuk952sa4rBsZQS1ohlfwXZlujZU7PtczwGk+nYf/fX4hYKnu0Q2lEFcuDBEA==}
+  '@valtimo/shared@13.42.0':
+    resolution: {integrity: sha512-N31vv3tNm0spjWeoJZyXPpvcMhMoYRgnvDXvP+h3zybCd8BHSHR5C8cdSIgkdxx9+wRF33hbdbZTtGfTquUNHA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/sse@13.38.0':
-    resolution: {integrity: sha512-FtPThEkDiBY3EasrPP22+XWuV/GUDoy6Y83JZ4IqvzF1GkCtrveFE7jQCT3W/fX1yR/23f7T6GVIuJ3LA6+tRw==}
+  '@valtimo/sse@13.42.0':
+    resolution: {integrity: sha512-YAz3y6uhcmfntQjKnBxUCOPnL7KKz5QtpjUqIT8a0plfre8zTgXDRzV55B7DbLR5k78aFVxJQKOYru4dG2NNXA==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/swagger@13.38.0':
-    resolution: {integrity: sha512-NLDM8T4+E61aY8wPpys2BKZrenLMHa6p6hCN/Fb9uUqaH5G8LXTQlMdEXYae0hgmz8/grogv+EC6XjKdEqAyXA==}
+  '@valtimo/swagger@13.42.0':
+    resolution: {integrity: sha512-oBncLjFIAjy4g9Kle8MndmSd3TufM4Hpa+B/HcwGiwim0r5AdLuCzyZVjsb/9MuZl8mtwS1GLgatFhy/tnAv8w==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/task-management@13.38.0':
-    resolution: {integrity: sha512-biX4/hQKo+iMnCqZbG2r83R6jFHtvC4DEWIp2qHjDAGtXtKiTqK4Wi3ueWHhPMeavWXNjBbITnG3TtJr5u/ZJw==}
+  '@valtimo/task-management@13.42.0':
+    resolution: {integrity: sha512-wQLwbUTnnKiCLNraXCcRPG8sD+jtNvEH9xUvPC9xnO7/Kz0iUkPnBfhFVNOgKr80/iB1QWP7rVnese2cikwX1A==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/task@13.38.0':
-    resolution: {integrity: sha512-xUSkAq2on6VbDIm08L7huP9fkI8HMm4WwnfLC5RfZlKwgPrpWbENlGHujf/bxZW5J0D18ZJlWNqUEIMNFlo0Wg==}
+  '@valtimo/task@13.42.0':
+    resolution: {integrity: sha512-M/JYGwsYyKB8aCMI8TV8E4J+l7GKcnP9eFzuhq8SZt1hG39bYmSXdPpkQFt3o5h6dRuEtidXAkDQI+l6IPwWjw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
 
-  '@valtimo/teams@13.38.0':
-    resolution: {integrity: sha512-c+nPN431c+7dwM93rGAg0cuOFxnUjGDyLyiGIzkTyNm0I7rJn7gPBD4LK7ZDuH6PmrkJ7vUcMyUpXmfdnblj5Q==}
+  '@valtimo/teams@13.42.0':
+    resolution: {integrity: sha512-JvqP9OGWmgdHzu3eSCxCERPtFfQWuv5BbO0RTqgsQ+lF9CCZG/CgZSEgQ7JbLzmK92mZp56gsmzinHMKspTu5Q==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
@@ -5232,6 +5232,10 @@ packages:
     resolution: {integrity: sha512-HOJkrhaYsweh+W+e74Yn7YStZOilkoPb6fycpwNLKzSPtruFs48nYis0zy5yJz1+ktUhHxoRDJ27RQAWLIJVJw==}
     engines: {node: '>=16.0.0'}
 
+  deepmerge-ts@7.1.6:
+    resolution: {integrity: sha512-gQhL1ksGBLQbHeAo47YU6cs2ahd3Pv+8PFYoWogNZbQnNwQyOh9Ad5kbeHFiWwbKdeWQJ5Z7Y7mwb9ew2hXBLw==}
+    engines: {node: '>=16.0.0'}
+
   deepmerge@4.3.1:
     resolution: {integrity: sha512-3sUqbMEc77XqpdNO7FRyRog+eW3ph+GYCbj+rK+uYyRMuwsVy0rMiVtPn+QJlKFvWP/1PYpapqYn0Me2knFn+A==}
     engines: {node: '>=0.10.0'}
@@ -5401,8 +5405,8 @@ packages:
     resolution: {integrity: sha512-bs2yO68JDFOm6rKv8f0EnrM2cENduhRkpqOtt/s5l5JBA/eqGBZCzLPmdYoHtJ6utgLGgcBajFsEQbl12pT0lQ==}
     engines: {node: '>=20'}
 
-  dompurify@3.4.12:
-    resolution: {integrity: sha512-zQvGet8Z2sWbQhCmfFz/T5QWH2oBmjnqK3qvOjaqaNLrLEF912WamU+ohnTp0TCep/MFVHpdJuCZEdFOdTnEFg==}
+  dompurify@3.4.14:
+    resolution: {integrity: sha512-dVoH9z+MY+C9IilgGCk3YfFqjLi3fChm2OiKJMzh6axrJ5qwxqWaZamgmHrpv22CN/KdbZJuGEGgfQoL00LTdg==}
 
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
@@ -6773,8 +6777,8 @@ packages:
     resolution: {integrity: sha512-ttBQIIQPDeLjpPOohtUdXuXUVoA2uIB6fEH9HyJ7234s5mBJ5wTx20njxplLZQgLaOfpmPQA7X2t5AX6tIPbog==}
     hasBin: true
 
-  js-yaml@4.3.0:
-    resolution: {integrity: sha512-1td788aAnnZ5qs7V2QIRl1owjtYpbKt749Y3xauqQgwIIGF/xXWz1wMTEBx5O3LK3lXLVuqXPdPxj2BoFHaW9Q==}
+  js-yaml@4.3.1:
+    resolution: {integrity: sha512-CY6crGq313MX8GkwvB7tzgp99vjQxY1++5y10/BKN/GUfHqWaOGQMNZkBvqSzsZKWk/ijwHlWzzkLulsGHhjWQ==}
     hasBin: true
 
   jsdom@26.1.0:
@@ -7102,6 +7106,11 @@ packages:
 
   makeerror@1.0.12:
     resolution: {integrity: sha512-JmqCvUhmt43madlpFzG4BQzG2Z3m6tvQDNKdClZnO3VbIudJYmxsT0FNJMeiB2+JTSlTQTSbU8QdesVmwJcmLg==}
+
+  marked@15.0.7:
+    resolution: {integrity: sha512-dgLIeKGLx5FwziAnsk4ONoGwHwGPJzselimvlVskE9XLN4Orv9u2VA3GWw/lYUqjfA0rUT/6fqKwfZJapP9BEg==}
+    engines: {node: '>= 18'}
+    hasBin: true
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -10819,7 +10828,7 @@ snapshots:
       d3-cloud: 1.2.9
       d3-sankey: 0.12.3
       date-fns: 4.1.0
-      dompurify: 3.4.12
+      dompurify: 3.4.14
       html-to-image: 1.11.11
       lodash-es: 4.18.1
       topojson-client: 3.1.0
@@ -11164,7 +11173,7 @@ snapshots:
       globals: 13.24.0
       ignore: 5.3.2
       import-fresh: 3.3.1
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       minimatch: 3.1.5
       strip-json-comments: 3.1.1
     transitivePeerDependencies:
@@ -13357,51 +13366,51 @@ snapshots:
   '@unrs/resolver-binding-win32-x64-msvc@1.11.1':
     optional: true
 
-  '@valtimo/access-control-management@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/access-control-management@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/access-control@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/access-control@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       jwt-decode: 4.0.0
       tslib: 2.8.1
 
-  '@valtimo/account@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/account@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       moment: 2.30.1
       tslib: 2.8.1
 
-  '@valtimo/analyse@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/analyse@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/bootstrap@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/bootstrap@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/case-management@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/case-management@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/case-migration@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/case-migration@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/case@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)':
+  '@valtimo/case@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -13416,13 +13425,13 @@ snapshots:
     transitivePeerDependencies:
       - rxjs
 
-  '@valtimo/choice-field@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/choice-field@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/components@13.38.0(03a40c4340cfb08b0d641fb3d4f3ed55)':
+  '@valtimo/components@13.42.0(03a40c4340cfb08b0d641fb3d4f3ed55)':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -13473,13 +13482,13 @@ snapshots:
       - sass
       - zone.js
 
-  '@valtimo/dashboard-management@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/dashboard-management@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/dashboard@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/dashboard@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -13495,7 +13504,7 @@ snapshots:
       muuri: 0.9.5
       tslib: 2.8.1
 
-  '@valtimo/decision@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/decision@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -13503,31 +13512,31 @@ snapshots:
       dmn-js: 17.2.0
       tslib: 2.8.1
 
-  '@valtimo/document@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/document@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/form-flow-management@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/form-flow-management@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/form-management@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/form-management@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/form@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/form@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/keycloak@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/router@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))':
+  '@valtimo/keycloak@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/router@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -13538,7 +13547,7 @@ snapshots:
     transitivePeerDependencies:
       - '@angular/router'
 
-  '@valtimo/layout@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/layout@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -13548,6 +13557,7 @@ snapshots:
       csp-header: 6.1.0
       jquery: 3.7.1
       lodash: 4.18.1
+      marked: 15.0.7
       moment: 2.30.1
       ol: 10.7.0
       perfect-scrollbar: 1.5.6
@@ -13555,20 +13565,20 @@ snapshots:
       select2: 4.1.0-rc.0
       tslib: 2.8.1
 
-  '@valtimo/logging@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/logging@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/migration@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/migration@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       bpmn-js: 18.6.1
       tslib: 2.8.1
 
-  '@valtimo/milestone@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/forms@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))':
+  '@valtimo/milestone@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/forms@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@angular/platform-browser@19.2.25(@angular/animations@19.2.25(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1)))(rxjs@7.8.2))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -13577,37 +13587,37 @@ snapshots:
     transitivePeerDependencies:
       - '@angular/forms'
 
-  '@valtimo/object-management@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/object-management@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/object@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/object@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/plugin-management@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/plugin-management@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/plugin@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/plugin@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/process-link@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/process-link@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/process-management@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(diagram-js@15.3.0)(zeebe-bpmn-moddle@1.12.0)':
+  '@valtimo/process-management@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(diagram-js@15.3.0)(zeebe-bpmn-moddle@1.12.0)':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -13621,7 +13631,7 @@ snapshots:
       - diagram-js
       - zeebe-bpmn-moddle
 
-  '@valtimo/process@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/process@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -13631,13 +13641,13 @@ snapshots:
       moment: 2.30.1
       tslib: 2.8.1
 
-  '@valtimo/resource@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/resource@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/security@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/security@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -13645,7 +13655,7 @@ snapshots:
       moment: 2.30.1
       tslib: 2.8.1
 
-  '@valtimo/shared@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/shared@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -13653,13 +13663,13 @@ snapshots:
       deepmerge-ts: 7.1.5
       tslib: 2.8.1
 
-  '@valtimo/sse@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/sse@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
 
-  '@valtimo/swagger@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
+  '@valtimo/swagger@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -13671,14 +13681,14 @@ snapshots:
       - debug
       - supports-color
 
-  '@valtimo/task-management@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/task-management@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       lodash: 4.18.1
       tslib: 2.8.1
 
-  '@valtimo/task@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/task@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -13686,7 +13696,7 @@ snapshots:
       moment: 2.30.1
       tslib: 2.8.1
 
-  '@valtimo/teams@13.38.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
+  '@valtimo/teams@13.42.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
@@ -14128,7 +14138,7 @@ snapshots:
       domhandler: 5.0.3
       htmlparser2: 10.1.0
       picocolors: 1.1.1
-      postcss: 8.5.2
+      postcss: 8.5.8
       postcss-media-query-parser: 0.2.3
 
   big.js@5.2.2: {}
@@ -14587,7 +14597,7 @@ snapshots:
     dependencies:
       env-paths: 2.2.1
       import-fresh: 3.3.1
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       parse-json: 5.2.0
     optionalDependencies:
       typescript: 5.8.3
@@ -14899,6 +14909,8 @@ snapshots:
 
   deepmerge-ts@7.1.5: {}
 
+  deepmerge-ts@7.1.6: {}
+
   deepmerge@4.3.1: {}
 
   default-browser-id@5.0.1: {}
@@ -15138,7 +15150,7 @@ snapshots:
 
   domify@3.0.0: {}
 
-  dompurify@3.4.12:
+  dompurify@3.4.14:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
@@ -15583,7 +15595,7 @@ snapshots:
       imurmurhash: 0.1.4
       is-glob: 4.0.3
       is-path-inside: 3.0.3
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       json-stable-stringify-without-jsonify: 1.0.1
       levn: 0.4.1
       lodash.merge: 4.6.2
@@ -15888,7 +15900,7 @@ snapshots:
       custom-event-polyfill: 1.0.7
       dialog-polyfill: 0.5.6
       dom-autoscroller: 2.3.4
-      dompurify: 3.4.12
+      dompurify: 3.4.14
       downloadjs: 1.4.7
       dragula: 3.7.3
       eventemitter3: 4.0.7
@@ -16960,7 +16972,7 @@ snapshots:
       argparse: 1.0.10
       esprima: 4.0.1
 
-  js-yaml@4.3.0:
+  js-yaml@4.3.1:
     dependencies:
       argparse: 2.0.1
 
@@ -17384,6 +17396,8 @@ snapshots:
   makeerror@1.0.12:
     dependencies:
       tmpl: 1.0.5
+
+  marked@15.0.7: {}
 
   math-intrinsics@1.1.0: {}
 
@@ -19299,7 +19313,7 @@ snapshots:
       '@swaggerexpert/cookie': 2.0.2
       deepmerge: 4.3.1
       fast-json-patch: 3.1.1
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       neotraverse: 0.6.18
       node-abort-controller: 3.1.1
       node-fetch-commonjs: 3.3.2
@@ -19319,11 +19333,11 @@ snapshots:
       classnames: 2.5.1
       css.escape: 1.5.1
       deep-extend: 0.6.0
-      dompurify: 3.4.12
+      dompurify: 3.4.14
       ieee754: 1.2.1
       immutable: 4.3.9
       js-file-download: 0.4.12
-      js-yaml: 4.3.0
+      js-yaml: 4.3.1
       lodash: 4.18.1
       prop-types: 15.8.1
       randexp: 0.5.3

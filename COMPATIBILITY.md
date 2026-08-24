@@ -11,12 +11,12 @@ Two things are tracked, and they are not the same:
 
 ## Matrix
 
-| Plugin version | Tested against (Valtimo) | Compatible range (expected) | Notes                                                                                                                                            |
-| -------------- | ------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Unreleased     | `13.38.0.RELEASE`        | `>=13.21.0, <14`            | Uses the menu append hook and custom Form.io registration/factory APIs present since 13.21. Runtime peers are host-owned and bounded explicitly. |
-| 0.12.0         | `13.32.0.RELEASE`        | `>=13.21.0, <14`            | 13.22→13.32 changelog-reviewed: all additive, no floor-raising change, compiled/tested clean. Floor kept at 13.21 (`peerDependencies ^13.21.0`). |
-| 0.3.0 – 0.9.4  | `13.21.0.RELEASE`        | `>=13.21.0, <14`            | Targets the 13.x line; forward-compatible within 13.x barring breaking changes flagged by `update-valtimo`.                                      |
-| 0.1.x – 0.2.x  | `13.4.1.RELEASE`         | `>=13.4.1, <13.21.0`        | Pre-13.21 baseline; superseded by 0.3.0.                                                                                                         |
+| Plugin version | Tested against (Valtimo) | Compatible range (expected) | Notes                                                                                                                                             |
+| -------------- | ------------------------ | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Unreleased     | `13.42.0.RELEASE`        | `>=13.21.0, <14`            | 13.39→13.42 changelog-reviewed; plugin, process-link, Form.io, value-resolver, and correlation APIs used here remain compatible across the range. |
+| 0.12.0         | `13.32.0.RELEASE`        | `>=13.21.0, <14`            | 13.22→13.32 changelog-reviewed: all additive, no floor-raising change, compiled/tested clean. Floor kept at 13.21 (`peerDependencies ^13.21.0`).  |
+| 0.3.0 – 0.9.4  | `13.21.0.RELEASE`        | `>=13.21.0, <14`            | Targets the 13.x line; forward-compatible within 13.x barring breaking changes flagged by `update-valtimo`.                                       |
+| 0.1.x – 0.2.x  | `13.4.1.RELEASE`         | `>=13.4.1, <13.21.0`        | Pre-13.21 baseline; superseded by 0.3.0.                                                                                                          |
 
 Backend versions use the `X.Y.Z.RELEASE` form; the frontend `@valtimo/*` packages use the matching `X.Y.Z`.
 
