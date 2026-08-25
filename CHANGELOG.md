@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-08-25
+
 ### Added
 
 - A dedicated custom-expression-function guide now documents Spring registration, typed arguments and overloads, automatically supplied evaluation context, external service access, result schemas, evaluation-scoped caching, proxy behavior, and testing expectations.
