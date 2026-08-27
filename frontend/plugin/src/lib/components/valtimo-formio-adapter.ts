@@ -62,7 +62,14 @@ export function withPrefilledTaskIdCarrier(
 ): ValtimoFormioComponentConstructor {
   class WithPrefilledTaskIdCarrier extends BaseComponent {
     getModifiedSchema(schema: any, defaultSchema: any, recursion: boolean): any {
-      const modified = super.getModifiedSchema(schema, defaultSchema, recursion);
+      // Tolerate a Formio that no longer implements this filter (it is exact-pinned at 4.19.5
+      // across the whole supported Valtimo range today, so this is purely a forward guard). The
+      // fallback keeps the schema unfiltered — verbose, but a correct and still-loadable form —
+      // rather than throwing and taking the whole form builder down with it.
+      const modified =
+        typeof super.getModifiedSchema === 'function'
+          ? super.getModifiedSchema(schema, defaultSchema, recursion)
+          : { ...schema };
       if (!recursion) {
         modified.components = ensureTaskIdCarrier(modified.components);
       }

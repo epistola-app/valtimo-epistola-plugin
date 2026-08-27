@@ -212,6 +212,23 @@ describe('prefilled task-id carrier survives Formio schema serialization', () =>
     });
   });
 
+  it('still adds the carrier if a future Formio drops getModifiedSchema', () => {
+    // Forward guard: degrade to an unfiltered (verbose but loadable) schema rather than throwing
+    // a TypeError from super.getModifiedSchema and taking the form builder down.
+    const { withPrefilledTaskIdCarrier } = jest.requireActual('./valtimo-formio-adapter');
+    class BaseWithoutTheFilter {}
+    const Enhanced: any = withPrefilledTaskIdCarrier(BaseWithoutTheFilter as any);
+
+    const modified = new Enhanced().getModifiedSchema(
+      { type: 'epistola-document-preview', key: 'probe' },
+      {},
+      false,
+    );
+
+    expect(carriersOf(modified)).toHaveLength(1);
+    expect(modified.key).toBe('probe');
+  });
+
   it('pins the upstream behaviour the enhancer works around', () => {
     // A stock Formio component whose default schema declares the carrier loses it on
     // serialization — the deep-equal-to-default array is classified "unmodified" and dropped.
