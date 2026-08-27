@@ -189,6 +189,39 @@ class FormFlowDemoConfigurationTest {
         }
     }
 
+    @Test
+    fun `the step-2 preview reads a step-1 field by re-declaring its key`() {
+        val flow = readJson("$BASE/form-flow/generate-letter-preview-step2.form-flow.json")
+
+        fun formOf(i: Int) =
+            readJson(
+                "$BASE/form/${flow.path("steps")[i].path("type").path("properties").path("definition").asText()}.form.json",
+            )
+
+        val firstStepKeys = formOf(0).path("components").map { it.path("key").asText() }
+        val confirmStep = formOf(1)
+
+        val preview = confirmStep.path("components").single { it.path("type").asText() == "epistola-document-preview" }
+        val referenced =
+            Regex(
+                """\${'$'}form\.(\w+)""",
+            ).findAll(preview.path("overrideMapping").asText()).map { it.groupValues[1] }.toList()
+        assertThat(referenced).describedAs("the step-2 preview should read at least one form field").isNotEmpty()
+
+        // `$form` is the *current* form's data. Valtimo carries an earlier step's value across only by
+        // prefilling a component on this step that re-declares the same key, so every $form.<key> the
+        // mapping reads must exist both here and on the step it comes from. Rename one and the preview
+        // silently falls back to the case document instead of the typed value.
+        referenced.forEach { key ->
+            assertThat(confirmStep.path("components").map { it.path("key").asText() })
+                .describedAs("form field %s is read by the mapping, so this step must declare a carrier for it", key)
+                .contains(key)
+            assertThat(firstStepKeys)
+                .describedAs("carrier '%s' only receives a value if the earlier step submits that key", key)
+                .contains(key)
+        }
+    }
+
     private fun readJson(path: String) = ClassPathResource(path).inputStream.use { mapper.readTree(it) }
 
     private fun readText(path: String) = ClassPathResource(path).inputStream.bufferedReader().use { it.readText() }

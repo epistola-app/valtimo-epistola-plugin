@@ -2,6 +2,13 @@
   "display": "form",
   "components": [
     {
+      "key": "subject",
+      "type": "hidden",
+      "input": true,
+      "label": "Onderwerp (overgenomen uit stap 1)",
+      "persistent": false
+    },
+    {
       "key": "information",
       "type": "htmlelement",
       "input": false,
@@ -27,7 +34,8 @@
             "sourceKey": "epistola:taskId"
           }
         }
-      ]
+      ],
+      "overrideMapping": "{\n  \"doc\": {\n    \"title\": $form.subject\n  }\n}"
     },
     {
       "key": "submit",

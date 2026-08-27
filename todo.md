@@ -86,6 +86,29 @@ Twee dingen om te weten bij het meten op stap 2:
   uit te lezen, en zonder mapping vuurt de preview meteen bij het openen in plaats van te wachten
   op formulierdata.
 
+### Kan de preview velden van een andere stap gebruiken?
+
+Ja, maar niet vanzelf. `$form` is de data van **het formulier van de huidige stap**; er is geen
+aparte bak met alle stappen. Om een veld van een eerdere stap te lezen moet je op de latere stap
+een component met **dezelfde key** opnieuw declareren (een `hidden` veld volstaat). Valtimo prefilt
+elk stapformulier met de samengevoegde submissiedata van de flow
+(`FormFlowInstance.getSubmissionDataContext()` → `FormDefinition.preFill`), zodat die component met
+de eerdere waarde in `defaultValue` binnenkomt en Formio die in `root.data` zet — waar `$form` naar
+kijkt.
+
+Zonder die carrier is `$form.<key>` simpelweg undefined en valt de mapping stil terug op de
+casegegevens. Dat is precies wat `confirm-letter-with-preview.form.json` nu doet met het verborgen
+`subject`-veld, en `FormFlowDemoConfigurationTest` bewaakt dat de gelezen keys op beide stappen
+bestaan.
+
+Twee praktische gevolgen:
+
+- Latere stappen overschrijven eerdere bij gelijke keys, en de submissiedata van de flow wint van
+  document- en procesvariabele-prefill voor dezelfde component.
+- Een **verborgen** carrier vuurt geen `change` of `focusout`, dus auto-refresh pakt hem niet op;
+  de initiële preview-berekening doet dat wel. Wil je op stap 2 ook auto-refresh meten, dan is een
+  zichtbaar invoerveld nodig.
+
 ## Bevindingen tot nu toe
 
 - **Aan de backendkant gedraagt de preview-variant zich identiek aan de baseline.**

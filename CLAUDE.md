@@ -109,6 +109,7 @@ docker/            # Docker compose for local dependencies
   cd ../../test-app/frontend && pnpm start
   ```
 - **Package name**: Epistola client uses `app.epistola.client` (not `io.epistola`)
+- **`$form` in a form flow is one step's data**: the preview component's `overrideMapping` is evaluated against `this.root.data` — the currently rendered form. To read a field submitted on an _earlier_ step, re-declare a component with the same key on the later step (a `hidden` one is fine). Valtimo prefills each step's form from the flow's merged submission data (`FormFlowInstance.getSubmissionDataContext()` → `FormDefinition.preFill`), so the re-declared component arrives with the earlier value in its `defaultValue` and Formio copies it into `root.data`. Without that carrier the reference is simply undefined and the mapping silently falls back. A hidden carrier fires neither `change` nor `focusout`, so it is picked up by the preview's initial compute, not by auto-refresh. Guarded by `FormFlowDemoConfigurationTest`.
 - **Form flows write to the case document**: `valtimoFormFlow.completeTask(additionalProperties, step.submissionData)` — the **two-argument** overload — defaults its save path to `doc:/submission`, so it writes the completing step's submission data onto the case document before completing the task. A document definition with `additionalProperties: false` that does not declare `submission` therefore rejects the write, the `onComplete` expression throws, and the task never completes — surfacing as a 500 (_"Error while executing expression"_) on the final step, not as a schema error. Either declare `submission` on the schema or pass an explicit save path as the third argument. Guarded by `FormFlowDemoConfigurationTest`.
 - **Stale `epistola-suite:latest`**: a locally cached image can predate the pinned contract client (`epistola-client` in `gradle/libs.versions.toml`). The symptom is not a version error but a **500 on `/templates`** — the older response omits `page`, which the generated client requires as non-nullable. `docker pull` before blaming the plugin, and check `docker inspect <container> --format '{{index .Config.Labels "org.opencontainers.image.version"}}'` against [COMPATIBILITY.md](COMPATIBILITY.md).
 - **Plugin properties**: Backend `@PluginProperty` keys must match frontend field names exactly
@@ -257,6 +258,10 @@ Keycloak on 8081 with `client_id=valtimo-console`, `grant_type=password`, `admin
 | List tasks         | `GET /api/v1/task?filter=all` (filter client-side by `processInstanceId`)                                                                                                             |
 | Open a task's link | `GET /api/v2/process-link/task/{taskId}` — **v2**; returns `properties.formFlowInstanceId` for form-flow links                                                                        |
 | Complete a step    | `POST /api/v1/form-flow/instance/{flowId}/step/instance/{stepInstanceId}`                                                                                                             |
+
+The complete-step **body is the submission data itself**, not wrapped in a `submissionData` envelope.
+Valtimo filters the posted object down to the step form's input fields, so a wrapper key is silently
+dropped and the step stores `{}` — the flow still advances, which makes this easy to miss when scripting.
 
 `PreviewRequest` (`POST /preview`) has **two** override fields and they are not interchangeable:
 `inputOverrides` is the `{doc, pv}` overlay applied **before** the JSONata mapping — this is what the
