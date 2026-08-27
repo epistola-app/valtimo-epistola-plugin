@@ -32,7 +32,12 @@ import { FormioCustomComponent } from '@valtimo/components';
 import { Subject, of } from 'rxjs';
 import { catchError, takeUntil } from 'rxjs/operators';
 import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
-import { OverrideRow, parseOverrideJsonata, serializeOverrideRows } from './override-jsonata';
+import {
+  OverrideRow,
+  collectFormFieldReferences,
+  parseOverrideJsonata,
+  serializeOverrideRows,
+} from './override-jsonata';
 import { isLegacyOverrideMapping, legacyOverrideToJsonata } from './legacy-override-converter';
 import { EpistolaPluginService } from '../../services';
 import { extractReferencedPaths, ReferencedPath } from '../../utils/extract-referenced-paths';
@@ -77,6 +82,25 @@ export type OverrideMapping = Record<string, Record<string, string>>;
         Make the preview reflect what the user is typing — <em>before</em> they submit — by feeding
         live form values into the document inputs.
       </p>
+      <!-- Authoring-time guard: a $form reference this form can't satisfy -->
+      <div
+        *ngIf="hasUnknownFieldReferences"
+        class="builder-warning"
+        data-testid="epistola-override-unknown-fields"
+      >
+        <i class="mdi mdi-alert-outline"></i>
+        <div>
+          <strong>This form has no field named</strong>
+          <code *ngFor="let key of unknownFieldReferences; let i = index">{{ key }}</code
+          >.
+          <span>
+            <code>$form</code> only sees the form you are editing. If the value comes from an
+            earlier step of a Form Flow, add a field to <em>this</em> form with exactly that
+            property name — Valtimo fills it in from the earlier step. Otherwise the preview ignores
+            the mapping and falls back to the saved case data.
+          </span>
+        </div>
+      </div>
       <details class="builder-help" data-testid="epistola-override-help">
         <summary data-testid="epistola-override-help-summary">When should I map a field?</summary>
         <ul>
@@ -202,6 +226,14 @@ export type OverrideMapping = Record<string, Record<string, string>>;
             <i class="mdi mdi-close"></i>
           </button>
         </div>
+        <p
+          *ngIf="availableFields.length > 0"
+          class="field-scope-hint"
+          data-testid="epistola-override-field-scope-hint"
+        >
+          Only fields on this form are listed. A field from an earlier Form Flow step appears here
+          once this form declares one with the same property name.
+        </p>
         <button
           type="button"
           class="add-btn"
@@ -287,6 +319,34 @@ export type OverrideMapping = Record<string, Record<string, string>>;
         background: #eef0f2;
         border-radius: 3px;
         padding: 0 0.2rem;
+      }
+      .builder-warning {
+        display: flex;
+        gap: 0.45rem;
+        align-items: flex-start;
+        border: 1px solid #f5c26b;
+        background: #fff8e6;
+        border-radius: 4px;
+        padding: 0.5rem 0.6rem;
+        margin: 0 0 0.6rem;
+        font-size: 0.76rem;
+        color: #6b4e00;
+        line-height: 1.45;
+      }
+      .builder-warning code {
+        background: #f6e6bf;
+        border-radius: 3px;
+        padding: 0 0.2rem;
+        margin: 0 0.15rem;
+      }
+      .builder-warning .mdi {
+        margin-top: 0.05rem;
+      }
+      .field-scope-hint {
+        font-size: 0.74rem;
+        color: #6c757d;
+        margin: 0.4rem 0 0;
+        line-height: 1.4;
       }
       .used-by-template {
         border: 1px solid #d6e4ff;
@@ -467,6 +527,30 @@ export class EpistolaOverrideBuilderComponent
 
   get formFieldKeys(): string[] {
     return this.availableFields.map((f) => f.key);
+  }
+
+  /**
+   * Form fields the mapping reads that this form doesn't declare.
+   *
+   * `$form` is the data of the form being edited, so a reference to a field on
+   * another Form Flow step resolves to nothing — the preview silently falls back
+   * to the saved case data and the author sees a plausible document that ignores
+   * their mapping. Surfacing the mismatch is the only signal they get.
+   *
+   * Only checked when the field list is known: with no `availableFields` the
+   * builder can't tell an unknown key from an unlisted one, and warning on every
+   * key would be worse than staying quiet.
+   */
+  get unknownFieldReferences(): string[] {
+    if (this.availableFields.length === 0) {
+      return [];
+    }
+    const known = new Set(this.formFieldKeys);
+    return collectFormFieldReferences(this.expression).filter((key) => !known.has(key));
+  }
+
+  get hasUnknownFieldReferences(): boolean {
+    return this.unknownFieldReferences.length > 0;
   }
 
   get hasReferencedPaths(): boolean {

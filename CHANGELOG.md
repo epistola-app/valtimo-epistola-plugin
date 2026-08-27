@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **[docs/form-flows.md](docs/form-flows.md)** documents using Epistola inside a Valtimo Form Flow:
+  where to place the preview and the generate-document task, the `doc:/submission` write that
+  `completeTask` performs, and how to read a field from an earlier step.
+- **The override builder now warns when a mapping reads a `$form` field the form does not declare.**
+  `$form` is scoped to the step being edited, so a reference to another Form Flow step's field
+  previously saved clean and the preview silently fell back to saved case data — the author saw a
+  plausible document that ignored their mapping. Advanced-mode expressions are checked too, by
+  walking the JSONata AST rather than only the round-trippable subset.
 - The test application includes a **Form Flow voorbeeld** case: a two-step Valtimo Form Flow whose
   confirmation step carries an `epistola-document-preview`, completing into a regular `Vervolgtaak`.
   The preview reads the subject typed on the first step through a re-declared hidden carrier, and
@@ -23,6 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The Input Overrides field picker no longer offers the hidden `epistolaTaskId` carrier as a
+  selectable form field. The Epistola components themselves were skipped, but the walk still
+  descended into their nested `components` array, which is reserved for that carrier.
 - The **Form Flow voorbeeld** demo case could not complete its `Genereer brief` task: clicking
   **Doorgaan** returned _"Error while executing expression:
   '${valtimoFormFlow.completeTask(additionalProperties, step.submissionData)}'"_. Valtimo's two-argument
