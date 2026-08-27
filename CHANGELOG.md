@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `FormFlowTransitionE2ETest` boots the real test-app against Testcontainers and walks the
+  **Form Flow voorbeeld** case end to end — opening the `Genereer brief` task, completing both form
+  flow steps, and asserting the process advanced to the regular `Vervolgtaak` and that the
+  completing step's submission data reached the case document. It runs in CI as part of
+  `:test-app:backend:test`, so the class of failure that broke this fixture (a rejected
+  `doc:/submission` write making `completeTask` throw) is now caught on every PR rather than only
+  by the browser suite, which is local-only.
 - The test application now includes a standalone **Form Flow voorbeeld** case. Its two-step
   `Genereer brief` flow ends with a confirmation screen and then completes into a regular
   `Vervolgtaak`, providing a preview-free local baseline for investigating Form Flow transitions.
