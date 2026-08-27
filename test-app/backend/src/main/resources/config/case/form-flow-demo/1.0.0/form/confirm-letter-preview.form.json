@@ -1,0 +1,21 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "key": "information",
+      "type": "htmlelement",
+      "input": false,
+      "label": "",
+      "tag": "div",
+      "content": "<p>De brief is klaar om te genereren. Klik op <strong>Doorgaan</strong> om deze taak af te ronden en naar de vervolgtaak te gaan.</p>"
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Doorgaan",
+      "action": "submit",
+      "theme": "primary"
+    }
+  ]
+}

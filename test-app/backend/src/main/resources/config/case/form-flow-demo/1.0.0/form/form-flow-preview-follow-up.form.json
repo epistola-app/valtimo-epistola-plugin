@@ -1,0 +1,21 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "key": "information",
+      "type": "htmlelement",
+      "input": false,
+      "label": "",
+      "tag": "div",
+      "content": "<p>De Form Flow is afgerond. Deze gewone vervolgtaak bevestigt dat de BPMN-overgang zonder pagina-refresh is bereikt.</p>"
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Afronden",
+      "action": "submit",
+      "theme": "primary"
+    }
+  ]
+}

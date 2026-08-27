@@ -1,0 +1,38 @@
+[
+  {
+    "activityId": "startEvent",
+    "activityType": "bpmn:StartEvent:start",
+    "processLinkType": "form",
+    "formDefinitionName": "form-flow-demo-preview-start"
+  },
+  {
+    "activityId": "generate-letter-preview",
+    "activityType": "bpmn:UserTask:create",
+    "processLinkType": "form-flow",
+    "formFlowDefinitionKey": "generate-letter-preview",
+    "formDisplayType": "modal",
+    "formSize": "medium"
+  },
+  {
+    "activityId": "follow-up-preview",
+    "activityType": "bpmn:UserTask:create",
+    "processLinkType": "form",
+    "formDefinitionName": "form-flow-preview-follow-up"
+  },
+  {
+    "activityId": "render-letter",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+    "pluginActionDefinitionKey": "epistola-generate-document",
+    "actionProperties": {
+      "actionConfigVersion": 1,
+      "templateId": "example-template",
+      "outputFormat": "\"PDF\"",
+      "filename": "\"form-flow-demo-brief.pdf\"",
+      "resultProcessVariable": "epistolaResult",
+      "dataMapping": "{\n  \"firstName\": $doc.title\n}",
+      "catalogId": "municipality-demo"
+    }
+  }
+]

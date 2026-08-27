@@ -1,0 +1,43 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "key": "subject",
+      "type": "textfield",
+      "input": true,
+      "label": "Onderwerp van de brief",
+      "defaultValue": "Bevestiging lokale Form Flow-test",
+      "validate": { "required": true }
+    },
+    {
+      "type": "epistola-document-preview",
+      "key": "preview",
+      "input": false,
+      "label": "Voorbeeld brief",
+      "processDefinitionKey": "form-flow-demo-preview",
+      "sourceActivityId": "render-letter",
+      "overrideMapping": "{\n  \"doc\": {\n    \"title\": $form.subject\n  }\n}",
+      "components": [
+        {
+          "type": "hidden",
+          "key": "epistolaTaskId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola:taskId"
+          }
+        }
+      ]
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Naar bevestiging",
+      "action": "submit",
+      "theme": "primary",
+      "disableOnInvalid": true
+    }
+  ]
+}

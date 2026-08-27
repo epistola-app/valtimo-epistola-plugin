@@ -106,5 +106,66 @@ class FormFlowDemoConfigurationTest {
             .isTrue()
     }
 
+    @Test
+    fun `the preview variant mirrors the baseline flow, differing only by the preview component`() {
+        val baseline = readJson("$BASE/form-flow/generate-letter.form-flow.json")
+        val preview = readJson("$BASE/form-flow/generate-letter-preview.form-flow.json")
+
+        // Same shape: two steps, the first leading into the second, the second completing the task.
+        assertThat(preview.path("steps").size()).isEqualTo(baseline.path("steps").size())
+        assertThat(preview.path("steps")[1].path("onComplete")[0].asText())
+            .describedAs("both flows must complete the task the same way, or the comparison is not like-for-like")
+            .isEqualTo(baseline.path("steps")[1].path("onComplete")[0].asText())
+
+        val baselineForm = readText("$BASE/form/generate-letter.form.json")
+        val previewForm = readText("$BASE/form/generate-letter-preview.form.json")
+        assertThat(baselineForm).doesNotContain("epistola")
+        assertThat(previewForm.lowercase()).contains("epistola-document-preview")
+    }
+
+    @Test
+    fun `the preview component targets a generate-document link in its own process`() {
+        val form = readJson("$BASE/form/generate-letter-preview.form.json")
+        val component =
+            form.path("components").single { it.path("type").asText() == "epistola-document-preview" }
+
+        // The preview derives the process instance from the task it is opened on, so the activity it
+        // targets has to live in that same process definition.
+        assertThat(component.path("processDefinitionKey").asText()).isEqualTo("form-flow-demo-preview")
+        val targetActivity = component.path("sourceActivityId").asText()
+
+        val link =
+            readJson("$BASE/process-link/form-flow-demo-preview.process-link.json")
+                .single { it.path("activityId").asText() == targetActivity }
+        assertThat(link.path("pluginActionDefinitionKey").asText()).isEqualTo("epistola-generate-document")
+
+        // Without the carrier the component fails closed outside the builder. See docs/formio-components.md.
+        assertThat(
+            component.path("components").any { it.path("properties").path("sourceKey").asText() == "epistola:taskId" },
+        ).describedAs("the task-id carrier must be present in hand-authored form JSON").isTrue()
+    }
+
+    @Test
+    fun `the preview variant generates only after both user tasks, leaving the measured transition clean`() {
+        val bpmn = readText("$BASE/bpmn/form-flow-demo-preview.bpmn")
+
+        fun flowTarget(source: String) = Regex("""sourceRef="$source" targetRef="([^"]+)"""").find(bpmn)?.groupValues?.get(1)
+
+        // The point of the variant is to isolate the preview. If document generation sat between the
+        // two user tasks it would confound the very transition the investigation measures.
+        assertThat(flowTarget("generate-letter-preview"))
+            .describedAs("the form flow task must hand straight over to the follow-up task")
+            .isEqualTo("follow-up-preview")
+        assertThat(flowTarget("follow-up-preview"))
+            .describedAs("generation belongs after the follow-up task, not before it")
+            .isEqualTo("render-letter")
+    }
+
     private fun readJson(path: String) = ClassPathResource(path).inputStream.use { mapper.readTree(it) }
+
+    private fun readText(path: String) = ClassPathResource(path).inputStream.bufferedReader().use { it.readText() }
+
+    private companion object {
+        const val BASE = "config/case/form-flow-demo/1.0.0"
+    }
 }

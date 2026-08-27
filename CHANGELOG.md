@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- The test application now includes **Form Flow voorbeeld met preview**, a second process on the
+  `form-flow-demo` case that is deliberately identical to the preview-free baseline except that its
+  first form flow step carries an `epistola-document-preview`. Document generation sits **after**
+  both user tasks, so the `Genereer brief` → `Vervolgtaak` transition the investigation measures is
+  unaffected by generation and the two flows stay comparable. `FormFlowDemoConfigurationTest` pins
+  that invariant, along with the preview targeting a generate-document link in its own process and
+  carrying the task-id carrier.
 - `FormFlowTransitionE2ETest` boots the real test-app against Testcontainers and walks the
   **Form Flow voorbeeld** case end to end — opening the `Genereer brief` task, completing both form
   flow steps, and asserting the process advanced to the regular `Vervolgtaak` and that the
