@@ -20,8 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `:test-app:backend:test`, so the class of failure that broke this fixture (a rejected
   `doc:/submission` write making `completeTask` throw) is now caught on every PR rather than only
   by the browser suite, which is local-only.
-- Documented the local Form Flow investigation state, reproduction path, and remaining
-  preview and Testcontainers diagnostics in `todo.md`.
 
 ### Fixed
 
