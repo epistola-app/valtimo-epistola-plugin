@@ -1,0 +1,34 @@
+{
+  "key": "generate-letter",
+  "startStep": "enter-letter-details",
+  "steps": [
+    {
+      "key": "enter-letter-details",
+      "title": "Briefgegevens",
+      "type": {
+        "name": "form",
+        "properties": {
+          "definition": "generate-letter"
+        }
+      },
+      "nextSteps": [
+        {
+          "step": "confirm-letter"
+        }
+      ]
+    },
+    {
+      "key": "confirm-letter",
+      "title": "Bevestigen",
+      "type": {
+        "name": "form",
+        "properties": {
+          "definition": "confirm-letter"
+        }
+      },
+      "onComplete": [
+        "${valtimoFormFlow.completeTask(additionalProperties, step.submissionData)}"
+      ]
+    }
+  ]
+}

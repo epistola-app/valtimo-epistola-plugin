@@ -1,0 +1,16 @@
+{
+  "$id": "form-flow-demo.schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Form Flow voorbeeld",
+  "description": "Minimaal dossier voor het testen van een Form Flow-taakovergang",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    }
+  },
+  "required": ["title"]
+}

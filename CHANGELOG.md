@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The test application now includes a standalone **Form Flow voorbeeld** case. Its two-step
+  `Genereer brief` flow ends with a confirmation screen and then completes into a regular
+  `Vervolgtaak`, providing a preview-free local baseline for investigating Form Flow transitions.
+
 ## [0.18.0] - 2026-08-25
 
 ### Added

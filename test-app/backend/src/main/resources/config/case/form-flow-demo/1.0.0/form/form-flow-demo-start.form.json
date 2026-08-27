@@ -1,0 +1,22 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "key": "title",
+      "type": "textfield",
+      "input": true,
+      "label": "Titel",
+      "defaultValue": "Lokale Form Flow-test",
+      "validate": { "required": true }
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Start Form Flow",
+      "action": "submit",
+      "theme": "primary",
+      "disableOnInvalid": true
+    }
+  ]
+}

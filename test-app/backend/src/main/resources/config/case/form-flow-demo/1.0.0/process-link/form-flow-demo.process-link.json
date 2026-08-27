@@ -1,0 +1,22 @@
+[
+  {
+    "activityId": "startEvent",
+    "activityType": "bpmn:StartEvent:start",
+    "processLinkType": "form",
+    "formDefinitionName": "form-flow-demo-start"
+  },
+  {
+    "activityId": "generate-letter",
+    "activityType": "bpmn:UserTask:create",
+    "processLinkType": "form-flow",
+    "formFlowDefinitionKey": "generate-letter",
+    "formDisplayType": "modal",
+    "formSize": "medium"
+  },
+  {
+    "activityId": "follow-up",
+    "activityType": "bpmn:UserTask:create",
+    "processLinkType": "form",
+    "formDefinitionName": "form-flow-follow-up"
+  }
+]
