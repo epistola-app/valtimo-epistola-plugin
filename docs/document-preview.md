@@ -9,6 +9,7 @@ The `epistola-document-preview` Formio component shows a live PDF preview of a d
 - [Document Component](document-component.md) — the after-generation render/download component
 - [Data Mapping](data-mapping.md) — how case/process data flows into Epistola templates
 - [Use Cases](use-cases.md) — demo scenarios including the bezwaarprocedure
+- [Form Flows](form-flows.md) — using the preview inside a multi-step Valtimo Form Flow
 
 ## Modes
 
