@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Documented the local Form Flow investigation state, reproduction path, and remaining
+  preview and Testcontainers diagnostics in `todo.md`.
+
 ### Added
 
 - The test application now includes a standalone **Form Flow voorbeeld** case. Its two-step
