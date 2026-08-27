@@ -48,25 +48,36 @@ niet plaats. Het schema accepteert nu een `submission`-object.
 
 ## Wat nog te doen is
 
-1. Voeg een tweede, verder identieke Form Flow toe met de Epistola-documentpreview
-   in de eerste stap.
-   - Model de service task naar `objection`/`generate-decision`: het
-     preview-component wijst met `processDefinitionKey` + `sourceActivityId` naar
-     een `generate-document`-proceslink. Zie
-     `config/case/objection/1.0.0/form/assess-objection.form.json` voor de vorm,
-     inclusief de verplichte `epistolaTaskId`-carrier.
-   - `example-template` uit de `municipality-demo`-catalogus verwacht één veld
-     (`firstName`) en is daarmee het eenvoudigst bruikbaar.
-   - Plaats de service task **na** beide user tasks, zodat de overgang die we
-     meten identiek blijft aan de baseline.
-2. Herhaal de overgang op de tweede flow en verzamel browserconsole-, netwerk- en
-   backendlogs rond de klik op **Doorgaan**. Vergelijk die met de preview-vrije
-   baseline. De Playwright-test uit stap 1 is te kopiëren als meetinstrument; de
+1. **Vergelijk de twee flows in de browser.** De preview-variant bestaat en werkt; wat
+   nog ontbreekt is de meting waar het onderzoek om draait. Verzamel browserconsole-,
+   netwerk- en backendlogs rond de klik op **Doorgaan** in
+   **Form Flow voorbeeld met preview** en zet die naast de baseline. Let specifiek op
+   een preview-request die nog loopt op het moment dat de taak wordt afgerond:
+   auto-refresh staat standaard aan, met 1500 ms debounce en een flush bij blur — het
+   verlaten van het onderwerpveld vlak voor de klik is dus precies het scenario dat
+   een request in de lucht kan hebben.
+   `e2e/tests/form-flow-transition.spec.ts` is als meetinstrument te kopiëren; de
    allowlists voor console- en netwerkruis staan er al in.
-3. Reproduceer de eerder falende `DownloadDocumentE2ETest` afzonderlijk met
-   volledige Testcontainers-logging. De handmatige Keycloak-container startte
-   succesvol; de exacte oorzaak van de Testcontainers-fout is nog niet
-   vastgesteld.
+2. Reproduceer de eerder falende `DownloadDocumentE2ETest` afzonderlijk met
+   volledige Testcontainers-logging. **Let op:** die test is inmiddels groen
+   (7 tests) in een volledige `./gradlew :test-app:backend:test`-run, dus deze
+   taak is mogelijk achterhaald. De oorspronkelijke fout is niet gereproduceerd,
+   dus de oorzaak is nog steeds niet vastgesteld.
+
+## Bevindingen tot nu toe
+
+- **Aan de backendkant gedraagt de preview-variant zich identiek aan de baseline.**
+  Via de REST-API doorlopen beide flows hun twee stappen en wordt `Vervolgtaak`
+  de open taak. Als er een probleem is, zit het dus in de browser en niet in de
+  BPMN- of Form Flow-afhandeling.
+- De preview zelf werkt tegen een draaiende Epistola: `POST /preview` geeft
+  `200 application/pdf` (~43 kB), en `inputOverrides` worden toegepast — twee
+  runs met verschillende overridewaarden leveren aantoonbaar verschillende
+  documenten op. De preview volgt dus wat er in het formulier staat.
+- Let op het onderscheid in `PreviewRequest`: `inputOverrides` is de
+  `{doc, pv}`-overlay die vóór de JSONata-mapping wordt toegepast (dat is wat het
+  component via `overrideMapping` stuurt). `overrides` is iets anders: dat werkt
+  ná de mapping op de templatevelden.
 
 ## Aandachtspunten voor de omgeving
 
