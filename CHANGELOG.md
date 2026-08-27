@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- The **Form Flow voorbeeld** demo case could not complete its `Genereer brief` task: clicking
+  **Doorgaan** returned _"Error while executing expression:
+  '${valtimoFormFlow.completeTask(additionalProperties, step.submissionData)}'"_. Valtimo's two-argument
+  `completeTask` overload defaults its save path to `doc:/submission`, so it writes the completing step's
+  submission data to the case document; the demo's document schema was `additionalProperties: false` with
+  only `title`, so the write failed with `extraneous key [submission] is not permitted` and the task never
+  completed. The schema now declares a `submission` object, and `FormFlowDemoConfigurationTest` pins the
+  coupling between the `completeTask` overload and the document schema.
 - **Epistola components dropped in the Formio builder now keep their hidden task-id carrier, so they work when the task is opened.** Previously _every_ form authored through the builder was saved **without** the carrier, and the preview, download, and retry-form components failed closed with _"… is only available from within a user task"_, regardless of how the task was opened. Only hand-authored form JSON (the classpath retry form and the test-app forms) carried it — which is why the test suite and the dev flows stayed green while real usage broke.
   - **Cause:** the carrier was declared in each component's default `schema`, and Formio's `Component.get schema()` serializes only what _differs_ from the registered default — `getModifiedSchema` drops an array that deep-equals `defaultSchema[key]`. Declaring the carrier as a default is precisely what made it invisible to the serializer. Formio does this safely for its own components because the class re-applies its defaults at runtime; Valtimo's prefill cannot, because it runs **server-side against the stored JSON**.
   - **Fix:** each task-bound component is now additionally wrapped in `withPrefilledTaskIdCarrier` (`components/valtimo-formio-adapter.ts`), which re-adds the carrier after Formio's filter. Applied to all three components. An existing carrier is recognised by its `hidden` type plus its source key rather than by its key, because Formio's builder uniquifies keys across a form — the carrier of the second Epistola component on a form is renamed to `epistolaTaskId2` — while the `type` check keeps an unrelated child from masquerading as the carrier after Formio's `defaultsDeep` merges the default `components` array element-wise. Extra carriers are collapsed to one, so re-saving a form that picked up duplicates repairs it.

@@ -84,5 +84,27 @@ class FormFlowDemoConfigurationTest {
         }
     }
 
+    @Test
+    fun `document schema accepts the submission data that completeTask writes to doc-slash-submission`() {
+        val flow = readJson("config/case/form-flow-demo/1.0.0/form-flow/generate-letter.form-flow.json")
+        val completeTask =
+            flow
+                .path("steps")
+                .flatMap { it.path("onComplete") }
+                .map { it.asText() }
+                .single { it.contains("completeTask") }
+
+        // The two-argument overload defaults its save path to `doc:/submission`, so the completing
+        // step's submission data lands on the document. A schema that rejects it fails the task.
+        assertThat(completeTask).doesNotContain("{'doc:")
+
+        val schema =
+            readJson("config/case/form-flow-demo/1.0.0/document/definition/form-flow-demo.schema.document-definition.json")
+        assertThat(schema.path("additionalProperties").asBoolean(true)).isFalse()
+        assertThat(schema.path("properties").has("submission"))
+            .describedAs("document schema must permit the doc:/submission key written by completeTask")
+            .isTrue()
+    }
+
     private fun readJson(path: String) = ClassPathResource(path).inputStream.use { mapper.readTree(it) }
 }
