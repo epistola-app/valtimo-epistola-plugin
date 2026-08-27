@@ -24,6 +24,7 @@ import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/p
 import {
   registerEpistolaFormioComponent,
   ValtimoFormioComponentConstructor,
+  withPrefilledTaskIdCarrier,
 } from '../valtimo-formio-adapter';
 
 /** Default debounce for the auto-refresh, in milliseconds. */
@@ -83,7 +84,7 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
     EPISTOLA_DOCUMENT_PREVIEW_OPTIONS,
     EpistolaDocumentPreviewComponent,
     injector,
-    withPreviewOverrides,
+    (base) => withPreviewOverrides(withPrefilledTaskIdCarrier(base)),
   );
 }
 

@@ -22,6 +22,13 @@ Backend versions use the `X.Y.Z.RELEASE` form; the frontend `@valtimo/*` package
 
 The supported frontend range assumes Angular 19 and the Form.io versions used throughout this Valtimo range: `@formio/angular@7.0.0` and `formiojs@4.19.5`. These are exact peer versions because separate Form.io installations create separate component registries. CI builds against the current pin and runs `pnpm singletons:check`; the 13.21 floor is maintained by limiting Epistola's compatibility adapter to the public APIs available at that version.
 
+**Form.io coupling to watch on a major bump.** Every `@valtimo/components` release across the supported range (13.21 → 13.42) depends on exactly `formiojs@4.19.5`, so there is only one Form.io version in play. Two behaviours of that version are load-bearing for the task-id carrier (see [docs/formio-components.md](docs/formio-components.md)):
+
+- `Component.getModifiedSchema` — persists only schema that _differs_ from the registered default, which is why `withPrefilledTaskIdCarrier` has to re-add the carrier after the filter. It is declared in Form.io's public typings and is overridden, not monkey-patched, so the coupling is scoped to the plugin's own three components. The override deliberately has **no fallback**: if a future Form.io drops or changes the method, `task-id-carrier.spec.ts` fails on the bump. Failing there is preferable to degrading silently, which would persist every component's full default schema and freeze those defaults at authoring time.
+- The builder uniquifies component keys across a form (`epistolaTaskId` → `epistolaTaskId2`), so the carrier is matched on its `hidden` type plus source key, never on its key.
+
+Re-check both when raising the Form.io version, not just when raising Valtimo — the pin is transitive through `@valtimo/components`.
+
 ## Epistola Suite compatibility (catalog wire schema)
 
 Separate from Valtimo, the plugin also has a compatibility surface with **Epistola Suite**: the
