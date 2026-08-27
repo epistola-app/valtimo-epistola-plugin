@@ -72,23 +72,46 @@ export const PREFILLED_TASK_ID_CARRIER = {
  * components therefore re-add the carrier after Formio's filter (see
  * {@code withPrefilledTaskIdCarrier} in {@code valtimo-formio-adapter.ts}).
  *
- * <p>Idempotent: hand-authored forms (e.g. the classpath retry form) already carry it.
- *
- * <p>The carrier is matched on <b>both</b> its key and its source key, not the source key alone.
- * Formio merges a component's default schema into the stored one with {@code _.defaultsDeep},
- * which merges arrays <i>element-wise</i> — so an unrelated first child of a stored component
- * silently inherits the default carrier's {@code properties.sourceKey}. Matching on the source
- * key alone would read that polluted child as "carrier already present" and skip adding the real
- * one.
+ * <p>Idempotent: hand-authored forms (e.g. the classpath retry form) already carry it. Any extra
+ * carriers beyond the first are dropped, so re-saving a form that picked up duplicates repairs it.
  */
 export function ensureTaskIdCarrier(components: unknown): any[] {
   const existing = Array.isArray(components) ? components : [];
-  const hasCarrier = existing.some(
-    (child: any) =>
-      child?.key === PREFILLED_TASK_ID_DATA_KEY &&
-      child?.properties?.sourceKey === PREFILLED_TASK_ID_SOURCE_KEY,
+  let kept = false;
+  const deduped = existing.filter((child: unknown) => {
+    if (!isTaskIdCarrier(child)) {
+      return true;
+    }
+    if (kept) {
+      return false;
+    }
+    kept = true;
+    return true;
+  });
+  return kept ? deduped : [...deduped, { ...PREFILLED_TASK_ID_CARRIER }];
+}
+
+/**
+ * Whether a child component is a task-id carrier.
+ *
+ * <p>Matched on {@code type: 'hidden'} plus the source key, deliberately <b>not</b> on the key.
+ * Formio's builder uniquifies keys across a form, so the carrier of the second Epistola component
+ * on a form is renamed to {@code epistolaTaskId2}, {@code …3}, and so on. (That rename is
+ * harmless — prefill resolves by each field's own key and {@link readPrefilledTaskId} searches by
+ * source key — but a key-based match would fail to recognise it and append a duplicate carrier.)
+ *
+ * <p>The {@code type} check is what keeps this from being too lax: Formio merges a component's
+ * default schema into the stored one with {@code _.defaultsDeep}, which merges arrays
+ * <i>element-wise</i>, so an unrelated first child of a stored component silently inherits the
+ * default carrier's {@code properties.sourceKey}. Such a child keeps its own {@code type}
+ * (e.g. {@code textfield}), because {@code defaultsDeep} only fills in what is missing.
+ */
+function isTaskIdCarrier(child: unknown): boolean {
+  const candidate = child as any;
+  return (
+    candidate?.type === 'hidden' &&
+    candidate?.properties?.sourceKey === PREFILLED_TASK_ID_SOURCE_KEY
   );
-  return hasCarrier ? existing : [...existing, { ...PREFILLED_TASK_ID_CARRIER }];
 }
 
 /**

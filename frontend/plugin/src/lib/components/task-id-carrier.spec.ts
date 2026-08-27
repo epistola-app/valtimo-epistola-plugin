@@ -150,6 +150,55 @@ describe('prefilled task-id carrier survives Formio schema serialization', () =>
       expect(carriersOf(schema)).toHaveLength(1);
     });
 
+    it('recognises a carrier whose key the builder uniquified', () => {
+      // Formio renames colliding keys across a form, so the carrier of the SECOND Epistola
+      // component on a form arrives as epistolaTaskId2. Matching on the key would miss it and
+      // append a duplicate.
+      const schema = persistedSchemaOf(type, {
+        type,
+        key: 'secondOnTheForm',
+        components: [
+          {
+            type: 'hidden',
+            key: `${PREFILLED_TASK_ID_DATA_KEY}2`,
+            input: true,
+            persistent: false,
+            label: 'Epistola Task Id',
+            properties: { sourceKey: PREFILLED_TASK_ID_SOURCE_KEY },
+          },
+        ],
+      });
+
+      const carriers = carriersOf(schema);
+      expect(carriers).toHaveLength(1);
+      expect(carriers[0].key).toBe(`${PREFILLED_TASK_ID_DATA_KEY}2`);
+    });
+
+    it('collapses carriers that a previous save duplicated', () => {
+      const schema = persistedSchemaOf(type, {
+        type,
+        key: 'previouslyDuplicated',
+        components: [
+          {
+            type: 'hidden',
+            key: `${PREFILLED_TASK_ID_DATA_KEY}2`,
+            input: true,
+            persistent: false,
+            properties: { sourceKey: PREFILLED_TASK_ID_SOURCE_KEY },
+          },
+          {
+            type: 'hidden',
+            key: PREFILLED_TASK_ID_DATA_KEY,
+            input: true,
+            persistent: false,
+            properties: { sourceKey: PREFILLED_TASK_ID_SOURCE_KEY },
+          },
+        ],
+      });
+
+      expect(carriersOf(schema)).toHaveLength(1);
+    });
+
     it('preserves sibling children while adding the carrier', () => {
       const schema = persistedSchemaOf(type, {
         type,
