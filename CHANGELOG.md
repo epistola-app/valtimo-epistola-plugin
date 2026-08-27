@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Epistola components dropped in the Formio builder now keep their hidden task-id carrier, so they work when the task is opened.** Previously _every_ form authored through the builder was saved **without** the carrier, and the preview, download, and retry-form components failed closed with _"… is only available from within a user task"_, regardless of how the task was opened. Only hand-authored form JSON (the classpath retry form and the test-app forms) carried it — which is why the test suite and the dev flows stayed green while real usage broke.
+  - **Cause:** the carrier was declared in each component's default `schema`, and Formio's `Component.get schema()` serializes only what _differs_ from the registered default — `getModifiedSchema` drops an array that deep-equals `defaultSchema[key]`. Declaring the carrier as a default is precisely what made it invisible to the serializer. Formio does this safely for its own components because the class re-applies its defaults at runtime; Valtimo's prefill cannot, because it runs **server-side against the stored JSON**.
+  - **Fix:** each task-bound component is now additionally wrapped in `withPrefilledTaskIdCarrier` (`components/valtimo-formio-adapter.ts`), which re-adds the carrier after Formio's filter. Applied to all three components. The carrier is matched on key **and** source key, because Formio's `defaultsDeep` merges the default `components` array element-wise and would otherwise let an unrelated child masquerade as the carrier.
+  - **Covered by** `components/task-id-carrier.spec.ts`, which exercises the **real** formiojs serializer under jsdom instead of the mocked base class the other wrapper specs use — the coverage gap that let this ship. It also pins the upstream `getModifiedSchema` behaviour the fix works around.
+  - ⚠️ **Existing forms are not repaired automatically.** A form whose Epistola component was saved without the carrier keeps failing until it is **re-opened in the form builder and saved again** (saving now persists the carrier). For classpath-deployed forms, add the carrier to the form source instead — those are reconciled to their source on each boot.
+  - Two related constraints found while confirming the mechanism are now documented: the nested `components` array of a task-bound component is reserved for the carrier, and Valtimo's prefill skips `editgrid`/`datagrid` subtrees entirely (`FormIoFormDefinition.getComponentsWithInputs`), so a task-bound component placed inside one never gets its carrier filled.
+- Corrected the authorization documentation: the user-task endpoints use `requireTaskViewable`, not a `requireTaskBoundTo` helper (which does not exist), and there is no separate same-process-instance / same-case cross-check — the process instance and case document are derived from the task itself rather than accepted on the wire.
+
 ## [0.18.0] - 2026-08-25
 
 ### Added

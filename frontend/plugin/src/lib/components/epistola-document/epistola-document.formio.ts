@@ -23,6 +23,7 @@ import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/p
 import {
   registerEpistolaFormioComponent,
   ValtimoFormioComponentConstructor,
+  withPrefilledTaskIdCarrier,
 } from '../valtimo-formio-adapter';
 
 export const EPISTOLA_DOCUMENT_OPTIONS: FormioCustomComponentInfo = {
@@ -93,7 +94,7 @@ export function registerEpistolaDocumentComponent(injector: Injector): void {
     EPISTOLA_DOCUMENT_OPTIONS,
     EpistolaDocumentComponent,
     injector,
-    withTaskContext,
+    (base) => withTaskContext(withPrefilledTaskIdCarrier(base)),
   );
 }
 

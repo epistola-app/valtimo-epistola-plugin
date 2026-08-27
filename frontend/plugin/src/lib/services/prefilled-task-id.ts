@@ -60,6 +60,38 @@ export const PREFILLED_TASK_ID_CARRIER = {
 };
 
 /**
+ * Returns a `components` array guaranteed to hold exactly one task-id carrier, preserving
+ * any other children already present.
+ *
+ * <p>Why this exists: Formio's {@code Component.get schema()} serializes only the properties
+ * that <b>differ</b> from the registered default schema ({@code getModifiedSchema}), and an
+ * array that deep-equals the default is treated as "unmodified" and dropped. Because the
+ * carrier is declared in each component's default {@code schema}, every form saved from the
+ * Formio builder came out <i>without</i> it — and Valtimo's prefill runs server-side against
+ * that stored JSON, where no component class exists to re-apply the default. The task-bound
+ * components therefore re-add the carrier after Formio's filter (see
+ * {@code withPrefilledTaskIdCarrier} in {@code valtimo-formio-adapter.ts}).
+ *
+ * <p>Idempotent: hand-authored forms (e.g. the classpath retry form) already carry it.
+ *
+ * <p>The carrier is matched on <b>both</b> its key and its source key, not the source key alone.
+ * Formio merges a component's default schema into the stored one with {@code _.defaultsDeep},
+ * which merges arrays <i>element-wise</i> — so an unrelated first child of a stored component
+ * silently inherits the default carrier's {@code properties.sourceKey}. Matching on the source
+ * key alone would read that polluted child as "carrier already present" and skip adding the real
+ * one.
+ */
+export function ensureTaskIdCarrier(components: unknown): any[] {
+  const existing = Array.isArray(components) ? components : [];
+  const hasCarrier = existing.some(
+    (child: any) =>
+      child?.key === PREFILLED_TASK_ID_DATA_KEY &&
+      child?.properties?.sourceKey === PREFILLED_TASK_ID_SOURCE_KEY,
+  );
+  return hasCarrier ? existing : [...existing, { ...PREFILLED_TASK_ID_CARRIER }];
+}
+
+/**
  * Reads the prefilled task id from a Formio webform/wizard root, or null when absent.
  *
  * Looks in two places, in order:

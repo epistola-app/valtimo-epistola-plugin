@@ -87,7 +87,9 @@ No extra form setup is needed: each Epistola task component ships a hidden **car
 
 Valtimo's server-side prefill recurses into the component's nested `components` and fills this child's `defaultValue` with the current task id (via the `epistola:` value resolver) — in both the direct task-open flow and the task-list/case-detail flow. The Formio wrapper reads it back with `readPrefilledTaskId` (which deep-scans the prefilled form definition) and forwards it to the Angular component. `persistent: false` keeps the value out of the submission, so the task id never lands in the case document.
 
-Forms authored **before** the carrier was embedded must be updated at the source by re-dropping the component before upgrading. If the carrier is absent at runtime, the component fails closed.
+If the carrier is absent at runtime, the component fails closed.
+
+Forms whose component was saved **without** a carrier must be re-authored: open the form in the builder and save it again (re-dropping the component also works). This is the remedy for two groups — forms authored before the carrier existed, _and_ any form saved by the Formio builder before the `withPrefilledTaskIdCarrier` fix, which stripped the carrier on save. For classpath-deployed forms, add the carrier to the form source instead; those are reconciled to their source on each boot.
 
 ### Display modes side-by-side
 
