@@ -48,66 +48,31 @@ niet plaats. Het schema accepteert nu een `submission`-object.
 
 ## Wat nog te doen is
 
-1. **Vergelijk de twee flows in de browser.** De preview-variant bestaat en werkt; wat
-   nog ontbreekt is de meting waar het onderzoek om draait. Verzamel browserconsole-,
-   netwerk- en backendlogs rond de klik op **Doorgaan** in
-   **Form Flow voorbeeld met preview** en zet die naast de baseline. Let specifiek op
-   een preview-request die nog loopt op het moment dat de taak wordt afgerond:
-   auto-refresh staat standaard aan, met 1500 ms debounce en een flush bij blur — het
-   verlaten van het onderwerpveld vlak voor de klik is dus precies het scenario dat
-   een request in de lucht kan hebben.
-   `e2e/tests/form-flow-transition.spec.ts` is als meetinstrument te kopiëren; de
-   allowlists voor console- en netwerkruis staan er al in.
-2. Reproduceer de eerder falende `DownloadDocumentE2ETest` afzonderlijk met
-   volledige Testcontainers-logging. **Let op:** die test is inmiddels groen
-   (7 tests) in een volledige `./gradlew :test-app:backend:test`-run, dus deze
-   taak is mogelijk achterhaald. De oorspronkelijke fout is niet gereproduceerd,
-   dus de oorzaak is nog steeds niet vastgesteld.
+1. **Meet de overgang in de browser met de preview erbij.** Het voorbeeld is teruggebracht tot
+   een enkele flow met de preview op de bevestigingsstap — precies het scenario waarin een
+   preview-request nog kan lopen op het moment dat op **Doorgaan** wordt geklikt. Verzamel
+   browserconsole-, netwerk- en backendlogs rond die klik.
+   `e2e/tests/form-flow-transition.spec.ts` doorloopt de flow al en heeft allowlists voor
+   console- en netwerkruis; die is als meetinstrument te gebruiken.
+   Let op: de verborgen `subject`-carrier vuurt geen `change` of `focusout`, dus auto-refresh
+   speelt hier niet mee. Het venster waarin een request loopt is het **initiële laden** van de
+   preview.
+2. Reproduceer de eerder falende `DownloadDocumentE2ETest` afzonderlijk met volledige
+   Testcontainers-logging. **Let op:** die test is inmiddels groen (7 tests) in een volledige
+   `./gradlew :test-app:backend:test`-run, dus deze taak is mogelijk achterhaald.
 
-### De drie varianten
+## Opruimen van de lokale database
 
-| Case-proces                    | Preview                      | Waarvoor                                                   |
-| ------------------------------ | ---------------------------- | ---------------------------------------------------------- |
-| `form-flow-demo`               | geen                         | controle: Form Flow zonder Epistola                        |
-| `form-flow-demo-preview`       | op stap 1 (invoerstap)       | preview is bij het klikken op **Doorgaan** al weg          |
-| `form-flow-demo-preview-step2` | op stap 2 (bevestigingsstap) | preview staat **in beeld** bij het klikken op **Doorgaan** |
+De twee eerdere varianten (`form-flow-demo-preview`, `form-flow-demo-preview-step2`) zijn uit de
+repository verwijderd, maar Valtimo verwijdert bestaande procesdefinities niet als de bronbestanden
+weggaan. Ze staan dus nog in de lokale database en blijven in het menu zichtbaar tot je reset:
 
-De derde variant is het interessantst voor de hypothese: alleen daar kan een preview-request
-nog lopen op het moment dat de taak wordt afgerond. Op stap 1 is de preview op dat moment al
-uit beeld.
+```text
+cd docker && docker compose --profile reset up
+```
 
-Twee dingen om te weten bij het meten op stap 2:
-
-- De bevestigingsstap heeft **geen invoerveld**, dus auto-refresh vuurt daar niet. Het venster
-  waarin een request loopt is het **initiële laden** van de preview: openen van stap 2 en
-  meteen op **Doorgaan** klikken. Wil je ook de auto-refresh op stap 2 meten, dan moet er een
-  invoerveld bij in `confirm-letter-with-preview.form.json` plus een `overrideMapping`.
-- De step-2-preview heeft bewust geen `overrideMapping`: op die stap is er geen formulierveld om
-  uit te lezen, en zonder mapping vuurt de preview meteen bij het openen in plaats van te wachten
-  op formulierdata.
-
-### Kan de preview velden van een andere stap gebruiken?
-
-Ja, maar niet vanzelf. `$form` is de data van **het formulier van de huidige stap**; er is geen
-aparte bak met alle stappen. Om een veld van een eerdere stap te lezen moet je op de latere stap
-een component met **dezelfde key** opnieuw declareren (een `hidden` veld volstaat). Valtimo prefilt
-elk stapformulier met de samengevoegde submissiedata van de flow
-(`FormFlowInstance.getSubmissionDataContext()` → `FormDefinition.preFill`), zodat die component met
-de eerdere waarde in `defaultValue` binnenkomt en Formio die in `root.data` zet — waar `$form` naar
-kijkt.
-
-Zonder die carrier is `$form.<key>` simpelweg undefined en valt de mapping stil terug op de
-casegegevens. Dat is precies wat `confirm-letter-with-preview.form.json` nu doet met het verborgen
-`subject`-veld, en `FormFlowDemoConfigurationTest` bewaakt dat de gelezen keys op beide stappen
-bestaan.
-
-Twee praktische gevolgen:
-
-- Latere stappen overschrijven eerdere bij gelijke keys, en de submissiedata van de flow wint van
-  document- en procesvariabele-prefill voor dezelfde component.
-- Een **verborgen** carrier vuurt geen `change` of `focusout`, dus auto-refresh pakt hem niet op;
-  de initiële preview-berekening doet dat wel. Wil je op stap 2 ook auto-refresh meten, dan is een
-  zichtbaar invoerveld nodig.
+Dat leegt `valtimo`, `epistola` en `epistola_suite` — dus ook de gegevens van een lokaal draaiende
+Epistola. In CI speelt dit niet: die start met een schone Testcontainers-database.
 
 ## Bevindingen tot nu toe
 

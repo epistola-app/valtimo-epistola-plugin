@@ -9,18 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- A third demo process, **Form Flow voorbeeld met preview op stap 2**, places the
-  `epistola-document-preview` on the _confirmation_ step — the one whose `onComplete` finishes the
-  task — so the preview is on screen, and possibly still loading, when the user completes it. With
-  the preview-free baseline and the step-1 variant this gives three points of comparison for the
-  form flow transition investigation.
-- The test application now includes **Form Flow voorbeeld met preview**, a second process on the
-  `form-flow-demo` case that is deliberately identical to the preview-free baseline except that its
-  first form flow step carries an `epistola-document-preview`. Document generation sits **after**
-  both user tasks, so the `Genereer brief` → `Vervolgtaak` transition the investigation measures is
-  unaffected by generation and the two flows stay comparable. `FormFlowDemoConfigurationTest` pins
-  that invariant, along with the preview targeting a generate-document link in its own process and
-  carrying the task-id carrier.
+- The test application includes a **Form Flow voorbeeld** case: a two-step Valtimo Form Flow whose
+  confirmation step carries an `epistola-document-preview`, completing into a regular `Vervolgtaak`.
+  The preview reads the subject typed on the first step through a re-declared hidden carrier, and
+  document generation runs after both user tasks so it cannot affect the task transition.
 - `FormFlowTransitionE2ETest` boots the real test-app against Testcontainers and walks the
   **Form Flow voorbeeld** case end to end — opening the `Genereer brief` task, completing both form
   flow steps, and asserting the process advanced to the regular `Vervolgtaak` and that the
@@ -28,12 +20,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `:test-app:backend:test`, so the class of failure that broke this fixture (a rejected
   `doc:/submission` write making `completeTask` throw) is now caught on every PR rather than only
   by the browser suite, which is local-only.
-- The test application now includes a standalone **Form Flow voorbeeld** case. Its two-step
-  `Genereer brief` flow ends with a confirmation screen and then completes into a regular
-  `Vervolgtaak`, providing a preview-free local baseline for investigating Form Flow transitions.
-
-### Changed
-
 - Documented the local Form Flow investigation state, reproduction path, and remaining
   preview and Testcontainers diagnostics in `todo.md`.
 

@@ -4,17 +4,5 @@
     "canInitializeDocument": true,
     "startableByUser": true,
     "processIsVisibleInMenu": true
-  },
-  {
-    "processDefinitionKey": "form-flow-demo-preview",
-    "canInitializeDocument": true,
-    "startableByUser": true,
-    "processIsVisibleInMenu": true
-  },
-  {
-    "processDefinitionKey": "form-flow-demo-preview-step2",
-    "canInitializeDocument": true,
-    "startableByUser": true,
-    "processIsVisibleInMenu": true
   }
 ]

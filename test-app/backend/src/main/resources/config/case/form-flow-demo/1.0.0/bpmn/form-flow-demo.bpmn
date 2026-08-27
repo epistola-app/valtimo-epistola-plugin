@@ -3,12 +3,16 @@
                   xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
                   xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
                   xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
                   id="Definitions_form_flow_demo"
                   targetNamespace="http://bpmn.io/schema/bpmn">
 
   <bpmn:process id="form-flow-demo" name="Form Flow voorbeeld" isExecutable="true">
     <bpmn:documentation>
-      Baseline voor een Form Flow-overgang: invoerstap, bevestiging en daarna een gewone vervolgtaak.
+      Form Flow-voorbeeld: invoerstap, bevestigingsstap met Epistola-documentpreview, en daarna een
+      gewone vervolgtaak. De documentgeneratie staat bewust NA beide user tasks, zodat de overgang
+      `Genereer brief` -> `Vervolgtaak` niet door generatie wordt beinvloed. De preview heeft de
+      proceslink alleen nodig om te bestaan, niet om uitgevoerd te zijn.
     </bpmn:documentation>
 
     <bpmn:startEvent id="startEvent" name="Start">
@@ -22,8 +26,13 @@
 
     <bpmn:userTask id="follow-up" name="Vervolgtaak">
       <bpmn:incoming>Flow_to_follow_up</bpmn:incoming>
-      <bpmn:outgoing>Flow_to_end</bpmn:outgoing>
+      <bpmn:outgoing>Flow_to_render</bpmn:outgoing>
     </bpmn:userTask>
+
+    <bpmn:serviceTask id="render-letter" name="Genereer brief" camunda:expression="${null}">
+      <bpmn:incoming>Flow_to_render</bpmn:incoming>
+      <bpmn:outgoing>Flow_to_end</bpmn:outgoing>
+    </bpmn:serviceTask>
 
     <bpmn:endEvent id="endEvent" name="Afgerond">
       <bpmn:incoming>Flow_to_end</bpmn:incoming>
@@ -31,7 +40,8 @@
 
     <bpmn:sequenceFlow id="Flow_to_generate_letter" sourceRef="startEvent" targetRef="generate-letter" />
     <bpmn:sequenceFlow id="Flow_to_follow_up" sourceRef="generate-letter" targetRef="follow-up" />
-    <bpmn:sequenceFlow id="Flow_to_end" sourceRef="follow-up" targetRef="endEvent" />
+    <bpmn:sequenceFlow id="Flow_to_render" sourceRef="follow-up" targetRef="render-letter" />
+    <bpmn:sequenceFlow id="Flow_to_end" sourceRef="render-letter" targetRef="endEvent" />
   </bpmn:process>
 
   <bpmndi:BPMNDiagram id="BPMNDiagram_form_flow_demo">
@@ -45,8 +55,11 @@
       <bpmndi:BPMNShape id="follow-up_di" bpmnElement="follow-up">
         <dc:Bounds x="510" y="138" width="110" height="80" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="render-letter_di" bpmnElement="render-letter">
+        <dc:Bounds x="720" y="138" width="110" height="80" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="endEvent_di" bpmnElement="endEvent">
-        <dc:Bounds x="710" y="160" width="36" height="36" />
+        <dc:Bounds x="920" y="160" width="36" height="36" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_to_generate_letter_di" bpmnElement="Flow_to_generate_letter">
         <di:waypoint x="216" y="178" />
@@ -56,9 +69,13 @@
         <di:waypoint x="410" y="178" />
         <di:waypoint x="510" y="178" />
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_to_end_di" bpmnElement="Flow_to_end">
+      <bpmndi:BPMNEdge id="Flow_to_render_di" bpmnElement="Flow_to_render">
         <di:waypoint x="620" y="178" />
-        <di:waypoint x="710" y="178" />
+        <di:waypoint x="720" y="178" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_to_end_di" bpmnElement="Flow_to_end">
+        <di:waypoint x="830" y="178" />
+        <di:waypoint x="920" y="178" />
       </bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>

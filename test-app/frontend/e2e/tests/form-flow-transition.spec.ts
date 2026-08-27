@@ -5,15 +5,20 @@
 import { test, expect, type Page } from '@playwright/test';
 
 /**
- * Preview-free baseline for the Form Flow task transition.
+ * Form Flow task transition, with the Epistola document preview on the confirmation step.
  *
  * Walks the "Form Flow voorbeeld" case: start a dossier, open "Genereer brief",
  * go through the two form flow steps, and assert that the regular "Vervolgtaak"
- * becomes visible **without reloading the page**. A later variant that puts the
- * Epistola document preview in the first step is compared against this run.
+ * becomes visible **without reloading the page**.
+ *
+ * The preview sits on the second step, so it is on screen — and may still be
+ * loading — when "Doorgaan" is clicked. That is the arrangement worth watching:
+ * it is the only one where a preview request can be in flight as the task
+ * completes.
  *
  * The test deliberately never calls page.reload() after "Doorgaan" — a passing
- * run means the transition is visible on the live page.
+ * run means the transition is visible on the live page. It needs a reachable
+ * Epistola, since the confirmation step renders a real preview.
  */
 
 const CASE_NAME = 'Form Flow voorbeeld';
@@ -27,7 +32,7 @@ async function openCaseList(page: Page) {
   await page.getByRole('navigation', { name: /Side navigation/i }).waitFor({ timeout: 20_000 });
 }
 
-test.describe('Form Flow voorbeeld — preview-free transition baseline', () => {
+test.describe('Form Flow voorbeeld — transition with a preview on the confirmation step', () => {
   test('Vervolgtaak appears after Doorgaan without a page refresh', async ({ page }) => {
     test.setTimeout(120_000);
     // An Angular dev build logs plenty of unrelated noise, so rather than
