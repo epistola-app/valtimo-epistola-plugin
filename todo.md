@@ -64,6 +64,28 @@ niet plaats. Het schema accepteert nu een `submission`-object.
    taak is mogelijk achterhaald. De oorspronkelijke fout is niet gereproduceerd,
    dus de oorzaak is nog steeds niet vastgesteld.
 
+### De drie varianten
+
+| Case-proces                    | Preview                      | Waarvoor                                                   |
+| ------------------------------ | ---------------------------- | ---------------------------------------------------------- |
+| `form-flow-demo`               | geen                         | controle: Form Flow zonder Epistola                        |
+| `form-flow-demo-preview`       | op stap 1 (invoerstap)       | preview is bij het klikken op **Doorgaan** al weg          |
+| `form-flow-demo-preview-step2` | op stap 2 (bevestigingsstap) | preview staat **in beeld** bij het klikken op **Doorgaan** |
+
+De derde variant is het interessantst voor de hypothese: alleen daar kan een preview-request
+nog lopen op het moment dat de taak wordt afgerond. Op stap 1 is de preview op dat moment al
+uit beeld.
+
+Twee dingen om te weten bij het meten op stap 2:
+
+- De bevestigingsstap heeft **geen invoerveld**, dus auto-refresh vuurt daar niet. Het venster
+  waarin een request loopt is het **initiële laden** van de preview: openen van stap 2 en
+  meteen op **Doorgaan** klikken. Wil je ook de auto-refresh op stap 2 meten, dan moet er een
+  invoerveld bij in `confirm-letter-with-preview.form.json` plus een `overrideMapping`.
+- De step-2-preview heeft bewust geen `overrideMapping`: op die stap is er geen formulierveld om
+  uit te lezen, en zonder mapping vuurt de preview meteen bij het openen in plaats van te wachten
+  op formulierdata.
+
 ## Bevindingen tot nu toe
 
 - **Aan de backendkant gedraagt de preview-variant zich identiek aan de baseline.**

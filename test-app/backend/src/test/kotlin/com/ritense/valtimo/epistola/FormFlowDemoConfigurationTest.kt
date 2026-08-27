@@ -124,28 +124,6 @@ class FormFlowDemoConfigurationTest {
     }
 
     @Test
-    fun `the preview component targets a generate-document link in its own process`() {
-        val form = readJson("$BASE/form/generate-letter-preview.form.json")
-        val component =
-            form.path("components").single { it.path("type").asText() == "epistola-document-preview" }
-
-        // The preview derives the process instance from the task it is opened on, so the activity it
-        // targets has to live in that same process definition.
-        assertThat(component.path("processDefinitionKey").asText()).isEqualTo("form-flow-demo-preview")
-        val targetActivity = component.path("sourceActivityId").asText()
-
-        val link =
-            readJson("$BASE/process-link/form-flow-demo-preview.process-link.json")
-                .single { it.path("activityId").asText() == targetActivity }
-        assertThat(link.path("pluginActionDefinitionKey").asText()).isEqualTo("epistola-generate-document")
-
-        // Without the carrier the component fails closed outside the builder. See docs/formio-components.md.
-        assertThat(
-            component.path("components").any { it.path("properties").path("sourceKey").asText() == "epistola:taskId" },
-        ).describedAs("the task-id carrier must be present in hand-authored form JSON").isTrue()
-    }
-
-    @Test
     fun `the preview variant generates only after both user tasks, leaving the measured transition clean`() {
         val bpmn = readText("$BASE/bpmn/form-flow-demo-preview.bpmn")
 
@@ -159,6 +137,56 @@ class FormFlowDemoConfigurationTest {
         assertThat(flowTarget("follow-up-preview"))
             .describedAs("generation belongs after the follow-up task, not before it")
             .isEqualTo("render-letter")
+    }
+
+    @Test
+    fun `the step-2 variant puts the preview on the step whose onComplete finishes the task`() {
+        val flow = readJson("$BASE/form-flow/generate-letter-preview-step2.form-flow.json")
+        val steps = flow.path("steps")
+
+        val completingStep = steps.single { it.path("onComplete").size() > 0 }
+        assertThat(completingStep.path("key").asText()).isEqualTo("confirm-letter-with-preview")
+
+        fun formOf(step: com.fasterxml.jackson.databind.JsonNode) =
+            readText("$BASE/form/${step.path("type").path("properties").path("definition").asText()}.form.json")
+
+        // The whole point of this variant: the preview is on screen — and possibly still loading —
+        // when the task is completed. On the step-1 variant it is already gone by then.
+        assertThat(formOf(completingStep))
+            .describedAs("the completing step must carry the preview")
+            .contains("epistola-document-preview")
+        assertThat(formOf(steps[0]))
+            .describedAs("the first step must stay preview-free, or the variants are not distinguishable")
+            .doesNotContain("epistola-document-preview")
+    }
+
+    @Test
+    fun `each preview variant targets a generate-document link inside its own process`() {
+        listOf(
+            "generate-letter-preview.form.json" to "form-flow-demo-preview",
+            "confirm-letter-with-preview.form.json" to "form-flow-demo-preview-step2",
+        ).forEach { (formFile, expectedProcess) ->
+            val component =
+                readJson("$BASE/form/$formFile")
+                    .path("components")
+                    .single { it.path("type").asText() == "epistola-document-preview" }
+
+            // The preview derives the process instance from the task it is opened on, so a link in
+            // another process definition would not resolve.
+            assertThat(component.path("processDefinitionKey").asText())
+                .describedAs("preview in %s must target its own process", formFile)
+                .isEqualTo(expectedProcess)
+
+            val links = readJson("$BASE/process-link/$expectedProcess.process-link.json")
+            val target = links.single { it.path("activityId").asText() == component.path("sourceActivityId").asText() }
+            assertThat(target.path("pluginActionDefinitionKey").asText()).isEqualTo("epistola-generate-document")
+
+            assertThat(
+                component.path("components").any {
+                    it.path("properties").path("sourceKey").asText() == "epistola:taskId"
+                },
+            ).describedAs("the task-id carrier must be present in %s", formFile).isTrue()
+        }
     }
 
     private fun readJson(path: String) = ClassPathResource(path).inputStream.use { mapper.readTree(it) }

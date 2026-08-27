@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A third demo process, **Form Flow voorbeeld met preview op stap 2**, places the
+  `epistola-document-preview` on the _confirmation_ step — the one whose `onComplete` finishes the
+  task — so the preview is on screen, and possibly still loading, when the user completes it. With
+  the preview-free baseline and the step-1 variant this gives three points of comparison for the
+  form flow transition investigation.
 - The test application now includes **Form Flow voorbeeld met preview**, a second process on the
   `form-flow-demo` case that is deliberately identical to the preview-free baseline except that its
   first form flow step carries an `epistola-document-preview`. Document generation sits **after**
