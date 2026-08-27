@@ -26,9 +26,7 @@
           "definition": "confirm-letter"
         }
       },
-      "onComplete": [
-        "${valtimoFormFlow.completeTask(additionalProperties, step.submissionData)}"
-      ]
+      "onComplete": ["${valtimoFormFlow.completeTask(additionalProperties, step.submissionData)}"]
     }
   ]
 }

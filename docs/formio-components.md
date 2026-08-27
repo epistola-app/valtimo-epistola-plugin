@@ -32,6 +32,30 @@ Angular component as `@Input() taskInstanceId`). See [authorization.md](authoriz
 `services/prefilled-task-id.ts`. **This is the category that needs care**: any change to how the task id is
 delivered, or to the late-arrival handling below, must be applied to **all three** task-bound components.
 
+### Declaring the carrier is not enough — it must survive serialization
+
+Embedding `PREFILLED_TASK_ID_CARRIER` in a component's `schema` makes it a **default**, and Formio's
+`Component.get schema()` serializes only what _differs_ from the registered default schema
+(`getModifiedSchema`): an array that deep-equals the default is classified "unmodified" and dropped. So
+declaring the carrier is precisely what made it invisible — every form saved from the Formio builder came
+out **without** a carrier, and the component failed closed with _"… only available from within a user
+task"_. Formio gets away with this for its own components because the class re-applies its defaults at
+runtime; Valtimo's prefill cannot, because it runs **server-side against the stored JSON**.
+
+Each task-bound component is therefore also wrapped in `withPrefilledTaskIdCarrier`
+(`components/valtimo-formio-adapter.ts`), which re-adds the carrier after Formio's filter. **Do not remove
+that wrapper**, and do not "simplify" the carrier back to a plain `schema` declaration — it is covered by
+`components/task-id-carrier.spec.ts`, which runs the real formiojs serializer.
+
+Two consequences worth knowing:
+
+- The nested `components` array of a task-bound component is **reserved for the carrier**. Formio merges
+  defaults with `_.defaultsDeep`, which merges arrays element-wise, so any other child placed there
+  inherits the carrier's `properties.sourceKey`.
+- Valtimo's prefill walks nested `components` recursively but **skips `editgrid`/`datagrid` subtrees**
+  entirely (`FormIoFormDefinition.getComponentsWithInputs`). A task-bound component placed inside an
+  edit-grid or data-grid never gets its carrier filled, and so fails closed.
+
 ## Task-bound components: the late-`taskInstanceId` contract
 
 The Formio wrapper sets `taskInstanceId` on the Angular element **after** `super.attach()`, so it can land
@@ -46,8 +70,9 @@ arrives, or it will sit on an "only available from within a user task" error unt
   id arrives and the form hasn't loaded yet.
 
 Outside a user task (Formio builder / design mode) the task id never arrives and the components fail
-closed. When adding a new task-bound component, embed `PREFILLED_TASK_ID_CARRIER`, forward the id in the
-wrapper, and add the same late-arrival handling.
+closed. When adding a new task-bound component, embed `PREFILLED_TASK_ID_CARRIER`, **compose
+`withPrefilledTaskIdCarrier` into its registration** (see the section above — without it the carrier never
+reaches the saved form), forward the id in the wrapper, and add the same late-arrival handling.
 
 ## Component details
 

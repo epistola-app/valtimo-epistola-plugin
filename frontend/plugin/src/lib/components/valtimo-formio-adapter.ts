@@ -23,12 +23,60 @@ import {
   registerCustomFormioComponent,
 } from '@valtimo/components';
 import { Components } from 'formiojs';
+import { ensureTaskIdCarrier } from '../services/prefilled-task-id';
 
 export type ValtimoFormioComponentConstructor = ReturnType<typeof createCustomFormioComponent>;
 export type ValtimoFormioComponent = InstanceType<ValtimoFormioComponentConstructor>;
 export type ValtimoFormioComponentEnhancer = (
   baseComponent: ValtimoFormioComponentConstructor,
 ) => ValtimoFormioComponentConstructor;
+
+/**
+ * Enhancer that keeps the hidden task-id carrier in the component's <b>persisted</b> schema.
+ *
+ * <p>Formio's {@code Component.get schema()} serializes only what <i>differs</i> from the
+ * registered default schema ({@code getModifiedSchema}); an array that deep-equals the default
+ * is classified "unmodified" and dropped. Because each task-bound component declares the carrier
+ * in its default {@code schema}, the two arrays are always equal — so every form saved from the
+ * Formio builder came out <b>without</b> a carrier, and the component then failed closed with
+ * "… only available from within a user task".
+ *
+ * <p>Formio can do this safely for its own components because the class re-applies its defaults
+ * at runtime. Valtimo's prefill cannot: it runs <b>server-side against the stored JSON</b>, where
+ * no component class exists to re-apply anything. So the carrier has to survive serialization.
+ *
+ * <p>Re-adding it after the filter also stays correct if the builder ever persists its raw form
+ * instead of {@code instance.schema} — that object already carries it via Formio's
+ * {@code defaultsDeep}. Apply this to <b>every</b> task-bound component; see
+ * {@code docs/formio-components.md}.
+ *
+ * <p>Implementation note: this hooks {@code getModifiedSchema} rather than the {@code schema}
+ * getter that calls it, because Valtimo types {@code schema} as a property — overriding it with
+ * an accessor is a TypeScript error (TS2611). {@code getModifiedSchema} is the filter itself and
+ * is dispatched dynamically from {@code get schema()}, so the effect is the same. Its only
+ * callers are that getter and its own recursion, which is why the carrier is appended only on
+ * the top-level (non-recursive) pass.
+ */
+export function withPrefilledTaskIdCarrier(
+  BaseComponent: ValtimoFormioComponentConstructor,
+): ValtimoFormioComponentConstructor {
+  class WithPrefilledTaskIdCarrier extends BaseComponent {
+    getModifiedSchema(schema: any, defaultSchema: any, recursion: boolean): any {
+      // Deliberately no fallback if Formio ever drops this method: let it throw. Form.io is
+      // exact-pinned at 4.19.5 across the whole supported Valtimo range, so that can only happen
+      // on a deliberate major bump — and failing loudly there is better than silently persisting
+      // every component's full default schema, which would bloat saved forms and freeze their
+      // defaults at authoring time. `task-id-carrier.spec.ts` fails on such a bump.
+      const modified = super.getModifiedSchema(schema, defaultSchema, recursion);
+      if (!recursion) {
+        modified.components = ensureTaskIdCarrier(modified.components);
+      }
+      return modified;
+    }
+  }
+
+  return WithPrefilledTaskIdCarrier;
+}
 
 /**
  * Registers an Angular custom element through Valtimo and optionally replaces
