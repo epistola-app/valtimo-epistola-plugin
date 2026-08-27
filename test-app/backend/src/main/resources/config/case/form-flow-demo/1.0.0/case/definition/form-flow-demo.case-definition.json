@@ -1,0 +1,7 @@
+{
+  "key": "form-flow-demo",
+  "name": "Form Flow voorbeeld",
+  "versionTag": "1.0.0",
+  "canHaveAssignee": true,
+  "autoAssignTasks": true
+}

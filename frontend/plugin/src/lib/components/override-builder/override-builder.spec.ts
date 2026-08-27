@@ -23,6 +23,7 @@
  */
 import {
   OverrideRow,
+  collectFormFieldReferences,
   isRoundTrippable,
   parseOverrideJsonata,
   serializeOverrideRows,
@@ -188,5 +189,55 @@ describe('legacy-override-converter', () => {
       );
       expect(result).toEqual({ doc: { adres: { straat: 'Kerkstraat' } } });
     });
+  });
+});
+
+describe('collectFormFieldReferences', () => {
+  it('returns nothing for an empty or blank expression', () => {
+    expect(collectFormFieldReferences('')).toEqual([]);
+    expect(collectFormFieldReferences('   ')).toEqual([]);
+  });
+
+  it('finds references in a simple-table style mapping', () => {
+    const expr = serializeOverrideRows([
+      { scope: 'doc', inputPath: 'title', formFieldKey: 'subject' },
+      { scope: 'pv', inputPath: 'motivation', formFieldKey: 'reason' },
+    ]);
+    expect(collectFormFieldReferences(expr).sort()).toEqual(['reason', 'subject']);
+  });
+
+  it('finds references the simple table cannot represent', () => {
+    // The whole point of walking the AST rather than reusing the round-trip
+    // parser: advanced-mode expressions must be checked too.
+    const expr = '{ "doc": { "title": $form.subject & " (" & $form.kind & ")" } }';
+    expect(isRoundTrippable(expr)).toBe(false);
+    expect(collectFormFieldReferences(expr).sort()).toEqual(['kind', 'subject']);
+  });
+
+  it('finds references inside conditionals and function arguments', () => {
+    const expr =
+      '{ "doc": { "title": $uppercase($form.subject), "note": $form.flag ? $form.yes : $form.no } }';
+    expect(collectFormFieldReferences(expr).sort()).toEqual(['flag', 'no', 'subject', 'yes']);
+  });
+
+  it('reports a dotted key as one reference', () => {
+    expect(collectFormFieldReferences('{ "doc": { "street": $form.adres.straat } }')).toEqual([
+      'adres.straat',
+    ]);
+  });
+
+  it('deduplicates repeated references', () => {
+    const expr = '{ "doc": { "a": $form.subject, "b": $form.subject } }';
+    expect(collectFormFieldReferences(expr)).toEqual(['subject']);
+  });
+
+  it('ignores other context variables', () => {
+    expect(collectFormFieldReferences('{ "doc": { "title": $doc.title & $pv.x } }')).toEqual([]);
+  });
+
+  it('returns nothing for an unparseable expression', () => {
+    // The JSONata editor already reports syntax errors; guessing at references
+    // inside a broken expression would only produce noise.
+    expect(collectFormFieldReferences('{ "doc": ')).toEqual([]);
   });
 });

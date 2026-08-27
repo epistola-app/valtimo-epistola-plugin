@@ -10,6 +10,9 @@ All components are registered in one place: `frontend/plugin/src/lib/epistola.mo
 `*.formio.ts` (the Formio wrapper: registration, palette/editForm config, and the wrapper subclass that
 bridges Formio ↔ Angular).
 
+For using these components inside a multi-step Valtimo Form Flow — where `$form` is scoped to one
+step — see [form-flows.md](form-flows.md).
+
 ## Overview
 
 | Type (`type:`)                   | Purpose                                                        | Palette\* | Task-bound\*\* | Backend call                          |

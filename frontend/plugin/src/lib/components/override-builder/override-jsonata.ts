@@ -172,3 +172,53 @@ function formKeyOf(node: any): string | null {
 export function isRoundTrippable(expression: string): boolean {
   return parseOverrideJsonata(expression) !== null;
 }
+
+/**
+ * Collect every `$form.<key>` reference in an expression, including ones the
+ * simple table can't represent — so advanced-mode mappings are checked too.
+ *
+ * Returns an empty list for an expression that doesn't parse: an unparseable
+ * expression is the JSONata editor's problem to report, and guessing at field
+ * references inside one would produce noise rather than a useful warning.
+ */
+export function collectFormFieldReferences(expression: string): string[] {
+  if (!expression || !expression.trim()) {
+    return [];
+  }
+  let ast: any;
+  try {
+    ast = (jsonata(expression) as any).ast();
+  } catch {
+    return [];
+  }
+  const keys = new Set<string>();
+  walk(ast, keys);
+  return [...keys];
+}
+
+/**
+ * Depth-first walk over the JSONata AST. The node shape varies by type
+ * (`lhs`/`rhs`/`steps`/`expressions`/`arguments`/`procedure`/…), and entries in
+ * an object constructor are plain arrays, so recurse structurally over every
+ * array and object rather than enumerating node types — a missed node type
+ * would silently drop a reference and defeat the check.
+ */
+function walk(node: any, keys: Set<string>): void {
+  if (!node || typeof node !== 'object') {
+    return;
+  }
+  if (Array.isArray(node)) {
+    for (const child of node) {
+      walk(child, keys);
+    }
+    return;
+  }
+  const key = formKeyOf(node);
+  if (key !== null) {
+    keys.add(key);
+    return;
+  }
+  for (const value of Object.values(node)) {
+    walk(value, keys);
+  }
+}

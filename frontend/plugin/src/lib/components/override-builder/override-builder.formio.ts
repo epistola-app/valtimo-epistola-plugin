@@ -19,6 +19,7 @@
 import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo } from '@valtimo/components';
 import { EpistolaOverrideBuilderComponent } from './override-builder.component';
+import { collectFormFields } from './collect-form-fields';
 import {
   registerEpistolaFormioComponent,
   ValtimoFormioComponentConstructor,
@@ -33,30 +34,6 @@ export const EPISTOLA_OVERRIDE_BUILDER_OPTIONS: FormioCustomComponentInfo = {
   emptyValue: null,
   fieldOptions: ['label', 'availableFields', 'processDefinitionKey', 'sourceActivityId'],
 };
-
-/**
- * Recursively collect input field keys and labels from a Formio component tree.
- * Skips epistola custom components (which are builder UI, not form fields).
- */
-function collectFormFields(components: any[]): { key: string; label: string }[] {
-  const fields: { key: string; label: string }[] = [];
-  for (const comp of components) {
-    if (comp.input && comp.key && comp.type !== 'button' && !comp.type?.startsWith('epistola-')) {
-      fields.push({ key: comp.key, label: comp.label || comp.key });
-    }
-    if (comp.components) {
-      fields.push(...collectFormFields(comp.components));
-    }
-    if (comp.columns) {
-      for (const col of comp.columns) {
-        if (col.components) {
-          fields.push(...collectFormFields(col.components));
-        }
-      }
-    }
-  }
-  return fields;
-}
 
 export function registerEpistolaOverrideBuilderComponent(injector: Injector): void {
   registerEpistolaFormioComponent(

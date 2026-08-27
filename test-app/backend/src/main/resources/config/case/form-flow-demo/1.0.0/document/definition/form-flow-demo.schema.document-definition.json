@@ -1,0 +1,20 @@
+{
+  "$id": "form-flow-demo.schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Form Flow voorbeeld",
+  "description": "Minimaal dossier voor het testen van een Form Flow-taakovergang",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "submission": {
+      "description": "Valtimo's valtimoFormFlow.completeTask(additionalProperties, step.submissionData) writes the completing step's submission data to doc:/submission. The document schema must accept it or the task cannot complete.",
+      "type": "object"
+    }
+  },
+  "required": ["title"]
+}

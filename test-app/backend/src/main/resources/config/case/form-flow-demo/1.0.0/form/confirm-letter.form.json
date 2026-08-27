@@ -1,0 +1,49 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "key": "subject",
+      "type": "hidden",
+      "input": true,
+      "label": "Onderwerp (overgenomen uit stap 1)",
+      "persistent": false
+    },
+    {
+      "key": "information",
+      "type": "htmlelement",
+      "input": false,
+      "label": "",
+      "tag": "div",
+      "content": "<p>Controleer de brief hieronder. Klik op <strong>Doorgaan</strong> om deze taak af te ronden en naar de vervolgtaak te gaan.</p>"
+    },
+    {
+      "type": "epistola-document-preview",
+      "key": "preview",
+      "input": false,
+      "label": "Voorbeeld brief",
+      "processDefinitionKey": "form-flow-demo",
+      "sourceActivityId": "render-letter",
+      "components": [
+        {
+          "type": "hidden",
+          "key": "epistolaTaskId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola:taskId"
+          }
+        }
+      ],
+      "overrideMapping": "{\n  \"doc\": {\n    \"title\": $form.subject\n  }\n}"
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Doorgaan",
+      "action": "submit",
+      "theme": "primary"
+    }
+  ]
+}
