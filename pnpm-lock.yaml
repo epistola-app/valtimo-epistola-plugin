@@ -346,16 +346,16 @@ importers:
         version: 18.6.1
       bpmn-js-properties-panel:
         specifier: 5.35.0
-        version: 5.35.0(@bpmn-io/properties-panel@3.26.4)(bpmn-js@18.6.1)(camunda-bpmn-js-behaviors@1.10.0(bpmn-js@18.6.1)(camunda-bpmn-moddle@7.0.1)(zeebe-bpmn-moddle@1.12.0))(diagram-js@15.3.0)
+        version: 5.35.0(@bpmn-io/properties-panel@3.26.4)(bpmn-js@18.6.1)(camunda-bpmn-js-behaviors@1.10.0(bpmn-js@18.6.1)(camunda-bpmn-moddle@7.0.2)(zeebe-bpmn-moddle@1.12.0))(diagram-js@15.3.0)
       buffer:
         specifier: ^6.0.3
         version: 6.0.3
       camunda-bpmn-js-behaviors:
         specifier: 1.10.0
-        version: 1.10.0(bpmn-js@18.6.1)(camunda-bpmn-moddle@7.0.1)(zeebe-bpmn-moddle@1.12.0)
+        version: 1.10.0(bpmn-js@18.6.1)(camunda-bpmn-moddle@7.0.2)(zeebe-bpmn-moddle@1.12.0)
       camunda-bpmn-moddle:
-        specifier: 7.0.1
-        version: 7.0.1
+        specifier: 7.0.2
+        version: 7.0.2
       carbon-components-angular:
         specifier: 5.57.6
         version: 5.57.6(@carbon/styles@1.80.0(sass@1.98.0))
@@ -4655,6 +4655,9 @@ packages:
   camunda-bpmn-moddle@7.0.1:
     resolution: {integrity: sha512-Br8Diu6roMpziHdpl66Dhnm0DTnCFMrSD9zwLV08LpD52QA0UsXxU87XfHf08HjuB7ly0Hd1bvajZRpf9hbmYQ==}
 
+  camunda-bpmn-moddle@7.0.2:
+    resolution: {integrity: sha512-I8Hs3bXBOOyBkhjAdaxct9ppbX/uYcLwgvUljgNumXtIzBSAP1gWy/MlJOE6WYqVZO9eLw6+0w42W4pYIMlsCg==}
+
   caniuse-lite@1.0.30001781:
     resolution: {integrity: sha512-RdwNCyMsNBftLjW6w01z8bKEvT6e/5tpPVEgtn22TiLGlstHOVecsX2KHFkD5e/vRnIE4EGzpuIODb3mtswtkw==}
 
@@ -4863,6 +4866,7 @@ packages:
 
   connect-pause@0.1.1:
     resolution: {integrity: sha512-a1gSWQBQD73krFXdUEYJom2RTFrWUL3YvXDCRkyv//GVXc79cdW9MngtRuN9ih4FDKBtfJAJId+BbDuX+1rh2w==}
+    deprecated: connect-pause 1.0.0 is API-compatible for require() usage. See https://github.com/flesler/connect-pause/blob/main/docs/backwards-compatibility.md
 
   connect@3.7.0:
     resolution: {integrity: sha512-ZqRXc+tZukToSNmh5C2iWMSoV3X1YUcPbqEM4DkEG5tNQXrQUZCNVGGv3IuicnkMtPfGf3Xtp8WCXs295iQ1pQ==}
@@ -13623,7 +13627,7 @@ snapshots:
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       '@bpmn-io/properties-panel': 3.26.4
       bpmn-js: 18.6.1
-      bpmn-js-properties-panel: 5.35.0(@bpmn-io/properties-panel@3.26.4)(bpmn-js@18.6.1)(camunda-bpmn-js-behaviors@1.10.0(bpmn-js@18.6.1)(camunda-bpmn-moddle@7.0.1)(zeebe-bpmn-moddle@1.12.0))(diagram-js@15.3.0)
+      bpmn-js-properties-panel: 5.35.0(@bpmn-io/properties-panel@3.26.4)(bpmn-js@18.6.1)(camunda-bpmn-js-behaviors@1.10.0(bpmn-js@18.6.1)(camunda-bpmn-moddle@7.0.2)(zeebe-bpmn-moddle@1.12.0))(diagram-js@15.3.0)
       camunda-bpmn-js-behaviors: 1.10.0(bpmn-js@18.6.1)(camunda-bpmn-moddle@7.0.1)(zeebe-bpmn-moddle@1.12.0)
       camunda-bpmn-moddle: 7.0.1
       tslib: 2.8.1
@@ -14180,13 +14184,13 @@ snapshots:
       jquery: 3.7.1
       popper.js: 1.16.1
 
-  bpmn-js-properties-panel@5.35.0(@bpmn-io/properties-panel@3.26.4)(bpmn-js@18.6.1)(camunda-bpmn-js-behaviors@1.10.0(bpmn-js@18.6.1)(camunda-bpmn-moddle@7.0.1)(zeebe-bpmn-moddle@1.12.0))(diagram-js@15.3.0):
+  bpmn-js-properties-panel@5.35.0(@bpmn-io/properties-panel@3.26.4)(bpmn-js@18.6.1)(camunda-bpmn-js-behaviors@1.10.0(bpmn-js@18.6.1)(camunda-bpmn-moddle@7.0.2)(zeebe-bpmn-moddle@1.12.0))(diagram-js@15.3.0):
     dependencies:
       '@bpmn-io/extract-process-variables': 1.0.1
       '@bpmn-io/properties-panel': 3.26.4
       array-move: 4.0.0
       bpmn-js: 18.6.1
-      camunda-bpmn-js-behaviors: 1.10.0(bpmn-js@18.6.1)(camunda-bpmn-moddle@7.0.1)(zeebe-bpmn-moddle@1.12.0)
+      camunda-bpmn-js-behaviors: 1.10.0(bpmn-js@18.6.1)(camunda-bpmn-moddle@7.0.2)(zeebe-bpmn-moddle@1.12.0)
       diagram-js: 15.3.0
       ids: 1.0.5
       min-dash: 4.2.3
@@ -14314,7 +14318,17 @@ snapshots:
       min-dash: 4.2.3
       zeebe-bpmn-moddle: 1.12.0
 
+  camunda-bpmn-js-behaviors@1.10.0(bpmn-js@18.6.1)(camunda-bpmn-moddle@7.0.2)(zeebe-bpmn-moddle@1.12.0):
+    dependencies:
+      bpmn-js: 18.6.1
+      camunda-bpmn-moddle: 7.0.2
+      ids: 1.0.5
+      min-dash: 4.2.3
+      zeebe-bpmn-moddle: 1.12.0
+
   camunda-bpmn-moddle@7.0.1: {}
+
+  camunda-bpmn-moddle@7.0.2: {}
 
   caniuse-lite@1.0.30001781: {}
 

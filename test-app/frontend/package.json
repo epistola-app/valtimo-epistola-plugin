@@ -81,7 +81,7 @@
     "bpmn-js-properties-panel": "5.35.0",
     "buffer": "^6.0.3",
     "camunda-bpmn-js-behaviors": "1.10.0",
-    "camunda-bpmn-moddle": "7.0.1",
+    "camunda-bpmn-moddle": "7.0.2",
     "carbon-components-angular": "5.57.6",
     "components-jqueryui": "1.12.1",
     "core-js": "3.41.0",
