@@ -29,8 +29,8 @@ import {
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
-import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
-import { Subscription } from 'rxjs';
+import { FormioCustomComponent } from '@valtimo/components';
+import { Observable, Subscription } from 'rxjs';
 import { EpistolaPluginService } from '../../services';
 import { shouldLoadPreview } from './preview-utils';
 import {
@@ -55,13 +55,17 @@ import {
           <div class="design-value">{{ processDefinitionKey || '(any)' }}</div>
           <div class="design-label">Activity</div>
           <div class="design-value">{{ sourceActivityId }}</div>
+          <div class="design-label">Shown on</div>
+          <div class="design-value">
+            {{ previewContext === 'start' ? 'A start form' : 'A user task' }}
+          </div>
         </div>
         <div class="design-section" *ngIf="overrideExpression">
           <div class="design-label">Input Overrides ($form)</div>
           <pre class="design-expression">{{ overrideExpression }}</pre>
         </div>
         <div *ngIf="!sourceActivityId" class="design-unconfigured">
-          Auto-discover mode (no process link configured)
+          Not configured — select a process link in this component's settings.
         </div>
       </div>
     </div>
@@ -305,10 +309,36 @@ export class EpistolaDocumentPreviewComponent
   /** Runtime state of the header auto-refresh toggle. */
   autoRefreshEnabled = true;
 
+  /**
+   * Which context this preview is authored for, set by the form designer. Defaults to `'task'`, so
+   * every form authored before start-event support keeps its exact behaviour.
+   *
+   * <p>Deliberately **not** inferred from whether a task id happens to be present. Falling back to
+   * start mode when the task id fails to arrive would silently swap a stricter gate
+   * (`OperatonTask:VIEW` on that task) for a weaker one, and drop `$doc`/`$pv` to overrides-only —
+   * `$pv` binds to an empty map rather than throwing, so the user would get a plausible letter with
+   * fields quietly missing. The task-id carrier is known to go missing from builder-saved forms
+   * (see `task-id-carrier.spec.ts`), which is exactly when such a fallback would fire.
+   */
+  @Input() previewContext: 'task' | 'start' = 'task';
+
+  /**
+   * Case document this start form was opened against, from the server-prefilled
+   * `epistola:documentId` carrier. Null on a brand-new-case start form. Only meaningful when
+   * {@link previewContext} is `'start'`.
+   */
+  @Input() startDocumentId: string | null = null;
+
+  /**
+   * Whether Formio is rendering this at design time — the builder canvas or the component-settings
+   * preview. Pushed by the Formio wrapper, which is the only place that can see Formio's own
+   * `builderMode` / `options.preview` flags.
+   */
+  @Input() designMode = false;
+
   loading = false;
   error: string | null = null;
   previewUrl: SafeResourceUrl | null = null;
-  designMode = false;
   private initialized = false;
   private currentBlobUrl: string | null = null;
   private previewSubscription?: Subscription;
@@ -316,7 +346,6 @@ export class EpistolaDocumentPreviewComponent
   constructor(
     private readonly epistolaPluginService: EpistolaPluginService,
     private readonly sanitizer: DomSanitizer,
-    private readonly formIoStateService: FormIoStateService,
     private readonly cdr: ChangeDetectorRef,
   ) {}
 
@@ -329,8 +358,13 @@ export class EpistolaDocumentPreviewComponent
     return this.taskInstanceId ?? null;
   }
 
-  private get hasRuntimeContext(): boolean {
-    return !!this.currentTaskId || !!this.formIoStateService.documentId;
+  /**
+   * A start-mode preview sitting on a user-task form is misconfigured: it would be authorized on
+   * the caller's permission to start the process rather than on this task, weakening the form's
+   * gate. Detectable only because the task-id carrier is kept in both modes.
+   */
+  private get isMisconfiguredForTaskForm(): boolean {
+    return this.previewContext === 'start' && !!this.currentTaskId;
   }
 
   /**
@@ -351,11 +385,10 @@ export class EpistolaDocumentPreviewComponent
     if (!this.initialized) {
       this.initialized = true;
 
-      // Detect design mode: no runtime context (Formio builder). Newer task-open
-      // flows use the server-prefilled task id; older flows may still expose a
-      // document id through FormIoStateService.
-      if (!this.hasRuntimeContext) {
-        this.designMode = true;
+      // Design mode is pushed by the wrapper from Formio's own builderMode/options.preview, not
+      // inferred from absent ids — FormIoStateService.documentId is root-scoped and never cleared,
+      // so it survives navigation and cannot distinguish the builder from a real form.
+      if (this.designMode) {
         this.cdr.markForCheck();
         return;
       }
@@ -371,17 +404,14 @@ export class EpistolaDocumentPreviewComponent
     }
 
     if (this.designMode) {
-      if (!this.hasRuntimeContext) {
-        return;
-      }
-      this.designMode = false;
+      return;
     }
 
-    // React to input-override changes, and to the task id arriving late: the Formio
-    // wrapper sets taskInstanceId after attach, so it can land after the first render —
-    // re-run the preview once it does, instead of leaving the "only available from
-    // within a user task" message until a manual refresh.
-    if (changes['inputOverrides'] || changes['taskInstanceId']) {
+    // React to input-override changes, and to the task id arriving late: the Formio wrapper sets
+    // taskInstanceId after attach, so it can land after the first render. In task mode that means
+    // re-running the preview; in start mode it instead means re-evaluating the misconfiguration
+    // guard, which triggerPreview does before issuing any request.
+    if (changes['inputOverrides'] || changes['taskInstanceId'] || changes['startDocumentId']) {
       this.triggerPreview();
     }
   }
@@ -437,8 +467,11 @@ export class EpistolaDocumentPreviewComponent
 
   /**
    * Preview using the explicitly configured process link + input overrides.
-   * Requires a runtime task context — the backend authorizes the request against
-   * the task's process instance and case document, so all three ids must match.
+   *
+   * <p>Dispatches on the authored {@link previewContext}, never on which ids happen to be present.
+   * Each mode reaches exactly one endpoint and there is no path from one to the other:
+   * `'task'` requires a task id and calls `/preview`; `'start'` requires a process definition key
+   * and calls `/preview/start`.
    */
   private loadPreview(): void {
     if (!this.sourceActivityId) {
@@ -447,12 +480,10 @@ export class EpistolaDocumentPreviewComponent
       return;
     }
 
-    // The backend derives the process instance and case document from the task, so the
-    // task id is the only runtime context the request carries.
-    const taskId = this.currentTaskId;
-    if (!taskId) {
-      this.error = 'Preview is only available from within a user task.';
-      this.cdr.markForCheck();
+    const request =
+      this.previewContext === 'start' ? this.buildStartRequest() : this.buildTaskRequest();
+    if (!request) {
+      // buildX has set an explanatory error and deliberately issued no request.
       return;
     }
 
@@ -462,17 +493,59 @@ export class EpistolaDocumentPreviewComponent
     this.revokeBlobUrl();
 
     this.previewSubscription?.unsubscribe();
-    this.previewSubscription = this.epistolaPluginService
-      .previewToBlob({
-        taskId,
-        sourceActivityId: this.sourceActivityId,
-        inputOverrides: this.inputOverrides || null,
-        overrides: null,
-      })
-      .subscribe({
-        next: (blob) => this.handlePreviewSuccess(blob),
-        error: (err) => this.handlePreviewError(err),
-      });
+    this.previewSubscription = request.subscribe({
+      next: (blob) => this.handlePreviewSuccess(blob),
+      error: (err) => this.handlePreviewError(err),
+    });
+  }
+
+  /**
+   * Task mode: the backend derives the process instance and case document from the task, so the
+   * task id is the only runtime context the request carries. Returns null (having set an error)
+   * when no task id arrived — this fails closed rather than degrading to the start endpoint.
+   */
+  private buildTaskRequest(): Observable<Blob> | null {
+    const taskId = this.currentTaskId;
+    if (!taskId) {
+      this.error = 'Preview is only available from within a user task.';
+      this.cdr.markForCheck();
+      return null;
+    }
+
+    return this.epistolaPluginService.previewToBlob({
+      taskId,
+      sourceActivityId: this.sourceActivityId!,
+      inputOverrides: this.inputOverrides || null,
+      overrides: null,
+    });
+  }
+
+  /**
+   * Start mode: there is no task and no process instance, so the request names the process
+   * definition instead. The backend authorizes it on the caller's permission to start that
+   * process, and resolves the key to a definition id itself.
+   */
+  private buildStartRequest(): Observable<Blob> | null {
+    if (this.isMisconfiguredForTaskForm) {
+      this.error =
+        'This preview is configured for a start form but is placed on a user task. ' +
+        'Change "Where is this form shown?" to "In a user task".';
+      this.cdr.markForCheck();
+      return null;
+    }
+
+    if (!this.processDefinitionKey) {
+      this.error = 'Preview is not configured: select a process link on the form component.';
+      this.cdr.markForCheck();
+      return null;
+    }
+
+    return this.epistolaPluginService.previewStartToBlob({
+      processDefinitionKey: this.processDefinitionKey,
+      sourceActivityId: this.sourceActivityId!,
+      documentId: this.startDocumentId ?? null,
+      inputOverrides: this.inputOverrides || null,
+    });
   }
 
   private handlePreviewSuccess(blob: Blob): void {

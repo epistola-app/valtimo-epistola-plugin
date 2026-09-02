@@ -17,9 +17,13 @@
  */
 
 /**
- * Helpers for reading the active user task's id out of a Valtimo task form that was
- * prefilled server-side by the {@code epistola:} value resolver (see the backend
- * {@code EpistolaTaskValueResolverFactory}).
+ * Helpers for reading values out of a Valtimo form that were prefilled server-side by the
+ * {@code epistola:} value resolver (see the backend {@code EpistolaTaskValueResolverFactory}).
+ *
+ * <p>Two carriers exist: {@code epistola:taskId}, filled on a user-task form, and
+ * {@code epistola:documentId}, filled on a start form opened against an existing case. They come
+ * from different resolver overloads, and a form only ever gets one of them — which is what lets the
+ * document preview tell a task form from a start form without guessing.
  *
  * <p>Background: the Epistola Formio components need the id of the user task whose form
  * they're rendered in, to authorize their backend requests ({@code OperatonTask:VIEW}).
@@ -59,6 +63,34 @@ export const PREFILLED_TASK_ID_CARRIER = {
   properties: { sourceKey: PREFILLED_TASK_ID_SOURCE_KEY },
 };
 
+/** The value-resolver source key that yields the case document id at start-form prefill time. */
+export const PREFILLED_DOCUMENT_ID_SOURCE_KEY = 'epistola:documentId';
+
+/** Conventional key of the hidden carrier field that holds the prefilled document id. */
+export const PREFILLED_DOCUMENT_ID_DATA_KEY = 'epistolaDocumentId';
+
+/**
+ * Hidden carrier for the case document a **start form** was opened against, used by the
+ * start-event preview's start-on-existing-case flavour.
+ *
+ * <p>Filled by the backend's document-scoped value resolver overload, which is the only one
+ * Valtimo reaches when prefilling a start form. It stays empty on a brand-new-case start form —
+ * Valtimo skips prefill entirely when there is no document — and empty on a task form, where the
+ * task-scoped overload deliberately does not resolve it.
+ *
+ * <p>Why not read the document id from Valtimo's `FormIoStateService` instead: that service is
+ * `providedIn: 'root'` and never clears `documentId`, so it survives navigation away from a case.
+ * A server-prefilled carrier is scoped to *this* form render and cannot go stale.
+ */
+export const PREFILLED_DOCUMENT_ID_CARRIER = {
+  type: 'hidden',
+  key: PREFILLED_DOCUMENT_ID_DATA_KEY,
+  input: true,
+  persistent: false,
+  label: 'Epistola Document Id',
+  properties: { sourceKey: PREFILLED_DOCUMENT_ID_SOURCE_KEY },
+};
+
 /**
  * Returns a `components` array guaranteed to hold exactly one task-id carrier, preserving
  * any other children already present.
@@ -76,23 +108,43 @@ export const PREFILLED_TASK_ID_CARRIER = {
  * carriers beyond the first are dropped, so re-saving a form that picked up duplicates repairs it.
  */
 export function ensureTaskIdCarrier(components: unknown): any[] {
-  const existing = Array.isArray(components) ? components : [];
-  let kept = false;
-  const deduped = existing.filter((child: unknown) => {
-    if (!isTaskIdCarrier(child)) {
-      return true;
-    }
-    if (kept) {
-      return false;
-    }
-    kept = true;
-    return true;
-  });
-  return kept ? deduped : [...deduped, { ...PREFILLED_TASK_ID_CARRIER }];
+  return ensureCarriers(components, [PREFILLED_TASK_ID_CARRIER]);
 }
 
 /**
- * Whether a child component is a task-id carrier.
+ * Returns a `components` array guaranteed to hold exactly one of each requested carrier,
+ * preserving any other children already present.
+ *
+ * <p>Generalises {@link ensureTaskIdCarrier} for components that need more than one prefilled
+ * value — the document preview carries both the task id and (on a start form) the document id.
+ * Each carrier is deduped independently by its own source key.
+ */
+export function ensureCarriers(components: unknown, carriers: readonly any[]): any[] {
+  let result = Array.isArray(components) ? [...components] : [];
+
+  for (const carrier of carriers) {
+    const sourceKey = carrier?.properties?.sourceKey;
+    let kept = false;
+    result = result.filter((child: unknown) => {
+      if (!isCarrierFor(child, sourceKey)) {
+        return true;
+      }
+      if (kept) {
+        return false;
+      }
+      kept = true;
+      return true;
+    });
+    if (!kept) {
+      result.push({ ...carrier });
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Whether a child component is the carrier for a given source key.
  *
  * <p>Matched on {@code type: 'hidden'} plus the source key, deliberately <b>not</b> on the key.
  * Formio's builder uniquifies keys across a form, so the carrier of the second Epistola component
@@ -106,12 +158,9 @@ export function ensureTaskIdCarrier(components: unknown): any[] {
  * default carrier's {@code properties.sourceKey}. Such a child keeps its own {@code type}
  * (e.g. {@code textfield}), because {@code defaultsDeep} only fills in what is missing.
  */
-function isTaskIdCarrier(child: unknown): boolean {
+function isCarrierFor(child: unknown, sourceKey: string): boolean {
   const candidate = child as any;
-  return (
-    candidate?.type === 'hidden' &&
-    candidate?.properties?.sourceKey === PREFILLED_TASK_ID_SOURCE_KEY
-  );
+  return candidate?.type === 'hidden' && candidate?.properties?.sourceKey === sourceKey;
 }
 
 /**
@@ -125,16 +174,31 @@ function isTaskIdCarrier(child: unknown): boolean {
  *     hidden field whose value Formio copied into {@code root.data}.
  */
 export function readPrefilledTaskId(root: any): string | null {
+  return readPrefilledValue(root, PREFILLED_TASK_ID_SOURCE_KEY, PREFILLED_TASK_ID_DATA_KEY);
+}
+
+/**
+ * Reads the prefilled case document id from a start form, or null when absent.
+ *
+ * <p>Non-null only on a start form opened against an existing case. A brand-new-case start form
+ * gets no prefill at all, and a task form's resolver deliberately leaves this key unresolved.
+ */
+export function readPrefilledDocumentId(root: any): string | null {
+  return readPrefilledValue(root, PREFILLED_DOCUMENT_ID_SOURCE_KEY, PREFILLED_DOCUMENT_ID_DATA_KEY);
+}
+
+/** Shared read-back for any prefilled carrier; see {@link readPrefilledTaskId} for the mechanism. */
+function readPrefilledValue(root: any, sourceKey: string, dataKey: string): string | null {
   if (!root) {
     return null;
   }
 
-  const fromForm = findSourceKeyDefaultValue(root.form, PREFILLED_TASK_ID_SOURCE_KEY);
+  const fromForm = findSourceKeyDefaultValue(root.form, sourceKey);
   if (typeof fromForm === 'string' && fromForm.length > 0) {
     return fromForm;
   }
 
-  const fromData = root.data?.[PREFILLED_TASK_ID_DATA_KEY];
+  const fromData = root.data?.[dataKey];
   if (typeof fromData === 'string' && fromData.length > 0) {
     return fromData;
   }

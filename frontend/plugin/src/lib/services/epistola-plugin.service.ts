@@ -51,6 +51,25 @@ export interface PreviewBlobRequest {
 }
 
 /**
+ * Request body for {@link EpistolaPluginService.previewStartToBlob} — the start-event preview.
+ *
+ * <p>A start event has no task and no process instance, so this names the process definition
+ * instead; the backend authorizes the caller's permission to start it and resolves the key to a
+ * definition id itself. The key rather than the id is on the wire because it is version-stable —
+ * a version-pinned id would break every saved form on the next BPMN deployment.
+ *
+ * <p>Carries no {@code taskId}: the endpoint rejects a body containing one outright rather than
+ * ignoring it, so the two modes cannot be conflated.
+ */
+export interface StartPreviewBlobRequest {
+  processDefinitionKey: string;
+  sourceActivityId: string;
+  /** Only for the start-a-process-on-an-existing-case flavour; null for a brand-new case. */
+  documentId?: string | null;
+  inputOverrides?: Record<string, unknown> | null;
+}
+
+/**
  * Query-string parameters for {@link EpistolaPluginService.downloadDocumentBlob}.
  * The backend resolves the Epistola PDF id and tenant id from the named process
  * variables on the caller's task — no raw PDF id is sent on the wire.
@@ -248,6 +267,22 @@ export class EpistolaPluginService {
    */
   previewToBlob(request: PreviewBlobRequest): Observable<Blob> {
     return this.http.post(`${this.apiEndpoint}/preview`, request, {
+      responseType: 'blob',
+      headers: new HttpHeaders().set('X-Skip-Interceptor', '422'),
+    });
+  }
+
+  /**
+   * Render the preview for a BPMN start form, where no process instance exists yet.
+   *
+   * <p>A separate endpoint from {@link previewToBlob}, not a variant of it: the two carry different
+   * authorization models ({@code OperatonTask:VIEW} on a task versus permission to start a process),
+   * and keeping them apart means neither can be reached from the other's call site.
+   *
+   * <p>Same {@code X-Skip-Interceptor: 422} treatment, since both share the RENDER_FAILED mapping.
+   */
+  previewStartToBlob(request: StartPreviewBlobRequest): Observable<Blob> {
+    return this.http.post(`${this.apiEndpoint}/preview/start`, request, {
       responseType: 'blob',
       headers: new HttpHeaders().set('X-Skip-Interceptor', '422'),
     });

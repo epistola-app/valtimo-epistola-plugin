@@ -235,3 +235,85 @@ describe('prefilled task-id carrier survives Formio schema serialization', () =>
     expect(carriersOf(instance.schema)).toHaveLength(0);
   });
 });
+
+describe('document-id carrier (start-event preview)', () => {
+  beforeAll(() => {
+    const injector: any = {};
+    registerEpistolaDocumentPreviewComponent(injector);
+  });
+
+  function documentCarriersOf(schema: any): any[] {
+    return (schema.components ?? []).filter(
+      (child: any) => child?.properties?.sourceKey === 'epistola:documentId',
+    );
+  }
+
+  /**
+   * Same serialization trap as the task-id carrier: declaring it in the default schema is not
+   * enough, because Formio drops schema that deep-equals the default. The preview registers both
+   * carriers through withPrefilledCarriers, so both must survive.
+   */
+  it('persists alongside the task-id carrier from the palette drop payload', () => {
+    const type = 'epistola-document-preview';
+    const schema = persistedSchemaOf(type, paletteDropPayloadFor(type));
+
+    expect(documentCarriersOf(schema)).toHaveLength(1);
+    expect(carriersOf(schema)).toHaveLength(1);
+  });
+
+  /**
+   * The task-id carrier is deliberately retained in start mode: a filled task id is what tells a
+   * start-mode preview it has been dropped on a task form by mistake. Losing it would silently
+   * disable that guard.
+   */
+  it('keeps the task-id carrier even on a component authored for a start form', () => {
+    const schema = persistedSchemaOf('epistola-document-preview', {
+      type: 'epistola-document-preview',
+      key: 'preview',
+      previewContext: 'start',
+      processDefinitionKey: 'permit-confirmation',
+      sourceActivityId: 'generate-confirmation',
+    });
+
+    expect(carriersOf(schema)).toHaveLength(1);
+    expect(documentCarriersOf(schema)).toHaveLength(1);
+  });
+
+  it('does not duplicate carriers a stored form already has', () => {
+    const schema = persistedSchemaOf('epistola-document-preview', {
+      type: 'epistola-document-preview',
+      key: 'preview',
+      components: [
+        {
+          type: 'hidden',
+          key: 'epistolaTaskId',
+          input: true,
+          persistent: false,
+          properties: { sourceKey: 'epistola:taskId' },
+        },
+        {
+          type: 'hidden',
+          key: 'epistolaDocumentId',
+          input: true,
+          persistent: false,
+          properties: { sourceKey: 'epistola:documentId' },
+        },
+      ],
+    });
+
+    expect(carriersOf(schema)).toHaveLength(1);
+    expect(documentCarriersOf(schema)).toHaveLength(1);
+  });
+
+  /** The other two task-bound components have no use for it and must not grow one. */
+  it('is not added to the download or retry-form components', () => {
+    const injector: any = {};
+    registerEpistolaDocumentComponent(injector);
+    registerEpistolaRetryFormComponent(injector);
+
+    for (const type of ['epistola-document', 'epistola-retry-form']) {
+      const schema = persistedSchemaOf(type, paletteDropPayloadFor(type));
+      expect(documentCarriersOf(schema)).toHaveLength(0);
+    }
+  });
+});

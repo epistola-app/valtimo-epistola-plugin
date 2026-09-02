@@ -23,7 +23,7 @@ import {
   registerCustomFormioComponent,
 } from '@valtimo/components';
 import { Components } from 'formiojs';
-import { ensureTaskIdCarrier } from '../services/prefilled-task-id';
+import { ensureCarriers, PREFILLED_TASK_ID_CARRIER } from '../services/prefilled-task-id';
 
 export type ValtimoFormioComponentConstructor = ReturnType<typeof createCustomFormioComponent>;
 export type ValtimoFormioComponent = InstanceType<ValtimoFormioComponentConstructor>;
@@ -60,7 +60,21 @@ export type ValtimoFormioComponentEnhancer = (
 export function withPrefilledTaskIdCarrier(
   BaseComponent: ValtimoFormioComponentConstructor,
 ): ValtimoFormioComponentConstructor {
-  class WithPrefilledTaskIdCarrier extends BaseComponent {
+  return withPrefilledCarriers(BaseComponent, [PREFILLED_TASK_ID_CARRIER]);
+}
+
+/**
+ * As {@link withPrefilledTaskIdCarrier}, but for a component that needs more than one prefilled
+ * value — the document preview carries the task id and, on a start form, the case document id.
+ *
+ * Same reasoning and the same non-negotiable constraint: every carrier must be re-added after
+ * Formio's `getModifiedSchema` filter, or it is dropped from builder-saved forms.
+ */
+export function withPrefilledCarriers(
+  BaseComponent: ValtimoFormioComponentConstructor,
+  carriers: readonly any[],
+): ValtimoFormioComponentConstructor {
+  class WithPrefilledCarriers extends BaseComponent {
     getModifiedSchema(schema: any, defaultSchema: any, recursion: boolean): any {
       // Deliberately no fallback if Formio ever drops this method: let it throw. Form.io is
       // exact-pinned at 4.19.5 across the whole supported Valtimo range, so that can only happen
@@ -69,13 +83,13 @@ export function withPrefilledTaskIdCarrier(
       // defaults at authoring time. `task-id-carrier.spec.ts` fails on such a bump.
       const modified = super.getModifiedSchema(schema, defaultSchema, recursion);
       if (!recursion) {
-        modified.components = ensureTaskIdCarrier(modified.components);
+        modified.components = ensureCarriers(modified.components, carriers);
       }
       return modified;
     }
   }
 
-  return WithPrefilledTaskIdCarrier;
+  return WithPrefilledCarriers;
 }
 
 /**

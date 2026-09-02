@@ -20,11 +20,16 @@ import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo } from '@valtimo/components';
 import { EpistolaDocumentPreviewComponent } from './epistola-document-preview.component';
 import { computeInputOverrides } from './preview-utils';
-import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/prefilled-task-id';
+import {
+  readPrefilledTaskId,
+  readPrefilledDocumentId,
+  PREFILLED_TASK_ID_CARRIER,
+  PREFILLED_DOCUMENT_ID_CARRIER,
+} from '../../services/prefilled-task-id';
 import {
   registerEpistolaFormioComponent,
   ValtimoFormioComponentConstructor,
-  withPrefilledTaskIdCarrier,
+  withPrefilledCarriers,
 } from '../valtimo-formio-adapter';
 
 /** Default debounce for the auto-refresh, in milliseconds. */
@@ -37,12 +42,36 @@ export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
   group: 'basic',
   icon: 'file-pdf-o',
   emptyValue: null,
-  fieldOptions: ['label', 'processDefinitionKey', 'sourceActivityId', 'overrideMapping'],
-  // Embed the hidden task-id carrier so dropping this component is enough — no separate
-  // field for the author to add. Valtimo prefills it server-side via the epistola: resolver.
-  schema: { components: [PREFILLED_TASK_ID_CARRIER] },
+  fieldOptions: [
+    'label',
+    'previewContext',
+    'processDefinitionKey',
+    'sourceActivityId',
+    'overrideMapping',
+  ],
+  // Embed the hidden carriers so dropping this component is enough — no separate field for the
+  // author to add. Valtimo prefills them server-side via the epistola: resolver: the task id on
+  // a user-task form, the document id on a start form opened against an existing case.
+  //
+  // The task-id carrier is kept in BOTH modes on purpose: in start mode a filled task id is what
+  // tells the component it has been dropped on a task form by mistake.
+  schema: { components: [PREFILLED_TASK_ID_CARRIER, PREFILLED_DOCUMENT_ID_CARRIER] },
   editForm: () => ({
     components: [
+      {
+        type: 'radio',
+        key: 'previewContext',
+        label: 'Where is this form shown?',
+        tooltip:
+          'A start-form preview is authorized on your permission to start the process, not on a user task. Only choose it for a form on a BPMN start event — on a task form it would weaken the check and is refused.',
+        defaultValue: 'task',
+        inline: true,
+        weight: 5,
+        values: [
+          { label: 'In a user task (default)', value: 'task' },
+          { label: 'On a start form', value: 'start' },
+        ],
+      },
       {
         type: 'epistola-process-link-selector',
         key: 'processLinkSelection',
@@ -84,7 +113,10 @@ export function registerEpistolaDocumentPreviewComponent(injector: Injector): vo
     EPISTOLA_DOCUMENT_PREVIEW_OPTIONS,
     EpistolaDocumentPreviewComponent,
     injector,
-    (base) => withPreviewOverrides(withPrefilledTaskIdCarrier(base)),
+    (base) =>
+      withPreviewOverrides(
+        withPrefilledCarriers(base, [PREFILLED_TASK_ID_CARRIER, PREFILLED_DOCUMENT_ID_CARRIER]),
+      ),
   );
 }
 
@@ -150,12 +182,32 @@ function withPreviewOverrides(
         this._customAngularElement['processDefinitionKey'] =
           this.component.processDefinitionKey || '';
         this._customAngularElement['sourceActivityId'] = this.component.sourceActivityId || '';
+
+        // Design mode comes from Formio's own flags, which only exist out here on the wrapper.
+        // builderMode covers the builder canvas (options.attachMode === 'builder'); the
+        // component-settings live preview omits attachMode and sets options.preview instead, so
+        // both are needed. Do NOT use previewMode — it is hardcoded false on Formio's base class.
+        // Deliberately not derived from FormIoStateService: that service is root-scoped and never
+        // clears documentId, so it cannot tell the builder from a real form after visiting a case.
+        this._customAngularElement['designMode'] =
+          (this as any).builderMode === true || (this as any).options?.preview === true;
+
+        // Authored mode, defaulting to 'task' so forms predating start-event support are unchanged.
+        this._customAngularElement['previewContext'] =
+          this.component?.previewContext === 'start' ? 'start' : 'task';
+
         // Forward the server-prefilled task id (epistola: value resolver) so the
         // component authorizes against the exact task in every Valtimo task-open flow.
+        // Forwarded in both modes: in start mode its presence is the misconfiguration signal.
         const prefilledTaskId = readPrefilledTaskId(this.root);
         if (prefilledTaskId) {
           this._customAngularElement['taskInstanceId'] = prefilledTaskId;
         }
+
+        // The case a start form was opened against, when starting a process on an existing case.
+        // Server-prefilled, so it is scoped to this render and cannot be a stale id left behind by
+        // a previously visited case.
+        this._customAngularElement['startDocumentId'] = readPrefilledDocumentId(this.root);
         if (this.component?.overrideMapping) {
           // Let the component's Refresh button force a recompute from the live form
           // data, so it works before the first change (e.g. on initial load with
