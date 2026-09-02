@@ -334,18 +334,22 @@ class EpistolaGenerationResourceStartPreviewAuthorizationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
-    // ---- the wire must not carry a task ----
+    // ---- the wire cannot carry a task ----
 
+    /**
+     * A smuggled {@code taskId} is inert because the record has nowhere to put it — not because it
+     * is rejected. Do not "improve" this into an exception assertion: it would pass here (a bare
+     * ObjectMapper enables FAIL_ON_UNKNOWN_PROPERTIES) and be false in the application, where
+     * Spring Boot disables it and the field is silently dropped. {@code StartFormPreviewE2ETest}
+     * pins the real-application behaviour.
+     */
     @Test
-    void startPreviewRequest_rejectsABodyCarryingATaskId() {
-        var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
-        String body = """
-                {"processDefinitionKey":"permit-confirmation","sourceActivityId":"generate-confirmation",
-                 "taskId":"smuggled-task-id"}
-                """;
+    void startPreviewRequest_hasNowhereToPutATaskOrProcessInstance() {
+        var componentNames = java.util.Arrays.stream(StartPreviewRequest.class.getRecordComponents())
+                .map(java.lang.reflect.RecordComponent::getName)
+                .toList();
 
-        assertThatThrownBy(() -> mapper.readValue(body, StartPreviewRequest.class))
-                .isInstanceOf(com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException.class);
+        assertThat(componentNames).doesNotContain("taskId", "processInstanceId");
     }
 
     @Test

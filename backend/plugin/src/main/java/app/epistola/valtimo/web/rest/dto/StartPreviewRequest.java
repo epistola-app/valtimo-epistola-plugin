@@ -17,8 +17,6 @@
  */
 package app.epistola.valtimo.web.rest.dto;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import java.util.Map;
 
 /**
@@ -34,8 +32,13 @@ import java.util.Map;
  * <p>Deliberately absent, each for a reason:
  * <ul>
  *   <li><b>{@code taskId} / {@code processInstanceId}</b> — a start event has neither by
- *       construction. {@code ignoreUnknown = false} turns an attempt to smuggle one in into a 400
- *       at deserialization rather than a silently dropped field.</li>
+ *       construction. A body that carries one is <b>silently ignored</b>, not rejected: Spring
+ *       Boot's Jackson auto-configuration disables {@code FAIL_ON_UNKNOWN_PROPERTIES}, so an
+ *       unknown field is dropped during deserialization. That is safe here because nothing on this
+ *       path can read one — the controller authorizes against the process definition, and
+ *       {@code PreviewService.generateStartPreview} hard-codes {@code processInstanceId = null}.
+ *       There is no plumbing for a smuggled task to reach, so the absence of the field <i>is</i>
+ *       the guarantee. Do not add one.</li>
  *   <li><b>{@code overrides}</b> (the post-mapping deep-merge) — that affordance exists only for
  *       the task-bound retry form's edited-payload flow. Omitting it keeps an arbitrary-JSON
  *       injection surface off this path.</li>
@@ -58,7 +61,6 @@ import java.util.Map;
  *                             the <i>only</i> source of data: there is no case and no process
  *                             instance to fall back to.
  */
-@JsonIgnoreProperties(ignoreUnknown = false)
 public record StartPreviewRequest(
         String processDefinitionKey,
         String sourceActivityId,
