@@ -49,6 +49,9 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class PreviewService {
 
+    /** The plugin action a preview dry-runs. Only links carrying this key are previewable. */
+    static final String GENERATE_DOCUMENT_ACTION_KEY = "epistola-generate-document";
+
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
     private final ProcessLinkService processLinkService;
@@ -70,8 +73,46 @@ public class PreviewService {
      * @throws PreviewException if the preview cannot be generated
      */
     public InputStream generatePreview(PreviewRequest request, String documentId, String processInstanceId) {
-        String processDefinitionId = resolveProcessDefinitionId(processInstanceId);
-        PluginProcessLink processLink = resolveProcessLink(processDefinitionId, request.sourceActivityId());
+        return render(new PreviewContext(
+                resolveProcessDefinitionId(processInstanceId),
+                documentId,
+                processInstanceId,
+                request.sourceActivityId(),
+                request.inputOverrides(),
+                request.overrides()));
+    }
+
+    /**
+     * Generate a document preview for a BPMN start event, where no process instance exists.
+     *
+     * <p>Takes the <b>already-resolved</b> process definition id rather than the key the caller
+     * supplied, so it is structurally impossible to render against a definition the controller has
+     * not authorized ({@code OperatonExecution:CREATE}).
+     *
+     * <p>{@code processInstanceId} is null throughout, so {@code $pv} resolves to the overrides
+     * alone. {@code $doc} resolves to the overrides alone for a brand-new case, or to the overrides
+     * overlaid on the real document when starting a process on an existing case.
+     *
+     * @param processDefinitionId The authorized process definition
+     * @param documentId          Case document for the start-on-existing-case flavour, else null
+     * @param sourceActivityId    The generate-document activity; required on this path
+     * @param inputOverrides      {@code {"doc", "pv"}} overlay — the only data source for a new case
+     * @return PDF bytes as an InputStream
+     * @throws PreviewException if the preview cannot be generated
+     */
+    public InputStream generateStartPreview(String processDefinitionId,
+                                            String documentId,
+                                            String sourceActivityId,
+                                            Map<String, Map<String, Object>> inputOverrides) {
+        return render(new PreviewContext(
+                processDefinitionId, documentId, null, sourceActivityId, inputOverrides, null));
+    }
+
+    private InputStream render(PreviewContext ctx) {
+        String processDefinitionId = ctx.processDefinitionId();
+        String documentId = ctx.documentId();
+        String processInstanceId = ctx.processInstanceId();
+        PluginProcessLink processLink = resolveProcessLink(processDefinitionId, ctx.sourceActivityId());
 
         var actionConfig = GenerateDocumentActionConfigurationRegistry.parse(processLink.getActionProperties());
         String catalogId = actionConfig.catalogId();
@@ -89,13 +130,17 @@ public class PreviewService {
         // Build resolvers with input-level overrides layered on top.
         // The OverlayMap checks overrides first; non-overridden paths fall through
         // to the regular resolver (lazy document load / process variable lookup).
-        var docOverrides = request.inputOverrides() != null ? request.inputOverrides().get("doc") : null;
-        var pvOverrides = request.inputOverrides() != null ? request.inputOverrides().get("pv") : null;
+        var docOverrides = ctx.inputOverrides() != null ? ctx.inputOverrides().get("doc") : null;
+        var pvOverrides = ctx.inputOverrides() != null ? ctx.inputOverrides().get("pv") : null;
 
         var evalCtxBuilder = app.epistola.valtimo.mapping.EvaluationContext.builder()
                 .expression(dataMapping)
                 .documentResolver(docId -> {
-                    Map<String, Object> doc = loadDocumentContent(docId);
+                    // A start-event preview for a new case has no document at all. Guard explicitly:
+                    // JsonataMappingService.buildDocumentMap calls the resolver with a null id rather
+                    // than skipping it, so without this every such render would log a warning and
+                    // burn an exception on UUID.fromString(null).
+                    Map<String, Object> doc = docId == null ? Map.of() : loadDocumentContent(docId);
                     return docOverrides != null ? new OverlayMap(docOverrides, doc) : doc;
                 })
                 .documentId(documentId)
@@ -127,9 +172,10 @@ public class PreviewService {
         Map<String, Object> resolvedData = actionConfig.evaluateDataMapping(
                 jsonataMappingService, evalCtxBuilder.build());
 
-        // Deep-merge with output-level overrides (overrides win) — used by retry-form
-        if (request.overrides() != null && !request.overrides().isEmpty()) {
-            resolvedData = deepMerge(resolvedData, request.overrides());
+        // Deep-merge with output-level overrides (overrides win) — used by retry-form.
+        // Always null on the start path: StartPreviewRequest carries no such field.
+        if (ctx.outputOverrides() != null && !ctx.outputOverrides().isEmpty()) {
+            resolvedData = deepMerge(resolvedData, ctx.outputOverrides());
         }
 
         // Get plugin config
@@ -187,7 +233,7 @@ public class PreviewService {
         List<PluginProcessLink> generateLinks = processLinkService.getProcessLinks(processDefinitionId).stream()
                 .filter(PluginProcessLink.class::isInstance)
                 .map(PluginProcessLink.class::cast)
-                .filter(link -> "epistola-generate-document".equals(link.getPluginActionDefinitionKey()))
+                .filter(link -> GENERATE_DOCUMENT_ACTION_KEY.equals(link.getPluginActionDefinitionKey()))
                 .toList();
 
         if (generateLinks.isEmpty()) {
@@ -220,10 +266,19 @@ public class PreviewService {
         }
     }
 
+    /**
+     * The generate-document plugin link for an activity, or null.
+     *
+     * <p>Filters on the action key as well as the type. On the task path the activity id comes from
+     * the caller's own process, but the start path accepts it from the wire — without this filter a
+     * client-supplied activity id could name another plugin's link, whose {@code actionProperties}
+     * would then be parsed as a generate-document configuration.
+     */
     private PluginProcessLink findPluginProcessLink(String processDefinitionId, String activityId) {
         return processLinkService.getProcessLinks(processDefinitionId, activityId).stream()
                 .filter(PluginProcessLink.class::isInstance)
                 .map(PluginProcessLink.class::cast)
+                .filter(link -> GENERATE_DOCUMENT_ACTION_KEY.equals(link.getPluginActionDefinitionKey()))
                 .findFirst()
                 .orElse(null);
     }

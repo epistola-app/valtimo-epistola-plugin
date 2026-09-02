@@ -93,7 +93,7 @@ class EpistolaPluginResourceDocumentDownloadTest {
         resource = new EpistolaGenerationResource(pluginService, epistolaService,
                 previewService, retryFormService, jsonataMappingService,
                 documentService, objectMapper, authorizationService, operatonTaskService,
-                runtimeService);
+                runtimeService, mock(org.operaton.bpm.engine.RepositoryService.class));
     }
 
     @Test

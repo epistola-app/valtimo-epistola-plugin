@@ -24,22 +24,33 @@ import app.epistola.valtimo.service.form.RetryFormService;
 import app.epistola.valtimo.web.rest.dto.EvaluationRequest;
 import app.epistola.valtimo.web.rest.dto.EvaluationResult;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
+import app.epistola.valtimo.web.rest.dto.StartPreviewRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.ritense.authorization.AuthorizationContext;
 import com.ritense.authorization.AuthorizationService;
+import com.ritense.authorization.request.AuthorizationResourceContext;
 import com.ritense.authorization.request.EntityAuthorizationRequest;
+import com.ritense.authorization.request.RelatedEntityAuthorizationRequest;
+import com.ritense.document.domain.impl.JsonSchemaDocument;
+import com.ritense.document.service.JsonSchemaDocumentActionProvider;
 import com.ritense.plugin.domain.PluginConfiguration;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valtimo.contract.annotation.SkipComponentScan;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
+import com.ritense.valtimo.operaton.authorization.OperatonExecutionActionProvider;
 import com.ritense.valtimo.operaton.authorization.OperatonTaskActionProvider;
+import com.ritense.valtimo.operaton.domain.OperatonExecution;
+import com.ritense.valtimo.operaton.domain.OperatonProcessDefinition;
 import com.ritense.valtimo.operaton.domain.OperatonTask;
 import com.ritense.valtimo.security.exceptions.TaskNotFoundException;
 import com.ritense.valtimo.service.OperatonTaskService;
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.operaton.bpm.engine.RepositoryService;
 import org.operaton.bpm.engine.RuntimeService;
+import org.operaton.bpm.engine.repository.ProcessDefinition;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -60,16 +71,22 @@ import java.util.Map;
 /**
  * REST controller for Epistola generation, preview, and download operations.
  *
- * <p>Endpoints invoked from user task forms (preview, retry-form) authorize on
- * {@code OperatonTask:VIEW} AND verify that the supplied {@code processInstanceId} and
- * {@code documentId} are bound to the supplied task — the request must target the same
- * process instance and the same case document the task is operating on. Without this
- * second check, a caller with VIEW on any task could pivot to any document by supplying
- * foreign ids alongside a task id they legitimately own.
+ * <p>Endpoints invoked from user task forms (preview, retry-form, download) authorize on
+ * {@code OperatonTask:VIEW} and then <b>derive</b> the process instance and case document from that
+ * task. The caller never supplies them, so there is no forgery vector and nothing to cross-check.
  *
- * <p>{@code downloadDocument} authorizes by the same task/case binding and resolves
- * the Epistola PDF id and tenant id from named process variables on the caller's
- * task. Callers never send a raw PDF id over the wire — forge-proof by construction.
+ * <p>{@code downloadDocument} follows the same task-derived pattern and additionally resolves the
+ * Epistola PDF id and tenant id from named process variables on the caller's task. Callers never
+ * send a raw PDF id over the wire — forge-proof by construction.
+ *
+ * <p>{@code previewStartDocument} is the exception, and deliberately so: a BPMN start event has no
+ * task and no process instance, so it authorizes {@code OperatonExecution:CREATE} against the
+ * process definition the caller names — the same check Valtimo performs before serving that start
+ * form. It is the only endpoint here whose authorization subject is client-selected, which is sound
+ * because the supplied key selects <i>which</i> resource is checked, never <i>whether</i> one is.
+ * When it also carries a {@code documentId}, {@code JsonSchemaDocument:VIEW} is required on that
+ * document: permission to start a process must never confer read access to a case. See
+ * {@code docs/adr/0004-start-event-preview-authorization.md}.
  *
  * <p>{@code evaluateMapping} is reachable only to {@code ROLE_ADMIN} via the HTTP layer
  * (it is used by the process-link configurator only) and has no controller-level PBAC check.
@@ -91,6 +108,15 @@ public class EpistolaGenerationResource {
     private final AuthorizationService authorizationService;
     private final OperatonTaskService operatonTaskService;
     private final RuntimeService runtimeService;
+    /**
+     * Raw Operaton repository service, deliberately not {@code OperatonRepositoryService}: the
+     * Valtimo wrapper's {@code findLatestProcessDefinition} denies authorization and then runs the
+     * query under {@code runWithoutAuthorization}, and exposes no {@code createProcessDefinitionQuery()}.
+     * The start-preview lookup must stay neutral so an unknown key yields a clean 404 rather than a
+     * confusing 403 from a gating lookup. {@code ProcessLinkMappingService} takes the raw service
+     * for the same reason.
+     */
+    private final RepositoryService repositoryService;
 
     /**
      * Evaluate a JSONata data mapping expression against a real document.
@@ -273,28 +299,144 @@ public class EpistolaGenerationResource {
         String processInstanceId = task.getProcessInstanceId();
 
         try {
-            java.io.InputStream pdfStream = previewService.generatePreview(request, documentId, processInstanceId);
-
-            var resource = new org.springframework.core.io.InputStreamResource(pdfStream);
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDisposition(ContentDisposition.inline()
-                    .filename("preview.pdf")
-                    .build());
-
-            return ResponseEntity.ok().headers(headers).body(resource);
+            return inlinePdfResponse(
+                    previewService.generatePreview(request, documentId, processInstanceId));
         } catch (PreviewService.PreviewException e) {
-            log.debug("Preview unavailable: {}", e.getMessage());
-            return switch (e.getReason()) {
-                case PROCESS_NOT_FOUND, LINK_NOT_FOUND -> ResponseEntity.notFound().build();
-                case AMBIGUOUS_ACTIVITY, MISSING_TEMPLATE, MISSING_CONTEXT ->
-                        ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-                case RENDER_FAILED ->
-                        ResponseEntity.unprocessableEntity().body(Map.of(
-                                "error", "Preview could not be generated",
-                                "details", e.getMessage()));
-            };
+            return mapPreviewError(e);
         }
+    }
+
+    /**
+     * Preview the document a start event's generate-document link would produce, before any process
+     * instance exists.
+     *
+     * <p>Authorization deliberately differs from {@link #previewDocument}: there is no task to check
+     * {@code OperatonTask:VIEW} against, so this mirrors what Valtimo itself requires before serving
+     * the start form the calling component sits on — {@code OperatonExecution:CREATE} on the process
+     * definition. The preview therefore reaches exactly the audience of that form.
+     *
+     * <p>Two flavours, distinguished only by {@code documentId}:
+     * <ul>
+     *   <li><b>new case</b> (null) — {@code $doc} and {@code $pv} resolve to the caller's own
+     *       {@code inputOverrides} alone; no case data is reachable.</li>
+     *   <li><b>start a process on an existing case</b> — {@code $doc} overlays the overrides on the
+     *       real document, which is why {@code JsonSchemaDocument:VIEW} is required on top.</li>
+     * </ul>
+     *
+     * @see <a href="../../../../../../../../docs/adr/0004-start-event-preview-authorization.md">ADR 0004</a>
+     */
+    @PostMapping("/preview/start")
+    public ResponseEntity<?> previewStartDocument(@RequestBody StartPreviewRequest request) {
+        if (isBlank(request.processDefinitionKey()) || isBlank(request.sourceActivityId())) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("error", "processDefinitionKey and sourceActivityId are required"));
+        }
+
+        // Resolve the client-supplied key to a deployed definition. The key is version-stable; the
+        // component stores it rather than a version-pinned id so a redeployment doesn't break forms.
+        ProcessDefinition definition = repositoryService.createProcessDefinitionQuery()
+                .processDefinitionKey(request.processDefinitionKey())
+                .latestVersion()
+                .singleResult();
+        if (definition == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        String documentId = trimToNull(request.documentId());
+        JsonSchemaDocument document = null;
+        if (documentId != null) {
+            document = findDocumentOrNull(documentId);
+            if (document == null) {
+                return ResponseEntity.notFound().build();
+            }
+        }
+
+        // PRIMARY GATE — may this caller start this process? Same check as
+        // ProcessLinkActivityService.getStartEventObject, including the document context.
+        // NB: deliberately NOT JsonSchemaDocumentDefinition:CREATE — despite the name, that action
+        // means "may deploy a case schema" (it is used only by JsonSchemaDocumentDefinitionService
+        // .deploy) and would make this endpoint admin-only. See ADR 0004.
+        var executionRequest = new RelatedEntityAuthorizationRequest<>(
+                OperatonExecution.class,
+                OperatonExecutionActionProvider.CREATE,
+                OperatonProcessDefinition.class,
+                definition.getId());
+        if (document != null) {
+            executionRequest = executionRequest.withContext(
+                    new AuthorizationResourceContext<>(JsonSchemaDocument.class, document));
+        }
+        authorizationService.requirePermission(executionRequest);
+
+        // SECONDARY GATE — CREATE on a process must never confer READ on a case. Stricter than
+        // Valtimo's own start-form path, which passes the document only as context: it derives the
+        // id from the route the user already navigated to, whereas we take it from the wire and
+        // render its content into a PDF.
+        if (document != null) {
+            authorizationService.requirePermission(new EntityAuthorizationRequest<>(
+                    JsonSchemaDocument.class,
+                    JsonSchemaDocumentActionProvider.VIEW,
+                    List.of(document)));
+        }
+
+        try {
+            return inlinePdfResponse(previewService.generateStartPreview(
+                    definition.getId(), documentId, request.sourceActivityId(), request.inputOverrides()));
+        } catch (PreviewService.PreviewException e) {
+            return mapPreviewError(e);
+        }
+    }
+
+    /**
+     * Look up a case document without authorizing — the caller authorizes it explicitly afterwards.
+     * Returns null when the id is unknown or not a UUID, so a bad id is a 404/400 rather than a 500.
+     */
+    private JsonSchemaDocument findDocumentOrNull(String documentId) {
+        try {
+            var id = com.ritense.document.domain.impl.JsonSchemaDocumentId.existingId(
+                    java.util.UUID.fromString(documentId));
+            return AuthorizationContext.runWithoutAuthorization(
+                    () -> (JsonSchemaDocument) documentService.findBy(id).orElse(null));
+        } catch (IllegalArgumentException e) {
+            return null;
+        } catch (Exception e) {
+            log.debug("Could not resolve document {} for start preview: {}", documentId, e.getMessage());
+            return null;
+        }
+    }
+
+    /** Shared by both preview endpoints so their status mapping cannot drift. */
+    private ResponseEntity<?> mapPreviewError(PreviewService.PreviewException e) {
+        log.debug("Preview unavailable: {}", e.getMessage());
+        return switch (e.getReason()) {
+            case PROCESS_NOT_FOUND, LINK_NOT_FOUND -> ResponseEntity.notFound().build();
+            case AMBIGUOUS_ACTIVITY, MISSING_TEMPLATE, MISSING_CONTEXT ->
+                    ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            case RENDER_FAILED ->
+                    ResponseEntity.unprocessableEntity().body(Map.of(
+                            "error", "Preview could not be generated",
+                            "details", e.getMessage()));
+        };
+    }
+
+    /** Shared by both preview endpoints. */
+    private ResponseEntity<?> inlinePdfResponse(java.io.InputStream pdfStream) {
+        var resource = new org.springframework.core.io.InputStreamResource(pdfStream);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(ContentDisposition.inline().filename("preview.pdf").build());
+        return ResponseEntity.ok().headers(headers).body(resource);
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     /**

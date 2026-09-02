@@ -290,12 +290,13 @@ public class EpistolaPluginAutoConfiguration {
             ObjectMapper objectMapper,
             com.ritense.authorization.AuthorizationService authorizationService,
             com.ritense.valtimo.service.OperatonTaskService operatonTaskService,
-            RuntimeService runtimeService
+            RuntimeService runtimeService,
+            RepositoryService repositoryService
     ) {
         return new EpistolaGenerationResource(pluginService, epistolaService,
                 previewService, retryFormService, jsonataMappingService,
                 documentService, objectMapper, authorizationService, operatonTaskService,
-                runtimeService);
+                runtimeService, repositoryService);
     }
 
     @Bean
