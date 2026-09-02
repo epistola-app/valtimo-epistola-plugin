@@ -7,6 +7,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The document preview now works on a BPMN start form**, so a letter can be checked before the
+  case is created — previously it required starting the case and previewing from the first user
+  task, which produced a dossier for a letter the user might never send. Covers both Valtimo start
+  flavours: a brand-new case, and starting a process on an existing one. A new `previewContext`
+  setting on the component (`In a user task` / `On a start form`, defaulting to the former) selects
+  the mode; **existing forms need no re-authoring**. See
+  [ADR 0004](docs/adr/0004-start-event-preview-authorization.md).
+  - **New endpoint `POST /preview/start`**, authorized on `OperatonExecution:CREATE` against the
+    process definition — the same check Valtimo makes before serving that start form, so the preview
+    reaches exactly the form's audience. When the request names a case document,
+    `JsonSchemaDocument:VIEW` is required on it as well: permission to start a process must never
+    confer read access to a case. Kept separate from `POST /preview`, which is unchanged.
+  - **The mode is authored, never inferred.** Falling back to start mode when no task id arrives
+    would silently swap a per-task gate for a process-level one and drop `$doc`/`$pv` to the caller's
+    overrides — `$pv` binds to an empty map rather than throwing, so the result is a plausible letter
+    with fields quietly missing. That is precisely the situation the four task-id-carrier fixes
+    describe, so a fallback would have converted a loud, correct failure into a silent, wrong one. A
+    start-mode preview that _does_ find a task id reports itself misconfigured and calls nothing.
+  - The **Vergunningaanvraag** demo case now carries a preview on its start form, exercised
+    end-to-end by `StartFormPreviewE2ETest` against the real deployed configuration.
+
+### Fixed
+
+- **The preview no longer mistakes a real form for the Formio builder after visiting a case.** Design
+  mode was inferred from `FormIoStateService.documentId`, which is root-scoped and never cleared, so
+  it survived navigation. It now uses Formio's own signals, forwarded from the wrapper: `builderMode`
+  for the builder canvas, plus `options.preview` for the component-settings dialog — which omits
+  `attachMode` entirely and so reports `builderMode === false`. Checking only `builderMode` would
+  have made the settings dialog fire a real backend request.
+- `findPluginProcessLink` did not check that the link it found was a `generate-document` action. That
+  was harmless while the activity id always came from the caller's own task, but `/preview/start`
+  accepts it from the wire, so it is now filtered on both paths.
+- The preview's design-time summary advertised an "Auto-discover mode" that was removed in
+  `8972c16`; it now reports an unconfigured component instead.
+- `docs/document-preview.md` documented that same removed auto-discover mode, and showed a
+  `POST /preview` request body (`{documentId, processDefinitionKey, …}`) that no longer exists. Both
+  are corrected, and the `$doc`/`$pv` resolution is now tabulated per mode — on a new-case start form
+  nothing resolves except what the override mapping supplies.
+- Corrected the `EpistolaGenerationResource` class javadoc, which still described a bound-ids check
+  removed in `8972c16`.
+
+### Changed
+
+- **Breaking for applications that override the `epistolaGenerationResource` bean:** its factory
+  method gains a `RepositoryService` parameter (used to resolve a process definition key to its
+  latest deployed version). The plugin's own auto-configuration is updated; only applications
+  supplying their own bean via the `@ConditionalOnMissingBean` escape hatch need to widen theirs.
+
 ## [0.19.0] - 2026-08-28
 
 ### Added

@@ -14,8 +14,10 @@ HTTP layer (Spring Security)
   └─ authenticated — everything else
         ↓
 Controller PBAC layer (Valtimo AuthorizationService)
-  ├─ User-task endpoints — OperatonTask:VIEW + same-process + same-case binding
-  └─ Admin endpoints    — EpistolaAdministration:MANAGE
+  ├─ User-task endpoints  — OperatonTask:VIEW; process and case derived from the task
+  ├─ Start-event endpoint — OperatonExecution:CREATE on the process definition,
+  │                         + JsonSchemaDocument:VIEW when a case is named
+  └─ Admin endpoints      — EpistolaAdministration:MANAGE
 ```
 
 The HTTP layer is a coarse gate. The PBAC layer is where the real authorization decisions happen — the gate filters out anonymous traffic so the controllers can focus on user-vs-resource decisions.
@@ -24,22 +26,23 @@ The HTTP layer is a coarse gate. The PBAC layer is where the real authorization 
 
 ## Endpoint matrix
 
-| Endpoint                                                   | HTTP gate     | PBAC check                                                          |
-| ---------------------------------------------------------- | ------------- | ------------------------------------------------------------------- |
-| `POST /api/v1/plugin/epistola/preview`                     | authenticated | `OperatonTask:VIEW` on `taskId`; process and case derived from task |
-| `GET /api/v1/plugin/epistola/retry-form`                   | authenticated | `OperatonTask:VIEW` on `taskId`; process and case derived from task |
-| `GET /api/v1/plugin/epistola/documents/download`           | authenticated | `OperatonTask:VIEW` on `taskId`; process and case derived from task |
-| `GET /api/v1/plugin/epistola/admin/health`                 | authenticated | `EpistolaAdministration:MANAGE`                                     |
-| `GET /api/v1/plugin/epistola/admin/versions`               | authenticated | `EpistolaAdministration:MANAGE`                                     |
-| `GET /api/v1/plugin/epistola/admin/usage`                  | authenticated | `EpistolaAdministration:MANAGE`                                     |
-| `GET /api/v1/plugin/epistola/admin/pending`                | authenticated | `EpistolaAdministration:MANAGE`                                     |
-| `GET /api/v1/plugin/epistola/admin/export/{processLinkId}` | authenticated | `EpistolaAdministration:MANAGE`                                     |
-| `/api/v1/plugin/epistola/configurations/**`                | `ROLE_ADMIN`  | —                                                                   |
-| `/api/v1/plugin/epistola/process-variables`                | `ROLE_ADMIN`  | —                                                                   |
-| `/api/v1/plugin/epistola/variable-suggestions`             | `ROLE_ADMIN`  | —                                                                   |
-| `/api/v1/plugin/epistola/expression-functions`             | `ROLE_ADMIN`  | —                                                                   |
-| `/api/v1/plugin/epistola/validate-jsonata`                 | `ROLE_ADMIN`  | —                                                                   |
-| `/api/v1/plugin/epistola/evaluate-mapping`                 | `ROLE_ADMIN`  | —                                                                   |
+| Endpoint                                                   | HTTP gate     | PBAC check                                                                                                               |
+| ---------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `POST /api/v1/plugin/epistola/preview`                     | authenticated | `OperatonTask:VIEW` on `taskId`; process and case derived from task                                                      |
+| `GET /api/v1/plugin/epistola/retry-form`                   | authenticated | `OperatonTask:VIEW` on `taskId`; process and case derived from task                                                      |
+| `GET /api/v1/plugin/epistola/documents/download`           | authenticated | `OperatonTask:VIEW` on `taskId`; process and case derived from task                                                      |
+| `POST /api/v1/plugin/epistola/preview/start`               | authenticated | `OperatonExecution:CREATE` on the process definition; **plus** `JsonSchemaDocument:VIEW` when a `documentId` is supplied |
+| `GET /api/v1/plugin/epistola/admin/health`                 | authenticated | `EpistolaAdministration:MANAGE`                                                                                          |
+| `GET /api/v1/plugin/epistola/admin/versions`               | authenticated | `EpistolaAdministration:MANAGE`                                                                                          |
+| `GET /api/v1/plugin/epistola/admin/usage`                  | authenticated | `EpistolaAdministration:MANAGE`                                                                                          |
+| `GET /api/v1/plugin/epistola/admin/pending`                | authenticated | `EpistolaAdministration:MANAGE`                                                                                          |
+| `GET /api/v1/plugin/epistola/admin/export/{processLinkId}` | authenticated | `EpistolaAdministration:MANAGE`                                                                                          |
+| `/api/v1/plugin/epistola/configurations/**`                | `ROLE_ADMIN`  | —                                                                                                                        |
+| `/api/v1/plugin/epistola/process-variables`                | `ROLE_ADMIN`  | —                                                                                                                        |
+| `/api/v1/plugin/epistola/variable-suggestions`             | `ROLE_ADMIN`  | —                                                                                                                        |
+| `/api/v1/plugin/epistola/expression-functions`             | `ROLE_ADMIN`  | —                                                                                                                        |
+| `/api/v1/plugin/epistola/validate-jsonata`                 | `ROLE_ADMIN`  | —                                                                                                                        |
+| `/api/v1/plugin/epistola/evaluate-mapping`                 | `ROLE_ADMIN`  | —                                                                                                                        |
 
 Configuration:
 
@@ -64,6 +67,67 @@ GET /api/v1/plugin/epistola/documents/download
 The wire **never carries a case id or raw Epistola PDF id**. The controller derives the process instance and case from the authorized task, then looks up the named PDF-id and tenant-id variables through `RuntimeService.getVariable(processInstanceId, …)`.
 
 If Epistola returns 404 for the resolved id (typical when the variable holds a stale id from a previous run), the controller translates it to a controller-level 404, so the UI can render "Document is nog niet gegenereerd" instead of a generic 500.
+
+## Start-event preview
+
+`POST /preview/start` renders the letter a start form would produce, before any case or process
+instance exists. It is the one endpoint here that cannot use a task, and the one whose PBAC
+**subject is chosen by the client**. Both deserve explaining.
+
+### Why not `OperatonTask:VIEW`
+
+There is no task. The component sits on a BPMN start event, so the request instead names the process
+definition it wants to preview, and the controller applies the check Valtimo itself performs before
+serving that very start form (`ProcessLinkActivityService.getStartEventObject`):
+
+```java
+new RelatedEntityAuthorizationRequest<>(
+        OperatonExecution.class, OperatonExecutionActionProvider.CREATE,
+        OperatonProcessDefinition.class, processDefinitionId)
+```
+
+The preview therefore reaches exactly the audience of the form it lives on — no more, no less. If
+you can open the start form, you can preview from it; if you cannot, you get a 403.
+
+> **Not `JsonSchemaDocumentDefinition:CREATE`.** The name suggests "may create a case of this type",
+> but in Valtimo that action is used only by `JsonSchemaDocumentDefinitionService.deploy` — it means
+> _"may deploy a case schema"_. Granting it to case workers so they could use the preview would also
+> hand them Valtimo's definition-deploy endpoints. See
+> [ADR 0004](adr/0004-start-event-preview-authorization.md).
+
+### Why a client-supplied `processDefinitionKey` is safe
+
+Every other endpoint derives its authorization subject from a task id. This one takes it from the
+wire — which is sound because the key selects **which** resource is checked, never **whether** one
+is. Pointing it at a process you may not start simply means you fail the check against that process.
+The key (not a version-pinned id) is on the wire because it is stable across redeployments; the
+server resolves it to a definition id and uses only that downstream.
+
+### The second gate
+
+When the request also carries a `documentId` — Valtimo's "start a process on an existing case" flow
+— `JsonSchemaDocument:VIEW` is required on that document as well:
+
+```java
+authorizationService.requirePermission(new EntityAuthorizationRequest<>(
+        JsonSchemaDocument.class, JsonSchemaDocumentActionProvider.VIEW, List.of(document)));
+```
+
+This is deliberately stricter than Valtimo's own start-form path, which passes the document only as
+_context_ for the execution permission. Valtimo can afford that because it derives the id from the
+route the user already navigated to; this endpoint accepts it on the wire and renders its content
+into a PDF. **Permission to start a process must never confer read access to a case** — that is the
+lesson of the bypass fixed in `8972c16`.
+
+Without a `documentId` there is nothing to leak: `$doc` and `$pv` resolve to the caller's own input
+overrides and nothing else, and the document service is never consulted.
+
+### What a smuggled `taskId` does
+
+Nothing. It is **silently dropped**, not rejected — Spring Boot disables Jackson's
+`FAIL_ON_UNKNOWN_PROPERTIES`, so an unknown field never raises. That is safe because
+`StartPreviewRequest` has no such component for anything to read, and `generateStartPreview`
+hard-codes `processInstanceId = null`. The absence of the field _is_ the guarantee; do not add one.
 
 ## Admin endpoints
 
@@ -146,6 +210,12 @@ The task id is delivered through **server-side form prefill**. The plugin regist
 The backend authorization is **exact per-task**: the request carries the task id, and `requireTaskViewable` checks `OperatonTask:VIEW` on that task, so a forged task id resolves to a task the caller cannot view. There is no separate same-process-instance / same-case cross-check because there is nothing to cross-check — the process instance and case document are **derived from the task itself**, never accepted on the wire.
 
 Outside a user task context (Formio builder, design mode), the components fail closed — they show a configuration summary or an inline error rather than attempting an unauthorized call.
+
+The document preview is the exception, and only when explicitly authored for it: its
+`previewContext` setting (`task` by default) selects the start-event endpoint instead. The mode is
+**never inferred** from whether a task id happens to be present — a fallback would silently swap a
+per-task gate for a process-level one. A start-mode preview that does find a task id treats itself
+as misconfigured and calls nothing.
 
 See [Document Component](document-component.md) and [Document Preview](document-preview.md) for the component-level details.
 

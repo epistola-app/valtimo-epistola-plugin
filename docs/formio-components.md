@@ -15,18 +15,28 @@ step — see [form-flows.md](form-flows.md).
 
 ## Overview
 
-| Type (`type:`)                   | Purpose                                                        | Palette\* | Task-bound\*\* | Backend call                          |
-| -------------------------------- | -------------------------------------------------------------- | --------- | -------------- | ------------------------------------- |
-| `epistola-document-preview`      | Live "what would be generated" PDF preview (dry-run, no job)   | visible   | **yes**        | `POST /preview`                       |
-| `epistola-document`              | After-generation PDF: inline view and/or download button       | visible   | **yes**        | `GET /documents/download`             |
-| `epistola-retry-form`            | Dynamic form to retry a failed generation (+ embedded preview) | hidden    | **yes**        | `GET /retry-form` (+ `POST /preview`) |
-| `epistola-override-builder`      | editForm widget: map form fields → input overrides             | hidden    | no             | — (builder UI)                        |
-| `epistola-process-link-selector` | editForm widget: pick the generate-document process link       | hidden    | no             | — (builder UI)                        |
+| Type (`type:`)                   | Purpose                                                        | Palette\* | Task-bound\*\*       | Backend call                             |
+| -------------------------------- | -------------------------------------------------------------- | --------- | -------------------- | ---------------------------------------- |
+| `epistola-document-preview`      | Live "what would be generated" PDF preview (dry-run, no job)   | visible   | **by default**\*\*\* | `POST /preview` or `POST /preview/start` |
+| `epistola-document`              | After-generation PDF: inline view and/or download button       | visible   | **yes**              | `GET /documents/download`                |
+| `epistola-retry-form`            | Dynamic form to retry a failed generation (+ embedded preview) | hidden    | **yes**              | `GET /retry-form` (+ `POST /preview`)    |
+| `epistola-override-builder`      | editForm widget: map form fields → input overrides             | hidden    | no                   | — (builder UI)                           |
+| `epistola-process-link-selector` | editForm widget: pick the generate-document process link       | hidden    | no                   | — (builder UI)                           |
 
 \* **Palette** — `visible`: an author can drag it onto a form from the builder's component palette.
 `hidden`: removed from the palette via `hideFormioComponentFromBuilder` (`components/formio-builder-utils.ts`)
 because it is either part of the plugin's own auto-deployed form or an editForm-only widget. Hidden
 components still render wherever they already exist and inside other components' `editForm`s.
+
+\*\*\* **The preview is task-bound only in its default mode.** Its `previewContext` setting
+(`task` | `start`, default `task`) selects the endpoint, and therefore which permission is checked.
+The mode is **authored, never inferred**: falling back to start mode when a task id fails to arrive
+would silently swap a per-task gate for a process-level one and render with empty `$doc`/`$pv` — in
+exactly the situation the carrier-loss fixes below describe. A start-mode preview that _does_ find a
+task id is treated as misconfigured and calls nothing, which is why it keeps the task-id carrier in
+both modes. It carries a **second** carrier, `epistola:documentId`, filled only on a start form
+opened against an existing case. See [document-preview.md](document-preview.md) and
+[ADR 0004](adr/0004-start-event-preview-authorization.md).
 
 \*\* **Task-bound** — reads the active user task's `taskInstanceId`, delivered by **server-side form
 prefill** (the `epistola:taskId` value resolver fills the hidden `PREFILLED_TASK_ID_CARRIER` embedded in
@@ -82,7 +92,8 @@ reaches the saved form), forward the id in the wrapper, and add the same late-ar
 ### `epistola-document-preview` — Document preview (author-facing)
 
 Live preview of the document a `generate-document` link would produce, rendered by dry-running the link
-(`POST /preview`) without creating a job. Override-driven: when an input-override mapping is configured it
+without creating a job — `POST /preview` on a user task, `POST /preview/start` on a start form,
+selected by the `previewContext` setting. Override-driven: when an input-override mapping is configured it
 waits for the mapped form data before firing (shows a "complete the form" placeholder until then). Its
 `editForm` embeds `epistola-process-link-selector` (pick the link) and `epistola-override-builder` (map
 fields → overrides). See [document-preview.md](document-preview.md).
