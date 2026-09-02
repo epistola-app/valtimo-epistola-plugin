@@ -58,6 +58,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -505,6 +506,144 @@ class PreviewServiceTest {
             Map<String, Object> finalData = dataCaptor.getValue();
             assertEquals("from-input-override", finalData.get("name"));
             assertEquals("overridden-address", finalData.get("address"));
+        }
+    }
+
+    /**
+     * A start-event preview has no process instance, and for a brand-new case no document either.
+     * These pin the properties that make that safe and correct.
+     */
+    @Nested
+    class StartEventPreview {
+
+        private PluginProcessLink mockLinkOnDefinition(String processDefinitionId) {
+            ObjectNode actionProps = objectMapper.createObjectNode();
+            actionProps.put("catalogId", "default");
+            actionProps.put("templateId", "template-123");
+            actionProps.put("dataMapping", "$spread($doc)");
+            actionProps.put("outputFormat", "PDF");
+            actionProps.put("filename", "preview.pdf");
+            actionProps.put("resultProcessVariable", "generationResult");
+
+            PluginProcessLink processLink = mock(PluginProcessLink.class);
+            lenient().when(processLink.getActivityId()).thenReturn("generate-confirmation");
+            when(processLink.getPluginActionDefinitionKey()).thenReturn("epistola-generate-document");
+            when(processLink.getActionProperties()).thenReturn(actionProps);
+            var configId = mock(com.ritense.plugin.domain.PluginConfigurationId.class);
+            when(processLink.getPluginConfigurationId()).thenReturn(configId);
+
+            when(processLinkService.getProcessLinks(processDefinitionId, "generate-confirmation"))
+                    .thenReturn(List.of(processLink));
+
+            EpistolaPlugin plugin = mock(EpistolaPlugin.class);
+            when(plugin.getBaseUrl()).thenReturn("https://api.epistola.app");
+            when(plugin.getApiKey()).thenReturn("secret-key");
+            when(plugin.getTenantId()).thenReturn("tenant-1");
+            lenient().when(plugin.getDefaultEnvironmentId()).thenReturn("env-1");
+            when(pluginService.createInstance(configId)).thenReturn(plugin);
+
+            when(epistolaService.previewDocument(
+                    anyString(), anyString(), anyString(), anyString(),
+                    anyString(), any(), anyString(), any()))
+                    .thenReturn(new ByteArrayInputStream(new byte[]{0x25, 0x50, 0x44, 0x46}));
+
+            when(jsonataMappingService.evaluate(any(app.epistola.valtimo.mapping.EvaluationContext.class)))
+                    .thenReturn(new LinkedHashMap<>());
+
+            return processLink;
+        }
+
+        /**
+         * The whole point of the refactor: the link is resolved from the process DEFINITION, so no
+         * runtime instance is consulted. If this ever regresses, a start preview would 500 rather
+         * than render.
+         */
+        @Test
+        void resolvesTheLinkFromTheDefinitionWithoutAnyRuntimeInstance() {
+            mockLinkOnDefinition("permit-confirmation:1:abc");
+
+            previewService.generateStartPreview(
+                    "permit-confirmation:1:abc", null, "generate-confirmation",
+                    Map.of("doc", Map.of("applicant", Map.of("firstName", "Jan"))));
+
+            verifyNoInteractions(runtimeService);
+        }
+
+        /**
+         * For a brand-new case there is no document to read, so $doc must resolve to the caller's
+         * own overrides alone. Verifying DocumentService is untouched is the strong form: it proves
+         * no other case's content can reach the render.
+         */
+        @Test
+        void withoutADocumentIdResolvesDocFromOverridesOnlyAndNeverLoadsADocument() {
+            mockLinkOnDefinition("permit-confirmation:1:abc");
+
+            previewService.generateStartPreview(
+                    "permit-confirmation:1:abc", null, "generate-confirmation",
+                    Map.of("doc", Map.of("applicant", Map.of("firstName", "Jan"))));
+
+            verify(jsonataMappingService).evaluate(evaluationContextCaptor.capture());
+            EvaluationContext ctx = evaluationContextCaptor.getValue();
+
+            assertNull(ctx.getDocumentId());
+            assertNull(ctx.getProcessInstanceId());
+            // The resolver must tolerate the null id rather than throwing on UUID.fromString(null).
+            Object doc = ctx.getDocumentResolver().apply(null);
+            assertInstanceOf(Map.class, doc);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> docMap = (Map<String, Object>) doc;
+            assertTrue(docMap.containsKey("applicant"));
+
+            verifyNoInteractions(documentService);
+        }
+
+        /**
+         * With no process instance and no pv overrides, $pv has nothing behind it. Pinned because
+         * the frontend's refusal to infer start mode rests on this degrading quietly rather than
+         * throwing — a silent empty $pv is exactly why the mode must be authored explicitly.
+         */
+        @Test
+        void withoutProcessVariablesTheContextCarriesNoProcessInstance() {
+            mockLinkOnDefinition("permit-confirmation:1:abc");
+
+            previewService.generateStartPreview(
+                    "permit-confirmation:1:abc", null, "generate-confirmation",
+                    Map.of("doc", Map.of("applicant", Map.of("firstName", "Jan"))));
+
+            verify(jsonataMappingService).evaluate(evaluationContextCaptor.capture());
+            assertNull(evaluationContextCaptor.getValue().getProcessInstanceId());
+        }
+
+        /** Start-on-existing-case: overrides overlay the real document, as on the task path. */
+        @Test
+        void withADocumentIdTheDocumentIsStillReachable() {
+            mockLinkOnDefinition("permit-confirmation:1:abc");
+
+            previewService.generateStartPreview(
+                    "permit-confirmation:1:abc", "doc-42", "generate-confirmation",
+                    Map.of("doc", Map.of("applicant", Map.of("firstName", "Jan"))));
+
+            verify(jsonataMappingService).evaluate(evaluationContextCaptor.capture());
+            assertEquals("doc-42", evaluationContextCaptor.getValue().getDocumentId());
+        }
+
+        /**
+         * An activity naming a link that is not a generate-document action must not be previewable.
+         * On the task path the activity id comes from the caller's own process; here it comes from
+         * the wire.
+         */
+        @Test
+        void rejectsAnActivityThatIsNotAGenerateDocumentLink() {
+            PluginProcessLink otherPluginLink = mock(PluginProcessLink.class);
+            when(otherPluginLink.getPluginActionDefinitionKey()).thenReturn("some-other-plugin-action");
+            when(processLinkService.getProcessLinks("permit-confirmation:1:abc", "send-email"))
+                    .thenReturn(List.of(otherPluginLink));
+
+            PreviewException ex = assertThrows(PreviewException.class,
+                    () -> previewService.generateStartPreview(
+                            "permit-confirmation:1:abc", null, "send-email", null));
+
+            assertEquals(PreviewException.Reason.LINK_NOT_FOUND, ex.getReason());
         }
     }
 }
