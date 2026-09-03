@@ -30,7 +30,6 @@ import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.valtimo.schema.JsonSchemaMappingAnalyzer;
-import app.epistola.client.ContractMediaTypes;
 import app.epistola.client.api.AttributesApi;
 import app.epistola.client.api.CatalogsApi;
 import app.epistola.client.api.EnvironmentsApi;
@@ -42,7 +41,10 @@ import app.epistola.client.model.EnvironmentDto;
 import app.epistola.client.model.EnvironmentListResponse;
 import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.GenerationJobResponse;
+import app.epistola.client.error.ProblemDetailException;
+import app.epistola.client.model.ImportCatalogResponse;
 import app.epistola.client.model.PageMeta;
+import app.epistola.client.model.PreviewDocumentRequest;
 import app.epistola.client.model.PingRequest;
 import app.epistola.client.model.PongDetailsDto;
 import app.epistola.client.model.PongResponse;
@@ -53,9 +55,10 @@ import app.epistola.client.model.TemplateSummaryDto;
 import app.epistola.client.model.VariantDto;
 import app.epistola.client.model.VariantListResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.HttpServerErrorException;
-import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.ResourceAccessException;
 
 import java.time.Instant;
@@ -77,13 +80,6 @@ public class EpistolaServiceImpl implements EpistolaService {
     private static final int LIST_PAGE_SIZE = 100;
     private static final int MAX_LIST_PAGES = 100;
 
-    /**
-     * The contract's versioned vendor media type. Taken from the client constant rather than
-     * hand-written, so this request path follows the API major version at the next bump.
-     */
-    private static final org.springframework.http.MediaType VENDOR_JSON =
-            org.springframework.http.MediaType.parseMediaType(ContractMediaTypes.VENDOR_JSON);
-
     private final EpistolaApiClientFactory apiClientFactory;
 
     /** Retry attempts (beyond the first try) for idempotent reads on a transient failure. */
@@ -100,18 +96,25 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     /**
      * Run an idempotent read, retrying on transient failures — connect/read timeouts and
-     * connection errors ({@link ResourceAccessException}) or 5xx responses
-     * ({@link HttpServerErrorException}). 4xx responses ({@link HttpClientErrorException})
+     * connection errors ({@link ResourceAccessException}) or 5xx responses. 4xx responses
      * and everything else propagate immediately without a retry.
+     * <p>
+     * The decision is made on the response status rather than the exception class: since the
+     * client installs the RFC 9457 status handler, an error carrying {@code problem+json}
+     * arrives as {@link ProblemDetailException}, which extends {@link RestClientResponseException}
+     * directly and is <em>not</em> an {@code HttpServerErrorException}. Branching on the class
+     * would silently stop retrying every problem-shaped 5xx.
      */
     private <T> T withRetry(String operation, Supplier<T> call) {
         int attempt = 0;
         while (true) {
             try {
                 return call.get();
-            } catch (HttpClientErrorException e) {
-                throw e;
-            } catch (ResourceAccessException | HttpServerErrorException e) {
+            } catch (RestClientResponseException | ResourceAccessException e) {
+                if (e instanceof RestClientResponseException response
+                        && !response.getStatusCode().is5xxServerError()) {
+                    throw e;
+                }
                 if (attempt >= maxReadRetries) {
                     throw e;
                 }
@@ -381,21 +384,15 @@ public class EpistolaServiceImpl implements EpistolaService {
     @Override
     public byte[] downloadDocument(String baseUrl, String apiKey, String tenantId, String documentId) {
         log.debug("Downloading document for tenant: {}, documentId: {}", tenantId, documentId);
+        UUID id = parseDocumentId(documentId);
         try {
-            // Fetch the bytes directly rather than via the generated client. Since contract
-            // 1.2.0 the generated downloadDocument() works (BinaryFileHttpMessageConverter is
-            // installed by epistolaMessageConverters()), but it returns a java.io.File the
-            // caller must delete; this interface hands back a byte[], so the temp-file round
-            // trip would be pure overhead. The contract documents this hand-written call as a
-            // supported path.
-            byte[] content = withRetry("downloadDocument", () -> apiClientFactory.createRestClient(baseUrl, apiKey)
-                    .get()
-                    .uri("/tenants/{tenantId}/documents/{documentId}", tenantId, documentId)
-                    .accept(org.springframework.http.MediaType.APPLICATION_PDF)
-                    .retrieve()
-                    .body(byte[].class));
+            // The long-running client: a document download has no meaningful read timeout.
+            Resource resource = withRetry("downloadDocument", () ->
+                    apiClientFactory.createLongRunningGenerationApi(baseUrl, apiKey)
+                            .downloadDocument(tenantId, id));
 
-            if (content == null || content.length == 0) {
+            byte[] content = resource.getContentAsByteArray();
+            if (content.length == 0) {
                 throw new EpistolaApiException("Downloaded document is empty: " + documentId);
             }
 
@@ -405,72 +402,77 @@ public class EpistolaServiceImpl implements EpistolaService {
             throw e;
         } catch (Exception e) {
             log.error("Failed to download document for tenant {}, documentId {}: {}", tenantId, documentId, e.getMessage());
-            throw new EpistolaApiException("Failed to download document", e);
+            throw toApiException("Failed to download document", e);
         }
     }
 
-    @Override
+    /**
+     * The generated client types {@code documentId} as a {@link UUID}. Rejecting a malformed id
+     * here keeps the failure a 400-shaped {@link EpistolaApiException} instead of an
+     * {@link IllegalArgumentException} escaping as a 500.
+     */
+    private UUID parseDocumentId(String documentId) {
+        try {
+            return UUID.fromString(documentId);
+        } catch (IllegalArgumentException e) {
+            throw new EpistolaApiException("Not a valid Epistola document id: " + documentId, e, 400, null, Map.of());
+        }
+    }
+
     public ImportCatalogResult importCatalog(String baseUrl, String apiKey, String tenantId, byte[] zipBytes, String catalogType) {
         log.info("Importing catalog ZIP ({} bytes) for tenant: {}, type: {}", zipBytes.length, tenantId, catalogType);
         try {
-            org.springframework.core.io.ByteArrayResource zipResource = new org.springframework.core.io.ByteArrayResource(zipBytes) {
+            Resource zipResource = new ByteArrayResource(zipBytes) {
                 @Override
                 public String getFilename() {
                     return "catalog.zip";
                 }
             };
 
-            org.springframework.util.LinkedMultiValueMap<String, Object> body = new org.springframework.util.LinkedMultiValueMap<>();
-            body.add("file", zipResource);
-            if (catalogType != null && !catalogType.isBlank()) {
-                body.add("catalogType", catalogType);
-            }
-            // The server's Kotlin signature treats authoredMode as non-null even though the spec
-            // documents it as optional with default MERGE — leaving it off NPEs the import.
-            body.add("authoredMode", "MERGE");
-
-            String responseJson = apiClientFactory.createRestClient(baseUrl, apiKey)
-                    .post()
-                    .uri("/tenants/{tenantId}/catalogs/import", tenantId)
-                    .contentType(org.springframework.http.MediaType.MULTIPART_FORM_DATA)
-                    .body(body)
-                    .retrieve()
-                    .body(String.class);
-
-            // Parse the response to extract import result fields
-            com.fasterxml.jackson.databind.JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(responseJson);
-
-            String catalogKey = root.has("catalogKey") ? root.get("catalogKey").asText(null) : null;
-            String catalogName = root.has("catalogName") ? root.get("catalogName").asText(null) : null;
-            int installed = root.has("installed") ? root.get("installed").asInt(0) : 0;
-            int updated = root.has("updated") ? root.get("updated").asInt(0) : 0;
-            int failed = root.has("failed") ? root.get("failed").asInt(0) : 0;
-            int total = root.has("total") ? root.get("total").asInt(0) : 0;
+            // authoredMode is sent explicitly: the server's Kotlin signature treats it as
+            // non-null even though the spec documents it as optional with default MERGE.
+            ImportCatalogResponse response = apiClientFactory.createLongRunningCatalogsApi(baseUrl, apiKey)
+                    .importCatalog(
+                            tenantId,
+                            zipResource,
+                            parseCatalogType(catalogType),
+                            CatalogsApi.AuthoredModeImportCatalog.MERGE);
 
             log.info("Catalog import completed for tenant: {}, key={}, installed={}, updated={}, failed={}, total={}",
-                    tenantId, catalogKey, installed, updated, failed, total);
+                    tenantId, response.getCatalogKey(), response.getInstalled(), response.getUpdated(),
+                    response.getFailed(), response.getTotal());
 
-            return new ImportCatalogResult(catalogKey, catalogName, installed, updated, failed, total);
-        } catch (HttpStatusCodeException e) {
-            // Preserve the downstream RFC-9457 problem detail (covers 4xx and 5xx). The suite's
-            // import endpoint returns a structured body (e.g. catalog-schema-too-old with
-            // version/baselineVersion) that callers translate and map to a correct status class.
-            String body = e.getResponseBodyAsString();
-            log.error("Failed to import catalog for tenant {}: {} {}", tenantId, e.getStatusCode(), body);
-            ProblemBody problem = parseProblemBody(body);
-            throw new EpistolaApiException(
-                    problem.message() != null ? problem.message() : "Failed to import catalog",
-                    e,
-                    e.getStatusCode().value(),
-                    problem.type(),
-                    problem.extensions());
+            return new ImportCatalogResult(
+                    response.getCatalogKey(),
+                    response.getCatalogName(),
+                    response.getInstalled(),
+                    response.getUpdated(),
+                    response.getFailed(),
+                    response.getTotal());
+        } catch (EpistolaApiException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to import catalog for tenant {}: {}", tenantId, e.getMessage());
-            throw new EpistolaApiException("Failed to import catalog", e);
+            // Preserves the downstream RFC-9457 problem detail (covers 4xx and 5xx): the suite's
+            // import endpoint returns a structured body (e.g. catalog-schema-too-old with
+            // version/baselineVersion) that callers translate and map to a correct status class.
+            throw toApiException("Failed to import catalog", e);
         }
     }
 
-    @Override
+    /** Map the plugin's catalog-type string onto the generated enum, defaulting to AUTHORED. */
+    private CatalogsApi.CatalogTypeImportCatalog parseCatalogType(String catalogType) {
+        if (catalogType == null || catalogType.isBlank()) {
+            return CatalogsApi.CatalogTypeImportCatalog.AUTHORED;
+        }
+        for (CatalogsApi.CatalogTypeImportCatalog value : CatalogsApi.CatalogTypeImportCatalog.values()) {
+            if (value.getValue().equalsIgnoreCase(catalogType)) {
+                return value;
+            }
+        }
+        throw new EpistolaApiException("Unknown catalog type: " + catalogType);
+    }
+
     public java.io.InputStream previewDocument(
             String baseUrl, String apiKey, String tenantId,
             String catalogId, String templateId, String variantId, String environmentId,
@@ -478,23 +480,21 @@ public class EpistolaServiceImpl implements EpistolaService {
     ) {
         log.debug("Previewing document for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
         try {
-            var requestBody = new java.util.LinkedHashMap<String, Object>();
-            requestBody.put("catalogId", catalogId);
-            requestBody.put("templateId", templateId);
-            requestBody.put("data", data);
-            if (variantId != null) requestBody.put("variantId", variantId);
-            if (environmentId != null) requestBody.put("environmentId", environmentId);
+            var request = new PreviewDocumentRequest(
+                    catalogId,
+                    templateId,
+                    data,
+                    variantId,
+                    null,           // attributes — the plugin selects a variant explicitly or by default
+                    null,           // versionId — resolved from environmentId, or latest published
+                    environmentId);
 
-            byte[] content = apiClientFactory.createRestClient(baseUrl, apiKey)
-                    .post()
-                    .uri("/tenants/{tenantId}/documents/preview", tenantId)
-                    .contentType(VENDOR_JSON)
-                    .accept(org.springframework.http.MediaType.APPLICATION_PDF, VENDOR_JSON)
-                    .body(requestBody)
-                    .retrieve()
-                    .body(byte[].class);
+            // The long-running client: a preview render has no meaningful read timeout.
+            Resource resource = apiClientFactory.createLongRunningGenerationApi(baseUrl, apiKey)
+                    .previewDocument(tenantId, request);
 
-            if (content == null || content.length == 0) {
+            byte[] content = resource.getContentAsByteArray();
+            if (content.length == 0) {
                 throw new EpistolaApiException("Preview returned empty content");
             }
 
@@ -502,10 +502,9 @@ public class EpistolaServiceImpl implements EpistolaService {
             return new java.io.ByteArrayInputStream(content);
         } catch (EpistolaApiException e) {
             throw e;
-        } catch (org.springframework.web.client.HttpClientErrorException e) {
+        } catch (RestClientResponseException e) {
             log.debug("Preview API error for tenant {}: {} {}", tenantId, e.getStatusCode(), e.getResponseBodyAsString());
-            String detail = extractErrorMessage(e.getResponseBodyAsString());
-            throw new EpistolaApiException(detail != null ? detail : e.getMessage(), e);
+            throw toApiException("Failed to preview document", e);
         } catch (Exception e) {
             log.debug("Failed to preview document for tenant {}: {}", tenantId, e.getMessage());
             throw new EpistolaApiException("Failed to preview document: " + e.getMessage(), e);
@@ -513,53 +512,33 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     /**
-     * Extract a human-readable error message from an Epistola API error response body.
-     * Prefers the RFC-9457 problem-detail fields ({@code detail}, then {@code title}),
-     * falling back to the legacy {@code message}/{@code error} fields, then the raw body.
+     * Wrap a downstream failure, preserving the RFC 9457 problem detail when there is one.
+     * <p>
+     * The client's status handler parses {@code application/problem+json} into a
+     * {@link ProblemDetailException}, so the type URI and the extension members Epistola sends
+     * (for example {@code version} / {@code baselineVersion} on {@code catalog-schema-too-old})
+     * arrive already parsed; callers translate them and map the failure to a correct status
+     * class. A non-problem error body keeps its status but carries no type or extensions.
      */
-    private String extractErrorMessage(String responseBody) {
-        if (responseBody == null || responseBody.isBlank()) return null;
-        try {
-            var tree = new com.fasterxml.jackson.databind.ObjectMapper().readTree(responseBody);
-            for (String field : new String[]{"detail", "title", "message", "error"}) {
-                if (tree.has(field) && !tree.get(field).isNull()) {
-                    return tree.get(field).asText();
-                }
-            }
-        } catch (Exception ignored) {
-            // Not JSON, return raw body
+    private EpistolaApiException toApiException(String fallbackMessage, Throwable cause) {
+        if (cause instanceof ProblemDetailException problem) {
+            String message = problem.getDetail() != null ? problem.getDetail() : problem.getTitle();
+            return new EpistolaApiException(
+                    message != null ? message : fallbackMessage,
+                    problem,
+                    problem.getProblemStatus(),
+                    problem.getType().toString(),
+                    problem.getExtensions());
         }
-        return responseBody.length() > 500 ? responseBody.substring(0, 500) : responseBody;
-    }
-
-    /**
-     * A parsed downstream error body: a human-readable {@code message}, the RFC-9457 problem
-     * {@code type} URI (or null), and the structured extension members relevant to catalog
-     * import ({@code version} / {@code baselineVersion}).
-     */
-    private record ProblemBody(String message, String type, Map<String, Object> extensions) {}
-
-    /** Parse an Epistola error response body into its message + RFC-9457 type/extensions. */
-    private ProblemBody parseProblemBody(String responseBody) {
-        String message = extractErrorMessage(responseBody);
-        String type = null;
-        Map<String, Object> extensions = new java.util.LinkedHashMap<>();
-        if (responseBody != null && !responseBody.isBlank()) {
-            try {
-                var tree = new com.fasterxml.jackson.databind.ObjectMapper().readTree(responseBody);
-                if (tree.has("type") && !tree.get("type").isNull()) {
-                    type = tree.get("type").asText();
-                }
-                for (String field : new String[]{"version", "baselineVersion"}) {
-                    if (tree.has(field) && tree.get(field).isInt()) {
-                        extensions.put(field, tree.get(field).asInt());
-                    }
-                }
-            } catch (Exception ignored) {
-                // Not JSON — message already holds the raw body.
-            }
+        if (cause instanceof RestClientResponseException response) {
+            return new EpistolaApiException(
+                    fallbackMessage,
+                    response,
+                    response.getStatusCode().value(),
+                    null,
+                    Map.of());
         }
-        return new ProblemBody(message, type, extensions);
+        return new EpistolaApiException(fallbackMessage, cause);
     }
 
     // Mapping methods
