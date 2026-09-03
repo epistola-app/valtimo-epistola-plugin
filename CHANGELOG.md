@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Upgraded the Epistola contract client `app.epistola.contract:client-spring3-restclient` from `1.1.0` to `1.2.0`.**
+  The release is a client-side fix set; the OpenAPI specification itself is unchanged, so the bundled
+  catalog wire schema stays at `4` and the Epistola Suite compatibility floor stays at `>= 1.0.0`.
+  Of what it fixes, most did not reach this plugin: the `PATCH` partial-update erasure affects the
+  thirteen update operations the plugin never calls (it is read-only plus generation), and the enum
+  wire-value fix (`direction=DESC` → `desc`), while source-breaking for Kotlin consumers, touches no
+  enum constant referenced here — verified by a class-level diff of the two jars and a clean compile.
+- **The API client now uses the contract's own `epistolaMessageConverters()` instead of hand-rolling
+  its converter.** `EpistolaApiClientFactory` previously built a `MappingJackson2HttpMessageConverter`
+  over `Serializer.getJacksonObjectMapper()` and swapped it in by hand. `1.2.0` ships that
+  configuration as a supported extension, which additionally registers the vendor and
+  `application/problem+json` media types on the same mapper and installs
+  `BinaryFileHttpMessageConverter`. Both mappers omit unset properties rather than writing them as
+  `null`, so the `attributes: null` defect that `1.2.0` fixes for consumers with a default mapper
+  never applied here — the plugin's `NON_ABSENT` mapper already omitted it.
+- The preview request takes its vendor media type from the client's `ContractMediaTypes.VENDOR_JSON`
+  constant instead of a hand-written `application/vnd.epistola.v1+json` string, so that request path
+  follows the API major version at the next bump rather than silently falling behind.
+- **Document download and preview deliberately keep their hand-written `byte[]` calls.** `1.2.0`
+  makes the _generated_ `downloadDocument()`/`previewDocument()` usable for the first time, so the
+  original reason for bypassing them is gone — but those methods return a `java.io.File` streamed to
+  a temporary file that the caller owns and must delete, while `EpistolaService` hands back a
+  `byte[]`. Adopting them would add a temp-file round trip and a deletion obligation for no gain. The
+  contract documents the hand-written call as a supported path; the stale code comment explaining the
+  old reason has been corrected.
+- The Prism mock-server fixtures stay on `mock-server:1.1.0`: contract `1.2.0` publishes no matching
+  image, and since the specification is unchanged the `1.1.0` mock still reflects the wire contract.
+
 ## [0.19.0] - 2026-08-28
 
 ### Added

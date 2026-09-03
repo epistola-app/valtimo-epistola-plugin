@@ -30,6 +30,7 @@ import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.valtimo.schema.JsonSchemaMappingAnalyzer;
+import app.epistola.client.ContractMediaTypes;
 import app.epistola.client.api.AttributesApi;
 import app.epistola.client.api.CatalogsApi;
 import app.epistola.client.api.EnvironmentsApi;
@@ -75,6 +76,13 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     private static final int LIST_PAGE_SIZE = 100;
     private static final int MAX_LIST_PAGES = 100;
+
+    /**
+     * The contract's versioned vendor media type. Taken from the client constant rather than
+     * hand-written, so this request path follows the API major version at the next bump.
+     */
+    private static final org.springframework.http.MediaType VENDOR_JSON =
+            org.springframework.http.MediaType.parseMediaType(ContractMediaTypes.VENDOR_JSON);
 
     private final EpistolaApiClientFactory apiClientFactory;
 
@@ -374,9 +382,12 @@ public class EpistolaServiceImpl implements EpistolaService {
     public byte[] downloadDocument(String baseUrl, String apiKey, String tenantId, String documentId) {
         log.debug("Downloading document for tenant: {}, documentId: {}", tenantId, documentId);
         try {
-            // Use RestClient directly instead of the generated client, because the generated
-            // client returns java.io.File which requires an HttpMessageConverter for
-            // application/pdf → File that Spring doesn't provide out of the box.
+            // Fetch the bytes directly rather than via the generated client. Since contract
+            // 1.2.0 the generated downloadDocument() works (BinaryFileHttpMessageConverter is
+            // installed by epistolaMessageConverters()), but it returns a java.io.File the
+            // caller must delete; this interface hands back a byte[], so the temp-file round
+            // trip would be pure overhead. The contract documents this hand-written call as a
+            // supported path.
             byte[] content = withRetry("downloadDocument", () -> apiClientFactory.createRestClient(baseUrl, apiKey)
                     .get()
                     .uri("/tenants/{tenantId}/documents/{documentId}", tenantId, documentId)
@@ -477,9 +488,8 @@ public class EpistolaServiceImpl implements EpistolaService {
             byte[] content = apiClientFactory.createRestClient(baseUrl, apiKey)
                     .post()
                     .uri("/tenants/{tenantId}/documents/preview", tenantId)
-                    .contentType(org.springframework.http.MediaType.parseMediaType("application/vnd.epistola.v1+json"))
-                    .accept(org.springframework.http.MediaType.APPLICATION_PDF,
-                            org.springframework.http.MediaType.parseMediaType("application/vnd.epistola.v1+json"))
+                    .contentType(VENDOR_JSON)
+                    .accept(org.springframework.http.MediaType.APPLICATION_PDF, VENDOR_JSON)
                     .body(requestBody)
                     .retrieve()
                     .body(byte[].class);

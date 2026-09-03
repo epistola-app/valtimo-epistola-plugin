@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.client;
 
+import app.epistola.client.EpistolaJsonKt;
 import app.epistola.client.api.AttributesApi;
 import app.epistola.client.api.CatalogsApi;
 import app.epistola.client.api.EnvironmentsApi;
@@ -25,12 +26,10 @@ import app.epistola.client.api.SystemApi;
 import app.epistola.client.api.TemplatesApi;
 import app.epistola.client.api.VariantsApi;
 import app.epistola.client.identity.ClientIdentity;
-import app.epistola.client.infrastructure.Serializer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.client.ClientHttpRequestFactory;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
@@ -41,9 +40,11 @@ import java.time.Duration;
  * Creates API client instances on demand with the specified base URL and API key.
  * This allows different plugin configurations to connect to different Epistola instances.
  * <p>
- * Uses the generated client's {@link Serializer#getJacksonObjectMapper()} to ensure
- * proper serialization settings (NON_ABSENT inclusion, lenient deserialization, etc.)
- * are consistent with the generated Kotlin DTOs.
+ * Uses the contract's own {@code epistolaMessageConverters()} so serialization matches what
+ * the API expects: unset properties are omitted rather than written as {@code null} (the
+ * contract types some fields as {@code array} with no null in the union), the vendor and
+ * {@code application/problem+json} media types are read by that same mapper, and binary
+ * responses are supported.
  * <p>
  * Every request also carries the contract's {@link ClientIdentity} headers
  * ({@code User-Agent} starting with {@code epistola-contract/<version>} and
@@ -151,16 +152,14 @@ public class EpistolaApiClientFactory {
     }
 
     private RestClient buildRestClient(String baseUrl, String apiKey, boolean withReadTimeout) {
-        var converter = new MappingJackson2HttpMessageConverter(Serializer.getJacksonObjectMapper());
-        return RestClient.builder()
+        // epistolaMessageConverters() is the contract's own converter set: a Jackson converter
+        // bound to the mapper the API requires (unset properties omitted, not null), registered
+        // for the vendor and problem+json media types, plus binary-response support.
+        return EpistolaJsonKt.epistolaMessageConverters(RestClient.builder())
                 .requestFactory(requestFactory(withReadTimeout))
                 .baseUrl(baseUrl)
                 .defaultHeader(API_KEY_HEADER, apiKey)
                 .requestInterceptor(identityInterceptor)
-                .messageConverters(converters -> {
-                    converters.removeIf(c -> c instanceof MappingJackson2HttpMessageConverter);
-                    converters.add(converter);
-                })
                 .build();
     }
 
