@@ -49,6 +49,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   nothing resolves except what the override mapping supplies.
 - Corrected the `EpistolaGenerationResource` class javadoc, which still described a bound-ids check
   removed in `8972c16`.
+- **Transient 5xx responses carrying `problem+json` are retried again.** Installing the RFC 9457
+  status handler means an error response arrives as `ProblemDetailException`, which extends
+  `RestClientResponseException` directly and is _not_ an `HttpServerErrorException` — so the retry
+  policy, which branched on the exception class, would have stopped retrying every problem-shaped
+  5xx while still retrying bare ones. `withRetry` now branches on the response status. Covered by
+  `withRetry_retriesProblemShaped5xx` and `withRetry_doesNotRetryProblemShaped4xx`.
+- **A stale document reference returns 404 rather than 500.** The download endpoint caught
+  `HttpClientErrorException.NotFound`, but `EpistolaServiceImpl` wraps downstream failures in
+  `EpistolaApiException`, so that catch could only ever fire for a directly-thrown exception — which
+  is exactly how the test stubbed it, leaving the real path uncovered. The endpoint now also
+  inspects the status preserved on `EpistolaApiException`. A malformed (non-UUID) document id is
+  rejected as a `400` before the call rather than escaping as an `IllegalArgumentException`.
+
+- The admin page's connection check reports the contract version the plugin ships, so its
+  expectations move to `1.2.0`. A server still on contract `1.1.0` is one minor behind and now
+  classifies as `WARNING` rather than `OK` — the compatibility rule is unchanged, only the plugin's
+  side of the comparison moved. That path had no test; `shouldWarnWhenServerContractMinorIsBehindPluginContractMinor`
+  now covers it, and `shouldTreatNewerServerMinorAndPatchAsCompatible` mocks a genuinely newer
+  server (`1.3.1`) instead of one equal to the plugin's own version, which would have asserted nothing.
 
 ### Changed
 
@@ -56,6 +75,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   method gains a `RepositoryService` parameter (used to resolve a process definition key to its
   latest deployed version). The plugin's own auto-configuration is updated; only applications
   supplying their own bean via the `@ConditionalOnMissingBean` escape hatch need to widen theirs.
+- **Upgraded the Epistola contract client `app.epistola.contract:client-spring3-restclient` from
+  `1.1.0` to `1.2.0`.** The OpenAPI specification itself is unchanged, so the bundled catalog wire
+  schema stays at `4` and the Epistola Suite compatibility floor stays at `>= 1.0.0`. Of what the
+  release fixes, most did not reach this plugin: the `PATCH` partial-update erasure affects the
+  thirteen update operations it never calls (it is read-only plus generation), and the enum
+  wire-value fix (`direction=DESC` → `desc`), while source-breaking for Kotlin consumers, touches no
+  enum constant referenced here.
+- **The plugin now uses the contract's own client configuration instead of hand-rolling it.**
+  `1.2.0` generates binary operations as Spring `Resource` rather than `java.io.File`, carries RFC
+  9457 extension members on `ProblemDetail`, and ships `EpistolaClient`, a builder that applies the
+  whole blessed setup in one call. Together these retire every hand-written HTTP path in the plugin:
+  - `EpistolaApiClientFactory` builds its clients with `EpistolaClient.builder(baseUrl, apiKey)`,
+    which wires the Jackson mapper the API requires, the vendor and `application/problem+json` media
+    types, the RFC 9457 status handler, and authentication. Its own request factory, converter
+    swapping, and identity-interceptor wiring are gone.
+  - **Document download and preview now call the generated `downloadDocument()` and
+    `previewDocument()`**, which return a `Resource`. They previously issued hand-written requests
+    because the generated methods returned a `File` that Spring could not produce; that is no longer
+    true, and `Resource` carries no temp-file ownership. Preview also builds a typed
+    `PreviewDocumentRequest` instead of an untyped map, and no longer hand-writes the vendor media
+    type.
+  - **Catalog import now calls the generated `importCatalog()`**, which accepts a `Resource` and
+    returns a typed `ImportCatalogResponse`. The hand-built multipart request and the field-by-field
+    `ObjectMapper` parsing of its response are gone.
+  - **Downstream error bodies are parsed by the client**, so `extractErrorMessage`,
+    `parseProblemBody`, and the local `ProblemBody` record are deleted. The problem type and the
+    extension members Epistola sends — `version` / `baselineVersion` on `catalog-schema-too-old` —
+    now arrive already parsed, and still reach the admin page's actionable redeploy message.
+- **Authentication moved from the deprecated `X-API-Key` header to `Authorization: ApiKey`.** The
+  contract has accepted the latter since `0.14.0`, well below this plugin's Epistola Suite floor of
+  `>= 1.0.0`, so every supported server accepts it.
+
+### Notes
+
+- The Prism mock-server fixtures stay on `mock-server:1.1.0`: contract `1.2.0` publishes no matching
+  image, and since the specification is unchanged the `1.1.0` mock still reflects the wire contract.
 
 ## [0.19.0] - 2026-08-28
 

@@ -56,6 +56,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
+import app.epistola.valtimo.service.EpistolaApiException;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -212,6 +213,17 @@ public class EpistolaGenerationResource {
             log.debug("Epistola returned 404 for documentId={} (tenantId={}); treating as not-available",
                     documentId, tenantId);
             return ResponseEntity.notFound().build();
+        } catch (EpistolaApiException e) {
+            // The same stale reference as above, as it actually arrives from the service:
+            // EpistolaServiceImpl wraps the downstream failure, preserving its status. A 400
+            // is the malformed-id case, which is equally "no such document" to this caller.
+            Integer status = e.getHttpStatus();
+            if (status != null && (status == 404 || status == 400)) {
+                log.debug("Epistola returned {} for documentId={} (tenantId={}); treating as not-available",
+                        status, documentId, tenantId);
+                return ResponseEntity.notFound().build();
+            }
+            throw e;
         }
 
         HttpHeaders headers = new HttpHeaders();

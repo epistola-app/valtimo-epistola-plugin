@@ -1,7 +1,7 @@
 [versions]
 # Dependencies
 valtimo = "13.42.0.RELEASE"
-epistola-client = "1.1.0"
+epistola-client = "1.2.0"
 lombok = "1.18.42"
 jsonata = "0.9.9"
 json-schema-validator = "2.0.4"

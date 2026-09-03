@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.client;
 
+import app.epistola.client.EpistolaClient;
 import app.epistola.client.api.AttributesApi;
 import app.epistola.client.api.CatalogsApi;
 import app.epistola.client.api.EnvironmentsApi;
@@ -25,12 +26,7 @@ import app.epistola.client.api.SystemApi;
 import app.epistola.client.api.TemplatesApi;
 import app.epistola.client.api.VariantsApi;
 import app.epistola.client.identity.ClientIdentity;
-import app.epistola.client.infrastructure.Serializer;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.client.ClientHttpRequestFactory;
-import org.springframework.http.client.ClientHttpRequestInterceptor;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.client.RestClient;
 
 import java.time.Duration;
@@ -41,9 +37,11 @@ import java.time.Duration;
  * Creates API client instances on demand with the specified base URL and API key.
  * This allows different plugin configurations to connect to different Epistola instances.
  * <p>
- * Uses the generated client's {@link Serializer#getJacksonObjectMapper()} to ensure
- * proper serialization settings (NON_ABSENT inclusion, lenient deserialization, etc.)
- * are consistent with the generated Kotlin DTOs.
+ * Every client is built by the contract's own {@link EpistolaClient} builder, which applies
+ * the configuration the API expects: the Jackson mapper that omits unset properties rather
+ * than writing them as {@code null}, the vendor and {@code application/problem+json} media
+ * types, the RFC 9457 status handler that turns error responses into
+ * {@code ProblemDetailException}, and {@code Authorization: ApiKey} authentication.
  * <p>
  * Every request also carries the contract's {@link ClientIdentity} headers
  * ({@code User-Agent} starting with {@code epistola-contract/<version>} and
@@ -59,10 +57,9 @@ import java.time.Duration;
 @Slf4j
 public class EpistolaApiClientFactory {
 
-    private static final String API_KEY_HEADER = "X-API-Key";
     private static final String PRODUCT_NAME = "valtimo-epistola-plugin";
 
-    private final ClientHttpRequestInterceptor identityInterceptor;
+    private final ClientIdentity identity;
     private final Duration connectTimeout;
     private final Duration readTimeout;
 
@@ -74,10 +71,9 @@ public class EpistolaApiClientFactory {
     public EpistolaApiClientFactory(Duration connectTimeout, Duration readTimeout) {
         this.connectTimeout = connectTimeout;
         this.readTimeout = readTimeout;
-        this.identityInterceptor = ClientIdentity.Companion.builder()
+        this.identity = ClientIdentity.Companion.builder()
                 .product(PRODUCT_NAME, resolveProductVersion())
-                .build()
-                .interceptor();
+                .build();
     }
 
     /**
@@ -130,14 +126,28 @@ public class EpistolaApiClientFactory {
     }
 
     /**
+     * GenerationApi bound to the <em>uncapped-read</em> client, for the binary operations
+     * (document download, preview render) that are legitimately long-running.
+     */
+    public GenerationApi createLongRunningGenerationApi(String baseUrl, String apiKey) {
+        return new GenerationApi(createRestClient(baseUrl, apiKey));
+    }
+
+    /**
+     * CatalogsApi bound to the <em>uncapped-read</em> client, for catalog import.
+     */
+    public CatalogsApi createLongRunningCatalogsApi(String baseUrl, String apiKey) {
+        return new CatalogsApi(createRestClient(baseUrl, apiKey));
+    }
+
+    /**
      * Create a RestClient with authentication and identity headers configured, with a
      * connect timeout but <em>no</em> read timeout.
      * <p>
-     * Public so callers can make direct HTTP calls for endpoints where the generated
-     * client's return type doesn't work (e.g., binary downloads, NDJSON streaming) or
-     * which are legitimately long-running (preview render, catalog import, the
-     * result-collector poll). Read-timeout-sensitive request/response calls should go
-     * through the {@code createXApi} clients instead.
+     * Public for the result-collector's NDJSON stream, which the generated client does
+     * not cover, and as the transport behind the {@code createLongRunningXApi} clients.
+     * Read-timeout-sensitive request/response calls should go through the
+     * {@code createXApi} clients instead.
      */
     public RestClient createRestClient(String baseUrl, String apiKey) {
         return buildRestClient(baseUrl, apiKey, false);
@@ -151,28 +161,13 @@ public class EpistolaApiClientFactory {
     }
 
     private RestClient buildRestClient(String baseUrl, String apiKey, boolean withReadTimeout) {
-        var converter = new MappingJackson2HttpMessageConverter(Serializer.getJacksonObjectMapper());
-        return RestClient.builder()
-                .requestFactory(requestFactory(withReadTimeout))
-                .baseUrl(baseUrl)
-                .defaultHeader(API_KEY_HEADER, apiKey)
-                .requestInterceptor(identityInterceptor)
-                .messageConverters(converters -> {
-                    converters.removeIf(c -> c instanceof MappingJackson2HttpMessageConverter);
-                    converters.add(converter);
-                })
+        // A null read timeout leaves reads uncapped, which is what streaming/large/long
+        // operations need; short API calls pass true to cap it.
+        return EpistolaClient.INSTANCE.builder(baseUrl, apiKey)
+                .identity(identity)
+                .connectTimeout(connectTimeout)
+                .readTimeout(withReadTimeout ? readTimeout : null)
                 .build();
-    }
-
-    private ClientHttpRequestFactory requestFactory(boolean withReadTimeout) {
-        var factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout((int) connectTimeout.toMillis());
-        // Omitting the read timeout leaves it at the JDK default (infinite), which is what
-        // streaming/large/long operations need; short API calls pass true to cap it.
-        if (withReadTimeout) {
-            factory.setReadTimeout((int) readTimeout.toMillis());
-        }
-        return factory;
     }
 
     /**
