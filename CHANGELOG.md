@@ -56,6 +56,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   inspects the status preserved on `EpistolaApiException`. A malformed (non-UUID) document id is
   rejected as a `400` before the call rather than escaping as an `IllegalArgumentException`.
 
+- The admin page's connection check reports the contract version the plugin ships, so its
+  expectations move to `1.2.0`. A server still on contract `1.1.0` is one minor behind and now
+  classifies as `WARNING` rather than `OK` — the compatibility rule is unchanged, only the plugin's
+  side of the comparison moved. That path had no test; `shouldWarnWhenServerContractMinorIsBehindPluginContractMinor`
+  now covers it, and `shouldTreatNewerServerMinorAndPatchAsCompatible` mocks a genuinely newer
+  server (`1.3.1`) instead of one equal to the plugin's own version, which would have asserted nothing.
+
 ### Notes
 
 - The Prism mock-server fixtures stay on `mock-server:1.1.0`: contract `1.2.0` publishes no matching
