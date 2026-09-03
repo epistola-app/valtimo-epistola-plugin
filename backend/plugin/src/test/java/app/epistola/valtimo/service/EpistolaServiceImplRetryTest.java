@@ -17,7 +17,11 @@
  */
 package app.epistola.valtimo.service;
 
+import app.epistola.client.EpistolaJson;
+import app.epistola.client.api.CatalogsApi;
 import app.epistola.client.api.GenerationApi;
+import app.epistola.client.error.ProblemDetailException;
+import app.epistola.client.model.ProblemDetail;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import org.junit.jupiter.api.Test;
@@ -26,9 +30,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestClient;
+import org.springframework.core.io.Resource;
 
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -107,32 +114,41 @@ class EpistolaServiceImplRetryTest {
     }
 
     @Test
-    void importCatalog_preservesProblemDetailAndStatusFromDownstream() {
-        EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
-        RestClient restClient = mock(RestClient.class);
-        RestClient.RequestBodyUriSpec uriSpec = mock(RestClient.RequestBodyUriSpec.class);
-        RestClient.RequestBodySpec bodySpec = mock(RestClient.RequestBodySpec.class);
-        RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
-
-        when(factory.createRestClient(anyString(), anyString())).thenReturn(restClient);
-        when(restClient.post()).thenReturn(uriSpec);
-        when(uriSpec.uri("/tenants/{tenantId}/catalogs/import", TENANT)).thenReturn(bodySpec);
-        when(bodySpec.contentType(any())).thenReturn(bodySpec);
-        when(bodySpec.body(any(Object.class))).thenReturn(bodySpec);
-        when(bodySpec.retrieve()).thenReturn(responseSpec);
-
+    void importCatalog_preservesProblemDetailAndStatusFromDownstream() throws Exception {
+        // The problem body the suite returns when a bundled catalog predates its baseline.
         String problemBody = "{\"type\":\"https://epistola.app/errors/catalog-schema-too-old\","
                 + "\"title\":\"Catalog Wire Schema Too Old\",\"status\":400,"
                 + "\"detail\":\"Catalog wire schema version 2 predates the oldest supported version (4).\","
                 + "\"version\":2,\"baselineVersion\":4}";
-        HttpClientErrorException downstream = HttpClientErrorException.create(
-                HttpStatus.BAD_REQUEST, "Bad Request", HttpHeaders.EMPTY,
-                problemBody.getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8);
-        when(responseSpec.body(String.class)).thenThrow(downstream);
+
+        // Deserialize it with the client's own mapper, exactly as its RFC 9457 status handler
+        // does. This pins the part the plugin depends on but does not own: that `version` and
+        // `baselineVersion` survive as extension members rather than being dropped, which is
+        // what lets the admin page render an actionable redeploy message.
+        ProblemDetail problem = EpistolaJson.INSTANCE.getObjectMapper()
+                .readValue(problemBody, ProblemDetail.class);
+        assertEquals(2, problem.getExtensions().get("version"));
+        assertEquals(4, problem.getExtensions().get("baselineVersion"));
+
+        ProblemDetailException downstream = new ProblemDetailException(
+                problem,
+                List.of(),
+                Map.of(),
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                HttpHeaders.EMPTY,
+                problemBody.getBytes(StandardCharsets.UTF_8),
+                StandardCharsets.UTF_8);
+
+        EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
+        CatalogsApi catalogsApi = mock(CatalogsApi.class);
+        when(factory.createLongRunningCatalogsApi(anyString(), anyString())).thenReturn(catalogsApi);
+        when(catalogsApi.importCatalog(eq(TENANT), any(Resource.class), any(), any()))
+                .thenThrow(downstream);
 
         EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 2);
         EpistolaApiException ex = assertThrows(EpistolaApiException.class,
-                () -> service.importCatalog("http://x", "key", TENANT, new byte[]{1, 2, 3}, "full"));
+                () -> service.importCatalog("http://x", "key", TENANT, new byte[]{1, 2, 3}, "AUTHORED"));
 
         assertEquals(400, ex.getHttpStatus());
         assertEquals("catalog-schema-too-old", ex.getProblemTypeSlug());
@@ -140,5 +156,61 @@ class EpistolaServiceImplRetryTest {
         assertEquals(4, ex.getProblemExtensions().get("baselineVersion"));
         assertTrue(ex.getMessage().contains("predates the oldest supported version"),
                 "exception message should carry the suite's RFC-9457 detail, was: " + ex.getMessage());
+    }
+
+    @Test
+    void withRetry_retriesProblemShaped5xx() {
+        // A 5xx carrying problem+json arrives as ProblemDetailException, which extends
+        // RestClientResponseException directly and is NOT an HttpServerErrorException.
+        // Branching on the exception class instead of the status would stop retrying it.
+        ProblemDetailException serverProblem = new ProblemDetailException(
+                new ProblemDetail(
+                        URI.create("https://epistola.app/errors/internal-error"),
+                        "Internal Server Error", 503, "Upstream unavailable", null, Map.of()),
+                List.of(),
+                Map.of(),
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Service Unavailable",
+                HttpHeaders.EMPTY,
+                new byte[0],
+                StandardCharsets.UTF_8);
+
+        EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
+        GenerationApi generationApi = mock(GenerationApi.class);
+        when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
+        when(generationApi.getGenerationJobStatus(eq(TENANT), any(UUID.class))).thenThrow(serverProblem);
+
+        EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 2);
+        assertThrows(EpistolaApiException.class,
+                () -> service.getJobStatus("http://x", "key", TENANT, REQUEST_ID));
+
+        // 1 initial attempt + 2 retries
+        verify(generationApi, times(3)).getGenerationJobStatus(eq(TENANT), any(UUID.class));
+    }
+
+    @Test
+    void withRetry_doesNotRetryProblemShaped4xx() {
+        ProblemDetailException clientProblem = new ProblemDetailException(
+                new ProblemDetail(
+                        URI.create("https://epistola.app/errors/not-found"),
+                        "Not Found", 404, "No such job", null, Map.of()),
+                List.of(),
+                Map.of(),
+                HttpStatus.NOT_FOUND,
+                "Not Found",
+                HttpHeaders.EMPTY,
+                new byte[0],
+                StandardCharsets.UTF_8);
+
+        EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
+        GenerationApi generationApi = mock(GenerationApi.class);
+        when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
+        when(generationApi.getGenerationJobStatus(eq(TENANT), any(UUID.class))).thenThrow(clientProblem);
+
+        EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 2);
+        assertThrows(EpistolaApiException.class,
+                () -> service.getJobStatus("http://x", "key", TENANT, REQUEST_ID));
+
+        verify(generationApi, times(1)).getGenerationJobStatus(eq(TENANT), any(UUID.class));
     }
 }
