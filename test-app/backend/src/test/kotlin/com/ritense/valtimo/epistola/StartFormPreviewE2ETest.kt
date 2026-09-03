@@ -8,6 +8,7 @@ import app.epistola.valtimo.service.EpistolaService
 import app.epistola.valtimo.web.rest.EpistolaGenerationResource
 import app.epistola.valtimo.web.rest.dto.StartPreviewRequest
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.ritense.authorization.AuthorizationContext.Companion.runWithoutAuthorization
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
@@ -17,7 +18,6 @@ import org.mockito.kotlin.eq
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import com.ritense.authorization.AuthorizationContext.Companion.runWithoutAuthorization
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
@@ -70,7 +70,14 @@ class StartFormPreviewE2ETest {
         // any() does not match null — the stub would silently not apply and the mock return null.
         whenever(
             epistolaService.previewDocument(
-                any(), any(), any(), any(), any(), anyOrNull(), anyOrNull(), any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                anyOrNull(),
+                anyOrNull(),
+                any(),
             ),
         ).thenReturn(ByteArrayInputStream(byteArrayOf(0x25, 0x50, 0x44, 0x46)))
     }
@@ -113,7 +120,14 @@ class StartFormPreviewE2ETest {
 
     private fun verifyPreviewCalledWith(captor: org.mockito.kotlin.KArgumentCaptor<Map<String, Any>>) {
         org.mockito.kotlin.verify(epistolaService).previewDocument(
-            any(), any(), any(), any(), any(), anyOrNull(), anyOrNull(), captor.capture(),
+            any(),
+            any(),
+            any(),
+            any(),
+            any(),
+            anyOrNull(),
+            anyOrNull(),
+            captor.capture(),
         )
     }
 
@@ -130,10 +144,14 @@ class StartFormPreviewE2ETest {
 
         assertThat(response.statusCode).isEqualTo(HttpStatus.OK)
         org.mockito.kotlin.verify(epistolaService).previewDocument(
-            any(), any(), any(),
+            any(),
+            any(),
+            any(),
             eq("municipality-demo"),
             eq("bevestigingsbrief-vergunning"),
-            anyOrNull(), anyOrNull(), any(),
+            anyOrNull(),
+            anyOrNull(),
+            any(),
         )
     }
 
