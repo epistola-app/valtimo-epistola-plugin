@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Interactive training facility, phase 1 (test-app only, opt-in via the `training` Spring
+  profile)**: a personal "dossier" — document-definition + BPMN process + process-links, cloned
+  from the `form-flow-demo` case type — and a per-trainee Epistola `PluginConfiguration` are
+  auto-provisioned on first authenticated request from any non-admin principal. Trainees get a new
+  `ROLE_TRAINEE` PBAC role scoped to their own dossier's cases/tasks
+  (`test-app/backend/src/main/resources/config/pbac/trainee.{role,permission}.json`), plus a
+  narrowly-widened `ROLE_ADMIN`-or-`ROLE_TRAINEE` gate on just the process-link and
+  plugin-configuration endpoints (Valtimo has no PBAC hook for either), enforced down to
+  per-resource ownership by a new interceptor/advice layer
+  (`test-app/backend/src/main/kotlin/com/ritense/valtimo/epistola/training/`). Cloning uses
+  Valtimo's own `ExportService`/`ImportService` (`keyOverride`/`pluginConfigurationMappings`), not
+  bespoke duplication code. Epistola-side tenant/API-key provisioning is an explicit extension
+  point (`EpistolaTenantProvisioner`) — out of scope here, since Epistola's tenant model is a
+  separate concern from this feature. Off by default; the case-definition/process-link management
+  surface beyond plugin-config and process-link, and dossier retention/cleanup, are not yet
+  covered.
+
 - **The document preview now works on a BPMN start form**, so a letter can be checked before the
   case is created — previously it required starting the case and previewing from the first user
   task, which produced a dossier for a letter the user might never send. Covers both Valtimo start
