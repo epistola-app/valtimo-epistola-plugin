@@ -4,12 +4,34 @@
     {
       "resourceType": "com.ritense.case_.domain.definition.CaseDefinition",
       "action": "view",
-      "roleKey": "ROLE_TRAINEE"
+      "roleKey": "ROLE_TRAINEE",
+      "conditions": [
+        { "type": "field", "field": "id.key", "operator": "==", "value": "${currentUserId}" }
+      ]
+    },
+    {
+      "resourceType": "com.ritense.case_.domain.definition.CaseDefinition",
+      "action": "view",
+      "roleKey": "ROLE_TRAINEE",
+      "conditions": [
+        { "type": "field", "field": "id.key", "operator": "==", "value": "form-flow-demo" }
+      ]
     },
     {
       "resourceType": "com.ritense.case_.domain.definition.CaseDefinition",
       "action": "view_list",
-      "roleKey": "ROLE_TRAINEE"
+      "roleKey": "ROLE_TRAINEE",
+      "conditions": [
+        { "type": "field", "field": "id.key", "operator": "==", "value": "${currentUserId}" }
+      ]
+    },
+    {
+      "resourceType": "com.ritense.case_.domain.definition.CaseDefinition",
+      "action": "view_list",
+      "roleKey": "ROLE_TRAINEE",
+      "conditions": [
+        { "type": "field", "field": "id.key", "operator": "==", "value": "form-flow-demo" }
+      ]
     },
     {
       "resourceType": "com.ritense.case.domain.CaseTab",
@@ -19,12 +41,34 @@
     {
       "resourceType": "com.ritense.document.domain.impl.JsonSchemaDocumentDefinition",
       "action": "view",
-      "roleKey": "ROLE_TRAINEE"
+      "roleKey": "ROLE_TRAINEE",
+      "conditions": [
+        { "type": "field", "field": "id.name", "operator": "==", "value": "${currentUserId}" }
+      ]
+    },
+    {
+      "resourceType": "com.ritense.document.domain.impl.JsonSchemaDocumentDefinition",
+      "action": "view",
+      "roleKey": "ROLE_TRAINEE",
+      "conditions": [
+        { "type": "field", "field": "id.name", "operator": "==", "value": "form-flow-demo" }
+      ]
     },
     {
       "resourceType": "com.ritense.document.domain.impl.JsonSchemaDocumentDefinition",
       "action": "view_list",
-      "roleKey": "ROLE_TRAINEE"
+      "roleKey": "ROLE_TRAINEE",
+      "conditions": [
+        { "type": "field", "field": "id.name", "operator": "==", "value": "${currentUserId}" }
+      ]
+    },
+    {
+      "resourceType": "com.ritense.document.domain.impl.JsonSchemaDocumentDefinition",
+      "action": "view_list",
+      "roleKey": "ROLE_TRAINEE",
+      "conditions": [
+        { "type": "field", "field": "id.name", "operator": "==", "value": "form-flow-demo" }
+      ]
     },
     {
       "resourceType": "com.ritense.document.domain.impl.JsonSchemaDocument",

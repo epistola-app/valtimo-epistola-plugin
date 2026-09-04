@@ -9,25 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Interactive training facility, phase 1 (test-app only, opt-in via the `training` Spring
-  profile)**: a personal "dossier" — document-definition + BPMN process + process-links, cloned
-  from the `form-flow-demo` case type — and a per-trainee Epistola `PluginConfiguration` are
-  auto-provisioned on first authenticated request from any non-admin principal. Trainees get a new
-  `ROLE_TRAINEE` PBAC role scoped to their own dossier's cases/tasks
+- **Interactive training facility (test-app only, opt-in via the `training` Spring profile)**: a
+  personal "dossier" — document-definition + BPMN process + process-links, cloned from the
+  `form-flow-demo` case type — and a per-trainee Epistola `PluginConfiguration` are auto-provisioned
+  on first authenticated request from any non-admin principal. Trainees get a new `ROLE_TRAINEE`
+  PBAC role scoped to their own dossier's cases/tasks
   (`test-app/backend/src/main/resources/config/pbac/trainee.{role,permission}.json`), plus a
-  narrowly-widened `ROLE_ADMIN`-or-`ROLE_TRAINEE` gate on just the process-link and
-  plugin-configuration endpoints (Valtimo has no PBAC hook for either), enforced down to
-  per-resource ownership by a new interceptor/advice layer
-  (`test-app/backend/src/main/kotlin/com/ritense/valtimo/epistola/training/`). Cloning uses
-  Valtimo's own `ExportService`/`ImportService` (`keyOverride`/`pluginConfigurationMappings`), not
-  bespoke duplication code. Epistola-side tenant provisioning
-  (`SharedSecretEpistolaTenantProvisioner`, opt-in via `epistola.training.epistola-shared-secret`)
-  reuses epistola-suite's own demo-profile shared-secret mechanism
-  (`DemoSharedSecretAuthenticationFilter`) — an all-tenant-superuser credential — to create one
-  tenant per trainee without minting a separate API key per trainee; falls back to
-  `NotConfiguredEpistolaTenantProvisioner` (fails loudly) when unset. Off by default; the
-  case-definition/process-link management surface beyond plugin-config and process-link, and
-  dossier retention/cleanup, are not yet covered.
+  narrowly-widened `ROLE_ADMIN`-or-`ROLE_TRAINEE` gate on the **full case-definition management
+  surface** — process-link, plugin-configuration, case tabs, settings, list/task-list columns,
+  widget/header tabs, startable items, case export, internal status (Valtimo has no PBAC hook for
+  any of it), enforced down to per-resource ownership by a new interceptor/advice layer
+  (`test-app/backend/src/main/kotlin/com/ritense/valtimo/epistola/training/`), so trainees can fully
+  administer their own dossier without real `ROLE_ADMIN` ever reaching anyone else's, or the rest of
+  the instance's admin surface (e.g. this plugin's own `EpistolaAdministration:MANAGE` admin page,
+  or the PBAC configurator endpoints themselves — both are seeded to `ROLE_ADMIN` by default, which
+  is exactly what real `ROLE_ADMIN` would otherwise have unlocked). Deliberately still `ROLE_ADMIN`-only:
+  creating a brand-new unrelated case-definition, arbitrary case import, and the case-_unlinked_
+  "system" process-definition surface. Cloning uses Valtimo's own `ExportService`/`ImportService`
+  (`keyOverride`/`pluginConfigurationMappings`), not bespoke duplication code. Epistola-side tenant
+  provisioning (`SharedSecretEpistolaTenantProvisioner`, opt-in via
+  `epistola.training.epistola-shared-secret`) reuses epistola-suite's own demo-profile shared-secret
+  mechanism (`DemoSharedSecretAuthenticationFilter`) — an all-tenant-superuser credential — to create
+  one tenant per trainee without minting a separate API key per trainee; falls back to
+  `NotConfiguredEpistolaTenantProvisioner` (fails loudly) when unset. Off by default; dossier
+  retention/cleanup is not yet covered.
 
 - **The document preview now works on a BPMN start form**, so a letter can be checked before the
   case is created — previously it required starting the case and previewing from the first user

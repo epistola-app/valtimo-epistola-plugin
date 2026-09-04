@@ -53,4 +53,23 @@ class TraineeOwnershipChecks(
 
     fun resolveProcessDefinitionIdOfProcessLink(processLinkId: UUID): String? =
         runCatching { processLinkService.getProcessLink(processLinkId, ProcessLink::class.java).processDefinitionId }.getOrNull()
+
+    /**
+     * For the case-definition management surface (`CaseHttpSecurityConfigurer`,
+     * `InternalCaseHttpSecurityConfigurer`): every endpoint there is path-scoped directly by the
+     * case-/document-definition key (Valtimo's own controllers call it `caseDefinitionKey`,
+     * `caseDefinitionName`, or bare `key` depending on the endpoint — verified against Valtimo
+     * 13.44.0 source, not guessed — but it's always the same case key value), so this is a plain
+     * string comparison, no resolution step needed.
+     *
+     * @param allowShared also accept the shared template's key — only safe for read-only checks.
+     */
+    fun isOwnCaseDefinition(
+        traineeIdentity: String,
+        caseDefinitionKey: String,
+        allowShared: Boolean = false,
+    ): Boolean {
+        if (caseDefinitionKey == TraineeKeys.caseDefinitionKey(traineeIdentity)) return true
+        return allowShared && caseDefinitionKey == properties.templateCaseDefinitionKey
+    }
 }

@@ -4,10 +4,13 @@
 
 package com.ritense.valtimo.epistola.training.security
 
+import com.ritense.case.web.rest.dto.CaseDefinitionResponseDto
 import com.ritense.plugin.web.rest.result.PluginConfigurationDto
 import com.ritense.processlink.web.rest.dto.ProcessLinkResponseDto
 import org.springframework.context.annotation.Profile
 import org.springframework.core.MethodParameter
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.PageImpl
 import org.springframework.http.MediaType
 import org.springframework.http.converter.HttpMessageConverter
 import org.springframework.http.server.ServerHttpRequest
@@ -16,18 +19,12 @@ import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice
 
 /**
- * Filters plugin-configuration and process-link list responses down to "owned by me" plus the
- * shared template (read-only reference, visible to every trainee).
+ * Filters plugin-configuration, process-link, and case-definition list responses down to "owned
+ * by me" plus the shared template (read-only reference, visible to every trainee).
  *
  * Runs on every controller response (`supports` is unconditionally `true`) but only acts on lists
- * of the two known DTOs — cheap for a trainee (one authorities check, then an early return for
- * anything else), a no-op for genuine `ROLE_ADMIN` staff.
- *
- * Known gap: `CaseDefinitionService.getCaseDefinitionsForManagement` returns a Spring Data `Page`,
- * not a bare `List` — case-definition list filtering isn't handled here (case-definition
- * management is out of scope for this pass, see [TrainingHttpSecurityConfigurer]'s KDoc), but if
- * that's ever widened, filtering a `Page` needs special-casing: rebuilding one changes its total
- * count to disagree with the filtered content length.
+ * or pages of the known DTOs — cheap for a trainee (one authorities check, then an early return
+ * for anything else), a no-op for genuine `ROLE_ADMIN` staff.
  *
  * `@Profile("training")` directly on this class — see [TraineeOwnershipRequestBodyAdvice]'s KDoc
  * for why: `@ControllerAdvice` is itself meta-annotated `@Component`, so without this the bean is
@@ -52,7 +49,20 @@ class TraineeOwnershipResponseBodyAdvice(
         response: ServerHttpResponse,
     ): Any? {
         val traineeIdentity = ownershipChecks.currentTraineeIdentityOrNull() ?: return body
-        return if (body is List<*>) body.filter { isOwnedOrShared(traineeIdentity, it) } else body
+        return when (body) {
+            is List<*> -> body.filter { isOwnedOrShared(traineeIdentity, it) }
+            // GET /api/management/v1/case-definition is the one bare, cross-dossier list in the
+            // widened surface (every other list endpoint is already path-scoped to one dossier by
+            // TraineeOwnershipInterceptor, so filtering its content again here would be redundant).
+            // Reported as a single self-contained page rather than preserving the original total:
+            // a trainee only ever has at most their own dossier plus the shared template, so
+            // real pagination across pages never applies to what they're allowed to see.
+            is Page<*> -> {
+                val filteredContent = body.content.filter { isOwnedOrShared(traineeIdentity, it) }
+                PageImpl(filteredContent, body.pageable, filteredContent.size.toLong())
+            }
+            else -> body
+        }
     }
 
     private fun isOwnedOrShared(
@@ -65,6 +75,12 @@ class TraineeOwnershipResponseBodyAdvice(
                 ownershipChecks.isOwnProcessDefinition(
                     traineeIdentity,
                     item.processDefinitionId,
+                    allowShared = true,
+                )
+            is CaseDefinitionResponseDto ->
+                ownershipChecks.isOwnCaseDefinition(
+                    traineeIdentity,
+                    item.caseDefinitionKey,
                     allowShared = true,
                 )
             else -> true
