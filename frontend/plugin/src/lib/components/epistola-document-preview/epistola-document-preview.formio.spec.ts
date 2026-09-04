@@ -267,6 +267,103 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     expect(inst._customAngularElement.taskInstanceId).toBeUndefined();
   });
 
+  describe('design-time detection', () => {
+    /**
+     * Formio's builder canvas sets options.attachMode = 'builder' (WebformBuilder.js:356), which is
+     * what Component.builderMode reads.
+     */
+    it('reports design mode on the builder canvas', () => {
+      const { inst } = createInstance({});
+      inst.builderMode = true;
+      inst._customAngularElement = {};
+
+      inst.attach({});
+
+      expect(inst._customAngularElement.designMode).toBe(true);
+    });
+
+    /**
+     * The component-settings live preview is built with preview: true and attachMode explicitly
+     * OMITTED (WebformBuilder.js:1500), so builderMode is false there. Checking only builderMode
+     * would make the settings dialog fire a real backend request.
+     */
+    it('reports design mode in the component-settings preview, where builderMode is false', () => {
+      const { inst } = createInstance({});
+      inst.builderMode = false;
+      inst.options = { preview: true };
+      inst._customAngularElement = {};
+
+      inst.attach({});
+
+      expect(inst._customAngularElement.designMode).toBe(true);
+    });
+
+    it('reports runtime when neither flag is set', () => {
+      const { inst } = createInstance({});
+      inst._customAngularElement = {};
+
+      inst.attach({});
+
+      expect(inst._customAngularElement.designMode).toBe(false);
+    });
+  });
+
+  describe('previewContext forwarding', () => {
+    it('defaults to task mode when the component declares nothing', () => {
+      const { inst } = createInstance({});
+      inst._customAngularElement = {};
+
+      inst.attach({});
+
+      expect(inst._customAngularElement.previewContext).toBe('task');
+    });
+
+    it('forwards start mode when authored', () => {
+      const { inst } = createInstance({});
+      inst.component.previewContext = 'start';
+      inst._customAngularElement = {};
+
+      inst.attach({});
+
+      expect(inst._customAngularElement.previewContext).toBe('start');
+    });
+
+    it('treats any unrecognised value as task mode rather than guessing', () => {
+      const { inst } = createInstance({});
+      inst.component.previewContext = 'something-else';
+      inst._customAngularElement = {};
+
+      inst.attach({});
+
+      expect(inst._customAngularElement.previewContext).toBe('task');
+    });
+  });
+
+  describe('prefilled document id (start-on-existing-case)', () => {
+    it('forwards the document id from the start form carrier', () => {
+      const { inst, root } = createInstance({});
+      (root as any).form = {
+        components: [
+          { properties: { sourceKey: 'epistola:documentId' }, defaultValue: 'doc-from-prefill' },
+        ],
+      };
+      inst._customAngularElement = {};
+
+      inst.attach({});
+
+      expect(inst._customAngularElement.startDocumentId).toBe('doc-from-prefill');
+    });
+
+    it('is null on a new-case start form, which gets no prefill at all', () => {
+      const { inst } = createInstance({});
+      inst._customAngularElement = {};
+
+      inst.attach({});
+
+      expect(inst._customAngularElement.startDocumentId).toBeNull();
+    });
+  });
+
   it('schedules a debounced preview on change and pushes computed overrides', async () => {
     const { inst, root, handlers } = createInstance({
       overrideMapping: { doc: { name: 'form:nameField' } },

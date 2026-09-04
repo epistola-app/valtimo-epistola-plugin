@@ -7,8 +7,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The document preview now works on a BPMN start form**, so a letter can be checked before the
+  case is created — previously it required starting the case and previewing from the first user
+  task, which produced a dossier for a letter the user might never send. Covers both Valtimo start
+  flavours: a brand-new case, and starting a process on an existing one. A new `previewContext`
+  setting on the component (`In a user task` / `On a start form`, defaulting to the former) selects
+  the mode; **existing forms need no re-authoring**. See
+  [ADR 0004](docs/adr/0004-start-event-preview-authorization.md).
+  - **New endpoint `POST /preview/start`**, authorized on `OperatonExecution:CREATE` against the
+    process definition — the same check Valtimo makes before serving that start form, so the preview
+    reaches exactly the form's audience. When the request names a case document,
+    `JsonSchemaDocument:VIEW` is required on it as well: permission to start a process must never
+    confer read access to a case. Kept separate from `POST /preview`, which is unchanged.
+  - **The mode is authored, never inferred.** Falling back to start mode when no task id arrives
+    would silently swap a per-task gate for a process-level one and drop `$doc`/`$pv` to the caller's
+    overrides — `$pv` binds to an empty map rather than throwing, so the result is a plausible letter
+    with fields quietly missing. That is precisely the situation the four task-id-carrier fixes
+    describe, so a fallback would have converted a loud, correct failure into a silent, wrong one. A
+    start-mode preview that _does_ find a task id reports itself misconfigured and calls nothing.
+  - Two demo fixtures, one per flavour. **Vergunningaanvraag** carries a preview on the start form
+    of a case-initiating process (no document exists yet, so `$doc` is the form's own input),
+    exercised end-to-end by `StartFormPreviewE2ETest` against the real deployed configuration. The
+    **Voorbeeld** case's `single-document` supporting process carries one on the start form of a
+    process started _within_ an existing case, where `$doc` resolves against that case — leave its
+    name field empty to see the stored value come through, or fill it to watch the override land on
+    top. It has its own start form so the four sibling processes keep sharing the original.
+
+### Fixed
+
+- **The preview no longer mistakes a real form for the Formio builder after visiting a case.** Design
+  mode was inferred from `FormIoStateService.documentId`, which is root-scoped and never cleared, so
+  it survived navigation. It now uses Formio's own signals, forwarded from the wrapper: `builderMode`
+  for the builder canvas, plus `options.preview` for the component-settings dialog — which omits
+  `attachMode` entirely and so reports `builderMode === false`. Checking only `builderMode` would
+  have made the settings dialog fire a real backend request.
+- `findPluginProcessLink` did not check that the link it found was a `generate-document` action. That
+  was harmless while the activity id always came from the caller's own task, but `/preview/start`
+  accepts it from the wire, so it is now filtered on both paths.
+- The preview's design-time summary advertised an "Auto-discover mode" that was removed in
+  `8972c16`; it now reports an unconfigured component instead.
+- `docs/document-preview.md` documented that same removed auto-discover mode, and showed a
+  `POST /preview` request body (`{documentId, processDefinitionKey, …}`) that no longer exists. Both
+  are corrected, and the `$doc`/`$pv` resolution is now tabulated per mode — on a new-case start form
+  nothing resolves except what the override mapping supplies.
+- Corrected the `EpistolaGenerationResource` class javadoc, which still described a bound-ids check
+  removed in `8972c16`.
+- **Transient 5xx responses carrying `problem+json` are retried again.** Installing the RFC 9457
+  status handler means an error response arrives as `ProblemDetailException`, which extends
+  `RestClientResponseException` directly and is _not_ an `HttpServerErrorException` — so the retry
+  policy, which branched on the exception class, would have stopped retrying every problem-shaped
+  5xx while still retrying bare ones. `withRetry` now branches on the response status. Covered by
+  `withRetry_retriesProblemShaped5xx` and `withRetry_doesNotRetryProblemShaped4xx`.
+- **A stale document reference returns 404 rather than 500.** The download endpoint caught
+  `HttpClientErrorException.NotFound`, but `EpistolaServiceImpl` wraps downstream failures in
+  `EpistolaApiException`, so that catch could only ever fire for a directly-thrown exception — which
+  is exactly how the test stubbed it, leaving the real path uncovered. The endpoint now also
+  inspects the status preserved on `EpistolaApiException`. A malformed (non-UUID) document id is
+  rejected as a `400` before the call rather than escaping as an `IllegalArgumentException`.
+
+- The admin page's connection check reports the contract version the plugin ships, so its
+  expectations move to `1.2.0`. A server still on contract `1.1.0` is one minor behind and now
+  classifies as `WARNING` rather than `OK` — the compatibility rule is unchanged, only the plugin's
+  side of the comparison moved. That path had no test; `shouldWarnWhenServerContractMinorIsBehindPluginContractMinor`
+  now covers it, and `shouldTreatNewerServerMinorAndPatchAsCompatible` mocks a genuinely newer
+  server (`1.3.1`) instead of one equal to the plugin's own version, which would have asserted nothing.
+
 ### Changed
 
+- **Breaking for applications that override the `epistolaGenerationResource` bean:** its factory
+  method gains a `RepositoryService` parameter (used to resolve a process definition key to its
+  latest deployed version). The plugin's own auto-configuration is updated; only applications
+  supplying their own bean via the `@ConditionalOnMissingBean` escape hatch need to widen theirs.
 - **Upgraded the Epistola contract client `app.epistola.contract:client-spring3-restclient` from
   `1.1.0` to `1.2.0`.** The OpenAPI specification itself is unchanged, so the bundled catalog wire
   schema stays at `4` and the Epistola Suite compatibility floor stays at `>= 1.0.0`. Of what the
@@ -40,28 +111,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Authentication moved from the deprecated `X-API-Key` header to `Authorization: ApiKey`.** The
   contract has accepted the latter since `0.14.0`, well below this plugin's Epistola Suite floor of
   `>= 1.0.0`, so every supported server accepts it.
-
-### Fixed
-
-- **Transient 5xx responses carrying `problem+json` are retried again.** Installing the RFC 9457
-  status handler means an error response arrives as `ProblemDetailException`, which extends
-  `RestClientResponseException` directly and is _not_ an `HttpServerErrorException` — so the retry
-  policy, which branched on the exception class, would have stopped retrying every problem-shaped
-  5xx while still retrying bare ones. `withRetry` now branches on the response status. Covered by
-  `withRetry_retriesProblemShaped5xx` and `withRetry_doesNotRetryProblemShaped4xx`.
-- **A stale document reference returns 404 rather than 500.** The download endpoint caught
-  `HttpClientErrorException.NotFound`, but `EpistolaServiceImpl` wraps downstream failures in
-  `EpistolaApiException`, so that catch could only ever fire for a directly-thrown exception — which
-  is exactly how the test stubbed it, leaving the real path uncovered. The endpoint now also
-  inspects the status preserved on `EpistolaApiException`. A malformed (non-UUID) document id is
-  rejected as a `400` before the call rather than escaping as an `IllegalArgumentException`.
-
-- The admin page's connection check reports the contract version the plugin ships, so its
-  expectations move to `1.2.0`. A server still on contract `1.1.0` is one minor behind and now
-  classifies as `WARNING` rather than `OK` — the compatibility rule is unchanged, only the plugin's
-  side of the comparison moved. That path had no test; `shouldWarnWhenServerContractMinorIsBehindPluginContractMinor`
-  now covers it, and `shouldTreatNewerServerMinorAndPatchAsCompatible` mocks a genuinely newer
-  server (`1.3.1`) instead of one equal to the plugin's own version, which would have asserted nothing.
 
 ### Notes
 

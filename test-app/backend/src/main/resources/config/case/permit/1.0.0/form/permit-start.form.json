@@ -12,7 +12,9 @@
           "input": true,
           "label": "Voornaam",
           "defaultValue": "Jan",
-          "validate": { "required": true }
+          "validate": {
+            "required": true
+          }
         },
         {
           "key": "applicant.lastName",
@@ -20,7 +22,9 @@
           "input": true,
           "label": "Achternaam",
           "defaultValue": "de Vries",
-          "validate": { "required": true }
+          "validate": {
+            "required": true
+          }
         },
         {
           "key": "applicant.bsn",
@@ -28,7 +32,10 @@
           "input": true,
           "label": "BSN (leeg laten om fout te simuleren)",
           "defaultValue": "",
-          "validate": { "required": false, "pattern": "^([0-9]{9})?$" }
+          "validate": {
+            "required": false,
+            "pattern": "^([0-9]{9})?$"
+          }
         },
         {
           "key": "applicant.address.street",
@@ -36,7 +43,9 @@
           "input": true,
           "label": "Straat",
           "defaultValue": "Keizersgracht",
-          "validate": { "required": true }
+          "validate": {
+            "required": true
+          }
         },
         {
           "key": "applicant.address.houseNumber",
@@ -44,7 +53,9 @@
           "input": true,
           "label": "Huisnummer",
           "defaultValue": "42",
-          "validate": { "required": true }
+          "validate": {
+            "required": true
+          }
         },
         {
           "key": "applicant.address.postalCode",
@@ -52,7 +63,10 @@
           "input": true,
           "label": "Postcode",
           "defaultValue": "1015AB",
-          "validate": { "required": true, "pattern": "^[0-9]{4}[A-Z]{2}$" }
+          "validate": {
+            "required": true,
+            "pattern": "^[0-9]{4}[A-Z]{2}$"
+          }
         },
         {
           "key": "applicant.address.city",
@@ -60,7 +74,9 @@
           "input": true,
           "label": "Woonplaats",
           "defaultValue": "Amsterdam",
-          "validate": { "required": true }
+          "validate": {
+            "required": true
+          }
         }
       ]
     },
@@ -75,7 +91,9 @@
           "input": true,
           "label": "Straat",
           "defaultValue": "Herengracht",
-          "validate": { "required": true }
+          "validate": {
+            "required": true
+          }
         },
         {
           "key": "property.address.houseNumber",
@@ -83,7 +101,9 @@
           "input": true,
           "label": "Huisnummer",
           "defaultValue": "100",
-          "validate": { "required": true }
+          "validate": {
+            "required": true
+          }
         },
         {
           "key": "property.address.postalCode",
@@ -91,7 +111,10 @@
           "input": true,
           "label": "Postcode",
           "defaultValue": "1015BS",
-          "validate": { "required": true, "pattern": "^[0-9]{4}[A-Z]{2}$" }
+          "validate": {
+            "required": true,
+            "pattern": "^[0-9]{4}[A-Z]{2}$"
+          }
         },
         {
           "key": "property.address.city",
@@ -99,7 +122,9 @@
           "input": true,
           "label": "Woonplaats",
           "defaultValue": "Amsterdam",
-          "validate": { "required": true }
+          "validate": {
+            "required": true
+          }
         },
         {
           "key": "property.kadastraalNummer",
@@ -129,20 +154,56 @@
           "type": "textfield",
           "input": true,
           "label": "Type activiteit",
-          "validate": { "required": true }
+          "validate": {
+            "required": true
+          }
         },
         {
           "key": "description",
           "type": "textarea",
           "input": true,
           "label": "Beschrijving",
-          "validate": { "required": true }
+          "validate": {
+            "required": true
+          }
         },
         {
           "key": "estimatedCost",
           "type": "number",
           "input": true,
           "label": "Geschatte kosten (€)"
+        }
+      ]
+    },
+    {
+      "type": "epistola-document-preview",
+      "key": "preview",
+      "input": false,
+      "label": "Voorbeeld Bevestigingsbrief",
+      "previewContext": "start",
+      "processDefinitionKey": "permit-confirmation",
+      "sourceActivityId": "generate-confirmation",
+      "overrideMapping": "{\n  \"doc\": {\n    \"applicant\": $form.applicant,\n    \"property\": $form.property,\n    \"activities\": $form.activities\n  }\n}",
+      "components": [
+        {
+          "type": "hidden",
+          "key": "epistolaTaskId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola:taskId"
+          }
+        },
+        {
+          "type": "hidden",
+          "key": "epistolaDocumentId",
+          "input": true,
+          "label": "Epistola Document Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola:documentId"
+          }
         }
       ]
     },

@@ -6,6 +6,8 @@ The `epistola-document-preview` Formio component shows a live PDF preview of a d
 
 **Related documentation:**
 
+- [ADR 0004](adr/0004-start-event-preview-authorization.md) — why the start-event preview is a separate endpoint, and how it is authorized
+
 - [Document Component](document-component.md) — the after-generation render/download component
 - [Data Mapping](data-mapping.md) — how case/process data flows into Epistola templates
 - [Use Cases](use-cases.md) — demo scenarios including the bezwaarprocedure
@@ -13,17 +15,72 @@ The `epistola-document-preview` Formio component shows a live PDF preview of a d
 
 ## Modes
 
-### Auto-discover mode
+Three, and the runtime pair is chosen by the **`previewContext` setting the author picks**, never
+inferred from what happens to be available at runtime.
 
-When no process link is configured, the component discovers all `generate-document` process links from running process instances and shows a source dropdown. This is the original behavior — useful when a process is already past the generation point and you want to preview any available document.
+### Task mode (default)
 
-### Configured mode
+The component sits on a user-task form. It targets a specific `generate-document` activity and feeds
+form field values into the template as input overrides, so the document can be previewed **while the
+user is still filling in the form**. The backend authorizes `OperatonTask:VIEW` on the task and
+derives the process instance and case document from it.
 
-When a process link and override mapping are configured, the component targets a specific `generate-document` activity and feeds form field values into the template as input overrides. This enables previewing a document **while the user is still filling in the form**.
+If no task id arrives, the component says so and sends nothing. It does **not** fall back to start
+mode — see the box below.
+
+### Start mode
+
+The component sits on a BPMN **start form**, so the letter can be checked before the case is created
+at all. There is no task and no process instance, so the request names the process definition
+instead and the backend authorizes the caller's permission to start it
+(see [Authorization](authorization.md#start-event-preview)).
+
+Two flavours, distinguished only by whether Valtimo opened the form against an existing case:
+
+| Flavour                             | `$doc` resolves to                         | `$pv` resolves to                     |
+| ----------------------------------- | ------------------------------------------ | ------------------------------------- |
+| New case                            | the `doc` overrides, over **nothing**      | the `pv` overrides, else empty        |
+| Start a process on an existing case | the `doc` overrides over the real document | the `pv` overrides, else empty        |
+| _(task mode, for comparison)_       | the `doc` overrides over the real document | overrides over live process variables |
+
+`$case` is empty in all three.
+
+> **On a new-case start form an override mapping is effectively required.** There is no case data
+> behind the preview, so a mapping that reads `$pv.foo` — or a preview with no mapping at all —
+> produces nothing rather than falling back to stored data.
+
+### Design mode
+
+The Formio builder canvas and the component-settings dialog. The component renders a configuration
+summary and issues no request.
+
+> ### Why the mode is authored rather than detected
+>
+> It would be tempting to infer "no task id ⇒ start form". That inference is unsafe in exactly the
+> situation it would fire. It would silently swap `OperatonTask:VIEW` on a specific task for a
+> process-level gate, and drop `$doc`/`$pv` to the overrides alone — `$pv` binds to an empty map
+> rather than throwing, so the result is a **plausible letter with fields quietly missing**.
+>
+> And the task id is known to go missing: four fixes exist because Formio's serializer dropped the
+> hidden carrier from builder-saved forms. A fallback would have turned that loud, correct failure
+> into a silent, wrong one.
+>
+> So each mode reaches exactly one endpoint, with no code path between them. A start-mode preview
+> that _does_ find a task id treats itself as misconfigured, says so, and calls neither endpoint.
+> (That check is why the task-id carrier is kept in start mode too.)
 
 ## Configuration
 
 In the Formio builder, click the `epistola-document-preview` component to open its settings. The editForm shows:
+
+### Where is this form shown? (required)
+
+A radio choosing `previewContext`: **In a user task** (default) or **On a start form**. It decides
+which endpoint the component calls and therefore which permission is checked, so it is not a
+cosmetic hint — putting a start-form preview on a task form is refused rather than silently
+downgraded.
+
+Existing forms have no setting and are treated as task mode, so nothing needs re-authoring.
 
 ### Process Link (required)
 
@@ -142,21 +199,34 @@ Pushes overrides to the Angular component's dedicated `inputOverrides` input
   (NOT Formio's value — Valtimo's bridge would let Formio reset that to its
    emptyValue on the next redraw, cancelling the preview)
   ↓
-POST /api/v1/plugin/epistola/preview
-  {
-    documentId, processDefinitionKey, sourceActivityId,
-    inputOverrides: { doc: {...}, pv: {...} }
-  }
-  ↓
-Backend: PreviewService.generatePreview()
-  - resolves process link → gets catalogId, templateId, dataMapping
-  - creates OverlayMap(inputOverrides.doc, lazyDocumentContent) for $doc
-  - creates process-variable context that checks inputOverrides.pv first
-  - evaluates JSONata mapping with overridden inputs
+Task mode                              Start mode
+POST …/preview                         POST …/preview/start
+  {                                      {
+    taskId,                                processDefinitionKey,
+    sourceActivityId,                      sourceActivityId,
+    inputOverrides: { doc, pv },           documentId?,   ← existing-case flavour only
+    overrides                              inputOverrides: { doc, pv }
+  }                                      }
+  ↓                                      ↓
+process instance + case document       process definition resolved from the key;
+derived from the authorized task       no instance, case only if documentId given
+  ↓                                      ↓
+        PreviewService — one shared render path from here on
+  - resolves the process link from the process DEFINITION
+    → catalogId, templateId, dataMapping
+  - $doc: OverlayMap(inputOverrides.doc, lazyDocumentContent),
+          or the overrides alone when there is no document
+  - $pv:  checks inputOverrides.pv first, then live process
+          variables when an instance exists
+  - evaluates the JSONata mapping with the overridden inputs
   - calls Epistola preview API → returns PDF
   ↓
 PDF rendered in <object> tag
 ```
+
+Note the request bodies carry **no case id**. In task mode it is derived from the task; in start
+mode there either is no case, or the caller must separately hold read permission on the one it
+names.
 
 ### OverlayMap — layered resolution
 
@@ -180,11 +250,13 @@ In the Formio builder (no runtime context), the component shows a configuration 
 
 ### Backend
 
-| Class            | File                                  | Role                                                  |
-| ---------------- | ------------------------------------- | ----------------------------------------------------- |
-| `PreviewService` | `service/preview/PreviewService.java` | Orchestrates preview generation with input overrides  |
-| `OverlayMap`     | `service/preview/OverlayMap.java`     | Layered Map — checks overlay first, delegates to base |
-| `PreviewRequest` | `web/rest/dto/PreviewRequest.java`    | Request DTO with `inputOverrides` field               |
+| Class                 | File                                    | Role                                                                   |
+| --------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
+| `PreviewService`      | `service/preview/PreviewService.java`   | Orchestrates preview generation with input overrides                   |
+| `OverlayMap`          | `service/preview/OverlayMap.java`       | Layered Map — checks overlay first, delegates to base                  |
+| `PreviewRequest`      | `web/rest/dto/PreviewRequest.java`      | Task-mode request DTO (`taskId` + overrides)                           |
+| `StartPreviewRequest` | `web/rest/dto/StartPreviewRequest.java` | Start-mode request DTO (`processDefinitionKey`, optional `documentId`) |
+| `PreviewContext`      | `service/preview/PreviewContext.java`   | Resolved, already-authorized inputs both modes converge on             |
 
 ### Frontend
 

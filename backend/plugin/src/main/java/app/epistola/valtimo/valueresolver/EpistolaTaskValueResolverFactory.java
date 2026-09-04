@@ -62,9 +62,20 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
     static final String KEY_TASK_ID = "taskId";
     static final String KEY_EXECUTION_ID = "executionId";
     static final String KEY_TASK_DEFINITION_KEY = "taskDefinitionKey";
+    static final String KEY_DOCUMENT_ID = "documentId";
 
     /** The carrier field's {@code sourceKey} ({@value}); the single source of truth for the prefix:key. */
     public static final String SOURCE_KEY = PREFIX + ":" + KEY_TASK_ID;
+
+    /**
+     * Carrier {@code sourceKey} ({@value}) for the case document a <b>start form</b> is opened
+     * against, used by the start-event preview's start-on-existing-case flavour.
+     *
+     * <p>Filled through {@link #createResolver(String)} — the document-scoped overload — which is
+     * the only one Valtimo reaches when prefilling a start form. Empty on a brand-new-case start
+     * form, because Valtimo skips prefill entirely when there is no document.
+     */
+    public static final String SOURCE_KEY_DOCUMENT_ID = PREFIX + ":" + KEY_DOCUMENT_ID;
 
     @Override
     public String supportedPrefix() {
@@ -99,13 +110,22 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
     }
 
     /**
-     * Resolution without a process/task context (document-only). The task identity is only meaningful
-     * inside a task, so there is nothing to resolve here — return a null resolver rather than throwing,
-     * to stay inert if the configurator probes this prefix.
+     * Resolution without a process/task context (document-only).
+     *
+     * <p>This is the overload Valtimo reaches when prefilling a <b>start form</b> that is opened
+     * against an existing case ({@code PrefillFormService.prefillValueResolverFields} falls through
+     * to {@code resolveValues(documentId, keys)} when both the task and the execution are null). It
+     * therefore resolves {@code epistola:documentId}, which the start-event preview needs so it can
+     * name the case without reading the never-cleared frontend {@code FormIoStateService}.
+     *
+     * <p>The task keys stay unresolvable here: task identity is only meaningful inside a task, and
+     * returning null keeps the resolver inert if the configurator probes this prefix. Note this
+     * overload is never reached at all for a brand-new case — Valtimo skips prefill entirely when
+     * there is no document.
      */
     @Override
     public Function<String, Object> createResolver(String documentId) {
-        return requestedValue -> null;
+        return requestedValue -> KEY_DOCUMENT_ID.equals(requestedValue) ? documentId : null;
     }
 
     /**

@@ -146,6 +146,15 @@ This plugin pins a single Valtimo version (the `valtimo` key in `gradle/libs.ver
 # Runs in CI as the "Backend E2E (Testcontainers)" job.
 ./gradlew :test-app:backend:test
 
+# What CI's "Backend" job actually runs — NOT the same as the two above.
+# :test-app:backend:build is where ktlint checks the Kotlin sources, so
+# running only :test-app:backend:test will miss style violations that fail CI.
+./gradlew :backend:plugin:build
+./gradlew :test-app:backend:build -x test
+
+# Auto-fix Kotlin style (test-app is Kotlin; the plugin module is Java/Spotless)
+./gradlew :test-app:backend:ktlintFormat
+
 # Frontend tests (Jest unit tests)
 cd frontend/plugin && pnpm test
 

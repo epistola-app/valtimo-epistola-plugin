@@ -105,11 +105,37 @@ class EpistolaTaskValueResolverFactoryTest {
     }
 
     @Test
-    void documentOnlyResolverYieldsNull() {
-        // No task/process context — nothing to resolve, but must not throw.
+    void documentOnlyResolverYieldsNullForTaskKeys() {
+        // No task/process context — task identity is unresolvable, but must not throw.
         Function<String, Object> resolver = factory.createResolver("document-id");
 
         assertThat(resolver.apply("taskId")).isNull();
+        assertThat(resolver.apply("executionId")).isNull();
+        assertThat(resolver.apply("taskDefinitionKey")).isNull();
+        assertThat(resolver.apply("somethingElse")).isNull();
+    }
+
+    /**
+     * The overload Valtimo reaches when prefilling a start form opened against an existing case.
+     * The start-event preview reads this back to name the case, rather than trusting the frontend's
+     * never-cleared {@code FormIoStateService.documentId}.
+     */
+    @Test
+    void documentOnlyResolverYieldsTheDocumentId() {
+        Function<String, Object> resolver = factory.createResolver("3f2504e0-4f89-11d3-9a0c-0305e82c3301");
+
+        assertThat(resolver.apply("documentId")).isEqualTo("3f2504e0-4f89-11d3-9a0c-0305e82c3301");
+    }
+
+    @Test
+    void taskScopedResolverDoesNotYieldADocumentId() {
+        // documentId is only meaningful on the document-scoped overload; a task form's carrier for
+        // it must stay empty rather than picking up something incidental.
+        OperatonTask task = mock(OperatonTask.class);
+
+        Function<String, Object> resolver = factory.createResolver("pi-7", task);
+
+        assertThat(resolver.apply("documentId")).isNull();
     }
 
     @Test
