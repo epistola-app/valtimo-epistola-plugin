@@ -20,11 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   per-resource ownership by a new interceptor/advice layer
   (`test-app/backend/src/main/kotlin/com/ritense/valtimo/epistola/training/`). Cloning uses
   Valtimo's own `ExportService`/`ImportService` (`keyOverride`/`pluginConfigurationMappings`), not
-  bespoke duplication code. Epistola-side tenant/API-key provisioning is an explicit extension
-  point (`EpistolaTenantProvisioner`) — out of scope here, since Epistola's tenant model is a
-  separate concern from this feature. Off by default; the case-definition/process-link management
-  surface beyond plugin-config and process-link, and dossier retention/cleanup, are not yet
-  covered.
+  bespoke duplication code. Epistola-side tenant provisioning
+  (`SharedSecretEpistolaTenantProvisioner`, opt-in via `epistola.training.epistola-shared-secret`)
+  reuses epistola-suite's own demo-profile shared-secret mechanism
+  (`DemoSharedSecretAuthenticationFilter`) — an all-tenant-superuser credential — to create one
+  tenant per trainee without minting a separate API key per trainee; falls back to
+  `NotConfiguredEpistolaTenantProvisioner` (fails loudly) when unset. Off by default; the
+  case-definition/process-link management surface beyond plugin-config and process-link, and
+  dossier retention/cleanup, are not yet covered.
 
 - **The document preview now works on a BPMN start form**, so a letter can be checked before the
   case is created — previously it required starting the case and previewing from the first user

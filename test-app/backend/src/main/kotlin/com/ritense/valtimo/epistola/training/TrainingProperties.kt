@@ -15,4 +15,11 @@ data class TrainingProperties(
     /** Case-/document-definition key of the case cloned into every trainee's dossier. */
     val templateCaseDefinitionKey: String = "form-flow-demo",
     val templateCaseDefinitionVersionTag: String = "1.0.0",
+    /**
+     * epistola-suite's demo-profile all-tenant-superuser credential (`epistola.demo.shared-secret`
+     * on the Epistola side) — see [SharedSecretEpistolaTenantProvisioner]'s KDoc. Blank (the
+     * default) means that provisioner isn't wired in and [EpistolaTenantProvisioner] falls back to
+     * [NotConfiguredEpistolaTenantProvisioner].
+     */
+    val epistolaSharedSecret: String = "",
 )

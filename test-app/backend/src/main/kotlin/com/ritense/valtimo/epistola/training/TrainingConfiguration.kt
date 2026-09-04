@@ -17,7 +17,9 @@ import com.ritense.valtimo.epistola.training.security.TraineeProvisioningFilter
 import com.ritense.valtimo.epistola.training.security.TrainingHttpSecurityConfigurer
 import com.ritense.valtimo.epistola.training.security.TrainingWebConfig
 import org.operaton.bpm.engine.RepositoryService
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -35,12 +37,22 @@ import org.springframework.core.annotation.Order
  * `training` Spring profile so it's fully opt-in. Omit the profile (the default) and none of these
  * beans are created; Valtimo's own admin-gated endpoints stay exactly as shipped.
  *
- * To enable this feature for real, also supply an [EpistolaTenantProvisioner] bean — see its KDoc.
+ * To enable Epistola tenant provisioning too, set `epistola.training.epistola-shared-secret` to
+ * epistola-suite's demo-profile shared secret (see [SharedSecretEpistolaTenantProvisioner]'s
+ * KDoc) — leave it unset and [EpistolaTenantProvisioner] falls back to
+ * [NotConfiguredEpistolaTenantProvisioner], which fails loudly instead of silently.
  */
 @Configuration
 @Profile("training")
 @EnableConfigurationProperties(TrainingProperties::class)
 class TrainingConfiguration {
+    @Bean
+    @ConditionalOnProperty(name = ["epistola.training.epistola-shared-secret"])
+    fun sharedSecretEpistolaTenantProvisioner(
+        @Value("\${epistola.base-url}") baseUrl: String,
+        properties: TrainingProperties,
+    ): EpistolaTenantProvisioner = SharedSecretEpistolaTenantProvisioner(baseUrl, properties.epistolaSharedSecret)
+
     @Bean
     @ConditionalOnMissingBean(EpistolaTenantProvisioner::class)
     fun notConfiguredEpistolaTenantProvisioner(): EpistolaTenantProvisioner = NotConfiguredEpistolaTenantProvisioner()
