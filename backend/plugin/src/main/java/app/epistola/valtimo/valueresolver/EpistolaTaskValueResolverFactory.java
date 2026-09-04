@@ -166,6 +166,21 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
         return values;
     }
 
+    /**
+     * Added to {@code ValueResolverFactory} in Valtimo 13.43 (document-scoped sibling of
+     * {@link #preProcessValuesForNewCase}). Pass-through, like its sibling: this resolver is
+     * read-only and never rewrites submitted values.
+     *
+     * <p>Implementing it does not raise the plugin's Valtimo floor. On 13.21–13.42 the interface
+     * simply does not declare the method, and an extra public method on the implementing class is
+     * never called — so the compiled plugin stays loadable across the range in
+     * {@code COMPATIBILITY.md}.
+     */
+    @Override
+    public Object preProcessValuesForNewDocument(Map<String, ?> values, String documentDefinitionName) {
+        return values;
+    }
+
     @Override
     public List<ValueResolverOption> getResolvableKeyOptions(CaseDefinitionId caseDefinitionId) {
         return Collections.emptyList();

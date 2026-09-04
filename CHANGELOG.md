@@ -76,6 +76,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Upgraded Valtimo from `13.42.0` to `13.44.0` (backend + frontend).** No toolchain move was
+  needed: diffing the two dependency BOMs in full showed the _only_ delta across all 90 managed
+  entries is the Valtimo module versions themselves — Spring Boot stays `3.5.16`, and Java 21,
+  Gradle 9.2.0, Kotlin 2.0.21 and Angular 19.2.25 are all unchanged. `@valtimo/components` still
+  pins `formiojs@4.19.5`, `@formio/angular@7.0.0` and `carbon-components-angular@5.57.6`, so there
+  is no second Form.io registry to worry about (`pnpm singletons:check` confirms it).
+  - **One breaking change, undocumented in the release notes:** `ValueResolverFactory` gained an
+    abstract `preProcessValuesForNewDocument(Map<String, ?>, String)` in 13.43 — the document-scoped
+    sibling of `preProcessValuesForNewCase` — which fails the build of any Java implementer.
+    `EpistolaTaskValueResolverFactory` implements it as a pass-through, matching its sibling, since
+    the resolver is read-only and never rewrites submitted values. This does **not** raise the
+    plugin's Valtimo floor: on 13.21–13.42 the interface simply does not declare the method, and an
+    extra public method on the implementing class is never called, so the compiled plugin stays
+    loadable across the range in `COMPATIBILITY.md`.
+  - Two fixes land directly in the plugin's lane. 13.44 fixes _"changing the form flow definition on
+    an existing form flow process link is now saved (previously the change was silently ignored)"_
+    and process-link configuration retention; 13.43 stops links leaking into another case definition
+    and adds diagnostics naming the offending property, activity and process definition when a
+    plugin action fails. `FormFlowTransitionE2ETest` and `FormFlowDemoConfigurationTest` still pass
+    unchanged.
+  - The new **E-mail preview** Form.io component in 13.44 does not collide with this plugin: every
+    type it registers is `epistola-` prefixed.
+  - 13.43's stricter input/output-mapping validation is scoped to building-block call activities,
+    which this repo does not use; its BPMN fixtures only carry plain named `camunda:inputParameter`s
+    on ordinary activities.
+  - `frontend/plugin`'s `peerDependencies` are deliberately left at `>=13.21.0 <14` rather than
+    narrowed to the new pin — they are the published compatibility contract, not a lockstep mirror
+    of what the repo builds against.
+
 - **Renovate now groups its updates, and treats the shipped plugin differently from the test-app.**
   The old config grouped five ecosystems and left everything else ungrouped, so ~100 pending updates
   queued behind `prHourlyLimit` and dripped out roughly ten PRs at a time — a rate limit hiding the
