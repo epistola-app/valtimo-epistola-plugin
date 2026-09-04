@@ -3,7 +3,7 @@
     "activityId": "startEvent",
     "activityType": "bpmn:StartEvent:start",
     "processLinkType": "form",
-    "formDefinitionName": "single-document-start"
+    "formDefinitionName": "single-document-preview-start"
   },
   {
     "activityId": "generate-document",

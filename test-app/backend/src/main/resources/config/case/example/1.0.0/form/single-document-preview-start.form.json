@@ -1,0 +1,58 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "key": "pv:companyName",
+      "type": "textfield",
+      "input": true,
+      "label": "Bedrijfsnaam",
+      "defaultValue": "Acme B.V."
+    },
+    {
+      "key": "naam",
+      "type": "textfield",
+      "input": true,
+      "persistent": false,
+      "label": "Naam (leeg laten om de naam uit de zaak te gebruiken)",
+      "description": "Leeg: de preview toont de naam die al in de zaak staat ($doc.firstName). Ingevuld: die waarde wordt eroverheen gelegd.",
+      "defaultValue": ""
+    },
+    {
+      "type": "epistola-document-preview",
+      "key": "preview",
+      "input": false,
+      "label": "Voorbeeld brief",
+      "previewContext": "start",
+      "processDefinitionKey": "single-document",
+      "sourceActivityId": "generate-document",
+      "overrideMapping": "{\n  \"doc\": {\n    \"firstName\": $form.naam\n  }\n}",
+      "components": [
+        {
+          "type": "hidden",
+          "key": "epistolaTaskId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": { "sourceKey": "epistola:taskId" }
+        },
+        {
+          "type": "hidden",
+          "key": "epistolaDocumentId",
+          "input": true,
+          "label": "Epistola Document Id",
+          "persistent": false,
+          "properties": { "sourceKey": "epistola:documentId" }
+        }
+      ]
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Starten",
+      "action": "submit",
+      "theme": "primary",
+      "disableOnInvalid": true
+    }
+  ]
+}

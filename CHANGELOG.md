@@ -27,8 +27,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     with fields quietly missing. That is precisely the situation the four task-id-carrier fixes
     describe, so a fallback would have converted a loud, correct failure into a silent, wrong one. A
     start-mode preview that _does_ find a task id reports itself misconfigured and calls nothing.
-  - The **Vergunningaanvraag** demo case now carries a preview on its start form, exercised
-    end-to-end by `StartFormPreviewE2ETest` against the real deployed configuration.
+  - Two demo fixtures, one per flavour. **Vergunningaanvraag** carries a preview on the start form
+    of a case-initiating process (no document exists yet, so `$doc` is the form's own input),
+    exercised end-to-end by `StartFormPreviewE2ETest` against the real deployed configuration. The
+    **Voorbeeld** case's `single-document` supporting process carries one on the start form of a
+    process started _within_ an existing case, where `$doc` resolves against that case — leave its
+    name field empty to see the stored value come through, or fill it to watch the override land on
+    top. It has its own start form so the four sibling processes keep sharing the original.
 
 ### Fixed
 
