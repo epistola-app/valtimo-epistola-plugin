@@ -1,60 +1,184 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:recommended", ":dependencyDashboard", "helpers:pinGitHubActionDigests"],
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    "helpers:pinGitHubActionDigests",
+    "group:monorepos",
+    "group:recommended"
+  ],
   "timezone": "Europe/Amsterdam",
   "schedule": ["before 9am on monday"],
-  "prHourlyLimit": 4,
-  "prConcurrentLimit": 10,
   "labels": ["dependencies"],
-  "rangeStrategy": "bump",
-  "separateMajorMinor": true,
+  "semanticCommits": "enabled",
+
+  "prConcurrentLimit": 5,
+  "prHourlyLimit": 2,
+  "branchConcurrentLimit": 8,
+
+  "minimumReleaseAge": "5 days",
+  "internalChecksFilter": "strict",
+  "rebaseWhen": "conflicted",
+
+  "platformAutomerge": false,
+
   "lockFileMaintenance": {
     "enabled": true,
-    "schedule": ["before 9am on monday"]
+    "schedule": ["before 9am on the first day of the month"],
+    "automerge": true
   },
+
   "vulnerabilityAlerts": {
-    "labels": ["security"]
+    "enabled": true,
+    "labels": ["dependencies", "security"],
+    "schedule": ["at any time"],
+    "minimumReleaseAge": null,
+    "dependencyDashboardApproval": false,
+    "automerge": false
   },
+
   "packageRules": [
     {
-      "description": "Keep all Valtimo backend modules in lockstep — they share a BOM contract",
-      "matchPackagePatterns": ["^com\\.ritense\\.valtimo:"],
-      "groupName": "valtimo backend"
+      "description": "Fallback: everything non-major for the shipped backend plugin — the version catalog, the plugin build and the Gradle wrapper — in one PR. This is the product, so it stays visible and reviewed",
+      "matchManagers": ["gradle", "gradle-wrapper"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "backend plugin dependencies",
+      "dependencyDashboardApproval": false
     },
     {
-      "description": "Keep all Valtimo frontend packages in lockstep with the backend modules",
-      "matchPackagePatterns": ["^@valtimo/"],
-      "groupName": "valtimo frontend"
+      "description": "Fallback: everything non-major for the published plugin library and the repo root in one PR",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["package.json", "frontend/plugin/package.json"],
+      "matchUpdateTypes": ["minor", "patch", "digest", "pin"],
+      "groupName": "frontend plugin dependencies",
+      "dependencyDashboardApproval": false
     },
     {
-      "description": "Group the Angular ecosystem so it moves as one",
-      "matchPackagePatterns": ["^@angular/", "^@angular-devkit/", "^@angular-eslint/"],
-      "groupName": "angular"
+      "description": "The test-app is a vendored copy of the GZAC templates, front and back: 94 of its ~111 npm packages arrived with the template, and test-app/backend/gradle.properties is the template's own plugin-version list. These are the versions a real Valtimo application runs. Bumping them on our own says nothing about whether Valtimo supports the result, and it costs the harness the very thing it is for — resembling a real deployment. So the whole directory is tracked on the dependency dashboard and moves as part of a Valtimo bump, not on a schedule. The shipped plugin is what gets the reviewed, scheduled PRs",
+      "matchFileNames": ["test-app/**"],
+      "matchUpdateTypes": ["major", "minor", "patch", "pin", "digest"],
+      "groupName": "test-app template",
+      "dependencyDashboardApproval": true
     },
     {
-      "description": "Group Spring Boot starters with the Spring Boot Gradle plugin",
-      "matchPackagePatterns": [
-        "^org\\.springframework\\.boot",
-        "^io\\.spring\\.dependency-management"
+      "description": "The exceptions in that file that are ours rather than the template's: the plugin's own JSONata runtime and the Playwright E2E suite. Grouped with the rest of the frontend so they keep updating normally",
+      "matchManagers": ["npm"],
+      "matchDepNames": ["jsonata", "@playwright/test"],
+      "groupName": "frontend plugin dependencies",
+      "dependencyDashboardApproval": false
+    },
+    {
+      "description": "The pnpm overrides are CVE floors, not pins — raising a floor that nothing violates is pure churn, so keep them off the PR queue. A real advisory still opens a PR immediately via vulnerabilityAlerts, which ignores dashboard approval",
+      "matchManagers": ["npm"],
+      "matchFileNames": ["pnpm-workspace.yaml"],
+      "matchUpdateTypes": ["major", "minor", "patch", "pin", "digest"],
+      "groupName": "pnpm resolution overrides",
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Container images across compose, Dockerfiles and the Helm chart in one PR",
+      "matchManagers": ["docker-compose", "dockerfile", "helmv3", "helm-values"],
+      "matchUpdateTypes": ["minor", "patch", "digest"],
+      "groupName": "docker images",
+      "dependencyDashboardApproval": false
+    },
+    {
+      "description": "GitHub Actions in one PR",
+      "matchManagers": ["github-actions"],
+      "groupName": "github-actions",
+      "dependencyDashboardApproval": false
+    },
+    {
+      "description": "Automerge the digest re-pins that helpers:pinGitHubActionDigests produces — same tag, new SHA, so there is nothing to read, and every workflow is exercised by the CI run on the branch. Version changes are excluded and still get reviewed",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["digest"],
+      "automerge": true
+    },
+    {
+      "description": "gradle, java, node, pnpm and helm are each declared in several places — .mise.toml, the Gradle wrapper, package.json engines, the workflows — and must not drift apart. Matched on depName because the packageName differs per manager (gradle/gradle-distributions, actions/node-versions, helm/helm). The explicit flags stop this rule inheriting automerge or dashboard gating from the file-scoped rules above, which it pulls deps out of",
+      "matchDepNames": ["gradle", "java", "node", "@types/node", "pnpm", "helm", "eclipse-temurin"],
+      "groupName": "toolchain",
+      "automerge": false,
+      "dependencyDashboardApproval": false
+    },
+    {
+      "description": "oxlint and oxfmt are declared in both .mise.toml and package.json — a drift between the two makes the local run and the CI format/lint gate disagree",
+      "matchDepNames": ["oxlint", "oxfmt", "oxlint-tsgolint"],
+      "groupName": "oxc tooling",
+      "automerge": false,
+      "dependencyDashboardApproval": false
+    },
+    {
+      "description": "Angular stays visible, unlike the rest of the template stack, because the plugin's own peerDependencies permit a range here (>=19.2.8 <20) rather than an exact version — so a 19.x update is inside the compatibility we publish. The major is dictated by Valtimo and falls under the major gate below",
+      "matchPackageNames": [
+        "@angular/*",
+        "@angular-devkit/*",
+        "@angular-eslint/*",
+        "ng-packagr",
+        "zone.js"
       ],
+      "groupName": "angular",
+      "automerge": false,
+      "dependencyDashboardApproval": false
+    },
+    {
+      "description": "Non-major Gradle updates already travel together in `backend dependencies`; these four rules only shape the majors, so that a major Spring Boot / Kotlin / Testcontainers / build-plugin bump is one dashboard entry instead of one per module and per version source",
+      "matchUpdateTypes": ["major"],
+      "matchPackageNames": ["org.springframework.boot*", "io.spring.dependency-management*"],
       "groupName": "spring-boot"
     },
     {
-      "description": "Group Testcontainers modules — versions must match",
-      "matchPackagePatterns": ["^org\\.testcontainers:"],
+      "matchUpdateTypes": ["major"],
+      "matchPackageNames": ["org.jetbrains.kotlin*"],
+      "groupName": "kotlin"
+    },
+    {
+      "matchUpdateTypes": ["major"],
+      "matchPackageNames": ["org.testcontainers:*"],
       "groupName": "testcontainers"
     },
     {
-      "description": "Group GitHub Actions updates into a single weekly PR",
-      "matchManagers": ["github-actions"],
-      "groupName": "github-actions"
+      "matchUpdateTypes": ["major"],
+      "matchPackageNames": [
+        "com.diffplug.spotless*",
+        "org.jlleitschuh.gradle.ktlint*",
+        "org.jetbrains.gradle.plugin.idea-ext*",
+        "com.avast.gradle.docker-compose*",
+        "com.vanniktech.maven.publish*",
+        "org.cyclonedx.bom*",
+        "com.github.node-gradle.node*",
+        "org.gradle.toolchains.foojay-resolver-convention*"
+      ],
+      "groupName": "gradle build plugins"
     },
     {
-      "description": "Keep the Form.io Font Awesome 4 CDN stylesheet on the legacy major; Font Awesome 5 uses a different cdnjs asset path",
+      "description": "The published library's peer ranges are a hand-set compatibility contract that is recorded in COMPATIBILITY.md, not something to widen automatically — a widened range would claim support for a Valtimo/Angular version nobody has tested. The versions actually installed here are covered by the devDependencies of the same package",
+      "matchDepTypes": ["peerDependencies"],
+      "enabled": false
+    },
+    {
+      "description": "The Form.io stylesheets are two deliberately different Font Awesome majors loaded from a CDN behind SRI hashes; a version bump needs the integrity hash recomputed by hand, so Renovate does not own them",
       "matchManagers": ["html"],
-      "matchDatasources": ["cdnjs"],
-      "matchPackageNames": ["font-awesome/css/font-awesome.min.css"],
-      "allowedVersions": "<5.0.0"
+      "enabled": false
+    },
+    {
+      "description": "Libraries whose version Valtimo dictates rather than us. The plugin's own peerDependencies pin these to an EXACT version (formiojs 4.19.5, carbon-components-angular 5.57.6, @formio/angular 7.0.0) because that is what the Valtimo frontend loads — so an independent bump would break the contract we publish, whatever CI says. They stay on the dependency dashboard and are re-pinned by hand as part of a Valtimo bump. Deliberately NOT folded into the `valtimo` group: that group is the direct platform dependencies only",
+      "matchPackageNames": ["formiojs", "@formio/*", "carbon-components-angular", "@carbon/*"],
+      "groupName": "valtimo-pinned libraries",
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "Majors are coordinated work here — nearly all of them are dictated by the Valtimo platform. List them on the dependency dashboard (issue #50) and open a PR only when one is ticked. Valtimo itself is exempted by the rule below",
+      "matchUpdateTypes": ["major"],
+      "dependencyDashboardApproval": true
+    },
+    {
+      "description": "The direct Valtimo platform dependencies, and only those — backend modules and frontend packages, which are one version and must move in lockstep. A Valtimo bump is a potentially large change, so it always arrives as its own PR, major included, rather than waiting on the dashboard. It is a starting point, not a mergeable change: run the update-valtimo skill on it to review the changelog, re-pin the template libraries above and update COMPATIBILITY.md. Listed last so it overrides the major gate, and never automerged",
+      "matchPackageNames": ["com.ritense.valtimo:*", "@valtimo/*"],
+      "groupName": "valtimo",
+      "dependencyDashboardApproval": false,
+      "automerge": false,
+      "labels": ["dependencies", "valtimo"]
     }
   ]
 }

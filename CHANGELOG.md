@@ -76,6 +76,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Renovate now groups its updates, and treats the shipped plugin differently from the test-app.**
+  The old config grouped five ecosystems and left everything else ungrouped, so ~100 pending updates
+  queued behind `prHourlyLimit` and dripped out roughly ten PRs at a time — a rate limit hiding the
+  volume rather than reducing it. Verified with `renovate --platform=local --dry-run` against the
+  real backlog: **eight** weekly PRs instead of ~100, five at a time.
+  - **The plugin is what gets reviewed PRs.** `backend plugin dependencies` (the version catalog, the
+    plugin build, the Gradle wrapper) and `frontend plugin dependencies` (the root and
+    `frontend/plugin`) each land one grouped PR a week.
+  - **The test-app is tracked, not scheduled.** It is a vendored copy of the GZAC templates — 94 of
+    its ~111 npm packages arrived with the template, and `test-app/backend/gradle.properties` is the
+    template's own plugin-version list. Bumping them on our own says nothing about whether Valtimo
+    supports the result, and it costs the harness the thing it exists for: resembling a real
+    deployment. The whole directory now sits on the dependency dashboard. The plugin's own JSONata
+    runtime and the Playwright E2E suite are carved back out, since those are ours.
+  - **Libraries whose version Valtimo dictates no longer move on their own.** The plugin's published
+    `peerDependencies` pin `formiojs` (4.19.5), `carbon-components-angular` (5.57.6) and
+    `@formio/angular` (7.0.0) to an _exact_ version, because that is what the Valtimo frontend loads
+    — an independent bump breaks the contract we publish, whatever CI says. They are re-pinned by
+    hand as part of a Valtimo bump. Angular is deliberately _not_ in this set: our peer range there
+    is `>=19.2.8 <20`, so a 19.x update is inside the compatibility we already publish.
+  - **A Valtimo bump always arrives as its own PR, major included** — the direct platform
+    dependencies only (`@valtimo/*`, `com.ritense.valtimo:*`), which are one version and move in
+    lockstep. It is a starting point rather than a mergeable change: run the `update-valtimo` skill
+    on it to review the changelog, re-pin the template libraries and update `COMPATIBILITY.md`. It is
+    labelled `valtimo` and never automerged.
+  - **Majors need a tick on the dependency dashboard (issue #50)**, Valtimo excepted. Fourteen are
+    queued; nearly all are dictated by the platform rather than chosen.
+  - **Two low-risk groups automerge once CI is green:** the GitHub Actions digest re-pins (same tag,
+    new SHA) and the monthly lock-file maintenance. `platformAutomerge` is off because the repository
+    does not allow GitHub's native auto-merge, so Renovate merges via the API after the branch's
+    checks pass.
+  - **The pnpm resolution overrides are dashboard-gated.** They are CVE _floors_, not pins; raising a
+    floor nothing violates is churn. An actual advisory still opens a PR immediately —
+    `vulnerabilityAlerts` overrides the gate and is now explicitly unscheduled and exempt from
+    `minimumReleaseAge`, so security fixes no longer wait for the Monday window.
+  - **Tools declared in more than one place move together.** `gradle`, `java`, `node`, `pnpm`,
+    `helm`, `oxlint` and `oxfmt` are each spread across `.mise.toml`, the Gradle wrapper, the
+    workflows and `package.json`; these match on `depName`, because the `packageName` differs per
+    manager (`gradle/gradle-distributions`, `actions/node-versions`, `helm/helm`). Grouping the
+    Gradle plugins by name likewise collapses the duplicate PRs that `libs.versions.toml` and
+    `test-app/backend/gradle.properties` raised for the same plugin.
+  - **`rangeStrategy: "bump"` is gone**, so an update already satisfied by the declared range no
+    longer opens a PR to rewrite the range (`rxjs ^7.8.0` → `^7.8.2` and friends); the lockfile picks
+    those up. **The published library's `peerDependencies` are excluded** for the same reason in
+    reverse: the default strategy widens them, and those ranges are the hand-set compatibility
+    contract recorded in `COMPATIBILITY.md`, not something to widen untested.
+  - `minimumReleaseAge: 5 days` with `internalChecksFilter: "strict"` stops a package that ships
+    several patches in a week from producing several PRs, and `rebaseWhen: "conflicted"` keeps the
+    longer-lived group branches from re-running CI on every push to `main`.
+  - Fixed a dead rule: the Font Awesome pin matched `font-awesome/css/font-awesome.min.css`, but the
+    dependency is named `font-awesome`, so it never applied. The `html` manager is now disabled
+    outright — the two CDN stylesheets are deliberately on different majors and carry SRI hashes that
+    have to be recomputed by hand.
+  - Migrated the deprecated `matchPackagePatterns` to `matchPackageNames`/`matchDepNames`, clearing
+    the "Config Migration Needed" item on the dependency dashboard, and pinned
+    `semanticCommits: "enabled"` so the `chore(deps):` prefix no longer depends on Renovate sampling
+    the commit history.
 - **Breaking for applications that override the `epistolaGenerationResource` bean:** its factory
   method gains a `RepositoryService` parameter (used to resolve a process definition key to its
   latest deployed version). The plugin's own auto-configuration is updated; only applications
