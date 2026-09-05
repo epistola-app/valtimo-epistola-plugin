@@ -31,10 +31,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ROLE_ADMIN` would otherwise unlock for a trainee — Access Control (the PBAC editor itself),
   Translation management, Choice fields, Object management configuration, global Forms/
   Decision-tables CRUD, the case-_unlinked_ "system" process-definition surface, process migration,
-  Logs, Case migration, Dashboard management, creating a brand-new unrelated case-definition,
-  arbitrary case import, and this plugin's own `EpistolaAdministration:MANAGE` admin page (normally
-  seeded to `ROLE_ADMIN` by default — blocked here as an independent second layer rather than a
-  PBAC-changeset revocation). Implemented as a filter, not more `authorizeHttpRequests` widening,
+  Logs, Case migration, Dashboard management, creating a brand-new unrelated case-definition, and
+  arbitrary case import. This plugin's own admin page (`EpistolaAdministration:MANAGE`, seeded to
+  `ROLE_ADMIN` by default) is a special case: rather than blocking it outright, its health/usage/
+  pending-jobs/version/changelog endpoints stay reachable and are response-filtered down to the
+  trainee's own tenant/plugin-configuration (health and usage overview also keep the shared
+  template's own entries visible, read-only reference, matching the case-definition/process-link
+  lists) — only the sub-resources with no safe per-trainee scoping (catalog listing/redeploy,
+  `export/{id}`, `pending/{id}/reconcile`, the engine-wide BPMN validation report, legacy-override
+  form scanning) stay hard-blocked. Implemented as a filter, not more `authorizeHttpRequests` widening,
   since a filter's position is fixed once the security chain is built, so it can't lose an ordering
   race against Valtimo's ~80 other auto-configured security-config beans the way an _allow_ rule
   could. Cloning uses Valtimo's own `ExportService`/`ImportService`
@@ -71,9 +76,23 @@ lowercase slug`). `caseDefinitionKey` now always hashes the identity; the one co
     backend endpoints otherwise. Re-verified over real HTTP after the pivot: a trainee's own
     case-definition settings/process-link/plugin-configuration still work (200), cross-trainee
     access is still 403, and every newly-reachable admin surface (Access Control, system
-    process-definitions, this plugin's admin page, `case-definition/draft`, and wildcard-matched
-    paths like `roles/{key}/permissions` and `dashboard/**`) is now 403 for a trainee while
-    remaining 200 for a genuine `ROLE_ADMIN`-only account.
+    process-definitions, `case-definition/draft`, and wildcard-matched paths like
+    `roles/{key}/permissions` and `dashboard/**`) is now 403 for a trainee while remaining 200 for
+    a genuine `ROLE_ADMIN`-only account.
+  - Manual verification then surfaced a follow-up: this plugin's own admin page — now visible in a
+    trainee's menu too, since it's auto-appended under any `ROLE_ADMIN`-gated menu group with
+    children (`EpistolaMenuService`) — 403'd across the board under the blanket block above, even
+    though its health/usage/pending-jobs data is meaningfully scopable per trainee, unlike the rest
+    of the admin surface. Fixed by unblocking exactly those endpoints and response-filtering them
+    (`TraineeOwnershipResponseBodyAdvice`) instead. One further leak found the same way (loading
+    the page as a trainee, not by reading the code): the usage overview's "shared template" allowance
+    initially matched on plugin-configuration alone, so it also surfaced this test-app's own
+    unrelated bundled demo case types (`example`, `bulk-letters`, `objection`, `permit`, `subsidy`)
+    that happen to reuse the same shared "Epistola Document Suite" configuration. Fixed by requiring
+    the shared configuration's usage entries to also belong to the template dossier itself
+    (`isOwnOrTemplatePluginUsage`), re-verified against the real per-trainee data instead of the
+    happy path alone: a trainee now sees exactly their own usage/health/pending entries plus the
+    shared template's read-only reference ones, nothing from another trainee or an unrelated case type.
 
 - **The document preview now works on a BPMN start form**, so a letter can be checked before the
   case is created — previously it required starting the case and previewing from the first user

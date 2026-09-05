@@ -72,6 +72,16 @@ object TraineeKeys {
      */
     fun caseDefinitionKey(traineeIdentity: String): String = "t" + sha256Hex(traineeIdentity).take(15)
 
+    /**
+     * The trainee's Epistola tenant id, as created by [com.ritense.valtimo.epistola.training.SharedSecretEpistolaTenantProvisioner]
+     * and stored (via the `${epistola.base-url}`-style templated `tenantId` property) on their
+     * [pluginConfigurationId]. Derived from [caseDefinitionKey] rather than independently, so the
+     * two never drift apart even though nothing requires them to match. Used by
+     * [com.ritense.valtimo.epistola.training.security.TraineeOwnershipChecks.isOwnEpistolaTenant] to
+     * scope the admin page's per-tenant data (e.g. pending jobs) down to the caller's own tenant.
+     */
+    fun epistolaTenantId(traineeIdentity: String): String = "trainee-" + caseDefinitionKey(traineeIdentity)
+
     private fun sha256Hex(value: String): String =
         MessageDigest
             .getInstance("SHA-256")

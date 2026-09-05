@@ -56,10 +56,11 @@ class SharedSecretEpistolaTenantProvisioner(
     /**
      * Epistola tenant ids must be a lowercase slug (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`) — confirmed by
      * actually hitting a real Epistola instance with a raw, email-shaped trainee identity and
-     * getting a validation error back, not by reading the constraint. [TraineeKeys.caseDefinitionKey]
-     * is already a safe hash for exactly this reason; reusing it here means the tenant id and the
-     * Valtimo case-definition key are derived the same way, even though nothing requires them to
-     * match.
+     * getting a validation error back, not by reading the constraint. [TraineeKeys.epistolaTenantId]
+     * is already a safe hash for exactly this reason; reusing it here (rather than duplicating the
+     * `"trainee-" + caseDefinitionKey(...)` construction) is also what lets
+     * [com.ritense.valtimo.epistola.training.security.TraineeOwnershipChecks.isOwnEpistolaTenant]
+     * recompute the same value independently to scope the admin page's per-tenant data.
      */
-    private fun tenantIdFor(traineeIdentity: String): String = "trainee-" + TraineeKeys.caseDefinitionKey(traineeIdentity)
+    private fun tenantIdFor(traineeIdentity: String): String = TraineeKeys.epistolaTenantId(traineeIdentity)
 }

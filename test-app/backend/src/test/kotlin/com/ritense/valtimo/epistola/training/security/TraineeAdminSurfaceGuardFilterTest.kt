@@ -91,6 +91,44 @@ class TraineeAdminSurfaceGuardFilterTest {
     }
 
     @Test
+    fun `does not block the response-filtered admin overview endpoints`() {
+        authenticateAs(TraineeKeys.TRAINEE_AUTHORITY, TraineeKeys.ADMIN_AUTHORITY)
+
+        for (path in listOf("health", "versions", "changelog", "usage", "pending")) {
+            val request = requestFor("GET", "/api/v1/plugin/epistola/admin/$path")
+            val localChain: FilterChain = mock()
+
+            filter.doFilter(request, response, localChain)
+
+            verify(localChain).doFilter(request, response)
+        }
+    }
+
+    @Test
+    fun `blocks admin sub-resources with no safe per-trainee scoping`() {
+        authenticateAs(TraineeKeys.TRAINEE_AUTHORITY, TraineeKeys.ADMIN_AUTHORITY)
+
+        val blocked =
+            listOf(
+                "GET" to "/api/v1/plugin/epistola/admin/validations",
+                "GET" to "/api/v1/plugin/epistola/admin/configurations/some-id/catalogs",
+                "POST" to "/api/v1/plugin/epistola/admin/configurations/some-id/catalogs/some-slug/redeploy",
+                "GET" to "/api/v1/plugin/epistola/admin/export/some-process-link-id",
+                "POST" to "/api/v1/plugin/epistola/admin/pending/some-execution-id/reconcile",
+                "GET" to "/api/v1/plugin/epistola/admin/forms/legacy-override",
+            )
+
+        for ((method, path) in blocked) {
+            val request = requestFor(method, path)
+            val localResponse: HttpServletResponse = mock()
+
+            filter.doFilter(request, localResponse, filterChain)
+
+            verify(localResponse).sendError(eq(HttpServletResponse.SC_FORBIDDEN), any())
+        }
+    }
+
+    @Test
     fun `does nothing when there is no authentication`() {
         SecurityContextHolder.clearContext()
         val request = requestFor("GET", "/api/management/v1/roles")

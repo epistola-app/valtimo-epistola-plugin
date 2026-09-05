@@ -53,10 +53,18 @@ import org.springframework.web.filter.OncePerRequestFilter
  *   as deliberately not widened (`draft`, `case/import`, `case/import/preview`, `case-definition/check`,
  *   `metroline/available-modes`) — those were only safe to leave alone while trainees had no real
  *   `ROLE_ADMIN`; now they need active blocking like everything else here.
- * - This plugin's own admin page, `/api/v1/plugin/epistola/admin` and everything under it —
- *   normally gated by the `EpistolaAdministration:MANAGE` PBAC permission (seeded to `ROLE_ADMIN`
- *   by default), blocked here too as a second, independent layer rather than relying on a
- *   PBAC-changeset revocation.
+ * - This plugin's own admin page, `/api/v1/plugin/epistola/admin` — normally gated by the
+ *   `EpistolaAdministration:MANAGE` PBAC permission (seeded to `ROLE_ADMIN` by default). Most of
+ *   it is left reachable (real `ROLE_ADMIN` already satisfies that PBAC grant) precisely *because*
+ *   [TraineeOwnershipResponseBodyAdvice] response-filters it down to the caller's own tenant/plugin
+ *   configuration — health checks and the usage overview keep the shared template's own entries
+ *   visible too (read-only reference, same as the case-definition/process-link lists), pending
+ *   jobs don't. Only the sub-resources with no safe per-trainee scoping stay hard-blocked here:
+ *   catalog listing/redeploy and `/export/{processLinkId}` take an arbitrary id with nothing to
+ *   check it against; `/pending/{executionId}/reconcile` likewise; `/validations` scans every
+ *   deployed process definition engine-wide and can't distinguish trainees from it (every cloned
+ *   dossier shares the same literal process-definition key, only the version tag differs); and
+ *   `/forms/legacy-override` has no per-tenant scoping either.
  *
  * Implemented as a filter — not more `authorizeHttpRequests` entries — deliberately: Valtimo
  * combines every registered [com.ritense.valtimo.contract.security.config.HttpSecurityConfigurer]
@@ -100,6 +108,7 @@ class TraineeAdminSurfaceGuardFilter : OncePerRequestFilter() {
         private const val CASE_DEFINITION_URL = "/api/management/v1/case-definition"
         private const val PROCESS_DEFINITION_URL = "/api/management/v1/process-definition"
         private const val OBJECT_MANAGEMENT_CONFIGURATION_URL = "/api/v1/object/management/configuration"
+        private const val EPISTOLA_ADMIN_URL = "/api/v1/plugin/epistola/admin"
 
         private val BLOCKED_ENDPOINTS: List<Pair<HttpMethod?, String>> =
             buildList {
@@ -188,10 +197,15 @@ class TraineeAdminSurfaceGuardFilter : OncePerRequestFilter() {
                 add(HttpMethod.GET to "$CASE_DEFINITION_URL/check")
                 add(HttpMethod.GET to "/api/management/v1/metroline/available-modes")
 
-                // This plugin's own admin page — normally PBAC-gated (EpistolaAdministration:MANAGE,
-                // seeded to ROLE_ADMIN by default); blocked here too rather than relying on a
-                // PBAC-changeset revocation.
-                add(null to "/api/v1/plugin/epistola/admin/**")
+                // This plugin's own admin page — only the sub-resources with no safe per-trainee
+                // scoping; /health, /versions, /changelog, /usage, and /pending stay reachable,
+                // response-filtered by TraineeOwnershipResponseBodyAdvice.
+                add(HttpMethod.GET to "$EPISTOLA_ADMIN_URL/configurations/*/catalogs")
+                add(HttpMethod.POST to "$EPISTOLA_ADMIN_URL/configurations/*/catalogs/*/redeploy")
+                add(HttpMethod.GET to "$EPISTOLA_ADMIN_URL/export/*")
+                add(HttpMethod.POST to "$EPISTOLA_ADMIN_URL/pending/*/reconcile")
+                add(HttpMethod.GET to "$EPISTOLA_ADMIN_URL/validations")
+                add(HttpMethod.GET to "$EPISTOLA_ADMIN_URL/forms/legacy-override")
             }
     }
 }

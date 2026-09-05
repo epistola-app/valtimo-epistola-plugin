@@ -4,6 +4,9 @@
 
 package com.ritense.valtimo.epistola.training.security
 
+import app.epistola.valtimo.web.rest.dto.ConnectionStatus
+import app.epistola.valtimo.web.rest.dto.PendingJob
+import app.epistola.valtimo.web.rest.dto.PluginUsageEntry
 import com.ritense.case.web.rest.dto.CaseDefinitionResponseDto
 import com.ritense.plugin.web.rest.result.PluginConfigurationDto
 import com.ritense.processlink.web.rest.dto.ProcessLinkResponseDto
@@ -83,6 +86,19 @@ class TraineeOwnershipResponseBodyAdvice(
                     item.caseDefinitionKey,
                     allowShared = true,
                 )
+            // The Epistola plugin's own admin page (app.epistola.valtimo, not this training
+            // package) — health is a read-only structural reference (one entry per plugin
+            // configuration, not per case), so the shared configuration's own entry stays visible
+            // like the case-definition/process-link lists above. Usage entries need a tighter
+            // check than plain "same configuration" — see isOwnOrTemplatePluginUsage's KDoc for why
+            // (this test-app's own unrelated bundled demo case types share the same configuration
+            // too). Pending jobs are operational data about in-flight processes, not a read-only
+            // reference at all, so they don't get the shared exception (see isOwnEpistolaTenant's
+            // KDoc).
+            is ConnectionStatus -> ownershipChecks.isOwnPluginConfiguration(traineeIdentity, item.configurationId(), allowShared = true)
+            is PluginUsageEntry ->
+                ownershipChecks.isOwnOrTemplatePluginUsage(traineeIdentity, item.configurationId(), item.caseDefinitionKey())
+            is PendingJob -> ownershipChecks.isOwnEpistolaTenant(traineeIdentity, item.tenantId())
             else -> true
         }
 }

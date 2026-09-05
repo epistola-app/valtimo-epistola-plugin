@@ -30,12 +30,51 @@ class TraineeOwnershipChecks(
         return TraineeIdentity.resolve(authentication)
     }
 
+    /**
+     * @param allowShared also accept the shared template's Epistola plugin configuration — only
+     *   safe for read-only checks (e.g. the admin page's health/usage overviews), since that
+     *   configuration must stay immutable for every trainee.
+     */
     fun isOwnPluginConfiguration(
         traineeIdentity: String,
         pluginConfigurationId: String,
-    ): Boolean =
-        runCatching { PluginConfigurationId.existingId(pluginConfigurationId) }.getOrNull() ==
-            TraineeKeys.pluginConfigurationId(traineeIdentity)
+        allowShared: Boolean = false,
+    ): Boolean {
+        val id = runCatching { PluginConfigurationId.existingId(pluginConfigurationId) }.getOrNull() ?: return false
+        if (id == TraineeKeys.pluginConfigurationId(traineeIdentity)) return true
+        return allowShared && id == TraineeKeys.TEMPLATE_PLUGIN_CONFIGURATION_ID
+    }
+
+    /**
+     * Scopes the admin page's per-tenant data (e.g. pending jobs) to the caller's own Epistola
+     * tenant. Deliberately no `allowShared` here, unlike [isOwnPluginConfiguration] — pending jobs
+     * are operational data about in-flight processes, not a read-only structural reference, so the
+     * shared template's tenant stays fully hidden rather than visible-but-immutable. A `null`
+     * tenant id (the `PendingJob.STATUS_UNWIRED` case, where the tenant is unknowable) never
+     * matches, so it's hidden from trainees rather than guessed at.
+     */
+    fun isOwnEpistolaTenant(
+        traineeIdentity: String,
+        tenantId: String?,
+    ): Boolean = tenantId != null && tenantId == TraineeKeys.epistolaTenantId(traineeIdentity)
+
+    /**
+     * For the admin page's plugin-usage overview specifically: [isOwnPluginConfiguration]'s plain
+     * `allowShared` isn't precise enough here, because this test-app's own bundled demo case types
+     * (e.g. `example`) also wire their process-links through the same shared "Epistola Document
+     * Suite" configuration — found by actually loading the admin page as a trainee and seeing
+     * unrelated case types' usage entries leak through. A usage entry only counts as "shared" when
+     * it belongs to the shared template dossier itself, not merely to the same configuration.
+     */
+    fun isOwnOrTemplatePluginUsage(
+        traineeIdentity: String,
+        pluginConfigurationId: String,
+        caseDefinitionKey: String,
+    ): Boolean {
+        if (isOwnPluginConfiguration(traineeIdentity, pluginConfigurationId)) return true
+        return isOwnPluginConfiguration(traineeIdentity, pluginConfigurationId, allowShared = true) &&
+            caseDefinitionKey == properties.templateCaseDefinitionKey
+    }
 
     /**
      * @param allowShared also accept the shared template's process definition — only safe for
