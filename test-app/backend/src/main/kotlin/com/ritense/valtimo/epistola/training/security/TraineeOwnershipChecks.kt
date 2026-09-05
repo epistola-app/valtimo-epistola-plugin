@@ -21,6 +21,8 @@ import java.util.UUID
 class TraineeOwnershipChecks(
     private val processDefinitionOwnershipResolver: ProcessDefinitionOwnershipResolver,
     private val processLinkService: ProcessLinkService,
+    private val documentOwnershipResolver: DocumentOwnershipResolver,
+    private val taskOwnershipResolver: TaskOwnershipResolver,
     private val properties: TrainingProperties,
 ) {
     /** Null when the caller isn't a trainee at all — genuine `ROLE_ADMIN` staff are never scoped. */
@@ -110,5 +112,41 @@ class TraineeOwnershipChecks(
     ): Boolean {
         if (caseDefinitionKey == TraineeKeys.caseDefinitionKey(traineeIdentity)) return true
         return allowShared && caseDefinitionKey == properties.templateCaseDefinitionKey
+    }
+
+    /**
+     * Data-plane counterpart to [isOwnCaseDefinition]: a document instance identifies itself only
+     * by its own id, never by document-/case-definition name directly, so it needs resolving via
+     * [DocumentOwnershipResolver] first. `false` (not owned) when the document doesn't exist or its
+     * definition can't be resolved, same fail-closed default as every other resolver-backed check
+     * here.
+     *
+     * @param allowShared also accept a document belonging to the shared template dossier — only
+     *   safe for read-only checks.
+     */
+    fun isOwnDocument(
+        traineeIdentity: String,
+        documentId: String,
+        allowShared: Boolean = false,
+    ): Boolean {
+        val caseDefinitionKey = documentOwnershipResolver.resolveCaseDefinitionKey(documentId) ?: return false
+        return isOwnCaseDefinition(traineeIdentity, caseDefinitionKey, allowShared)
+    }
+
+    /**
+     * Data-plane counterpart to [isOwnCaseDefinition] for user tasks: a task identifies only its
+     * own id, resolved back to the owning case document (and from there, the document definition)
+     * via [TaskOwnershipResolver].
+     *
+     * @param allowShared also accept a task belonging to the shared template dossier — only safe
+     *   for read-only checks (view/list), never for mutations (assign/complete/etc.).
+     */
+    fun isOwnTask(
+        traineeIdentity: String,
+        taskId: String,
+        allowShared: Boolean = false,
+    ): Boolean {
+        val caseDefinitionKey = taskOwnershipResolver.resolveCaseDefinitionKey(taskId) ?: return false
+        return isOwnCaseDefinition(traineeIdentity, caseDefinitionKey, allowShared)
     }
 }

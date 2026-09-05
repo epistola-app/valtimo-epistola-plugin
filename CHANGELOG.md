@@ -126,6 +126,40 @@ lowercase slug`). `caseDefinitionKey` now always hashes the identity; the one co
     header, no trace of the reason string. Fixed by writing the 403 body directly
     (`TraineeRejection.rejectAsForbidden`) instead of going through servlet error-page dispatch,
     used by both call sites now.
+  - **Critical, found during a deliberate post-implementation security review, not routine
+    testing**: granting trainees real `ROLE_ADMIN` didn't just widen the admin-configuration
+    surface above — Valtimo's own `all.permission.json` grants `ROLE_ADMIN` completely
+    unconditioned PBAC access to 12 resource types, including `JsonSchemaDocument` and
+    `OperatonTask`, and PBAC unions grants across every role a principal carries. Confirmed live,
+    not assumed: a trainee could fetch a full, unrelated case's document and task (including its
+    process variables) via `GET /api/v1/document/{id}` / `GET /api/v1/task/{taskId}`, and
+    `GET /api/v1/task?filter=all` returned tasks mixed across every case type in the instance,
+    trainee dossiers included. This existed from the moment `ROLE_ADMIN` was first granted (a few
+    commits above) until this fix — the pre-existing `ROLE_DEMO`-conditioned PBAC rules in
+    `demo.permission.json` were already known-broken (see the `caseDefinitionKey` hashing note
+    above) but that turned out not to matter anyway, since the unconditioned `ROLE_ADMIN` grant
+    made them moot regardless of whether they worked.
+    - Fixed by extending `TraineeOwnershipInterceptor`/`TraineeOwnershipRequestBodyAdvice`/
+      `TraineeOwnershipResponseBodyAdvice` to the document/task data plane: new
+      `DocumentOwnershipResolver` (a document only identifies itself by id, resolved to its
+      document-definition name via `DocumentService`) and `TaskOwnershipResolver` (a task
+      resolves to its process instance's business key, then through `DocumentOwnershipResolver`)
+      back a full pass over document view/create/modify/delete/search and task view/assign/
+      unassign/complete/set-due-date/list. Unlike the case-definition-management surface, no
+      `allowShared` here at all: the shared `form-flow-demo` template is a live case type real
+      staff/other tests can create genuine instances under, so "shared" only ever meant sharing
+      read-only _structure_ (settings/schema), never actual case _data_ — confirmed against
+      `demo.permission.json`'s own original design, which already drew this exact line
+      (`JsonSchemaDocumentDefinition:view` had a `form-flow-demo`-conditioned grant,
+      `JsonSchemaDocument:view` did not). Re-verified live after the fix: cross-case-type and
+      cross-trainee document/task access is 403, a trainee's own document create/view/delete
+      works, and the task list is correctly empty/scoped.
+    - **Not yet closed**: the other 9 unconditioned `ROLE_ADMIN` resource types found in the same
+      pass (`Note`, `JsonSchemaDocumentSnapshot`, `Dashboard`, `CaseTab`, `SearchField`, `Object`,
+      `ResourcePermission`, plus the runtime-facing `CaseDefinition` view/view_list and
+      `OperatonExecution`'s non-`create` actions) and the task batch endpoints
+      (`batch-assign`/`batch-complete`) each need the same per-endpoint treatment; tracked as a
+      follow-up, not silently assumed safe.
 
 - **The document preview now works on a BPMN start form**, so a letter can be checked before the
   case is created — previously it required starting the case and previewing from the first user

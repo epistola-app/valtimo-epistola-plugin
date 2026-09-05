@@ -4,6 +4,9 @@
 
 package com.ritense.valtimo.epistola.training.security
 
+import com.ritense.document.domain.impl.request.ModifyDocumentRequest
+import com.ritense.document.domain.impl.request.NewDocumentRequest
+import com.ritense.document.service.impl.SearchRequest
 import com.ritense.plugin.web.rest.request.CreatePluginConfigurationDto
 import com.ritense.processlink.web.rest.dto.ProcessLinkCreateRequestDto
 import com.ritense.processlink.web.rest.dto.ProcessLinkUpdateRequestDto
@@ -20,7 +23,10 @@ import java.lang.reflect.Type
  * Body-carried counterpart to [TraineeOwnershipInterceptor]: `POST /api/v1/process-link` only
  * carries its `processDefinitionId` in the body (no path variable), and
  * `PUT /api/v1/process-link` only carries the process-link id, not the process-definition it
- * belongs to — both need resolving here, before the controller runs.
+ * belongs to — both need resolving here, before the controller runs. Same story for the
+ * document-data-plane endpoints added alongside [TraineeOwnershipInterceptor]'s document/task
+ * checks: `NewDocumentRequest`/`ModifyDocumentRequest`/`SearchRequest` (create/modify/search) only
+ * carry their identifying field in the body, never a path variable.
  *
  * Plugin-configuration creation is blocked outright for trainees: their one `PluginConfiguration`
  * is provisioned automatically alongside their dossier, so there is no legitimate reason for a
@@ -47,7 +53,10 @@ class TraineeOwnershipRequestBodyAdvice(
     ): Boolean =
         CreatePluginConfigurationDto::class.java.isAssignableFrom(methodParameter.parameterType) ||
             ProcessLinkCreateRequestDto::class.java.isAssignableFrom(methodParameter.parameterType) ||
-            ProcessLinkUpdateRequestDto::class.java.isAssignableFrom(methodParameter.parameterType)
+            ProcessLinkUpdateRequestDto::class.java.isAssignableFrom(methodParameter.parameterType) ||
+            NewDocumentRequest::class.java.isAssignableFrom(methodParameter.parameterType) ||
+            ModifyDocumentRequest::class.java.isAssignableFrom(methodParameter.parameterType) ||
+            SearchRequest::class.java.isAssignableFrom(methodParameter.parameterType)
 
     override fun beforeBodyRead(
         inputMessage: HttpInputMessage,
@@ -72,6 +81,14 @@ class TraineeOwnershipRequestBodyAdvice(
                 requireOwnProcessDefinition(traineeIdentity, body.processDefinitionId)
             is ProcessLinkUpdateRequestDto ->
                 requireOwnProcessDefinition(traineeIdentity, ownershipChecks.resolveProcessDefinitionIdOfProcessLink(body.id))
+            is NewDocumentRequest ->
+                requireOwnCaseDefinition(traineeIdentity, body.documentDefinitionName())
+            is ModifyDocumentRequest ->
+                requireOwnDocument(traineeIdentity, body.documentId())
+            is SearchRequest ->
+                // No allowShared — see TraineeOwnershipInterceptor's document-id check for why
+                // sharing form-flow-demo's structure doesn't extend to searching its actual data.
+                requireOwnCaseDefinition(traineeIdentity, body.documentDefinitionName)
         }
 
         return body
@@ -90,6 +107,25 @@ class TraineeOwnershipRequestBodyAdvice(
         processDefinitionId: String?,
     ) {
         if (processDefinitionId == null || !ownershipChecks.isOwnProcessDefinition(traineeIdentity, processDefinitionId)) {
+            throw AccessDeniedException("Not your dossier")
+        }
+    }
+
+    private fun requireOwnCaseDefinition(
+        traineeIdentity: String,
+        caseDefinitionKey: String?,
+        allowShared: Boolean = false,
+    ) {
+        if (caseDefinitionKey == null || !ownershipChecks.isOwnCaseDefinition(traineeIdentity, caseDefinitionKey, allowShared)) {
+            throw AccessDeniedException("Not your dossier")
+        }
+    }
+
+    private fun requireOwnDocument(
+        traineeIdentity: String,
+        documentId: String?,
+    ) {
+        if (documentId == null || !ownershipChecks.isOwnDocument(traineeIdentity, documentId)) {
             throw AccessDeniedException("Not your dossier")
         }
     }

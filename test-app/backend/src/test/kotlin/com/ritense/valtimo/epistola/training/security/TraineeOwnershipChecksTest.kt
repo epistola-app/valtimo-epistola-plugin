@@ -10,16 +10,21 @@ import com.ritense.valtimo.epistola.training.TrainingProperties
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 
 private const val TRAINEE = "trainee1@demo"
 private const val OTHER_TRAINEE = "trainee2@demo"
 
 class TraineeOwnershipChecksTest {
     private val properties = TrainingProperties()
+    private val documentOwnershipResolver: DocumentOwnershipResolver = mock()
+    private val taskOwnershipResolver: TaskOwnershipResolver = mock()
     private val checks =
         TraineeOwnershipChecks(
             processDefinitionOwnershipResolver = mock(),
             processLinkService = mock<ProcessLinkService>(),
+            documentOwnershipResolver = documentOwnershipResolver,
+            taskOwnershipResolver = taskOwnershipResolver,
             properties = properties,
         )
 
@@ -84,5 +89,34 @@ class TraineeOwnershipChecksTest {
         val other = TraineeKeys.pluginConfigurationId(OTHER_TRAINEE).toString()
 
         assertThat(checks.isOwnOrTemplatePluginUsage(TRAINEE, other, "some-unrelated-case")).isFalse()
+    }
+
+    @Test
+    fun `isOwnDocument resolves the document's case-definition and compares it like isOwnCaseDefinition`() {
+        val ownKey = TraineeKeys.caseDefinitionKey(TRAINEE)
+        whenever(documentOwnershipResolver.resolveCaseDefinitionKey("own-doc")).thenReturn(ownKey)
+        whenever(documentOwnershipResolver.resolveCaseDefinitionKey("other-doc")).thenReturn("some-unrelated-case")
+        whenever(documentOwnershipResolver.resolveCaseDefinitionKey("template-doc")).thenReturn(properties.templateCaseDefinitionKey)
+        whenever(documentOwnershipResolver.resolveCaseDefinitionKey("unresolvable-doc")).thenReturn(null)
+
+        assertThat(checks.isOwnDocument(TRAINEE, "own-doc")).isTrue()
+        assertThat(checks.isOwnDocument(TRAINEE, "other-doc")).isFalse()
+        assertThat(checks.isOwnDocument(TRAINEE, "template-doc")).isFalse()
+        assertThat(checks.isOwnDocument(TRAINEE, "template-doc", allowShared = true)).isTrue()
+        // A document that no longer resolves (deleted, or the resolver failed) must fail closed,
+        // not be silently treated as owned.
+        assertThat(checks.isOwnDocument(TRAINEE, "unresolvable-doc")).isFalse()
+    }
+
+    @Test
+    fun `isOwnTask resolves the task's case-definition and compares it like isOwnCaseDefinition`() {
+        val ownKey = TraineeKeys.caseDefinitionKey(TRAINEE)
+        whenever(taskOwnershipResolver.resolveCaseDefinitionKey("own-task")).thenReturn(ownKey)
+        whenever(taskOwnershipResolver.resolveCaseDefinitionKey("other-task")).thenReturn("some-unrelated-case")
+        whenever(taskOwnershipResolver.resolveCaseDefinitionKey("unresolvable-task")).thenReturn(null)
+
+        assertThat(checks.isOwnTask(TRAINEE, "own-task")).isTrue()
+        assertThat(checks.isOwnTask(TRAINEE, "other-task")).isFalse()
+        assertThat(checks.isOwnTask(TRAINEE, "unresolvable-task")).isFalse()
     }
 }

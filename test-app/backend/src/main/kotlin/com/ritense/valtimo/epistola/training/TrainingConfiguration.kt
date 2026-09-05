@@ -6,11 +6,14 @@ package com.ritense.valtimo.epistola.training
 
 import com.ritense.case.service.CaseDefinitionService
 import com.ritense.case_.repository.CaseDefinitionRepository
+import com.ritense.document.service.DocumentService
 import com.ritense.exporter.ExportService
 import com.ritense.importer.ImportService
 import com.ritense.plugin.service.PluginService
 import com.ritense.processlink.service.ProcessLinkService
+import com.ritense.valtimo.epistola.training.security.DocumentOwnershipResolver
 import com.ritense.valtimo.epistola.training.security.ProcessDefinitionOwnershipResolver
+import com.ritense.valtimo.epistola.training.security.TaskOwnershipResolver
 import com.ritense.valtimo.epistola.training.security.TraineeAdminSurfaceGuardFilter
 import com.ritense.valtimo.epistola.training.security.TraineeOwnershipChecks
 import com.ritense.valtimo.epistola.training.security.TraineeOwnershipInterceptor
@@ -18,6 +21,8 @@ import com.ritense.valtimo.epistola.training.security.TraineeProvisioningFilter
 import com.ritense.valtimo.epistola.training.security.TrainingHttpSecurityConfigurer
 import com.ritense.valtimo.epistola.training.security.TrainingWebConfig
 import org.operaton.bpm.engine.RepositoryService
+import org.operaton.bpm.engine.RuntimeService
+import org.operaton.bpm.engine.TaskService
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
@@ -62,11 +67,29 @@ class TrainingConfiguration {
     fun processDefinitionOwnershipResolver(repositoryService: RepositoryService) = ProcessDefinitionOwnershipResolver(repositoryService)
 
     @Bean
+    fun documentOwnershipResolver(documentService: DocumentService) = DocumentOwnershipResolver(documentService)
+
+    @Bean
+    fun taskOwnershipResolver(
+        taskService: TaskService,
+        runtimeService: RuntimeService,
+        documentOwnershipResolver: DocumentOwnershipResolver,
+    ) = TaskOwnershipResolver(taskService, runtimeService, documentOwnershipResolver)
+
+    @Bean
     fun traineeOwnershipChecks(
         processDefinitionOwnershipResolver: ProcessDefinitionOwnershipResolver,
         processLinkService: ProcessLinkService,
+        documentOwnershipResolver: DocumentOwnershipResolver,
+        taskOwnershipResolver: TaskOwnershipResolver,
         properties: TrainingProperties,
-    ) = TraineeOwnershipChecks(processDefinitionOwnershipResolver, processLinkService, properties)
+    ) = TraineeOwnershipChecks(
+        processDefinitionOwnershipResolver,
+        processLinkService,
+        documentOwnershipResolver,
+        taskOwnershipResolver,
+        properties,
+    )
 
     @Bean
     fun traineeDossierProvisioner(

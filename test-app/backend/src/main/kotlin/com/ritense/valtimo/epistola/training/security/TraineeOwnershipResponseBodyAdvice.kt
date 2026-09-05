@@ -10,6 +10,7 @@ import app.epistola.valtimo.web.rest.dto.PluginUsageEntry
 import com.ritense.case.web.rest.dto.CaseDefinitionResponseDto
 import com.ritense.plugin.web.rest.result.PluginConfigurationDto
 import com.ritense.processlink.web.rest.dto.ProcessLinkResponseDto
+import com.ritense.valtimo.operaton.dto.TaskExtended
 import org.springframework.context.annotation.Profile
 import org.springframework.core.MethodParameter
 import org.springframework.data.domain.Page
@@ -22,8 +23,9 @@ import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice
 
 /**
- * Filters plugin-configuration, process-link, and case-definition list responses down to "owned
- * by me" plus the shared template (read-only reference, visible to every trainee).
+ * Filters plugin-configuration, process-link, case-definition, and (task) data-plane list
+ * responses down to "owned by me" plus the shared template (read-only reference, visible to every
+ * trainee).
  *
  * Runs on every controller response (`supports` is unconditionally `true`) but only acts on lists
  * or pages of the known DTOs — cheap for a trainee (one authorities check, then an early return
@@ -99,6 +101,15 @@ class TraineeOwnershipResponseBodyAdvice(
             is PluginUsageEntry ->
                 ownershipChecks.isOwnOrTemplatePluginUsage(traineeIdentity, item.configurationId(), item.caseDefinitionKey())
             is PendingJob -> ownershipChecks.isOwnEpistolaTenant(traineeIdentity, item.tenantId())
+            // Valtimo's own TaskResource list endpoints (GET /api/v1|v2/task) — carries the owning
+            // case document's id directly (caseDocumentId), so no extra resolution is needed here
+            // the way the single-task view does (see TraineeOwnershipInterceptor's `taskId` check).
+            // No allowShared — same reasoning as that check: form-flow-demo's shared structure
+            // doesn't extend to its actual task/document data.
+            is TaskExtended -> {
+                val caseDocumentId = item.caseDocumentId
+                caseDocumentId != null && ownershipChecks.isOwnDocument(traineeIdentity, caseDocumentId)
+            }
             else -> true
         }
 }
