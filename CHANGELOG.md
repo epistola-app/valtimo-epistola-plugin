@@ -32,7 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mechanism (`DemoSharedSecretAuthenticationFilter`) — an all-tenant-superuser credential — to create
   one tenant per trainee without minting a separate API key per trainee; falls back to
   `NotConfiguredEpistolaTenantProvisioner` (fails loudly) when unset. Off by default; dossier
-  retention/cleanup is not yet covered.
+  retention/cleanup is not yet covered. Two demo accounts (`trainee1@demo`/`trainee2@demo`,
+  password matching the username, `ROLE_USER` only — deliberately **not** in the `valtimo-users`
+  group, which also grants `ROLE_ADMIN`) were added to `docker/keycloak/valtimo-realm.json` for
+  manually verifying trainee-vs-trainee isolation against the local docker-compose stack.
 
 - **The document preview now works on a BPMN start form**, so a letter can be checked before the
   case is created — previously it required starting the case and previewing from the first user
