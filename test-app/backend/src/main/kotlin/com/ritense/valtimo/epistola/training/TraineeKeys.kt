@@ -13,7 +13,17 @@ import java.util.UUID
  * artifacts never needs its own lookup table — it's always a recomputation, not a query.
  */
 object TraineeKeys {
-    const val TRAINEE_AUTHORITY = "ROLE_TRAINEE"
+    /**
+     * A **real** Keycloak realm role (`docker/keycloak/valtimo-realm.json`), assigned explicitly
+     * to whichever users should be trainees — deliberately not synthesized in-process.
+     *
+     * The earlier design treated "any authenticated non-admin" as a trainee, which breaks the
+     * moment this instance also serves genuine non-admin users who aren't trainees (a real,
+     * mixed-use deployment, not a training-only one) — there was no third category between "admin"
+     * and "trainee". Named `ROLE_DEMO`, not `ROLE_TRAINEE`, specifically so it reads as "this
+     * person is here to try the demo," distinct from Valtimo's own generic `ROLE_USER`.
+     */
+    const val TRAINEE_AUTHORITY = "ROLE_DEMO"
     const val ADMIN_AUTHORITY = "ROLE_ADMIN"
 
     /** The single, app-wide Epistola plugin configuration every demo case type is wired to. */

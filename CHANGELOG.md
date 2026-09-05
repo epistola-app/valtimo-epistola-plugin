@@ -12,10 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Interactive training facility (test-app only, opt-in via the `training` Spring profile)**: a
   personal "dossier" — document-definition + BPMN process + process-links, cloned from the
   `form-flow-demo` case type — and a per-trainee Epistola `PluginConfiguration` are auto-provisioned
-  on first authenticated request from any non-admin principal. Trainees get a new `ROLE_TRAINEE`
-  PBAC role scoped to their own dossier's cases/tasks
-  (`test-app/backend/src/main/resources/config/pbac/trainee.{role,permission}.json`), plus a
-  narrowly-widened `ROLE_ADMIN`-or-`ROLE_TRAINEE` gate on the **full case-definition management
+  the first time a principal carrying a new **real** Keycloak realm role, `ROLE_DEMO`
+  (`docker/keycloak/valtimo-realm.json`), makes an authenticated request. Deliberately an explicit,
+  assigned role rather than "any non-admin login" — the latter would sweep in genuine non-admin,
+  non-trainee users of a mixed-use instance, with no third category between "admin" and "trainee".
+  Trainees get a new `ROLE_DEMO` PBAC role scoped to their own dossier's cases/tasks
+  (`test-app/backend/src/main/resources/config/pbac/demo.{role,permission}.json`), plus a
+  narrowly-widened `ROLE_ADMIN`-or-`ROLE_DEMO` gate on the **full case-definition management
   surface** — process-link, plugin-configuration, case tabs, settings, list/task-list columns,
   widget/header tabs, startable items, case export, internal status (Valtimo has no PBAC hook for
   any of it), enforced down to per-resource ownership by a new interceptor/advice layer
@@ -32,8 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   mechanism (`DemoSharedSecretAuthenticationFilter`) — an all-tenant-superuser credential — to create
   one tenant per trainee without minting a separate API key per trainee; falls back to
   `NotConfiguredEpistolaTenantProvisioner` (fails loudly) when unset. Off by default; dossier
-  retention/cleanup is not yet covered. Two demo accounts (`trainee1@demo`/`trainee2@demo`,
-  password matching the username, `ROLE_USER` only — deliberately **not** in the `valtimo-users`
+  retention/cleanup is not yet covered. Two demo accounts (`trainee1@demo`/`trainee2@demo`, password
+  matching the username, `ROLE_USER` + `ROLE_DEMO` — deliberately **not** in the `valtimo-users`
   group, which also grants `ROLE_ADMIN`) were added to `docker/keycloak/valtimo-realm.json` for
   manually verifying trainee-vs-trainee isolation against the local docker-compose stack.
 

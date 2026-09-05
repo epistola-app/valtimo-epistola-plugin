@@ -4,7 +4,7 @@
     {
       "resourceType": "com.ritense.case_.domain.definition.CaseDefinition",
       "action": "view",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         { "type": "field", "field": "id.key", "operator": "==", "value": "${currentUserId}" }
       ]
@@ -12,7 +12,7 @@
     {
       "resourceType": "com.ritense.case_.domain.definition.CaseDefinition",
       "action": "view",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         { "type": "field", "field": "id.key", "operator": "==", "value": "form-flow-demo" }
       ]
@@ -20,7 +20,7 @@
     {
       "resourceType": "com.ritense.case_.domain.definition.CaseDefinition",
       "action": "view_list",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         { "type": "field", "field": "id.key", "operator": "==", "value": "${currentUserId}" }
       ]
@@ -28,7 +28,7 @@
     {
       "resourceType": "com.ritense.case_.domain.definition.CaseDefinition",
       "action": "view_list",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         { "type": "field", "field": "id.key", "operator": "==", "value": "form-flow-demo" }
       ]
@@ -36,12 +36,12 @@
     {
       "resourceType": "com.ritense.case.domain.CaseTab",
       "action": "view",
-      "roleKey": "ROLE_TRAINEE"
+      "roleKey": "ROLE_DEMO"
     },
     {
       "resourceType": "com.ritense.document.domain.impl.JsonSchemaDocumentDefinition",
       "action": "view",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         { "type": "field", "field": "id.name", "operator": "==", "value": "${currentUserId}" }
       ]
@@ -49,7 +49,7 @@
     {
       "resourceType": "com.ritense.document.domain.impl.JsonSchemaDocumentDefinition",
       "action": "view",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         { "type": "field", "field": "id.name", "operator": "==", "value": "form-flow-demo" }
       ]
@@ -57,7 +57,7 @@
     {
       "resourceType": "com.ritense.document.domain.impl.JsonSchemaDocumentDefinition",
       "action": "view_list",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         { "type": "field", "field": "id.name", "operator": "==", "value": "${currentUserId}" }
       ]
@@ -65,7 +65,7 @@
     {
       "resourceType": "com.ritense.document.domain.impl.JsonSchemaDocumentDefinition",
       "action": "view_list",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         { "type": "field", "field": "id.name", "operator": "==", "value": "form-flow-demo" }
       ]
@@ -73,7 +73,7 @@
     {
       "resourceType": "com.ritense.document.domain.impl.JsonSchemaDocument",
       "action": "create",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         {
           "type": "field",
@@ -86,7 +86,7 @@
     {
       "resourceType": "com.ritense.document.domain.impl.JsonSchemaDocument",
       "action": "view",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         {
           "type": "field",
@@ -99,7 +99,7 @@
     {
       "resourceType": "com.ritense.document.domain.impl.JsonSchemaDocument",
       "action": "view_list",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         {
           "type": "field",
@@ -112,7 +112,7 @@
     {
       "resourceType": "com.ritense.document.domain.impl.JsonSchemaDocument",
       "action": "modify",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         {
           "type": "field",
@@ -125,7 +125,7 @@
     {
       "resourceType": "com.ritense.valtimo.operaton.domain.OperatonTask",
       "action": "view",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         {
           "type": "container",
@@ -144,7 +144,7 @@
     {
       "resourceType": "com.ritense.valtimo.operaton.domain.OperatonTask",
       "action": "view_list",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         {
           "type": "container",
@@ -163,7 +163,7 @@
     {
       "resourceType": "com.ritense.valtimo.operaton.domain.OperatonTask",
       "action": "complete",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "conditions": [
         {
           "type": "container",
@@ -182,7 +182,7 @@
     {
       "resourceType": "com.ritense.valtimo.operaton.domain.OperatonExecution",
       "action": "create",
-      "roleKey": "ROLE_TRAINEE",
+      "roleKey": "ROLE_DEMO",
       "contextResourceType": "com.ritense.valtimo.operaton.domain.OperatonProcessDefinition",
       "contextConditions": [
         { "type": "field", "field": "key", "operator": "==", "value": "form-flow-demo" }

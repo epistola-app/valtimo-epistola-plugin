@@ -1,4 +1,4 @@
 {
   "changesetId": "trainee-roles-v1",
-  "roles": ["ROLE_TRAINEE"]
+  "roles": ["ROLE_DEMO"]
 }

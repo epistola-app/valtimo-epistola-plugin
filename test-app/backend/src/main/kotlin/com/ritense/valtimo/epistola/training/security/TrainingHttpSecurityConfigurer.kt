@@ -50,7 +50,7 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMa
  * beans in `@Order` sequence with first-match-wins `authorizeHttpRequests` semantics, and on this
  * bean's very low `@Order` (see `TrainingConfiguration`) actually making these rules apply before
  * Valtimo's own module configurers register their stricter ones for the same paths. Confirm a
- * `ROLE_TRAINEE`-only principal can reach these endpoints, and that Valtimo's own admin-only
+ * `ROLE_DEMO`-only principal can reach these endpoints, and that Valtimo's own admin-only
  * endpoints elsewhere are still denied, against a real running app before trusting this.
  */
 class TrainingHttpSecurityConfigurer(

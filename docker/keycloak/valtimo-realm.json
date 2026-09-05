@@ -22,6 +22,10 @@
       {
         "name": "ROLE_DEVELOPER",
         "description": "Developer role"
+      },
+      {
+        "name": "ROLE_DEMO",
+        "description": "Interactive training-facility participant — assigned explicitly, never implied by the absence of another role. Requires the test-app's 'training' Spring profile."
       }
     ]
   },
@@ -186,7 +190,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["ROLE_USER"]
+      "realmRoles": ["ROLE_USER", "ROLE_DEMO"]
     },
     {
       "username": "trainee2@demo",
@@ -201,7 +205,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["ROLE_USER"]
+      "realmRoles": ["ROLE_USER", "ROLE_DEMO"]
     },
     {
       "username": "service-account-valtimo-backend",
