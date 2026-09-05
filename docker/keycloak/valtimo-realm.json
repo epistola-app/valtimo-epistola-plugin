@@ -22,6 +22,10 @@
       {
         "name": "ROLE_DEVELOPER",
         "description": "Developer role"
+      },
+      {
+        "name": "ROLE_DEMO",
+        "description": "Interactive training-facility participant — assigned explicitly, never implied by the absence of another role. Requires the test-app's 'training' Spring profile."
       }
     ]
   },
@@ -172,6 +176,36 @@
         "ep_demo_generator",
         "ep_demo_manager"
       ]
+    },
+    {
+      "username": "trainee1@demo",
+      "email": "trainee1@demo",
+      "enabled": true,
+      "firstName": "Trainee",
+      "lastName": "One",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "trainee1",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ROLE_USER", "ROLE_DEMO"]
+    },
+    {
+      "username": "trainee2@demo",
+      "email": "trainee2@demo",
+      "enabled": true,
+      "firstName": "Trainee",
+      "lastName": "Two",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "trainee2",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ROLE_USER", "ROLE_DEMO"]
     },
     {
       "username": "service-account-valtimo-backend",
