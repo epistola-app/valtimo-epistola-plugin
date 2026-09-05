@@ -6,6 +6,7 @@ package com.ritense.valtimo.epistola.training
 
 import com.ritense.plugin.domain.PluginConfigurationId
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.util.UUID
 
 /**
@@ -33,21 +34,35 @@ object TraineeKeys {
     private const val PLUGIN_CONFIGURATION_NAMESPACE = "epistola-training-plugin-configuration"
 
     /**
-     * The case-/document-definition key for a trainee's cloned dossier — deliberately the
-     * trainee's raw identity, unmodified.
+     * The case-/document-definition key for a trainee's cloned dossier.
      *
-     * Valtimo's PBAC field conditions can only compare against a fixed placeholder such as
-     * `${currentUserId}` (see `trainee.permission.json`), never a derived value, so this key has
-     * to be byte-for-byte what that placeholder resolves to (`ManageableUser.getId()`, which in
-     * every OIDC-based auth path in this app is the JWT `sub` claim — see
-     * `OidcAuthenticationConfiguration.currentUserFromAuthentication`). Any transformation here
-     * (hashing, prefixing) would silently break every PBAC condition that relies on it.
+     * **Was** the trainee's raw identity, unmodified, on the theory that it needed to be
+     * byte-for-byte what `${currentUserId}` resolves to for the PBAC field conditions in
+     * `demo.permission.json` to match it directly (`ManageableUser.getId()` — see
+     * `OidcAuthenticationConfiguration.currentUserFromAuthentication` for the "authentik" profile's
+     * version of that resolution). That assumption did not survive contact with a real Keycloak
+     * token: against the local docker-compose realm (stock `keycloak-iam` module, not the
+     * "authentik" profile), the access token for `trainee1@demo` carries **no `sub` claim at all**,
+     * so [TraineeIdentity.resolve] falls back to the principal name — the email address — which
+     * `CaseDefinitionId.key` then rejects outright (`@`/`.` aren't valid slug characters). Confirmed
+     * by actually running this against the real stack, not by reading source.
      *
-     * Not verified against a live boot: that `${currentUserId}` really does resolve to the same
-     * value as [traineeIdentity] for whichever auth profile is active. Confirm this before
-     * relying on the PBAC grants in `trainee.permission.json`.
+     * Now a deterministic hash, like [pluginConfigurationId] — safe regardless of what shape the
+     * identity happens to have. The cost: the `${currentUserId}`-based PBAC conditions on
+     * `JsonSchemaDocument`/`OperatonTask` in `demo.permission.json` no longer match anything (the
+     * stored key is a hash, not the raw placeholder value), so trainee-vs-trainee scoping of case
+     * *data* (as opposed to case-definition *configuration*, which goes through
+     * [TraineeOwnershipChecks.isOwnCaseDefinition] and never relied on this) is currently
+     * unenforced. Needs the same interceptor-based treatment the case-definition management
+     * surface already has, not a placeholder-matching fix.
      */
-    fun caseDefinitionKey(traineeIdentity: String): String = traineeIdentity
+    fun caseDefinitionKey(traineeIdentity: String): String = "t" + sha256Hex(traineeIdentity).take(15)
+
+    private fun sha256Hex(value: String): String =
+        MessageDigest
+            .getInstance("SHA-256")
+            .digest(value.toByteArray(StandardCharsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
 
     /**
      * Deterministic per-trainee id for their Epistola [PluginConfigurationId], so re-provisioning

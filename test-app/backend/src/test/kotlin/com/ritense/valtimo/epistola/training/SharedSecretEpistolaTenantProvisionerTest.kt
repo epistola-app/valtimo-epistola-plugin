@@ -60,21 +60,26 @@ class SharedSecretEpistolaTenantProvisionerTest {
 
     @Test
     fun `creates a tenant and returns the shared secret as the api key`() {
-        val credentials = provisioner().ensureTenant("11111111-1111-4111-8111-111111111111")
+        // Deliberately an email, not a UUID — the tenant id must survive an identity shape that
+        // is not a valid Epistola tenant-id slug on its own (this exact input crashed provisioning
+        // against a real Epistola instance before TraineeKeys.caseDefinitionKey started hashing).
+        val credentials = provisioner().ensureTenant("trainee1@demo")
 
-        assertThat(credentials.tenantId).isEqualTo("trainee-11111111-1111-4111-8111-111111111111")
+        val expectedTenantId = "trainee-" + TraineeKeys.caseDefinitionKey("trainee1@demo")
+        assertThat(credentials.tenantId).isEqualTo(expectedTenantId)
+        assertThat(credentials.tenantId).matches("^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
         assertThat(credentials.apiKey).isEqualTo("epk_test_shared_secret_at_least_32_chars_long")
         assertThat(lastAuthorizationHeader).isEqualTo("ApiKey epk_test_shared_secret_at_least_32_chars_long")
-        assertThat(lastRequestBody).contains("\"id\":\"trainee-11111111-1111-4111-8111-111111111111\"")
+        assertThat(lastRequestBody).contains("\"id\":\"$expectedTenantId\"")
     }
 
     @Test
     fun `treats an already-existing tenant as success, not a failure`() {
         responseStatus = 409
 
-        val credentials = provisioner().ensureTenant("22222222-2222-4222-8222-222222222222")
+        val credentials = provisioner().ensureTenant("trainee2@demo")
 
-        assertThat(credentials.tenantId).isEqualTo("trainee-22222222-2222-4222-8222-222222222222")
+        assertThat(credentials.tenantId).isEqualTo("trainee-" + TraineeKeys.caseDefinitionKey("trainee2@demo"))
     }
 
     @Test

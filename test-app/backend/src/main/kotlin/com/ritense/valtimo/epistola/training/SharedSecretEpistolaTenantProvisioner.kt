@@ -53,10 +53,13 @@ class SharedSecretEpistolaTenantProvisioner(
         return EpistolaTenantCredentials(tenantId = tenantId, apiKey = sharedSecret)
     }
 
-    /** Epistola tenant ids follow the same slug rules Valtimo's own `tenantId` plugin property does. */
-    private fun tenantIdFor(traineeIdentity: String): String = "trainee-$traineeIdentity".take(MAX_TENANT_ID_LENGTH)
-
-    companion object {
-        private const val MAX_TENANT_ID_LENGTH = 63
-    }
+    /**
+     * Epistola tenant ids must be a lowercase slug (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`) — confirmed by
+     * actually hitting a real Epistola instance with a raw, email-shaped trainee identity and
+     * getting a validation error back, not by reading the constraint. [TraineeKeys.caseDefinitionKey]
+     * is already a safe hash for exactly this reason; reusing it here means the tenant id and the
+     * Valtimo case-definition key are derived the same way, even though nothing requires them to
+     * match.
+     */
+    private fun tenantIdFor(traineeIdentity: String): String = "trainee-" + TraineeKeys.caseDefinitionKey(traineeIdentity)
 }

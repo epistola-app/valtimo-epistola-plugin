@@ -39,6 +39,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   matching the username, `ROLE_USER` + `ROLE_DEMO` — deliberately **not** in the `valtimo-users`
   group, which also grants `ROLE_ADMIN`) were added to `docker/keycloak/valtimo-realm.json` for
   manually verifying trainee-vs-trainee isolation against the local docker-compose stack.
+  - Two bugs found only by actually driving the running app as both trainee accounts over real
+    HTTP, not by reading the code: (1) a real Keycloak token can omit the JWT `sub` claim entirely
+    (confirmed against this repo's own docker-compose realm) — `TraineeIdentity.resolve` already
+    fell back to the principal name (an email), but `TraineeKeys.caseDefinitionKey` and
+    `SharedSecretEpistolaTenantProvisioner` used that raw identity as-is, so an email-shaped
+    identity crashed dossier provisioning against a real Epistola instance (`'tenantId' must be a
+lowercase slug`). `caseDefinitionKey` now always hashes the identity; the one cost is that the
+    `${currentUserId}`-conditioned PBAC rules in `demo.permission.json` no longer match anything,
+    leaving case/task data-plane scoping (as opposed to case-definition _management_, unaffected)
+    a known, currently-unenforced gap pending its own interceptor-based fix. (2) `TrainingWebConfig`
+    registered `TraineeOwnershipInterceptor` for `/api/v1/plugin/configuration/**` and
+    `/api/v1/process-link*` only, never updated when the case-definition-management surface was
+    added to the widened HTTP gate — Spring Security correctly let a trainee through, but no
+    ownership check ever ran for those paths, so any trainee could read and write any other
+    trainee's (or the shared template's) case-definition settings. Fixed by adding the missing
+    path patterns; re-verified cross-trainee access is 403 and shared-template writes are 403.
 
 - **The document preview now works on a BPMN start form**, so a letter can be checked before the
   case is created — previously it required starting the case and previewing from the first user
