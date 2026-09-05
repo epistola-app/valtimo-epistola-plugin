@@ -77,6 +77,7 @@ class TrainingConfiguration {
         pluginService: PluginService,
         epistolaTenantProvisioner: EpistolaTenantProvisioner,
         properties: TrainingProperties,
+        @Value("\${epistola.base-url}") epistolaBaseUrl: String,
     ) = TraineeDossierProvisioner(
         exportService,
         importService,
@@ -85,6 +86,7 @@ class TrainingConfiguration {
         pluginService,
         epistolaTenantProvisioner,
         properties,
+        epistolaBaseUrl,
     )
 
     @Bean

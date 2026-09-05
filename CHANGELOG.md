@@ -93,6 +93,39 @@ lowercase slug`). `caseDefinitionKey` now always hashes the identity; the one co
     (`isOwnOrTemplatePluginUsage`), re-verified against the real per-trainee data instead of the
     happy path alone: a trainee now sees exactly their own usage/health/pending entries plus the
     shared template's read-only reference ones, nothing from another trainee or an unrelated case type.
+  - A trainee loading `/case-management` hit real 403s from `GET .../case-definition/check` on
+    every page load — one of the two case-definition endpoints assumed "global, not case-specific;
+    nothing to scope" back when that reasoning only had to justify leaving it `ROLE_ADMIN`-only.
+    Checked against Valtimo 13.44.0 source instead of re-trusting the assumption: both it and
+    `GET .../metroline/available-modes` take zero parameters and depend only on deployment-wide
+    flags (`CaseDefinitionCheckerImpl.canUpdateGlobalConfiguration`, whether a
+    `ZaakMetrolineDataService` bean exists), never the caller's identity — genuinely safe to leave
+    reachable, unlike the rest of `TraineeAdminSurfaceGuardFilter`'s block list. Unblocked both.
+  - Every action against a trainee's own Epistola tenant was failing to connect
+    (`TraineeDossierProvisioner.epistolaPluginProperties` stored the plugin's `baseUrl` property as
+    a literal, unresolved `${epistola.base-url}` placeholder string, on the incorrect assumption
+    that Valtimo's plugin-property injection resolves `${...}` the way `@Value` does — it doesn't;
+    `@PluginProperty` fields are plain JSON-deserialized values with no placeholder-resolution
+    step). Found via the admin page's health check reporting the trainee's own configuration as
+    unreachable, not by reading the property-injection code. Fixed by injecting and storing the
+    actual resolved URL instead, the same way `SharedSecretEpistolaTenantProvisioner` already does;
+    covered by a new assertion in `TraineeDossierProvisioningE2ETest`.
+  - Trainees also getting real `ROLE_ADMIN` needs one clear rule to stay coherent, not case-by-case
+    judgment calls: a trainee should never be able to change something belonging to another
+    user/tenant, or to the shared instance as a whole. Every entry in
+    `TraineeAdminSurfaceGuardFilter`'s block list now carries its own specific 403 reason instead of
+    one generic "forbidden" message (e.g. "this manages roles and permissions for the whole
+    instance" vs. "this operates on an arbitrary id with no way to confirm it belongs to your own
+    dossier"), so a trainee hitting a block can tell why, not just that they were denied. Checking
+    this over real HTTP (not just via the unit tests, which mock the response and so never noticed)
+    found the messages never actually reached the client either way: both this filter and
+    `TraineeOwnershipInterceptor` used `sendError(403, message)`, whose message Spring Boot's
+    default error-page rendering silently strips (`server.error.include-message` defaults to
+    `never`, to avoid leaking exception details in production) — the real response was an empty
+    body with a generic OAuth2 `WWW-Authenticate: Bearer error="insufficient_scope"` challenge
+    header, no trace of the reason string. Fixed by writing the 403 body directly
+    (`TraineeRejection.rejectAsForbidden`) instead of going through servlet error-page dispatch,
+    used by both call sites now.
 
 - **The document preview now works on a BPMN start form**, so a letter can be checked before the
   case is created — previously it required starting the case and previewing from the first user

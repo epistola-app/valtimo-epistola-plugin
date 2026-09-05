@@ -79,7 +79,9 @@ class TraineeOwnershipInterceptor(
         allowed: Boolean,
     ): Boolean {
         if (!allowed) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Not your dossier")
+            // Not plain sendError(403, "Not your dossier") — see TraineeRejection.kt's KDoc for
+            // why that message never actually reached the client.
+            response.rejectAsForbidden("This belongs to another user's dossier, not yours.")
         }
         return allowed
     }

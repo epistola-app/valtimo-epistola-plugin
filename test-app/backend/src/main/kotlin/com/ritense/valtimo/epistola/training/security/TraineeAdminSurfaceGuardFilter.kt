@@ -49,10 +49,18 @@ import org.springframework.web.filter.OncePerRequestFilter
  * - Case migration (`DocumentMigrationHttpSecurityConfigurer`) — migrates data across
  *   document-definitions with no case-key scoping at all.
  * - Dashboard management (`DashboardHttpSecurityConfigurer`).
- * - The four case-definition endpoints [TrainingHttpSecurityConfigurer]'s KDoc already documents
- *   as deliberately not widened (`draft`, `case/import`, `case/import/preview`, `case-definition/check`,
- *   `metroline/available-modes`) — those were only safe to leave alone while trainees had no real
- *   `ROLE_ADMIN`; now they need active blocking like everything else here.
+ * - Two of the four case-definition endpoints [TrainingHttpSecurityConfigurer]'s KDoc documents as
+ *   deliberately not widened: `POST .../case-definition/draft` (creates a brand-new, unrelated
+ *   case-definition) and `POST .../case/import` / `.../case/import/preview` (arbitrary import,
+ *   nothing in the URL to check ownership against) — those were only safe to leave alone while
+ *   trainees had no real `ROLE_ADMIN`; now they need active blocking like everything else here.
+ *   The other two named in that KDoc, `GET .../case-definition/check` and
+ *   `GET .../metroline/available-modes`, turned out — on actually loading `/case-management` as a
+ *   trainee and getting 403s from the first of them, not by re-reading the reasoning — to be
+ *   genuinely safe to leave open: both take zero parameters and their response depends only on
+ *   deployment-wide flags (`CaseDefinitionCheckerImpl.canUpdateGlobalConfiguration`, whether a
+ *   `ZaakMetrolineDataService` bean exists), never on the caller's identity or any specific case,
+ *   confirmed directly from Valtimo 13.44.0 source. Not in [BLOCKED_ENDPOINTS] below.
  * - This plugin's own admin page, `/api/v1/plugin/epistola/admin` — normally gated by the
  *   `EpistolaAdministration:MANAGE` PBAC permission (seeded to `ROLE_ADMIN` by default). Most of
  *   it is left reachable (real `ROLE_ADMIN` already satisfies that PBAC grant) precisely *because*
@@ -79,6 +87,13 @@ import org.springframework.web.filter.OncePerRequestFilter
  *
  * Every path below is copied verbatim from Valtimo 13.44.0 source, not approximated — an
  * inaccurate pattern here is worse than an omission, since it would silently fail to block.
+ *
+ * The underlying rule, not a list to keep re-deriving by hand: a trainee should never be able to
+ * change something that belongs to another user/tenant, or to the shared instance as a whole —
+ * everything above is one or the other (arbitrary/unowned target, or genuinely global
+ * configuration), which is also why each entry below carries its own specific 403 [BlockedEndpoint.reason]
+ * rather than one generic "forbidden" message: a trainee hitting this should be able to tell
+ * *why*, not just that they were denied.
  */
 class TraineeAdminSurfaceGuardFilter : OncePerRequestFilter() {
     private val pathMatcher = AntPathMatcher()
@@ -91,18 +106,29 @@ class TraineeAdminSurfaceGuardFilter : OncePerRequestFilter() {
         val authentication = SecurityContextHolder.getContext().authentication
         val isTrainee = authentication != null && authentication.authorities.any { it.authority == TraineeKeys.TRAINEE_AUTHORITY }
 
-        if (isTrainee && isBlocked(request)) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Not available to trainees")
-            return
+        if (isTrainee) {
+            val blocked = matchBlocked(request)
+            if (blocked != null) {
+                response.rejectAsForbidden(blocked.reason)
+                return
+            }
         }
 
         filterChain.doFilter(request, response)
     }
 
-    private fun isBlocked(request: HttpServletRequest): Boolean =
-        BLOCKED_ENDPOINTS.any { (method, pattern) ->
-            (method == null || method.matches(request.method)) && pathMatcher.match(pattern, request.requestURI)
+    private fun matchBlocked(request: HttpServletRequest): BlockedEndpoint? =
+        BLOCKED_ENDPOINTS.firstOrNull { endpoint ->
+            (endpoint.method == null || endpoint.method.matches(request.method)) &&
+                pathMatcher.match(endpoint.pattern, request.requestURI)
         }
+
+    /** @param reason sent back verbatim as the 403 body — must be specific enough to act on, not just "forbidden". */
+    private data class BlockedEndpoint(
+        val method: HttpMethod?,
+        val pattern: String,
+        val reason: String,
+    )
 
     private companion object {
         private const val CASE_DEFINITION_URL = "/api/management/v1/case-definition"
@@ -110,102 +136,128 @@ class TraineeAdminSurfaceGuardFilter : OncePerRequestFilter() {
         private const val OBJECT_MANAGEMENT_CONFIGURATION_URL = "/api/v1/object/management/configuration"
         private const val EPISTOLA_ADMIN_URL = "/api/v1/plugin/epistola/admin"
 
-        private val BLOCKED_ENDPOINTS: List<Pair<HttpMethod?, String>> =
+        private const val SHARED_CONFIG_REASON =
+            "This changes shared, instance-wide configuration used by every user, not something specific to your own dossier."
+        private const val ARBITRARY_TARGET_REASON =
+            "This operates on an arbitrary id with no way to confirm it belongs to your own dossier, so it could affect another user's data."
+        private const val ENGINE_WIDE_REASON =
+            "This scans/lists across the whole engine — every trainee's cloned dossier shares the same underlying process key, so there is no way to show only your own."
+
+        private val BLOCKED_ENDPOINTS: List<BlockedEndpoint> =
             buildList {
-                // Access Control (ValtimoAuthorizationHttpSecurityConfigurer) — the PBAC editor itself
-                add(HttpMethod.GET to "/api/management/v1/roles")
-                add(HttpMethod.POST to "/api/management/v1/roles")
-                add(HttpMethod.PUT to "/api/management/v1/roles/*")
-                add(HttpMethod.DELETE to "/api/management/v1/roles")
-                add(HttpMethod.GET to "/api/management/v1/roles/*/permissions")
-                add(HttpMethod.PUT to "/api/management/v1/roles/*/permissions")
-                add(HttpMethod.POST to "/api/management/v1/permissions/search")
-                add(HttpMethod.GET to "/api/management/v1/permissions/schema")
-                add(HttpMethod.GET to "/api/management/v1/pbac/registry")
+                fun block(
+                    method: HttpMethod?,
+                    pattern: String,
+                    reason: String,
+                ) = add(BlockedEndpoint(method, pattern, reason))
 
-                // Translation management (LocalizationHttpSecurityConfigurer)
-                add(HttpMethod.PUT to "/api/management/v1/localization/*")
-                add(HttpMethod.PUT to "/api/management/v1/localization")
+                // Access Control (ValtimoAuthorizationHttpSecurityConfigurer) — the PBAC editor
+                // itself; left open, a trainee could grant themselves any permission, including
+                // this plugin's own EpistolaAdministration:MANAGE.
+                val accessControlReason =
+                    "This manages roles and permissions for the whole instance, including what other users are allowed to do."
+                block(HttpMethod.GET, "/api/management/v1/roles", accessControlReason)
+                block(HttpMethod.POST, "/api/management/v1/roles", accessControlReason)
+                block(HttpMethod.PUT, "/api/management/v1/roles/*", accessControlReason)
+                block(HttpMethod.DELETE, "/api/management/v1/roles", accessControlReason)
+                block(HttpMethod.GET, "/api/management/v1/roles/*/permissions", accessControlReason)
+                block(HttpMethod.PUT, "/api/management/v1/roles/*/permissions", accessControlReason)
+                block(HttpMethod.POST, "/api/management/v1/permissions/search", accessControlReason)
+                block(HttpMethod.GET, "/api/management/v1/permissions/schema", accessControlReason)
+                block(HttpMethod.GET, "/api/management/v1/pbac/registry", accessControlReason)
 
-                // Choice fields (ChoiceFieldHttpSecurityConfigurer)
-                add(HttpMethod.POST to "/api/v1/choice-fields")
-                add(HttpMethod.PUT to "/api/v1/choice-fields")
-                add(HttpMethod.DELETE to "/api/v1/choice-fields/*")
-                add(HttpMethod.POST to "/api/v1/choice-field-values")
-                add(HttpMethod.PUT to "/api/v1/choice-field-values")
-                add(HttpMethod.DELETE to "/api/v1/choice-field-values/*")
+                // Translation management (LocalizationHttpSecurityConfigurer) — global i18n keys.
+                block(HttpMethod.PUT, "/api/management/v1/localization/*", SHARED_CONFIG_REASON)
+                block(HttpMethod.PUT, "/api/management/v1/localization", SHARED_CONFIG_REASON)
+
+                // Choice fields (ChoiceFieldHttpSecurityConfigurer) — global reference data.
+                block(HttpMethod.POST, "/api/v1/choice-fields", SHARED_CONFIG_REASON)
+                block(HttpMethod.PUT, "/api/v1/choice-fields", SHARED_CONFIG_REASON)
+                block(HttpMethod.DELETE, "/api/v1/choice-fields/*", SHARED_CONFIG_REASON)
+                block(HttpMethod.POST, "/api/v1/choice-field-values", SHARED_CONFIG_REASON)
+                block(HttpMethod.PUT, "/api/v1/choice-field-values", SHARED_CONFIG_REASON)
+                block(HttpMethod.DELETE, "/api/v1/choice-field-values/*", SHARED_CONFIG_REASON)
 
                 // Object management configuration (ObjectManagementHttpSecurityConfigurer) — the
-                // admin config CRUD only; runtime object endpoints stay authenticated()-only, unaffected.
-                add(HttpMethod.POST to OBJECT_MANAGEMENT_CONFIGURATION_URL)
-                add(HttpMethod.GET to "$OBJECT_MANAGEMENT_CONFIGURATION_URL/*")
-                add(HttpMethod.PUT to OBJECT_MANAGEMENT_CONFIGURATION_URL)
-                add(HttpMethod.DELETE to "$OBJECT_MANAGEMENT_CONFIGURATION_URL/*")
-                add(HttpMethod.GET to "/api/management/v1/object/management/configuration")
+                // admin config CRUD only; runtime object endpoints stay authenticated()-only,
+                // unaffected.
+                block(HttpMethod.POST, OBJECT_MANAGEMENT_CONFIGURATION_URL, SHARED_CONFIG_REASON)
+                block(HttpMethod.GET, "$OBJECT_MANAGEMENT_CONFIGURATION_URL/*", SHARED_CONFIG_REASON)
+                block(HttpMethod.PUT, OBJECT_MANAGEMENT_CONFIGURATION_URL, SHARED_CONFIG_REASON)
+                block(HttpMethod.DELETE, "$OBJECT_MANAGEMENT_CONFIGURATION_URL/*", SHARED_CONFIG_REASON)
+                block(HttpMethod.GET, "/api/management/v1/object/management/configuration", SHARED_CONFIG_REASON)
 
                 // Forms (FormHttpSecurityConfigurerKotlin) — global CRUD only; case-scoped form
-                // endpoints already fall under CASE_DEFINITION_URL, already covered by
-                // TraineeOwnershipInterceptor.
-                add(HttpMethod.GET to "/api/management/v1/form")
-                add(HttpMethod.POST to "/api/management/v1/form")
-                add(HttpMethod.PUT to "/api/management/v1/form")
-                add(HttpMethod.GET to "/api/management/v1/form/*")
-                add(HttpMethod.DELETE to "/api/management/v1/form/*")
-                add(HttpMethod.GET to "/api/management/v1/form/exists/*")
-                add(HttpMethod.GET to "/api/management/v1/form-option")
+                // endpoints already fall under the case-definition management prefix, already
+                // covered by TraineeOwnershipInterceptor.
+                val formsReason = "This lists/manages forms across every case type in the instance, not just your own dossier."
+                block(HttpMethod.GET, "/api/management/v1/form", formsReason)
+                block(HttpMethod.POST, "/api/management/v1/form", formsReason)
+                block(HttpMethod.PUT, "/api/management/v1/form", formsReason)
+                block(HttpMethod.GET, "/api/management/v1/form/*", formsReason)
+                block(HttpMethod.DELETE, "/api/management/v1/form/*", formsReason)
+                block(HttpMethod.GET, "/api/management/v1/form/exists/*", formsReason)
+                block(HttpMethod.GET, "/api/management/v1/form-option", formsReason)
 
                 // System processes (ProcessDefinitionManagementHttpSecurityConfigurer) — the
                 // case-unlinked surface TrainingHttpSecurityConfigurer's KDoc already named as
-                // deliberately excluded.
-                add(HttpMethod.GET to PROCESS_DEFINITION_URL)
-                add(HttpMethod.POST to PROCESS_DEFINITION_URL)
-                add(HttpMethod.PUT to PROCESS_DEFINITION_URL)
-                add(HttpMethod.GET to "$PROCESS_DEFINITION_URL/*")
-                add(HttpMethod.GET to "$PROCESS_DEFINITION_URL/key/*")
-                add(HttpMethod.DELETE to "$PROCESS_DEFINITION_URL/key/*")
-                add(HttpMethod.POST to "$PROCESS_DEFINITION_URL/validate")
-                add(HttpMethod.DELETE to "$PROCESS_DEFINITION_URL/*/autofill/*")
-                add(HttpMethod.GET to "$PROCESS_DEFINITION_URL/*/export")
-                add(HttpMethod.POST to "$PROCESS_DEFINITION_URL/import/preview")
-                add(HttpMethod.POST to "$PROCESS_DEFINITION_URL/import")
+                // deliberately excluded: not tied to any case/dossier at all.
+                val systemProcessReason = "This manages process definitions that aren't linked to any case, outside your dossier entirely."
+                block(HttpMethod.GET, PROCESS_DEFINITION_URL, systemProcessReason)
+                block(HttpMethod.POST, PROCESS_DEFINITION_URL, systemProcessReason)
+                block(HttpMethod.PUT, PROCESS_DEFINITION_URL, systemProcessReason)
+                block(HttpMethod.GET, "$PROCESS_DEFINITION_URL/*", systemProcessReason)
+                block(HttpMethod.GET, "$PROCESS_DEFINITION_URL/key/*", systemProcessReason)
+                block(HttpMethod.DELETE, "$PROCESS_DEFINITION_URL/key/*", systemProcessReason)
+                block(HttpMethod.POST, "$PROCESS_DEFINITION_URL/validate", systemProcessReason)
+                block(HttpMethod.DELETE, "$PROCESS_DEFINITION_URL/*/autofill/*", systemProcessReason)
+                block(HttpMethod.GET, "$PROCESS_DEFINITION_URL/*/export", systemProcessReason)
+                block(HttpMethod.POST, "$PROCESS_DEFINITION_URL/import/preview", systemProcessReason)
+                block(HttpMethod.POST, "$PROCESS_DEFINITION_URL/import", systemProcessReason)
 
                 // Three ADMIN-gated mutations inside the otherwise authenticated()-only
-                // ProcessHttpSecurityConfigurer: process migration, force-delete, raw BPMN deploy.
-                add(HttpMethod.POST to "/api/v1/process/definition/*/*/migrate")
-                add(HttpMethod.POST to "/api/v1/process/*/delete")
-                add(HttpMethod.POST to "/api/v1/process/definition/deployment")
+                // ProcessHttpSecurityConfigurer: process migration, force-delete, raw BPMN deploy —
+                // each takes an arbitrary process instance/definition id with no ownership check.
+                block(HttpMethod.POST, "/api/v1/process/definition/*/*/migrate", ARBITRARY_TARGET_REASON)
+                block(HttpMethod.POST, "/api/v1/process/*/delete", ARBITRARY_TARGET_REASON)
+                block(HttpMethod.POST, "/api/v1/process/definition/deployment", ARBITRARY_TARGET_REASON)
 
                 // Decision tables (DecisionHttpSecurityConfigurer) — global list only; case-scoped
-                // endpoints already fall under CASE_DEFINITION_URL, already covered.
-                add(HttpMethod.GET to "/api/management/v1/decision-definition")
+                // endpoints already fall under the case-definition management prefix, already covered.
+                block(
+                    HttpMethod.GET,
+                    "/api/management/v1/decision-definition",
+                    "This lists decision tables across every case type in the instance, not just your own dossier.",
+                )
 
                 // Logs (LoggingHttpSecurityConfigurer)
-                add(HttpMethod.POST to "/api/management/v1/logging")
+                block(HttpMethod.POST, "/api/management/v1/logging", SHARED_CONFIG_REASON)
 
-                // Case migration (DocumentMigrationHttpSecurityConfigurer) — no case-key scoping at all
-                add(HttpMethod.POST to "/api/management/v1/document-definition/migration/conflicts")
-                add(HttpMethod.POST to "/api/management/v1/document-definition/migrate")
+                // Case migration (DocumentMigrationHttpSecurityConfigurer) — no case-key scoping at all.
+                block(HttpMethod.POST, "/api/management/v1/document-definition/migration/conflicts", ARBITRARY_TARGET_REASON)
+                block(HttpMethod.POST, "/api/management/v1/document-definition/migrate", ARBITRARY_TARGET_REASON)
 
-                // Dashboard management (DashboardHttpSecurityConfigurer) — every sub-path, any method
-                add(null to "/api/management/v1/dashboard/**")
+                // Dashboard management (DashboardHttpSecurityConfigurer) — every sub-path, any method.
+                block(null, "/api/management/v1/dashboard/**", SHARED_CONFIG_REASON)
 
                 // Deliberately-not-widened case-definition endpoints (see TrainingHttpSecurityConfigurer's
                 // KDoc) — safe to leave ADMIN-only only while trainees had no real ROLE_ADMIN.
-                add(HttpMethod.POST to "$CASE_DEFINITION_URL/draft")
-                add(HttpMethod.POST to "/api/management/v1/case/import")
-                add(HttpMethod.POST to "/api/management/v1/case/import/preview")
-                add(HttpMethod.GET to "$CASE_DEFINITION_URL/check")
-                add(HttpMethod.GET to "/api/management/v1/metroline/available-modes")
+                // (case-definition/check and metroline/available-modes, also named in that KDoc,
+                // are deliberately NOT here — see this class's KDoc for why.)
+                val newCaseDefinitionReason = "This creates or imports a case definition unrelated to your own dossier."
+                block(HttpMethod.POST, "$CASE_DEFINITION_URL/draft", newCaseDefinitionReason)
+                block(HttpMethod.POST, "/api/management/v1/case/import", newCaseDefinitionReason)
+                block(HttpMethod.POST, "/api/management/v1/case/import/preview", newCaseDefinitionReason)
 
                 // This plugin's own admin page — only the sub-resources with no safe per-trainee
                 // scoping; /health, /versions, /changelog, /usage, and /pending stay reachable,
                 // response-filtered by TraineeOwnershipResponseBodyAdvice.
-                add(HttpMethod.GET to "$EPISTOLA_ADMIN_URL/configurations/*/catalogs")
-                add(HttpMethod.POST to "$EPISTOLA_ADMIN_URL/configurations/*/catalogs/*/redeploy")
-                add(HttpMethod.GET to "$EPISTOLA_ADMIN_URL/export/*")
-                add(HttpMethod.POST to "$EPISTOLA_ADMIN_URL/pending/*/reconcile")
-                add(HttpMethod.GET to "$EPISTOLA_ADMIN_URL/validations")
-                add(HttpMethod.GET to "$EPISTOLA_ADMIN_URL/forms/legacy-override")
+                block(HttpMethod.GET, "$EPISTOLA_ADMIN_URL/configurations/*/catalogs", ARBITRARY_TARGET_REASON)
+                block(HttpMethod.POST, "$EPISTOLA_ADMIN_URL/configurations/*/catalogs/*/redeploy", ARBITRARY_TARGET_REASON)
+                block(HttpMethod.GET, "$EPISTOLA_ADMIN_URL/export/*", ARBITRARY_TARGET_REASON)
+                block(HttpMethod.POST, "$EPISTOLA_ADMIN_URL/pending/*/reconcile", ARBITRARY_TARGET_REASON)
+                block(HttpMethod.GET, "$EPISTOLA_ADMIN_URL/validations", ENGINE_WIDE_REASON)
+                block(HttpMethod.GET, "$EPISTOLA_ADMIN_URL/forms/legacy-override", ENGINE_WIDE_REASON)
             }
     }
 }

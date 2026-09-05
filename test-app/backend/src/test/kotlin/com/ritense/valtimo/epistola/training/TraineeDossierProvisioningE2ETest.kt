@@ -77,12 +77,17 @@ class TraineeDossierProvisioningE2ETest {
                 TraineeKeys.pluginConfigurationId("11111111-1111-4111-8111-111111111111"),
             )
         assertThat(pluginConfigurationA.properties?.get("tenantId")?.asText()).isEqualTo("trainee-a")
+        // Was a literal, unresolved "${epistola.base-url}" placeholder string — @PluginProperty
+        // fields have no placeholder-resolution step, so every trainee action failed to connect.
+        // Found via the admin page's health check, not by reading the property-injection code.
+        assertThat(pluginConfigurationA.properties?.get("baseUrl")?.asText()).isEqualTo("http://localhost:1/api")
 
         val pluginConfigurationB =
             pluginService.getPluginConfiguration(
                 TraineeKeys.pluginConfigurationId("22222222-2222-4222-8222-222222222222"),
             )
         assertThat(pluginConfigurationB.properties?.get("tenantId")?.asText()).isEqualTo("trainee-b")
+        assertThat(pluginConfigurationB.properties?.get("baseUrl")?.asText()).isEqualTo("http://localhost:1/api")
     }
 
     @Test

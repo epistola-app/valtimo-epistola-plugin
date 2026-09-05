@@ -48,17 +48,22 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMa
  *  - `POST .../case/import` / `.../case/import/preview` — arbitrary case-definition import from an
  *    uploaded file, with no case key in the URL to check ownership against before the import
  *    decides what key the result gets.
- *  - `GET .../case-definition/check` and `GET .../metroline/available-modes` — global,
- *    not case-specific; nothing to scope.
  *  - `ProcessDefinitionManagementHttpSecurityConfigurer`'s case-*unlinked* "system" process
  *    surface — a different configurer, out of scope for dossier administration.
  *
- * These were safe to simply leave `ROLE_ADMIN`-only back when trainees never had that authority —
- * now that they do, "not widened" no longer means "unreachable," which is exactly why
- * [TraineeAdminSurfaceGuardFilter] exists: it hard-blocks these, plus every other Valtimo admin
- * surface with no PBAC hook and no per-resource scoping (Access Control, Translation management,
- * Choice fields, Object management configuration, global Forms/Decision-tables CRUD, system
- * processes, process migration, Logs, Case migration, Dashboard management), plus this plugin's
+ * `GET .../case-definition/check` and `GET .../metroline/available-modes` were also excluded here
+ * on the same "global, not case-specific" reasoning, but manual testing found that reasoning cuts
+ * the other way for a *read*: their responses depend only on deployment-wide flags, never on the
+ * caller's identity — see [TraineeAdminSurfaceGuardFilter]'s KDoc — so they're left reachable
+ * rather than blocked (a trainee loading `/case-management` was getting a real 403 from the first
+ * of them on every page load, not a hypothetical risk).
+ *
+ * The genuinely excluded ones above were safe to simply leave `ROLE_ADMIN`-only back when trainees
+ * never had that authority — now that they do, "not widened" no longer means "unreachable," which
+ * is exactly why [TraineeAdminSurfaceGuardFilter] exists: it hard-blocks these, plus every other
+ * Valtimo admin surface with no PBAC hook and no per-resource scoping (Access Control, Translation
+ * management, Choice fields, Object management configuration, global Forms/Decision-tables CRUD,
+ * system processes, process migration, Logs, Case migration, Dashboard management), plus this plugin's
  * own admin page — see that class's KDoc for the full, source-verified list.
  *
  * **Needs empirical verification**: the *widening* above relies on Valtimo aggregating

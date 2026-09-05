@@ -41,6 +41,7 @@ class TraineeDossierProvisioner(
     private val pluginService: PluginService,
     private val epistolaTenantProvisioner: EpistolaTenantProvisioner,
     private val properties: TrainingProperties,
+    private val epistolaBaseUrl: String,
 ) {
     private val log = KotlinLogging.logger {}
 
@@ -73,7 +74,16 @@ class TraineeDossierProvisioner(
         return traineeCaseDefinitionId
     }
 
-    /** Idempotent: a retry after a partial failure must not choke on "plugin configuration already exists". */
+    /**
+     * Idempotent: a retry after a partial failure must not choke on "plugin configuration already
+     * exists". The flip side, found while manually testing against a shared secret that changed
+     * partway through a session: once created, a trainee's `apiKey`/`tenantId` are never
+     * refreshed, even if `epistola.training.epistola-shared-secret` (or the Epistola instance
+     * behind `epistola.base-url`) changes later — an already-provisioned trainee's plugin
+     * configuration then has to be re-saved by hand (`PUT /api/v1/plugin/configuration/{id}`) to
+     * pick up the new value. Not a bug to fix here, just a real operational trap: switching secrets
+     * or instances mid-session doesn't retroactively fix dossiers provisioned before the switch.
+     */
     private fun ensurePluginConfiguration(
         traineeIdentity: String,
         pluginConfigurationId: com.ritense.plugin.domain.PluginConfigurationId,
@@ -90,9 +100,21 @@ class TraineeDossierProvisioner(
         )
     }
 
+    /**
+     * **Was** a literal `"${epistola.base-url}"` placeholder string, on the assumption that
+     * Valtimo's plugin-property injection resolves `${...}` against the Spring `Environment` the
+     * way `@Value` does elsewhere in this codebase. It doesn't — `@PluginProperty` fields are
+     * plain JSON-deserialized values with no placeholder-resolution step, so every trainee's
+     * `EpistolaPlugin.baseUrl` was the literal, invalid string `${epistola.base-url}`, and every
+     * action against their tenant failed to connect. Found via the admin page's health check
+     * reporting the trainee's own configuration as unreachable ("Failed to fetch catalogs"), not
+     * by reading the property-injection code. Now the actual resolved value, injected the same way
+     * [com.ritense.valtimo.epistola.training.TrainingConfiguration.sharedSecretEpistolaTenantProvisioner]
+     * already does.
+     */
     private fun epistolaPluginProperties(tenant: EpistolaTenantCredentials): ObjectNode =
         JsonNodeFactory.instance.objectNode().apply {
-            put("baseUrl", "\${epistola.base-url}")
+            put("baseUrl", epistolaBaseUrl)
             put("apiKey", tenant.apiKey)
             put("tenantId", tenant.tenantId)
             put("templateSyncEnabled", false)
