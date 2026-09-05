@@ -23,6 +23,20 @@ object TraineeKeys {
      * mixed-use deployment, not a training-only one) — there was no third category between "admin"
      * and "trainee". Named `ROLE_DEMO`, not `ROLE_TRAINEE`, specifically so it reads as "this
      * person is here to try the demo," distinct from Valtimo's own generic `ROLE_USER`.
+     *
+     * **Trainees are also granted real [ADMIN_AUTHORITY].** Valtimo's own admin Angular
+     * routes/menu (`test-app/frontend/src/environments/environment.ts`'s "Admin" menu group, and
+     * the `@valtimo/case-management`/`@valtimo/plugin-management` route guards behind it) are
+     * hard-gated to `ROLE_ADMIN` client-side — confirmed by driving a real login as `trainee1@demo`
+     * in a headless browser: with `ROLE_DEMO` alone, the side-nav had no Admin section at all, and
+     * navigating straight to `/case-management` or `/plugins` bounced back before ever reaching the
+     * backend. There is no finer-grained frontend role model to widen instead, so short of building
+     * a bespoke trainee-only UI, `ROLE_ADMIN` has to be granted for real. The backend compensates:
+     * every operation a trainee must not be allowed now has to be blocked explicitly rather than
+     * simply never being reachable — see [com.ritense.valtimo.epistola.training.security.TraineeAdminSurfaceGuardFilter]
+     * for the hard-block list, and [com.ritense.valtimo.epistola.training.security.TraineeOwnershipChecks]
+     * for the per-resource scoping that still applies on top of that. Every check in this package
+     * keys off [TRAINEE_AUTHORITY] presence alone, never off [ADMIN_AUTHORITY]'s absence.
      */
     const val TRAINEE_AUTHORITY = "ROLE_DEMO"
     const val ADMIN_AUTHORITY = "ROLE_ADMIN"

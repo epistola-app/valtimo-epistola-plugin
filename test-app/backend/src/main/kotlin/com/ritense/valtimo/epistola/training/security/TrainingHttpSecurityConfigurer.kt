@@ -22,10 +22,16 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMa
  * plugin-configuration, and case-definition management endpoints — confirmed directly from
  * Valtimo 13.44.0 source (`ProcessLinkHttpSecurityConfigurer`, `PluginHttpSecurityConfigurer`,
  * `CaseHttpSecurityConfigurer`, `InternalCaseHttpSecurityConfigurer`): none of these have a PBAC
- * hook, only this flat HTTP check — to also accept [TraineeKeys.TRAINEE_AUTHORITY], so a trainee
- * never needs real `ROLE_ADMIN`. [TraineeOwnershipInterceptor], [TraineeOwnershipRequestBodyAdvice]
- * and [TraineeOwnershipResponseBodyAdvice] then narrow a trainee down to only their own dossier
- * (plus read-only access to the shared template).
+ * hook, only this flat HTTP check — to also accept [TraineeKeys.TRAINEE_AUTHORITY].
+ * [TraineeOwnershipInterceptor], [TraineeOwnershipRequestBodyAdvice] and
+ * [TraineeOwnershipResponseBodyAdvice] then narrow a trainee down to only their own dossier (plus
+ * read-only access to the shared template).
+ *
+ * **Trainees also carry real `ROLE_ADMIN`** (see [TraineeKeys.TRAINEE_AUTHORITY]'s KDoc), so this
+ * widening is no longer what makes those endpoints reachable — real `ROLE_ADMIN` already does
+ * that on its own. What it still does is give a stable, single place documenting *which*
+ * endpoints a trainee is meant to reach, that [TraineeOwnershipInterceptor]'s per-request checks
+ * can be read against.
  *
  * The case-definition management surface is every endpoint that is path-scoped directly by a
  * case-/document-definition key — case tabs, settings, list/task-list columns, widget/header
@@ -34,7 +40,8 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMa
  * one of those endpoints is path-scoped, so [TraineeOwnershipInterceptor] can check ownership from
  * the URL alone — no body inspection needed there, unlike process-link.
  *
- * **Deliberately NOT widened**, and left `ROLE_ADMIN`-only:
+ * **Deliberately excluded from that surface, and actively hard-blocked instead** by
+ * [TraineeAdminSurfaceGuardFilter] (registered below alongside [traineeProvisioningFilter]):
  *  - `POST .../case-definition/draft` — creates a brand-new, unrelated case-definition. Trainees
  *    get their dossier exclusively through the clone-on-login flow; there's no legitimate reason
  *    for one to hit this directly.
@@ -46,15 +53,26 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMa
  *  - `ProcessDefinitionManagementHttpSecurityConfigurer`'s case-*unlinked* "system" process
  *    surface — a different configurer, out of scope for dossier administration.
  *
- * **Needs empirical verification**: this relies on Valtimo aggregating [HttpSecurityConfigurer]
- * beans in `@Order` sequence with first-match-wins `authorizeHttpRequests` semantics, and on this
- * bean's very low `@Order` (see `TrainingConfiguration`) actually making these rules apply before
- * Valtimo's own module configurers register their stricter ones for the same paths. Confirm a
- * `ROLE_DEMO`-only principal can reach these endpoints, and that Valtimo's own admin-only
- * endpoints elsewhere are still denied, against a real running app before trusting this.
+ * These were safe to simply leave `ROLE_ADMIN`-only back when trainees never had that authority —
+ * now that they do, "not widened" no longer means "unreachable," which is exactly why
+ * [TraineeAdminSurfaceGuardFilter] exists: it hard-blocks these, plus every other Valtimo admin
+ * surface with no PBAC hook and no per-resource scoping (Access Control, Translation management,
+ * Choice fields, Object management configuration, global Forms/Decision-tables CRUD, system
+ * processes, process migration, Logs, Case migration, Dashboard management), plus this plugin's
+ * own admin page — see that class's KDoc for the full, source-verified list.
+ *
+ * **Needs empirical verification**: the *widening* above relies on Valtimo aggregating
+ * [HttpSecurityConfigurer] beans in `@Order` sequence with first-match-wins `authorizeHttpRequests`
+ * semantics, and on this bean's very low `@Order` (see `TrainingConfiguration`) actually making
+ * these rules apply before Valtimo's own module configurers register their stricter ones for the
+ * same paths — confirmed empirically for the endpoints listed in [WIDENED_ENDPOINTS] against a
+ * real running app. The *blocking* in [TraineeAdminSurfaceGuardFilter] does not share this risk —
+ * see that class's KDoc for why a filter-based block can't lose an ordering race the way an
+ * `authorizeHttpRequests` widening can.
  */
 class TrainingHttpSecurityConfigurer(
     private val traineeProvisioningFilter: TraineeProvisioningFilter,
+    private val traineeAdminSurfaceGuardFilter: TraineeAdminSurfaceGuardFilter,
 ) : HttpSecurityConfigurer {
     override fun configure(http: HttpSecurity) {
         try {
@@ -65,6 +83,7 @@ class TrainingHttpSecurityConfigurer(
                 }
             }
             http.addFilterBefore(traineeProvisioningFilter, AuthorizationFilter::class.java)
+            http.addFilterBefore(traineeAdminSurfaceGuardFilter, AuthorizationFilter::class.java)
         } catch (e: Exception) {
             throw HttpConfigurerConfigurationException(e)
         }

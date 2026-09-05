@@ -16,19 +16,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`docker/keycloak/valtimo-realm.json`), makes an authenticated request. Deliberately an explicit,
   assigned role rather than "any non-admin login" — the latter would sweep in genuine non-admin,
   non-trainee users of a mixed-use instance, with no third category between "admin" and "trainee".
-  Trainees get a new `ROLE_DEMO` PBAC role scoped to their own dossier's cases/tasks
-  (`test-app/backend/src/main/resources/config/pbac/demo.{role,permission}.json`), plus a
-  narrowly-widened `ROLE_ADMIN`-or-`ROLE_DEMO` gate on the **full case-definition management
-  surface** — process-link, plugin-configuration, case tabs, settings, list/task-list columns,
-  widget/header tabs, startable items, case export, internal status (Valtimo has no PBAC hook for
-  any of it), enforced down to per-resource ownership by a new interceptor/advice layer
-  (`test-app/backend/src/main/kotlin/com/ritense/valtimo/epistola/training/`), so trainees can fully
-  administer their own dossier without real `ROLE_ADMIN` ever reaching anyone else's, or the rest of
-  the instance's admin surface (e.g. this plugin's own `EpistolaAdministration:MANAGE` admin page,
-  or the PBAC configurator endpoints themselves — both are seeded to `ROLE_ADMIN` by default, which
-  is exactly what real `ROLE_ADMIN` would otherwise have unlocked). Deliberately still `ROLE_ADMIN`-only:
-  creating a brand-new unrelated case-definition, arbitrary case import, and the case-_unlinked_
-  "system" process-definition surface. Cloning uses Valtimo's own `ExportService`/`ImportService`
+  Trainees also get real `ROLE_ADMIN` — Valtimo's own admin Angular routes/menu turned out to be
+  hard-gated to `ROLE_ADMIN` client-side (confirmed by driving a real login in a headless browser:
+  with `ROLE_DEMO` alone, the side-nav had no Admin section and direct navigation to
+  `/case-management` bounced back before ever reaching the backend), with no finer-grained
+  frontend role to widen instead, so satisfying the frontend meant granting the real authority.
+  The backend compensates on two fronts: a narrowly-widened `ROLE_ADMIN`-or-`ROLE_DEMO` gate on the
+  **case-definition management surface** — process-link, plugin-configuration, case tabs, settings,
+  list/task-list columns, widget/header tabs, startable items, case export, internal status
+  (Valtimo has no PBAC hook for any of it) — enforced down to per-resource ownership by a new
+  interceptor/advice layer (`test-app/backend/src/main/kotlin/com/ritense/valtimo/epistola/training/`),
+  so trainees can fully administer their own dossier without touching anyone else's; and a new
+  `TraineeAdminSurfaceGuardFilter` that hard-blocks every _other_ Valtimo admin surface real
+  `ROLE_ADMIN` would otherwise unlock for a trainee — Access Control (the PBAC editor itself),
+  Translation management, Choice fields, Object management configuration, global Forms/
+  Decision-tables CRUD, the case-_unlinked_ "system" process-definition surface, process migration,
+  Logs, Case migration, Dashboard management, creating a brand-new unrelated case-definition,
+  arbitrary case import, and this plugin's own `EpistolaAdministration:MANAGE` admin page (normally
+  seeded to `ROLE_ADMIN` by default — blocked here as an independent second layer rather than a
+  PBAC-changeset revocation). Implemented as a filter, not more `authorizeHttpRequests` widening,
+  since a filter's position is fixed once the security chain is built, so it can't lose an ordering
+  race against Valtimo's ~80 other auto-configured security-config beans the way an _allow_ rule
+  could. Cloning uses Valtimo's own `ExportService`/`ImportService`
   (`keyOverride`/`pluginConfigurationMappings`), not bespoke duplication code. Epistola-side tenant
   provisioning (`SharedSecretEpistolaTenantProvisioner`, opt-in via
   `epistola.training.epistola-shared-secret`) reuses epistola-suite's own demo-profile shared-secret
@@ -36,9 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   one tenant per trainee without minting a separate API key per trainee; falls back to
   `NotConfiguredEpistolaTenantProvisioner` (fails loudly) when unset. Off by default; dossier
   retention/cleanup is not yet covered. Two demo accounts (`trainee1@demo`/`trainee2@demo`, password
-  matching the username, `ROLE_USER` + `ROLE_DEMO` — deliberately **not** in the `valtimo-users`
-  group, which also grants `ROLE_ADMIN`) were added to `docker/keycloak/valtimo-realm.json` for
-  manually verifying trainee-vs-trainee isolation against the local docker-compose stack.
+  matching the username, `ROLE_USER` + `ROLE_ADMIN` + `ROLE_DEMO`) were added to
+  `docker/keycloak/valtimo-realm.json` for manually verifying trainee-vs-trainee isolation against
+  the local docker-compose stack.
   - Two bugs found only by actually driving the running app as both trainee accounts over real
     HTTP, not by reading the code: (1) a real Keycloak token can omit the JWT `sub` claim entirely
     (confirmed against this repo's own docker-compose realm) — `TraineeIdentity.resolve` already
@@ -55,6 +64,16 @@ lowercase slug`). `caseDefinitionKey` now always hashes the identity; the one co
     ownership check ever ran for those paths, so any trainee could read and write any other
     trainee's (or the shared template's) case-definition settings. Fixed by adding the missing
     path patterns; re-verified cross-trainee access is 403 and shared-template writes are 403.
+  - The design originally avoided granting trainees real `ROLE_ADMIN` specifically to keep every
+    other admin surface safe by construction (a trainee simply couldn't pass Valtimo's own
+    `hasAuthority(ADMIN)` gates). That held until manual browser verification found Valtimo's
+    frontend gates its entire admin UI on `ROLE_ADMIN` too, with no way to reach the already-widened
+    backend endpoints otherwise. Re-verified over real HTTP after the pivot: a trainee's own
+    case-definition settings/process-link/plugin-configuration still work (200), cross-trainee
+    access is still 403, and every newly-reachable admin surface (Access Control, system
+    process-definitions, this plugin's admin page, `case-definition/draft`, and wildcard-matched
+    paths like `roles/{key}/permissions` and `dashboard/**`) is now 403 for a trainee while
+    remaining 200 for a genuine `ROLE_ADMIN`-only account.
 
 - **The document preview now works on a BPMN start form**, so a letter can be checked before the
   case is created — previously it required starting the case and previewing from the first user

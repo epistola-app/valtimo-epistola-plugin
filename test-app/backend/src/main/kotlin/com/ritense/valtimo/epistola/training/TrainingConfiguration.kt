@@ -11,6 +11,7 @@ import com.ritense.importer.ImportService
 import com.ritense.plugin.service.PluginService
 import com.ritense.processlink.service.ProcessLinkService
 import com.ritense.valtimo.epistola.training.security.ProcessDefinitionOwnershipResolver
+import com.ritense.valtimo.epistola.training.security.TraineeAdminSurfaceGuardFilter
 import com.ritense.valtimo.epistola.training.security.TraineeOwnershipChecks
 import com.ritense.valtimo.epistola.training.security.TraineeOwnershipInterceptor
 import com.ritense.valtimo.epistola.training.security.TraineeProvisioningFilter
@@ -96,13 +97,20 @@ class TrainingConfiguration {
     @Bean
     fun traineeProvisioningFilter(provisioningService: TraineeDossierProvisioningService) = TraineeProvisioningFilter(provisioningService)
 
+    @Bean
+    fun traineeAdminSurfaceGuardFilter() = TraineeAdminSurfaceGuardFilter()
+
     // Very low @Order so this bean's authorizeHttpRequests rules are registered ahead of
     // Valtimo's own module HttpSecurityConfigurers for the same paths (first-match-wins) — see
-    // TrainingHttpSecurityConfigurer's KDoc for why this needs verifying against a live boot.
+    // TrainingHttpSecurityConfigurer's KDoc for why this needs verifying against a live boot. The
+    // filters it registers (traineeProvisioningFilter, traineeAdminSurfaceGuardFilter) don't share
+    // that risk — addFilterBefore position is independent of this @Order.
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE + 10)
-    fun trainingHttpSecurityConfigurer(traineeProvisioningFilter: TraineeProvisioningFilter) =
-        TrainingHttpSecurityConfigurer(traineeProvisioningFilter)
+    fun trainingHttpSecurityConfigurer(
+        traineeProvisioningFilter: TraineeProvisioningFilter,
+        traineeAdminSurfaceGuardFilter: TraineeAdminSurfaceGuardFilter,
+    ) = TrainingHttpSecurityConfigurer(traineeProvisioningFilter, traineeAdminSurfaceGuardFilter)
 
     @Bean
     fun traineeOwnershipInterceptor(ownershipChecks: TraineeOwnershipChecks) = TraineeOwnershipInterceptor(ownershipChecks)

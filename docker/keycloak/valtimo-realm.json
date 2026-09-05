@@ -25,7 +25,7 @@
       },
       {
         "name": "ROLE_DEMO",
-        "description": "Interactive training-facility participant — assigned explicitly, never implied by the absence of another role. Requires the test-app's 'training' Spring profile."
+        "description": "Interactive training-facility participant — assigned explicitly, never implied by the absence of another role. Requires the test-app's 'training' Spring profile. Always combined with ROLE_ADMIN (Valtimo's own admin UI has no finer-grained frontend role model to widen instead); TraineeAdminSurfaceGuardFilter blocks the operations ROLE_ADMIN would otherwise unlock that a trainee must not reach."
       }
     ]
   },
@@ -190,7 +190,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["ROLE_USER", "ROLE_DEMO"]
+      "realmRoles": ["ROLE_USER", "ROLE_ADMIN", "ROLE_DEMO"]
     },
     {
       "username": "trainee2@demo",
@@ -205,7 +205,7 @@
           "temporary": false
         }
       ],
-      "realmRoles": ["ROLE_USER", "ROLE_DEMO"]
+      "realmRoles": ["ROLE_USER", "ROLE_ADMIN", "ROLE_DEMO"]
     },
     {
       "username": "service-account-valtimo-backend",
