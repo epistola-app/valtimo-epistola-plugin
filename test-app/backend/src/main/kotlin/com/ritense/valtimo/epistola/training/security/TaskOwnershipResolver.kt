@@ -4,7 +4,6 @@
 
 package com.ritense.valtimo.epistola.training.security
 
-import org.operaton.bpm.engine.RuntimeService
 import org.operaton.bpm.engine.TaskService
 
 /**
@@ -13,13 +12,12 @@ import org.operaton.bpm.engine.TaskService
  * A task identifies its process instance, not a document — the case document (== Valtimo's
  * `businessKey` for a dossier-driven process, confirmed project-wide, see this repo's own
  * `EpistolaPluginResource`'s task-scoped authorization) has to be read back from the process
- * instance itself, then resolved the same way [DocumentOwnershipResolver] resolves any other
- * document id.
+ * instance itself. [ProcessInstanceOwnershipResolver] already does exactly that resolution for
+ * process instances/executions, so this only adds the task-to-process-instance hop on top.
  */
 class TaskOwnershipResolver(
     private val taskService: TaskService,
-    private val runtimeService: RuntimeService,
-    private val documentOwnershipResolver: DocumentOwnershipResolver,
+    private val processInstanceOwnershipResolver: ProcessInstanceOwnershipResolver,
 ) {
     fun resolveCaseDefinitionKey(taskId: String): String? {
         val processInstanceId =
@@ -30,14 +28,6 @@ class TaskOwnershipResolver(
                     .singleResult()
                     ?.processInstanceId
             }.getOrNull() ?: return null
-        val businessKey =
-            runCatching {
-                runtimeService
-                    .createProcessInstanceQuery()
-                    .processInstanceId(processInstanceId)
-                    .singleResult()
-                    ?.businessKey
-            }.getOrNull() ?: return null
-        return documentOwnershipResolver.resolveCaseDefinitionKey(businessKey)
+        return processInstanceOwnershipResolver.resolveCaseDefinitionKeyForProcessInstance(processInstanceId)
     }
 }

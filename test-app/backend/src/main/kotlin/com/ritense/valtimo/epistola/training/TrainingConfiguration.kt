@@ -13,6 +13,7 @@ import com.ritense.plugin.service.PluginService
 import com.ritense.processlink.service.ProcessLinkService
 import com.ritense.valtimo.epistola.training.security.DocumentOwnershipResolver
 import com.ritense.valtimo.epistola.training.security.ProcessDefinitionOwnershipResolver
+import com.ritense.valtimo.epistola.training.security.ProcessInstanceOwnershipResolver
 import com.ritense.valtimo.epistola.training.security.TaskOwnershipResolver
 import com.ritense.valtimo.epistola.training.security.TraineeAdminSurfaceGuardFilter
 import com.ritense.valtimo.epistola.training.security.TraineeOwnershipChecks
@@ -70,11 +71,16 @@ class TrainingConfiguration {
     fun documentOwnershipResolver(documentService: DocumentService) = DocumentOwnershipResolver(documentService)
 
     @Bean
-    fun taskOwnershipResolver(
-        taskService: TaskService,
+    fun processInstanceOwnershipResolver(
         runtimeService: RuntimeService,
         documentOwnershipResolver: DocumentOwnershipResolver,
-    ) = TaskOwnershipResolver(taskService, runtimeService, documentOwnershipResolver)
+    ) = ProcessInstanceOwnershipResolver(runtimeService, documentOwnershipResolver)
+
+    @Bean
+    fun taskOwnershipResolver(
+        taskService: TaskService,
+        processInstanceOwnershipResolver: ProcessInstanceOwnershipResolver,
+    ) = TaskOwnershipResolver(taskService, processInstanceOwnershipResolver)
 
     @Bean
     fun traineeOwnershipChecks(
@@ -82,12 +88,14 @@ class TrainingConfiguration {
         processLinkService: ProcessLinkService,
         documentOwnershipResolver: DocumentOwnershipResolver,
         taskOwnershipResolver: TaskOwnershipResolver,
+        processInstanceOwnershipResolver: ProcessInstanceOwnershipResolver,
         properties: TrainingProperties,
     ) = TraineeOwnershipChecks(
         processDefinitionOwnershipResolver,
         processLinkService,
         documentOwnershipResolver,
         taskOwnershipResolver,
+        processInstanceOwnershipResolver,
         properties,
     )
 

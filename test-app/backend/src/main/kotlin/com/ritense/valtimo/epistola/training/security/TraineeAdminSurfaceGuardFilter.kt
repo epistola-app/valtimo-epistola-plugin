@@ -40,9 +40,10 @@ import org.springframework.web.filter.OncePerRequestFilter
  *   recognises), so nothing extra is needed there.
  * - System processes (`ProcessDefinitionManagementHttpSecurityConfigurer`) — the case-*unlinked*
  *   process-definition surface [TrainingHttpSecurityConfigurer]'s KDoc already named as
- *   deliberately not widened; plus three ADMIN-gated mutations buried in the otherwise-`authenticated()`
- *   `ProcessHttpSecurityConfigurer`: process migration, force-deleting a process instance, and raw
- *   BPMN deployment.
+ *   deliberately not widened; plus two ADMIN-gated mutations buried in the otherwise-`authenticated()`
+ *   `ProcessHttpSecurityConfigurer`: process migration and raw BPMN deployment. Force-deleting a
+ *   process instance, the third, is *not* blocked here — see [TraineeOwnershipInterceptor]'s KDoc
+ *   for why that one turned out to be scopable instead.
  * - Decision tables (`DecisionHttpSecurityConfigurer`) — only the *global* list; the case-scoped
  *   decision-definition endpoints are, like Forms, already covered by the existing interceptor.
  * - Logs (`LoggingHttpSecurityConfigurer`).
@@ -62,17 +63,18 @@ import org.springframework.web.filter.OncePerRequestFilter
  *   `ZaakMetrolineDataService` bean exists), never on the caller's identity or any specific case,
  *   confirmed directly from Valtimo 13.44.0 source. Not in [BLOCKED_ENDPOINTS] below.
  * - This plugin's own admin page, `/api/v1/plugin/epistola/admin` — normally gated by the
- *   `EpistolaAdministration:MANAGE` PBAC permission (seeded to `ROLE_ADMIN` by default). Most of
- *   it is left reachable (real `ROLE_ADMIN` already satisfies that PBAC grant) precisely *because*
- *   [TraineeOwnershipResponseBodyAdvice] response-filters it down to the caller's own tenant/plugin
- *   configuration — health checks and the usage overview keep the shared template's own entries
- *   visible too (read-only reference, same as the case-definition/process-link lists), pending
- *   jobs don't. Only the sub-resources with no safe per-trainee scoping stay hard-blocked here:
- *   catalog listing/redeploy and `/export/{processLinkId}` take an arbitrary id with nothing to
- *   check it against; `/pending/{executionId}/reconcile` likewise; `/validations` scans every
- *   deployed process definition engine-wide and can't distinguish trainees from it (every cloned
- *   dossier shares the same literal process-definition key, only the version tag differs); and
- *   `/forms/legacy-override` has no per-tenant scoping either.
+ *   `EpistolaAdministration:MANAGE` PBAC permission (seeded to `ROLE_ADMIN` by default). Almost all
+ *   of it is left reachable (real `ROLE_ADMIN` already satisfies that PBAC grant): health checks,
+ *   the usage overview, and pending jobs are response-filtered by
+ *   [TraineeOwnershipResponseBodyAdvice] down to the caller's own tenant/plugin configuration
+ *   (health/usage also keep the shared template's own entries visible, read-only reference);
+ *   catalog listing/redeploy, process-link export, and pending-job reconcile are scoped by
+ *   [TraineeOwnershipInterceptor] instead, once it became clear each one identifies its target by
+ *   a resolvable plugin-configuration/process-link/execution id, not an unowned arbitrary one. Only
+ *   `/validations` and `/forms/legacy-override` stay hard-blocked here: both scan engine-wide with
+ *   no per-resource identifier at all to scope by (every cloned dossier shares the same literal
+ *   process-definition key, only the version tag differs, so `/validations`' violations can't be
+ *   attributed to one trainee over another even in principle).
  *
  * Implemented as a filter — not more `authorizeHttpRequests` entries — deliberately: Valtimo
  * combines every registered [com.ritense.valtimo.contract.security.config.HttpSecurityConfigurer]
@@ -215,11 +217,16 @@ class TraineeAdminSurfaceGuardFilter : OncePerRequestFilter() {
                 block(HttpMethod.POST, "$PROCESS_DEFINITION_URL/import/preview", systemProcessReason)
                 block(HttpMethod.POST, "$PROCESS_DEFINITION_URL/import", systemProcessReason)
 
-                // Three ADMIN-gated mutations inside the otherwise authenticated()-only
-                // ProcessHttpSecurityConfigurer: process migration, force-delete, raw BPMN deploy —
-                // each takes an arbitrary process instance/definition id with no ownership check.
+                // Two of three ADMIN-gated mutations inside the otherwise authenticated()-only
+                // ProcessHttpSecurityConfigurer stay blocked. Migration takes two full process-
+                // definition ids (resolvable via ProcessDefinitionOwnershipResolver, unlike a bare
+                // key) but a trainee's dossier is finalized at provisioning and never gets a second
+                // deployed version to migrate between, even their own - no legitimate use case, not
+                // just an unscopable one. Raw BPMN deployment creates an entirely new, arbitrary
+                // process definition with no existing target to check ownership against at all.
+                // Force-deleting a process instance (POST /api/v1/process/{processInstanceId}/delete)
+                // is NOT blocked here - see TraineeOwnershipInterceptor's `processInstanceId` check.
                 block(HttpMethod.POST, "/api/v1/process/definition/*/*/migrate", ARBITRARY_TARGET_REASON)
-                block(HttpMethod.POST, "/api/v1/process/*/delete", ARBITRARY_TARGET_REASON)
                 block(HttpMethod.POST, "/api/v1/process/definition/deployment", ARBITRARY_TARGET_REASON)
 
                 // Decision tables (DecisionHttpSecurityConfigurer) — global list only; case-scoped
@@ -250,12 +257,14 @@ class TraineeAdminSurfaceGuardFilter : OncePerRequestFilter() {
                 block(HttpMethod.POST, "/api/management/v1/case/import/preview", newCaseDefinitionReason)
 
                 // This plugin's own admin page — only the sub-resources with no safe per-trainee
-                // scoping; /health, /versions, /changelog, /usage, and /pending stay reachable,
-                // response-filtered by TraineeOwnershipResponseBodyAdvice.
-                block(HttpMethod.GET, "$EPISTOLA_ADMIN_URL/configurations/*/catalogs", ARBITRARY_TARGET_REASON)
-                block(HttpMethod.POST, "$EPISTOLA_ADMIN_URL/configurations/*/catalogs/*/redeploy", ARBITRARY_TARGET_REASON)
-                block(HttpMethod.GET, "$EPISTOLA_ADMIN_URL/export/*", ARBITRARY_TARGET_REASON)
-                block(HttpMethod.POST, "$EPISTOLA_ADMIN_URL/pending/*/reconcile", ARBITRARY_TARGET_REASON)
+                // scoping stay blocked here. /health, /versions, /changelog, /usage, and /pending
+                // are response-filtered by TraineeOwnershipResponseBodyAdvice; catalog
+                // listing/redeploy, export, and reconcile turned out to be scopable via
+                // TraineeOwnershipInterceptor once ProcessInstanceOwnershipResolver existed - see
+                // that interceptor's KDoc - so they're not blocked here either. /validations scans
+                // every deployed process definition engine-wide and can't distinguish trainees from
+                // it (every cloned dossier shares the same literal process-definition key, only the
+                // version tag differs); /forms/legacy-override has no per-tenant scoping either.
                 block(HttpMethod.GET, "$EPISTOLA_ADMIN_URL/validations", ENGINE_WIDE_REASON)
                 block(HttpMethod.GET, "$EPISTOLA_ADMIN_URL/forms/legacy-override", ENGINE_WIDE_REASON)
             }

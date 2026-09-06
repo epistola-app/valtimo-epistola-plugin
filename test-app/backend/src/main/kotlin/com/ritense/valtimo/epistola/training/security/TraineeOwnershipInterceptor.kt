@@ -36,6 +36,14 @@ import java.util.UUID
  * [TraineeAdminSurfaceGuardFilter]'s KDoc-equivalent gap note for the other unconditioned
  * `ROLE_ADMIN` resource types (`Note`, `JsonSchemaDocumentSnapshot`, `Dashboard`, `CaseTab`,
  * `SearchField`, `Object`, `ResourcePermission`) still open.
+ *
+ * **Also covers what would otherwise be hard-blocked "arbitrary id" endpoints in
+ * [TraineeAdminSurfaceGuardFilter]** - force-deleting a process instance and reconciling a stuck
+ * Epistola execution both take a bare runtime id with nothing else to check ownership against, so
+ * they were originally just blocked outright. [ProcessInstanceOwnershipResolver] made resolving
+ * them to a case-definition key possible the same way as documents/tasks, so they're scoped here
+ * instead - not every "arbitrary id" endpoint could be treated this way (see that filter's KDoc
+ * for the ones that genuinely can't, or have no legitimate trainee use case at all).
  */
 class TraineeOwnershipInterceptor(
     private val ownershipChecks: TraineeOwnershipChecks,
@@ -112,6 +120,37 @@ class TraineeOwnershipInterceptor(
         // No allowShared, same reasoning as the document id check above.
         pathVariable(request, "taskId")?.let { taskId ->
             return allowOrForbid(response, ownershipChecks.isOwnTask(traineeIdentity, taskId))
+        }
+
+        // ProcessResource: POST /api/v1/process/{processInstanceId}/delete — confirmed from Valtimo
+        // source before relying on the name, not guessed (this repo's admin-surface-guard filter
+        // originally hard-blocked this outright; scoping it instead needed the exact path variable
+        // name verified first, since a wrong guess would silently never match and fail open).
+        pathVariable(request, "processInstanceId")?.let { processInstanceId ->
+            return allowOrForbid(response, ownershipChecks.isOwnProcessInstance(traineeIdentity, processInstanceId))
+        }
+
+        // EpistolaAdminResource: GET .../configurations/{configurationId}/catalogs (list, read-only)
+        // / POST .../configurations/{configurationId}/catalogs/{slug}/redeploy (mutation) — both
+        // scope by the caller's own plugin configuration, same as isOwnPluginConfiguration
+        // everywhere else. allowShared only for the GET: listing what's redeployable is read-only
+        // reference, but redeploy overwrites the shared "demo" tenant's own catalog content, which
+        // form-flow-demo's process-links and every other trainee's read-only view of it depend on
+        // — a mutation against shared infrastructure, not the trainee's own data.
+        pathVariable(request, "configurationId")?.let { configurationId ->
+            val readOnly = request.method.equals("GET", ignoreCase = true)
+            return allowOrForbid(
+                response,
+                ownershipChecks.isOwnPluginConfiguration(traineeIdentity, configurationId, allowShared = readOnly),
+            )
+        }
+
+        // EpistolaAdminResource: POST .../pending/{executionId}/reconcile — manually retries the
+        // caller's own stuck Epistola catch event. No allowShared: reconciling is a mutation, and
+        // the shared template dossier should stay untouched by every trainee, not reconciled by
+        // whichever one happens to click it.
+        pathVariable(request, "executionId")?.let { executionId ->
+            return allowOrForbid(response, ownershipChecks.isOwnExecution(traineeIdentity, executionId))
         }
 
         return true

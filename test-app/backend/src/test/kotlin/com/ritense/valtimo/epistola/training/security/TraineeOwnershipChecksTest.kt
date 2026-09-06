@@ -19,12 +19,14 @@ class TraineeOwnershipChecksTest {
     private val properties = TrainingProperties()
     private val documentOwnershipResolver: DocumentOwnershipResolver = mock()
     private val taskOwnershipResolver: TaskOwnershipResolver = mock()
+    private val processInstanceOwnershipResolver: ProcessInstanceOwnershipResolver = mock()
     private val checks =
         TraineeOwnershipChecks(
             processDefinitionOwnershipResolver = mock(),
             processLinkService = mock<ProcessLinkService>(),
             documentOwnershipResolver = documentOwnershipResolver,
             taskOwnershipResolver = taskOwnershipResolver,
+            processInstanceOwnershipResolver = processInstanceOwnershipResolver,
             properties = properties,
         )
 
@@ -118,5 +120,39 @@ class TraineeOwnershipChecksTest {
         assertThat(checks.isOwnTask(TRAINEE, "own-task")).isTrue()
         assertThat(checks.isOwnTask(TRAINEE, "other-task")).isFalse()
         assertThat(checks.isOwnTask(TRAINEE, "unresolvable-task")).isFalse()
+    }
+
+    @Test
+    fun `isOwnProcessInstance resolves the instance's case-definition and never accepts the shared template`() {
+        val ownKey = TraineeKeys.caseDefinitionKey(TRAINEE)
+        whenever(processInstanceOwnershipResolver.resolveCaseDefinitionKeyForProcessInstance("own-instance")).thenReturn(ownKey)
+        whenever(processInstanceOwnershipResolver.resolveCaseDefinitionKeyForProcessInstance("other-instance"))
+            .thenReturn("some-unrelated-case")
+        whenever(processInstanceOwnershipResolver.resolveCaseDefinitionKeyForProcessInstance("template-instance"))
+            .thenReturn(properties.templateCaseDefinitionKey)
+        whenever(processInstanceOwnershipResolver.resolveCaseDefinitionKeyForProcessInstance("unresolvable-instance")).thenReturn(null)
+
+        assertThat(checks.isOwnProcessInstance(TRAINEE, "own-instance")).isTrue()
+        assertThat(checks.isOwnProcessInstance(TRAINEE, "other-instance")).isFalse()
+        // No allowShared parameter at all — force-deleting the shared template's own process
+        // instance must never be allowed, not even read-only, since delete has no read-only form.
+        assertThat(checks.isOwnProcessInstance(TRAINEE, "template-instance")).isFalse()
+        assertThat(checks.isOwnProcessInstance(TRAINEE, "unresolvable-instance")).isFalse()
+    }
+
+    @Test
+    fun `isOwnExecution resolves the execution's case-definition and never accepts the shared template`() {
+        val ownKey = TraineeKeys.caseDefinitionKey(TRAINEE)
+        whenever(processInstanceOwnershipResolver.resolveCaseDefinitionKeyForExecution("own-execution")).thenReturn(ownKey)
+        whenever(processInstanceOwnershipResolver.resolveCaseDefinitionKeyForExecution("other-execution"))
+            .thenReturn("some-unrelated-case")
+        whenever(processInstanceOwnershipResolver.resolveCaseDefinitionKeyForExecution("template-execution"))
+            .thenReturn(properties.templateCaseDefinitionKey)
+        whenever(processInstanceOwnershipResolver.resolveCaseDefinitionKeyForExecution("unresolvable-execution")).thenReturn(null)
+
+        assertThat(checks.isOwnExecution(TRAINEE, "own-execution")).isTrue()
+        assertThat(checks.isOwnExecution(TRAINEE, "other-execution")).isFalse()
+        assertThat(checks.isOwnExecution(TRAINEE, "template-execution")).isFalse()
+        assertThat(checks.isOwnExecution(TRAINEE, "unresolvable-execution")).isFalse()
     }
 }

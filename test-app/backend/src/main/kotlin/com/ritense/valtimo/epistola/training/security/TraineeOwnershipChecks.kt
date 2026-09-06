@@ -23,6 +23,7 @@ class TraineeOwnershipChecks(
     private val processLinkService: ProcessLinkService,
     private val documentOwnershipResolver: DocumentOwnershipResolver,
     private val taskOwnershipResolver: TaskOwnershipResolver,
+    private val processInstanceOwnershipResolver: ProcessInstanceOwnershipResolver,
     private val properties: TrainingProperties,
 ) {
     /** Null when the caller isn't a trainee at all — genuine `ROLE_ADMIN` staff are never scoped. */
@@ -148,5 +149,36 @@ class TraineeOwnershipChecks(
     ): Boolean {
         val caseDefinitionKey = taskOwnershipResolver.resolveCaseDefinitionKey(taskId) ?: return false
         return isOwnCaseDefinition(traineeIdentity, caseDefinitionKey, allowShared)
+    }
+
+    /**
+     * Data-plane counterpart to [isOwnCaseDefinition] for a *runtime* process instance —
+     * `POST /api/v1/process/{processInstanceId}/delete` takes a bare id with nothing else to check
+     * ownership against, resolved via [ProcessInstanceOwnershipResolver]. No `allowShared`: this is
+     * a destructive operation, never appropriate against the shared template regardless of read vs
+     * write (there is no read-only variant of "delete").
+     */
+    fun isOwnProcessInstance(
+        traineeIdentity: String,
+        processInstanceId: String,
+    ): Boolean {
+        val caseDefinitionKey =
+            processInstanceOwnershipResolver.resolveCaseDefinitionKeyForProcessInstance(processInstanceId) ?: return false
+        return isOwnCaseDefinition(traineeIdentity, caseDefinitionKey)
+    }
+
+    /**
+     * Data-plane counterpart to [isOwnCaseDefinition] for an execution —
+     * `POST .../pending/{executionId}/reconcile` manually retries a trainee's own stuck Epistola
+     * catch event, resolved via [ProcessInstanceOwnershipResolver]. No `allowShared`, same reasoning
+     * as [isOwnProcessInstance] — reconciling is a mutation, and the shared template dossier is
+     * meant to stay untouched by every trainee, not reconciled by whichever one happens to click it.
+     */
+    fun isOwnExecution(
+        traineeIdentity: String,
+        executionId: String,
+    ): Boolean {
+        val caseDefinitionKey = processInstanceOwnershipResolver.resolveCaseDefinitionKeyForExecution(executionId) ?: return false
+        return isOwnCaseDefinition(traineeIdentity, caseDefinitionKey)
     }
 }

@@ -28,6 +28,10 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
  *   it, and trainees now carry real `ROLE_ADMIN` too (see
  *   [com.ritense.valtimo.epistola.training.TraineeKeys.ADMIN_AUTHORITY]'s KDoc) — this interceptor
  *   is what re-narrows that back down to their own dossier.
+ * - A handful of endpoints [TraineeAdminSurfaceGuardFilter] originally hard-blocked outright turned
+ *   out to be scopable the same way once [ProcessInstanceOwnershipResolver] existed: force-deleting
+ *   a process instance, and this plugin's own admin sub-resources scoped by plugin-configuration id
+ *   or execution id (catalog listing/redeploy, reconcile, process-link export).
  */
 class TrainingWebConfig(
     private val traineeOwnershipInterceptor: TraineeOwnershipInterceptor,
@@ -47,6 +51,10 @@ class TrainingWebConfig(
                 "/api/v1/document-search",
                 "/api/v1/task/**",
                 "/api/v2/task/**",
+                "/api/v1/process/*/delete",
+                "/api/v1/plugin/epistola/admin/configurations/**",
+                "/api/v1/plugin/epistola/admin/export/**",
+                "/api/v1/plugin/epistola/admin/pending/**",
             )
     }
 }

@@ -47,9 +47,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - This plugin's own admin page (`EpistolaAdministration:MANAGE`, seeded to `ROLE_ADMIN` by
     default) is a partial exception: health/usage/pending-jobs/version/changelog stay reachable,
     response-filtered to the trainee's own tenant/plugin-configuration (health and usage also keep
-    the shared template's own entries visible, read-only reference) — only the sub-resources with
-    no safe per-trainee scoping (catalog redeploy, arbitrary export/reconcile-by-id, the
-    engine-wide BPMN validation report, legacy-override form scanning) stay hard-blocked.
+    the shared template's own entries visible, read-only reference); catalog listing/redeploy,
+    process-link export, and pending-job reconcile are scoped by ownership instead of blocked (see
+    below) — only the engine-wide BPMN validation report and legacy-override form scanning have no
+    per-resource identifier to scope by at all, and stay hard-blocked.
+  - **Several "arbitrary id, no way to confirm ownership" endpoints turned out to be scopable after
+    all**, once a runtime process instance or execution could be resolved back to a case-definition
+    the same way a document or task already was. New `ProcessInstanceOwnershipResolver` (process
+    instance → business key → case-definition key; an execution resolves to its process instance
+    first, then the same chain) let `TraineeOwnershipInterceptor` take over
+    force-deleting a process instance (`POST /api/v1/process/{id}/delete`, no read-only
+    equivalent — never allowed even against the shared template) and this plugin's own catalog
+    redeploy / process-link export / pending-job reconcile (catalog _listing_ also allows the
+    shared template, read-only; redeploy and reconcile are mutations against the caller's own
+    plugin configuration only) — all five were previously hard-blocked outright in
+    `TraineeAdminSurfaceGuardFilter` for lack of a resolution path. What's left hard-blocked now has
+    a different reason each: process migration and raw BPMN deployment are still "arbitrary
+    target" (a dossier is finalized at provisioning and never gets a second version to migrate
+    between, so migration has no legitimate use case even though it's technically resolvable; raw
+    deployment creates a brand-new process with no existing target at all), while the engine-wide
+    validation/legacy-override scans have no per-resource identifier to scope by in the first
+    place.
   - The **case/document/task data plane** is scoped the same way, via `DocumentOwnershipResolver`
     (a document resolves to its document-definition name through `DocumentService`) and
     `TaskOwnershipResolver` (a task resolves through its process instance's business key). Unlike

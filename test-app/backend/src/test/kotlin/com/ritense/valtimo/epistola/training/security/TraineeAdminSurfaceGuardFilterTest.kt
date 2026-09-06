@@ -148,13 +148,12 @@ class TraineeAdminSurfaceGuardFilterTest {
     fun `blocks admin sub-resources with no safe per-trainee scoping`() {
         authenticateAs(TraineeKeys.TRAINEE_AUTHORITY, TraineeKeys.ADMIN_AUTHORITY)
 
+        // catalog listing/redeploy, export, and reconcile used to be here too, until
+        // ProcessInstanceOwnershipResolver made them scopable via TraineeOwnershipInterceptor
+        // instead — see TraineeOwnershipInterceptorTest for their allow/deny coverage now.
         val blocked =
             listOf(
                 "GET" to "/api/v1/plugin/epistola/admin/validations",
-                "GET" to "/api/v1/plugin/epistola/admin/configurations/some-id/catalogs",
-                "POST" to "/api/v1/plugin/epistola/admin/configurations/some-id/catalogs/some-slug/redeploy",
-                "GET" to "/api/v1/plugin/epistola/admin/export/some-process-link-id",
-                "POST" to "/api/v1/plugin/epistola/admin/pending/some-execution-id/reconcile",
                 "GET" to "/api/v1/plugin/epistola/admin/forms/legacy-override",
             )
 
@@ -165,6 +164,30 @@ class TraineeAdminSurfaceGuardFilterTest {
             filter.doFilter(request, localResponse, filterChain)
 
             verify(localResponse).status = HttpServletResponse.SC_FORBIDDEN
+        }
+    }
+
+    @Test
+    fun `does not block the endpoints scoped instead by TraineeOwnershipInterceptor`() {
+        authenticateAs(TraineeKeys.TRAINEE_AUTHORITY, TraineeKeys.ADMIN_AUTHORITY)
+
+        val nowScoped =
+            listOf(
+                "GET" to "/api/v1/plugin/epistola/admin/configurations/some-id/catalogs",
+                "POST" to "/api/v1/plugin/epistola/admin/configurations/some-id/catalogs/some-slug/redeploy",
+                "GET" to "/api/v1/plugin/epistola/admin/export/some-process-link-id",
+                "POST" to "/api/v1/plugin/epistola/admin/pending/some-execution-id/reconcile",
+                "POST" to "/api/v1/process/some-process-instance-id/delete",
+            )
+
+        for ((method, path) in nowScoped) {
+            val request = requestFor(method, path)
+            val response: HttpServletResponse = mock()
+            val localChain: FilterChain = mock()
+
+            filter.doFilter(request, response, localChain)
+
+            verify(localChain).doFilter(request, response)
         }
     }
 
