@@ -216,51 +216,16 @@ BPMN `@PluginAction` methods (`generate-document`, `check-job-status`, `download
 
 ## Interactive training facility (test-app only, soft tenancy)
 
-An opt-in sandbox for letting people learn the plugin hands-on against a shared, always-on
-test-app instance, without being able to see or touch anyone else's work. It is **soft
-tenancy, not real multi-tenancy**: there is still one Valtimo instance, one database, one
-Epistola connection at the infrastructure level — isolation is achieved purely by cloning a
-personal set of resources per trainee and scoping authorization down to "your own clone,"
-not by any DB-per-tenant/schema-per-tenant partitioning. Lives entirely under
-`test-app/backend/src/main/kotlin/com/ritense/valtimo/epistola/training/`; nothing in the
-shared plugin module (`backend/plugin/`) or frontend library depends on it.
-
-- **Enable**: activate the `training` Spring profile (`--spring.profiles.active=...,training`).
-  Off by default — `TrainingConfiguration`'s `@Configuration` class carries `@Profile("training")`
-  directly (not just on its `@Bean` methods, since `@ControllerAdvice` beans are
-  `@Component`-meta-annotated and would otherwise be picked up by component-scan regardless of
-  profile), so omitting the profile wires zero beans and leaves the rest of the app byte-for-byte
-  as shipped.
-- **Who becomes a trainee**: a principal carrying a real Keycloak realm role, `ROLE_DEMO`
-  (`docker/keycloak/valtimo-realm.json`; two demo accounts, `trainee1@demo`/`trainee2@demo`, are
-  seeded there for local testing) — an explicit, assigned role, not "any non-admin login." Every
-  check in the feature keys off `ROLE_DEMO` presence alone.
-- **What happens on first request**: `TraineeProvisioningFilter` clones a personal "dossier"
-  (document-definition + BPMN process + process-links + forms) from the `form-flow-demo` case
-  type via Valtimo's own `ExportService`/`ImportService` (`keyOverride`/
-  `pluginConfigurationMappings`, not bespoke duplication code), plus a personal Epistola
-  `PluginConfiguration`. To also provision a real per-trainee Epistola tenant, set
-  `epistola.training.epistola-shared-secret` to epistola-suite's demo-profile shared secret
-  (`SharedSecretEpistolaTenantProvisioner`); leave it unset and tenant provisioning fails loudly
-  (`NotConfiguredEpistolaTenantProvisioner`) instead of silently.
-- **How access is scoped**: trainees carry real `ROLE_ADMIN` (Valtimo's own admin Angular
-  routes/menu are hard-gated to it client-side, with no finer-grained frontend role to widen
-  instead), fully compensated for on the backend by three layers —
-  `TraineeOwnershipInterceptor`/`*BodyAdvice` (resolves a resource's owning case-definition and
-  403s anything not the caller's own, for the process-link/plugin-configuration/case-definition
-  management surface and the document/task data plane), `TraineeAdminSurfaceGuardFilter`
-  (hard-blocks every other admin surface with no safe per-resource scoping — the PBAC editor,
-  translations, global forms/decision-tables, BPMN deployment, etc. — each with its own specific
-  403 reason), and a widening `HttpSecurityConfigurer` for the endpoints the interceptor covers.
-  Full rationale, every gap found via live cross-trainee testing and how it was closed, is in
-  `CHANGELOG.md`'s training-facility entry — this section is the map, not the detail.
-- **Known gaps** (not yet closed, tracked rather than assumed safe): dossier retention/cleanup is
-  not implemented (abandoned dossiers accumulate indefinitely); Valtimo's own
-  `all.permission.json` grants `ROLE_ADMIN` unconditioned access to several more PBAC resource
-  types beyond the ones already scoped (`Note`, `JsonSchemaDocumentSnapshot`, `Dashboard`,
-  `CaseTab`, `SearchField`, `Object`, `ResourcePermission`, `CaseDefinition` view/view_list,
-  `OperatonExecution` non-create actions) and the task batch endpoints
-  (`batch-assign`/`batch-complete`).
+An opt-in (`training` Spring profile) sandbox: a principal carrying a real Keycloak realm role,
+`ROLE_DEMO`, gets a personal cloned "dossier" (document-definition + BPMN process + process-links)
+and their own Epistola `PluginConfiguration`, auto-provisioned on first request, with a scoped
+admin layer so they can configure it without touching anyone else's. **Soft tenancy, not real
+multi-tenancy** — one shared instance/database, isolation purely via per-trainee resource cloning
+plus ownership-scoped authorization, not infrastructure partitioning. Off by default; lives
+entirely under `test-app/backend/.../training/`, nothing in the shared plugin module depends on
+it. See [docs/training-facility.md](docs/training-facility.md) for how provisioning works, the
+full authorization model (why trainees carry real `ROLE_ADMIN` and how the backend compensates),
+the critical PBAC finding that came out of it, and known gaps.
 
 ## Design Decisions
 
