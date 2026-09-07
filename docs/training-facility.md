@@ -129,7 +129,9 @@ because of this one pivot.
 `TraineeOwnershipChecks` is the single source of truth all three enforcement points call into, so
 the three surfaces (path/query params, request bodies, response bodies) can't drift apart. Each
 check resolves a resource to its owning case-definition key and compares it against
-`TraineeKeys.caseDefinitionKey(traineeIdentity)`:
+`TraineeKeys.caseDefinitionKey(traineeIdentity)` — or, for a self-created dossier (see
+[Self-service dossier creation](#self-service-dossier-creation) below), against
+`CaseDefinition.createdBy`:
 
 | Resource                           | Resolved via                                     | Shared `form-flow-demo` template allowed? |
 | ---------------------------------- | ------------------------------------------------ | ----------------------------------------- |
@@ -192,6 +194,37 @@ deployed version to migrate between, so migration has no legitimate trainee use 
 it's technically resolvable; deployment creates a brand-new process with no existing target at
 all), while the validation/legacy-override scans have no per-resource identifier to scope by in
 the first place.
+
+### Self-service dossier creation
+
+Beyond the one auto-provisioned dossier, a trainee can create up to 10 more of their own through
+Valtimo's own `/admin/dossiers` UI (`POST /api/management/v1/case-definition/draft`) — no longer
+hard-blocked. These aren't named by a hash of the trainee's identity (the trainee picks the key
+themselves), so they're recognized instead by `CaseDefinition.createdBy` — a real Valtimo column
+`CaseDefinitionService.createCaseDefinitionDraft` already populates from the authenticated caller
+via `SecurityUtils.getCurrentUserLogin()` (`= authentication.getName()`), confirmed to resolve to
+exactly the same value `TraineeIdentity.resolve` uses everywhere else in this feature (both land
+on the JWT's `email` claim — see [Provisioning](#provisioning-what-happens-on-first-request)
+above). **No new table**: `isOwnCaseDefinition` falls back to querying this existing column only
+when the key-hash comparison misses.
+
+`TraineeOwnershipRequestBodyAdvice` enforces two things before the request ever reaches Valtimo's
+controller:
+
+- **The cap.** Counts _distinct_ case-definition keys `createdBy` the trainee, not rows — a
+  case-definition can have several draft/finalized versions under the same key, which is still one
+  dossier. Fetches every case-definition and filters in memory (`CaseDefinitionRepository` is
+  Valtimo's own, not ours to extend, and exposes no `createdBy`-filtered query) — fine for a
+  demo/training instance, not a production-scale one.
+- **Existing-key drafts.** Drafting a new _version_ of an already-existing key (Valtimo's
+  `basedOnCaseDefinitionVersion` field) requires already owning that key — otherwise a trainee
+  could draft a new version of another trainee's dossier, or of a shared/unrelated case type, by
+  naming its key and picking any not-yet-used version tag. This check never counts against the
+  cap: it isn't a new dossier.
+
+Once created, ownership of a self-created dossier is recognized everywhere `isOwnCaseDefinition`
+already runs — deletion, finalization, the case-definition list view — with no changes needed at
+any of those call sites.
 
 ## The critical finding: unconditioned `ROLE_ADMIN` PBAC
 

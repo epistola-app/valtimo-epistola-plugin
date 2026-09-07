@@ -4,6 +4,7 @@
 
 package com.ritense.valtimo.epistola.training.security
 
+import com.ritense.case_.repository.CaseDefinitionRepository
 import com.ritense.plugin.domain.PluginConfigurationId
 import com.ritense.processlink.domain.ProcessLink
 import com.ritense.processlink.service.ProcessLinkService
@@ -24,6 +25,7 @@ class TraineeOwnershipChecks(
     private val documentOwnershipResolver: DocumentOwnershipResolver,
     private val taskOwnershipResolver: TaskOwnershipResolver,
     private val processInstanceOwnershipResolver: ProcessInstanceOwnershipResolver,
+    private val caseDefinitionRepository: CaseDefinitionRepository,
     private val properties: TrainingProperties,
 ) {
     /** Null when the caller isn't a trainee at all — genuine `ROLE_ADMIN` staff are never scoped. */
@@ -105,6 +107,20 @@ class TraineeOwnershipChecks(
      * string comparison, no resolution step needed.
      *
      * @param allowShared also accept the shared template's key — only safe for read-only checks.
+     *
+     * Beyond the one auto-provisioned dossier (whose key already **is** [TraineeKeys.caseDefinitionKey]),
+     * a trainee can also create additional case-definitions of their own through Valtimo's own
+     * `/admin/dossiers` UI (`POST .../case-definition/draft` — see [canCreateAnotherCaseDefinition]
+     * for the cap on how many). Those aren't named by a hash of the trainee's identity — the
+     * trainee picks the key themselves — so they're recognized instead by
+     * `CaseDefinition.createdBy`, a real Valtimo column `CaseDefinitionService.createCaseDefinitionDraft`
+     * already populates from the authenticated caller via `SecurityUtils.getCurrentUserLogin()`
+     * (`= authentication.getName()`). Confirmed to resolve to exactly the same value as
+     * [TraineeIdentity.resolve] in this app — both land on the JWT's `email` claim (this app's own
+     * `Jwt.toAuthenticationToken()` builds `JwtAuthenticationToken` with an explicit
+     * `email ?: preferred_username ?: subject` principal, not Spring's default `sub`-based name) —
+     * so no extra code is needed to populate it correctly. No new table: this is Valtimo's own
+     * existing column, queried on demand, not cached anywhere.
      */
     fun isOwnCaseDefinition(
         traineeIdentity: String,
@@ -112,8 +128,34 @@ class TraineeOwnershipChecks(
         allowShared: Boolean = false,
     ): Boolean {
         if (caseDefinitionKey == TraineeKeys.caseDefinitionKey(traineeIdentity)) return true
-        return allowShared && caseDefinitionKey == properties.templateCaseDefinitionKey
+        if (allowShared && caseDefinitionKey == properties.templateCaseDefinitionKey) return true
+        return isTraineeCreatedCaseDefinition(traineeIdentity, caseDefinitionKey)
     }
+
+    private fun isTraineeCreatedCaseDefinition(
+        traineeIdentity: String,
+        caseDefinitionKey: String,
+    ): Boolean = caseDefinitionRepository.findAllByIdKeyOrderByIdVersionTagDesc(caseDefinitionKey).any { it.createdBy == traineeIdentity }
+
+    /** Whether a case-definition with this key already exists — any version, draft or final. */
+    fun caseDefinitionKeyExists(caseDefinitionKey: String): Boolean = caseDefinitionRepository.existsByIdKey(caseDefinitionKey)
+
+    /**
+     * Caps how many additional case-definitions (beyond the one auto-provisioned dossier) a
+     * trainee can create through Valtimo's own `/admin/dossiers` UI — self-service creation is
+     * otherwise unbounded, and every one is real infrastructure (schema, BPMN, forms) that nothing
+     * currently cleans up (dossier retention/cleanup is a tracked gap — see the training facility
+     * doc). Counts *distinct* case-definition keys, not rows: a case-definition can have several
+     * draft/finalized versions under the same key, which is still one dossier, not several. Fetches
+     * every case-definition rather than a filtered query — this is a demo/training instance, not a
+     * production-scale one, and `CaseDefinitionRepository` (Valtimo's own, not ours to extend)
+     * exposes no `createdBy`-filtered query to delegate to instead.
+     */
+    fun canCreateAnotherCaseDefinition(traineeIdentity: String): Boolean =
+        traineeCreatedCaseDefinitionKeys(traineeIdentity).size < MAX_TRAINEE_CREATED_CASE_DEFINITIONS
+
+    private fun traineeCreatedCaseDefinitionKeys(traineeIdentity: String): Set<String> =
+        caseDefinitionRepository.findAll().filter { it.createdBy == traineeIdentity }.mapTo(mutableSetOf()) { it.id.key }
 
     /**
      * Data-plane counterpart to [isOwnCaseDefinition]: a document instance identifies itself only
@@ -180,5 +222,9 @@ class TraineeOwnershipChecks(
     ): Boolean {
         val caseDefinitionKey = processInstanceOwnershipResolver.resolveCaseDefinitionKeyForExecution(executionId) ?: return false
         return isOwnCaseDefinition(traineeIdentity, caseDefinitionKey)
+    }
+
+    companion object {
+        const val MAX_TRAINEE_CREATED_CASE_DEFINITIONS = 10
     }
 }

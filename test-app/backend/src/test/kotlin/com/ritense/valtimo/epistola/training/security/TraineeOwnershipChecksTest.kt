@@ -4,7 +4,10 @@
 
 package com.ritense.valtimo.epistola.training.security
 
+import com.ritense.case_.domain.definition.CaseDefinition
+import com.ritense.case_.repository.CaseDefinitionRepository
 import com.ritense.processlink.service.ProcessLinkService
+import com.ritense.valtimo.contract.case_.CaseDefinitionId
 import com.ritense.valtimo.epistola.training.TraineeKeys
 import com.ritense.valtimo.epistola.training.TrainingProperties
 import org.assertj.core.api.Assertions.assertThat
@@ -20,6 +23,7 @@ class TraineeOwnershipChecksTest {
     private val documentOwnershipResolver: DocumentOwnershipResolver = mock()
     private val taskOwnershipResolver: TaskOwnershipResolver = mock()
     private val processInstanceOwnershipResolver: ProcessInstanceOwnershipResolver = mock()
+    private val caseDefinitionRepository: CaseDefinitionRepository = mock()
     private val checks =
         TraineeOwnershipChecks(
             processDefinitionOwnershipResolver = mock(),
@@ -27,7 +31,19 @@ class TraineeOwnershipChecksTest {
             documentOwnershipResolver = documentOwnershipResolver,
             taskOwnershipResolver = taskOwnershipResolver,
             processInstanceOwnershipResolver = processInstanceOwnershipResolver,
+            caseDefinitionRepository = caseDefinitionRepository,
             properties = properties,
+        )
+
+    private fun caseDefinition(
+        key: String,
+        createdBy: String?,
+    ): CaseDefinition =
+        CaseDefinition(
+            id = CaseDefinitionId(key, "1.0.0"),
+            name = key,
+            createdBy = createdBy,
+            createdDate = null,
         )
 
     @Test
@@ -91,6 +107,46 @@ class TraineeOwnershipChecksTest {
         val other = TraineeKeys.pluginConfigurationId(OTHER_TRAINEE).toString()
 
         assertThat(checks.isOwnOrTemplatePluginUsage(TRAINEE, other, "some-unrelated-case")).isFalse()
+    }
+
+    @Test
+    fun `isOwnCaseDefinition also accepts a case-definition the trainee created themselves through admin_dossiers`() {
+        val ownKey = TraineeKeys.caseDefinitionKey(TRAINEE)
+        whenever(caseDefinitionRepository.findAllByIdKeyOrderByIdVersionTagDesc("my-own-flow"))
+            .thenReturn(listOf(caseDefinition("my-own-flow", createdBy = TRAINEE)))
+        whenever(caseDefinitionRepository.findAllByIdKeyOrderByIdVersionTagDesc("someone-elses-flow"))
+            .thenReturn(listOf(caseDefinition("someone-elses-flow", createdBy = OTHER_TRAINEE)))
+        whenever(caseDefinitionRepository.findAllByIdKeyOrderByIdVersionTagDesc("unknown-key")).thenReturn(emptyList())
+
+        // The auto-provisioned dossier's key still matches purely by hash, no repository call needed.
+        assertThat(checks.isOwnCaseDefinition(TRAINEE, ownKey)).isTrue()
+        assertThat(checks.isOwnCaseDefinition(TRAINEE, "my-own-flow")).isTrue()
+        assertThat(checks.isOwnCaseDefinition(TRAINEE, "someone-elses-flow")).isFalse()
+        assertThat(checks.isOwnCaseDefinition(TRAINEE, "unknown-key")).isFalse()
+    }
+
+    @Test
+    fun `caseDefinitionKeyExists delegates to the repository`() {
+        whenever(caseDefinitionRepository.existsByIdKey("my-flow")).thenReturn(true)
+        whenever(caseDefinitionRepository.existsByIdKey("brand-new-key")).thenReturn(false)
+
+        assertThat(checks.caseDefinitionKeyExists("my-flow")).isTrue()
+        assertThat(checks.caseDefinitionKeyExists("brand-new-key")).isFalse()
+    }
+
+    @Test
+    fun `canCreateAnotherCaseDefinition allows up to the cap and rejects beyond it, counting distinct keys not rows`() {
+        val nineOwnKeys = (1..9).map { caseDefinition("flow-$it", createdBy = TRAINEE) }
+        // A second version of an already-owned key must not count twice toward the cap.
+        val secondVersionOfFlowOne = caseDefinition("flow-1", createdBy = TRAINEE).copy(id = CaseDefinitionId("flow-1", "2.0.0"))
+        val otherTraineesFlow = caseDefinition("other-flow", createdBy = OTHER_TRAINEE)
+
+        whenever(caseDefinitionRepository.findAll()).thenReturn(nineOwnKeys + secondVersionOfFlowOne + otherTraineesFlow)
+        assertThat(checks.canCreateAnotherCaseDefinition(TRAINEE)).isTrue()
+
+        whenever(caseDefinitionRepository.findAll())
+            .thenReturn(nineOwnKeys + caseDefinition("flow-10", createdBy = TRAINEE) + otherTraineesFlow)
+        assertThat(checks.canCreateAnotherCaseDefinition(TRAINEE)).isFalse()
     }
 
     @Test

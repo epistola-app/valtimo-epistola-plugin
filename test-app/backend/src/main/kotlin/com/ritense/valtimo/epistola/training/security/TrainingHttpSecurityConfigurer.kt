@@ -42,9 +42,6 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMa
  *
  * **Deliberately excluded from that surface, and actively hard-blocked instead** by
  * [TraineeAdminSurfaceGuardFilter] (registered below alongside [traineeProvisioningFilter]):
- *  - `POST .../case-definition/draft` — creates a brand-new, unrelated case-definition. Trainees
- *    get their dossier exclusively through the clone-on-login flow; there's no legitimate reason
- *    for one to hit this directly.
  *  - `POST .../case/import` / `.../case/import/preview` — arbitrary case-definition import from an
  *    uploaded file, with no case key in the URL to check ownership against before the import
  *    decides what key the result gets.
@@ -57,6 +54,14 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMa
  * caller's identity — see [TraineeAdminSurfaceGuardFilter]'s KDoc — so they're left reachable
  * rather than blocked (a trainee loading `/case-management` was getting a real 403 from the first
  * of them on every page load, not a hypothetical risk).
+ *
+ * `POST .../case-definition/draft` — Valtimo's own "create a new dossier" flow, behind
+ * `/admin/dossiers` — was excluded (and originally hard-blocked) for the same "arbitrary,
+ * unowned target" reasoning as `case/import` above, until it turned out to cut the other way too:
+ * unlike an uploaded file's contents, the *creator* of a draft is knowable — Valtimo's own
+ * `CaseDefinitionService.createCaseDefinitionDraft` already stamps `CaseDefinition.createdBy` from
+ * the authenticated caller. [TraineeOwnershipRequestBodyAdvice] checks and caps this instead of
+ * [TraineeAdminSurfaceGuardFilter] blocking it — see that advice's KDoc.
  *
  * The genuinely excluded ones above were safe to simply leave `ROLE_ADMIN`-only back when trainees
  * never had that authority — now that they do, "not widened" no longer means "unreachable," which

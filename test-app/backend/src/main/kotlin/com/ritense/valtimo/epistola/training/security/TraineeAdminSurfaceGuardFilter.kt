@@ -50,12 +50,15 @@ import org.springframework.web.filter.OncePerRequestFilter
  * - Case migration (`DocumentMigrationHttpSecurityConfigurer`) — migrates data across
  *   document-definitions with no case-key scoping at all.
  * - Dashboard management (`DashboardHttpSecurityConfigurer`).
- * - Two of the four case-definition endpoints [TrainingHttpSecurityConfigurer]'s KDoc documents as
- *   deliberately not widened: `POST .../case-definition/draft` (creates a brand-new, unrelated
- *   case-definition) and `POST .../case/import` / `.../case/import/preview` (arbitrary import,
- *   nothing in the URL to check ownership against) — those were only safe to leave alone while
- *   trainees had no real `ROLE_ADMIN`; now they need active blocking like everything else here.
- *   The other two named in that KDoc, `GET .../case-definition/check` and
+ * - One of the four case-definition endpoints [TrainingHttpSecurityConfigurer]'s KDoc documents as
+ *   deliberately not widened: `POST .../case/import` / `.../case/import/preview` (arbitrary
+ *   import, nothing in the URL to check ownership against) — this was only safe to leave alone
+ *   while trainees had no real `ROLE_ADMIN`; now it needs active blocking like everything else
+ *   here. `POST .../case-definition/draft` (Valtimo's own "create a new dossier" flow, named in
+ *   that same KDoc) is **not** blocked here — see [TraineeOwnershipRequestBodyAdvice]'s KDoc for
+ *   why creating a self-owned dossier this way turned out to be scopable instead, once
+ *   `CaseDefinition.createdBy` was found to already carry exactly the right identity. The other
+ *   two named in that KDoc, `GET .../case-definition/check` and
  *   `GET .../metroline/available-modes`, turned out — on actually loading `/case-management` as a
  *   trainee and getting 403s from the first of them, not by re-reading the reasoning — to be
  *   genuinely safe to leave open: both take zero parameters and their response depends only on
@@ -133,7 +136,6 @@ class TraineeAdminSurfaceGuardFilter : OncePerRequestFilter() {
     )
 
     private companion object {
-        private const val CASE_DEFINITION_URL = "/api/management/v1/case-definition"
         private const val PROCESS_DEFINITION_URL = "/api/management/v1/process-definition"
         private const val OBJECT_MANAGEMENT_CONFIGURATION_URL = "/api/v1/object/management/configuration"
         private const val EPISTOLA_ADMIN_URL = "/api/v1/plugin/epistola/admin"
@@ -247,12 +249,11 @@ class TraineeAdminSurfaceGuardFilter : OncePerRequestFilter() {
                 // Dashboard management (DashboardHttpSecurityConfigurer) — every sub-path, any method.
                 block(null, "/api/management/v1/dashboard/**", SHARED_CONFIG_REASON)
 
-                // Deliberately-not-widened case-definition endpoints (see TrainingHttpSecurityConfigurer's
-                // KDoc) — safe to leave ADMIN-only only while trainees had no real ROLE_ADMIN.
-                // (case-definition/check and metroline/available-modes, also named in that KDoc,
+                // Arbitrary case import (see TrainingHttpSecurityConfigurer's KDoc) — safe to leave
+                // ADMIN-only only while trainees had no real ROLE_ADMIN. (case-definition/draft,
+                // case-definition/check, and metroline/available-modes, also named in that KDoc,
                 // are deliberately NOT here — see this class's KDoc for why.)
-                val newCaseDefinitionReason = "This creates or imports a case definition unrelated to your own dossier."
-                block(HttpMethod.POST, "$CASE_DEFINITION_URL/draft", newCaseDefinitionReason)
+                val newCaseDefinitionReason = "This imports a case definition from an uploaded file, unrelated to your own dossier."
                 block(HttpMethod.POST, "/api/management/v1/case/import", newCaseDefinitionReason)
                 block(HttpMethod.POST, "/api/management/v1/case/import/preview", newCaseDefinitionReason)
 

@@ -68,6 +68,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     deployment creates a brand-new process with no existing target at all), while the engine-wide
     validation/legacy-override scans have no per-resource identifier to scope by in the first
     place.
+  - **Trainees can now create additional dossiers of their own** through Valtimo's own
+    `/admin/dossiers` UI (`POST .../case-definition/draft`), capped at 10, instead of that
+    endpoint staying hard-blocked. No new table: a self-created dossier is recognized by
+    `CaseDefinition.createdBy`, a column Valtimo's own `CaseDefinitionService` already populates
+    from the authenticated caller on creation — confirmed to resolve to exactly the same identity
+    `TraineeIdentity.resolve` uses everywhere else in this feature (both land on the JWT's `email`
+    claim, since this app's own JWT-to-authentication-token conversion builds an explicit
+    `email ?: preferred_username ?: subject` principal, not Spring's default `sub`-based one).
+    `TraineeOwnershipRequestBodyAdvice` enforces the cap and checks that drafting a new _version_
+    of an already-existing key requires already owning that key (otherwise a trainee could draft a
+    new version of another trainee's dossier, or of a shared/unrelated case type) before the
+    request reaches Valtimo's controller; `isOwnCaseDefinition` recognizes the result afterward
+    everywhere else ownership is checked (deletion, finalization, the case-definition list view),
+    with zero changes needed at any of those call sites. The auto-provisioned dossier keeps working
+    exactly as before, via the unchanged key-hash comparison.
   - The **case/document/task data plane** is scoped the same way, via `DocumentOwnershipResolver`
     (a document resolves to its document-definition name through `DocumentService`) and
     `TaskOwnershipResolver` (a task resolves through its process instance's business key). Unlike

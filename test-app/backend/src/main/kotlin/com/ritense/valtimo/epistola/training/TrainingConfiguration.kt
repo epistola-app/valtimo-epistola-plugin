@@ -89,6 +89,7 @@ class TrainingConfiguration {
         documentOwnershipResolver: DocumentOwnershipResolver,
         taskOwnershipResolver: TaskOwnershipResolver,
         processInstanceOwnershipResolver: ProcessInstanceOwnershipResolver,
+        caseDefinitionRepository: CaseDefinitionRepository,
         properties: TrainingProperties,
     ) = TraineeOwnershipChecks(
         processDefinitionOwnershipResolver,
@@ -96,6 +97,7 @@ class TrainingConfiguration {
         documentOwnershipResolver,
         taskOwnershipResolver,
         processInstanceOwnershipResolver,
+        caseDefinitionRepository,
         properties,
     )
 

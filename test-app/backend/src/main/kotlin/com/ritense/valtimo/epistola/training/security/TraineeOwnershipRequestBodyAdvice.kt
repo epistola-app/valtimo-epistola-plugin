@@ -4,6 +4,7 @@
 
 package com.ritense.valtimo.epistola.training.security
 
+import com.ritense.case.web.rest.dto.CaseDefinitionDraftCreateRequest
 import com.ritense.document.domain.impl.request.ModifyDocumentRequest
 import com.ritense.document.domain.impl.request.NewDocumentRequest
 import com.ritense.document.service.impl.SearchRequest
@@ -32,6 +33,13 @@ import java.lang.reflect.Type
  * is provisioned automatically alongside their dossier, so there is no legitimate reason for a
  * trainee to create another one via this endpoint.
  *
+ * `POST /api/management/v1/case-definition/draft` (Valtimo's own "create a new dossier" flow,
+ * behind `/admin/dossiers`) is checked here too, not blocked outright like plugin-configuration
+ * creation — see [TraineeOwnershipChecks.isOwnCaseDefinition]'s KDoc for how a self-created
+ * dossier is recognized after the fact (`CaseDefinition.createdBy`), and
+ * [TraineeOwnershipChecks.canCreateAnotherCaseDefinition] for the cap enforced here, before the
+ * request ever reaches Valtimo's controller.
+ *
  * `@Profile("training")` **directly on this class**, not just on `TrainingConfiguration`'s `@Bean`
  * wiring: `@ControllerAdvice` is itself meta-annotated `@Component`, so Spring's component scan
  * picks this class up regardless of any profile-gated `@Bean` method elsewhere — without this
@@ -56,7 +64,8 @@ class TraineeOwnershipRequestBodyAdvice(
             ProcessLinkUpdateRequestDto::class.java.isAssignableFrom(methodParameter.parameterType) ||
             NewDocumentRequest::class.java.isAssignableFrom(methodParameter.parameterType) ||
             ModifyDocumentRequest::class.java.isAssignableFrom(methodParameter.parameterType) ||
-            SearchRequest::class.java.isAssignableFrom(methodParameter.parameterType)
+            SearchRequest::class.java.isAssignableFrom(methodParameter.parameterType) ||
+            CaseDefinitionDraftCreateRequest::class.java.isAssignableFrom(methodParameter.parameterType)
 
     override fun beforeBodyRead(
         inputMessage: HttpInputMessage,
@@ -89,6 +98,8 @@ class TraineeOwnershipRequestBodyAdvice(
                 // No allowShared — see TraineeOwnershipInterceptor's document-id check for why
                 // sharing form-flow-demo's structure doesn't extend to searching its actual data.
                 requireOwnCaseDefinition(traineeIdentity, body.documentDefinitionName)
+            is CaseDefinitionDraftCreateRequest ->
+                requireCanCreateCaseDefinition(traineeIdentity, body)
         }
 
         return body
@@ -127,6 +138,29 @@ class TraineeOwnershipRequestBodyAdvice(
     ) {
         if (documentId == null || !ownershipChecks.isOwnDocument(traineeIdentity, documentId)) {
             throw AccessDeniedException("Not your dossier")
+        }
+    }
+
+    private fun requireCanCreateCaseDefinition(
+        traineeIdentity: String,
+        request: CaseDefinitionDraftCreateRequest,
+    ) {
+        if (ownershipChecks.caseDefinitionKeyExists(request.caseDefinitionKey)) {
+            // An *existing* key (drafting a new version of it) must already be the caller's own —
+            // otherwise a trainee could draft a new version of another trainee's dossier, or of a
+            // shared/unrelated case type, by naming its key and picking any not-yet-used version
+            // tag. Not a *new* dossier, so it never counts against the cap below, regardless of
+            // whether the caller is already at it.
+            if (!ownershipChecks.isOwnCaseDefinition(traineeIdentity, request.caseDefinitionKey)) {
+                throw AccessDeniedException("Not your dossier")
+            }
+            return
+        }
+        if (!ownershipChecks.canCreateAnotherCaseDefinition(traineeIdentity)) {
+            throw AccessDeniedException(
+                "You already have the maximum of " +
+                    "${TraineeOwnershipChecks.MAX_TRAINEE_CREATED_CASE_DEFINITIONS} self-created dossiers",
+            )
         }
     }
 }

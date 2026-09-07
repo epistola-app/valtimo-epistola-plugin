@@ -192,6 +192,21 @@ class TraineeAdminSurfaceGuardFilterTest {
     }
 
     @Test
+    fun `does not block case-definition draft creation, now scoped instead by TraineeOwnershipRequestBodyAdvice`() {
+        // Used to be hard-blocked here too (see TraineeOwnershipRequestBodyAdviceTest for its
+        // ownership-and-cap coverage now) - this only proves the filter layer itself lets it
+        // through, not that the request is unscoped.
+        authenticateAs(TraineeKeys.TRAINEE_AUTHORITY, TraineeKeys.ADMIN_AUTHORITY)
+        val request = requestFor("POST", "/api/management/v1/case-definition/draft")
+        val response: HttpServletResponse = mock()
+        val localChain: FilterChain = mock()
+
+        filter.doFilter(request, response, localChain)
+
+        verify(localChain).doFilter(request, response)
+    }
+
+    @Test
     fun `does nothing when there is no authentication`() {
         SecurityContextHolder.clearContext()
         val request = requestFor("GET", "/api/management/v1/roles")
