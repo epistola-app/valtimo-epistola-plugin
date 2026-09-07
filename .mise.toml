@@ -21,11 +21,11 @@
 # mise.path = "./node_modules/.bin" # add a directory to PATH
 #
 [tools]
-gradle = "9.2.0"
+gradle = "9.7.1"
 java = "temurin-21"
-node = "24.18.0"
-pnpm = "11.15.1"
-helm = "3.18"
+node = "24.20.0"
+pnpm = "11.25.0"
+helm = "3.21.4"
 oxlint = "1.61.0"
 oxfmt = "0.46.0"
 "pipx:reuse" = { version = "6.2.0", extras = "charset-normalizer" }
