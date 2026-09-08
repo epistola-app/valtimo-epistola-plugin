@@ -83,6 +83,7 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMa
 class TrainingHttpSecurityConfigurer(
     private val traineeProvisioningFilter: TraineeProvisioningFilter,
     private val traineeAdminSurfaceGuardFilter: TraineeAdminSurfaceGuardFilter,
+    private val trainingFacilitySharedSecretAuthenticationFilter: TrainingFacilitySharedSecretAuthenticationFilter?,
 ) : HttpSecurityConfigurer {
     override fun configure(http: HttpSecurity) {
         try {
@@ -91,6 +92,14 @@ class TrainingHttpSecurityConfigurer(
                 for ((method, path) in WIDENED_ENDPOINTS) {
                     registry = registry.requestMatchers(antMatcher(method, path)).hasAnyAuthority(*TRAINEE_OR_ADMIN)
                 }
+            }
+            // Registered first so it sets the SecurityContext, when its header matches, before
+            // traineeProvisioningFilter/traineeAdminSurfaceGuardFilter read it below — both are
+            // no-ops for this principal anyway (it never carries TraineeKeys.TRAINEE_AUTHORITY),
+            // but the read must still see an already-authenticated ROLE_ADMIN context to let the
+            // request past the authorizeHttpRequests decision that follows.
+            trainingFacilitySharedSecretAuthenticationFilter?.let {
+                http.addFilterBefore(it, AuthorizationFilter::class.java)
             }
             http.addFilterBefore(traineeProvisioningFilter, AuthorizationFilter::class.java)
             http.addFilterBefore(traineeAdminSurfaceGuardFilter, AuthorizationFilter::class.java)

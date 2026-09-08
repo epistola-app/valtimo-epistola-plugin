@@ -19,6 +19,7 @@ import com.ritense.valtimo.epistola.training.security.TraineeAdminSurfaceGuardFi
 import com.ritense.valtimo.epistola.training.security.TraineeOwnershipChecks
 import com.ritense.valtimo.epistola.training.security.TraineeOwnershipInterceptor
 import com.ritense.valtimo.epistola.training.security.TraineeProvisioningFilter
+import com.ritense.valtimo.epistola.training.security.TrainingFacilitySharedSecretAuthenticationFilter
 import com.ritense.valtimo.epistola.training.security.TrainingHttpSecurityConfigurer
 import com.ritense.valtimo.epistola.training.security.TrainingWebConfig
 import org.operaton.bpm.engine.RepositoryService
@@ -135,6 +136,14 @@ class TrainingConfiguration {
     @Bean
     fun traineeAdminSurfaceGuardFilter() = TraineeAdminSurfaceGuardFilter()
 
+    // No fallback bean, unlike EpistolaTenantProvisioner above: TrainingHttpSecurityConfigurer
+    // takes this as a nullable parameter and simply skips registering it when absent, so there is
+    // nothing else that unconditionally depends on this bean existing.
+    @Bean
+    @ConditionalOnProperty(name = ["epistola.training.facility-shared-secret"])
+    fun trainingFacilitySharedSecretAuthenticationFilter(properties: TrainingProperties) =
+        TrainingFacilitySharedSecretAuthenticationFilter(properties.facilitySharedSecret)
+
     // Very low @Order so this bean's authorizeHttpRequests rules are registered ahead of
     // Valtimo's own module HttpSecurityConfigurers for the same paths (first-match-wins) — see
     // TrainingHttpSecurityConfigurer's KDoc for why this needs verifying against a live boot. The
@@ -145,7 +154,12 @@ class TrainingConfiguration {
     fun trainingHttpSecurityConfigurer(
         traineeProvisioningFilter: TraineeProvisioningFilter,
         traineeAdminSurfaceGuardFilter: TraineeAdminSurfaceGuardFilter,
-    ) = TrainingHttpSecurityConfigurer(traineeProvisioningFilter, traineeAdminSurfaceGuardFilter)
+        trainingFacilitySharedSecretAuthenticationFilter: TrainingFacilitySharedSecretAuthenticationFilter?,
+    ) = TrainingHttpSecurityConfigurer(
+        traineeProvisioningFilter,
+        traineeAdminSurfaceGuardFilter,
+        trainingFacilitySharedSecretAuthenticationFilter,
+    )
 
     @Bean
     fun traineeOwnershipInterceptor(ownershipChecks: TraineeOwnershipChecks) = TraineeOwnershipInterceptor(ownershipChecks)

@@ -22,4 +22,13 @@ data class TrainingProperties(
      * [NotConfiguredEpistolaTenantProvisioner].
      */
     val epistolaSharedSecret: String = "",
+    /**
+     * A static bearer credential something outside the running app (a monitoring tool, an
+     * instructor dashboard) presents to check on trainee progress across the whole API, without a
+     * human login — see
+     * [com.ritense.valtimo.epistola.training.security.TrainingFacilitySharedSecretAuthenticationFilter]'s
+     * KDoc. Blank (the default) means that filter isn't wired in at all — this direction of access
+     * doesn't exist unless explicitly configured.
+     */
+    val facilitySharedSecret: String = "",
 )
