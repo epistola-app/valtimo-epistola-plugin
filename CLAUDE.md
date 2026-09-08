@@ -214,6 +214,19 @@ Three layers of authorization apply to plugin endpoints:
 
 BPMN `@PluginAction` methods (`generate-document`, `check-job-status`, `download-document`) execute in the BPMN engine's transactional context with the engine identity, not a user identity, and are out of scope for PBAC. Process-level authorization handles those.
 
+## Interactive training facility (test-app only, soft tenancy)
+
+An opt-in (`training` Spring profile) sandbox: a principal carrying a real Keycloak realm role,
+`ROLE_DEMO`, gets a personal cloned "dossier" (document-definition + BPMN process + process-links)
+and their own Epistola `PluginConfiguration`, auto-provisioned on first request, with a scoped
+admin layer so they can configure it without touching anyone else's. **Soft tenancy, not real
+multi-tenancy** — one shared instance/database, isolation purely via per-trainee resource cloning
+plus ownership-scoped authorization, not infrastructure partitioning. Off by default; lives
+entirely under `test-app/backend/.../training/`, nothing in the shared plugin module depends on
+it. See [docs/training-facility.md](docs/training-facility.md) for how provisioning works, the
+full authorization model (why trainees carry real `ROLE_ADMIN` and how the backend compensates),
+the critical PBAC finding that came out of it, and known gaps.
+
 ## Design Decisions
 
 | Decision            | Choice                                                  | Rationale                                                 |

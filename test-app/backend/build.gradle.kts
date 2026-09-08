@@ -99,6 +99,18 @@ tasks.withType<KotlinCompile> {
     }
 }
 
+tasks.test {
+    // No heap size was ever set for the forked test JVM, so it fell back to the JVM's own default
+    // (a fraction of the runner's memory) - on CI's ubuntu-latest runners that's not enough
+    // headroom for ClassGraph's classpath scan during Spring context bootstrap (this module's test
+    // classpath has grown substantially), which intermittently OOMs mid-scan and takes down
+    // whichever context happened to be loading at the time (seen twice in a row against
+    // TraineeDossierProvisioningE2ETest, not a bug in that test - any Spring context creation could
+    // hit it). Explicit floor, not a guess: CI runners give ~7GB total, shared with the Postgres +
+    // Keycloak Testcontainers this suite also boots.
+    maxHeapSize = "2560m"
+}
+
 apply(plugin = "docker-compose")
 apply(from = "gradle/dockerComposeValtimo.gradle.kts")
 

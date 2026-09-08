@@ -9,6 +9,167 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Interactive training facility (test-app only, opt-in via the `training` Spring profile)**: a
+  personal "dossier" — document-definition + BPMN process + process-links, cloned from the
+  `form-flow-demo` case type — and a per-trainee Epistola `PluginConfiguration` are auto-provisioned
+  the first time a principal carrying a new **real** Keycloak realm role, `ROLE_DEMO`
+  (`docker/keycloak/valtimo-realm.json`), makes an authenticated request. Deliberately an explicit,
+  assigned role rather than "any non-admin login" — the latter would sweep in genuine non-admin,
+  non-trainee users of a mixed-use instance, with no third category between "admin" and "trainee".
+  Every check in the feature keys off `ROLE_DEMO` presence alone, never off the absence of any
+  other role. Cloning uses Valtimo's own `ExportService`/`ImportService`
+  (`keyOverride`/`pluginConfigurationMappings`), not bespoke duplication code.
+
+  **Authorization model.** Trainees carry real `ROLE_ADMIN` in addition to `ROLE_DEMO` — Valtimo's
+  own admin Angular routes/menu are hard-gated to `ROLE_ADMIN` client-side, with no
+  finer-grained frontend role to widen instead, so a trainee could never reach even their own
+  dossier's settings screens without it. The backend fully compensates:
+  - The **case-definition management surface** (process-link, plugin-configuration, case tabs,
+    settings, list/task-list columns, widget/header tabs, startable items, case export, internal
+    status — Valtimo has no PBAC hook for any of it) is enforced down to per-resource ownership by
+    an interceptor/request-body-advice/response-body-advice layer
+    (`test-app/backend/src/main/kotlin/com/ritense/valtimo/epistola/training/security/`), so a
+    trainee can fully administer their own dossier without touching anyone else's, or the shared
+    `form-flow-demo` template (visible read-only, immutable to every trainee).
+  - `TraineeAdminSurfaceGuardFilter` hard-blocks every _other_ Valtimo admin surface real
+    `ROLE_ADMIN` would otherwise unlock: Access Control (the PBAC editor itself), Translation
+    management, Choice fields, Object management configuration, global Forms/Decision-tables CRUD,
+    the case-_unlinked_ "system" process-definition surface, process migration, Logs, Case
+    migration, Dashboard management, creating a brand-new unrelated case-definition, and arbitrary
+    case import. Implemented as a filter (`addFilterBefore`), not more `authorizeHttpRequests`
+    entries — a filter's position is fixed once the security chain is built, so it can't lose an
+    ordering race against Valtimo's ~80 other auto-configured security-config beans the way an
+    _allow_ rule can. Every blocked entry carries its own specific 403 reason (e.g. "this manages
+    roles and permissions for the whole instance" vs. "this operates on an arbitrary id with no way
+    to confirm it belongs to your own dossier"), written directly into the response body
+    (`TraineeRejection.rejectAsForbidden`) rather than via `sendError`, whose message Spring Boot's
+    default error-page handling silently strips.
+  - This plugin's own admin page (`EpistolaAdministration:MANAGE`, seeded to `ROLE_ADMIN` by
+    default) is a partial exception: health/usage/pending-jobs/version/changelog stay reachable,
+    response-filtered to the trainee's own tenant/plugin-configuration (health and usage also keep
+    the shared template's own entries visible, read-only reference); catalog listing/redeploy,
+    process-link export, and pending-job reconcile are scoped by ownership instead of blocked (see
+    below) — only the engine-wide BPMN validation report and legacy-override form scanning have no
+    per-resource identifier to scope by at all, and stay hard-blocked.
+  - **Several "arbitrary id, no way to confirm ownership" endpoints turned out to be scopable after
+    all**, once a runtime process instance or execution could be resolved back to a case-definition
+    the same way a document or task already was. New `ProcessInstanceOwnershipResolver` (process
+    instance → business key → case-definition key; an execution resolves to its process instance
+    first, then the same chain) let `TraineeOwnershipInterceptor` take over
+    force-deleting a process instance (`POST /api/v1/process/{id}/delete`, no read-only
+    equivalent — never allowed even against the shared template) and this plugin's own catalog
+    redeploy / process-link export / pending-job reconcile (catalog _listing_ also allows the
+    shared template, read-only; redeploy and reconcile are mutations against the caller's own
+    plugin configuration only) — all five were previously hard-blocked outright in
+    `TraineeAdminSurfaceGuardFilter` for lack of a resolution path. What's left hard-blocked now has
+    a different reason each: process migration and raw BPMN deployment are still "arbitrary
+    target" (a dossier is finalized at provisioning and never gets a second version to migrate
+    between, so migration has no legitimate use case even though it's technically resolvable; raw
+    deployment creates a brand-new process with no existing target at all), while the engine-wide
+    validation/legacy-override scans have no per-resource identifier to scope by in the first
+    place.
+  - **Trainees can now create additional dossiers of their own** through Valtimo's own
+    `/admin/dossiers` UI (`POST .../case-definition/draft`), capped at 10, instead of that
+    endpoint staying hard-blocked. No new table: a self-created dossier is recognized by
+    `CaseDefinition.createdBy`, a column Valtimo's own `CaseDefinitionService` already populates
+    from the authenticated caller on creation — confirmed to resolve to exactly the same identity
+    `TraineeIdentity.resolve` uses everywhere else in this feature (both land on the JWT's `email`
+    claim, since this app's own JWT-to-authentication-token conversion builds an explicit
+    `email ?: preferred_username ?: subject` principal, not Spring's default `sub`-based one).
+    `TraineeOwnershipRequestBodyAdvice` enforces the cap and checks that drafting a new _version_
+    of an already-existing key requires already owning that key (otherwise a trainee could draft a
+    new version of another trainee's dossier, or of a shared/unrelated case type) before the
+    request reaches Valtimo's controller; `isOwnCaseDefinition` recognizes the result afterward
+    everywhere else ownership is checked (deletion, finalization, the case-definition list view),
+    with zero changes needed at any of those call sites. The auto-provisioned dossier keeps working
+    exactly as before, via the unchanged key-hash comparison.
+  - **Two more cross-trainee gaps found and closed, both by chasing a user's questions rather than
+    by routine testing.** `/api/v1/plugin/epistola/configurations/**` (`EpistolaTemplateResource` —
+    the plugin configurator's own catalog/template/attribute/environment/variant browser, used
+    while authoring a data mapping) was gated only at `hasAuthority(ROLE_ADMIN)`, which every
+    trainee carries, with no ownership check at all: `TrainingWebConfig` never registered this path
+    for `TraineeOwnershipInterceptor` to run against, even though the sibling admin endpoint
+    (`.../admin/configurations/**`) already had the identical check wired up. Proved live before
+    fixing: the same `configurationId` that 403s through the admin path returned 200 with another
+    trainee's actual tenant data through this one. Separately, `PluginProcessLinkCreateDto`/
+    `PluginProcessLinkUpdateDto` carry a `pluginConfigurationId` distinct from
+    `processDefinitionId` — owning the process a link is wired to says nothing about owning the
+    plugin configuration it references, so a trainee could wire their own dossier's action to
+    another trainee's Epistola plugin configuration (a different tenant) by naming its id.
+    `TraineeOwnershipRequestBodyAdvice` now checks it too (only for
+    `PluginConfigurationReferenceType.FIXED` — `BUILDING_BLOCK` resolves the configuration
+    dynamically, never from a fixed id on the wire), `allowShared` since `form-flow-demo`'s own
+    stock process-links already reference the shared template configuration the same way.
+  - The **case/document/task data plane** is scoped the same way, via `DocumentOwnershipResolver`
+    (a document resolves to its document-definition name through `DocumentService`) and
+    `TaskOwnershipResolver` (a task resolves through its process instance's business key). Unlike
+    the case-definition-_management_ surface, this is never shared with the template: `form-flow-demo`
+    is a live case type real staff/other tests can create genuine instances under, so sharing it
+    stops at read-only _structure_ and never extends to actual case _data_.
+
+  Epistola-side tenant provisioning (`SharedSecretEpistolaTenantProvisioner`, opt-in via
+  `epistola.training.epistola-shared-secret`) reuses epistola-suite's own demo-profile shared-secret
+  mechanism (`DemoSharedSecretAuthenticationFilter`) — an all-tenant-superuser credential — to create
+  one tenant per trainee without minting a separate API key per trainee; falls back to
+  `NotConfiguredEpistolaTenantProvisioner` (fails loudly) when unset. Off by default; dossier
+  retention/cleanup is not yet covered. Two demo accounts (`trainee1@demo`/`trainee2@demo`, password
+  matching the username, `ROLE_USER` + `ROLE_ADMIN` + `ROLE_DEMO`) were added to
+  `docker/keycloak/valtimo-realm.json` for manually verifying trainee-vs-trainee isolation against
+  the local docker-compose stack.
+
+  This authorization model — and every fix below — came from actually driving the running app as
+  two distinct trainee accounts over real HTTP (curl and a headless browser), not from reading the
+  code or trusting unit tests alone. Each round of that testing found a real, previously-unnoticed
+  gap:
+  - A real Keycloak token can omit the JWT `sub` claim entirely (confirmed against this repo's own
+    docker-compose realm), which broke dossier provisioning for an email-shaped identity
+    (`CaseDefinitionId.key` rejects `@`/`.`). `TraineeKeys.caseDefinitionKey` now always hashes the
+    resolved identity rather than using it verbatim.
+  - The ownership interceptor's registered path patterns (`TrainingWebConfig`) drifted out of sync
+    with the endpoints it needed to cover twice — once when the case-definition-management surface
+    was widened, once again when the document/task data plane was added — each time leaving Spring
+    Security correctly widening the HTTP gate but with _no ownership check running at all_ for the
+    newly-widened paths. Both caught by cross-trainee testing, not code review; both fixed by
+    syncing the pattern lists (a hazard this pairing will keep needing whenever either list grows).
+  - The original design deliberately avoided granting trainees real `ROLE_ADMIN`, specifically so a
+    trainee could never pass Valtimo's own `hasAuthority(ADMIN)` gates by construction. That held
+    until a real browser login showed Valtimo's frontend gates its entire admin UI on `ROLE_ADMIN`
+    too — the pivot to granting it, and the `TraineeAdminSurfaceGuardFilter` built to compensate,
+    is the direct result.
+  - The admin page's usage overview initially leaked this test-app's own unrelated bundled demo
+    case types (`example`, `bulk-letters`, `objection`, `permit`, `subsidy`) because its
+    "shared template" allowance matched on plugin-configuration alone; tightened
+    (`isOwnOrTemplatePluginUsage`) to also require the entry belong to the template dossier itself.
+  - Two case-definition-management endpoints (`case-definition/check`, `metroline/available-modes`)
+    were assumed "global, not case-specific; nothing to scope" and left hard-blocked — confirmed
+    against Valtimo source that both are genuinely parameter-free and identity-independent, so a
+    trainee was getting real 403s just loading `/case-management`. Unblocked.
+  - `TraineeDossierProvisioner` stored a trainee's Epistola plugin `baseUrl` as a literal, never-resolved
+    `${epistola.base-url}` placeholder string — Valtimo's `@PluginProperty` injection doesn't do
+    Spring-style placeholder resolution — so every action against a trainee's own tenant silently
+    failed to connect. Now stores the actual resolved URL.
+  - **Critical**: granting trainees real `ROLE_ADMIN` didn't just widen the admin-configuration
+    surface above — Valtimo's own `all.permission.json` grants `ROLE_ADMIN` completely
+    unconditioned PBAC access to 12 resource types, including `JsonSchemaDocument` and
+    `OperatonTask`, and PBAC unions grants across every role a principal carries. A trainee could
+    fetch a full, unrelated case's document and task (including its process variables), and the
+    task list returned tasks mixed across every case type in the instance. This existed from the
+    moment `ROLE_ADMIN` was first granted until the data-plane scoping described above closed it —
+    found only by a deliberate post-implementation security review, not routine testing. **Not yet
+    closed**: 9 more unconditioned `ROLE_ADMIN` resource types found in the same pass (`Note`,
+    `JsonSchemaDocumentSnapshot`, `Dashboard`, `CaseTab`, `SearchField`, `Object`,
+    `ResourcePermission`, plus `CaseDefinition` view/view_list and `OperatonExecution`'s non-`create`
+    actions) and the task batch endpoints (`batch-assign`/`batch-complete`) need the same
+    per-endpoint treatment — tracked, not silently assumed safe.
+
+  Also found and fixed along the way: `TraineeOwnershipRequestBodyAdvice`/`TraineeOwnershipResponseBodyAdvice`
+  being picked up by component-scan regardless of the `training` profile (`@ControllerAdvice` is
+  itself `@Component`-meta-annotated), which broke every non-training test until each was given its
+  own `@Profile("training")`; and wrapping the dossier-provisioning sequence in `@Transactional`,
+  which made every provisioning call fail because Valtimo's own export/import tolerates per-artifact
+  exceptions that still poison an ambient transaction — the sequence is deliberately not atomic,
+  every step is retryable instead.
+
 - **The document preview now works on a BPMN start form**, so a letter can be checked before the
   case is created — previously it required starting the case and previewing from the first user
   task, which produced a dossier for a letter the user might never send. Covers both Valtimo start

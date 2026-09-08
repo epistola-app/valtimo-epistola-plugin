@@ -8,6 +8,12 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://ved-postgres:5432/epistola_suite
       SPRING_DATASOURCE_USERNAME: epistola
       SPRING_DATASOURCE_PASSWORD: epistola
+      # Uncomment to test the training-facility feature's per-trainee tenant provisioning
+      # (SharedSecretEpistolaTenantProvisioner) locally. This is an all-tenant-superuser bearer
+      # credential — 32+ chars, never reuse it anywhere but local dev — and must be set on the
+      # Valtimo side too (test-app's epistola.training.epistola-shared-secret, "training" profile
+      # active) with the exact same value.
+      # EPISTOLA_DEMO_SHAREDSECRET: "local-dev-only-shared-secret-change-me-32chars"
     ports:
       - "4000:4000"
     depends_on:

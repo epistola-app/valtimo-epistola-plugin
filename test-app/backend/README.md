@@ -36,3 +36,11 @@ baseline voor het onderzoeken van taakovergangen in Valtimo Form Flows:
 De Form Flow bevat bewust geen Epistola-component of preview-request. Daardoor is dit een
 controlepad voor Form Flow zelf; een latere variant met documentpreview kan hiermee vergeleken
 worden.
+
+## Training facility
+
+An opt-in `training` Spring profile provisions a personal, isolated case-definition clone per
+`ROLE_DEMO` user on first request, so multiple trainees can learn the plugin against this same
+running instance without seeing or touching each other's data. See
+[docs/training-facility.md](../../docs/training-facility.md) for how it works, how to enable it,
+and its authorization model.
