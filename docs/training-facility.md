@@ -278,6 +278,57 @@ carries unconditioned, not just the specific endpoints you set out to widen.
   does **not** fix it (containers share the VM's kernel clock, not their own); only
   `podman machine stop && podman machine start` resyncs it.
 
+## External progress checks: the shared-secret filter
+
+Something outside the running app — a monitoring tool, an instructor dashboard, whatever drives
+the training facility's own idea of "which trainees have done what" — needs to query Valtimo
+directly to check on progress: has a dossier been provisioned, has the demo case been completed,
+how many self-created dossiers exist, and so on. This needed a way in that isn't a human logging
+in through a browser.
+
+**Deliberately not a Keycloak client-credentials grant**, even though `test-app/backend` already
+runs `oauth2ResourceServer` and would have accepted one with zero new Valtimo code — ruled out to
+avoid a new piece of Keycloak realm/client configuration to keep in sync. Instead,
+`TrainingFacilitySharedSecretAuthenticationFilter` mirrors epistola-suite's own
+`DemoSharedSecretAuthenticationFilter`: a single static credential, checked directly inside this
+application, entirely inside `test-app/backend`'s own code.
+
+Enable it by setting `epistola.training.facility-shared-secret`; blank (the default) means this
+entire access path does not exist. Present the secret in a dedicated header — not `Authorization:
+Bearer`, since that scheme is already claimed by Spring's own OAuth2 resource-server JWT filter,
+which would otherwise try to decode the static secret as a JWT and fail before this filter got a
+chance to run:
+
+```bash
+curl -H "X-Training-Facility-Secret: <the configured secret>" \
+  http://localhost:8080/api/management/v1/case-definition
+```
+
+Grants `ROLE_USER` + `ROLE_ADMIN` — the whole API, deliberately, matching the "expose the whole
+API" decision behind this rather than a bespoke read-only "progress" endpoint that would need a
+new field every time the definition of "progress" changes. **Deliberately no `ROLE_DEMO`**: that
+role means "trainee," which would provision this credential a pointless dossier of its own on
+first use and then scope every other check in this package down to just that dossier — the
+opposite of the cross-trainee visibility a monitoring tool needs.
+
+`TrainingFacilitySharedSecretAuthenticationFilterTest` is a plain unit test — it calls `doFilter`
+directly against a mocked request, which proves the filter's own logic but not that a real request
+actually gets past Valtimo's real `authorizeHttpRequests` gate once it sets the `SecurityContext`.
+`TrainingFacilitySharedSecretAuthenticationFilterE2ETest` closes that gap: `@AutoConfigureMockMvc`
+wires `MockMvc` against the real, registered filter chain — Spring Security included, unlike every
+other E2E test in this package, which calls controller/service beans directly and never touches
+the servlet filter chain at all — and asserts a real HTTP request either does or does not pass the
+same gate a real client would hit: no header or the wrong secret is rejected (403), the correct
+secret reaches a real `ROLE_ADMIN`-gated endpoint (200). Manual live verification (curl against the
+running dev instance) additionally confirmed cross-trainee data is actually returned and that no
+dossier gets auto-provisioned for the credential — the automated test proves the authorization
+decision, not the response content.
+
+Inherits the exact same access-scope caveat as granting trainees `ROLE_ADMIN` does (see
+[The critical finding](#the-critical-finding-unconditioned-role_admin-pbac) above): full admin
+access, not read-only, and there is currently no narrower role that would let it query progress
+without also being able to change things. Treat the secret accordingly.
+
 ## Verification checklist
 
 After changing anything under `training/security/`:
