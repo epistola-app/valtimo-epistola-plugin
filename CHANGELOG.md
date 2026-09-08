@@ -112,6 +112,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `ROLE_DEMO` — that role means "trainee," which would provision this credential a pointless
     dossier of its own instead of giving it visibility across every trainee's. Inherits the exact
     same access-scope caveat as granting trainees `ROLE_ADMIN`: full admin access, not read-only.
+    Its own unit test only calls `doFilter` against a mock, so a second test,
+    `TrainingFacilitySharedSecretAuthenticationFilterE2ETest`, drives a real request through
+    `MockMvc` against the real, registered filter chain — the only test in this package that
+    exercises Spring Security at all, rather than calling controller/service beans directly — to
+    prove the filter's authentication actually satisfies a real `authorizeHttpRequests` gate, not
+    just that the filter's own logic is internally consistent.
   - The **case/document/task data plane** is scoped the same way, via `DocumentOwnershipResolver`
     (a document resolves to its document-definition name through `DocumentService`) and
     `TaskOwnershipResolver` (a task resolves through its process instance's business key). Unlike

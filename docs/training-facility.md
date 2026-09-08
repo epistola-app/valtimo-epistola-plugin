@@ -309,10 +309,20 @@ API" decision behind this rather than a bespoke read-only "progress" endpoint th
 new field every time the definition of "progress" changes. **Deliberately no `ROLE_DEMO`**: that
 role means "trainee," which would provision this credential a pointless dossier of its own on
 first use and then scope every other check in this package down to just that dossier — the
-opposite of the cross-trainee visibility a monitoring tool needs. Verified live: with no header or
-the wrong secret the request is anonymous (403, same as any unauthenticated call); with the
-correct secret it reads every case-definition and task across every trainee, and no dossier gets
-auto-provisioned for it in the process.
+opposite of the cross-trainee visibility a monitoring tool needs.
+
+`TrainingFacilitySharedSecretAuthenticationFilterTest` is a plain unit test — it calls `doFilter`
+directly against a mocked request, which proves the filter's own logic but not that a real request
+actually gets past Valtimo's real `authorizeHttpRequests` gate once it sets the `SecurityContext`.
+`TrainingFacilitySharedSecretAuthenticationFilterE2ETest` closes that gap: `@AutoConfigureMockMvc`
+wires `MockMvc` against the real, registered filter chain — Spring Security included, unlike every
+other E2E test in this package, which calls controller/service beans directly and never touches
+the servlet filter chain at all — and asserts a real HTTP request either does or does not pass the
+same gate a real client would hit: no header or the wrong secret is rejected (403), the correct
+secret reaches a real `ROLE_ADMIN`-gated endpoint (200). Manual live verification (curl against the
+running dev instance) additionally confirmed cross-trainee data is actually returned and that no
+dossier gets auto-provisioned for the credential — the automated test proves the authorization
+decision, not the response content.
 
 Inherits the exact same access-scope caveat as granting trainees `ROLE_ADMIN` does (see
 [The critical finding](#the-critical-finding-unconditioned-role_admin-pbac) above): full admin
