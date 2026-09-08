@@ -83,6 +83,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     everywhere else ownership is checked (deletion, finalization, the case-definition list view),
     with zero changes needed at any of those call sites. The auto-provisioned dossier keeps working
     exactly as before, via the unchanged key-hash comparison.
+  - **Two more cross-trainee gaps found and closed, both by chasing a user's questions rather than
+    by routine testing.** `/api/v1/plugin/epistola/configurations/**` (`EpistolaTemplateResource` —
+    the plugin configurator's own catalog/template/attribute/environment/variant browser, used
+    while authoring a data mapping) was gated only at `hasAuthority(ROLE_ADMIN)`, which every
+    trainee carries, with no ownership check at all: `TrainingWebConfig` never registered this path
+    for `TraineeOwnershipInterceptor` to run against, even though the sibling admin endpoint
+    (`.../admin/configurations/**`) already had the identical check wired up. Proved live before
+    fixing: the same `configurationId` that 403s through the admin path returned 200 with another
+    trainee's actual tenant data through this one. Separately, `PluginProcessLinkCreateDto`/
+    `PluginProcessLinkUpdateDto` carry a `pluginConfigurationId` distinct from
+    `processDefinitionId` — owning the process a link is wired to says nothing about owning the
+    plugin configuration it references, so a trainee could wire their own dossier's action to
+    another trainee's Epistola plugin configuration (a different tenant) by naming its id.
+    `TraineeOwnershipRequestBodyAdvice` now checks it too (only for
+    `PluginConfigurationReferenceType.FIXED` — `BUILDING_BLOCK` resolves the configuration
+    dynamically, never from a fixed id on the wire), `allowShared` since `form-flow-demo`'s own
+    stock process-links already reference the shared template configuration the same way.
   - The **case/document/task data plane** is scoped the same way, via `DocumentOwnershipResolver`
     (a document resolves to its document-definition name through `DocumentService`) and
     `TaskOwnershipResolver` (a task resolves through its process instance's business key). Unlike
