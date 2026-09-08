@@ -8,7 +8,10 @@ import com.ritense.case.web.rest.dto.CaseDefinitionDraftCreateRequest
 import com.ritense.document.domain.impl.request.ModifyDocumentRequest
 import com.ritense.document.domain.impl.request.NewDocumentRequest
 import com.ritense.document.service.impl.SearchRequest
+import com.ritense.plugin.domain.PluginConfigurationReferenceType
 import com.ritense.plugin.web.rest.request.CreatePluginConfigurationDto
+import com.ritense.plugin.web.rest.request.PluginProcessLinkCreateDto
+import com.ritense.plugin.web.rest.request.PluginProcessLinkUpdateDto
 import com.ritense.processlink.web.rest.dto.ProcessLinkCreateRequestDto
 import com.ritense.processlink.web.rest.dto.ProcessLinkUpdateRequestDto
 import org.springframework.context.annotation.Profile
@@ -19,6 +22,7 @@ import org.springframework.security.access.AccessDeniedException
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.servlet.mvc.method.annotation.RequestBodyAdvice
 import java.lang.reflect.Type
+import java.util.UUID
 
 /**
  * Body-carried counterpart to [TraineeOwnershipInterceptor]: `POST /api/v1/process-link` only
@@ -28,6 +32,19 @@ import java.lang.reflect.Type
  * document-data-plane endpoints added alongside [TraineeOwnershipInterceptor]'s document/task
  * checks: `NewDocumentRequest`/`ModifyDocumentRequest`/`SearchRequest` (create/modify/search) only
  * carry their identifying field in the body, never a path variable.
+ *
+ * `PluginProcessLinkCreateDto`/`PluginProcessLinkUpdateDto` also carry a `pluginConfigurationId` —
+ * checked here too, separately from `processDefinitionId`: owning the process a link is wired to
+ * says nothing about owning the plugin configuration it references. Without this, a trainee could
+ * wire their own dossier's action to another trainee's Epistola plugin configuration (a different
+ * tenant) by naming its id — found the same way as the configurator-endpoint gap: by actually
+ * checking every body field this DTO carries, not just the one the base interface exposes. Only
+ * checked for `PluginConfigurationReferenceType.FIXED` — `BUILDING_BLOCK` resolves the
+ * configuration dynamically at runtime from the enclosing building block, never from a fixed id on
+ * the wire, so there is nothing to check against here for that mode. `allowShared`: `form-flow-demo`'s
+ * own stock process-links already point at the shared template configuration directly —
+ * *referencing* it from a trainee's own process-link is the same legitimate pattern, not a new
+ * risk (unlike modifying the shared configuration itself, which stays disallowed everywhere else).
  *
  * Plugin-configuration creation is blocked outright for trainees: their one `PluginConfiguration`
  * is provisioned automatically alongside their dossier, so there is no legitimate reason for a
@@ -86,6 +103,14 @@ class TraineeOwnershipRequestBodyAdvice(
         when (body) {
             is CreatePluginConfigurationDto ->
                 throw AccessDeniedException("Trainees cannot create plugin configurations directly")
+            is PluginProcessLinkCreateDto -> {
+                requireOwnProcessDefinition(traineeIdentity, body.processDefinitionId)
+                requireOwnPluginConfigurationReference(traineeIdentity, body.referenceType, body.pluginConfigurationId)
+            }
+            is PluginProcessLinkUpdateDto -> {
+                requireOwnProcessDefinition(traineeIdentity, ownershipChecks.resolveProcessDefinitionIdOfProcessLink(body.id))
+                requireOwnPluginConfigurationReference(traineeIdentity, body.referenceType, body.pluginConfigurationId)
+            }
             is ProcessLinkCreateRequestDto ->
                 requireOwnProcessDefinition(traineeIdentity, body.processDefinitionId)
             is ProcessLinkUpdateRequestDto ->
@@ -128,6 +153,18 @@ class TraineeOwnershipRequestBodyAdvice(
         allowShared: Boolean = false,
     ) {
         if (caseDefinitionKey == null || !ownershipChecks.isOwnCaseDefinition(traineeIdentity, caseDefinitionKey, allowShared)) {
+            throw AccessDeniedException("Not your dossier")
+        }
+    }
+
+    private fun requireOwnPluginConfigurationReference(
+        traineeIdentity: String,
+        referenceType: PluginConfigurationReferenceType,
+        pluginConfigurationId: UUID?,
+    ) {
+        if (referenceType != PluginConfigurationReferenceType.FIXED) return
+        val id = pluginConfigurationId ?: return
+        if (!ownershipChecks.isOwnPluginConfiguration(traineeIdentity, id.toString(), allowShared = true)) {
             throw AccessDeniedException("Not your dossier")
         }
     }
