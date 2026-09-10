@@ -7,6 +7,7 @@ import { Injector, NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpBackend, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { AppRoutingModule } from './app-routing.module';
+import { ValtimoEmbeddingModule } from './embedding';
 import { AppComponent } from './app.component';
 import { LayoutModule, TranslationManagementModule } from '@valtimo/layout';
 import { TaskModule } from '@valtimo/task';
@@ -147,6 +148,7 @@ export function tabsFactory() {
     ZakenApiPluginModule,
     CatalogiApiPluginModule,
     EpistolaPluginModule,
+    ValtimoEmbeddingModule.forRoot(),
     ObjectModule,
     ObjectManagementModule,
     DisplayWidgetTypesModule,

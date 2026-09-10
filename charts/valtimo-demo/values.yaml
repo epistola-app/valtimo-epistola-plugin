@@ -189,7 +189,8 @@ frontend:
     type: ClusterIP
     port: 8080
 
-  # Environment variables injected via envsubst into config.template.js
+  # Rendered directly into the mounted config.js (this chart overrides the
+  # image's entrypoint, so envsubst never runs here).
   env:
     swaggerUri: "/swagger-ui.html"
     mockApiUri: "/mock-api"
@@ -209,6 +210,18 @@ frontend:
     oidcScopes: ""
     whitelistedDomain: ""
     openZaakCatalogusId: ""
+    # Set false to ship this image with the Epistola plugin hidden entirely.
+    epistolaEnabled: true
+
+  # Allow this app to be embedded in an <iframe> on a trusted host page, and
+  # expose the postMessage bridge to it. Off by default; see docs/embedding.md.
+  #
+  # Both must be set for embedding to happen at all: with no allowed origin the
+  # CSP stays `frame-ancestors 'none'` and the bridge never starts.
+  embedding:
+    enabled: false
+    # Full origins, e.g. ["https://epistola.app"]. No paths, no wildcards.
+    allowedParentOrigins: []
 
   # Additional environment variables for the frontend container
   extraEnv: []

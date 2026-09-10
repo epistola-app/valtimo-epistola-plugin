@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Iframe embedding + postMessage bridge (test-app only, off by default)**: the demo frontend can
+  be embedded in an `<iframe>` on an allowlisted host page and driven from it, mirroring
+  epistola-suite's own embedding feature (its ADR 0015) so one host page can speak a single dialect
+  to both. Two runtime settings turn it on — `embeddingEnabled` and `embeddingAllowedParentOrigins`
+  (`EMBEDDING_ENABLED` / `EMBEDDING_ALLOWED_PARENT_ORIGINS`, or `frontend.embedding.*` in the Helm
+  chart) — and they gate two independent things: the CSP `frame-ancestors` allowlist nginx serves,
+  and whether the Angular bridge starts at all.
+
+  The bridge announces itself with `ready` (Angular boots long after the document does, so a host
+  otherwise cannot tell when the app is listening), then posts `navigated` on every navigation with
+  both the raw path and, where the route is one it can name, a typed resource identity — case type,
+  case, task, or a known top-level view. Inbound, the host may send `navigate` carrying **only a
+  typed identity, never a URL or path**: it is resolved through a closed lookup with every
+  identifier format-checked, and performed via Valtimo's own `Router`, so `AuthGuardService` and
+  each route's role guards run exactly as for an in-app link click. Messages are validated on
+  `event.origin` **and** `event.source === window.parent`, and the bridge never posts with `'*'`.
+
+  Every layer fails closed independently: an unset flag, a typo'd origin, an empty allowlist, a
+  wildcard, or the container entrypoint not running at all each leave `frame-ancestors 'none'` and
+  an inert bridge. Lives entirely in `test-app/frontend/src/app/embedding/`; the published
+  `@epistola.app/valtimo-plugin` library is untouched. See [docs/embedding.md](docs/embedding.md)
+  and [ADR 0005](docs/adr/0005-iframe-embedding-bridge.md).
+
+  **Known gap:** interactive re-authentication. An IdP can redirect through a frame but cannot
+  render in one, so an embedded session whose IdP session expires mid-use leaves a blank frame —
+  the app navigates itself to a login page that framing headers then refuse. This is not fixed by
+  deploying same-site (that governs cookie delivery, not session expiry). The fix is sketched in
+  ADR 0005 and not implemented here.
+
 - **Interactive training facility (test-app only, opt-in via the `training` Spring profile)**: a
   personal "dossier" — document-definition + BPMN process + process-links, cloned from the
   `form-flow-demo` case type — and a per-trainee Epistola `PluginConfiguration` are auto-provisioned
@@ -215,6 +244,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     top. It has its own start form so the four sibling processes keep sharing the original.
 
 ### Fixed
+
+- **The demo frontend served no framing header at all**, in any deployment — meaning any site could
+  silently embed it in an `<iframe>`. All three nginx configs (image, docker-compose, Helm
+  ConfigMap) now send `Content-Security-Policy: frame-ancestors 'none'` by default, relaxed only to
+  an explicit allowlist. `X-Frame-Options` is deliberately not also sent: `frame-ancestors`
+  supersedes it in every browser Valtimo supports and, unlike it, can express a list.
+- **`epistolaEnabled` never reached the Helm or docker-compose deployments.** Both render
+  `assets/config.js` themselves rather than going through the image's `envsubst`, and neither copy
+  had been given the key when the feature toggle was introduced — so `EPISTOLA_ENABLED=false`
+  silently did nothing there and the plugin stayed visible. Both now render it, and the chart
+  exposes `frontend.env.epistolaEnabled`.
 
 - **The preview no longer mistakes a real form for the Formio builder after visiting a case.** Design
   mode was inferred from `FormIoStateService.documentId`, which is root-scoped and never cleared, so

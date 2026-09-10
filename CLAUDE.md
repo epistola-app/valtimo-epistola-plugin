@@ -227,17 +227,57 @@ it. See [docs/training-facility.md](docs/training-facility.md) for how provision
 full authorization model (why trainees carry real `ROLE_ADMIN` and how the backend compensates),
 the critical PBAC finding that came out of it, and known gaps.
 
+## Iframe embedding (test-app only, off by default)
+
+The demo frontend can be framed by an allowlisted host page and driven over `postMessage`, mirroring
+epistola-suite's own embedding feature so one host can speak a single dialect to both. Lives entirely
+in `test-app/frontend/src/app/embedding/`; the published plugin library is untouched. See
+[docs/embedding.md](docs/embedding.md) and [ADR 0005](docs/adr/0005-iframe-embedding-bridge.md).
+
+- **Two settings gate two independent things**: `embeddingEnabled` + `embeddingAllowedParentOrigins`
+  (`EMBEDDING_ENABLED` / `EMBEDDING_ALLOWED_PARENT_ORIGINS`, or `frontend.embedding.*` in Helm)
+  control the CSP `frame-ancestors` allowlist nginx serves **and** whether the Angular bridge starts.
+- **Everything fails closed.** The default is `frame-ancestors 'none'` — note this repo previously
+  sent _no_ framing header at all, so the container was framable by anyone. An unset flag, an empty
+  or invalid allowlist, a wildcard, or the container entrypoint not running each leave `'none'` and
+  an inert bridge.
+- **Config lives in six places.** Three nginx configs (image `conf/default.conf`, `docker/containers/`,
+  the Helm ConfigMap) and five `config.js` copies. Only the image path is env-driven — compose and
+  Helm override the container command, so the entrypoint never runs there. A new `window['env']` key
+  added only to `config.template.js` does nothing in any real deployment; `epistolaEnabled` was
+  broken this exact way for both until this change.
+- **`add_header` is scoped to `location /` on purpose**: nginx drops an inherited `add_header` in any
+  location that declares its own, and the API-proxy location must keep serving PDFs the app frames
+  itself.
+- **The host navigates by typed identity, never a URL** — a closed lookup in `embed-resource.ts` with
+  format-checked identifiers, dispatched through Valtimo's `Router` so `AuthGuardService` and role
+  guards still run. Adding a route to the vocabulary means editing that table and its spec, nothing
+  else.
+- **Auth while framed turns on one rule**: an IdP can redirect _through_ a frame but cannot render
+  _in_ one — framing headers apply only to the document that commits, never to a redirect. Measured:
+  authentik's authorize returns a bare 302 carrying `X-Frame-Options: DENY` and the browser follows
+  it, so an established session authenticates silently in a frame. Deploy host + app + IdM on one
+  registrable domain, with the host page behind the same IdP. Never relax an IdP's framing headers
+  to let its login page render in a frame (and with authentik it is not configurable anyway).
+- **Interactive re-auth is the open gap**: when an IdP session expires mid-use the app navigates its
+  own frame to a login page that cannot render, leaving a blank rectangle. Not fixed by same-site
+  deployment. Fix sketch (an `auth-required` bridge message + host-driven top-level popup, where the
+  popup re-establishes the cookie only and never runs the code exchange — the PKCE verifier lives in
+  the frame's `sessionStorage`) is in ADR 0005.
+
 ## Design Decisions
 
-| Decision            | Choice                                                  | Rationale                                                 |
-| ------------------- | ------------------------------------------------------- | --------------------------------------------------------- |
-| API Scope           | Generation + Read-only Templates/Environments/Variants  | Plugin is for document generation, not template authoring |
-| Authentication      | API key in plugin config                                | Simple, stateless, matches typical service integrations   |
-| Async Pattern       | Result collector + message correlation                  | Avoids per-process timers and keeps BPMN simple           |
-| Environment/Variant | Plugin default + action override                        | Sensible defaults with per-action flexibility             |
-| Composite Job Path  | `epistola:job:{tenantId}/{requestId}` single variable   | Avoids scoping issues, enables correlation and polling    |
-| User-task auth      | `OperatonTask:VIEW` via Valtimo PBAC, taskId in request | Reuses Valtimo's task authorization; no plugin-side ACL   |
-| Admin auth          | Custom `EpistolaAdministration:MANAGE` PBAC permission  | Decouples plugin admin from global `ROLE_ADMIN` if needed |
+| Decision            | Choice                                                  | Rationale                                                                   |
+| ------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------- |
+| API Scope           | Generation + Read-only Templates/Environments/Variants  | Plugin is for document generation, not template authoring                   |
+| Authentication      | API key in plugin config                                | Simple, stateless, matches typical service integrations                     |
+| Async Pattern       | Result collector + message correlation                  | Avoids per-process timers and keeps BPMN simple                             |
+| Environment/Variant | Plugin default + action override                        | Sensible defaults with per-action flexibility                               |
+| Composite Job Path  | `epistola:job:{tenantId}/{requestId}` single variable   | Avoids scoping issues, enables correlation and polling                      |
+| User-task auth      | `OperatonTask:VIEW` via Valtimo PBAC, taskId in request | Reuses Valtimo's task authorization; no plugin-side ACL                     |
+| Iframe embedding    | CSP `frame-ancestors` allowlist + postMessage bridge    | Environment-level decision; fails closed (no framing header shipped before) |
+| Host-driven nav     | Typed resource identity, never a URL or path            | A raw path lets the host aim the user's session at any route                |
+| Admin auth          | Custom `EpistolaAdministration:MANAGE` PBAC permission  | Decouples plugin admin from global `ROLE_ADMIN` if needed                   |
 
 ---
 
@@ -265,6 +305,13 @@ the critical PBAC finding that came out of it, and known gaps.
 - Controllers (`EpistolaPluginResource` was split into focused resources): `EpistolaPluginResourceDocumentDownloadTest` (download), `EpistolaAdminResourceAuthorizationTest`, `EpistolaGenerationResourceAuthorizationTest`, `EpistolaToolingResourceValidateJsonataTest` (authorization + key behaviors)
 - `EpistolaPlugin.downloadDocument` — `EpistolaPluginDownloadDocumentTest` (storage-strategy wiring); `EpistolaPlugin.checkJobStatus` — `EpistolaPluginCheckJobStatusTest` (request-id extraction + variable writes); `generateDocument` is exercised via the standalone-engine correlation integration tests (`EpistolaAutoWiringCorrelationIntegrationTest`, `EpistolaParallelCorrelationIntegrationTest`)
 - `EpistolaTemplateResource` — `EpistolaTemplateResourceTest` (per-endpoint delegation to `EpistolaService`)
+- **Iframe embedding bridge** (test-app, Karma/real Chrome): `embedding-config.spec.ts` (origin
+  parsing + fail-closed states), `embed-resource.spec.ts` (the closed navigation vocabulary, both
+  directions, plus path-traversal- and prototype-shaped inputs), `embed-bridge.service.spec.ts`
+  (origin/source validation, target-origin resolution, never posting to `'*'`),
+  `valtimo-embedding.module.spec.ts` (the initializer boots against the real `RouterModule`). The
+  container's `frame-ancestors` behaviour was verified against the built image across its configured
+  and failure states
 - **End-to-end** (`test-app`, Testcontainers, runs in CI): `DownloadDocumentE2ETest` — real app boot, both download storage strategies, async catch-event completion, and the task-scope value resolver; `FormFlowTransitionE2ETest` — walks the Form Flow demo case (open the task, complete both steps, assert the process reached the follow-up task and the submission reached the document)
 - `FormFlowDemoConfigurationTest` — shape of the Form Flow demo fixtures, including the invariant that the preview variant differs from the preview-free baseline **only** by the preview component and generates after (not between) the user tasks
 - **5 Playwright E2E suites** (run locally / planned nightly, not in PR CI): plugin-configuration, generate-document, check-job-status, download-document, form-flow-transition
