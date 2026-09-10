@@ -266,6 +266,13 @@ In preference order:
    credentials inside a frame the host controls, which is exactly the
    clickjacking exposure `frame-ancestors` exists to prevent.
 
+> **Testing this locally will not reproduce the problem.** Every `localhost`
+> port is the _same site_ — ports do not affect site calculation — so a host
+> page on `http://localhost:4321` framing the app on `http://localhost:8092`
+> is cross-origin but same-site, and the cookies flow normally. A local
+> success therefore says nothing about a genuinely cross-site deployment. Use
+> two distinct hostnames to test that.
+
 `checkLoginIframe` is already `false` in this app's Keycloak options
 (`src/environments/auth/keycloak-config.ts`), which is the right setting when
 framed — Keycloak's session-check iframe depends on third-party cookies and can
@@ -287,11 +294,15 @@ otherwise sign an embedded user out spuriously. Leave it off.
 - **`ng serve` sends no CSP**, so the dev server is framable by any origin
   regardless of these settings. Only the bridge half of the feature is
   configurable in dev.
-- **Not covered by browser E2E.** The Karma specs cover the bridge thoroughly
-  (including origin spoofing, path-traversal-shaped identifiers, and the
-  fail-closed paths), and the container's header behaviour was verified against
-  the built image, but there is no Playwright test that frames the app from a
-  second origin — the repo has no cross-origin fixture-server harness.
+- **No committed browser E2E.** The Karma specs cover the bridge thoroughly
+  (origin spoofing, path-traversal-shaped identifiers, every fail-closed path),
+  and the following were verified by hand against the built image on a second
+  origin: the served header in each configured and failure state, Chromium
+  actually blocking a `'none'` frame and permitting an allowlisted one, and the
+  `ready` handshake arriving cross-origin with the right target origin. None of
+  that is committed as a test — the repo has no cross-origin fixture-server
+  harness, and a full flow additionally needs Keycloak with the framing origin
+  registered as a redirect URI.
 
 ## Relationship to the Suite bridge
 
