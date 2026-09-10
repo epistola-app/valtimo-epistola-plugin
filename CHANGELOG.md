@@ -32,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `@epistola.app/valtimo-plugin` library is untouched. See [docs/embedding.md](docs/embedding.md)
   and [ADR 0005](docs/adr/0005-iframe-embedding-bridge.md).
 
+  **Known gap:** interactive re-authentication. An IdP can redirect through a frame but cannot
+  render in one, so an embedded session whose IdP session expires mid-use leaves a blank frame —
+  the app navigates itself to a login page that framing headers then refuse. This is not fixed by
+  deploying same-site (that governs cookie delivery, not session expiry). The fix is sketched in
+  ADR 0005 and not implemented here.
+
 - **Interactive training facility (test-app only, opt-in via the `training` Spring profile)**: a
   personal "dossier" — document-definition + BPMN process + process-links, cloned from the
   `form-flow-demo` case type — and a per-trainee Epistola `PluginConfiguration` are auto-provisioned

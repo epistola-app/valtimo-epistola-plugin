@@ -253,10 +253,17 @@ in `test-app/frontend/src/app/embedding/`; the published plugin library is untou
   format-checked identifiers, dispatched through Valtimo's `Router` so `AuthGuardService` and role
   guards still run. Adding a route to the vocabulary means editing that table and its spec, nothing
   else.
-- **Auth while framed is the unsolved part**: bearer-token API calls are unaffected, but a
-  cross-site iframe may not get Keycloak's SSO cookies, and Keycloak's login page forbids being
-  framed. Deploy host + app + Keycloak on one registrable domain. Do not relax the Keycloak realm's
-  security headers to work around it.
+- **Auth while framed turns on one rule**: an IdP can redirect _through_ a frame but cannot render
+  _in_ one — framing headers apply only to the document that commits, never to a redirect. Measured:
+  authentik's authorize returns a bare 302 carrying `X-Frame-Options: DENY` and the browser follows
+  it, so an established session authenticates silently in a frame. Deploy host + app + IdM on one
+  registrable domain, with the host page behind the same IdP. Never relax an IdP's framing headers
+  to let its login page render in a frame (and with authentik it is not configurable anyway).
+- **Interactive re-auth is the open gap**: when an IdP session expires mid-use the app navigates its
+  own frame to a login page that cannot render, leaving a blank rectangle. Not fixed by same-site
+  deployment. Fix sketch (an `auth-required` bridge message + host-driven top-level popup, where the
+  popup re-establishes the cookie only and never runs the code exchange — the PKCE verifier lives in
+  the frame's `sessionStorage`) is in ADR 0005.
 
 ## Design Decisions
 

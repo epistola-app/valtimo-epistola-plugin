@@ -238,33 +238,63 @@ host page.
 
 **The app's own API calls are unaffected.** nginx proxies `/api` to the backend
 from the same origin as the app, and Valtimo authenticates with a bearer token
-held in memory rather than a session cookie. Nothing about being framed changes
-that — which is why, unlike epistola-suite, this feature needed no `SameSite`
-changes anywhere.
+rather than a session cookie. Nothing about being framed changes that — which is
+why, unlike epistola-suite, this feature needed no `SameSite` work anywhere.
 
-**Establishing the session is the part that can break.** The app is configured
-with Keycloak `onLoad: 'login-required'`, so an unauthenticated iframe redirects
-itself to Keycloak, and:
+Signing in is the part that interacts with framing, and one rule governs all of
+it:
 
-- If the browser still sends Keycloak's SSO cookies, Keycloak redirects straight
-  back and the user never sees a login page. Everything works.
-- If it does not — Safari blocks third-party cookies outright, and Chrome does
-  for users in the phase-out — Keycloak tries to _render_ its login page inside
-  the frame, which its own default `frame-ancestors 'self'` forbids. The result
-  is a blank frame.
+> **An identity provider can redirect _through_ a frame, but it cannot render
+> _in_ one.**
 
-In preference order:
+`X-Frame-Options` and `frame-ancestors` are enforced only on the document that
+finally commits — never on a redirect along the way. Measured against authentik:
+its `/application/o/authorize/` answers an authenticated request with a bare
+`302` that itself carries `X-Frame-Options: DENY`, and the browser follows it
+without complaint. The frame lands on the callback and the flow completes.
 
-1. **Deploy the host page, this app, and Keycloak on one registrable domain**
-   (`training.example.org`, `valtimo.example.org`, `auth.example.org`). The
-   iframe is then same-site, the cookies are first-party, and none of the above
-   applies. This is the recommended production shape.
-2. **Have the user sign in top-level first**, then embed — the host opens the app
-   in a tab once and the established session carries into the frame.
-3. Relaxing the Keycloak realm's `browserSecurityHeaders` so its login page can
-   be framed. **Not done here and not recommended**: it means users type
-   credentials inside a frame the host controls, which is exactly the
-   clickjacking exposure `frame-ancestors` exists to prevent.
+So the question is never "does the IdP allow framing". It is **"does the IdP
+need to render anything"**:
+
+| Situation                                                      | Result in a frame                                  |
+| -------------------------------------------------------------- | -------------------------------------------------- |
+| Live session, no consent/MFA prompt due                        | Silent `302`. Works.                               |
+| No session, expired session, consent screen, or re-auth prompt | IdP renders → framing headers apply → blank frame. |
+
+### Per provider
+
+|                                   | Keycloak (local dev/demo)                          | authentik (production)                                                                                                                            |
+| --------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Session cookie, cross-site frame  | Realm-dependent                                    | `SameSite=None; Secure` automatically over HTTPS — its custom `SessionMiddleware` uses `"None" if secure else "Lax"`, so nothing to configure     |
+| Framing headers on rendered pages | `X-Frame-Options: SAMEORIGIN`, relaxable per realm | `X-Frame-Options: DENY`, no CSP, and **not configurable** ([goauthentik#25259](https://github.com/goauthentik/authentik/issues/25259) still open) |
+| Silent-renew iframe               | `checkLoginIframe: false` already — leave it off   | None at all                                                                                                                                       |
+| Token refresh                     | Token-endpoint fetch                               | Token-endpoint `fetch` with a refresh token, no cookies                                                                                           |
+
+The authentik path (`src/environments/auth/authentik-config.ts`) is a hand-rolled
+authorization-code + PKCE implementation rather than a library, and that turns
+out to help: it has no silent-renew iframe, the single most common reason
+embedded SPAs break, and its refresh path touches no cookie at all. Once the
+frame holds tokens it stays authenticated regardless of third-party cookie
+policy.
+
+### What to do about it
+
+1. **Deploy the host page, this app, and the IdP on one registrable domain**
+   (`epistola.app`, `valtimo.epistola.app`, `auth.epistola.app`). The frame is
+   then same-site, the IdP session cookie is delivered, and the common path is a
+   silent `302`. This is the recommended production shape.
+2. **Put the host page behind the same IdP**, so a session already exists before
+   any page frames this app. For a training facility that is the natural shape
+   anyway.
+3. Do **not** relax the IdP's framing headers to let its login page render in the
+   frame. It puts credential entry inside a frame the host controls, which is the
+   clickjacking exposure `frame-ancestors` exists to prevent — and with authentik
+   it is not possible regardless.
+
+`SameSite=None` makes a cookie _eligible_ to be sent cross-site, not guaranteed:
+Safari has blocked third-party cookies since 2020 and Firefox partitions them,
+so a genuinely cross-site deployment will still fall into the render path in
+those browsers. That is another reason to prefer same-site.
 
 > **Testing this locally will not reproduce the problem.** Every `localhost`
 > port is the _same site_ — ports do not affect site calculation — so a host
@@ -273,13 +303,35 @@ In preference order:
 > success therefore says nothing about a genuinely cross-site deployment. Use
 > two distinct hostnames to test that.
 
-`checkLoginIframe` is already `false` in this app's Keycloak options
-(`src/environments/auth/keycloak-config.ts`), which is the right setting when
-framed — Keycloak's session-check iframe depends on third-party cookies and can
-otherwise sign an embedded user out spuriously. Leave it off.
+### Not solved: interactive re-authentication
+
+Everything above concerns getting _into_ the frame. It does not address what
+happens when a session that was valid **expires while the app is embedded** —
+the IdP session times out, or the refresh token is rejected.
+
+At that point the app calls `login()`, which does `window.location.assign(...)`
+on its own frame. The IdP now has to render a login page, the framing headers
+apply, and the learner is left looking at a **blank rectangle** in the middle of
+an exercise, with no explanation and no way forward.
+
+This is not an edge case and it is **not fixed by deploying same-site**. Same-site
+addresses cookie _delivery_; an expired session is genuinely gone and needs
+interactive login however the domains are arranged. Any long-lived embedded
+session will hit it eventually.
+
+The intended fix is sketched in [ADR 0005](adr/0005-iframe-embedding-bridge.md)
+and is tracked as outstanding work — in short, the app should detect that it
+needs interactive re-auth, decline to navigate its own frame, and tell the host
+over the bridge so the host can drive a top-level login. It is not implemented
+yet.
 
 ## Known gaps
 
+- **Interactive re-authentication has no path.** When an IdP session expires
+  mid-exercise the frame goes blank, because re-login has to render and a frame
+  cannot render an IdP. See
+  [Not solved: interactive re-authentication](#not-solved-interactive-re-authentication)
+  above — this is the largest known gap in the feature.
 - **A routing error is reported as a reload, not a navigation.**
   `AppRoutingModule` handles a router error with `window.location.href = '/'`, a
   full document load rather than a `NavigationEnd`. The host sees the frame

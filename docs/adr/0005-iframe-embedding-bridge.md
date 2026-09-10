@@ -167,22 +167,57 @@ deliver.
   rendered into the Helm or docker-compose copies of `config.js`, so
   `EPISTOLA_ENABLED=false` silently did nothing in either. Both now render it.
 
-### What this does not solve: signing in while framed
+### What this does not solve: interactive login while framed
 
 The app's own API calls are unaffected by framing — same origin, bearer token,
-no cookie — which is why no `SameSite` work was needed. Establishing the session
-is the part that can fail: an unauthenticated iframe redirects itself to
-Keycloak, and if the browser withholds Keycloak's third-party SSO cookies
-(Safari always; Chrome in the phase-out) Keycloak tries to render its login page
-inside the frame, which its own `frame-ancestors 'self'` forbids.
+no cookie — which is why no `SameSite` work was needed anywhere.
 
-The recommended answer is deployment shape — host page, app, and Keycloak on one
-registrable domain makes the frame same-site and the problem disappears.
-Relaxing Keycloak's realm security headers so its login page can be framed was
-considered and rejected: it puts credential entry inside a frame the host
-controls, which is the clickjacking exposure `frame-ancestors` exists to
-prevent. `checkLoginIframe` was already `false` in this app, which is the
-correct setting when framed.
+Signing in is governed by one rule, established by measurement rather than
+assumption: **an IdP can redirect through a frame, but it cannot render in one.**
+Framing headers are enforced only on the document that finally commits, never on
+a redirect. authentik's `/application/o/authorize/` answers an authenticated
+request with a bare `302` that itself carries `X-Frame-Options: DENY`, and the
+browser follows it — the flow completes inside the frame. So the question is not
+whether the IdP permits framing, but whether it needs to render anything.
+
+For the production provider (authentik) that lands well. Its session cookie is
+already `SameSite=None; Secure` over HTTPS with no configuration, and this repo's
+authentik integration is a hand-rolled PKCE implementation with no silent-renew
+iframe and a cookie-free refresh path — so an established session survives in a
+frame indefinitely. Its `X-Frame-Options: DENY` is unconfigurable
+([goauthentik#25259](https://github.com/goauthentik/authentik/issues/25259)), but
+that only bites on the render path.
+
+Deployment shape is therefore the recommendation: host page, app, and IdP on one
+registrable domain, with the host page itself behind the same IdP so a session
+exists before anything is framed. Relaxing an IdP's framing headers so its login
+page can render in the frame was considered and rejected — it puts credential
+entry inside a frame the host controls, which is the clickjacking exposure
+`frame-ancestors` exists to prevent, and with authentik it is not possible at all.
+
+**The open problem is re-authentication, not authentication.** When a session
+that was valid expires mid-exercise, the app calls `login()`, which navigates its
+own frame to the IdP; the IdP must render; the learner gets a blank rectangle.
+This is _not_ fixed by deploying same-site — same-site governs cookie delivery,
+while an expired session needs interactive login however the domains are
+arranged — so every long-lived embedded session will eventually hit it.
+
+The shape of the fix, deliberately not implemented in this change:
+
+- The app detects that it needs _interactive_ re-auth and **does not navigate its
+  own frame**, since that is what produces the blank rectangle.
+- It emits an `auth-required` message over the bridge; the host renders its own
+  "session expired, continue" affordance and opens a **top-level** login (a popup,
+  or its own re-auth), where no framing headers apply.
+- The popup must only re-establish the IdP session cookie — it must **not** run
+  the code exchange. The PKCE verifier lives in the frame's `sessionStorage`,
+  which the popup does not share. Once the cookie is back, the frame re-runs its
+  own authorize and gets the silent `302`.
+- Opening the popup needs a user gesture, so it has to originate from a click on
+  the host side rather than fire automatically.
+
+That is additive to the protocol — one new outbound message type — which is what
+the `ready` message's `protocolVersion` exists to allow.
 
 ## Alternatives considered
 
