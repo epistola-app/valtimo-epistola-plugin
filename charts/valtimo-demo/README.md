@@ -57,6 +57,8 @@ kubectl get secret demo-valtimo-demo-backend \
 | `database.type` | Choose between `cnpg` (default), `cnpgExisting`, or `external`. |
 | `epistola.enabled` | Deploy bundled Epistola chart (`true`) or point to `externalEpistola.url`. |
 | `ingress.*` | Configure ingress hosts/tls or rely on an external gateway. When ingress is disabled you must provide `publicUrls.*`. |
+| `frontend.embedding.*` | Allow the app to be embedded in an `<iframe>` on named origins, and expose the postMessage bridge to the host page. Off by default. See [Iframe embedding](#iframe-embedding). |
+| `frontend.env.epistolaEnabled` | Set `false` to hide the Epistola plugin entirely (no admin menu, no plugin picker entry). |
 
 See `values.yaml` for the exhaustive list of tunables.
 
@@ -222,6 +224,32 @@ helm install demo charts/valtimo-demo \
 > When `existingSecret` is set, the `checksum/secret` pod annotation is omitted since
 > the chart does not manage the secret contents. If you need rolling restarts on secret
 > changes, use a tool like [Reloader](https://github.com/stakater/Reloader).
+
+## Iframe embedding
+
+The frontend refuses to be framed by default — it serves
+`Content-Security-Policy: frame-ancestors 'none'`. To embed it in a trusted host
+page, name the origins allowed to do so:
+
+```yaml
+frontend:
+  embedding:
+    enabled: true
+    allowedParentOrigins:
+      - https://epistola.app
+```
+
+This does two things: relaxes `frame-ancestors` to exactly those origins, and
+starts the `postMessage` bridge that reports navigations to the host and accepts
+navigation instructions from it.
+
+Both settings are required. With `enabled: true` and an empty list the chart
+renders `frame-ancestors 'none'` and leaves the bridge inert, and a wildcard or
+bare hostname is rejected at template time rather than rendering a wider policy
+than intended.
+
+The full message protocol, and the caveats around signing in while framed, are
+in [docs/embedding.md](../../docs/embedding.md).
 
 ## Authentication & Demo Flow
 

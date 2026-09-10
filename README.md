@@ -237,6 +237,16 @@ Using these inside a multi-step Valtimo Form Flow has its own rules — where to
 to generate, and how to read a field from an earlier step: see
 [docs/form-flows.md](docs/form-flows.md).
 
+## Embedding the demo app
+
+The demo frontend (`test-app/frontend`) can be embedded in an `<iframe>` on a trusted host page and
+driven from it via `postMessage` — the host navigates by typed resource identity, and the app reports
+every navigation back. Off by default: nothing is framable and no bridge runs until an origin
+allowlist is configured. See [docs/embedding.md](docs/embedding.md) and
+[ADR 0005](docs/adr/0005-iframe-embedding-bridge.md).
+
+This is test-app plumbing only — it is not part of the published plugin artifact.
+
 ## Project Structure
 
 ```
