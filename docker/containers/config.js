@@ -20,4 +20,7 @@
   window['env']['oidcScopes'] = 'openid profile email';
   window['env']['whiteListedDomain'] = 'localhost:4200';
   window['env']['openZaakCatalogusId'] = '';
+  window['env']['epistolaEnabled'] = true;
+  window['env']['embeddingEnabled'] = false;
+  window['env']['embeddingAllowedParentOrigins'] = '';
 })(this);

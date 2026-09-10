@@ -24,6 +24,9 @@ data:
       window['env']['oidcScopes'] = '{{ .Values.frontend.env.oidcScopes | default .Values.auth.oidc.scopes }}';
       window['env']['whiteListedDomain'] = '{{ include "valtimo-demo.whitelistedDomain" . }}';
       window['env']['openZaakCatalogusId'] = '{{ .Values.frontend.env.openZaakCatalogusId }}';
+      window['env']['epistolaEnabled'] = {{ .Values.frontend.env.epistolaEnabled }};
+      window['env']['embeddingEnabled'] = {{ and .Values.frontend.embedding.enabled (include "valtimo-demo.frontend.allowedParentOrigins" . | trim | ne "") }};
+      window['env']['embeddingAllowedParentOrigins'] = '{{ include "valtimo-demo.frontend.allowedParentOrigins" . }}';
     })(this);
   default.conf: |
     server {
@@ -55,6 +58,9 @@ data:
         location / {
             root   /usr/share/nginx/html;
             add_header Cache-Control "no-cache";
+            # Who may frame this app. Scoped to this location because nginx
+            # drops an inherited add_header wherever a location sets its own.
+            add_header Content-Security-Policy "frame-ancestors {{ include "valtimo-demo.frontend.frameAncestors" . }};" always;
             try_files $uri $uri/ /index.html?$args;
         }
     }
