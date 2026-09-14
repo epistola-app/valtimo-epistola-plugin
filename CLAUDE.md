@@ -259,11 +259,21 @@ in `test-app/frontend/src/app/embedding/`; the published plugin library is untou
   it, so an established session authenticates silently in a frame. Deploy host + app + IdM on one
   registrable domain, with the host page behind the same IdP. Never relax an IdP's framing headers
   to let its login page render in a frame (and with authentik it is not configurable anyway).
-- **Interactive re-auth is the open gap**: when an IdP session expires mid-use the app navigates its
-  own frame to a login page that cannot render, leaving a blank rectangle. Not fixed by same-site
-  deployment. Fix sketch (an `auth-required` bridge message + host-driven top-level popup, where the
-  popup re-establishes the cookie only and never runs the code exchange — the PKCE verifier lives in
-  the frame's `sessionStorage`) is in ADR 0005.
+- **Embedded logins always use `prompt=none`** (authentik only). It is the only request shape that
+  answers with a redirect in both directions — a code when the session is live, `error=login_required`
+  when it is not — so the provider never renders and the frame never blanks. When it is refused the
+  app raises `auth-required` over the bridge and holds its `APP_INITIALIZER` pending rather than
+  redirecting; the host drives a top-level sign-in and replies `retry-auth`. The branch lives in
+  `AuthentikOidcService.login()`, the one chokepoint the initializer, route guard and bearer
+  interceptor all reach — moving it would both duplicate the logic and reintroduce a redirect loop.
+  Keycloak still uses `onLoad: 'login-required'` and keeps the old behaviour (demo only).
+- **A popup must never run the code exchange** — only re-establish the provider session cookie. The
+  PKCE verifier lives in the frame's `sessionStorage`, which a popup does not share.
+- **The `user` message identifies, it does not authenticate**: OIDC `sub` + username only (no email,
+  name or roles — guarded by a spec), resolved via Valtimo's `UserProviderService` so it is
+  provider-agnostic. It is a `postMessage` from a framed page, so it is a consistency check for the
+  host, never an authorization input. Always emitted **after** `ready` (also guarded by a spec — the
+  identity replays synchronously and a host listening from `ready` would otherwise miss it).
 
 ## Design Decisions
 

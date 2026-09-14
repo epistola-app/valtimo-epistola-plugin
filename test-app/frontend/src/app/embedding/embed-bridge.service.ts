@@ -106,13 +106,16 @@ export class EmbedBridgeService implements OnDestroy {
       this.post({ source: APP_SOURCE, type: 'auth-required', reason }),
     );
 
-    this.reportUserIdentity();
-
     // Angular boots long after the document does, so — unlike the server-rendered
     // Suite bridge — the host genuinely cannot tell when this app is listening.
     // Without `ready`, a host that posts `navigate` too early is ignored in
     // silence, with nothing to retry against.
     this.post({ source: APP_SOURCE, type: 'ready', protocolVersion: EMBED_PROTOCOL_VERSION });
+
+    // Strictly after `ready`: the user identity is replayed from a ReplaySubject
+    // and so can arrive synchronously, and a host that only starts handling
+    // messages once it sees `ready` would otherwise miss it entirely.
+    this.reportUserIdentity();
   }
 
   ngOnDestroy(): void {

@@ -351,6 +351,26 @@ describe('EmbedBridgeService', () => {
   });
 
   describe('reporting who is signed in', () => {
+    it('always announces ready before the user, even when identity is already known', () => {
+      // The identity replays synchronously, and a host that only starts
+      // listening on `ready` would otherwise never see the user message.
+      const win = new FakeWindow(enabledEnv());
+      router = new FakeRouter();
+      const early = new ReplaySubject<unknown>(1);
+      early.next({ id: 'sub-123', username: 'trainee' });
+      TestBed.configureTestingModule({
+        providers: [
+          EmbedBridgeService,
+          { provide: Router, useValue: router },
+          { provide: EMBEDDING_WINDOW, useValue: win },
+          { provide: UserProviderService, useValue: { getUserSubject: () => early } },
+        ],
+      });
+      TestBed.inject(EmbedBridgeService).start();
+
+      expect(win.posts.map((post) => post.message['type'])).toEqual(['ready', 'user']);
+    });
+
     it('posts the user id and username so the host can check the person matches', () => {
       const win = new FakeWindow(enabledEnv());
       startedIn(win);

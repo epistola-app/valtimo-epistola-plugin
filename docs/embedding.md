@@ -23,6 +23,18 @@ bridge](#relationship-to-the-suite-bridge) for what differs and why.
 - **No backend change.** Unlike the Suite, this app authenticates with a bearer
   token rather than a session cookie, so there is no `SameSite` work to do — see
   [Authentication inside an iframe](#authentication-inside-an-iframe).
+- **Signing in never blanks the frame.** Embedded logins use `prompt=none`, which
+  answers with a redirect whether or not the session is alive, and the app asks
+  the host to drive a top-level sign-in rather than navigating itself somewhere
+  it cannot render. Implemented for authentik; see
+  [Known limitations](#known-limitations) for what that does _not_ cover.
+
+Reading order: [Configuration](#configuration) to deploy it,
+[The message protocol](#the-message-protocol) and
+[Driving it from a host page](#driving-it-from-a-host-page) to build the host,
+[Authentication inside an iframe](#authentication-inside-an-iframe) before
+choosing domains, and [Known limitations](#known-limitations) before promising
+anything to anyone.
 
 ## Configuration
 
@@ -109,6 +121,43 @@ Every message carries a `source` so each side can pick its own traffic out of
 whatever else is on the page. The bridge never posts with `'*'` as the target
 origin, and validates both `event.origin` (against the allowlist) and
 `event.source === window.parent` before acting on anything inbound.
+
+| Direction  | `type`          | Carries                     | When                                                |
+| ---------- | --------------- | --------------------------- | --------------------------------------------------- |
+| app → host | `ready`         | `protocolVersion`           | Once, as soon as the bridge starts                  |
+| app → host | `user`          | `userId`, `username`        | When the signed-in identity is known, and on change |
+| app → host | `navigated`     | `path`, `resource \| null`  | Every `NavigationEnd`, de-duplicated                |
+| app → host | `auth-required` | `reason`                    | Silent authentication was refused                   |
+| host → app | `navigate`      | `target` (a typed identity) | Any time after `ready`                              |
+| host → app | `retry-auth`    | nothing                     | After the host completes a top-level sign-in        |
+
+`protocolVersion` is `1`. It is bumped only on a **breaking** change; new message
+types are additive, and both sides ignore types they do not recognise, so a host
+written against an older app keeps working.
+
+### The two flows worth knowing
+
+A normal load:
+
+```
+app  → ready
+app  → user        { userId, username }        host: is this who I expect?
+host → navigate    { view: 'case-type', … }
+app  → navigated   /cases/form-flow-demo
+     … learner works, each navigation reported …
+```
+
+A session that expires mid-exercise — note that the app never navigates its own
+frame, which is what stops it going blank:
+
+```
+app  → auth-required  { reason: 'login_required' }
+     … app holds on its bootstrap screen; host shows "sign in to continue" …
+host   (user clicks) opens a TOP-LEVEL popup → user signs in → popup closes
+host → retry-auth
+app    re-runs its silent flow → session picked up
+app  → ready → user → navigated
+```
 
 ### App → host: `ready`
 
@@ -254,40 +303,79 @@ and has no shorter form.
 
 ## Driving it from a host page
 
+A complete host, handling every message the app sends:
+
 ```html
 <iframe id="valtimo" src="https://valtimo.example/" title="Valtimo"></iframe>
 <script>
-  const VALTIMO_ORIGIN = "https://valtimo.example";
+  const APP_ORIGIN = "https://valtimo.example";
   const frame = document.getElementById("valtimo");
+  const expectedUserId = "sub-123"; // whoever this exercise was handed to
+
+  function send(message) {
+    frame.contentWindow.postMessage({ source: "epistola-host", ...message }, APP_ORIGIN);
+  }
 
   window.addEventListener("message", (event) => {
-    if (event.origin !== VALTIMO_ORIGIN) return;
+    // Both checks are required and neither implies the other: the origin check
+    // keeps out untrusted senders, the source check keeps out other frames and
+    // popups on this same page.
+    if (event.origin !== APP_ORIGIN) return;
     if (event.source !== frame.contentWindow) return;
+
     const message = event.data;
     if (!message || message.source !== "epistola-valtimo") return;
 
-    if (message.type === "ready") {
-      // Only now is the app listening.
-      frame.contentWindow.postMessage(
-        {
-          source: "epistola-host",
+    switch (message.type) {
+      case "ready":
+        // Only now is the app listening. A navigate sent before this is dropped
+        // in silence, because Angular has not bootstrapped yet.
+        send({
           type: "navigate",
           target: { view: "case-type", caseDefinitionKey: "form-flow-demo" },
-        },
-        VALTIMO_ORIGIN,
-      );
-    }
+        });
+        break;
 
-    if (message.type === "navigated") {
-      console.log("learner is on", message.path, message.resource);
+      case "user":
+        // A consistency check, never an authorization decision — see the
+        // warning under the `user` message above.
+        if (message.userId !== expectedUserId) {
+          showWrongUserWarning(message.username);
+        }
+        break;
+
+      case "navigated":
+        trackProgress(message.path, message.resource);
+        break;
+
+      case "auth-required":
+        // The frame has deliberately NOT navigated itself, because only a
+        // top-level document can render a login page. Opening a popup needs a
+        // real user gesture, so this has to be a button rather than an
+        // immediate window.open.
+        showSignInButton(() => {
+          const popup = window.open(SIGN_IN_URL, "signin", "width=520,height=680");
+          const poll = setInterval(() => {
+            if (!popup || popup.closed) {
+              clearInterval(poll);
+              send({ type: "retry-auth" });
+            }
+          }, 500);
+        });
+        break;
     }
   });
 </script>
 ```
 
-The host must validate `event.origin` and `event.source` on its own side too —
-the bridge can only vouch for what it sends, not for what else may post to the
-host page.
+Polling for `popup.closed` is the least-effort signal and is fine for a training
+facility; a sign-in page you control can `postMessage` back to `window.opener`
+instead, which is both faster and tells you whether the user actually completed
+the login or just closed the window.
+
+The host must validate `event.origin` and `event.source` on its own side, as
+above. The bridge can only vouch for what it sends — it cannot stop anything else
+on the page from posting to the host.
 
 ## Authentication inside an iframe
 
@@ -419,43 +507,104 @@ frame re-run its own silent flow and pick the session up.
 Un-framed deployments are untouched by all of this — `isEmbeddedSession()` is
 false, and `login()` keeps its existing full-redirect behaviour.
 
-## Known gaps
+## What is verified, and how
 
-- **Only the authentik integration does silent re-auth.** The Keycloak options
-  in `keycloak-config.ts` still use `onLoad: 'login-required'`, which renders on
-  an expired session and so blanks the frame. authentik is the production
-  provider and Keycloak is the local demo one, so this is deliberate rather than
-  overlooked — but embedding the Keycloak-configured stack has the old
-  behaviour. The equivalent there is `onLoad: 'check-sso'` with a
-  `silentCheckSsoRedirectUri`.
-- **Re-auth loses in-progress work.** `retry-auth` re-runs the silent flow by
-  navigating the frame, so a half-filled form is lost. Avoiding that needs the
-  code exchange to happen in a hidden nested iframe, which in turn needs a
-  dedicated static callback page registered as an extra redirect URI on the
-  provider.
-- **A routing error is reported as a reload, not a navigation.**
-  `AppRoutingModule` handles a router error with `window.location.href = '/'`, a
-  full document load rather than a `NavigationEnd`. The host sees the frame
-  reload and then a fresh `ready` + `navigated` for `/`, rather than a
-  `navigated` for the URL that failed.
+Nothing below is inferred from a specification — each was measured against the
+built artifact or pinned by a test that was checked to fail when the behaviour is
+removed.
+
+| Behaviour                                                                     | How it was established                                                                          |
+| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Default is un-framable in every deployment                                    | Built image across all env states; Chromium refused the frame (`chrome-error://chromewebdata/`) |
+| An allowlisted origin can frame it                                            | Same two-container run, host page on a second origin                                            |
+| Entrypoint bypassed, empty list, or an injection attempt still yield `'none'` | Built image, four failure states, nginx still starts in each                                    |
+| Chart renders all four states and rejects wildcards                           | `helm template` / `helm lint`                                                                   |
+| `ready` reaches a cross-origin host with the correct target origin            | Real browser, host page on `:4321` framing the image on `:8092`                                 |
+| `ready` always precedes `user`                                                | Karma spec; verified to fail when the order is swapped                                          |
+| Host cannot navigate by raw URL or traverse out of a route shape              | Karma specs; verified to fail when the identifier check is loosened                             |
+| Inbound origin **and** `event.source` are both enforced                       | Karma specs; each check removed separately, each fails tests                                    |
+| The bridge never posts to `'*'`                                               | Karma specs; substituting `'*'` fails six of them                                               |
+| `user` carries no email, name, or roles                                       | Karma spec; adding `email` fails three                                                          |
+| `prompt=none` answers with a redirect in **both** session states              | authentik 2025.6, implicit-consent flow, traced in a real browser and with `curl`               |
+| Framing headers are not enforced on a redirect                                | Same trace: the authorize `302` carries `X-Frame-Options: DENY` and Chromium follows it         |
+
+Run the specs with `cd test-app/frontend && pnpm test` (Karma, real Chrome —
+chosen over the plugin library's jsdom-based Jest precisely because this code
+depends on real `postMessage` and `MessageEvent` semantics). They live beside
+the source in `src/app/embedding/`.
+
+## Troubleshooting
+
+| Symptom                                                              | Most likely cause                                                                                                                      |
+| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Frame is blank immediately, console says "Refused to display"        | `frame-ancestors` does not list the host origin. Check the served header, not the config — compose and Helm override the entrypoint    |
+| Frame loads, but no messages ever arrive                             | `embeddingEnabled` is off or every origin was rejected. The browser console carries an explicit warning, and so does the container log |
+| Messages arrive but `navigate` does nothing                          | Sent before `ready`, an unknown `view`, or an identifier that failed validation. All are ignored in silence by design                  |
+| `ready` never arrives                                                | The app did not finish bootstrapping. Look for `auth-required` — it is held deliberately when silent auth was refused                  |
+| `auth-required` immediately, every time                              | The provider session cookie is not reaching the provider from inside the frame. Cross-site plus Safari is the usual cause              |
+| The CSP header is right in `conf/default.conf` but absent at runtime | Helm and compose each mount their own nginx config; the image's copy is not in play there                                              |
+| Works locally, fails in production                                   | Every `localhost` port is the same _site_. A local success does not exercise cross-site cookie behaviour at all                        |
+
+## Known limitations
+
+### Authentication
+
+- **Only the authentik integration does silent re-auth.** The Keycloak options in
+  `keycloak-config.ts` still use `onLoad: 'login-required'`, which renders on an
+  expired session and so blanks the frame. authentik is the production provider
+  and Keycloak the local demo one, so this is deliberate rather than overlooked —
+  but embedding the Keycloak-configured stack has the old behaviour. The
+  equivalent there is `onLoad: 'check-sso'` with a `silentCheckSsoRedirectUri`.
+- **Re-authentication loses in-progress work.** `retry-auth` re-runs the silent
+  flow by navigating the frame, so a half-filled form is lost. Avoiding that
+  needs the code exchange to happen in a hidden nested iframe, which in turn
+  needs a dedicated static callback page registered as an extra redirect URI on
+  the provider.
+- **Cross-site embedding degrades in privacy-restricting browsers.** Safari has
+  blocked third-party cookies since 2020 and Firefox partitions them, so the
+  provider session cookie may not arrive and every load ends in `auth-required`.
+  Functionally safe — no blank frame — but a sign-in per session is poor. Deploy
+  same-site.
+- **`sessionStorage` in a third-party frame on Safari is unverified.** Tokens and
+  the PKCE verifier both live there. If a write silently fails, the flow breaks
+  before cookies are even reached. Untested; worth checking before any
+  genuinely cross-site rollout.
+- **The `user` message identifies, it does not authenticate.** It is an ordinary
+  `postMessage`, not a signed assertion. Never use it for authorization.
+
+### Protocol
+
 - **Nothing reports data changes.** The Suite's bridge also emits
-  `resource-changed` on create/update/delete. There is no equivalent here yet: a
-  host learns that a learner opened a task, not that they completed it. Adding
-  it would mean an `HttpInterceptor` classifying Valtimo's API calls, along the
-  lines of the Suite's `htmx:afterRequest` listener. The `ready` message's
-  `protocolVersion` exists so that can be added compatibly.
+  `resource-changed` on create/update/delete; there is no equivalent here, so a
+  host learns that a learner opened a task, not that they completed it. Valtimo's
+  API has no single URL convention to classify generically the way the Suite's
+  does, so it needs its own design rather than a translation.
+- **`navigate` is not acknowledged.** An unknown view, a malformed identifier, or
+  a message sent before `ready` is ignored with no reply, so a host cannot tell
+  "refused" from "not listening yet". Wait for `ready`, and treat a missing
+  `navigated` as the signal.
+- **A routing error is reported as a reload.** `AppRoutingModule` handles router
+  errors with `window.location.href = '/'`, a full document load rather than a
+  `NavigationEnd`. The host sees the frame reload and a fresh `ready`, not a
+  `navigated` for the URL that failed.
+- **No height or resize message.** The host sizes the frame itself.
+
+### Deployment
+
 - **`ng serve` sends no CSP**, so the dev server is framable by any origin
-  regardless of these settings. Only the bridge half of the feature is
-  configurable in dev.
-- **No committed browser E2E.** The Karma specs cover the bridge thoroughly
-  (origin spoofing, path-traversal-shaped identifiers, every fail-closed path),
-  and the following were verified by hand against the built image on a second
-  origin: the served header in each configured and failure state, Chromium
-  actually blocking a `'none'` frame and permitting an allowlisted one, and the
-  `ready` handshake arriving cross-origin with the right target origin. None of
-  that is committed as a test — the repo has no cross-origin fixture-server
-  harness, and a full flow additionally needs Keycloak with the framing origin
-  registered as a redirect URI.
+  regardless of these settings. Only the bridge half is configurable in dev.
+- **The same values live in several files.** Three nginx configs and five
+  `config.js` copies, because the image, compose, and Helm each render their own
+  and only the image path is environment-driven. A new `window['env']` key added
+  only to `config.template.js` does nothing in compose or Helm — `epistolaEnabled`
+  was broken exactly that way until this change.
+
+### Testing
+
+- **No committed cross-origin E2E.** The browser checks in the table above were
+  run by hand. The repo has no cross-origin fixture-server harness, and a full
+  authenticated flow additionally needs the provider configured with the framing
+  origin as a redirect URI.
 
 ## Relationship to the Suite bridge
 
