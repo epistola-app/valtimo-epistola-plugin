@@ -482,3 +482,38 @@ Epistola service URL (for Valtimo backend to reach Epistola).
 {{- .Values.externalEpistola.url }}
 {{- end }}
 {{- end }}
+
+{{/*
+The origins allowed to embed the frontend in an <iframe>, validated once and
+reused by both consumers below.
+
+Rejects wildcards outright rather than passing them through: CSP would happily
+accept `frame-ancestors *` and make the app framable by anyone, while the
+browser bridge could never postMessage to such an "origin" — so the two halves
+of the feature would disagree, in the insecure direction.
+*/}}
+{{- define "valtimo-demo.frontend.allowedParentOrigins" -}}
+{{- $origins := list -}}
+{{- if .Values.frontend.embedding.enabled -}}
+  {{- range .Values.frontend.embedding.allowedParentOrigins -}}
+    {{- if contains "*" . -}}
+      {{- fail (printf "frontend.embedding.allowedParentOrigins: %q is not an origin — wildcards are not supported, list each origin in full" .) -}}
+    {{- end -}}
+    {{- if not (or (hasPrefix "http://" .) (hasPrefix "https://" .)) -}}
+      {{- fail (printf "frontend.embedding.allowedParentOrigins: %q must be a full origin, e.g. https://epistola.app" .) -}}
+    {{- end -}}
+    {{- $origins = append $origins (trimSuffix "/" .) -}}
+  {{- end -}}
+{{- end -}}
+{{- join " " $origins -}}
+{{- end -}}
+
+{{/*
+The CSP frame-ancestors directive value. Falls back to 'none' whenever
+embedding is off or no origin was configured, so a half-finished configuration
+leaves the app un-framable rather than framable by anyone.
+*/}}
+{{- define "valtimo-demo.frontend.frameAncestors" -}}
+{{- $origins := include "valtimo-demo.frontend.allowedParentOrigins" . -}}
+{{- if $origins -}}{{- $origins -}}{{- else -}}'none'{{- end -}}
+{{- end -}}

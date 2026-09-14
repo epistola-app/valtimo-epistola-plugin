@@ -22,4 +22,6 @@
   window['env']['oidcScopes'] = 'openid profile email roles';
   window['env']['whiteListedDomain'] = undefined;
   window['env']['epistolaEnabled'] = true;
+  window['env']['embeddingEnabled'] = false;
+  window['env']['embeddingAllowedParentOrigins'] = '';
 })(this);

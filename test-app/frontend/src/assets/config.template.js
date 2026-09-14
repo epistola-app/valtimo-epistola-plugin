@@ -23,4 +23,6 @@
   window['env']['whiteListedDomain'] = '${WHITELISTED_DOMAIN}';
   window['env']['openZaakCatalogusId'] = '${OPENZAAK_CATALOGUS_ID}';
   window['env']['epistolaEnabled'] = '${EPISTOLA_ENABLED}';
+  window['env']['embeddingEnabled'] = '${EMBEDDING_ENABLED}';
+  window['env']['embeddingAllowedParentOrigins'] = '${EMBEDDING_ALLOWED_PARENT_ORIGINS}';
 })(this);
