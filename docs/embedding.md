@@ -147,6 +147,61 @@ duplicates of the same URL are suppressed.
 and `null` otherwise (an access-control screen, a 404, anything not in the table
 below). That is normal, not an error: `path` is always present.
 
+### App → host: `user`
+
+```jsonc
+{
+  "source": "epistola-valtimo",
+  "type": "user",
+  "userId": "sub-123",
+  "username": "trainee@demo.local",
+}
+```
+
+Sent when the signed-in identity becomes known, and again only if it actually
+changes. Lets the host check that the frame is showing the person it expects,
+rather than whoever this browser happened to be signed in as already — an easy
+mismatch when the host hands out per-user exercises.
+
+Deliberately minimal: an identifier and a username, never email, name, or roles.
+`userId` is the OIDC `sub` and is the field to compare on; either field may be
+`null` if the provider did not supply it. Resolved through Valtimo's
+`UserProviderService`, so it works the same for Keycloak and authentik.
+
+> **This identifies, it does not authenticate.** It is an ordinary `postMessage`
+> from a page the host chose to frame, not a signed assertion. Use it to detect a
+> mismatch and react — warn, reload, refuse to start the exercise — never as
+> proof of identity, and never as the basis for an authorization decision. The
+> real check belongs on your API, against the user's own token.
+
+### App → host: `auth-required`
+
+```jsonc
+{ "source": "epistola-valtimo", "type": "auth-required", "reason": "login_required" }
+```
+
+The app needs a human to sign in and **has deliberately not navigated its own
+frame** to say so. See
+[interactive re-authentication](#interactive-re-authentication) below for why
+that distinction is the whole point.
+
+`reason` is the OIDC error the provider returned to a `prompt=none` attempt —
+usually `login_required`, but `consent_required` and `interaction_required` are
+possible and a provider may define its own, so treat it as an opaque string.
+
+On receiving this the host should present its own sign-in affordance and open a
+**top-level** login (a popup or its own re-auth), then send `retry-auth`.
+
+### Host → app: `retry-auth`
+
+```jsonc
+{ "source": "epistola-host", "type": "retry-auth" }
+```
+
+Tells the app that a top-level sign-in has completed and it should try again. It
+carries no payload — it is a nudge, not a credential channel; the app re-runs its
+own silent flow and picks the session up from the provider.
+
 ### Host → app: `navigate`
 
 ```jsonc
@@ -303,35 +358,81 @@ those browsers. That is another reason to prefer same-site.
 > success therefore says nothing about a genuinely cross-site deployment. Use
 > two distinct hostnames to test that.
 
-### Not solved: interactive re-authentication
+### Interactive re-authentication
 
-Everything above concerns getting _into_ the frame. It does not address what
-happens when a session that was valid **expires while the app is embedded** —
-the IdP session times out, or the refresh token is rejected.
+Everything above concerns getting _into_ the frame. This is what happens when a
+session that was valid **expires while the app is embedded**.
 
-At that point the app calls `login()`, which does `window.location.assign(...)`
-on its own frame. The IdP now has to render a login page, the framing headers
-apply, and the learner is left looking at a **blank rectangle** in the middle of
-an exercise, with no explanation and no way forward.
+Left alone, the app would call `login()`, navigate its own frame to the provider,
+and the provider would have to render a login page — leaving the user staring at
+a blank rectangle mid-exercise. That is not fixed by deploying same-site:
+same-site governs cookie _delivery_, while an expired session needs interactive
+login however the domains are arranged.
 
-This is not an edge case and it is **not fixed by deploying same-site**. Same-site
-addresses cookie _delivery_; an expired session is genuinely gone and needs
-interactive login however the domains are arranged. Any long-lived embedded
-session will hit it eventually.
+Two changes avoid it:
 
-The intended fix is sketched in [ADR 0005](adr/0005-iframe-embedding-bridge.md)
-and is tracked as outstanding work — in short, the app should detect that it
-needs interactive re-auth, decline to navigate its own frame, and tell the host
-over the bridge so the host can drive a top-level login. It is not implemented
-yet.
+**1. Embedded logins always ask for `prompt=none`.** It is the only request shape
+guaranteed to answer with a redirect in _both_ directions — an authorization code
+when the session is live, `?error=login_required` when it is not. Neither renders,
+so framing headers never engage and the frame never goes blank. Measured against
+authentik 2025.6 with an implicit-consent authorization flow:
+
+| session | response                                                                                           |
+| ------- | -------------------------------------------------------------------------------------------------- |
+| live    | `302 → /auth/callback?code=…` — carries `X-Frame-Options: DENY`, and the browser follows it anyway |
+| gone    | `302 → /auth/callback?error=login_required`                                                        |
+
+**2. When silent auth is refused, the app stops rather than redirects.** It
+raises `auth-required` for the host and holds. Concretely:
+
+- `AuthentikOidcService.login()` is the single chokepoint — the initializer, the
+  route guard and the bearer interceptor all call it, so one branch covers all
+  three. Once a silent attempt has been refused it no longer navigates at all,
+  which is also what stops the guard and interceptor from redirect-looping.
+- `AuthentikUserService.init()` leaves its `APP_INITIALIZER` promise **pending**.
+  Angular stays on its bootstrap screen; resolving would boot a session-less app
+  that renders the Valtimo shell and then 401s on everything, which is a worse
+  thing to show than "still loading".
+- A spent refresh token is no longer fatal on its own: the provider session often
+  outlives it, so the tokens are dropped and the normal login path runs, which
+  embedded means a `prompt=none` attempt that usually succeeds in silence.
+
+The host then owns the interaction — it has the top-level context, and only a
+top-level document can render a login page:
+
+```js
+if (message.type === "auth-required") {
+  // Must originate from a real click: popups need a user gesture.
+  showSignInButton(() => {
+    window.open(SIGN_IN_URL, "signin", "width=520,height=680");
+    // when that window reports success:
+    frame.contentWindow.postMessage({ source: "epistola-host", type: "retry-auth" }, APP_ORIGIN);
+  });
+}
+```
+
+The popup only has to **re-establish the provider session cookie**. It must not
+run the code exchange: the PKCE verifier lives in the frame's `sessionStorage`,
+which the popup does not share. Once the cookie is back, `retry-auth` makes the
+frame re-run its own silent flow and pick the session up.
+
+Un-framed deployments are untouched by all of this — `isEmbeddedSession()` is
+false, and `login()` keeps its existing full-redirect behaviour.
 
 ## Known gaps
 
-- **Interactive re-authentication has no path.** When an IdP session expires
-  mid-exercise the frame goes blank, because re-login has to render and a frame
-  cannot render an IdP. See
-  [Not solved: interactive re-authentication](#not-solved-interactive-re-authentication)
-  above — this is the largest known gap in the feature.
+- **Only the authentik integration does silent re-auth.** The Keycloak options
+  in `keycloak-config.ts` still use `onLoad: 'login-required'`, which renders on
+  an expired session and so blanks the frame. authentik is the production
+  provider and Keycloak is the local demo one, so this is deliberate rather than
+  overlooked — but embedding the Keycloak-configured stack has the old
+  behaviour. The equivalent there is `onLoad: 'check-sso'` with a
+  `silentCheckSsoRedirectUri`.
+- **Re-auth loses in-progress work.** `retry-auth` re-runs the silent flow by
+  navigating the frame, so a half-filled form is lost. Avoiding that needs the
+  code exchange to happen in a hidden nested iframe, which in turn needs a
+  dedicated static callback page registered as an extra redirect URI on the
+  provider.
 - **A routing error is reported as a reload, not a navigation.**
   `AppRoutingModule` handles a router error with `window.location.href = '/'`, a
   full document load rather than a `NavigationEnd`. The host sees the frame

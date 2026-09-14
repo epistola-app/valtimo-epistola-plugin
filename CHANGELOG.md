@@ -32,11 +32,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `@epistola.app/valtimo-plugin` library is untouched. See [docs/embedding.md](docs/embedding.md)
   and [ADR 0005](docs/adr/0005-iframe-embedding-bridge.md).
 
-  **Known gap:** interactive re-authentication. An IdP can redirect through a frame but cannot
-  render in one, so an embedded session whose IdP session expires mid-use leaves a blank frame —
-  the app navigates itself to a login page that framing headers then refuse. This is not fixed by
-  deploying same-site (that governs cookie delivery, not session expiry). The fix is sketched in
-  ADR 0005 and not implemented here.
+  **Re-authentication without a blank frame.** An identity provider can redirect _through_ a frame
+  but cannot render _in_ one, so an embedded app whose IdP session expires would otherwise navigate
+  itself to a login page the browser then refuses to display. Embedded logins therefore always
+  request `prompt=none` — the only shape that answers with a redirect either way, a code when the
+  session is live and `error=login_required` when it is not — and when that is refused the app
+  raises `auth-required` over the bridge and holds its `APP_INITIALIZER` instead of redirecting.
+  The host drives a top-level sign-in and replies `retry-auth`. Un-framed deployments keep their
+  existing full-redirect behaviour untouched. Applies to the authentik integration; the Keycloak
+  demo options still use `onLoad: 'login-required'`.
+
+  **Identity reporting.** A `user` message carries the OIDC `sub` and username (never email, name or
+  roles) so the host can check the frame is showing the person it expects. It identifies but does
+  not authenticate, and is documented as a consistency check rather than an authorization input.
 
 - **Interactive training facility (test-app only, opt-in via the `training` Spring profile)**: a
   personal "dossier" — document-definition + BPMN process + process-links, cloned from the

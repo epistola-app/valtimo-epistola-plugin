@@ -29,6 +29,11 @@ import { KeycloakService } from 'keycloak-angular';
 import { jwtDecode } from 'jwt-decode';
 import { NGXLogger } from 'ngx-logger';
 import { Observable, ReplaySubject, Subject } from 'rxjs';
+import {
+  isEmbeddedSession,
+  notifyInteractiveAuthRequired,
+  onAuthRetryRequested,
+} from '../../app/embedding/embedded-auth';
 
 interface OidcDiscovery {
   authorization_endpoint: string;
@@ -36,6 +41,11 @@ interface OidcDiscovery {
   end_session_endpoint?: string;
   userinfo_endpoint?: string;
 }
+
+/** Result of completing a redirect: a session, or the need for a human. */
+type CallbackOutcome =
+  | { status: 'authenticated'; redirectTo: string }
+  | { status: 'interactive-required'; error: string };
 
 interface TokenSet {
   access_token: string;
@@ -49,6 +59,7 @@ const STORAGE_KEYS = {
   state: 'authentik.state',
   redirectTo: 'authentik.redirectTo',
   tokens: 'authentik.tokens',
+  silentAuthFailed: 'authentik.silentAuthFailed',
 };
 
 const oidcConfig = {
@@ -92,7 +103,30 @@ export class AuthentikOidcService {
     return this.discovery;
   }
 
+  /**
+   * Starts an authorization-code flow.
+   *
+   * When embedded, always asks for `prompt=none`. An identity provider can
+   * redirect *through* a frame but cannot render *in* one, and `prompt=none` is
+   * the only request shape guaranteed to answer with a redirect either way —
+   * a code when the session is live, `error=login_required` when it is not.
+   * Without it the provider renders its login page, its framing headers apply,
+   * and the user is left looking at a blank rectangle.
+   *
+   * Once a silent attempt has come back empty there is nothing left to try
+   * without a human, so this deliberately does **not** navigate: it raises
+   * `auth-required` for the host and returns. That also breaks what would
+   * otherwise be a redirect loop, since the route guard and the bearer
+   * interceptor both call straight back in here after a failed attempt.
+   */
   async login(returnTo: string = window.location.pathname): Promise<void> {
+    const embedded = isEmbeddedSession();
+
+    if (embedded && sessionStorage.getItem(STORAGE_KEYS.silentAuthFailed)) {
+      notifyInteractiveAuthRequired('login-required');
+      return;
+    }
+
     const discovery = await this.ensureDiscovery();
     const codeVerifier = randomBase64Url(64);
     const state = randomBase64Url(32);
@@ -110,12 +144,30 @@ export class AuthentikOidcService {
     authorizationUrl.searchParams.set('state', state);
     authorizationUrl.searchParams.set('code_challenge', codeChallenge);
     authorizationUrl.searchParams.set('code_challenge_method', 'S256');
+    if (embedded) {
+      authorizationUrl.searchParams.set('prompt', 'none');
+      sessionStorage.setItem(STORAGE_KEYS.silentAuthFailed, 'pending');
+    }
 
     window.location.assign(authorizationUrl.toString());
   }
 
-  async handleCallback(url: string = window.location.href): Promise<string> {
+  /**
+   * Completes the redirect. A `prompt=none` attempt that the provider refused
+   * comes back as `?error=login_required` rather than a code — an ordinary
+   * outcome that needs a human, not a failure to throw on.
+   */
+  async handleCallback(url: string = window.location.href): Promise<CallbackOutcome> {
     const callbackUrl = new URL(url);
+
+    const refusal = callbackUrl.searchParams.get('error');
+    if (refusal) {
+      // Remember it: the route guard and bearer interceptor both call straight
+      // back into login(), and without this they would redirect-loop.
+      sessionStorage.setItem(STORAGE_KEYS.silentAuthFailed, refusal);
+      return { status: 'interactive-required', error: refusal };
+    }
+
     const code = callbackUrl.searchParams.get('code');
     const state = callbackUrl.searchParams.get('state');
     const expectedState = sessionStorage.getItem(STORAGE_KEYS.state);
@@ -136,8 +188,12 @@ export class AuthentikOidcService {
     this.storeTokens(tokens);
     sessionStorage.removeItem(STORAGE_KEYS.codeVerifier);
     sessionStorage.removeItem(STORAGE_KEYS.state);
+    sessionStorage.removeItem(STORAGE_KEYS.silentAuthFailed);
 
-    return sessionStorage.getItem(STORAGE_KEYS.redirectTo) || '/';
+    return {
+      status: 'authenticated',
+      redirectTo: sessionStorage.getItem(STORAGE_KEYS.redirectTo) || '/',
+    };
   }
 
   getTokens(): TokenSet | null {
@@ -160,11 +216,22 @@ export class AuthentikOidcService {
       return null;
     }
 
-    const refreshedTokens = await this.requestTokens({
-      grant_type: 'refresh_token',
-      client_id: oidcConfig.clientId,
-      refresh_token: tokens.refresh_token,
-    });
+    let refreshedTokens: TokenSet;
+    try {
+      refreshedTokens = await this.requestTokens({
+        grant_type: 'refresh_token',
+        client_id: oidcConfig.clientId,
+        refresh_token: tokens.refresh_token,
+      });
+    } catch (error) {
+      // The refresh token is spent, but the provider session may well outlive
+      // it. Drop the dead tokens and let the normal login path run: embedded,
+      // that is a `prompt=none` attempt which usually succeeds silently.
+      this.logger.debug('Authentik token refresh failed; falling back to login', error);
+      sessionStorage.removeItem(STORAGE_KEYS.tokens);
+      return null;
+    }
+
     this.storeTokens({
       ...refreshedTokens,
       refresh_token: refreshedTokens.refresh_token || tokens.refresh_token,
@@ -242,9 +309,14 @@ export class AuthentikUserService implements UserService, OnDestroy {
 
   async init(): Promise<boolean> {
     if (window.location.pathname === '/auth/callback') {
-      const redirectTo = await this.oidcService.handleCallback();
+      const outcome = await this.oidcService.handleCallback();
+
+      if (outcome.status === 'interactive-required') {
+        return this.holdForInteractiveAuth(outcome.error);
+      }
+
       this.publishUserIdentity();
-      window.history.replaceState({}, document.title, redirectTo);
+      window.history.replaceState({}, document.title, outcome.redirectTo);
       return true;
     }
 
@@ -255,6 +327,30 @@ export class AuthentikUserService implements UserService, OnDestroy {
 
     this.publishUserIdentity();
     return true;
+  }
+
+  /**
+   * Silent authentication was refused, so only a human can move this forward.
+   *
+   * Deliberately never resolves. Leaving the `APP_INITIALIZER` pending holds
+   * Angular on its bootstrap screen; resolving would boot a session-less app
+   * that renders Valtimo's shell and then 401s on every request, which is a
+   * worse thing to show a user than "still loading". The frame is released by
+   * navigating away once the host reports it has signed the user in.
+   */
+  private holdForInteractiveAuth(error: string): Promise<boolean> {
+    // Keep the refusal out of the address bar so a reload cannot replay it.
+    window.history.replaceState({}, document.title, '/');
+
+    this.logger.debug('Authentik silent authentication refused', error);
+    notifyInteractiveAuthRequired(error);
+
+    onAuthRetryRequested(() => {
+      sessionStorage.removeItem(STORAGE_KEYS.silentAuthFailed);
+      void this.oidcService.login(sessionStorage.getItem(STORAGE_KEYS.redirectTo) || '/');
+    });
+
+    return new Promise<boolean>(() => {});
   }
 
   ngOnDestroy(): void {
@@ -474,9 +570,17 @@ export class AuthentikCallbackComponent {
     userService: AuthentikUserService,
     router: Router,
   ) {
-    oidcService.handleCallback().then((redirectTo) => {
+    oidcService.handleCallback().then((outcome) => {
+      if (outcome.status === 'interactive-required') {
+        // Reached when the app was already bootstrapped and the router, rather
+        // than the initializer, handled the callback. Same rule as there: do not
+        // send this frame to a login page it cannot render — tell the host.
+        notifyInteractiveAuthRequired(outcome.error);
+        return;
+      }
+
       userService.publishUserIdentity();
-      router.navigateByUrl(redirectTo);
+      router.navigateByUrl(outcome.redirectTo);
     });
   }
 }

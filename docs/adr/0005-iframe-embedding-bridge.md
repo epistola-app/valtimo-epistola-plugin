@@ -195,29 +195,47 @@ page can render in the frame was considered and rejected — it puts credential
 entry inside a frame the host controls, which is the clickjacking exposure
 `frame-ancestors` exists to prevent, and with authentik it is not possible at all.
 
-**The open problem is re-authentication, not authentication.** When a session
-that was valid expires mid-exercise, the app calls `login()`, which navigates its
-own frame to the IdP; the IdP must render; the learner gets a blank rectangle.
-This is _not_ fixed by deploying same-site — same-site governs cookie delivery,
-while an expired session needs interactive login however the domains are
-arranged — so every long-lived embedded session will eventually hit it.
+**Re-authentication, not authentication, was the real problem** — and it is
+solved by never letting the provider render. Embedded logins always request
+`prompt=none`, the only shape that answers with a redirect in both directions: a
+code when the session is live, `error=login_required` when it is not. Neither
+renders, so framing headers never engage.
 
-The shape of the fix, deliberately not implemented in this change:
+When silent auth is refused the app **stops instead of redirecting**: it raises
+`auth-required` over the bridge and leaves its `APP_INITIALIZER` pending, so
+Angular holds its bootstrap screen rather than booting a session-less app that
+401s on everything. The host — which has the top-level context, the only place a
+login page can render — drives the sign-in and sends `retry-auth`.
 
-- The app detects that it needs _interactive_ re-auth and **does not navigate its
-  own frame**, since that is what produces the blank rectangle.
-- It emits an `auth-required` message over the bridge; the host renders its own
-  "session expired, continue" affordance and opens a **top-level** login (a popup,
-  or its own re-auth), where no framing headers apply.
-- The popup must only re-establish the IdP session cookie — it must **not** run
-  the code exchange. The PKCE verifier lives in the frame's `sessionStorage`,
-  which the popup does not share. Once the cookie is back, the frame re-runs its
-  own authorize and gets the silent `302`.
-- Opening the popup needs a user gesture, so it has to originate from a click on
-  the host side rather than fire automatically.
+Three details that are easy to get wrong:
 
-That is additive to the protocol — one new outbound message type — which is what
-the `ready` message's `protocolVersion` exists to allow.
+- **One chokepoint.** The branch lives in `AuthentikOidcService.login()`, which
+  the initializer, the route guard and the bearer interceptor all call. Putting
+  it anywhere else would have needed three copies, and the guard and interceptor
+  calling back in after a refusal is exactly what would redirect-loop.
+- **The popup must not run the code exchange.** It only re-establishes the
+  provider session cookie. The PKCE verifier lives in the frame's
+  `sessionStorage`, which a popup does not share.
+- **A spent refresh token is not a dead session.** Provider sessions routinely
+  outlive refresh tokens, so a failed refresh drops the tokens and falls through
+  to the normal login path — which, embedded, is a silent attempt that usually
+  succeeds.
+
+### The host is told who is signed in
+
+A `user` message carries the OIDC `sub` and username when the identity becomes
+known, so the host can confirm the frame is showing the person it expects rather
+than whoever the browser was already signed in as. Resolved through Valtimo's
+`UserProviderService`, so it is provider-agnostic.
+
+Deliberately just an identifier and a username — no email, name, or roles. The
+question being answered is "is this the right person", which needs nothing more,
+and a bridge to a host page is not the place to widen a PII surface by default.
+
+It identifies; it does not authenticate. It is an ordinary `postMessage` from a
+framed page, not a signed assertion, so it is documented as a consistency check
+only — never an authorization input. The real check stays on the API, against the
+user's own token.
 
 ## Alternatives considered
 

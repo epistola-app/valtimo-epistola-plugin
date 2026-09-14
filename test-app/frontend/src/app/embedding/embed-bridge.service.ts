@@ -2,11 +2,17 @@
 //
 // SPDX-License-Identifier: EUPL-1.2
 
-import { Inject, Injectable, InjectionToken, OnDestroy } from '@angular/core';
+import { Inject, Injectable, InjectionToken, Injector, OnDestroy } from '@angular/core';
 import { NavigationEnd, Router } from '@angular/router';
+import { UserProviderService } from '@valtimo/security';
 import { Subscription, filter } from 'rxjs';
 import { EmbedResource, parseResourceFromUrl, resolveRouteCommands } from './embed-resource';
 import { readEmbeddingConfig } from './embedding-config';
+import {
+  InteractiveAuthReason,
+  notifyAuthRetryRequested,
+  onInteractiveAuthRequired,
+} from './embedded-auth';
 
 /**
  * `postMessage` bridge between this app and the host page framing it.
@@ -31,7 +37,9 @@ export type EmbedOutboundMessage =
       type: 'navigated';
       path: string;
       resource: EmbedResource | null;
-    };
+    }
+  | { source: typeof APP_SOURCE; type: 'auth-required'; reason: InteractiveAuthReason }
+  | { source: typeof APP_SOURCE; type: 'user'; userId: string | null; username: string | null };
 
 /**
  * Indirection purely for testability: Karma runs specs top-level, where
@@ -51,9 +59,16 @@ export class EmbedBridgeService implements OnDestroy {
   private lastNotifiedPath: string | null = null;
   private messageListener: ((event: MessageEvent) => void) | null = null;
   private routerSubscription: Subscription | null = null;
+  private unsubscribeAuthRequired: (() => void) | null = null;
+  private userSubscription: Subscription | null = null;
+  private lastNotifiedUserId: string | null = null;
+  // Separate from the value above on purpose: `null` is a legitimate user id
+  // (an identity with no `sub`), so it cannot double as "nothing sent yet".
+  private hasReportedUser = false;
 
   constructor(
     private readonly router: Router,
+    private readonly injector: Injector,
     @Inject(EMBEDDING_WINDOW) private readonly runtimeWindow: Window,
   ) {}
 
@@ -84,6 +99,15 @@ export class EmbedBridgeService implements OnDestroy {
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
       .subscribe((event) => this.notifyNavigated(event.urlAfterRedirects));
 
+    // The app raises this instead of sending its own frame to a login page it
+    // cannot render. Relaying it is the whole point: only the host is in a
+    // position to open a top-level sign-in.
+    this.unsubscribeAuthRequired = onInteractiveAuthRequired((reason) =>
+      this.post({ source: APP_SOURCE, type: 'auth-required', reason }),
+    );
+
+    this.reportUserIdentity();
+
     // Angular boots long after the document does, so — unlike the server-rendered
     // Suite bridge — the host genuinely cannot tell when this app is listening.
     // Without `ready`, a host that posts `navigate` too early is ignored in
@@ -98,6 +122,42 @@ export class EmbedBridgeService implements OnDestroy {
     }
     this.routerSubscription?.unsubscribe();
     this.routerSubscription = null;
+    this.unsubscribeAuthRequired?.();
+    this.unsubscribeAuthRequired = null;
+    this.userSubscription?.unsubscribe();
+    this.userSubscription = null;
+  }
+
+  /**
+   * Tells the host who is signed in, so it can check the frame is showing the
+   * person it expects rather than whoever this browser happens to be logged in
+   * as — an easy mismatch when the host hands out per-user exercises.
+   *
+   * Resolved through Valtimo's `UserProviderService` rather than a specific
+   * auth integration, so it works for Keycloak and authentik alike. Looked up
+   * lazily and optionally: this runs from an environment initializer, and the
+   * bridge must not fail to start because an auth provider is not wired.
+   *
+   * Deliberately only an identifier and a username — not email, name, or roles.
+   * The host asked "is this the right person", which needs nothing more.
+   */
+  private reportUserIdentity(): void {
+    let userProvider: UserProviderService | null = null;
+    try {
+      userProvider = this.injector.get(UserProviderService, null);
+    } catch {
+      return;
+    }
+    if (!userProvider) return;
+
+    this.userSubscription = userProvider.getUserSubject().subscribe((identity) => {
+      const userId = identity?.id ?? null;
+      const username = identity?.username ?? null;
+      if (this.hasReportedUser && userId === this.lastNotifiedUserId) return;
+      this.hasReportedUser = true;
+      this.lastNotifiedUserId = userId;
+      this.post({ source: APP_SOURCE, type: 'user', userId, username });
+    });
   }
 
   /**
@@ -157,7 +217,16 @@ export class EmbedBridgeService implements OnDestroy {
     if (typeof data !== 'object' || data === null) return;
 
     const message = data as Record<string, unknown>;
-    if (message['source'] !== HOST_SOURCE || message['type'] !== 'navigate') return;
+    if (message['source'] !== HOST_SOURCE) return;
+
+    // The host has completed a top-level sign-in; the app can retry silently.
+    // Carries no payload on purpose — it is a nudge, not a credential channel.
+    if (message['type'] === 'retry-auth') {
+      notifyAuthRetryRequested();
+      return;
+    }
+
+    if (message['type'] !== 'navigate') return;
 
     // The host names a destination; it never supplies one. An unknown view or a
     // malformed identifier is ignored rather than guessed at.

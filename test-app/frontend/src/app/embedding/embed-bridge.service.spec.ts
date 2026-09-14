@@ -4,12 +4,18 @@
 
 import { TestBed } from '@angular/core/testing';
 import { NavigationEnd, Router } from '@angular/router';
-import { Subject } from 'rxjs';
+import { UserProviderService } from '@valtimo/security';
+import { ReplaySubject, Subject } from 'rxjs';
 import {
   EMBED_PROTOCOL_VERSION,
   EMBEDDING_WINDOW,
   EmbedBridgeService,
 } from './embed-bridge.service';
+import {
+  notifyInteractiveAuthRequired,
+  onAuthRetryRequested,
+  resetEmbeddedAuthListeners,
+} from './embedded-auth';
 
 const HOST_ORIGIN = 'https://epistola.app';
 const OTHER_ORIGIN = 'https://other.test';
@@ -76,17 +82,23 @@ describe('EmbedBridgeService', () => {
     embeddingAllowedParentOrigins: origins,
   });
 
+  let userSubject: ReplaySubject<unknown>;
+
   function createService(win: FakeWindow): EmbedBridgeService {
     router = new FakeRouter();
+    userSubject = new ReplaySubject<unknown>(1);
     TestBed.configureTestingModule({
       providers: [
         EmbedBridgeService,
         { provide: Router, useValue: router },
         { provide: EMBEDDING_WINDOW, useValue: win },
+        { provide: UserProviderService, useValue: { getUserSubject: () => userSubject } },
       ],
     });
     return TestBed.inject(EmbedBridgeService);
   }
+
+  afterEach(() => resetEmbeddedAuthListeners());
 
   function startedIn(win: FakeWindow): EmbedBridgeService {
     const service = createService(win);
@@ -277,6 +289,138 @@ describe('EmbedBridgeService', () => {
       win.deliver(navigateMessage(undefined));
 
       expect(router.navigate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('relaying an authentication dead end', () => {
+    it('posts auth-required rather than letting the frame go blank', () => {
+      const win = new FakeWindow(enabledEnv());
+      startedIn(win);
+
+      notifyInteractiveAuthRequired('login_required');
+
+      expect(win.postsOfType('auth-required')[0].message).toEqual({
+        source: 'epistola-valtimo',
+        type: 'auth-required',
+        reason: 'login_required',
+      });
+      expect(win.postsOfType('auth-required')[0].targetOrigin).toBe(HOST_ORIGIN);
+    });
+
+    it('says nothing when embedding is off, so a normal deployment is untouched', () => {
+      const win = new FakeWindow({});
+      startedIn(win);
+
+      notifyInteractiveAuthRequired('login_required');
+
+      expect(win.posts).toEqual([]);
+    });
+
+    it('forwards the host’s retry-auth to the auth integration', () => {
+      const win = new FakeWindow(enabledEnv());
+      startedIn(win);
+      let retries = 0;
+      onAuthRetryRequested(() => retries++);
+
+      win.deliver({ data: { source: 'epistola-host', type: 'retry-auth' } });
+
+      expect(retries).toBe(1);
+    });
+
+    it('ignores retry-auth from an untrusted origin', () => {
+      const win = new FakeWindow(enabledEnv());
+      startedIn(win);
+      let retries = 0;
+      onAuthRetryRequested(() => retries++);
+
+      win.deliver({ origin: OTHER_ORIGIN, data: { source: 'epistola-host', type: 'retry-auth' } });
+      win.deliver({ data: { source: 'someone-else', type: 'retry-auth' } });
+
+      expect(retries).toBe(0);
+    });
+
+    it('stops relaying once destroyed', () => {
+      const win = new FakeWindow(enabledEnv());
+      const service = startedIn(win);
+
+      service.ngOnDestroy();
+      notifyInteractiveAuthRequired('login_required');
+
+      expect(win.postsOfType('auth-required')).toEqual([]);
+    });
+  });
+
+  describe('reporting who is signed in', () => {
+    it('posts the user id and username so the host can check the person matches', () => {
+      const win = new FakeWindow(enabledEnv());
+      startedIn(win);
+
+      userSubject.next({
+        id: 'sub-123',
+        username: 'trainee@demo.local',
+        email: 'trainee@demo.local',
+      });
+
+      expect(win.postsOfType('user')[0].message).toEqual({
+        source: 'epistola-valtimo',
+        type: 'user',
+        userId: 'sub-123',
+        username: 'trainee@demo.local',
+      });
+    });
+
+    it('carries no email, name or roles — the host only needs identity', () => {
+      const win = new FakeWindow(enabledEnv());
+      startedIn(win);
+
+      userSubject.next({
+        id: 'sub-123',
+        username: 'trainee',
+        email: 'trainee@demo.local',
+        firstName: 'Trainee',
+        lastName: 'Person',
+        roles: ['ROLE_DEMO', 'ROLE_ADMIN'],
+      });
+
+      const message = win.postsOfType('user')[0].message;
+      expect(Object.keys(message).sort()).toEqual(['source', 'type', 'userId', 'username']);
+    });
+
+    it('does not repeat itself while the same user stays signed in', () => {
+      const win = new FakeWindow(enabledEnv());
+      startedIn(win);
+
+      userSubject.next({ id: 'sub-123', username: 'a' });
+      userSubject.next({ id: 'sub-123', username: 'a' });
+
+      expect(win.postsOfType('user').length).toBe(1);
+    });
+
+    it('reports again when the user actually changes', () => {
+      const win = new FakeWindow(enabledEnv());
+      startedIn(win);
+
+      userSubject.next({ id: 'sub-123', username: 'a' });
+      userSubject.next({ id: 'sub-456', username: 'b' });
+
+      expect(win.postsOfType('user').map((p) => p.message['userId'])).toEqual([
+        'sub-123',
+        'sub-456',
+      ]);
+    });
+
+    it('reports nulls rather than dropping an identity that lacks an id', () => {
+      const win = new FakeWindow(enabledEnv());
+      startedIn(win);
+
+      userSubject.next({ username: 'no-id-user' });
+
+      expect(win.postsOfType('user')[0].message).toEqual({
+        source: 'epistola-valtimo',
+        type: 'user',
+        userId: null,
+        username: 'no-id-user',
+      });
     });
   });
 
