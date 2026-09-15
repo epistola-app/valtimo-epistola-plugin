@@ -23,9 +23,9 @@
 [tools]
 gradle = "9.7.1"
 java = "temurin-21"
-node = "24.20.0"
-pnpm = "11.25.0"
-helm = "3.21.4"
+node = "24.21.0"
+pnpm = "11.26.0"
+helm = "3.22.0"
 oxlint = "1.61.0"
 oxfmt = "0.46.0"
 "pipx:reuse" = { version = "6.2.0", extras = "charset-normalizer" }
