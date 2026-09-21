@@ -38,7 +38,7 @@ is rejected with RFC-9457 `400 catalog-schema-too-old`.
 
 | Plugin build | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema | Compatible Epistola Suite        |
 | ------------ | --------------------------------------------- | --------------------------- | -------------------------------- |
-| Unreleased   | `1.2.0`                                       | `4`                         | `>= 1.0.0`                       |
+| Unreleased   | `1.3.1`                                       | `4`                         | `>= 1.0.0`                       |
 | 0.12.0       | `0.8.0`                                       | `4`                         | `>= 0.26.0`                      |
 | ≤ 0.11.x     | `0.6.0`                                       | `2`                         | `<= 0.25.x` (broken on ≥ 0.26.0) |
 
@@ -53,6 +53,12 @@ Notes:
 - The floor is guarded in CI by `BundledCatalogSchemaVersionTest` (test-app) and a ZIP-level
   assertion in `EpistolaCatalogSyncServiceTest` — both pinned to the targeted wire schema, so a
   future suite baseline bump fails the build loudly instead of in production. See GitHub issue #71.
+- The contract client must also keep **reading older servers**, which is separate from the wire
+  schema: a contract release can add a response field that older servers never send. Contract
+  `1.3.0` made one (`slug`) required, so its client rejected every response from a server older
+  than `1.3.0`; this plugin skips it for `1.3.1`, which makes the field optional. The floor is
+  guarded by `oldestSupportedServerTest`, which runs the mock-server integration test against
+  contract `0.16.1` — the one Epistola Suite `1.0.0` serves. Raise it with the Suite floor.
 
 ## Engine-integration dependency (correlation)
 

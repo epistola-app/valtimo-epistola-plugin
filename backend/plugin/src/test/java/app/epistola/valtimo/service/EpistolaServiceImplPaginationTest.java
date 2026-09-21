@@ -70,6 +70,6 @@ class EpistolaServiceImplPaginationTest {
 
     private static TemplateSummaryDto template(String id, String name) {
         OffsetDateTime now = OffsetDateTime.now();
-        return new TemplateSummaryDto(id, TENANT, name, now, now);
+        return new TemplateSummaryDto(id, TENANT, name, now, now, id);
     }
 }
