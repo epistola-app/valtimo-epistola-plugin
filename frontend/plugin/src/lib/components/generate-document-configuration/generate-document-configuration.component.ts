@@ -94,6 +94,15 @@ import {
   VariantSelectionMode,
 } from './generate-document-config-editor.adapter';
 
+/**
+ * The id a select reports, or '' for no selection. Carbon's combo box reports a cleared
+ * single selection as an empty array before v-select settles on '', and that array must not
+ * be taken for an id: it would be requested as the template `''`.
+ */
+function selectionId(value: unknown): string {
+  return typeof value === 'string' ? value : '';
+}
+
 @Component({
   selector: 'epistola-generate-document-configuration',
   templateUrl: './generate-document-configuration.component.html',
@@ -187,6 +196,9 @@ export class GenerateDocumentConfigurationComponent
   private nextAttributeEditorId = 0;
   private templateFieldsLoadedForTemplateId: string | null = null;
   private mappingModeForcedBySchema = false;
+  /** The catalog and template ids the form last reported, to tell a clear from a load. */
+  private reportedCatalogId = '';
+  private reportedTemplateId = '';
 
   /** Resolves once with the prefill config (or empty config if none). */
   private prefill$!: Observable<GenerateDocumentConfigV1 | null>;
@@ -219,30 +231,38 @@ export class GenerateDocumentConfigurationComponent
   }
 
   formValueChange(formOutput: FormOutput): void {
-    const formValue = formOutput as unknown as Partial<
-      GenerateDocumentConfig & { catalogId: string; templateId: string }
-    >;
+    const reported = formOutput as unknown as Partial<GenerateDocumentConfig> & {
+      catalogId?: unknown;
+      templateId?: unknown;
+    };
+    const catalogId = selectionId(reported.catalogId);
+    const templateId = selectionId(reported.templateId);
+
+    // An empty value is a clear only when the form last reported a selection for that
+    // control. While a saved configuration loads, the selections are seeded before the
+    // selects show them, and an emission from that window must not wipe them.
+    const catalogCleared = !catalogId && !!this.reportedCatalogId;
+    const templateCleared = !templateId && !!this.reportedTemplateId;
+    this.reportedCatalogId = catalogId;
+    this.reportedTemplateId = templateId;
+
+    if ((catalogId && catalogId !== this.selectedCatalogId$.getValue()) || catalogCleared) {
+      this.changeCatalog(catalogId);
+    } else if (
+      (templateId && templateId !== this.selectedTemplateId$.getValue()) ||
+      templateCleared
+    ) {
+      this.changeTemplate(templateId);
+    }
+
+    // The selection the component acts on, which after a catalog change is no longer the
+    // template the form still reports.
+    const formValue = {
+      ...reported,
+      catalogId: this.selectedCatalogId$.getValue(),
+      templateId: this.selectedTemplateId$.getValue(),
+    };
     this.formValue$.next(formValue);
-
-    // When catalog changes, reset template and variant selection.
-    // The clear$ subjects force-clear the v-selects' internal `selected$` state —
-    // without them the dropdown keeps the previous id and the next v-form emission
-    // re-applies it under the new catalog, causing 404s when the template doesn't exist
-    // in the newly selected catalog.
-    if (formValue.catalogId && formValue.catalogId !== this.selectedCatalogId$.getValue()) {
-      this.selectedCatalogId$.next(formValue.catalogId);
-      this.selectedTemplateId$.next('');
-      this.variantIdExpression = '';
-      this.clearTemplateId$.next();
-      return;
-    }
-
-    // templateId from v-select is the template ID within the selected catalog
-    if (formValue.templateId && formValue.templateId !== this.selectedTemplateId$.getValue()) {
-      this.selectedTemplateId$.next(formValue.templateId);
-      this.variantIdExpression = '';
-    }
-
     this.handleValid(formValue);
   }
 
@@ -374,6 +394,45 @@ export class GenerateDocumentConfigurationComponent
     entry._customKey = false;
     entry.key = '';
     this.onAttributeEntryChange();
+  }
+
+  /**
+   * A new catalog invalidates the template and everything chosen for it. The template is
+   * cleared before the catalog changes, so the template loaders never see the old template
+   * paired with the new catalog. The clear subject also resets the template select, which
+   * otherwise keeps showing the previous id.
+   */
+  private changeCatalog(catalogId: string): void {
+    this.resetTemplateSelections();
+    this.selectedTemplateId$.next('');
+    this.clearTemplateId$.next();
+    this.selectedCatalogId$.next(catalogId);
+  }
+
+  /** A new or cleared template invalidates everything chosen for the previous one. */
+  private changeTemplate(templateId: string): void {
+    this.resetTemplateSelections();
+    this.selectedTemplateId$.next(templateId);
+  }
+
+  /**
+   * Returns what was chosen for a specific template — the variant selection and the data
+   * mapping — to its initial state. Settings that do not depend on the template (filename,
+   * environment, correlation id, result variable) are kept. Never called while a saved
+   * configuration loads: that seeds the selections directly.
+   */
+  private resetTemplateSelections(): void {
+    this.variantSelectionMode = 'explicit';
+    this.variantIdExpression = '';
+    this.variantAttributeEntries = [];
+    for (const key of [...this.expressionValidity.keys()]) {
+      if (key === 'variantId' || key === 'dataMapping' || key.startsWith('variantAttribute:')) {
+        this.expressionValidity.delete(key);
+      }
+    }
+    this.dataMapping$.next(DEFAULT_GENERATE_DOCUMENT_DATA_MAPPING);
+    this.mappingMode = 'simple';
+    this.mappingModeForcedBySchema = false;
   }
 
   private revalidate(): void {
@@ -570,21 +629,23 @@ export class GenerateDocumentConfigurationComponent
         this.selectedCatalogId$.next(config!.catalogId);
       });
 
-    // ── Templates: load when catalogId changes ──
-    const catalogId$ = this.selectedCatalogId$.pipe(
-      filter((id) => !!id),
-      distinctUntilChanged(),
-    );
+    // An empty id is no selection: it resets what depends on it, and nothing is fetched.
+    const catalogId$ = this.selectedCatalogId$.pipe(distinctUntilChanged());
 
+    // ── Templates: load when catalogId changes ──
     combineLatest([configId$, catalogId$])
       .pipe(
         takeUntil(this.destroy$),
-        tap(() => this.templates$.next(loadingResource(this.templates$.getValue().data))),
         switchMap(([configurationId, catalogId]) =>
-          this.epistolaPluginService.getTemplates(configurationId, catalogId).pipe(
-            map((templates) => successResource(templates.map((t) => ({ id: t.id, text: t.name })))),
-            catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load templates'))),
-          ),
+          !catalogId
+            ? of(initialResource<SelectItem[]>([]))
+            : this.epistolaPluginService.getTemplates(configurationId, catalogId).pipe(
+                map((templates) =>
+                  successResource(templates.map((t) => ({ id: t.id, text: t.name }))),
+                ),
+                catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load templates'))),
+                startWith(loadingResource<SelectItem[]>([])),
+              ),
         ),
       )
       .subscribe((resource) => this.templates$.next(resource));
@@ -594,9 +655,11 @@ export class GenerateDocumentConfigurationComponent
       .pipe(
         takeUntil(this.destroy$),
         switchMap(([configurationId, catalogId]) =>
-          this.epistolaPluginService
-            .getAttributes(configurationId, catalogId)
-            .pipe(catchError(() => of([]))),
+          !catalogId
+            ? of([])
+            : this.epistolaPluginService
+                .getAttributes(configurationId, catalogId)
+                .pipe(catchError(() => of([]))),
         ),
       )
       .subscribe((attributes) => {
@@ -614,60 +677,67 @@ export class GenerateDocumentConfigurationComponent
         this.selectedTemplateId$.next(config!.templateId);
       });
 
-    // ── Variants: load when templateId changes ──
-    const templateId$ = this.selectedTemplateId$.pipe(
-      filter((id) => !!id),
-      distinctUntilChanged(),
-    );
+    // The template loaders key on catalog and template together. A template id means
+    // nothing outside its catalog, and changeCatalog() clears the template before the
+    // catalog moves, so no emission pairs a template with a catalog it is not in.
+    const templateSelection$ = combineLatest([
+      configId$,
+      catalogId$,
+      this.selectedTemplateId$.pipe(distinctUntilChanged()),
+    ]);
 
-    combineLatest([configId$, catalogId$, templateId$])
+    // ── Variants: load when the template selection changes ──
+    templateSelection$
       .pipe(
         takeUntil(this.destroy$),
-        tap(() => this.variants$.next(loadingResource(this.variants$.getValue().data))),
         switchMap(([configurationId, catalogId, templateId]) =>
-          this.epistolaPluginService.getVariants(configurationId, templateId, catalogId).pipe(
-            map((variants) =>
-              successResource(
-                variants.map((v) => ({
-                  id: v.id,
-                  text: v.name + formatVariantAttributes(v.attributes),
-                })),
+          !catalogId || !templateId
+            ? of(initialResource<SelectItem[]>([]))
+            : this.epistolaPluginService.getVariants(configurationId, templateId, catalogId).pipe(
+                map((variants) =>
+                  successResource(
+                    variants.map((v) => ({
+                      id: v.id,
+                      text: v.name + formatVariantAttributes(v.attributes),
+                    })),
+                  ),
+                ),
+                catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load variants'))),
+                startWith(loadingResource<SelectItem[]>([])),
               ),
-            ),
-            catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load variants'))),
-          ),
         ),
       )
       .subscribe((resource) => this.variants$.next(resource));
 
-    // ── Template fields: load when templateId changes ──
-    combineLatest([configId$, catalogId$, templateId$])
+    // ── Template fields: load when the template selection changes ──
+    templateSelection$
       .pipe(
         takeUntil(this.destroy$),
         tap(() => {
           this.templateFieldsLoadedForTemplateId = null;
           this.templateSchema$.next(null);
           this.simpleMappingSupport$.next(FULL_SIMPLE_MAPPING_SUPPORT);
-          this.templateFields$.next(loadingResource(this.templateFields$.getValue().data));
-          this.revalidate();
         }),
         switchMap(([configurationId, catalogId, templateId]) =>
-          this.epistolaPluginService
-            .getTemplateDetails(configurationId, templateId, catalogId)
-            .pipe(
-              tap((details) => this.applyTemplateSchemaDetails(details)),
-              map((details) => successResource(details.fields || [])),
-              catchError(() =>
-                of(errorResource<TemplateField[]>([], 'Failed to load template fields')),
-              ),
-            ),
+          !catalogId || !templateId
+            ? of(initialResource<TemplateField[]>([]))
+            : this.epistolaPluginService
+                .getTemplateDetails(configurationId, templateId, catalogId)
+                .pipe(
+                  tap((details) => this.applyTemplateSchemaDetails(details)),
+                  map((details) => successResource(details.fields || [])),
+                  catchError(() =>
+                    of(errorResource<TemplateField[]>([], 'Failed to load template fields')),
+                  ),
+                  startWith(loadingResource<TemplateField[]>([])),
+                ),
         ),
       )
       .subscribe((resource) => {
         this.templateFields$.next(resource);
-        this.templateFieldsLoadedForTemplateId = resource.error
-          ? null
-          : this.selectedTemplateId$.getValue();
+        const templateId = this.selectedTemplateId$.getValue();
+        this.templateFieldsLoadedForTemplateId =
+          resource.loading || resource.error || !templateId ? null : templateId;
         this.revalidate();
         this.cdr.markForCheck();
       });

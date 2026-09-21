@@ -253,6 +253,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Changing or clearing the catalog or template in the generate-document configurator no longer
+  fails with 500 errors, and resets what depended on it.** Two paths requested a template that
+  could not exist:
+  - Switching catalog asked the new catalog for the template still selected from the old one.
+    Epistola answered 404, which reached the browser as a 500.
+  - Clearing the template requested the template `''`, because Carbon's combo box reports a cleared
+    selection as an empty array, which passed for an id. The result was `…/templates/`, which
+    matches no route, and `…/templates//variants`, which collapses onto the details route as a
+    template named `variants`.
+
+  The configurator now treats catalog → template → template choices as a hierarchy:
+  - A new or cleared catalog clears the template and everything under it.
+  - A new or cleared template resets its variant selection and data mapping.
+  - Filename, environment, correlation id and result variable are kept.
+  - Opening a saved configuration is unaffected.
+
+- **Template, variant, template-list and attribute lookups answer 404 when Epistola reports the
+  catalog or template missing**, instead of 500. The service now keeps Epistola's status on these
+  reads, as it already did for downloads, and the endpoints map a 404 through.
+
 - **The demo frontend served no framing header at all**, in any deployment — meaning any site could
   silently embed it in an `<iframe>`. All three nginx configs (image, docker-compose, Helm
   ConfigMap) now send `Content-Security-Policy: frame-ancestors 'none'` by default, relaxed only to
