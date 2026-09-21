@@ -46,13 +46,20 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests for EpistolaServiceImpl using the Epistola contract mock server (Prism).
  * The mock server is generated from the same OpenAPI spec as the client library,
  * guaranteeing path and response compatibility.
+ * <p>
+ * {@code test} runs this against the contract the plugin pins. {@code oldestSupportedServerTest}
+ * runs it again against the oldest contract a supported Epistola Suite serves, because the client
+ * must keep reading an older server's responses: contract 1.3.0's client could not, having made a
+ * field that older servers never send required.
  */
 @Testcontainers
 class EpistolaServiceImplTest {
 
+    private static final String MOCK_SERVER_VERSION = System.getProperty("epistola.mock-server.version", "1.3.1");
+
     @Container
     private static final GenericContainer<?> MOCK_SERVER = new GenericContainer<>(
-            "ghcr.io/epistola-app/epistola-contract/mock-server:1.1.0"
+            "ghcr.io/epistola-app/epistola-contract/mock-server:" + MOCK_SERVER_VERSION
     )
             .withExposedPorts(4010)
             .waitingFor(Wait.forHttp("/tenants/test/catalogs/default/templates")

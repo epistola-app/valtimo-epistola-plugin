@@ -164,6 +164,7 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // CatalogDto.id — see the note above the mapping methods
     public List<CatalogInfo> getCatalogs(String baseUrl, String apiKey, String tenantId) {
         log.debug("Fetching catalogs for tenant: {}", tenantId);
         try {
@@ -243,6 +244,7 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
+    @SuppressWarnings("deprecation") // AttributeDto.key — see the note above the mapping methods
     public List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId, String catalogId) {
         log.debug("Fetching attribute definitions for tenant: {}, catalog: {}", tenantId, catalogId);
         try {
@@ -542,7 +544,13 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     // Mapping methods
+    //
+    // A resource's address is read from the deprecated `id` (`key` on attributes), not from `slug`.
+    // Contract 1.3.0 added `slug` with the same value, but only servers on 1.3.0 or later send it:
+    // against every older server this plugin supports it is null. `id` is sent by all of them.
+    // Switch to `slug` once the supported Epistola Suite floor serves contract 1.3.0 or later.
 
+    @SuppressWarnings("deprecation")
     private TemplateInfo mapToTemplateInfo(TemplateSummaryDto dto, String catalogId) {
         return new TemplateInfo(
                 dto.getId(),
@@ -553,6 +561,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         );
     }
 
+    @SuppressWarnings("deprecation")
     private TemplateDetails mapToTemplateDetails(TemplateDto dto) {
         Object schemaSource = dto.getDataModel() != null ? dto.getDataModel() : dto.getSchema();
         JsonSchemaMappingAnalyzer.Analysis schemaAnalysis = new JsonSchemaMappingAnalyzer().analyze(schemaSource);
@@ -574,6 +583,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         return new JsonSchemaMappingAnalyzer().analyze(schema).fields();
     }
 
+    @SuppressWarnings("deprecation")
     private EnvironmentInfo mapToEnvironmentInfo(EnvironmentDto dto) {
         return new EnvironmentInfo(
                 dto.getId(),
@@ -581,6 +591,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         );
     }
 
+    @SuppressWarnings("deprecation")
     private VariantInfo mapToVariantInfo(VariantDto dto) {
         return new VariantInfo(
                 dto.getId(),

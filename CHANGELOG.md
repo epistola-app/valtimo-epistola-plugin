@@ -295,11 +295,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   rejected as a `400` before the call rather than escaping as an `IllegalArgumentException`.
 
 - The admin page's connection check reports the contract version the plugin ships, so its
-  expectations move to `1.2.0`. A server still on contract `1.1.0` is one minor behind and now
+  expectations move to `1.3.1`. A server on contract `1.1.0` or `1.2.0` is behind by a minor and now
   classifies as `WARNING` rather than `OK` — the compatibility rule is unchanged, only the plugin's
   side of the comparison moved. That path had no test; `shouldWarnWhenServerContractMinorIsBehindPluginContractMinor`
   now covers it, and `shouldTreatNewerServerMinorAndPatchAsCompatible` mocks a genuinely newer
-  server (`1.3.1`) instead of one equal to the plugin's own version, which would have asserted nothing.
+  server (`1.4.2`) instead of one equal to the plugin's own version, which would have asserted nothing.
+  It now asserts that premise too: the contract bump to `1.3.1` had made its server equal to the
+  plugin's version, and the test went on passing.
 
 ### Changed
 
@@ -424,11 +426,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Authentication moved from the deprecated `X-API-Key` header to `Authorization: ApiKey`.** The
   contract has accepted the latter since `0.14.0`, well below this plugin's Epistola Suite floor of
   `>= 1.0.0`, so every supported server accepts it.
+- **Upgraded the Epistola contract client from `1.2.0` to `1.3.1`, skipping `1.3.0`.** `1.3.0` adds
+  `slug` to every read model beside the `id` (`key` on attributes) it duplicates, and declared it
+  required. Only servers on `1.3.0` or later send it, so the `1.3.0` client rejected every template,
+  environment and variant response from any Epistola Suite released so far — failing with
+  _"missing (therefore NULL) value for creator parameter slug"_, which reaches the admin and
+  configurator screens as a 500. `1.3.1` makes `slug` optional (epistola-app/epistola-contract#88).
+  The plugin goes on reading `id`/`key`, which every supported server sends, so the Epistola Suite
+  floor stays at `>= 1.0.0` and the bundled catalog wire schema at `4`. The rest of `1.3.x` does not
+  reach the plugin: it never called the asset operations `1.3.0` removes or the `/images` API that
+  replaces them, and catalog wire v7 governs the archives the server imports, not the client.
+- **The mock-server integration test now also runs against the oldest supported contract.** The
+  `1.3.0` defect was caught only because the Prism fixture happened to lag behind the client. The
+  new `oldestSupportedServerTest` task runs `EpistolaServiceImplTest` against `mock-server:0.16.1`,
+  the contract Epistola Suite `1.0.0` serves, as part of `check`, so a client that cannot read the
+  oldest supported server fails the build. Renovate now raises the contract client and its mock
+  image in their own PR and skips `1.3.0`.
 
 ### Notes
 
-- The Prism mock-server fixtures stay on `mock-server:1.1.0`: contract `1.2.0` publishes no matching
-  image, and since the specification is unchanged the `1.1.0` mock still reflects the wire contract.
+- The Prism mock-server fixtures (the docker-compose `mock` profile and `EpistolaServiceImplTest`)
+  move to `mock-server:1.3.1`, matching the client; `oldestSupportedServerTest` pins
+  `mock-server:0.16.1`.
 
 ## [0.19.0] - 2026-08-28
 

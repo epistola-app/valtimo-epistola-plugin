@@ -112,6 +112,7 @@ docker/            # Docker compose for local dependencies
 - **`$form` in a form flow is one step's data**: the preview component's `overrideMapping` is evaluated against `this.root.data` — the currently rendered form. To read a field submitted on an _earlier_ step, re-declare a component with the same key on the later step (a `hidden` one is fine). Valtimo prefills each step's form from the flow's merged submission data (`FormFlowInstance.getSubmissionDataContext()` → `FormDefinition.preFill`), so the re-declared component arrives with the earlier value in its `defaultValue` and Formio copies it into `root.data`. Without that carrier the reference is simply undefined and the mapping silently falls back. A hidden carrier fires neither `change` nor `focusout`, so it is picked up by the preview's initial compute, not by auto-refresh. Guarded by `FormFlowDemoConfigurationTest`.
 - **Form flows write to the case document**: `valtimoFormFlow.completeTask(additionalProperties, step.submissionData)` — the **two-argument** overload — defaults its save path to `doc:/submission`, so it writes the completing step's submission data onto the case document before completing the task. A document definition with `additionalProperties: false` that does not declare `submission` therefore rejects the write, the `onComplete` expression throws, and the task never completes — surfacing as a 500 (_"Error while executing expression"_) on the final step, not as a schema error. Either declare `submission` on the schema or pass an explicit save path as the third argument. Guarded by `FormFlowDemoConfigurationTest`.
 - **Stale `epistola-suite:latest`**: a locally cached image can predate the pinned contract client (`epistola-client` in `gradle/libs.versions.toml`). The symptom is not a version error but a **500 on `/templates`** — the older response omits `page`, which the generated client requires as non-nullable. `docker pull` before blaming the plugin, and check `docker inspect <container> --format '{{index .Config.Labels "org.opencontainers.image.version"}}'` against [COMPATIBILITY.md](COMPATIBILITY.md).
+- **Newer contract client, older server**: the reverse trap, with the same symptom. A contract release can add a response field older servers never send, and if it is `required` the generated models reject the whole response. Contract `1.3.0` did this with `slug` (fixed in `1.3.1`, which makes it optional), so read a resource's address from `id` (`key` on attributes), which every supported server sends — not from `slug` — until the Suite floor serves contract `1.3.0` or later. `oldestSupportedServerTest` runs `EpistolaServiceImplTest` against the oldest contract a supported Suite serves; it is part of `check`/`build`, not `test`, so run `./gradlew :backend:plugin:build` on a contract bump.
 - **Plugin properties**: Backend `@PluginProperty` keys must match frontend field names exactly
 - **Translations**: Add both `nl` and `en` translations in `epistola.specification.ts`
 - **Feature toggle**: The plugin can be disabled per environment from a single build artifact.
@@ -149,6 +150,8 @@ This plugin pins a single Valtimo version (the `valtimo` key in `gradle/libs.ver
 # What CI's "Backend" job actually runs — NOT the same as the two above.
 # :test-app:backend:build is where ktlint checks the Kotlin sources, so
 # running only :test-app:backend:test will miss style violations that fail CI.
+# :backend:plugin:build also runs oldestSupportedServerTest (the mock-server
+# integration test against the oldest supported Epistola contract; Docker required).
 ./gradlew :backend:plugin:build
 ./gradlew :test-app:backend:build -x test
 
@@ -299,7 +302,7 @@ in `test-app/frontend/src/app/embedding/`; the published plugin library is untou
 
 ### What's tested
 
-- `EpistolaServiceImpl` — Integration test using Epistola contract mock server (Testcontainers + Prism)
+- `EpistolaServiceImpl` — Integration test using Epistola contract mock server (Testcontainers + Prism), against both the pinned contract (`test`) and the oldest one a supported Suite serves (`oldestSupportedServerTest`)
 - `JsonataMappingService` — JSONata evaluation and custom function bridging
 - `FormioFormGenerator` — Form schema generation from template fields
 - `EpistolaResultCollectorRunner` — Result collector lifecycle and message delivery

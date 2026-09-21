@@ -144,6 +144,24 @@ tasks.test {
     failOnNoDiscoveredTests.set(false)
 }
 
+// The contract client has to keep reading servers older than the contract it was generated from.
+// Contract 1.3.0's client could not: it made a response field that older servers never send
+// required. So the mock-server integration test also runs against the oldest contract a supported
+// Epistola Suite serves — Suite 1.0.0 serves contract 0.16.1 (COMPATIBILITY.md). Raise this with
+// the Suite floor. Part of `check`, so `build` runs it; `test` alone does not.
+val oldestSupportedServerTest by tasks.registering(Test::class) {
+    description = "Runs the mock-server integration test against the oldest supported Epistola contract."
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    filter { includeTestsMatching("app.epistola.valtimo.service.EpistolaServiceImplTest") }
+    systemProperty("epistola.mock-server.version", "0.16.1")
+}
+
+tasks.check {
+    dependsOn(oldestSupportedServerTest)
+}
+
 tasks.named<org.cyclonedx.gradle.CycloneDxTask>("cyclonedxBom") {
     outputFormat.set("json")
     outputName.set("bom")
