@@ -7,467 +7,94 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-21
+
 ### Added
 
-- **Iframe embedding + postMessage bridge (test-app only, off by default)**: the demo frontend can
-  be embedded in an `<iframe>` on an allowlisted host page and driven from it, mirroring
-  epistola-suite's own embedding feature (its ADR 0015) so one host page can speak a single dialect
-  to both. Two runtime settings turn it on — `embeddingEnabled` and `embeddingAllowedParentOrigins`
+- **Document preview on a BPMN start form.** A letter can now be checked before the case exists,
+  both when starting a new case and when starting a process on an existing one. Choose the mode
+  with the component's new `previewContext` setting: `In a user task` (the default) or
+  `On a start form`. Existing forms need no changes. Start-form previews use a new
+  `POST /preview/start` endpoint, authorized like the start form itself: `OperatonExecution:CREATE`
+  on the process definition, plus `JsonSchemaDocument:VIEW` when a case document is named. The mode
+  is always configured, never guessed. See
+  [ADR 0004](docs/adr/0004-start-event-preview-authorization.md) and
+  [docs/document-preview.md](docs/document-preview.md).
+- **Iframe embedding for the demo frontend (test-app only, off by default).** An allowlisted host
+  page can embed the app and drive it over `postMessage`, in the same dialect as epistola-suite's
+  own embedding. Enable it with `embeddingEnabled` and `embeddingAllowedParentOrigins`
   (`EMBEDDING_ENABLED` / `EMBEDDING_ALLOWED_PARENT_ORIGINS`, or `frontend.embedding.*` in the Helm
-  chart) — and they gate two independent things: the CSP `frame-ancestors` allowlist nginx serves,
-  and whether the Angular bridge starts at all.
-
-  The bridge announces itself with `ready` (Angular boots long after the document does, so a host
-  otherwise cannot tell when the app is listening), then posts `navigated` on every navigation with
-  both the raw path and, where the route is one it can name, a typed resource identity — case type,
-  case, task, or a known top-level view. Inbound, the host may send `navigate` carrying **only a
-  typed identity, never a URL or path**: it is resolved through a closed lookup with every
-  identifier format-checked, and performed via Valtimo's own `Router`, so `AuthGuardService` and
-  each route's role guards run exactly as for an in-app link click. Messages are validated on
-  `event.origin` **and** `event.source === window.parent`, and the bridge never posts with `'*'`.
-
-  Every layer fails closed independently: an unset flag, a typo'd origin, an empty allowlist, a
-  wildcard, or the container entrypoint not running at all each leave `frame-ancestors 'none'` and
-  an inert bridge. Lives entirely in `test-app/frontend/src/app/embedding/`; the published
-  `@epistola.app/valtimo-plugin` library is untouched. See [docs/embedding.md](docs/embedding.md)
-  and [ADR 0005](docs/adr/0005-iframe-embedding-bridge.md).
-
-  **Re-authentication without a blank frame.** An identity provider can redirect _through_ a frame
-  but cannot render _in_ one, so an embedded app whose IdP session expires would otherwise navigate
-  itself to a login page the browser then refuses to display. Embedded logins therefore always
-  request `prompt=none` — the only shape that answers with a redirect either way, a code when the
-  session is live and `error=login_required` when it is not — and when that is refused the app
-  raises `auth-required` over the bridge and holds its `APP_INITIALIZER` instead of redirecting.
-  The host drives a top-level sign-in and replies `retry-auth`. Un-framed deployments keep their
-  existing full-redirect behaviour untouched. Applies to the authentik integration; the Keycloak
-  demo options still use `onLoad: 'login-required'`.
-
-  **Identity reporting.** A `user` message carries the OIDC `sub` and username (never email, name or
-  roles) so the host can check the frame is showing the person it expects. It identifies but does
-  not authenticate, and is documented as a consistency check rather than an authorization input.
-
-- **Interactive training facility (test-app only, opt-in via the `training` Spring profile)**: a
-  personal "dossier" — document-definition + BPMN process + process-links, cloned from the
-  `form-flow-demo` case type — and a per-trainee Epistola `PluginConfiguration` are auto-provisioned
-  the first time a principal carrying a new **real** Keycloak realm role, `ROLE_DEMO`
-  (`docker/keycloak/valtimo-realm.json`), makes an authenticated request. Deliberately an explicit,
-  assigned role rather than "any non-admin login" — the latter would sweep in genuine non-admin,
-  non-trainee users of a mixed-use instance, with no third category between "admin" and "trainee".
-  Every check in the feature keys off `ROLE_DEMO` presence alone, never off the absence of any
-  other role. Cloning uses Valtimo's own `ExportService`/`ImportService`
-  (`keyOverride`/`pluginConfigurationMappings`), not bespoke duplication code.
-
-  **Authorization model.** Trainees carry real `ROLE_ADMIN` in addition to `ROLE_DEMO` — Valtimo's
-  own admin Angular routes/menu are hard-gated to `ROLE_ADMIN` client-side, with no
-  finer-grained frontend role to widen instead, so a trainee could never reach even their own
-  dossier's settings screens without it. The backend fully compensates:
-  - The **case-definition management surface** (process-link, plugin-configuration, case tabs,
-    settings, list/task-list columns, widget/header tabs, startable items, case export, internal
-    status — Valtimo has no PBAC hook for any of it) is enforced down to per-resource ownership by
-    an interceptor/request-body-advice/response-body-advice layer
-    (`test-app/backend/src/main/kotlin/com/ritense/valtimo/epistola/training/security/`), so a
-    trainee can fully administer their own dossier without touching anyone else's, or the shared
-    `form-flow-demo` template (visible read-only, immutable to every trainee).
-  - `TraineeAdminSurfaceGuardFilter` hard-blocks every _other_ Valtimo admin surface real
-    `ROLE_ADMIN` would otherwise unlock: Access Control (the PBAC editor itself), Translation
-    management, Choice fields, Object management configuration, global Forms/Decision-tables CRUD,
-    the case-_unlinked_ "system" process-definition surface, process migration, Logs, Case
-    migration, Dashboard management, creating a brand-new unrelated case-definition, and arbitrary
-    case import. Implemented as a filter (`addFilterBefore`), not more `authorizeHttpRequests`
-    entries — a filter's position is fixed once the security chain is built, so it can't lose an
-    ordering race against Valtimo's ~80 other auto-configured security-config beans the way an
-    _allow_ rule can. Every blocked entry carries its own specific 403 reason (e.g. "this manages
-    roles and permissions for the whole instance" vs. "this operates on an arbitrary id with no way
-    to confirm it belongs to your own dossier"), written directly into the response body
-    (`TraineeRejection.rejectAsForbidden`) rather than via `sendError`, whose message Spring Boot's
-    default error-page handling silently strips.
-  - This plugin's own admin page (`EpistolaAdministration:MANAGE`, seeded to `ROLE_ADMIN` by
-    default) is a partial exception: health/usage/pending-jobs/version/changelog stay reachable,
-    response-filtered to the trainee's own tenant/plugin-configuration (health and usage also keep
-    the shared template's own entries visible, read-only reference); catalog listing/redeploy,
-    process-link export, and pending-job reconcile are scoped by ownership instead of blocked (see
-    below) — only the engine-wide BPMN validation report and legacy-override form scanning have no
-    per-resource identifier to scope by at all, and stay hard-blocked.
-  - **Several "arbitrary id, no way to confirm ownership" endpoints turned out to be scopable after
-    all**, once a runtime process instance or execution could be resolved back to a case-definition
-    the same way a document or task already was. New `ProcessInstanceOwnershipResolver` (process
-    instance → business key → case-definition key; an execution resolves to its process instance
-    first, then the same chain) let `TraineeOwnershipInterceptor` take over
-    force-deleting a process instance (`POST /api/v1/process/{id}/delete`, no read-only
-    equivalent — never allowed even against the shared template) and this plugin's own catalog
-    redeploy / process-link export / pending-job reconcile (catalog _listing_ also allows the
-    shared template, read-only; redeploy and reconcile are mutations against the caller's own
-    plugin configuration only) — all five were previously hard-blocked outright in
-    `TraineeAdminSurfaceGuardFilter` for lack of a resolution path. What's left hard-blocked now has
-    a different reason each: process migration and raw BPMN deployment are still "arbitrary
-    target" (a dossier is finalized at provisioning and never gets a second version to migrate
-    between, so migration has no legitimate use case even though it's technically resolvable; raw
-    deployment creates a brand-new process with no existing target at all), while the engine-wide
-    validation/legacy-override scans have no per-resource identifier to scope by in the first
-    place.
-  - **Trainees can now create additional dossiers of their own** through Valtimo's own
-    `/admin/dossiers` UI (`POST .../case-definition/draft`), capped at 10, instead of that
-    endpoint staying hard-blocked. No new table: a self-created dossier is recognized by
-    `CaseDefinition.createdBy`, a column Valtimo's own `CaseDefinitionService` already populates
-    from the authenticated caller on creation — confirmed to resolve to exactly the same identity
-    `TraineeIdentity.resolve` uses everywhere else in this feature (both land on the JWT's `email`
-    claim, since this app's own JWT-to-authentication-token conversion builds an explicit
-    `email ?: preferred_username ?: subject` principal, not Spring's default `sub`-based one).
-    `TraineeOwnershipRequestBodyAdvice` enforces the cap and checks that drafting a new _version_
-    of an already-existing key requires already owning that key (otherwise a trainee could draft a
-    new version of another trainee's dossier, or of a shared/unrelated case type) before the
-    request reaches Valtimo's controller; `isOwnCaseDefinition` recognizes the result afterward
-    everywhere else ownership is checked (deletion, finalization, the case-definition list view),
-    with zero changes needed at any of those call sites. The auto-provisioned dossier keeps working
-    exactly as before, via the unchanged key-hash comparison.
-  - **Two more cross-trainee gaps found and closed, both by chasing a user's questions rather than
-    by routine testing.** `/api/v1/plugin/epistola/configurations/**` (`EpistolaTemplateResource` —
-    the plugin configurator's own catalog/template/attribute/environment/variant browser, used
-    while authoring a data mapping) was gated only at `hasAuthority(ROLE_ADMIN)`, which every
-    trainee carries, with no ownership check at all: `TrainingWebConfig` never registered this path
-    for `TraineeOwnershipInterceptor` to run against, even though the sibling admin endpoint
-    (`.../admin/configurations/**`) already had the identical check wired up. Proved live before
-    fixing: the same `configurationId` that 403s through the admin path returned 200 with another
-    trainee's actual tenant data through this one. Separately, `PluginProcessLinkCreateDto`/
-    `PluginProcessLinkUpdateDto` carry a `pluginConfigurationId` distinct from
-    `processDefinitionId` — owning the process a link is wired to says nothing about owning the
-    plugin configuration it references, so a trainee could wire their own dossier's action to
-    another trainee's Epistola plugin configuration (a different tenant) by naming its id.
-    `TraineeOwnershipRequestBodyAdvice` now checks it too (only for
-    `PluginConfigurationReferenceType.FIXED` — `BUILDING_BLOCK` resolves the configuration
-    dynamically, never from a fixed id on the wire), `allowShared` since `form-flow-demo`'s own
-    stock process-links already reference the shared template configuration the same way.
-  - **External progress checks now have a way in**: a new
-    `TrainingFacilitySharedSecretAuthenticationFilter`, opt-in via
-    `epistola.training.facility-shared-secret`, lets a monitoring tool/dashboard authenticate to
-    Valtimo's full API with a static header (`X-Training-Facility-Secret`), no human login.
-    Deliberately not a Keycloak client-credentials grant — `oauth2ResourceServer` would have
-    accepted one with zero new Valtimo code, but that means a new piece of Keycloak realm/client
-    configuration to keep in sync, so this mirrors epistola-suite's own
-    `DemoSharedSecretAuthenticationFilter` instead: a single static credential, checked directly,
-    entirely inside this application. Carries `ROLE_USER` + `ROLE_ADMIN`, deliberately not
-    `ROLE_DEMO` — that role means "trainee," which would provision this credential a pointless
-    dossier of its own instead of giving it visibility across every trainee's. Inherits the exact
-    same access-scope caveat as granting trainees `ROLE_ADMIN`: full admin access, not read-only.
-    Its own unit test only calls `doFilter` against a mock, so a second test,
-    `TrainingFacilitySharedSecretAuthenticationFilterE2ETest`, drives a real request through
-    `MockMvc` against the real, registered filter chain — the only test in this package that
-    exercises Spring Security at all, rather than calling controller/service beans directly — to
-    prove the filter's authentication actually satisfies a real `authorizeHttpRequests` gate, not
-    just that the filter's own logic is internally consistent.
-  - The **case/document/task data plane** is scoped the same way, via `DocumentOwnershipResolver`
-    (a document resolves to its document-definition name through `DocumentService`) and
-    `TaskOwnershipResolver` (a task resolves through its process instance's business key). Unlike
-    the case-definition-_management_ surface, this is never shared with the template: `form-flow-demo`
-    is a live case type real staff/other tests can create genuine instances under, so sharing it
-    stops at read-only _structure_ and never extends to actual case _data_.
-
-  Epistola-side tenant provisioning (`SharedSecretEpistolaTenantProvisioner`, opt-in via
-  `epistola.training.epistola-shared-secret`) reuses epistola-suite's own demo-profile shared-secret
-  mechanism (`DemoSharedSecretAuthenticationFilter`) — an all-tenant-superuser credential — to create
-  one tenant per trainee without minting a separate API key per trainee; falls back to
-  `NotConfiguredEpistolaTenantProvisioner` (fails loudly) when unset. Off by default; dossier
-  retention/cleanup is not yet covered. Two demo accounts (`trainee1@demo`/`trainee2@demo`, password
-  matching the username, `ROLE_USER` + `ROLE_ADMIN` + `ROLE_DEMO`) were added to
-  `docker/keycloak/valtimo-realm.json` for manually verifying trainee-vs-trainee isolation against
-  the local docker-compose stack.
-
-  This authorization model — and every fix below — came from actually driving the running app as
-  two distinct trainee accounts over real HTTP (curl and a headless browser), not from reading the
-  code or trusting unit tests alone. Each round of that testing found a real, previously-unnoticed
-  gap:
-  - A real Keycloak token can omit the JWT `sub` claim entirely (confirmed against this repo's own
-    docker-compose realm), which broke dossier provisioning for an email-shaped identity
-    (`CaseDefinitionId.key` rejects `@`/`.`). `TraineeKeys.caseDefinitionKey` now always hashes the
-    resolved identity rather than using it verbatim.
-  - The ownership interceptor's registered path patterns (`TrainingWebConfig`) drifted out of sync
-    with the endpoints it needed to cover twice — once when the case-definition-management surface
-    was widened, once again when the document/task data plane was added — each time leaving Spring
-    Security correctly widening the HTTP gate but with _no ownership check running at all_ for the
-    newly-widened paths. Both caught by cross-trainee testing, not code review; both fixed by
-    syncing the pattern lists (a hazard this pairing will keep needing whenever either list grows).
-  - The original design deliberately avoided granting trainees real `ROLE_ADMIN`, specifically so a
-    trainee could never pass Valtimo's own `hasAuthority(ADMIN)` gates by construction. That held
-    until a real browser login showed Valtimo's frontend gates its entire admin UI on `ROLE_ADMIN`
-    too — the pivot to granting it, and the `TraineeAdminSurfaceGuardFilter` built to compensate,
-    is the direct result.
-  - The admin page's usage overview initially leaked this test-app's own unrelated bundled demo
-    case types (`example`, `bulk-letters`, `objection`, `permit`, `subsidy`) because its
-    "shared template" allowance matched on plugin-configuration alone; tightened
-    (`isOwnOrTemplatePluginUsage`) to also require the entry belong to the template dossier itself.
-  - Two case-definition-management endpoints (`case-definition/check`, `metroline/available-modes`)
-    were assumed "global, not case-specific; nothing to scope" and left hard-blocked — confirmed
-    against Valtimo source that both are genuinely parameter-free and identity-independent, so a
-    trainee was getting real 403s just loading `/case-management`. Unblocked.
-  - `TraineeDossierProvisioner` stored a trainee's Epistola plugin `baseUrl` as a literal, never-resolved
-    `${epistola.base-url}` placeholder string — Valtimo's `@PluginProperty` injection doesn't do
-    Spring-style placeholder resolution — so every action against a trainee's own tenant silently
-    failed to connect. Now stores the actual resolved URL.
-  - **Critical**: granting trainees real `ROLE_ADMIN` didn't just widen the admin-configuration
-    surface above — Valtimo's own `all.permission.json` grants `ROLE_ADMIN` completely
-    unconditioned PBAC access to 12 resource types, including `JsonSchemaDocument` and
-    `OperatonTask`, and PBAC unions grants across every role a principal carries. A trainee could
-    fetch a full, unrelated case's document and task (including its process variables), and the
-    task list returned tasks mixed across every case type in the instance. This existed from the
-    moment `ROLE_ADMIN` was first granted until the data-plane scoping described above closed it —
-    found only by a deliberate post-implementation security review, not routine testing. **Not yet
-    closed**: 9 more unconditioned `ROLE_ADMIN` resource types found in the same pass (`Note`,
-    `JsonSchemaDocumentSnapshot`, `Dashboard`, `CaseTab`, `SearchField`, `Object`,
-    `ResourcePermission`, plus `CaseDefinition` view/view_list and `OperatonExecution`'s non-`create`
-    actions) and the task batch endpoints (`batch-assign`/`batch-complete`) need the same
-    per-endpoint treatment — tracked, not silently assumed safe.
-
-  Also found and fixed along the way: `TraineeOwnershipRequestBodyAdvice`/`TraineeOwnershipResponseBodyAdvice`
-  being picked up by component-scan regardless of the `training` profile (`@ControllerAdvice` is
-  itself `@Component`-meta-annotated), which broke every non-training test until each was given its
-  own `@Profile("training")`; and wrapping the dossier-provisioning sequence in `@Transactional`,
-  which made every provisioning call fail because Valtimo's own export/import tolerates per-artifact
-  exceptions that still poison an ambient transaction — the sequence is deliberately not atomic,
-  every step is retryable instead.
-
-- **The document preview now works on a BPMN start form**, so a letter can be checked before the
-  case is created — previously it required starting the case and previewing from the first user
-  task, which produced a dossier for a letter the user might never send. Covers both Valtimo start
-  flavours: a brand-new case, and starting a process on an existing one. A new `previewContext`
-  setting on the component (`In a user task` / `On a start form`, defaulting to the former) selects
-  the mode; **existing forms need no re-authoring**. See
-  [ADR 0004](docs/adr/0004-start-event-preview-authorization.md).
-  - **New endpoint `POST /preview/start`**, authorized on `OperatonExecution:CREATE` against the
-    process definition — the same check Valtimo makes before serving that start form, so the preview
-    reaches exactly the form's audience. When the request names a case document,
-    `JsonSchemaDocument:VIEW` is required on it as well: permission to start a process must never
-    confer read access to a case. Kept separate from `POST /preview`, which is unchanged.
-  - **The mode is authored, never inferred.** Falling back to start mode when no task id arrives
-    would silently swap a per-task gate for a process-level one and drop `$doc`/`$pv` to the caller's
-    overrides — `$pv` binds to an empty map rather than throwing, so the result is a plausible letter
-    with fields quietly missing. That is precisely the situation the four task-id-carrier fixes
-    describe, so a fallback would have converted a loud, correct failure into a silent, wrong one. A
-    start-mode preview that _does_ find a task id reports itself misconfigured and calls nothing.
-  - Two demo fixtures, one per flavour. **Vergunningaanvraag** carries a preview on the start form
-    of a case-initiating process (no document exists yet, so `$doc` is the form's own input),
-    exercised end-to-end by `StartFormPreviewE2ETest` against the real deployed configuration. The
-    **Voorbeeld** case's `single-document` supporting process carries one on the start form of a
-    process started _within_ an existing case, where `$doc` resolves against that case — leave its
-    name field empty to see the stored value come through, or fill it to watch the override land on
-    top. It has its own start form so the four sibling processes keep sharing the original.
+  chart).
+  - The host navigates by typed resource identity only, never by URL, and navigation goes through
+    Valtimo's own route guards.
+  - Every misconfiguration fails closed: `frame-ancestors 'none'` and an inert bridge.
+  - With authentik, an expired session raises `auth-required` to the host instead of blanking the
+    frame.
+  - The published plugin library is unchanged. See [docs/embedding.md](docs/embedding.md) and
+    [ADR 0005](docs/adr/0005-iframe-embedding-bridge.md).
+- **Interactive training facility (test-app only, opt-in via the `training` Spring profile).** A
+  user with the Keycloak realm role `ROLE_DEMO` gets a personal copy of the `form-flow-demo` case
+  type and their own Epistola plugin configuration on first login, and can administer only their
+  own copies.
+  - Trainees carry `ROLE_ADMIN`, because Valtimo's admin UI requires it. The backend scopes the
+    case-definition, case, task and plugin endpoints to the trainee's own resources, and blocks the
+    rest of the admin surface.
+  - `epistola.training.epistola-shared-secret` provisions an Epistola tenant per trainee;
+    `epistola.training.facility-shared-secret` lets a monitoring tool follow every trainee's
+    progress. That credential has full admin access, not read-only.
+  - **Known gaps:** nine Valtimo PBAC resource types and the task batch endpoints are not yet scoped
+    per trainee, and dossiers are never cleaned up. See
+    [docs/training-facility.md](docs/training-facility.md).
 
 ### Fixed
 
 - **Changing or clearing the catalog or template in the generate-document configurator no longer
-  fails with 500 errors, and resets what depended on it.** Two paths requested a template that
-  could not exist:
-  - Switching catalog asked the new catalog for the template still selected from the old one.
-    Epistola answered 404, which reached the browser as a 500.
-  - Clearing the template requested the template `''`, because Carbon's combo box reports a cleared
-    selection as an empty array, which passed for an id. The result was `…/templates/`, which
-    matches no route, and `…/templates//variants`, which collapses onto the details route as a
-    template named `variants`.
-
-  The configurator now treats catalog → template → template choices as a hierarchy:
+  fails with 500 errors.** Switching catalog requested the old template from the new catalog, and
+  clearing the template requested a template with an empty id. The configurator now resets what
+  depends on a selection:
   - A new or cleared catalog clears the template and everything under it.
   - A new or cleared template resets its variant selection and data mapping.
-  - Filename, environment, correlation id and result variable are kept.
-  - Opening a saved configuration is unaffected.
-
-- **Template, variant, template-list and attribute lookups answer 404 when Epistola reports the
-  catalog or template missing**, instead of 500. The service now keeps Epistola's status on these
-  reads, as it already did for downloads, and the endpoints map a 404 through.
-
-- **The demo frontend served no framing header at all**, in any deployment — meaning any site could
-  silently embed it in an `<iframe>`. All three nginx configs (image, docker-compose, Helm
-  ConfigMap) now send `Content-Security-Policy: frame-ancestors 'none'` by default, relaxed only to
-  an explicit allowlist. `X-Frame-Options` is deliberately not also sent: `frame-ancestors`
-  supersedes it in every browser Valtimo supports and, unlike it, can express a list.
-- **`epistolaEnabled` never reached the Helm or docker-compose deployments.** Both render
-  `assets/config.js` themselves rather than going through the image's `envsubst`, and neither copy
-  had been given the key when the feature toggle was introduced — so `EPISTOLA_ENABLED=false`
-  silently did nothing there and the plugin stayed visible. Both now render it, and the chart
-  exposes `frontend.env.epistolaEnabled`.
-
-- **The preview no longer mistakes a real form for the Formio builder after visiting a case.** Design
-  mode was inferred from `FormIoStateService.documentId`, which is root-scoped and never cleared, so
-  it survived navigation. It now uses Formio's own signals, forwarded from the wrapper: `builderMode`
-  for the builder canvas, plus `options.preview` for the component-settings dialog — which omits
-  `attachMode` entirely and so reports `builderMode === false`. Checking only `builderMode` would
-  have made the settings dialog fire a real backend request.
-- `findPluginProcessLink` did not check that the link it found was a `generate-document` action. That
-  was harmless while the activity id always came from the caller's own task, but `/preview/start`
-  accepts it from the wire, so it is now filtered on both paths.
-- The preview's design-time summary advertised an "Auto-discover mode" that was removed in
-  `8972c16`; it now reports an unconfigured component instead.
-- `docs/document-preview.md` documented that same removed auto-discover mode, and showed a
-  `POST /preview` request body (`{documentId, processDefinitionKey, …}`) that no longer exists. Both
-  are corrected, and the `$doc`/`$pv` resolution is now tabulated per mode — on a new-case start form
-  nothing resolves except what the override mapping supplies.
-- Corrected the `EpistolaGenerationResource` class javadoc, which still described a bound-ids check
-  removed in `8972c16`.
-- **Transient 5xx responses carrying `problem+json` are retried again.** Installing the RFC 9457
-  status handler means an error response arrives as `ProblemDetailException`, which extends
-  `RestClientResponseException` directly and is _not_ an `HttpServerErrorException` — so the retry
-  policy, which branched on the exception class, would have stopped retrying every problem-shaped
-  5xx while still retrying bare ones. `withRetry` now branches on the response status. Covered by
-  `withRetry_retriesProblemShaped5xx` and `withRetry_doesNotRetryProblemShaped4xx`.
-- **A stale document reference returns 404 rather than 500.** The download endpoint caught
-  `HttpClientErrorException.NotFound`, but `EpistolaServiceImpl` wraps downstream failures in
-  `EpistolaApiException`, so that catch could only ever fire for a directly-thrown exception — which
-  is exactly how the test stubbed it, leaving the real path uncovered. The endpoint now also
-  inspects the status preserved on `EpistolaApiException`. A malformed (non-UUID) document id is
-  rejected as a `400` before the call rather than escaping as an `IllegalArgumentException`.
-
-- The admin page's connection check reports the contract version the plugin ships, so its
-  expectations move to `1.3.1`. A server on contract `1.1.0` or `1.2.0` is behind by a minor and now
-  classifies as `WARNING` rather than `OK` — the compatibility rule is unchanged, only the plugin's
-  side of the comparison moved. That path had no test; `shouldWarnWhenServerContractMinorIsBehindPluginContractMinor`
-  now covers it, and `shouldTreatNewerServerMinorAndPatchAsCompatible` mocks a genuinely newer
-  server (`1.4.2`) instead of one equal to the plugin's own version, which would have asserted nothing.
-  It now asserts that premise too: the contract bump to `1.3.1` had made its server equal to the
-  plugin's version, and the test went on passing.
+  - Filename, environment, correlation id and result variable are kept, and opening a saved
+    configuration is unaffected.
+- **Template, variant, template-list and attribute lookups return 404 instead of 500** when
+  Epistola reports the catalog or template missing.
+- **Downloading a document that no longer exists in Epistola returns 404 instead of 500**, and a
+  malformed document id returns 400.
+- **The document preview no longer treats a live form as the Formio builder** after the user has
+  visited a case.
+- **The demo frontend now sends `Content-Security-Policy: frame-ancestors 'none'`** in all three
+  deployments (image, docker-compose and Helm), relaxed only by the embedding allowlist. It
+  previously sent no framing header, so any site could embed it.
+- **`EPISTOLA_ENABLED=false` now takes effect in the Helm and docker-compose deployments** of the
+  demo frontend, which rendered their own `config.js` without the key. The chart exposes it as
+  `frontend.env.epistolaEnabled`.
+- The preview's design-time summary and `docs/document-preview.md` no longer describe the removed
+  auto-discover mode.
 
 ### Changed
 
-- **Upgraded Valtimo from `13.42.0` to `13.44.0` (backend + frontend).** No toolchain move was
-  needed: diffing the two dependency BOMs in full showed the _only_ delta across all 90 managed
-  entries is the Valtimo module versions themselves — Spring Boot stays `3.5.16`, and Java 21,
-  Gradle 9.2.0, Kotlin 2.0.21 and Angular 19.2.25 are all unchanged. `@valtimo/components` still
-  pins `formiojs@4.19.5`, `@formio/angular@7.0.0` and `carbon-components-angular@5.57.6`, so there
-  is no second Form.io registry to worry about (`pnpm singletons:check` confirms it).
-  - **One breaking change, undocumented in the release notes:** `ValueResolverFactory` gained an
-    abstract `preProcessValuesForNewDocument(Map<String, ?>, String)` in 13.43 — the document-scoped
-    sibling of `preProcessValuesForNewCase` — which fails the build of any Java implementer.
-    `EpistolaTaskValueResolverFactory` implements it as a pass-through, matching its sibling, since
-    the resolver is read-only and never rewrites submitted values. This does **not** raise the
-    plugin's Valtimo floor: on 13.21–13.42 the interface simply does not declare the method, and an
-    extra public method on the implementing class is never called, so the compiled plugin stays
-    loadable across the range in `COMPATIBILITY.md`.
-  - Two fixes land directly in the plugin's lane. 13.44 fixes _"changing the form flow definition on
-    an existing form flow process link is now saved (previously the change was silently ignored)"_
-    and process-link configuration retention; 13.43 stops links leaking into another case definition
-    and adds diagnostics naming the offending property, activity and process definition when a
-    plugin action fails. `FormFlowTransitionE2ETest` and `FormFlowDemoConfigurationTest` still pass
-    unchanged.
-  - The new **E-mail preview** Form.io component in 13.44 does not collide with this plugin: every
-    type it registers is `epistola-` prefixed.
-  - 13.43's stricter input/output-mapping validation is scoped to building-block call activities,
-    which this repo does not use; its BPMN fixtures only carry plain named `camunda:inputParameter`s
-    on ordinary activities.
-  - `frontend/plugin`'s `peerDependencies` are deliberately left at `>=13.21.0 <14` rather than
-    narrowed to the new pin — they are the published compatibility contract, not a lockstep mirror
-    of what the repo builds against.
-
-- **Renovate now groups its updates, and treats the shipped plugin differently from the test-app.**
-  The old config grouped five ecosystems and left everything else ungrouped, so ~100 pending updates
-  queued behind `prHourlyLimit` and dripped out roughly ten PRs at a time — a rate limit hiding the
-  volume rather than reducing it. Verified with `renovate --platform=local --dry-run` against the
-  real backlog: **eight** weekly PRs instead of ~100, five at a time.
-  - **The plugin is what gets reviewed PRs.** `backend plugin dependencies` (the version catalog, the
-    plugin build, the Gradle wrapper) and `frontend plugin dependencies` (the root and
-    `frontend/plugin`) each land one grouped PR a week.
-  - **The test-app is tracked, not scheduled.** It is a vendored copy of the GZAC templates — 94 of
-    its ~111 npm packages arrived with the template, and `test-app/backend/gradle.properties` is the
-    template's own plugin-version list. Bumping them on our own says nothing about whether Valtimo
-    supports the result, and it costs the harness the thing it exists for: resembling a real
-    deployment. The whole directory now sits on the dependency dashboard. The plugin's own JSONata
-    runtime and the Playwright E2E suite are carved back out, since those are ours.
-  - **Libraries whose version Valtimo dictates no longer move on their own.** The plugin's published
-    `peerDependencies` pin `formiojs` (4.19.5), `carbon-components-angular` (5.57.6) and
-    `@formio/angular` (7.0.0) to an _exact_ version, because that is what the Valtimo frontend loads
-    — an independent bump breaks the contract we publish, whatever CI says. They are re-pinned by
-    hand as part of a Valtimo bump. Angular is deliberately _not_ in this set: our peer range there
-    is `>=19.2.8 <20`, so a 19.x update is inside the compatibility we already publish.
-  - **A Valtimo bump always arrives as its own PR, major included** — the direct platform
-    dependencies only (`@valtimo/*`, `com.ritense.valtimo:*`), which are one version and move in
-    lockstep. It is a starting point rather than a mergeable change: run the `update-valtimo` skill
-    on it to review the changelog, re-pin the template libraries and update `COMPATIBILITY.md`. It is
-    labelled `valtimo` and never automerged.
-  - **Majors need a tick on the dependency dashboard (issue #50)**, Valtimo excepted. Fourteen are
-    queued; nearly all are dictated by the platform rather than chosen.
-  - **Two low-risk groups automerge once CI is green:** the GitHub Actions digest re-pins (same tag,
-    new SHA) and the monthly lock-file maintenance. `platformAutomerge` is off because the repository
-    does not allow GitHub's native auto-merge, so Renovate merges via the API after the branch's
-    checks pass.
-  - **The pnpm resolution overrides are dashboard-gated.** They are CVE _floors_, not pins; raising a
-    floor nothing violates is churn. An actual advisory still opens a PR immediately —
-    `vulnerabilityAlerts` overrides the gate and is now explicitly unscheduled and exempt from
-    `minimumReleaseAge`, so security fixes no longer wait for the Monday window.
-  - **Tools declared in more than one place move together.** `gradle`, `java`, `node`, `pnpm`,
-    `helm`, `oxlint` and `oxfmt` are each spread across `.mise.toml`, the Gradle wrapper, the
-    workflows and `package.json`; these match on `depName`, because the `packageName` differs per
-    manager (`gradle/gradle-distributions`, `actions/node-versions`, `helm/helm`). Grouping the
-    Gradle plugins by name likewise collapses the duplicate PRs that `libs.versions.toml` and
-    `test-app/backend/gradle.properties` raised for the same plugin.
-  - **`rangeStrategy: "bump"` is gone**, so an update already satisfied by the declared range no
-    longer opens a PR to rewrite the range (`rxjs ^7.8.0` → `^7.8.2` and friends); the lockfile picks
-    those up. **The published library's `peerDependencies` are excluded** for the same reason in
-    reverse: the default strategy widens them, and those ranges are the hand-set compatibility
-    contract recorded in `COMPATIBILITY.md`, not something to widen untested.
-  - `minimumReleaseAge: 5 days` with `internalChecksFilter: "strict"` stops a package that ships
-    several patches in a week from producing several PRs, and `rebaseWhen: "conflicted"` keeps the
-    longer-lived group branches from re-running CI on every push to `main`.
-  - Fixed a dead rule: the Font Awesome pin matched `font-awesome/css/font-awesome.min.css`, but the
-    dependency is named `font-awesome`, so it never applied. The `html` manager is now disabled
-    outright — the two CDN stylesheets are deliberately on different majors and carry SRI hashes that
-    have to be recomputed by hand.
-  - Migrated the deprecated `matchPackagePatterns` to `matchPackageNames`/`matchDepNames`, clearing
-    the "Config Migration Needed" item on the dependency dashboard, and pinned
-    `semanticCommits: "enabled"` so the `chore(deps):` prefix no longer depends on Renovate sampling
-    the commit history.
 - **Breaking for applications that override the `epistolaGenerationResource` bean:** its factory
-  method gains a `RepositoryService` parameter (used to resolve a process definition key to its
-  latest deployed version). The plugin's own auto-configuration is updated; only applications
-  supplying their own bean via the `@ConditionalOnMissingBean` escape hatch need to widen theirs.
-- **Upgraded the Epistola contract client `app.epistola.contract:client-spring3-restclient` from
-  `1.1.0` to `1.2.0`.** The OpenAPI specification itself is unchanged, so the bundled catalog wire
-  schema stays at `4` and the Epistola Suite compatibility floor stays at `>= 1.0.0`. Of what the
-  release fixes, most did not reach this plugin: the `PATCH` partial-update erasure affects the
-  thirteen update operations it never calls (it is read-only plus generation), and the enum
-  wire-value fix (`direction=DESC` → `desc`), while source-breaking for Kotlin consumers, touches no
-  enum constant referenced here.
-- **The plugin now uses the contract's own client configuration instead of hand-rolling it.**
-  `1.2.0` generates binary operations as Spring `Resource` rather than `java.io.File`, carries RFC
-  9457 extension members on `ProblemDetail`, and ships `EpistolaClient`, a builder that applies the
-  whole blessed setup in one call. Together these retire every hand-written HTTP path in the plugin:
-  - `EpistolaApiClientFactory` builds its clients with `EpistolaClient.builder(baseUrl, apiKey)`,
-    which wires the Jackson mapper the API requires, the vendor and `application/problem+json` media
-    types, the RFC 9457 status handler, and authentication. Its own request factory, converter
-    swapping, and identity-interceptor wiring are gone.
-  - **Document download and preview now call the generated `downloadDocument()` and
-    `previewDocument()`**, which return a `Resource`. They previously issued hand-written requests
-    because the generated methods returned a `File` that Spring could not produce; that is no longer
-    true, and `Resource` carries no temp-file ownership. Preview also builds a typed
-    `PreviewDocumentRequest` instead of an untyped map, and no longer hand-writes the vendor media
-    type.
-  - **Catalog import now calls the generated `importCatalog()`**, which accepts a `Resource` and
-    returns a typed `ImportCatalogResponse`. The hand-built multipart request and the field-by-field
-    `ObjectMapper` parsing of its response are gone.
-  - **Downstream error bodies are parsed by the client**, so `extractErrorMessage`,
-    `parseProblemBody`, and the local `ProblemBody` record are deleted. The problem type and the
-    extension members Epistola sends — `version` / `baselineVersion` on `catalog-schema-too-old` —
-    now arrive already parsed, and still reach the admin page's actionable redeploy message.
-- **Authentication moved from the deprecated `X-API-Key` header to `Authorization: ApiKey`.** The
-  contract has accepted the latter since `0.14.0`, well below this plugin's Epistola Suite floor of
-  `>= 1.0.0`, so every supported server accepts it.
-- **Upgraded the Epistola contract client from `1.2.0` to `1.3.1`, skipping `1.3.0`.** `1.3.0` adds
-  `slug` to every read model beside the `id` (`key` on attributes) it duplicates, and declared it
-  required. Only servers on `1.3.0` or later send it, so the `1.3.0` client rejected every template,
-  environment and variant response from any Epistola Suite released so far — failing with
-  _"missing (therefore NULL) value for creator parameter slug"_, which reaches the admin and
-  configurator screens as a 500. `1.3.1` makes `slug` optional (epistola-app/epistola-contract#88).
-  The plugin goes on reading `id`/`key`, which every supported server sends, so the Epistola Suite
-  floor stays at `>= 1.0.0` and the bundled catalog wire schema at `4`. The rest of `1.3.x` does not
-  reach the plugin: it never called the asset operations `1.3.0` removes or the `/images` API that
-  replaces them, and catalog wire v7 governs the archives the server imports, not the client.
-- **The mock-server integration test now also runs against the oldest supported contract.** The
-  `1.3.0` defect was caught only because the Prism fixture happened to lag behind the client. The
-  new `oldestSupportedServerTest` task runs `EpistolaServiceImplTest` against `mock-server:0.16.1`,
-  the contract Epistola Suite `1.0.0` serves, as part of `check`, so a client that cannot read the
-  oldest supported server fails the build. Renovate now raises the contract client and its mock
-  image in their own PR and skips `1.3.0`.
-
-### Notes
-
-- The Prism mock-server fixtures (the docker-compose `mock` profile and `EpistolaServiceImplTest`)
-  move to `mock-server:1.3.1`, matching the client; `oldestSupportedServerTest` pins
-  `mock-server:0.16.1`.
+  method gains a `RepositoryService` parameter. Applications that use the plugin's own
+  auto-configuration are unaffected.
+- **Upgraded Valtimo from `13.42.0` to `13.44.0`** (backend and frontend). The supported range stays
+  `>=13.21.0 <14`. The one interface change, `ValueResolverFactory.preProcessValuesForNewDocument`
+  (added in 13.43), is implemented as a pass-through, so older Valtimo versions still load the
+  plugin. The toolchain and the Form.io pins are unchanged.
+- **Upgraded the Epistola contract client from `1.1.0` to `1.3.1`, skipping `1.3.0`**, whose client
+  cannot read responses from any Epistola Suite released so far
+  (epistola-app/epistola-contract#88). The Epistola Suite floor stays at `>= 1.0.0` and the bundled
+  catalog wire schema at `4`.
+  - The plugin builds its HTTP clients with the contract's own `EpistolaClient` and calls the
+    generated download, preview and catalog-import operations. No hand-written HTTP paths remain.
+  - Requests authenticate with `Authorization: ApiKey` instead of the deprecated `X-API-Key` header.
+    Every supported server accepts it.
+  - The admin page's contract check now expects `1.3.1`, so a Suite serving contract `1.1.0` or
+    `1.2.0` shows a warning. The compatibility rule itself is unchanged.
+  - The mock-server integration test also runs against contract `0.16.1`, the oldest one a
+    supported Suite serves (`oldestSupportedServerTest`, part of `build`).
+- **Renovate groups its updates into a few weekly PRs.** The shipped plugin gets reviewed PRs, the
+  vendored test-app is tracked on the dependency dashboard, Valtimo bumps arrive as their own PR,
+  and the Epistola contract client arrives in its own PR, skipping `1.3.0`.
 
 ## [0.19.0] - 2026-08-28
 
