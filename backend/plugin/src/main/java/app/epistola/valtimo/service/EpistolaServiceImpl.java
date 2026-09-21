@@ -219,7 +219,7 @@ public class EpistolaServiceImpl implements EpistolaService {
                     .toList();
         } catch (Exception e) {
             log.error("Failed to fetch templates for tenant {}: {}", tenantId, e.getMessage());
-            throw new EpistolaApiException("Failed to fetch templates", e);
+            throw toApiException("Failed to fetch templates", e);
         }
     }
 
@@ -239,7 +239,7 @@ public class EpistolaServiceImpl implements EpistolaService {
             throw e;
         } catch (Exception e) {
             log.error("Failed to fetch template details for tenant {}, template {}: {}", tenantId, templateId, e.getMessage());
-            throw new EpistolaApiException("Failed to fetch template details", e);
+            throw toApiException("Failed to fetch template details", e);
         }
     }
 
@@ -261,7 +261,7 @@ public class EpistolaServiceImpl implements EpistolaService {
                     .toList();
         } catch (Exception e) {
             log.error("Failed to fetch attribute definitions for tenant {}: {}", tenantId, e.getMessage());
-            throw new EpistolaApiException("Failed to fetch attribute definitions", e);
+            throw toApiException("Failed to fetch attribute definitions", e);
         }
     }
 
@@ -303,7 +303,7 @@ public class EpistolaServiceImpl implements EpistolaService {
                     .toList();
         } catch (Exception e) {
             log.error("Failed to fetch variants for tenant {}, template {}: {}", tenantId, templateId, e.getMessage());
-            throw new EpistolaApiException("Failed to fetch variants", e);
+            throw toApiException("Failed to fetch variants", e);
         }
     }
 

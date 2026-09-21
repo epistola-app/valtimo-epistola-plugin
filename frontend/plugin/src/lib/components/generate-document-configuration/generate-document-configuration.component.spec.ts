@@ -389,3 +389,171 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
     expect(component.templateSchema$.value).toMatchObject({ type: 'object' });
   });
 });
+
+describe('GenerateDocumentConfigurationComponent catalog and template changes', () => {
+  type FormChange = Parameters<GenerateDocumentConfigurationComponent['formValueChange']>[0];
+  const formChange = (component: GenerateDocumentConfigurationComponent, value: unknown) =>
+    component.formValueChange(value as FormChange);
+
+  const TEMPLATES: Record<string, string[]> = {
+    'catalog-a': ['invoice', 'reminder'],
+    'catalog-b': ['letter'],
+  };
+
+  const createCascade = (prefill: unknown = null) => {
+    const service = {
+      getCatalogs: jest.fn().mockReturnValue(
+        of([
+          { id: 'catalog-a', name: 'Catalog A' },
+          { id: 'catalog-b', name: 'Catalog B' },
+        ]),
+      ),
+      getEnvironments: jest.fn().mockReturnValue(of([])),
+      getTemplates: jest.fn((_configurationId: string, catalogId: string) =>
+        of((TEMPLATES[catalogId] ?? []).map((id) => ({ id, name: id }))),
+      ),
+      getAttributes: jest.fn().mockReturnValue(of([])),
+      getVariants: jest.fn((_configurationId: string, templateId: string) =>
+        of([{ id: 'default', templateId, name: 'Default', attributes: {} }]),
+      ),
+      getTemplateDetails: jest.fn((_configurationId: string, templateId: string) =>
+        of({
+          id: templateId,
+          name: templateId,
+          fields: [{ name: 'name', path: 'name', type: 'string', fieldType: 'SCALAR' }],
+          schema: { type: 'object', properties: { name: { type: 'string' } } },
+          simpleMappingSupport: { level: 'FULL' },
+        }),
+      ),
+      validateJsonata: jest.fn().mockReturnValue(of({ valid: true, errors: [] })),
+    };
+    const component = new GenerateDocumentConfigurationComponent(
+      service as any,
+      {} as any,
+      { markForCheck: jest.fn(), detectChanges: jest.fn() } as any,
+    );
+    (component as any).prefill$ = of(prefill);
+    (component as any).initCascade();
+    (component as any).initVariantPrefill();
+    (component as any).pluginConfigurationId$.next('config');
+    return { component, service };
+  };
+
+  const selectInvoiceInCatalogA = (component: GenerateDocumentConfigurationComponent) => {
+    formChange(component, { catalogId: 'catalog-a' });
+    formChange(component, { catalogId: 'catalog-a', templateId: 'invoice' });
+  };
+
+  it('does not ask the new catalog for the template selected in the previous one', () => {
+    const { component, service } = createCascade();
+    selectInvoiceInCatalogA(component);
+    expect(service.getTemplateDetails).toHaveBeenCalledWith('config', 'invoice', 'catalog-a');
+    service.getTemplateDetails.mockClear();
+    service.getVariants.mockClear();
+
+    // The form still carries the old template id in the emission that changes the catalog.
+    formChange(component, { catalogId: 'catalog-b', templateId: 'invoice' });
+
+    expect(service.getTemplates).toHaveBeenLastCalledWith('config', 'catalog-b');
+    expect(service.getTemplateDetails).not.toHaveBeenCalled();
+    expect(service.getVariants).not.toHaveBeenCalled();
+    expect(component.selectedTemplateId$.value).toBe('');
+    expect(component.templates$.value.data.map((item) => item.id)).toEqual(['letter']);
+  });
+
+  it('clears the template without requesting an empty template id', () => {
+    const { component, service } = createCascade();
+    selectInvoiceInCatalogA(component);
+    service.getTemplateDetails.mockClear();
+    service.getVariants.mockClear();
+
+    // Carbon's combo box reports a cleared single selection as [] before v-select emits ''.
+    formChange(component, { catalogId: 'catalog-a', templateId: [] });
+    formChange(component, { catalogId: 'catalog-a', templateId: '' });
+
+    expect(service.getTemplateDetails).not.toHaveBeenCalled();
+    expect(service.getVariants).not.toHaveBeenCalled();
+    expect(component.selectedTemplateId$.value).toBe('');
+    expect(component.variants$.value.data).toEqual([]);
+    expect(component.templateFields$.value.data).toEqual([]);
+    expect(component.templateSchema$.value).toBeNull();
+  });
+
+  it('resets the variant selection and data mapping when the template changes', () => {
+    const { component, service } = createCascade();
+    selectInvoiceInCatalogA(component);
+    component.variantIdExpression = '"formal"';
+    component.onVariantSelectionModeChange('attributes');
+    component.dataMapping$.next('{"name": $doc.name}');
+    component.mappingMode = 'advanced';
+    component.filenameExpression = '"letter.pdf"';
+    component.environmentIdExpression = '"production"';
+    component.correlationIdExpression = '"request-123"';
+
+    formChange(component, { catalogId: 'catalog-a', templateId: 'reminder' });
+
+    expect(service.getTemplateDetails).toHaveBeenLastCalledWith('config', 'reminder', 'catalog-a');
+    expect(component.variantIdExpression).toBe('');
+    expect(component.variantSelectionMode).toBe('explicit');
+    expect(component.variantAttributeEntries).toEqual([]);
+    expect(component.dataMapping$.value).toBe('{}');
+    expect(component.mappingMode).toBe('simple');
+    // Not template-specific, so they stay.
+    expect(component.filenameExpression).toBe('"letter.pdf"');
+    expect(component.environmentIdExpression).toBe('"production"');
+    expect(component.correlationIdExpression).toBe('"request-123"');
+  });
+
+  it('resets the template and everything under it when the catalog changes', () => {
+    const { component } = createCascade();
+    selectInvoiceInCatalogA(component);
+    component.variantIdExpression = '"formal"';
+    component.dataMapping$.next('{"name": $doc.name}');
+
+    formChange(component, { catalogId: 'catalog-b', templateId: 'invoice' });
+
+    expect(component.selectedCatalogId$.value).toBe('catalog-b');
+    expect(component.selectedTemplateId$.value).toBe('');
+    expect(component.variantIdExpression).toBe('');
+    expect(component.dataMapping$.value).toBe('{}');
+    expect(component.variants$.value.data).toEqual([]);
+    expect(component.templateFields$.value.data).toEqual([]);
+  });
+
+  it('empties the template list when the catalog is cleared', () => {
+    const { component, service } = createCascade();
+    selectInvoiceInCatalogA(component);
+    service.getTemplates.mockClear();
+
+    formChange(component, { catalogId: '', templateId: 'invoice' });
+
+    expect(service.getTemplates).not.toHaveBeenCalled();
+    expect(component.selectedCatalogId$.value).toBe('');
+    expect(component.selectedTemplateId$.value).toBe('');
+    expect(component.templates$.value.data).toEqual([]);
+  });
+
+  it('keeps a saved configuration intact while it loads', () => {
+    const { component, service } = createCascade({
+      actionConfigVersion: 1,
+      catalogId: 'catalog-a',
+      templateId: 'invoice',
+      variantId: '"formal"',
+      dataMapping: '{"name": $doc.name}',
+      outputFormat: '"PDF"',
+      filename: '"letter.pdf"',
+      resultProcessVariable: 'result',
+    });
+
+    // The selects apply their saved defaults, and the form reports them.
+    formChange(component, { catalogId: 'catalog-a' });
+    formChange(component, { catalogId: 'catalog-a', templateId: 'invoice' });
+
+    expect(component.selectedCatalogId$.value).toBe('catalog-a');
+    expect(component.selectedTemplateId$.value).toBe('invoice');
+    expect(component.variantIdExpression).toBe('"formal"');
+    expect(component.dataMapping$.value).toBe('{"name": $doc.name}');
+    expect(service.getTemplateDetails).toHaveBeenCalledTimes(1);
+    expect(service.getTemplateDetails).toHaveBeenCalledWith('config', 'invoice', 'catalog-a');
+  });
+});

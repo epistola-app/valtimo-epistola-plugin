@@ -23,12 +23,14 @@ import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
+import app.epistola.valtimo.service.EpistolaApiException;
 import app.epistola.valtimo.service.EpistolaService;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valtimo.contract.annotation.SkipComponentScan;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -38,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Supplier;
 
 /**
  * REST controller for Epistola template browsing operations.
@@ -90,14 +93,12 @@ public class EpistolaTemplateResource {
         log.debug("Fetching templates for plugin configuration: {}, catalog: {}", configurationId, catalogId);
 
         EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        List<TemplateInfo> templates = epistolaService.getTemplates(
+        return okOrNotFound(() -> epistolaService.getTemplates(
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
                 catalogId
-        );
-
-        return ResponseEntity.ok(templates);
+        ));
     }
 
     /**
@@ -118,15 +119,13 @@ public class EpistolaTemplateResource {
                 configurationId, catalogId, templateId);
 
         EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        TemplateDetails templateDetails = epistolaService.getTemplateDetails(
+        return okOrNotFound(() -> epistolaService.getTemplateDetails(
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
                 catalogId,
                 templateId
-        );
-
-        return ResponseEntity.ok(templateDetails);
+        ));
     }
 
     /**
@@ -145,14 +144,12 @@ public class EpistolaTemplateResource {
         log.debug("Fetching attribute definitions for plugin configuration: {}, catalog: {}", configurationId, catalogId);
 
         EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        List<AttributeDefinition> attributes = epistolaService.getAttributes(
+        return okOrNotFound(() -> epistolaService.getAttributes(
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
                 catalogId
-        );
-
-        return ResponseEntity.ok(attributes);
+        ));
     }
 
     /**
@@ -195,14 +192,29 @@ public class EpistolaTemplateResource {
                 configurationId, catalogId, templateId);
 
         EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        List<VariantInfo> variants = epistolaService.getVariants(
+        return okOrNotFound(() -> epistolaService.getVariants(
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
                 catalogId,
                 templateId
-        );
+        ));
+    }
 
-        return ResponseEntity.ok(variants);
+    /**
+     * Answers with the lookup's result, or 404 when Epistola reports the catalog or template as
+     * missing. That is a stale selection — a template looked up in a catalog it is not in — rather
+     * than a server fault, so it must not surface as a 500. Every other failure propagates.
+     */
+    private static <T> ResponseEntity<T> okOrNotFound(Supplier<T> lookup) {
+        try {
+            return ResponseEntity.ok(lookup.get());
+        } catch (EpistolaApiException e) {
+            if (Integer.valueOf(HttpStatus.NOT_FOUND.value()).equals(e.getHttpStatus())) {
+                log.debug("Epistola reported the requested resource as not found: {}", e.getMessage());
+                return ResponseEntity.notFound().build();
+            }
+            throw e;
+        }
     }
 }

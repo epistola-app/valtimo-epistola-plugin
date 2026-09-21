@@ -23,6 +23,7 @@ import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
+import app.epistola.valtimo.service.EpistolaApiException;
 import app.epistola.valtimo.service.EpistolaService;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
@@ -35,6 +36,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -142,5 +144,58 @@ class EpistolaTemplateResourceTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isSameAs(variants);
         verify(epistolaService).getVariants(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID);
+    }
+
+    @Test
+    void getTemplateDetails_answersNotFoundWhenEpistolaReportsTheTemplateMissing() {
+        // A stale selection — a template looked up in a catalog it is not in — is not a server fault.
+        when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID))
+                .thenThrow(upstream(404));
+
+        ResponseEntity<TemplateDetails> response = resource.getTemplateDetails(CONFIG_ID, TEMPLATE_ID, CATALOG_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void getVariants_answersNotFoundWhenEpistolaReportsTheTemplateMissing() {
+        when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID))
+                .thenThrow(upstream(404));
+
+        ResponseEntity<List<VariantInfo>> response = resource.getVariants(CONFIG_ID, TEMPLATE_ID, CATALOG_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void getTemplates_answersNotFoundWhenEpistolaReportsTheCatalogMissing() {
+        when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID)).thenThrow(upstream(404));
+
+        ResponseEntity<List<TemplateInfo>> response = resource.getTemplates(CONFIG_ID, CATALOG_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void getAttributes_answersNotFoundWhenEpistolaReportsTheCatalogMissing() {
+        when(epistolaService.getAttributes(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID)).thenThrow(upstream(404));
+
+        ResponseEntity<List<AttributeDefinition>> response = resource.getAttributes(CONFIG_ID, CATALOG_ID);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void getTemplateDetails_propagatesOtherFailures() {
+        EpistolaApiException unavailable = upstream(503);
+        when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID))
+                .thenThrow(unavailable);
+
+        assertThatThrownBy(() -> resource.getTemplateDetails(CONFIG_ID, TEMPLATE_ID, CATALOG_ID))
+                .isSameAs(unavailable);
+    }
+
+    private static EpistolaApiException upstream(int status) {
+        return new EpistolaApiException("Epistola answered " + status, null, status, null, null);
     }
 }
