@@ -9,6 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Letter composer (pilot): one component for a list of letters.** A new
+  `epistola-letter-composer` Form.io component offers a configured list of templates. Choosing one
+  resolves that letter's data for the case through a single baseline mapping (plus an optional
+  fragment per template) and generates a form for exactly the template fields the mapping left
+  empty, next to a live preview. A form offering fifty letters is therefore the same size as one
+  offering three, and adding a letter is one row in the component's settings.
+  - **Which fields an employee is asked for is read from the mapping's outcome, not its text**, so
+    an opaque mapping such as `$doc.someObject` works as well as a field-by-field one. Fields the
+    mapping did fill are not offered: correcting case data belongs in a case form.
+  - **The configuration is read server-side from the form definition**, never from the request. The
+    browser names the task and one template; a template the form does not offer is refused. Both
+    endpoints (`POST /composer/prepare`, `POST /composer/preview`) authorize on `OperatonTask:VIEW`
+    and derive the case, process instance and configuration from that task.
+  - The component's value is `{templateId, catalogId, data, inputs}` — `data` is what the letter is
+    rendered with (and what generation should be handed), `inputs` is only what the employee typed.
+  - Generated inputs now follow the template contract: `enum`/`const` become a select of exactly
+    those values, `title` becomes the label, `default` fills an empty field, `email` gets an email
+    component, a date keeps an explicit `YYYY-MM-DD` placeholder (Formio's picker emits a timestamp
+    that `"format": "date"` rejects), and an array of scalars becomes one repeating input.
+  - See [ADR 0006](docs/adr/0006-letter-composer-configuration.md) and
+    [docs/formio-components.md](docs/formio-components.md). Wiring the chosen letter into
+    generation is the next step; this release covers picking, filling in and previewing.
+
 - **The document preview derives its input overrides from the form's field keys.** A field keyed
   `pv:motivation` or `doc:/aanvrager/naam` already states where Valtimo saves it, so the preview
   now overlays those unsaved values by itself — exactly what saving the form would do. Most task

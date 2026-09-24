@@ -36,6 +36,34 @@ import {
 } from '../models';
 
 /**
+ * Body of a {@link EpistolaPluginService.composerPrepare} call. The browser names the task and one
+ * of the templates its form offers; everything else — the catalog, the mapping, the case — is read
+ * server-side from the form definition behind that task (ADR 0006).
+ */
+export interface ComposerPrepareRequest {
+  taskId: string;
+  templateId: string;
+}
+
+/** A letter ready to be filled in: the mapped data plus a form for whatever the mapping left empty. */
+export interface ComposerPrepareResponse {
+  templateId: string;
+  label: string;
+  catalogId: string;
+  data: Record<string, unknown>;
+  form: any;
+  /** True when the mapping filled everything, so the employee is asked nothing. */
+  complete: boolean;
+}
+
+/** Body of a {@link EpistolaPluginService.composerPreviewToBlob} call. */
+export interface ComposerPreviewRequest {
+  taskId: string;
+  templateId: string;
+  data: Record<string, unknown>;
+}
+
+/**
  * Body of a {@link EpistolaPluginService.previewToBlob} call. Mirrors the
  * backend {@code PreviewRequest} record. The backend derives the process
  * instance and case document from the authorized task, so only {@code taskId}
@@ -240,6 +268,26 @@ export class EpistolaPluginService {
       params['sourceActivityId'] = sourceActivityId;
     }
     return this.http.get<any>(`${this.apiEndpoint}/retry-form`, { params });
+  }
+
+  /**
+   * Resolve a composer letter for the caller's task: what the mapping produced, and a Formio form
+   * asking for the template fields it left empty.
+   */
+  composerPrepare(request: ComposerPrepareRequest): Observable<ComposerPrepareResponse> {
+    return this.http.post<ComposerPrepareResponse>(`${this.apiEndpoint}/composer/prepare`, request);
+  }
+
+  /**
+   * Render a preview of a composed letter with the data assembled so far. Same
+   * {@code X-Skip-Interceptor: 422} treatment as the other previews, so a template that refuses
+   * this data shows inline instead of as a toast.
+   */
+  composerPreviewToBlob(request: ComposerPreviewRequest): Observable<Blob> {
+    return this.http.post(`${this.apiEndpoint}/composer/preview`, request, {
+      responseType: 'blob',
+      headers: new HttpHeaders().set('X-Skip-Interceptor', '422'),
+    });
   }
 
   /**
