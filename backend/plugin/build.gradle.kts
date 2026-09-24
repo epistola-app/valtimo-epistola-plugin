@@ -13,6 +13,7 @@ plugins {
     alias(libs.plugins.spring.dependency.management)
     alias(libs.plugins.cyclonedx)
     alias(libs.plugins.spotless)
+    alias(libs.plugins.shadow)
 }
 
 group = "app.epistola.valtimo"
@@ -34,6 +35,26 @@ dependencyManagement {
     }
 }
 
+// json-schema-validator is shaded: bundled into the plugin jar under a relocated package, and
+// left out of the published POM, so the plugin never forces a version on the host application.
+// Valtimo 13.47 added `external-plugin` to `valtimo-dependencies`, which needs the 1.x API
+// (`ValidationMessage`), while this plugin is written against 2.x (`SchemaRegistry`, `Error`).
+// Both share the `com.networknt.schema` package, so only one can sit on the classpath unshaded,
+// and Gradle's highest-version-wins resolution broke Valtimo's startup.
+//
+// Keep the relocated types internal: never put them in a public or protected signature, or the
+// shaded package becomes plugin API and dropping the shading a breaking change.
+//
+// TODO: drop the shading (back to a plain `implementation` dependency) once the Valtimo floor in
+//  COMPATIBILITY.md ships a json-schema-validator whose API matches ours (2.x or later), or no
+//  longer ships it at all. Check with:
+//  ./gradlew :test-app:backend:dependencyInsight --dependency json-schema-validator --configuration runtimeClasspath
+val shaded: Configuration by configurations.creating
+configurations {
+    compileOnly { extendsFrom(shaded) }
+    testImplementation { extendsFrom(shaded) }
+}
+
 dependencies {
     // Epistola client
     api(libs.epistola.client)
@@ -41,8 +62,11 @@ dependencies {
     // JSONata (JSON transformation language)
     api(libs.jsonata)
 
-    // Validate custom-function result schemas against bundled JSON Schema meta-schemas
-    implementation(libs.json.schema.validator)
+    // Validate custom-function result schemas against bundled JSON Schema meta-schemas.
+    // Shaded (relocated into the plugin jar), not a regular dependency — see `shaded` below.
+    shaded(libs.json.schema.validator)
+    // Left unshaded: a stable Jackson module whose version the host's Spring Boot BOM manages.
+    implementation(libs.jackson.dataformat.yaml)
 
     // Valtimo dependencies (compileOnly - provided by implementing application)
     compileOnly(libs.valtimo.core)
@@ -122,6 +146,54 @@ tasks.jar {
             "Implementation-Title" to "Epistola Valtimo Plugin",
             "Implementation-Version" to project.version,
         )
+    }
+}
+
+shadow {
+    // The regular apiElements/runtimeElements already carry the shaded jar (wired below).
+    addShadowVariantIntoJavaComponent.set(false)
+}
+
+tasks.shadowJar {
+    // Replaces the plain jar as the published / consumed artifact (see the outgoing wiring below).
+    archiveClassifier.set("")
+    configurations = listOf(shaded)
+    dependencies {
+        // Bundle only the validator and its date-time library; Jackson and SnakeYAML come from the host.
+        exclude(dependency("com.fasterxml.jackson.core:.*"))
+        exclude(dependency("com.fasterxml.jackson.dataformat:.*"))
+        exclude(dependency("org.yaml:.*"))
+    }
+    val prefix = "app.epistola.valtimo.shaded"
+    relocate("com.networknt", "$prefix.networknt")
+    relocate("com.ethlo.time", "$prefix.ethlo.time")
+    // The validator's message bundle sits at the jar root under a name the host's copy shares, and
+    // whichever comes first on the classpath wins. 1.x messages carry a "{0}: " prefix 2.x does
+    // not expect and lack 2.x-only keys, so relocate ours to be found regardless of order.
+    // (Its meta-schemas and Unicode tables also sit at the root, but are standard, versioned
+    // spec files that are identical in both copies, so sharing them is harmless.)
+    relocate("jsv-messages", "epistola-shaded-jsv-messages")
+    exclude("META-INF/maven/**", "META-INF/native-image/**")
+    manifest {
+        attributes(
+            "Implementation-Title" to "Epistola Valtimo Plugin",
+            "Implementation-Version" to project.version,
+        )
+    }
+}
+
+tasks.jar {
+    // Keep the unshaded jar out of the way of the shaded one, which takes the plain file name.
+    archiveClassifier.set("plain")
+}
+
+// Publish and hand project consumers (the test-app) the shaded jar instead of the plain one.
+listOf(configurations.apiElements, configurations.runtimeElements).forEach { elements ->
+    elements.configure {
+        outgoing.artifacts.clear()
+        outgoing.artifact(tasks.shadowJar)
+        // Drop the classes-dir secondary variants: they would expose the unrelocated bytecode.
+        outgoing.variants.clear()
     }
 }
 

@@ -19,9 +19,9 @@ package com.ritense.valtimo.expression
 
 import app.epistola.valtimo.expression.ExpressionContext
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry
+import app.epistola.valtimo.shaded.networknt.schema.SchemaRegistry
+import app.epistola.valtimo.shaded.networknt.schema.dialect.Dialects
 import com.fasterxml.jackson.databind.ObjectMapper
-import com.networknt.schema.SchemaRegistry
-import com.networknt.schema.dialect.Dialects
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.mock

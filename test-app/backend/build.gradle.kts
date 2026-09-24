@@ -88,7 +88,9 @@ dependencies {
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.kotlin)
-    testImplementation(libs.json.schema.validator)
+    // No json-schema-validator here: Valtimo ships its own (1.x since 13.47) and a second version
+    // would replace it on the classpath. Tests use the plugin's shaded copy
+    // (app.epistola.valtimo.shaded.networknt) instead.
     testImplementation(libs.testcontainers.postgresql)
 }
 
