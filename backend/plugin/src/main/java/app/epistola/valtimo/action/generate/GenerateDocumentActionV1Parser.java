@@ -26,7 +26,7 @@ import java.util.Map;
 
 import static com.dashjoin.jsonata.Jsonata.jsonata;
 
-final class GenerateDocumentActionV1Parser implements GenerateDocumentActionVersionParser {
+class GenerateDocumentActionV1Parser implements GenerateDocumentActionVersionParser {
 
     @Override
     public int version() {
@@ -53,8 +53,8 @@ final class GenerateDocumentActionV1Parser implements GenerateDocumentActionVers
 
         return new GenerateDocumentActionConfiguration(
                 version(),
-                properties.catalogId(),
-                properties.templateId(),
+                templateReference("catalogId", properties.catalogId()),
+                templateReference("templateId", properties.templateId()),
                 variantId,
                 attributes,
                 scalar("environmentId", properties.environmentId()),
@@ -65,7 +65,17 @@ final class GenerateDocumentActionV1Parser implements GenerateDocumentActionVers
                 properties.resultProcessVariable());
     }
 
-    private ConfiguredScalar scalar(String field, String value) {
+    /**
+     * How the catalog and template are read. In v1 they are ids picked from a dropdown, so they
+     * are taken literally; v2 overrides this to evaluate them, which is what lets one service task
+     * generate whichever letter was chosen.
+     */
+    @SuppressWarnings("removal")
+    protected ConfiguredScalar templateReference(String field, String value) {
+        return new GenerateDocumentActionConfiguration.LiteralScalar(value);
+    }
+
+    protected ConfiguredScalar scalar(String field, String value) {
         if (value == null || value.isBlank()) {
             return new JsonataScalar(version(), field, value);
         }
@@ -80,13 +90,13 @@ final class GenerateDocumentActionV1Parser implements GenerateDocumentActionVers
         }
     }
 
-    private void requireNonBlank(String value, String message) {
+    protected void requireNonBlank(String value, String message) {
         if (value == null || value.isBlank()) {
             throw invalid(message);
         }
     }
 
-    private void validateDataMapping(String expression) {
+    protected void validateDataMapping(String expression) {
         try {
             jsonata(expression);
         } catch (RuntimeException exception) {
@@ -97,7 +107,7 @@ final class GenerateDocumentActionV1Parser implements GenerateDocumentActionVers
         }
     }
 
-    private List<VariantAttribute> parseAttributes(Object rawAttributes) {
+    protected List<VariantAttribute> parseAttributes(Object rawAttributes) {
         if (rawAttributes == null) {
             return List.of();
         }
@@ -130,12 +140,12 @@ final class GenerateDocumentActionV1Parser implements GenerateDocumentActionVers
                 requiredBoolean);
     }
 
-    private IllegalArgumentException invalid(String message) {
+    protected IllegalArgumentException invalid(String message) {
         return new IllegalArgumentException(
                 "Invalid epistola-generate-document action configuration v" + version() + ": " + message);
     }
 
-    private IllegalArgumentException invalid(String message, RuntimeException cause) {
+    protected IllegalArgumentException invalid(String message, RuntimeException cause) {
         return new IllegalArgumentException(
                 "Invalid epistola-generate-document action configuration v" + version() + ": " + message,
                 cause);

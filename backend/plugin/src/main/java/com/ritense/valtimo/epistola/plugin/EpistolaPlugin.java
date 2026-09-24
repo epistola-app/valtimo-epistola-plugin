@@ -291,8 +291,8 @@ public class EpistolaPlugin {
                         resultProcessVariable));
 
         log.debug("Starting document generation: catalogId={}, templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
-                actionConfig.catalogId(),
-                actionConfig.templateId(),
+                actionConfig.catalogId().source(),
+                actionConfig.templateId().source(),
                 actionConfig.variantId().source(),
                 actionConfig.variantAttributes(),
                 actionConfig.outputFormat().source(),
@@ -353,6 +353,19 @@ public class EpistolaPlugin {
         }
         String resolvedFilename = actionConfig.filename().resolve(jsonataMappingService, scalarEvalContext);
 
+        // From action version 2 the catalog and template are expressions, so one service task can
+        // generate whichever letter was chosen (a letter composer writes {templateId, catalogId,
+        // data} to a process variable). A v0/v1 link resolves to the literal ids it was configured
+        // with, so nothing changes for it.
+        String resolvedCatalogId = actionConfig.catalogId().resolve(jsonataMappingService, scalarEvalContext);
+        String resolvedTemplateId = actionConfig.templateId().resolve(jsonataMappingService, scalarEvalContext);
+        if (resolvedCatalogId == null || resolvedCatalogId.isBlank()) {
+            throw new IllegalArgumentException("catalogId resolved to nothing");
+        }
+        if (resolvedTemplateId == null || resolvedTemplateId.isBlank()) {
+            throw new IllegalArgumentException("templateId resolved to nothing");
+        }
+
         // Resolve a dynamic action-level environment and fall back to the plugin default
         // when no usable override is configured or produced.
         String resolvedEnvironmentId = actionConfig.environmentId().isConfigured()
@@ -397,8 +410,8 @@ public class EpistolaPlugin {
                     baseUrl,
                     apiKey,
                     tenantId,
-                    actionConfig.catalogId(),
-                    actionConfig.templateId(),
+                    resolvedCatalogId,
+                    resolvedTemplateId,
                     resolvedVariantId,
                     resolvedAttributes,
                     effectiveEnvironmentId,

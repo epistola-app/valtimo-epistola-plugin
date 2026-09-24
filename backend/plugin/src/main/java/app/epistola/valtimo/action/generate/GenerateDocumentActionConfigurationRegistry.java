@@ -29,7 +29,17 @@ import java.util.stream.Collectors;
 
 public final class GenerateDocumentActionConfigurationRegistry {
 
-    public static final int LATEST_VERSION = 1;
+    public static final int LATEST_VERSION = 2;
+
+    /**
+     * The oldest configuration version still considered current.
+     *
+     * <p>Not the same as {@link #LATEST_VERSION}: v2 only makes the catalog and template
+     * expressions, which a link needs solely when the template varies per case. A v1 link is
+     * complete and correct, so the admin page must not nag about it. Only v0 — whose scalars were
+     * guessed as literal-or-expression — is worth migrating away from.
+     */
+    public static final int MINIMUM_CURRENT_VERSION = 1;
 
     private static final Map<Integer, GenerateDocumentActionVersionParser> PARSERS = createParsers();
 
@@ -39,7 +49,8 @@ public final class GenerateDocumentActionConfigurationRegistry {
     private static Map<Integer, GenerateDocumentActionVersionParser> createParsers() {
         return List.<GenerateDocumentActionVersionParser>of(
                         new GenerateDocumentActionV0Parser(),
-                        new GenerateDocumentActionV1Parser())
+                        new GenerateDocumentActionV1Parser(),
+                        new GenerateDocumentActionV2Parser())
                 .stream()
                 .collect(Collectors.toUnmodifiableMap(
                         GenerateDocumentActionVersionParser::version,

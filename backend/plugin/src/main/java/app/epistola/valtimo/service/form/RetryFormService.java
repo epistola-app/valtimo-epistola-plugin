@@ -86,8 +86,6 @@ public class RetryFormService {
         }
 
         var actionConfig = GenerateDocumentActionConfigurationRegistry.parse(actionProperties);
-        String catalogId = actionConfig.catalogId();
-        String templateId = actionConfig.templateId();
         String dataMapping = actionConfig.dataMapping();
 
         String effectiveDocumentId = resolveDocumentId(documentId, processInstance);
@@ -98,6 +96,11 @@ public class RetryFormService {
                 .documentId(effectiveDocumentId)
                 .build();
         Map<String, Object> resolvedData = jsonataMappingService.evaluate(evalCtx);
+
+        // From action version 2 the catalog and template may be expressions over the same context
+        // the mapping uses; a v0/v1 link resolves to the literal ids it was configured with.
+        String catalogId = actionConfig.catalogId().resolve(jsonataMappingService, evalCtx);
+        String templateId = actionConfig.templateId().resolve(jsonataMappingService, evalCtx);
 
         EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
                 originalLink.getPluginConfigurationId());

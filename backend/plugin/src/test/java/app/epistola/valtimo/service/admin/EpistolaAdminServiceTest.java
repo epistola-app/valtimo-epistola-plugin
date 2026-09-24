@@ -443,7 +443,7 @@ class EpistolaAdminServiceTest {
         @Test
         void shouldKeepUnsupportedVersionCompatibilityErrorWithoutSaveAdvice() {
             ObjectNode props = createActionProps("cat-1", "tmpl-1");
-            props.put("actionConfigVersion", 2);
+            props.put("actionConfigVersion", 99);
             singleGenerateDocLink(props);
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -451,7 +451,7 @@ class EpistolaAdminServiceTest {
             assertThat(entries.get(0).problems())
                     .singleElement()
                     .satisfies(problem -> {
-                        assertThat(problem).contains("Unsupported epistola-generate-document actionConfigVersion 2");
+                        assertThat(problem).contains("Unsupported epistola-generate-document actionConfigVersion 99");
                         assertThat(problem).doesNotContain("open and save");
                     });
         }

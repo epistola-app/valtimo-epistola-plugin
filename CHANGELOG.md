@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Generate-document action configuration v2: the catalog and template may be expressions.** One
+  service task can now generate whichever letter was chosen, instead of a process needing one task
+  per template. A v2 link reads them as JSONata over the same context as the data mapping, e.g.
+  `$pv.epistolaLetter.templateId` alongside `dataMapping: $pv.epistolaLetter.data`. A literal id
+  still works, written as a JSONata string (`"besluit-bezwaar"`).
+  - **Existing links are untouched.** v0 and v1 configurations keep taking their catalog and
+    template literally — evaluating `besluit-bezwaar` as JSONata would read it as a path and
+    resolve to nothing — and v1 is **not** reported as outdated by the admin page, because v2 only
+    adds a capability a link needs when its template varies.
+  - The admin page's dangling-reference check verifies literal references as before and reports a
+    dynamic one as configured-but-unverifiable, the way an expression variant id has always been
+    treated.
+
 - **Letter composer (pilot): one component for a list of letters.** A new
   `epistola-letter-composer` Form.io component offers a configured list of templates. Choosing one
   resolves that letter's data for the case through a single baseline mapping (plus an optional
