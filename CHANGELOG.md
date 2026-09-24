@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **ADR 0006 — letter composer configuration.** Records where a "pick a letter, adjust it, preview
+  it" component keeps its configuration, now that it is being piloted. The configuration lives in
+  the Form.io component (and so in the versioned form definition), the composer computes the data
+  while generation only renders it, each generated input's target decides both write-back and
+  preview semantics, and reuse across processes is packaged as a building block later. See
+  [docs/adr/0006-letter-composer-configuration.md](docs/adr/0006-letter-composer-configuration.md).
+
 ## [0.20.1] - 2026-09-24
 
 ### Fixed
