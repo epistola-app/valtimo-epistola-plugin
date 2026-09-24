@@ -13,10 +13,17 @@ Two things are tracked, and they are not the same:
 
 | Plugin version | Tested against (Valtimo) | Compatible range (expected) | Notes                                                                                                                                                                                                                                                                               |
 | -------------- | ------------------------ | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0.20.0         | `13.44.0.RELEASE`        | `>=13.21.0, <14`            | 13.43→13.44 changelog-reviewed. One undocumented interface change: `ValueResolverFactory` gained `preProcessValuesForNewDocument` in 13.43 (implemented as a pass-through; adds a method, so older Valtimo still loads the class). Form.io/Angular pins unchanged across the range. |
+| Unreleased     | `13.47.0.RELEASE`        | `>=13.21.0, <14`            | 13.45→13.47 changelog-reviewed. 13.47 ships `json-schema-validator` 1.x via `external-plugin`; the plugin now shades its 2.x copy, so it no longer constrains the host's version. Spring Boot/Angular/Form.io pins unchanged.                                                       |
+| 0.20.0         | `13.44.0.RELEASE`        | `>=13.21.0, <13.47.0`       | 13.43→13.44 changelog-reviewed. One undocumented interface change: `ValueResolverFactory` gained `preProcessValuesForNewDocument` in 13.43 (implemented as a pass-through; adds a method, so older Valtimo still loads the class). Form.io/Angular pins unchanged across the range. |
 | 0.12.0         | `13.32.0.RELEASE`        | `>=13.21.0, <14`            | 13.22→13.32 changelog-reviewed: all additive, no floor-raising change, compiled/tested clean. Floor kept at 13.21 (`peerDependencies ^13.21.0`).                                                                                                                                    |
 | 0.3.0 – 0.9.4  | `13.21.0.RELEASE`        | `>=13.21.0, <14`            | Targets the 13.x line; forward-compatible within 13.x barring breaking changes flagged by `update-valtimo`.                                                                                                                                                                         |
 | 0.1.x – 0.2.x  | `13.4.1.RELEASE`         | `>=13.4.1, <13.21.0`        | Pre-13.21 baseline; superseded by 0.3.0.                                                                                                                                                                                                                                            |
+
+**Known incompatibility: 0.18.0 – 0.20.0 do not start on Valtimo ≥ 13.47.0.** Those releases put
+`com.networknt:json-schema-validator` 2.x on the host classpath, while Valtimo 13.47's
+`external-plugin` module needs 1.x (`NoClassDefFoundError: com/networknt/schema/ValidationMessage`).
+Upgrade the plugin; releases after 0.20.0 shade the validator. This supersedes the `<14` upper bound
+on the 0.12.0 row for 0.18.0 and 0.19.x.
 
 Backend versions use the `X.Y.Z.RELEASE` form; the frontend `@valtimo/*` packages use the matching `X.Y.Z`.
 

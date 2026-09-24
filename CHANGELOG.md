@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The plugin works with Valtimo 13.47 again.** A host application on 13.47 failed to start with
+  `NoClassDefFoundError: com/networknt/schema/ValidationMessage`. Valtimo 13.47 added its
+  `external-plugin` module to `valtimo-dependencies`, and that module needs
+  `com.networknt:json-schema-validator` 1.x. The plugin needs 2.x for its custom-function
+  result-schema checks. Both versions use the same package, so only one could be on the classpath,
+  and Gradle picked 2.x. The plugin now shades its copy: it is relocated to
+  `app.epistola.valtimo.shaded` inside the plugin jar and no longer appears in the published POM.
+  The host's own copy stays untouched on every Valtimo version. The relocated classes are internal
+  and not part of the plugin API. Plugin releases 0.18.0 to 0.20.0 do not start on Valtimo 13.47
+  or later.
+
+### Changed
+
+- **Upgraded Valtimo from `13.44.0` to `13.47.0` (backend + frontend).** 13.45 to 13.47 changelog
+  reviewed. The only change that affects the plugin is the `json-schema-validator` conflict above.
+  Spring Boot (3.5.16), Angular (19.2) and Form.io (`formiojs@4.19.5`, `@formio/angular@7.0.0`)
+  are unchanged.
+
 ## [0.20.0] - 2026-09-21
 
 ### Added
