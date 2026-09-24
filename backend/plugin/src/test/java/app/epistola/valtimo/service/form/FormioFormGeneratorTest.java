@@ -451,4 +451,110 @@ class FormioFormGeneratorTest {
             assertNull(component.get("defaultValue"));
         }
     }
+
+    @Nested
+    class SchemaHints {
+
+        private TemplateField scalar(String name, String type, TemplateField.FieldHints hints) {
+            return new TemplateField(
+                    name, name, type, FieldType.SCALAR, false, null,
+                    List.of(), false, null, false, hints);
+        }
+
+        @Test
+        void enumField_generatesSelectWithExactlyThoseValues() {
+            TemplateField field = scalar("besluit", "string",
+                    new TemplateField.FieldHints(null, null, List.of("gegrond", "ongegrond"), null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("select", component.get("type").asText());
+            ArrayNode values = (ArrayNode) component.get("data").get("values");
+            assertEquals(2, values.size());
+            assertEquals("gegrond", values.get(0).get("value").asText());
+            assertEquals("ongegrond", values.get(1).get("label").asText());
+        }
+
+        @Test
+        void constField_isOfferedAsASingleOption() {
+            TemplateField field = scalar("kanaal", "string",
+                    new TemplateField.FieldHints(null, null, List.of("post"), null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("select", component.get("type").asText());
+            assertEquals(1, component.get("data").get("values").size());
+        }
+
+        @Test
+        void schemaTitle_winsOverTheHumanizedName() {
+            TemplateField field = scalar("besluitDatum", "string",
+                    new TemplateField.FieldHints("Datum van het besluit", null, null, null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("Datum van het besluit", component.get("label").asText());
+        }
+
+        @Test
+        void dateFormat_keepsATextfieldWithAnExplicitPlaceholder() {
+            // Formio's date picker emits a full ISO timestamp, which "format": "date" rejects.
+            TemplateField field = scalar("datum", "string",
+                    new TemplateField.FieldHints(null, "date", null, null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("textfield", component.get("type").asText());
+            assertEquals("YYYY-MM-DD", component.get("placeholder").asText());
+        }
+
+        @Test
+        void emailFormat_generatesAnEmailComponent() {
+            TemplateField field = scalar("contact", "string",
+                    new TemplateField.FieldHints(null, "email", null, null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("email", component.get("type").asText());
+        }
+
+        @Test
+        void schemaDefault_fillsTheFieldWhenTheDataDoesNot() {
+            TemplateField field = scalar("aanhef", "string",
+                    new TemplateField.FieldHints(null, null, null, "Geachte heer/mevrouw"));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("Geachte heer/mevrouw", component.get("defaultValue").asText());
+        }
+
+        @Test
+        void resolvedData_winsOverTheSchemaDefault() {
+            TemplateField field = scalar("aanhef", "string",
+                    new TemplateField.FieldHints(null, null, null, "Geachte heer/mevrouw"));
+
+            ObjectNode component = (ObjectNode) generator
+                    .generateForm(List.of(field), Map.of("aanhef", "Beste Jan"))
+                    .get("components").get(0);
+
+            assertEquals("Beste Jan", component.get("defaultValue").asText());
+        }
+
+        @Test
+        void arrayOfScalars_generatesOneRepeatingInput() {
+            TemplateField field = scalar("bijlagen", "array", null);
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("textfield", component.get("type").asText());
+            assertTrue(component.get("multiple").asBoolean());
+        }
+    }
 }

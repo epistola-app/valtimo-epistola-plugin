@@ -32,10 +32,12 @@ import java.util.Map;
  * <p>
  * Each TemplateField is converted to the appropriate Formio component type:
  * <ul>
- *   <li>SCALAR string → textfield</li>
+ *   <li>SCALAR with schema {@code enum}/{@code const} → select of exactly those values</li>
+ *   <li>SCALAR string → textfield (email format → email; date formats keep an explicit placeholder)</li>
  *   <li>SCALAR number/integer → number</li>
  *   <li>SCALAR boolean → checkbox</li>
  *   <li>OBJECT → fieldset with nested components</li>
+ *   <li>SCALAR typed {@code array} (array of scalars) → one input with {@code multiple}</li>
  *   <li>ARRAY → datagrid with item components and defaultValue</li>
  * </ul>
  */
@@ -78,19 +80,42 @@ public class FormioFormGenerator {
 
     private ObjectNode buildScalarComponent(TemplateField field, Object value) {
         ObjectNode component = objectMapper.createObjectNode();
-        String formioType = mapScalarType(field.type());
-        component.put("type", formioType);
+        TemplateField.FieldHints hints = field.hints();
+        List<Object> allowedValues = hints != null ? hints.allowedValues() : null;
+        boolean constrained = allowedValues != null && !allowedValues.isEmpty();
+
+        component.put("type", constrained ? "select" : mapScalarType(field.type(), hints));
         // Use dot-notation path so Formio nests the submission data correctly
         component.put("key", field.path());
-        component.put("label", humanizeLabel(field.name()));
+        component.put("label", labelOf(field));
         component.put("input", true);
+
+        if (constrained) {
+            // The schema constrains this field to a set of values, so offer exactly those rather
+            // than a free-text box the backend would reject on submit.
+            ArrayNode values = component.putObject("data").putArray("values");
+            for (Object allowed : allowedValues) {
+                ObjectNode option = values.addObject();
+                option.put("label", String.valueOf(allowed));
+                option.set("value", objectMapper.valueToTree(allowed));
+            }
+        } else if (isPrimitiveArray(field)) {
+            // An array of scalars: one repeating input rather than a grid of single-column rows.
+            component.put("multiple", true);
+        }
 
         if (field.description() != null && !field.description().isBlank()) {
             component.put("tooltip", field.description());
         }
 
-        if (value != null) {
-            component.set("defaultValue", objectMapper.valueToTree(value));
+        String placeholder = placeholderFor(hints);
+        if (placeholder != null) {
+            component.put("placeholder", placeholder);
+        }
+
+        Object effectiveValue = value != null ? value : (hints != null ? hints.defaultValue() : null);
+        if (effectiveValue != null) {
+            component.set("defaultValue", objectMapper.valueToTree(effectiveValue));
         }
 
         if (field.required()) {
@@ -101,10 +126,46 @@ public class FormioFormGenerator {
         return component;
     }
 
+    /**
+     * The schema's {@code title} is what the template author wrote for this field, so it beats a
+     * label humanized from the property name.
+     */
+    private String labelOf(TemplateField field) {
+        TemplateField.FieldHints hints = field.hints();
+        if (hints != null && hints.title() != null && !hints.title().isBlank()) {
+            return hints.title();
+        }
+        return humanizeLabel(field.name());
+    }
+
+    /**
+     * A date is rendered as a text field with an explicit placeholder rather than Formio's date
+     * picker: the picker emits a full ISO timestamp, which a schema with {@code "format": "date"}
+     * rejects.
+     */
+    private String placeholderFor(TemplateField.FieldHints hints) {
+        if (hints == null || hints.format() == null) {
+            return null;
+        }
+        return switch (hints.format()) {
+            case "date" -> "YYYY-MM-DD";
+            case "date-time" -> "YYYY-MM-DDTHH:MM:SSZ";
+            default -> null;
+        };
+    }
+
+    /**
+     * An array of scalars reaches the analyzer as a SCALAR field typed {@code array}: it has no
+     * child fields to map, only repeated values.
+     */
+    private boolean isPrimitiveArray(TemplateField field) {
+        return "array".equalsIgnoreCase(field.type());
+    }
+
     private ObjectNode buildObjectComponent(TemplateField field, Map<String, Object> data) {
         ObjectNode component = objectMapper.createObjectNode();
         component.put("type", "fieldset");
-        component.put("legend", humanizeLabel(field.name()));
+        component.put("legend", labelOf(field));
         component.put("key", field.name());
 
         ArrayNode components = component.putArray("components");
@@ -131,6 +192,8 @@ public class FormioFormGenerator {
             colComponent.put("key", child.name());
             components.add(colComponent);
         }
+        // Known gap: an object nested inside an array item is flattened to a single input here,
+        // because its children would carry paths relative to the array rather than the item.
 
         // Set default values from resolved data
         if (!items.isEmpty()) {
@@ -145,7 +208,10 @@ public class FormioFormGenerator {
         return component;
     }
 
-    private String mapScalarType(String jsonSchemaType) {
+    private String mapScalarType(String jsonSchemaType, TemplateField.FieldHints hints) {
+        if (hints != null && "email".equals(hints.format())) {
+            return "email";
+        }
         if (jsonSchemaType == null) {
             return "textfield";
         }

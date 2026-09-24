@@ -261,6 +261,44 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(app.epistola.valtimo.service.composer.ComposerConfigurationResolver.class)
+    public app.epistola.valtimo.service.composer.ComposerConfigurationResolver composerConfigurationResolver(
+            ProcessLinkService processLinkService,
+            com.ritense.form.repository.FormDefinitionRepository formDefinitionRepository
+    ) {
+        return new app.epistola.valtimo.service.composer.ComposerConfigurationResolver(
+                processLinkService, formDefinitionRepository);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(app.epistola.valtimo.service.composer.LetterComposerService.class)
+    public app.epistola.valtimo.service.composer.LetterComposerService letterComposerService(
+            app.epistola.valtimo.service.composer.ComposerConfigurationResolver composerConfigurationResolver,
+            PluginService pluginService,
+            EpistolaService epistolaService,
+            JsonataMappingService jsonataMappingService,
+            FormioFormGenerator formioFormGenerator,
+            com.ritense.document.service.DocumentService documentService,
+            RuntimeService runtimeService,
+            ObjectMapper objectMapper
+    ) {
+        return new app.epistola.valtimo.service.composer.LetterComposerService(
+                composerConfigurationResolver, pluginService, epistolaService, jsonataMappingService,
+                formioFormGenerator, documentService, runtimeService, objectMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(app.epistola.valtimo.web.rest.EpistolaComposerResource.class)
+    public app.epistola.valtimo.web.rest.EpistolaComposerResource epistolaComposerResource(
+            app.epistola.valtimo.service.composer.LetterComposerService letterComposerService,
+            com.ritense.authorization.AuthorizationService authorizationService,
+            com.ritense.valtimo.service.OperatonTaskService operatonTaskService
+    ) {
+        return new app.epistola.valtimo.web.rest.EpistolaComposerResource(
+                letterComposerService, authorizationService, operatonTaskService);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(VariableSuggestionService.class)
     public VariableSuggestionService variableSuggestionService(
             com.ritense.document.service.DocumentDefinitionService documentDefinitionService,
