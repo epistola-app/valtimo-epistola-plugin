@@ -7,19 +7,21 @@
       "input": true,
       "label": "Welke brief wilt u versturen?",
       "placeholder": "— kies een brief —",
-      "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
-      "catalogId": "municipality-demo",
+      "letterSet": {
+        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+        "catalogId": "municipality-demo",
+        "templates": [
+          {
+            "templateId": "ontvangstbevestiging-bezwaar",
+            "label": "Ontvangstbevestiging bezwaarschrift"
+          },
+          {
+            "templateId": "besluit-bezwaar",
+            "label": "Besluit op bezwaar"
+          }
+        ]
+      },
       "dataMapping": "{\n  \"objector\": {\n    \"firstName\": $doc.objector.firstName,\n    \"lastName\": $doc.objector.lastName,\n    \"address\": {\n      \"street\": $doc.objector.address.street,\n      \"houseNumber\": $doc.objector.address.houseNumber,\n      \"postalCode\": $doc.objector.address.postalCode,\n      \"city\": $doc.objector.address.city\n    }\n  },\n  \"originalDecision\": {\n    \"reference\": $doc.originalDecision.reference,\n    \"date\": $doc.originalDecision.date,\n    \"subject\": $doc.originalDecision.subject\n  },\n  \"objection\": {\n    \"grounds\": $doc.objection.grounds,\n    \"receivedDate\": $doc.objection.receivedDate\n  }\n}",
-      "templates": [
-        {
-          "templateId": "ontvangstbevestiging-bezwaar",
-          "label": "Ontvangstbevestiging bezwaarschrift"
-        },
-        {
-          "templateId": "besluit-bezwaar",
-          "label": "Besluit op bezwaar"
-        }
-      ],
       "askOptionalFields": false,
       "components": [
         {

@@ -42,17 +42,26 @@ data belongs in a case form, not in one letter.
 
 ## Configuring the component
 
-| Setting                              | Meaning                                                                                                                       |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| **Property name** (`key`)            | Where the chosen letter is stored. Use a `pv:` key, e.g. `pv:epistolaLetter`, so the generate task can read it with `$pv`.    |
-| **Epistola plugin configuration id** | Which configured connection (tenant, credentials) renders the letters.                                                        |
-| **Catalog**                          | The catalog every offered template lives in.                                                                                  |
-| **Letters on offer**                 | One row per letter: template id, the label the employee sees, and optionally an extra mapping fragment for that letter alone. |
-| **Baseline mapping**                 | One JSONata mapping over `$doc`/`$pv` for every offered letter. Whatever it does not fill is asked of the employee.           |
-| **Also ask for optional fields**     | Off by default: only fields the template marks required are asked for.                                                        |
+| Setting                          | Meaning                                                                                                                                                                                                                                          |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Property name** (`key`)        | Where the chosen letter is stored. Use a `pv:` key, e.g. `pv:epistolaLetter`, so the generate task can read it with `$pv`.                                                                                                                       |
+| **Which letters, from where**    | Pick the Epistola connection and catalog, then tick the letters to offer and name each one as the employee should see it. The three cascade: changing the connection clears the catalog and the ticks, because those ids mean nothing elsewhere. |
+| **Baseline mapping**             | One JSONata mapping over `$doc`/`$pv` for every offered letter. Whatever it does not fill is asked of the employee.                                                                                                                              |
+| **Also ask for optional fields** | Off by default: only fields the template marks required are asked for.                                                                                                                                                                           |
 
-A per-letter fragment is merged over the baseline, so the baseline says what every letter of this
-case type needs and the fragment only what makes this one different.
+Stored, that half looks like this — a form written by hand may also carry the three keys directly
+on the component:
+
+```json
+"letterSet": {
+  "pluginConfigurationId": "…",
+  "catalogId": "municipality-demo",
+  "templates": [{ "templateId": "besluit-bezwaar", "label": "Besluit op bezwaar" }]
+}
+```
+
+A per-letter `dataMapping` fragment is merged over the baseline, so the baseline says what every
+letter of this case type needs and the fragment only what makes this one different.
 
 ## Wiring the process
 

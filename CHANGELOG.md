@@ -41,6 +41,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     those values, `title` becomes the label, `default` fills an empty field, `email` gets an email
     component, a date keeps an explicit `YYYY-MM-DD` placeholder (Formio's picker emits a timestamp
     that `"format": "date"` rejects), and an array of scalars becomes one repeating input.
+  - **The settings are picked, not typed.** A new `epistola-letter-set-builder` widget in the
+    component's edit dialog lists the configured Epistola connections (`GET /configurations`), then
+    that connection's catalogs, then that catalog's templates to tick and label. The three cascade,
+    so changing the connection clears ids that mean nothing in the new one.
   - **A single service task generates whichever letter was chosen**, using action configuration v2
     (`templateId: $pv.epistolaLetter.templateId`, `dataMapping: $pv.epistolaLetter.data`). No
     gateway branch or service task per letter.

@@ -129,12 +129,16 @@ public class ComposerConfigurationResolver {
     }
 
     private LetterComposerConfiguration parse(JsonNode component) {
-        UUID pluginConfigurationId = uuidOrNull(text(component.path("pluginConfigurationId")));
-        String catalogId = text(component.path("catalogId"));
+        // The settings widget stores the "which letters, from where" half as one object; a form
+        // written before it existed carries the same three keys at the component's own level.
+        JsonNode letterSet = component.has("letterSet") ? component.path("letterSet") : component;
+
+        UUID pluginConfigurationId = uuidOrNull(text(letterSet.path("pluginConfigurationId")));
+        String catalogId = text(letterSet.path("catalogId"));
         String dataMapping = text(component.path("dataMapping"));
 
         List<LetterComposerConfiguration.OfferedTemplate> templates = new ArrayList<>();
-        for (JsonNode template : component.path("templates")) {
+        for (JsonNode template : letterSet.path("templates")) {
             String templateId = text(template.path("templateId"));
             if (templateId == null) {
                 continue;

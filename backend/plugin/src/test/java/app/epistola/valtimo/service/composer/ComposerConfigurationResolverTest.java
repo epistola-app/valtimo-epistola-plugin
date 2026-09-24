@@ -198,4 +198,28 @@ class ComposerConfigurationResolverTest {
                 .extracting(e -> ((ComposerException) e).getReason())
                 .isEqualTo(ComposerException.Reason.NO_COMPOSER);
     }
+
+    @Test
+    void readsTheSettingsWidgetsNestedLetterSet() {
+        formOnTask("""
+                {"components":[
+                  {"type":"epistola-letter-composer","key":"pv:epistolaLetter",
+                   "dataMapping":"{\\"naam\\": $doc.naam}",
+                   "letterSet":{
+                     "pluginConfigurationId":"%s","catalogId":"gemeente",
+                     "templates":[{"templateId":"besluit","label":"Besluit"}]
+                   }}
+                ]}
+                """.formatted(PLUGIN_CONFIGURATION_ID));
+
+        List<LetterComposerConfiguration> configurations =
+                resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID);
+
+        assertThat(configurations).singleElement().satisfies(configuration -> {
+            assertThat(configuration.pluginConfigurationId()).isEqualTo(PLUGIN_CONFIGURATION_ID);
+            assertThat(configuration.catalogId()).isEqualTo("gemeente");
+            assertThat(configuration.dataMapping()).isEqualTo("{\"naam\": $doc.naam}");
+            assertThat(configuration.offers("besluit")).isTrue();
+        });
+    }
 }

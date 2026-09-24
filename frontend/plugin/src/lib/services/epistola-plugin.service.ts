@@ -35,6 +35,13 @@ import {
   VariantInfo,
 } from '../models';
 
+/** One configured Epistola connection, as offered to an author. */
+export interface PluginConfigurationInfo {
+  id: string;
+  title: string;
+  tenantId: string | null;
+}
+
 /**
  * Body of a {@link EpistolaPluginService.composerPrepare} call. The browser names the task and one
  * of the templates its form offers; everything else — the catalog, the mapping, the case — is read
@@ -268,6 +275,14 @@ export class EpistolaPluginService {
       params['sourceActivityId'] = sourceActivityId;
     }
     return this.http.get<any>(`${this.apiEndpoint}/retry-form`, { params });
+  }
+
+  /**
+   * The Epistola connections an author can choose from. Used where there is no process link to
+   * inherit one from — the letter composer's settings live in a form, not on a service task.
+   */
+  getConfigurations(): Observable<PluginConfigurationInfo[]> {
+    return this.http.get<PluginConfigurationInfo[]>(`${this.apiEndpoint}/configurations`);
   }
 
   /**

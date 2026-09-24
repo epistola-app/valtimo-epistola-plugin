@@ -60,42 +60,13 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
         weight: 5,
       },
       {
-        type: 'textfield',
-        key: 'pluginConfigurationId',
-        label: 'Epistola plugin configuration id',
-        tooltip: 'Which configured Epistola connection (tenant and credentials) to render with.',
+        type: 'epistola-letter-set-builder',
+        key: 'letterSet',
+        label: 'Which letters, from where',
+        tooltip:
+          'Pick the Epistola connection and catalog, then tick the letters this form offers. Adding a letter later is one more tick.',
         weight: 10,
         validate: { required: true },
-      },
-      {
-        type: 'textfield',
-        key: 'catalogId',
-        label: 'Catalog',
-        tooltip: 'The catalog every offered template lives in.',
-        weight: 20,
-        validate: { required: true },
-      },
-      {
-        type: 'datagrid',
-        key: 'templates',
-        label: 'Letters on offer',
-        tooltip:
-          'Each row is one letter an employee can choose. Adding a letter here is the only change a new letter needs on this form.',
-        weight: 30,
-        validate: { required: true },
-        components: [
-          { type: 'textfield', key: 'templateId', label: 'Template', input: true },
-          { type: 'textfield', key: 'label', label: 'Label', input: true },
-          {
-            type: 'textarea',
-            key: 'dataMapping',
-            label: 'Extra mapping (optional)',
-            tooltip:
-              'A JSONata fragment merged over the baseline for this letter only — for what makes this letter different.',
-            input: true,
-            rows: 2,
-          },
-        ],
       },
       {
         type: 'textarea',
