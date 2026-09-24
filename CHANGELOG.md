@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.1] - 2026-09-24
+
 ### Fixed
 
 - **The plugin works with Valtimo 13.47 again.** A host application on 13.47 failed to start with
