@@ -87,6 +87,15 @@ export const EPISTOLA_DOCUMENT_PREVIEW_OPTIONS: FormioCustomComponentInfo = {
       },
       {
         type: 'checkbox',
+        key: 'deriveOverridesFromKeys',
+        label: "Use the form's field keys as overrides",
+        tooltip:
+          'On by default. Fields keyed pv:… or doc:… already state where Valtimo saves them, so the preview shows what the letter becomes once the form is saved — no mapping row needed. Turn off inside a Form Flow, or wherever a field key does not match where its value is stored.',
+        defaultValue: true,
+        weight: 15,
+      },
+      {
+        type: 'checkbox',
         key: 'autoRefresh',
         label: 'Auto-refresh preview as the form is filled in',
         tooltip:
@@ -208,7 +217,10 @@ function withPreviewOverrides(
         // Server-prefilled, so it is scoped to this render and cannot be a stale id left behind by
         // a previously visited case.
         this._customAngularElement['startDocumentId'] = readPrefilledDocumentId(this.root);
-        if (this.component?.overrideMapping) {
+        if (this._drivesOverrides()) {
+          // Tell the component that its preview is driven by live form data, so it
+          // shows the auto-refresh toggle even when no mapping was written by hand.
+          this._customAngularElement['liveOverrides'] = true;
           // Let the component's Refresh button force a recompute from the live form
           // data, so it works before the first change (e.g. on initial load with
           // pre-filled fields) rather than reading a not-yet-populated value.
@@ -227,7 +239,7 @@ function withPreviewOverrides(
       }
 
       // Compute input overrides from the mapping and wire up the live listeners.
-      if (this.root && this.component?.overrideMapping && !this._changeListenerAttached) {
+      if (this.root && this._drivesOverrides() && !this._changeListenerAttached) {
         this._changeListenerAttached = true;
         this._debounceMs = this._resolveDebounceMs();
 
@@ -325,13 +337,13 @@ function withPreviewOverrides(
       }
       const mapping = this.component?.overrideMapping;
       const formData = this.root?.data;
-      if (!mapping || !formData) {
+      if (!formData || !this._drivesOverrides()) {
         return;
       }
       // computeInputOverrides evaluates a JSONata expression (async). Re-check
       // the submit/teardown guards after the await — they can flip while the
       // promise is in flight.
-      const overrides = await computeInputOverrides(mapping, formData);
+      const overrides = await computeInputOverrides(mapping, formData, this._derivesFromKeys());
       if (this._destroyed || this.root?.submitting || this.root?.submitted) {
         return;
       }
@@ -360,6 +372,23 @@ function withPreviewOverrides(
       if (this._customAngularElement) {
         this._customAngularElement['inputOverrides'] = value;
       }
+    }
+
+    /**
+     * Whether the form's own `pv:`/`doc:` field keys contribute overrides.
+     * Opt-out, so previews placed before this setting existed pick it up.
+     */
+    private _derivesFromKeys(): boolean {
+      return this.component?.deriveOverridesFromKeys !== false;
+    }
+
+    /**
+     * Whether this preview is driven by live form data at all — either through a
+     * hand-written mapping or through the field keys. When neither applies the
+     * preview renders from the stored case data alone and needs no listeners.
+     */
+    private _drivesOverrides(): boolean {
+      return !!this.component?.overrideMapping || this._derivesFromKeys();
     }
 
     /**

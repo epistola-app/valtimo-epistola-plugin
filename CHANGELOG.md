@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The document preview derives its input overrides from the form's field keys.** A field keyed
+  `pv:motivation` or `doc:/aanvrager/naam` already states where Valtimo saves it, so the preview
+  now overlays those unsaved values by itself — exactly what saving the form would do. Most task
+  forms therefore need no Input Overrides mapping at all, and a field added later is picked up
+  without touching the preview. Both Valtimo notations are understood (`doc:/a/b` and `doc:a.b`),
+  keys without a `pv:`/`doc:` prefix are ignored, and an explicit mapping still wins per field.
+  The new component setting **Use the form's field keys as overrides** is on by default; turn it
+  off inside a Form Flow, where a step's data is saved by its `onComplete` expression rather than
+  by field key. The objection demo form lost its now-redundant mapping.
+
 - **ADR 0006 — letter composer configuration.** Records where a "pick a letter, adjust it, preview
   it" component keeps its configuration, now that it is being piloted. The configuration lives in
   the Form.io component (and so in the versioned form definition), the composer computes the data

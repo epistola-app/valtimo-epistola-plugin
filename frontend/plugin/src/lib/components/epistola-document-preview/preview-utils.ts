@@ -101,6 +101,111 @@ export function shouldLoadPreview(
 }
 
 /**
+ * Valtimo value-resolver prefixes a form field key can carry. A field keyed
+ * `pv:motivatie` is saved to the `motivatie` process variable on submit; one
+ * keyed `doc:/aanvrager/naam` is written to that path in the case document.
+ */
+const SCOPE_PREFIXES: ReadonlyArray<{ prefix: string; scope: 'doc' | 'pv' }> = [
+  { prefix: 'doc:', scope: 'doc' },
+  { prefix: 'pv:', scope: 'pv' },
+];
+
+/**
+ * Split the path part of a prefixed key into segments.
+ *
+ * Valtimo accepts both notations and treats them identically — its
+ * `CaseDocumentJsonValueResolverFactory.toJsonPointer` prefixes a missing `/`
+ * and replaces `.` with `/` — so `doc:/aanvrager/naam` and `doc:aanvrager.naam`
+ * address the same field. Formio itself nests on `.`, so a dotted key arrives
+ * here already split by Formio, with the remainder carried in the value.
+ */
+function pathSegments(path: string): string[] {
+  const raw = path.startsWith('/') ? path.slice(1).split('/') : path.split('.');
+  return raw.map((segment) => segment.trim()).filter((segment) => segment.length > 0);
+}
+
+function setNested(target: Record<string, any>, segments: string[], value: any): void {
+  let current = target;
+  for (let i = 0; i < segments.length - 1; i++) {
+    const segment = segments[i];
+    if (
+      !current[segment] ||
+      typeof current[segment] !== 'object' ||
+      Array.isArray(current[segment])
+    ) {
+      current[segment] = {};
+    }
+    current = current[segment];
+  }
+  current[segments[segments.length - 1]] = value;
+}
+
+/**
+ * Derive input overrides from the form's own field keys.
+ *
+ * A `pv:`/`doc:`-prefixed key already states where Valtimo saves that field, so
+ * the preview can show exactly what the letter becomes once the form is saved,
+ * without an author repeating those targets in an override mapping. Keys with
+ * no value-resolver prefix are ignored: they are plain form fields (or Formio
+ * plumbing such as `submit`) and say nothing about where their value lands.
+ *
+ * Note this is only sound where a field key equals its save target. Inside a
+ * Form Flow the step's data is saved by its `onComplete` expression instead —
+ * see docs/form-flows.md — so those forms keep their explicit mapping.
+ */
+export function deriveInputOverridesFromKeys(
+  formData: Record<string, any> | null | undefined,
+): Record<string, any> {
+  if (!formData || typeof formData !== 'object') {
+    return {};
+  }
+
+  const result: Record<string, any> = {};
+  for (const [key, value] of Object.entries(formData)) {
+    if (value === undefined) {
+      continue;
+    }
+    const match = SCOPE_PREFIXES.find(({ prefix }) => key.startsWith(prefix));
+    if (!match) {
+      continue;
+    }
+    const segments = pathSegments(key.slice(match.prefix.length));
+    if (segments.length === 0) {
+      continue;
+    }
+    if (!result[match.scope]) {
+      result[match.scope] = {};
+    }
+    setNested(result[match.scope], segments, value);
+  }
+  return result;
+}
+
+/**
+ * Deep-merge two `{ doc, pv }` override objects. `explicit` wins on conflicts:
+ * a hand-written override mapping stays authoritative over what was derived
+ * from the field keys, so existing forms keep behaving exactly as before.
+ */
+export function mergeInputOverrides(
+  derived: Record<string, any>,
+  explicit: Record<string, any>,
+): Record<string, any> {
+  const result: Record<string, any> = { ...derived };
+  for (const [key, value] of Object.entries(explicit)) {
+    const existing = result[key];
+    const bothPlainObjects =
+      existing &&
+      typeof existing === 'object' &&
+      !Array.isArray(existing) &&
+      value &&
+      typeof value === 'object' &&
+      !Array.isArray(value);
+    result[key] = bothPlainObjects ? mergeInputOverrides(existing, value) : value;
+  }
+  return result;
+}
+
+/**
  * Given an override mapping and the live form data, produce the inputOverrides
  * object (`{ doc, pv }`) the backend overlays onto the real document / process
  * variables before the data mapping runs.
@@ -110,8 +215,27 @@ export function shouldLoadPreview(
  * asynchronous because `jsonata().evaluate()` returns a Promise. Only `doc` and
  * `pv` scopes (with at least one resolved field) are kept — matching what the
  * backend consumes.
+ *
+ * With `deriveFromKeys`, the form's own `pv:`/`doc:` field keys contribute
+ * overrides too (see {@link deriveInputOverridesFromKeys}); the mapping wins
+ * wherever both address the same field.
  */
 export async function computeInputOverrides(
+  mapping: OverrideMappingValue,
+  formData: Record<string, any>,
+  deriveFromKeys = false,
+): Promise<Record<string, any>> {
+  const derived = deriveFromKeys ? deriveInputOverridesFromKeys(formData) : {};
+  const explicit = await evaluateOverrideMapping(mapping, formData);
+  return mergeInputOverrides(derived, explicit);
+}
+
+/**
+ * Evaluate the hand-written override mapping alone. Returns `{}` for a missing,
+ * empty or failing expression, so a broken mapping never blocks the overrides
+ * derived from the field keys.
+ */
+async function evaluateOverrideMapping(
   mapping: OverrideMappingValue,
   formData: Record<string, any>,
 ): Promise<Record<string, any>> {

@@ -96,7 +96,9 @@ without creating a job — `POST /preview` on a user task, `POST /preview/start`
 selected by the `previewContext` setting. Override-driven: when an input-override mapping is configured it
 waits for the mapped form data before firing (shows a "complete the form" placeholder until then). Its
 `editForm` embeds `epistola-process-link-selector` (pick the link) and `epistola-override-builder` (map
-fields → overrides). See [document-preview.md](document-preview.md).
+fields → overrides). By default it also derives overrides from the form's own `pv:`/`doc:` field keys,
+so a plain task form needs no mapping at all; the setting is off-switchable per component and does not
+apply inside a Form Flow. See [document-preview.md](document-preview.md).
 
 ### `epistola-document` — Document view/download (author-facing)
 
