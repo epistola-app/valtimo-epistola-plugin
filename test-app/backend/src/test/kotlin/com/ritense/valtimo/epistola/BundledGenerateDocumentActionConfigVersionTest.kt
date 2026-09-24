@@ -27,15 +27,17 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 /**
  * Prevents bundled demo process links from silently falling back to deprecated v0 semantics.
  *
- * Every first-party generate-document action should demonstrate the latest persisted action
- * configuration and remain parseable by the matching backend version parser.
+ * Every first-party generate-document action must persist a version that is still current and stay
+ * parseable by the matching backend version parser. "Current" is a range rather than a single
+ * number: v2 only makes the catalog and template expressions, which a link needs when the template
+ * varies per case (the letter composer demo) and not otherwise — so a v1 link is equally correct.
  */
 class BundledGenerateDocumentActionConfigVersionTest {
     private val mapper = ObjectMapper()
     private val resolver = PathMatchingResourcePatternResolver()
 
     @Test
-    fun `every bundled generate-document action uses the latest configuration version`() {
+    fun `every bundled generate-document action uses a current configuration version`() {
         val processLinks =
             resolver.getResources("classpath*:config/case/**/process-link/*.process-link.json")
         var generateActionCount = 0
@@ -54,7 +56,10 @@ class BundledGenerateDocumentActionConfigVersionTest {
 
                     assertThat(properties.path("actionConfigVersion").asInt(-1))
                         .describedAs("actionConfigVersion of %s", description)
-                        .isEqualTo(GenerateDocumentActionConfigurationRegistry.LATEST_VERSION)
+                        .isBetween(
+                            GenerateDocumentActionConfigurationRegistry.MINIMUM_CURRENT_VERSION,
+                            GenerateDocumentActionConfigurationRegistry.LATEST_VERSION,
+                        )
                     assertThat(properties.path("outputFormat").asText())
                         .describedAs("outputFormat of %s", description)
                         .isEqualTo("\"PDF\"")
@@ -65,7 +70,7 @@ class BundledGenerateDocumentActionConfigVersionTest {
                         )
                     assertThat(parsed.version())
                         .describedAs("parsed action version of %s", description)
-                        .isEqualTo(GenerateDocumentActionConfigurationRegistry.LATEST_VERSION)
+                        .isEqualTo(properties.path("actionConfigVersion").asInt(-1))
                 }
         }
 

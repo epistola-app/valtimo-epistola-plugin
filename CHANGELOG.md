@@ -41,9 +41,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     those values, `title` becomes the label, `default` fills an empty field, `email` gets an email
     component, a date keeps an explicit `YYYY-MM-DD` placeholder (Formio's picker emits a timestamp
     that `"format": "date"` rejects), and an array of scalars becomes one repeating input.
-  - See [ADR 0006](docs/adr/0006-letter-composer-configuration.md) and
-    [docs/formio-components.md](docs/formio-components.md). Wiring the chosen letter into
-    generation is the next step; this release covers picking, filling in and previewing.
+  - **A single service task generates whichever letter was chosen**, using action configuration v2
+    (`templateId: $pv.epistolaLetter.templateId`, `dataMapping: $pv.epistolaLetter.data`). No
+    gateway branch or service task per letter.
+  - Demo: the Bezwaarprocedure case ships an `objection-letter-composer` process offering two
+    letters over one baseline mapping — the acknowledgement needs nothing from the employee, the
+    decision asks for its three decision fields. `LetterComposerE2ETest` walks it against the real
+    bundled template contracts.
+  - See [docs/letter-composer.md](docs/letter-composer.md) and
+    [ADR 0006](docs/adr/0006-letter-composer-configuration.md). Known gaps are listed there: the
+    browser assembles the rendered data, there is no write-back to the case, form flows are not
+    supported yet, and a task composes one letter.
 
 - **The document preview derives its input overrides from the form's field keys.** A field keyed
   `pv:motivation` or `doc:/aanvrager/naam` already states where Valtimo saves it, so the preview
