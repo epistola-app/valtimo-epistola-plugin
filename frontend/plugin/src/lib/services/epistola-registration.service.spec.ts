@@ -25,6 +25,9 @@ jest.mock('../components/epistola-document/epistola-document.formio', () => ({
 jest.mock('../components/epistola-document-preview/epistola-document-preview.formio', () => ({
   registerEpistolaDocumentPreviewComponent: jest.fn(),
 }));
+jest.mock('../composer/composer.registration', () => ({
+  registerEpistolaComposerComponents: jest.fn(),
+}));
 jest.mock('../components/epistola-retry-form/epistola-retry-form.formio', () => ({
   registerEpistolaRetryFormComponent: jest.fn(),
 }));
@@ -37,6 +40,7 @@ jest.mock('../components/process-link-selector/process-link-selector.formio', ()
 
 import { registerEpistolaDocumentComponent } from '../components/epistola-document/epistola-document.formio';
 import { registerEpistolaDocumentPreviewComponent } from '../components/epistola-document-preview/epistola-document-preview.formio';
+import { registerEpistolaComposerComponents } from '../composer/composer.registration';
 import { registerEpistolaRetryFormComponent } from '../components/epistola-retry-form/epistola-retry-form.formio';
 import { registerEpistolaOverrideBuilderComponent } from '../components/override-builder/override-builder.formio';
 import { registerEpistolaProcessLinkSelectorComponent } from '../components/process-link-selector/process-link-selector.formio';
@@ -49,6 +53,7 @@ const registrationFunctions = [
   registerEpistolaOverrideBuilderComponent,
   registerEpistolaProcessLinkSelectorComponent,
   registerEpistolaDocumentPreviewComponent,
+  registerEpistolaComposerComponents,
 ] as jest.Mock[];
 
 describe('EpistolaRegistrationService', () => {

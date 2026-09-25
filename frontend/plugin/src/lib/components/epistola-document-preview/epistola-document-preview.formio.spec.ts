@@ -171,6 +171,7 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
     data?: Record<string, unknown>;
     autoRefresh?: boolean;
     refreshDebounceMs?: number;
+    deriveOverridesFromKeys?: boolean;
   }) {
     const handlers: Record<string, () => void> = {};
     // DOM listeners attached to the form root (focusout/blur flush).
@@ -198,6 +199,7 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
       overrideMapping: opts.overrideMapping,
       autoRefresh: opts.autoRefresh,
       refreshDebounceMs: opts.refreshDebounceMs,
+      deriveOverridesFromKeys: opts.deriveOverridesFromKeys,
     };
     inst.root = root;
     inst._pushOverrides = jest.fn();
@@ -725,13 +727,24 @@ describe('PreviewWithOverrides (epistola-document-preview Formio wrapper)', () =
       expect(inst._pushOverrides).toHaveBeenCalledWith({ doc: { name: 'Alice' } });
     });
 
-    it('does not expose requestOverrides without an override mapping', () => {
+    it('exposes requestOverrides without a mapping, because field keys still drive it', () => {
       const { inst } = createInstance({ data: {} }); // no overrideMapping
       inst._customAngularElement = {};
 
       inst.attach({});
 
+      expect(typeof inst._customAngularElement.requestOverrides).toBe('function');
+      expect(inst._customAngularElement.liveOverrides).toBe(true);
+    });
+
+    it('does not expose requestOverrides with no mapping and key derivation off', () => {
+      const { inst } = createInstance({ data: {}, deriveOverridesFromKeys: false });
+      inst._customAngularElement = {};
+
+      inst.attach({});
+
       expect(inst._customAngularElement.requestOverrides).toBeUndefined();
+      expect(inst._customAngularElement.liveOverrides).toBeUndefined();
     });
   });
 

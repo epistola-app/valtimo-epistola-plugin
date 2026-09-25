@@ -33,6 +33,8 @@ import java.util.List;
  * @param complex     Whether Simple mode must map this entire value with one expression
  * @param complexityReason Diagnostic explanation of why the field is mapped as a whole value
  * @param nullable    Whether the schema permits a null value
+ * @param hints       Presentation hints read straight from the schema (title, format, allowed
+ *                    values, default), used to generate input fields. Null when unknown.
  */
 public record TemplateField(
         String name,
@@ -44,8 +46,24 @@ public record TemplateField(
         List<TemplateField> children,
         boolean complex,
         String complexityReason,
-        boolean nullable
+        boolean nullable,
+        FieldHints hints
 ) {
+    public TemplateField(
+            String name,
+            String path,
+            String type,
+            TemplateField.FieldType fieldType,
+            boolean required,
+            String description,
+            List<TemplateField> children,
+            boolean complex,
+            String complexityReason,
+            boolean nullable
+    ) {
+        this(name, path, type, fieldType, required, description, children, complex, complexityReason, nullable, null);
+    }
+
     public TemplateField(
             String name,
             String path,
@@ -55,7 +73,29 @@ public record TemplateField(
             String description,
             List<TemplateField> children
     ) {
-        this(name, path, type, fieldType, required, description, children, false, null, false);
+        this(name, path, type, fieldType, required, description, children, false, null, false, null);
+    }
+
+    /**
+     * What the schema says about presenting a field. Kept separate from the mapping-oriented
+     * components above: these carry no meaning for a data mapping, only for a generated input.
+     *
+     * @param title         The schema's {@code title}, preferred over a humanized field name
+     * @param format        The schema's string {@code format} (e.g. {@code date}, {@code email})
+     * @param allowedValues The schema's {@code enum} values, if it constrains the field to a set
+     * @param defaultValue  The schema's {@code default}, used when the mapping produced no value
+     */
+    public record FieldHints(
+            String title,
+            String format,
+            List<Object> allowedValues,
+            Object defaultValue
+    ) {
+        public boolean isEmpty() {
+            return title == null && format == null
+                    && (allowedValues == null || allowedValues.isEmpty())
+                    && defaultValue == null;
+        }
     }
 
     public enum FieldType {

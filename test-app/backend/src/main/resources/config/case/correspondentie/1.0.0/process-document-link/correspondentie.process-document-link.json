@@ -1,0 +1,14 @@
+[
+  {
+    "processDefinitionKey": "correspondentie-letter-composer",
+    "canInitializeDocument": true,
+    "startableByUser": true,
+    "processIsVisibleInMenu": true
+  },
+  {
+    "processDefinitionKey": "correspondentie-ad-hoc-letter",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
+  }
+]

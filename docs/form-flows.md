@@ -103,6 +103,18 @@ step write to the document or a process variable, and let the generate-document 
 before the user has confirmed anything, and the preview then shows stored state rather than what is
 on screen.
 
+## Field keys are not save targets here
+
+Outside a Form Flow the preview derives its overrides from the form's own `pv:`/`doc:` field keys,
+because those keys are where Valtimo saves the field (see
+[document-preview.md](document-preview.md)). **That does not hold in a Form Flow.** A step's data
+goes to the flow instance and is persisted by the `onComplete` expression — by default the whole
+submission to `doc:/submission` — so a key says nothing about where its value ends up.
+
+Derivation is harmless when a step happens to use no prefixed keys, but a step that _does_ use them
+would overlay values onto paths the flow never writes. Turn **Use the form's field keys as
+overrides** off on previews inside a Form Flow and map the fields explicitly, as in section 4.
+
 ## Field picker scope
 
 The **Form Field** dropdown in Input Overrides lists only fields on the form you have open. The

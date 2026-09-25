@@ -85,7 +85,7 @@ import java.util.List;
 @ConditionalOnProperty(name = "epistola.enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(EpistolaProperties.class)
 @EnableScheduling
-@Import(EpistolaDownloadStorageConfiguration.class)
+@Import({EpistolaDownloadStorageConfiguration.class, app.epistola.valtimo.composer.EpistolaComposerConfiguration.class})
 public class EpistolaPluginAutoConfiguration {
 
     @Bean
@@ -279,6 +279,17 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(app.epistola.valtimo.web.rest.StartEventAuthorization.class)
+    public app.epistola.valtimo.web.rest.StartEventAuthorization startEventAuthorization(
+            RepositoryService repositoryService,
+            com.ritense.document.service.DocumentService documentService,
+            com.ritense.authorization.AuthorizationService authorizationService
+    ) {
+        return new app.epistola.valtimo.web.rest.StartEventAuthorization(
+                repositoryService, documentService, authorizationService);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(EpistolaGenerationResource.class)
     public EpistolaGenerationResource epistolaGenerationResource(
             PluginService pluginService,
@@ -291,12 +302,13 @@ public class EpistolaPluginAutoConfiguration {
             com.ritense.authorization.AuthorizationService authorizationService,
             com.ritense.valtimo.service.OperatonTaskService operatonTaskService,
             RuntimeService runtimeService,
-            RepositoryService repositoryService
+            RepositoryService repositoryService,
+            app.epistola.valtimo.web.rest.StartEventAuthorization startEventAuthorization
     ) {
         return new EpistolaGenerationResource(pluginService, epistolaService,
                 previewService, retryFormService, jsonataMappingService,
                 documentService, objectMapper, authorizationService, operatonTaskService,
-                runtimeService, repositoryService);
+                runtimeService, repositoryService, startEventAuthorization);
     }
 
     @Bean

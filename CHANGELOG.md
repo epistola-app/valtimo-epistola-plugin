@@ -7,6 +7,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Letter composer (pilot): one component for a list of letters.** A new
+  `epistola-letter-composer` Form.io component offers a configured list of templates. Choosing one
+  resolves that letter's data for the case through a single baseline mapping (plus an optional
+  fragment per template) and generates a form for exactly the template fields the mapping left
+  empty, next to a live preview. A form offering fifty letters is therefore the same size as one
+  offering three, and adding a letter is one row in the component's settings.
+  - **Which fields an employee is asked for is read from the mapping's outcome, not its text**, so
+    an opaque mapping such as `$doc.someObject` works as well as a field-by-field one. Fields the
+    mapping did fill are not offered: correcting case data belongs in a case form.
+  - **The configuration is read server-side from the form definition**, never from the request. The
+    browser names the task and one template; a template the form does not offer is refused. Both
+    endpoints (`POST /composer/prepare`, `POST /composer/preview`) authorize on `OperatonTask:VIEW`
+    and derive the case, process instance and configuration from that task.
+  - The component's value is `{templateId, catalogId, data, inputs}` — `data` is what the letter is
+    rendered with (and what generation should be handed), `inputs` is only what the employee typed.
+  - Generated inputs now follow the template contract: `enum`/`const` become a select of exactly
+    those values, `title` becomes the label, `default` fills an empty field, `email` gets an email
+    component, a date keeps an explicit `YYYY-MM-DD` placeholder (Formio's picker emits a timestamp
+    that `"format": "date"` rejects), and an array of scalars becomes one repeating input.
+  - **The settings are picked, not typed.** A new `epistola-letter-set-builder` widget in the
+    component's edit dialog lists the configured Epistola connections (`GET /configurations`), then
+    that connection's catalogs, then that catalog's templates to tick and label. The three cascade,
+    so changing the connection clears ids that mean nothing in the new one.
+  - **A single service task generates whichever letter was chosen**, through the
+    `epistola-generate-composed-document` action. No gateway branch or service task per letter.
+  - **A composer is excluded from Valtimo's prefill.** Its key is a `pv:` one so the chosen letter
+    becomes a process variable on submit, but Valtimo resolves a `pv:` key against the case's
+    process instances when prefilling — and once a dossier has run the process twice it cannot pick
+    one and fails the whole form with a 500. `prefill: false` is part of the component's schema and
+    is re-added on save, like the hidden carriers, with `BundledComposerFormTest` pinning it for
+    every bundled form.
+  - **A composer names itself in every request.** A form may carry more than one, and a start-form
+    composer has to name the process it starts (Valtimo hands a Form.io component only the
+    components, never the process link). Sending the component's own key means the backend resolves
+    _that_ composer's settings, so a `processDefinitionKey` naming the wrong process now fails with
+    "no letter composer" instead of composing with another process's composer.
+  - **An ad-hoc letter, with no user task at all.** The composer also runs on the **start form** of
+    a process that starts on the dossier already open, so a case worker picks a letter from the
+    dossier's Start menu, adjusts and previews it there, and the process only generates what was
+    chosen. Set **Where is this form shown?** to _On a start form_ and name the process it starts.
+    Its endpoints (`/composer/prepare/start`, `/composer/preview/start`) authorize like Valtimo's
+    own start-form path — `OperatonExecution:CREATE` plus `JsonSchemaDocument:VIEW` — through a
+    `StartEventAuthorization` now shared with the document preview, so the two checks cannot drift
+    apart. Demo: `correspondentie-ad-hoc-letter`, walked by `letter-composer-adhoc.spec.ts`.
+  - **A letter is previewed once it can be rendered**, not before: while a required generated field
+    is still empty the component says so, instead of showing Epistola's validation error for the
+    very fields the employee was just asked to fill.
+  - Demo: a new **Correspondentie** case ships `correspondentie-letter-composer`, offering two
+    letters over one baseline mapping — the acknowledgement needs nothing from the employee, the
+    decision asks for its three decision fields. `LetterComposerE2ETest` walks it against the real
+    bundled template contracts, and `e2e/tests/letter-composer.spec.ts` walks it in a browser.
+  - See [docs/letter-composer.md](docs/letter-composer.md) and
+    [ADR 0006](docs/adr/0006-letter-composer-configuration.md). Known gaps are listed there: the
+    browser assembles the rendered data, there is no write-back to the case, form flows are not
+    supported yet, and a task composes one letter.
+
+- **The document preview derives its input overrides from the form's field keys.** A field keyed
+  `pv:motivation` or `doc:/aanvrager/naam` already states where Valtimo saves it, so the preview
+  now overlays those unsaved values by itself — exactly what saving the form would do. Most task
+  forms therefore need no Input Overrides mapping at all, and a field added later is picked up
+  without touching the preview. Both Valtimo notations are understood (`doc:/a/b` and `doc:a.b`),
+  keys without a `pv:`/`doc:` prefix are ignored, and an explicit mapping still wins per field.
+  The new component setting **Use the form's field keys as overrides** is on by default; turn it
+  off inside a Form Flow, where a step's data is saved by its `onComplete` expression rather than
+  by field key. The objection demo form lost its now-redundant mapping.
+
+- **ADR 0006 — letter composer configuration.** Records where a "pick a letter, adjust it, preview
+  it" component keeps its configuration, now that it is being piloted. The configuration lives in
+  the Form.io component (and so in the versioned form definition), the composer computes the data
+  while generation only renders it, each generated input's target decides both write-back and
+  preview semantics, and reuse across processes is packaged as a building block later. See
+  [docs/adr/0006-letter-composer-configuration.md](docs/adr/0006-letter-composer-configuration.md).
+
 ## [0.20.1] - 2026-09-24
 
 ### Fixed

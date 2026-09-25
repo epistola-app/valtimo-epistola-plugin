@@ -15,13 +15,15 @@ step — see [form-flows.md](form-flows.md).
 
 ## Overview
 
-| Type (`type:`)                   | Purpose                                                        | Palette\* | Task-bound\*\*       | Backend call                             |
-| -------------------------------- | -------------------------------------------------------------- | --------- | -------------------- | ---------------------------------------- |
-| `epistola-document-preview`      | Live "what would be generated" PDF preview (dry-run, no job)   | visible   | **by default**\*\*\* | `POST /preview` or `POST /preview/start` |
-| `epistola-document`              | After-generation PDF: inline view and/or download button       | visible   | **yes**              | `GET /documents/download`                |
-| `epistola-retry-form`            | Dynamic form to retry a failed generation (+ embedded preview) | hidden    | **yes**              | `GET /retry-form` (+ `POST /preview`)    |
-| `epistola-override-builder`      | editForm widget: map form fields → input overrides             | hidden    | no                   | — (builder UI)                           |
-| `epistola-process-link-selector` | editForm widget: pick the generate-document process link       | hidden    | no                   | — (builder UI)                           |
+| Type (`type:`)                   | Purpose                                                            | Palette\* | Task-bound\*\*       | Backend call                                     |
+| -------------------------------- | ------------------------------------------------------------------ | --------- | -------------------- | ------------------------------------------------ |
+| `epistola-document-preview`      | Live "what would be generated" PDF preview (dry-run, no job)       | visible   | **by default**\*\*\* | `POST /preview` or `POST /preview/start`         |
+| `epistola-document`              | After-generation PDF: inline view and/or download button           | visible   | **yes**              | `GET /documents/download`                        |
+| `epistola-letter-composer`       | Pick a letter, fill in what the case cannot supply, preview it     | visible   | **yes**              | `POST /composer/prepare` + `/composer/preview`   |
+| `epistola-retry-form`            | Dynamic form to retry a failed generation (+ embedded preview)     | hidden    | **yes**              | `GET /retry-form` (+ `POST /preview`)            |
+| `epistola-override-builder`      | editForm widget: map form fields → input overrides                 | hidden    | no                   | — (builder UI)                                   |
+| `epistola-process-link-selector` | editForm widget: pick the generate-document process link           | hidden    | no                   | — (builder UI)                                   |
+| `epistola-letter-set-builder`    | editForm widget: pick connection, catalog and the letters on offer | hidden    | no                   | `GET /configurations`, `/catalogs`, `/templates` |
 
 \* **Palette** — `visible`: an author can drag it onto a form from the builder's component palette.
 `hidden`: removed from the palette via `hideFormioComponentFromBuilder` (`components/formio-builder-utils.ts`)
@@ -96,7 +98,24 @@ without creating a job — `POST /preview` on a user task, `POST /preview/start`
 selected by the `previewContext` setting. Override-driven: when an input-override mapping is configured it
 waits for the mapped form data before firing (shows a "complete the form" placeholder until then). Its
 `editForm` embeds `epistola-process-link-selector` (pick the link) and `epistola-override-builder` (map
-fields → overrides). See [document-preview.md](document-preview.md).
+fields → overrides). By default it also derives overrides from the form's own `pv:`/`doc:` field keys,
+so a plain task form needs no mapping at all; the setting is off-switchable per component and does not
+apply inside a Form Flow. See [document-preview.md](document-preview.md).
+
+### `epistola-letter-composer` — Letter composer (author-facing)
+
+One component that offers a list of templates. Choosing one asks the backend for that letter's data
+(the component's baseline mapping, plus an optional per-template fragment) and a generated form for
+the template fields the mapping left empty — so a form offering fifty letters is the same size as
+one offering three. Its value is `{templateId, catalogId, data, inputs}`: `data` is what the letter
+is rendered with and what generation should be handed, `inputs` is only what the employee typed.
+
+Its configuration (plugin configuration, catalog, templates, mappings) lives in the component and is
+read **server-side** from the form definition behind the caller's task; the browser sends the task
+and a template id only, and a template the form does not offer is refused. See
+[letter-composer.md](letter-composer.md) and [ADR 0006](adr/0006-letter-composer-configuration.md).
+The composer lives in `lib/composer/` and is switchable with `epistola.composer.enabled=false`;
+nothing else in the plugin depends on it.
 
 ### `epistola-document` — Document view/download (author-facing)
 

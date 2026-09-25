@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_adhoc_letter" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
+  <bpmn:process id="correspondentie-ad-hoc-letter" name="Losse brief versturen" isExecutable="true">
+    <bpmn:documentation>An ad-hoc letter on a dossier that is already open: no user task anywhere. The letter composer sits on this process's start form, so choosing and adjusting the letter happens in the Start dialog, and the process only generates what was chosen. The composer authorizes on the caller's permission to start this process plus read the case, not on a task — see ADR 0004 and docs/letter-composer.md.</bpmn:documentation>
+    <bpmn:startEvent id="startEvent">
+      <bpmn:outgoing>Flow_start_generate</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_start_generate" sourceRef="startEvent" targetRef="generate-chosen-letter" />
+    <bpmn:serviceTask id="generate-chosen-letter" name="Genereer gekozen brief" camunda:expression="${null}">
+      <bpmn:incoming>Flow_start_generate</bpmn:incoming>
+      <bpmn:outgoing>Flow_generate_wait</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="boundary-generate-error" name="EpistolaGenerationError" attachedToRef="generate-chosen-letter">
+      <bpmn:outgoing>Flow_boundary_err</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_gen" errorRef="Error_EpistolaDocumentError" camunda:errorCodeVariable="errorCode" camunda:errorMessageVariable="errorMessage" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_boundary_err" sourceRef="boundary-generate-error" targetRef="end-error" />
+    <bpmn:endEvent id="end-error">
+      <bpmn:incoming>Flow_boundary_err</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_generate_wait" sourceRef="generate-chosen-letter" targetRef="wait-for-generation" />
+    <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wacht op document">
+      <bpmn:incoming>Flow_generate_wait</bpmn:incoming>
+      <bpmn:outgoing>Flow_wait_end</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_EpistolaDocumentGenerated" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_wait_end" sourceRef="wait-for-generation" targetRef="end-success" />
+    <bpmn:endEvent id="end-success">
+      <bpmn:incoming>Flow_wait_end</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmn:error id="Error_EpistolaDocumentError" name="EpistolaDocumentError" />
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="correspondentie-ad-hoc-letter">
+      <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent">
+        <dc:Bounds x="152" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="generate-chosen-letter_di" bpmnElement="generate-chosen-letter">
+        <dc:Bounds x="240" y="77" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="boundary-generate-error_di" bpmnElement="boundary-generate-error">
+        <dc:Bounds x="272" y="139" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-error_di" bpmnElement="end-error">
+        <dc:Bounds x="272" y="262" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-for-generation_di" bpmnElement="wait-for-generation">
+        <dc:Bounds x="402" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-success_di" bpmnElement="end-success">
+        <dc:Bounds x="502" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_start_generate_di" bpmnElement="Flow_start_generate">
+        <di:waypoint x="188" y="117" />
+        <di:waypoint x="240" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_generate_wait_di" bpmnElement="Flow_generate_wait">
+        <di:waypoint x="340" y="117" />
+        <di:waypoint x="402" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_wait_end_di" bpmnElement="Flow_wait_end">
+        <di:waypoint x="438" y="117" />
+        <di:waypoint x="502" y="117" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_boundary_err_di" bpmnElement="Flow_boundary_err">
+        <di:waypoint x="290" y="175" />
+        <di:waypoint x="290" y="262" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
