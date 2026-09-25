@@ -82,6 +82,35 @@ catalog and template are expressions:
 
 Waiting for the result is unchanged — see [async.md](async.md).
 
+## An ad-hoc letter, without a user task
+
+A case worker often wants to send a letter _now_, on a dossier that is already open, without the
+process having scheduled a task for it. The composer does that by sitting on the **start form of a
+process that runs on the open case**:
+
+```
+dossier → Start → "Losse brief versturen"
+      ↓  the Start dialog is the composer: pick, adjust, preview
+      ↓  submit starts the process with pv:epistolaLetter
+      ↓
+generate → wait for the result → done      (no user task anywhere)
+```
+
+Set the component's **Where is this form shown?** to _On a start form_ and name the process it
+starts. Wire the process with `canInitializeDocument: false` and `startableByUser: true`, so it
+appears in the dossier's Start menu rather than as a way to create a case.
+
+**Authorization differs, deliberately.** There is no task, so the endpoints
+(`/composer/prepare/start`, `/composer/preview/start`) authorize like Valtimo's own start-form path:
+`OperatonExecution:CREATE` on the process definition, plus `JsonSchemaDocument:VIEW` on the case.
+Both gates live in one place, `StartEventAuthorization`, shared with the document preview so the two
+cannot drift apart. The reasoning is [ADR 0004](adr/0004-start-event-preview-authorization.md).
+
+**Which case the letter is for** comes from the server-prefilled `epistola:documentId` carrier when
+Valtimo fills it, and otherwise from the dossier in the route — Valtimo does not prefill
+value-resolver fields on its `start-form?documentId=` route. That is sound for the same reason the
+ADR gives: the id selects _which_ case is checked, never _whether_ it is.
+
 ## What the component stores
 
 ```json
@@ -125,15 +154,28 @@ every integration benefits — not just Valtimo.
 
 ## Demo
 
-The **Bezwaarprocedure** case ships a demo process, `objection-letter-composer`:
+The **Correspondentie** case ships the demo, `correspondentie-letter-composer`:
 
 - `form/kies-brief.form.json` — the composer, offering two letters over one baseline mapping.
-- `bpmn/objection-letter-composer.bpmn` — choose → generate → wait.
-- `process-link/objection-letter-composer.process-link.json` — the v2 generate link.
+- `bpmn/correspondentie-letter-composer.bpmn` — choose → generate → wait.
+- `process-link/correspondentie-letter-composer.process-link.json` — the v2 generate link.
 
 Choosing **Ontvangstbevestiging bezwaarschrift** asks for nothing: the case fills its whole
 contract. Choosing **Besluit op bezwaar** asks for the three decision fields the case does not
-know. `LetterComposerE2ETest` walks exactly that, against the real bundled contracts.
+know, and previews the letter once they are filled in.
+
+The same case also ships `correspondentie-ad-hoc-letter`: the composer on a start form, started
+from the dossier's Start menu, generating without a task.
+
+`LetterComposerE2ETest` walks the task-based demo against the real bundled contracts; the Playwright
+suites (`e2e/tests/letter-composer.spec.ts` and `letter-composer-adhoc.spec.ts`) walk both in a
+browser.
+
+**Why its own case, rather than a second process on the Bezwaarprocedure case:** a case with two
+startable processes makes Valtimo show a process picker before the start form, and in this version
+its tiles are anchors with `href="#"` — clicking one reloads the app instead of opening the form,
+which leaves _both_ processes unstartable. One startable process per demo case avoids that
+entirely.
 
 ## Known gaps
 
@@ -145,6 +187,6 @@ know. `LetterComposerE2ETest` walks exactly that, against the real bundled contr
   should be collected in a case form (where the preview picks them up from the field keys — see
   [document-preview.md](document-preview.md)).
 - **Form flows are not supported yet**: the configuration is read from a task's _form_ link.
-- **One letter per task.** Offering several at once needs the selection to be a list, and the
-  process to loop or fan out.
+- **One letter per task or per start.** Offering several at once needs the selection to be a list,
+  and the process to loop or fan out.
 - Objects nested inside an array item are still flattened by the form generator.

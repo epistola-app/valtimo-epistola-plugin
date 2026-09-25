@@ -66,3 +66,34 @@ export function pruneEmpty(data: ComposerData): ComposerData {
 function isPlainObject(value: unknown): value is Record<string, any> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
+
+/**
+ * The dotted keys of the required inputs in a generated form.
+ *
+ * Previewing a letter whose required fields are still empty is not a preview: Epistola refuses to
+ * render it, and the employee is shown a validation error for fields they were just asked to fill.
+ * Knowing which keys those are is what lets the composer wait instead.
+ */
+export function requiredKeys(formDefinition: any): string[] {
+  const keys: string[] = [];
+  const walk = (components: any[]) => {
+    for (const component of components ?? []) {
+      if (component?.validate?.required && component?.key) {
+        keys.push(component.key);
+      }
+      walk(component?.components);
+    }
+  };
+  walk(formDefinition?.components);
+  return keys;
+}
+
+/** Whether `data` holds a usable value at every one of those keys. */
+export function hasValuesFor(data: ComposerData, keys: string[]): boolean {
+  return keys.every((key) => {
+    const value = key
+      .split('.')
+      .reduce<any>((node, segment) => (node == null ? undefined : node[segment]), data);
+    return value !== undefined && value !== null && value !== '';
+  });
+}

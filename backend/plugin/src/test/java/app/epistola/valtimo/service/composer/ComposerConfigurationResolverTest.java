@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.form.domain.FormIoFormDefinition;
 import com.ritense.form.domain.FormProcessLink;
 import com.ritense.form.repository.FormDefinitionRepository;
+import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import com.ritense.processlink.domain.ProcessLink;
 import com.ritense.processlink.service.ProcessLinkService;
 import org.junit.jupiter.api.BeforeEach;
@@ -221,5 +222,41 @@ class ComposerConfigurationResolverTest {
             assertThat(configuration.dataMapping()).isEqualTo("{\"naam\": $doc.naam}");
             assertThat(configuration.offers("besluit")).isTrue();
         });
+    }
+
+    @Test
+    void findsTheComposerOnAProcessStartForm() {
+        // An ad-hoc letter is composed before any task exists, so the activity is discovered from
+        // the definition rather than named by the caller.
+        FormProcessLink startLink = mock(FormProcessLink.class);
+        when(startLink.getFormDefinitionId()).thenReturn(FORM_ID);
+        when(startLink.getActivityType()).thenReturn(ActivityTypeWithEventName.START_EVENT_START);
+        FormProcessLink taskLink = mock(FormProcessLink.class);
+        when(taskLink.getActivityType()).thenReturn(ActivityTypeWithEventName.USER_TASK_CREATE);
+        when(processLinkService.getProcessLinks(PROCESS_DEFINITION_ID))
+                .thenReturn(List.<ProcessLink>of(taskLink, startLink));
+
+        FormIoFormDefinition form = mock(FormIoFormDefinition.class);
+        try {
+            when(form.getFormDefinition()).thenReturn(objectMapper.readTree(composerJson("")));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+        when(formDefinitionRepository.findById(FORM_ID)).thenReturn(Optional.of(form));
+
+        assertThat(resolver.forStartEvent(PROCESS_DEFINITION_ID)).singleElement()
+                .satisfies(configuration -> assertThat(configuration.offers("besluit")).isTrue());
+        assertThat(resolver.requireStartOffering(PROCESS_DEFINITION_ID, "besluit").catalogId())
+                .isEqualTo("gemeente");
+    }
+
+    @Test
+    void refusesATemplateTheStartFormDoesNotOffer() {
+        when(processLinkService.getProcessLinks(PROCESS_DEFINITION_ID)).thenReturn(List.of());
+
+        assertThatThrownBy(() -> resolver.requireStartOffering(PROCESS_DEFINITION_ID, "besluit"))
+                .isInstanceOf(ComposerException.class)
+                .extracting(e -> ((ComposerException) e).getReason())
+                .isEqualTo(ComposerException.Reason.NO_COMPOSER);
     }
 }

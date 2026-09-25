@@ -1,0 +1,24 @@
+[
+  {
+    "activityId": "startEvent",
+    "activityType": "bpmn:StartEvent:start",
+    "processLinkType": "form",
+    "formDefinitionName": "kies-brief-adhoc"
+  },
+  {
+    "activityId": "generate-chosen-letter",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+    "pluginActionDefinitionKey": "epistola-generate-document",
+    "actionProperties": {
+      "actionConfigVersion": 2,
+      "catalogId": "$pv.epistolaLetter.catalogId",
+      "templateId": "$pv.epistolaLetter.templateId",
+      "dataMapping": "$pv.epistolaLetter.data",
+      "outputFormat": "\"PDF\"",
+      "filename": "$pv.epistolaLetter.templateId & \".pdf\"",
+      "resultProcessVariable": "epistolaResult"
+    }
+  }
+]

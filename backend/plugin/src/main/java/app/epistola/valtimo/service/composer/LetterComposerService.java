@@ -77,6 +77,20 @@ public class LetterComposerService {
             String processInstanceId,
             String documentId
     ) {
+        /**
+         * Composing from a start form: the process has not started, so there is no task to name an
+         * activity from and no process instance for {@code $pv} to read. The configuration comes
+         * from the definition's start form instead — see
+         * {@link ComposerConfigurationResolver#forStartEvent}.
+         */
+        public static ComposerContext forStartEvent(String processDefinitionId, String documentId) {
+            return new ComposerContext(processDefinitionId, null, null, documentId);
+        }
+
+        /** True when there is no task, i.e. the letter is composed on a start form. */
+        public boolean isStartEvent() {
+            return activityId == null;
+        }
     }
 
     /**
@@ -103,8 +117,7 @@ public class LetterComposerService {
      * Resolve a letter's data for this case and build the input form for what is still missing.
      */
     public PreparedLetter prepare(ComposerContext ctx, String templateId) {
-        LetterComposerConfiguration configuration =
-                configurationResolver.requireOffering(ctx.processDefinitionId(), ctx.activityId(), templateId);
+        LetterComposerConfiguration configuration = configurationFor(ctx, templateId);
         var offered = configuration.findTemplate(templateId);
 
         Map<String, Object> data = resolveData(ctx, configuration, offered);
@@ -134,8 +147,7 @@ public class LetterComposerService {
      * exactly what will be generated (ADR 0006).
      */
     public InputStream preview(ComposerContext ctx, String templateId, Map<String, Object> data) {
-        LetterComposerConfiguration configuration =
-                configurationResolver.requireOffering(ctx.processDefinitionId(), ctx.activityId(), templateId);
+        LetterComposerConfiguration configuration = configurationFor(ctx, templateId);
         EpistolaPlugin plugin = plugin(configuration);
 
         try {
@@ -152,6 +164,13 @@ public class LetterComposerService {
             throw new ComposerException(ComposerException.Reason.RENDER_FAILED,
                     "Epistola could not render template '" + templateId + "': " + e.getMessage(), e);
         }
+    }
+
+    private LetterComposerConfiguration configurationFor(ComposerContext ctx, String templateId) {
+        return ctx.isStartEvent()
+                ? configurationResolver.requireStartOffering(ctx.processDefinitionId(), templateId)
+                : configurationResolver.requireOffering(
+                        ctx.processDefinitionId(), ctx.activityId(), templateId);
     }
 
     /**

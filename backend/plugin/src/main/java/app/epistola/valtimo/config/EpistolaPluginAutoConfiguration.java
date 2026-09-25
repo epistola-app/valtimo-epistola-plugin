@@ -292,10 +292,12 @@ public class EpistolaPluginAutoConfiguration {
     public app.epistola.valtimo.web.rest.EpistolaComposerResource epistolaComposerResource(
             app.epistola.valtimo.service.composer.LetterComposerService letterComposerService,
             com.ritense.authorization.AuthorizationService authorizationService,
-            com.ritense.valtimo.service.OperatonTaskService operatonTaskService
+            com.ritense.valtimo.service.OperatonTaskService operatonTaskService,
+            app.epistola.valtimo.web.rest.StartEventAuthorization startEventAuthorization
     ) {
         return new app.epistola.valtimo.web.rest.EpistolaComposerResource(
-                letterComposerService, authorizationService, operatonTaskService);
+                letterComposerService, authorizationService, operatonTaskService,
+                startEventAuthorization);
     }
 
     @Bean
@@ -317,6 +319,17 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(app.epistola.valtimo.web.rest.StartEventAuthorization.class)
+    public app.epistola.valtimo.web.rest.StartEventAuthorization startEventAuthorization(
+            RepositoryService repositoryService,
+            com.ritense.document.service.DocumentService documentService,
+            com.ritense.authorization.AuthorizationService authorizationService
+    ) {
+        return new app.epistola.valtimo.web.rest.StartEventAuthorization(
+                repositoryService, documentService, authorizationService);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(EpistolaGenerationResource.class)
     public EpistolaGenerationResource epistolaGenerationResource(
             PluginService pluginService,
@@ -329,12 +342,13 @@ public class EpistolaPluginAutoConfiguration {
             com.ritense.authorization.AuthorizationService authorizationService,
             com.ritense.valtimo.service.OperatonTaskService operatonTaskService,
             RuntimeService runtimeService,
-            RepositoryService repositoryService
+            RepositoryService repositoryService,
+            app.epistola.valtimo.web.rest.StartEventAuthorization startEventAuthorization
     ) {
         return new EpistolaGenerationResource(pluginService, epistolaService,
                 previewService, retryFormService, jsonataMappingService,
                 documentService, objectMapper, authorizationService, operatonTaskService,
-                runtimeService, repositoryService);
+                runtimeService, repositoryService, startEventAuthorization);
     }
 
     @Bean

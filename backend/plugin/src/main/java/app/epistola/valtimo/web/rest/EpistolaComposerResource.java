@@ -64,6 +64,8 @@ public class EpistolaComposerResource {
     private final LetterComposerService letterComposerService;
     private final AuthorizationService authorizationService;
     private final OperatonTaskService operatonTaskService;
+    /** The start-form gate, shared with the document preview so the two cannot drift apart. */
+    private final StartEventAuthorization startEventAuthorization;
 
     /** What the composer needs to render one letter's inputs: the task and the chosen template. */
     public record PrepareRequest(String taskId, String templateId) {
@@ -91,6 +93,23 @@ public class EpistolaComposerResource {
 
     /** Preview a letter with the data assembled so far (mapping result plus the employee's input). */
     public record ComposerPreviewRequest(String taskId, String templateId, Map<String, Object> data) {
+    }
+
+    /**
+     * The same two calls, from a <b>start form</b>: an ad-hoc letter on an open dossier, where no
+     * task exists yet. The caller names the process by its version-stable key — a form stores that
+     * rather than a version-pinned id, so a redeployment does not break it.
+     */
+    public record StartPrepareRequest(String processDefinitionKey, String documentId, String templateId) {
+    }
+
+    /** Preview an ad-hoc letter with the data assembled so far. */
+    public record StartPreviewRequest(
+            String processDefinitionKey,
+            String documentId,
+            String templateId,
+            Map<String, Object> data
+    ) {
     }
 
     @PostMapping("/composer/prepare")
@@ -128,12 +147,67 @@ public class EpistolaComposerResource {
         }
 
         try {
-            var pdf = letterComposerService.preview(contextOf(task), request.templateId(), request.data());
-            var resource = new org.springframework.core.io.InputStreamResource(pdf);
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDisposition(ContentDisposition.inline().filename("preview.pdf").build());
-            return ResponseEntity.ok().headers(headers).body(resource);
+            return pdfResponse(
+                    letterComposerService.preview(contextOf(task), request.templateId(), request.data()));
+        } catch (ComposerException e) {
+            return mapComposerError(e);
+        }
+    }
+
+    private ResponseEntity<?> pdfResponse(java.io.InputStream pdf) {
+        var resource = new org.springframework.core.io.InputStreamResource(pdf);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(ContentDisposition.inline().filename("preview.pdf").build());
+        return ResponseEntity.ok().headers(headers).body(resource);
+    }
+
+    @PostMapping("/composer/prepare/start")
+    public ResponseEntity<?> prepareOnStartForm(@RequestBody StartPrepareRequest request) {
+        if (isBlank(request.processDefinitionKey()) || isBlank(request.templateId())) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("error", "processDefinitionKey and templateId are required"));
+        }
+
+        StartEventAuthorization.StartContext startContext;
+        try {
+            startContext = startEventAuthorization.require(
+                    request.processDefinitionKey(), trimToNull(request.documentId()));
+        } catch (StartEventAuthorization.NotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            return ResponseEntity.ok(PrepareResponse.of(letterComposerService.prepare(
+                    ComposerContext.forStartEvent(
+                            startContext.processDefinitionId(), startContext.documentId()),
+                    request.templateId())));
+        } catch (ComposerException e) {
+            return mapComposerError(e);
+        }
+    }
+
+    @PostMapping("/composer/preview/start")
+    public ResponseEntity<?> previewOnStartForm(@RequestBody StartPreviewRequest request) {
+        if (isBlank(request.processDefinitionKey()) || isBlank(request.templateId())) {
+            return ResponseEntity.badRequest().body(
+                    Map.of("error", "processDefinitionKey and templateId are required"));
+        }
+
+        StartEventAuthorization.StartContext startContext;
+        try {
+            startContext = startEventAuthorization.require(
+                    request.processDefinitionKey(), trimToNull(request.documentId()));
+        } catch (StartEventAuthorization.NotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+
+        try {
+            return pdfResponse(letterComposerService.preview(
+                    ComposerContext.forStartEvent(
+                            startContext.processDefinitionId(), startContext.documentId()),
+                    request.templateId(),
+                    request.data()));
         } catch (ComposerException e) {
             return mapComposerError(e);
         }
@@ -181,5 +255,13 @@ public class EpistolaComposerResource {
 
     private static boolean isBlank(String value) {
         return value == null || value.isBlank();
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

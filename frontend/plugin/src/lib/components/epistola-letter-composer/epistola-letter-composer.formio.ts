@@ -18,11 +18,16 @@
 import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo } from '@valtimo/components';
 import { EpistolaLetterComposerComponent } from './epistola-letter-composer.component';
-import { readPrefilledTaskId, PREFILLED_TASK_ID_CARRIER } from '../../services/prefilled-task-id';
+import {
+  readPrefilledTaskId,
+  readPrefilledDocumentId,
+  PREFILLED_TASK_ID_CARRIER,
+  PREFILLED_DOCUMENT_ID_CARRIER,
+} from '../../services/prefilled-task-id';
 import {
   registerEpistolaFormioComponent,
   ValtimoFormioComponentConstructor,
-  withPrefilledTaskIdCarrier,
+  withPrefilledCarriers,
 } from '../valtimo-formio-adapter';
 
 export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
@@ -32,14 +37,22 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   group: 'basic',
   icon: 'envelope',
   emptyValue: null,
-  // `templates` reaches the Angular component so it can render the picker. The rest of the
-  // configuration (plugin configuration, catalog, mappings) is deliberately NOT forwarded: the
-  // backend reads it from this form definition itself, so the browser never carries it — see
-  // ADR 0006.
-  fieldOptions: ['label', 'placeholder', 'templates'],
-  // Embed the hidden task-id carrier so dropping the component is enough. Valtimo prefills it
-  // server-side through the epistola: value resolver, and the component reads it back.
-  schema: { components: [PREFILLED_TASK_ID_CARRIER] },
+  // The letters reach the Angular component so it can render the picker — as `letterSet` from the
+  // settings widget, or as a bare `templates` array in a hand-written form. Nothing else about the
+  // configuration is forwarded: the mappings and the catalog stay server-side, where the backend
+  // reads them from this form definition itself (ADR 0006).
+  fieldOptions: [
+    'label',
+    'placeholder',
+    'templates',
+    'letterSet',
+    'composerContext',
+    'processDefinitionKey',
+  ],
+  // Embed the hidden carriers so dropping the component is enough. Valtimo prefills them
+  // server-side through the epistola: value resolvers, and the component reads them back: the task
+  // id on a task form, the case id on a start form opened against an existing dossier.
+  schema: { components: [PREFILLED_TASK_ID_CARRIER, PREFILLED_DOCUMENT_ID_CARRIER] },
   editForm: () => ({
     components: [
       {
@@ -58,6 +71,29 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
         label: 'Label',
         defaultValue: 'Choose a letter',
         weight: 5,
+      },
+      {
+        type: 'radio',
+        key: 'composerContext',
+        label: 'Where is this form shown?',
+        tooltip:
+          'A start-form composer is authorized on your permission to start that process, not on a user task. Choose it for an ad-hoc letter on an open dossier.',
+        defaultValue: 'task',
+        inline: true,
+        weight: 6,
+        values: [
+          { label: 'In a user task (default)', value: 'task' },
+          { label: 'On a start form', value: 'start' },
+        ],
+      },
+      {
+        type: 'textfield',
+        key: 'processDefinitionKey',
+        label: 'Process to start',
+        tooltip:
+          'The key of the process this start form starts. Stored as a key, not a version-pinned id, so a redeployment does not break the form.',
+        weight: 7,
+        conditional: { show: true, when: 'composerContext', eq: 'start' },
       },
       {
         type: 'epistola-letter-set-builder',
@@ -95,14 +131,17 @@ export function registerEpistolaLetterComposerComponent(injector: Injector): voi
     EPISTOLA_LETTER_COMPOSER_OPTIONS,
     EpistolaLetterComposerComponent,
     injector,
-    (base) => withTaskContext(withPrefilledTaskIdCarrier(base)),
+    (base) =>
+      withTaskContext(
+        withPrefilledCarriers(base, [PREFILLED_TASK_ID_CARRIER, PREFILLED_DOCUMENT_ID_CARRIER]),
+      ),
   );
 }
 
 /**
- * Forward the server-prefilled task id to the Angular element. The composer authorizes every call
- * against that task, so without it the component stays inert — which is what should happen in the
- * builder and in design mode.
+ * Forward the server-prefilled ids to the Angular element: the task the composer authorizes
+ * against, and — on a start form — the dossier the ad-hoc letter is composed for. Without them the
+ * component stays inert, which is what should happen in the builder and in design mode.
  */
 function withTaskContext(
   BaseComponent: ValtimoFormioComponentConstructor,
@@ -115,6 +154,7 @@ function withTaskContext(
         if (prefilledTaskId) {
           this._customAngularElement['taskInstanceId'] = prefilledTaskId;
         }
+        this._customAngularElement['startDocumentId'] = readPrefilledDocumentId(this.root);
       }
       return result;
     }

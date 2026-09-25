@@ -71,6 +71,22 @@ export interface ComposerPreviewRequest {
 }
 
 /**
+ * The same two calls from a start form, where no task exists yet: an ad-hoc letter on an open
+ * dossier. The process is named by its version-stable key, and the case by the id a server-side
+ * value resolver prefilled into the form.
+ */
+export interface ComposerStartPrepareRequest {
+  processDefinitionKey: string;
+  documentId?: string | null;
+  templateId: string;
+}
+
+/** Body of a {@link EpistolaPluginService.composerPreviewStartToBlob} call. */
+export interface ComposerStartPreviewRequest extends ComposerStartPrepareRequest {
+  data: Record<string, unknown>;
+}
+
+/**
  * Body of a {@link EpistolaPluginService.previewToBlob} call. Mirrors the
  * backend {@code PreviewRequest} record. The backend derives the process
  * instance and case document from the authorized task, so only {@code taskId}
@@ -300,6 +316,22 @@ export class EpistolaPluginService {
    */
   composerPreviewToBlob(request: ComposerPreviewRequest): Observable<Blob> {
     return this.http.post(`${this.apiEndpoint}/composer/preview`, request, {
+      responseType: 'blob',
+      headers: new HttpHeaders().set('X-Skip-Interceptor', '422'),
+    });
+  }
+
+  /** {@link composerPrepare} for a letter composed on a start form. */
+  composerPrepareStart(request: ComposerStartPrepareRequest): Observable<ComposerPrepareResponse> {
+    return this.http.post<ComposerPrepareResponse>(
+      `${this.apiEndpoint}/composer/prepare/start`,
+      request,
+    );
+  }
+
+  /** {@link composerPreviewToBlob} for a letter composed on a start form. */
+  composerPreviewStartToBlob(request: ComposerStartPreviewRequest): Observable<Blob> {
+    return this.http.post(`${this.apiEndpoint}/composer/preview/start`, request, {
       responseType: 'blob',
       headers: new HttpHeaders().set('X-Skip-Interceptor', '422'),
     });

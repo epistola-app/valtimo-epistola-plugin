@@ -48,10 +48,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **A single service task generates whichever letter was chosen**, using action configuration v2
     (`templateId: $pv.epistolaLetter.templateId`, `dataMapping: $pv.epistolaLetter.data`). No
     gateway branch or service task per letter.
-  - Demo: the Bezwaarprocedure case ships an `objection-letter-composer` process offering two
+  - **An ad-hoc letter, with no user task at all.** The composer also runs on the **start form** of
+    a process that starts on the dossier already open, so a case worker picks a letter from the
+    dossier's Start menu, adjusts and previews it there, and the process only generates what was
+    chosen. Set **Where is this form shown?** to _On a start form_ and name the process it starts.
+    Its endpoints (`/composer/prepare/start`, `/composer/preview/start`) authorize like Valtimo's
+    own start-form path — `OperatonExecution:CREATE` plus `JsonSchemaDocument:VIEW` — through a
+    `StartEventAuthorization` now shared with the document preview, so the two checks cannot drift
+    apart. Demo: `correspondentie-ad-hoc-letter`, walked by `letter-composer-adhoc.spec.ts`.
+  - **A letter is previewed once it can be rendered**, not before: while a required generated field
+    is still empty the component says so, instead of showing Epistola's validation error for the
+    very fields the employee was just asked to fill.
+  - Demo: a new **Correspondentie** case ships `correspondentie-letter-composer`, offering two
     letters over one baseline mapping — the acknowledgement needs nothing from the employee, the
     decision asks for its three decision fields. `LetterComposerE2ETest` walks it against the real
-    bundled template contracts.
+    bundled template contracts, and `e2e/tests/letter-composer.spec.ts` walks it in a browser.
   - See [docs/letter-composer.md](docs/letter-composer.md) and
     [ADR 0006](docs/adr/0006-letter-composer-configuration.md). Known gaps are listed there: the
     browser assembles the rendered data, there is no write-back to the case, form flows are not

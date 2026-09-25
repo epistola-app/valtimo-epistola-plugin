@@ -41,7 +41,7 @@ import org.testcontainers.utility.DockerImageName
 import java.time.Duration
 
 /**
- * Boots the real test-app and walks the letter composer demo on the **Bezwaarprocedure** case:
+ * Boots the real test-app and walks the letter composer demo on the **Correspondentie** case:
  * pick a letter, see what the case could not supply, and let one generate task render whichever
  * letter was chosen.
  *
@@ -260,10 +260,10 @@ class LetterComposerE2ETest {
     private fun <T> anyOrNull(): T? = org.mockito.kotlin.anyOrNull()
 
     companion object {
-        private const val CASE_KEY = "objection"
+        private const val CASE_KEY = "correspondentie"
         private const val CASE_VERSION = "1.0.0"
-        private const val DOCUMENT_DEFINITION = "objection"
-        private const val PROCESS_KEY = "objection-letter-composer"
+        private const val DOCUMENT_DEFINITION = "correspondentie"
+        private const val PROCESS_KEY = "correspondentie-letter-composer"
         private const val CHOOSE_LETTER_TASK = "choose-letter"
         private const val CATALOG = "municipality-demo"
         private const val ACKNOWLEDGEMENT = "ontvangstbevestiging-bezwaar"

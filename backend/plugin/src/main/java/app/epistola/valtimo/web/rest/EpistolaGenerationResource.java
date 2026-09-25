@@ -119,6 +119,9 @@ public class EpistolaGenerationResource {
      */
     private final RepositoryService repositoryService;
 
+    /** The start-form gate, shared with the letter composer so the two cannot drift apart. */
+    private final StartEventAuthorization startEventAuthorization;
+
     /**
      * Evaluate a JSONata data mapping expression against a real document.
      * Returns the resolved JSON output that would be sent to Epistola.
@@ -344,75 +347,25 @@ public class EpistolaGenerationResource {
                     Map.of("error", "processDefinitionKey and sourceActivityId are required"));
         }
 
-        // Resolve the client-supplied key to a deployed definition. The key is version-stable; the
-        // component stores it rather than a version-pinned id so a redeployment doesn't break forms.
-        ProcessDefinition definition = repositoryService.createProcessDefinitionQuery()
-                .processDefinitionKey(request.processDefinitionKey())
-                .latestVersion()
-                .singleResult();
-        if (definition == null) {
+        // Resolving the key to a deployed definition and authorizing the caller to start it against
+        // this case is shared with the letter composer's start mode — see StartEventAuthorization,
+        // and ADR 0004 for why these two gates rather than a document-definition permission.
+        StartEventAuthorization.StartContext startContext;
+        try {
+            startContext = startEventAuthorization.require(
+                    request.processDefinitionKey(), trimToNull(request.documentId()));
+        } catch (StartEventAuthorization.NotFoundException e) {
             return ResponseEntity.notFound().build();
-        }
-
-        String documentId = trimToNull(request.documentId());
-        JsonSchemaDocument document = null;
-        if (documentId != null) {
-            document = findDocumentOrNull(documentId);
-            if (document == null) {
-                return ResponseEntity.notFound().build();
-            }
-        }
-
-        // PRIMARY GATE — may this caller start this process? Same check as
-        // ProcessLinkActivityService.getStartEventObject, including the document context.
-        // NB: deliberately NOT JsonSchemaDocumentDefinition:CREATE — despite the name, that action
-        // means "may deploy a case schema" (it is used only by JsonSchemaDocumentDefinitionService
-        // .deploy) and would make this endpoint admin-only. See ADR 0004.
-        var executionRequest = new RelatedEntityAuthorizationRequest<>(
-                OperatonExecution.class,
-                OperatonExecutionActionProvider.CREATE,
-                OperatonProcessDefinition.class,
-                definition.getId());
-        if (document != null) {
-            executionRequest = executionRequest.withContext(
-                    new AuthorizationResourceContext<>(JsonSchemaDocument.class, document));
-        }
-        authorizationService.requirePermission(executionRequest);
-
-        // SECONDARY GATE — CREATE on a process must never confer READ on a case. Stricter than
-        // Valtimo's own start-form path, which passes the document only as context: it derives the
-        // id from the route the user already navigated to, whereas we take it from the wire and
-        // render its content into a PDF.
-        if (document != null) {
-            authorizationService.requirePermission(new EntityAuthorizationRequest<>(
-                    JsonSchemaDocument.class,
-                    JsonSchemaDocumentActionProvider.VIEW,
-                    List.of(document)));
         }
 
         try {
             return inlinePdfResponse(previewService.generateStartPreview(
-                    definition.getId(), documentId, request.sourceActivityId(), request.inputOverrides()));
+                    startContext.processDefinitionId(),
+                    startContext.documentId(),
+                    request.sourceActivityId(),
+                    request.inputOverrides()));
         } catch (PreviewService.PreviewException e) {
             return mapPreviewError(e);
-        }
-    }
-
-    /**
-     * Look up a case document without authorizing — the caller authorizes it explicitly afterwards.
-     * Returns null when the id is unknown or not a UUID, so a bad id is a 404/400 rather than a 500.
-     */
-    private JsonSchemaDocument findDocumentOrNull(String documentId) {
-        try {
-            var id = com.ritense.document.domain.impl.JsonSchemaDocumentId.existingId(
-                    java.util.UUID.fromString(documentId));
-            return AuthorizationContext.runWithoutAuthorization(
-                    () -> (JsonSchemaDocument) documentService.findBy(id).orElse(null));
-        } catch (IllegalArgumentException e) {
-            return null;
-        } catch (Exception e) {
-            log.debug("Could not resolve document {} for start preview: {}", documentId, e.getMessage());
-            return null;
         }
     }
 

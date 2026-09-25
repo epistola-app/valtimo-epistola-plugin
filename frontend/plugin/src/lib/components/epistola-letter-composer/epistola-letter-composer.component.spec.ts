@@ -66,6 +66,18 @@ describe('EpistolaLetterComposerComponent', () => {
 
   function createComponent(prepared: Record<string, unknown> = {}) {
     const service = {
+      composerPrepareStart: jest.fn(() =>
+        of({
+          templateId: 'besluit',
+          label: 'Besluit',
+          catalogId: 'gemeente',
+          data: { naam: 'Jansen' },
+          form: { display: 'form', components: [] },
+          complete: true,
+          ...prepared,
+        }),
+      ),
+      composerPreviewStartToBlob: jest.fn(() => of(new Blob(['pdf'], { type: 'application/pdf' }))),
       composerPrepare: jest.fn(() =>
         of({
           templateId: 'besluit',
@@ -211,5 +223,114 @@ describe('EpistolaLetterComposerComponent', () => {
 
     expect(component.error).toBe('Template is not offered by this form');
     expect(component.formDefinition).toBeNull();
+  });
+
+  it('offers the letters the settings widget stored', () => {
+    const { component } = createComponent();
+    component.templates = [];
+    component.letterSet = { templates: [{ templateId: 'besluit', label: 'Besluit' }] };
+
+    expect(component.offeredTemplates).toEqual([{ templateId: 'besluit', label: 'Besluit' }]);
+  });
+
+  it('still offers the letters of a hand-written form', () => {
+    const { component } = createComponent();
+    component.letterSet = undefined;
+
+    expect(component.offeredTemplates.map((option) => option.templateId)).toEqual([
+      'besluit',
+      'herinnering',
+    ]);
+  });
+
+  describe('a letter that cannot render yet', () => {
+    const REQUIRED_FORM = {
+      display: 'form',
+      components: [
+        { type: 'textfield', key: 'motivatie', validate: { required: true } },
+        { type: 'textfield', key: 'toelichting' },
+      ],
+    };
+
+    it('does not preview while a required field is empty', () => {
+      // Epistola would answer with a validation error for the very fields the employee was just
+      // asked to fill, which reads as a failure rather than as "not yet".
+      const { component, service } = createComponent({ form: REQUIRED_FORM, complete: false });
+
+      component.onTemplateSelected('besluit');
+      jest.advanceTimersByTime(2000);
+
+      expect(service.composerPreviewToBlob).not.toHaveBeenCalled();
+      expect(component.awaitingRequired).toBe(true);
+    });
+
+    it('previews as soon as the required field has a value', () => {
+      const { component, service } = createComponent({ form: REQUIRED_FORM, complete: false });
+      component.onTemplateSelected('besluit');
+
+      component.onInputsChanged({ data: { motivatie: 'omdat' } });
+      jest.advanceTimersByTime(2000);
+
+      expect(component.awaitingRequired).toBe(false);
+      expect(service.composerPreviewToBlob).toHaveBeenCalledWith({
+        taskId: 'task-1',
+        templateId: 'besluit',
+        data: { naam: 'Jansen', motivatie: 'omdat' },
+      });
+    });
+  });
+
+  describe('on a start form (an ad-hoc letter, no task)', () => {
+    function startComponent() {
+      const made = createComponent();
+      made.component.composerContext = 'start';
+      made.component.taskInstanceId = undefined;
+      made.component.processDefinitionKey = 'correspondentie-ad-hoc';
+      made.component.startDocumentId = 'doc-1';
+      return made;
+    }
+
+    it('composes against the open dossier, naming the process it would start', () => {
+      const { component, service } = startComponent();
+
+      component.onTemplateSelected('besluit');
+
+      expect(service.composerPrepareStart).toHaveBeenCalledWith({
+        processDefinitionKey: 'correspondentie-ad-hoc',
+        documentId: 'doc-1',
+        templateId: 'besluit',
+      });
+      expect(service.composerPrepare).not.toHaveBeenCalled();
+    });
+
+    it('previews through the start endpoint', () => {
+      const { component, service } = startComponent();
+      component.onTemplateSelected('besluit');
+      jest.advanceTimersByTime(1000);
+
+      expect(service.composerPreviewStartToBlob).toHaveBeenCalledWith({
+        processDefinitionKey: 'correspondentie-ad-hoc',
+        documentId: 'doc-1',
+        templateId: 'besluit',
+        data: { naam: 'Jansen' },
+      });
+      expect(service.composerPreviewToBlob).not.toHaveBeenCalled();
+    });
+
+    it('stays inert without a process to start, as in the builder', () => {
+      const { component, service } = startComponent();
+      component.processDefinitionKey = undefined;
+
+      component.onTemplateSelected('besluit');
+
+      expect(service.composerPrepareStart).not.toHaveBeenCalled();
+      expect(component.canCompose).toBe(false);
+    });
+
+    it('needs no task id, unlike task mode', () => {
+      const { component } = startComponent();
+
+      expect(component.canCompose).toBe(true);
+    });
   });
 });

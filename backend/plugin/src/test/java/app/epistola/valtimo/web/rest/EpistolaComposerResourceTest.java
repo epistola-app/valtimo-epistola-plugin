@@ -60,6 +60,7 @@ class EpistolaComposerResourceTest {
     private AuthorizationService authorizationService;
     private OperatonTaskService operatonTaskService;
     private LetterComposerService letterComposerService;
+    private StartEventAuthorization startEventAuthorization;
     private EpistolaComposerResource resource;
     private OperatonTask task;
 
@@ -68,8 +69,10 @@ class EpistolaComposerResourceTest {
         authorizationService = mock(AuthorizationService.class);
         operatonTaskService = mock(OperatonTaskService.class);
         letterComposerService = mock(LetterComposerService.class);
+        startEventAuthorization = mock(StartEventAuthorization.class);
         resource = new EpistolaComposerResource(
-                letterComposerService, authorizationService, operatonTaskService);
+                letterComposerService, authorizationService, operatonTaskService,
+                startEventAuthorization);
 
         OperatonExecution processInstance = mock(OperatonExecution.class);
         when(processInstance.getBusinessKey()).thenReturn("doc-1");
@@ -167,5 +170,70 @@ class EpistolaComposerResourceTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getHeaders().getContentType().toString()).isEqualTo("application/pdf");
         assertThat(response.getHeaders().getContentDisposition().isInline()).isTrue();
+    }
+
+    @Test
+    void prepareOnStartForm_composesAgainstTheCaseItIsAuthorizedFor() {
+        when(startEventAuthorization.require("correspondentie-ad-hoc", "doc-1"))
+                .thenReturn(new StartEventAuthorization.StartContext("process:2:def", "doc-1", null));
+        when(letterComposerService.prepare(any(), eq("besluit")))
+                .thenReturn(new PreparedLetter("besluit", "Besluit", "gemeente",
+                        Map.of(), new ObjectMapper().createObjectNode(), true));
+
+        var response = resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
+                "correspondentie-ad-hoc", "doc-1", "besluit"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        ArgumentCaptor<ComposerContext> captor = ArgumentCaptor.forClass(ComposerContext.class);
+        verify(letterComposerService).prepare(captor.capture(), eq("besluit"));
+        // No task, so no activity and no process instance: the configuration comes from the
+        // definition's start form and the mapping reads the case alone.
+        assertThat(captor.getValue()).isEqualTo(
+                new ComposerContext("process:2:def", null, null, "doc-1"));
+        assertThat(captor.getValue().isStartEvent()).isTrue();
+    }
+
+    @Test
+    void prepareOnStartForm_propagatesADeniedStart() {
+        when(startEventAuthorization.require(any(), any()))
+                .thenThrow(new AccessDeniedException("denied"));
+
+        assertThatThrownBy(() -> resource.prepareOnStartForm(
+                new EpistolaComposerResource.StartPrepareRequest("correspondentie-ad-hoc", "doc-1", "besluit")))
+                .isInstanceOf(AccessDeniedException.class);
+        verifyNoInteractions(letterComposerService);
+    }
+
+    @Test
+    void prepareOnStartForm_returns404ForAnUnknownProcessOrCase() {
+        when(startEventAuthorization.require(any(), any()))
+                .thenThrow(new StartEventAuthorization.NotFoundException("gone"));
+
+        assertThat(resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
+                "correspondentie-ad-hoc", "doc-1", "besluit")).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void prepareOnStartForm_rejectsAMissingProcessOrTemplate() {
+        assertThat(resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
+                null, "doc-1", "besluit")).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
+                "correspondentie-ad-hoc", "doc-1", " ")).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        verifyNoInteractions(letterComposerService);
+    }
+
+    @Test
+    void previewOnStartForm_servesThePdfInline() {
+        when(startEventAuthorization.require("correspondentie-ad-hoc", null))
+                .thenReturn(new StartEventAuthorization.StartContext("process:2:def", null, null));
+        when(letterComposerService.preview(any(), eq("besluit"), any()))
+                .thenReturn(new ByteArrayInputStream("%PDF".getBytes()));
+
+        var response = resource.previewOnStartForm(new EpistolaComposerResource.StartPreviewRequest(
+                "correspondentie-ad-hoc", null, "besluit", Map.of("naam", "Jansen")));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getHeaders().getContentType().toString()).isEqualTo("application/pdf");
     }
 }

@@ -3,7 +3,7 @@
     "activityId": "startEvent",
     "activityType": "bpmn:StartEvent:start",
     "processLinkType": "form",
-    "formDefinitionName": "objection-start"
+    "formDefinitionName": "correspondentie-start"
   },
   {
     "activityId": "choose-letter",

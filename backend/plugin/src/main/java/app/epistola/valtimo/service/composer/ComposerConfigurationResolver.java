@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.ritense.form.domain.FormIoFormDefinition;
 import com.ritense.form.domain.FormProcessLink;
 import com.ritense.form.repository.FormDefinitionRepository;
+import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import com.ritense.processlink.service.ProcessLinkService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,15 +57,34 @@ public class ComposerConfigurationResolver {
     public List<LetterComposerConfiguration> forActivity(String processDefinitionId, String activityId) {
         List<LetterComposerConfiguration> configurations = new ArrayList<>();
         for (UUID formDefinitionId : formDefinitionIds(processDefinitionId, activityId)) {
-            Optional<FormIoFormDefinition> form = formDefinitionRepository.findById(formDefinitionId);
-            if (form.isEmpty()) {
-                log.warn("Form definition {} linked to activity '{}' no longer exists",
-                        formDefinitionId, activityId);
-                continue;
-            }
-            collectComposers(form.get().getFormDefinition().path("components"), configurations);
+            formDefinitionId(formDefinitionId, configurations);
         }
         return configurations;
+    }
+
+    /**
+     * Every composer configured on the <b>start form</b> of a process definition.
+     *
+     * <p>The activity id is discovered here rather than sent by the browser: a start form is the
+     * one place a caller has no task to name an activity from, and accepting one would let a
+     * request point at another activity's link.
+     */
+    public List<LetterComposerConfiguration> forStartEvent(String processDefinitionId) {
+        List<LetterComposerConfiguration> configurations = new ArrayList<>();
+        for (UUID formDefinitionId : startFormDefinitionIds(processDefinitionId)) {
+            formDefinitionId(formDefinitionId, configurations);
+        }
+        return configurations;
+    }
+
+    /**
+     * The composer on a process's start form that offers the given template.
+     *
+     * @throws ComposerException when the start form carries no composer, or none offering that template
+     */
+    public LetterComposerConfiguration requireStartOffering(String processDefinitionId, String templateId) {
+        return requireOffering(forStartEvent(processDefinitionId), templateId,
+                "the start form of process definition '" + processDefinitionId + "'");
     }
 
     /**
@@ -77,17 +97,24 @@ public class ComposerConfigurationResolver {
             String activityId,
             String templateId
     ) {
-        List<LetterComposerConfiguration> configurations = forActivity(processDefinitionId, activityId);
+        return requireOffering(forActivity(processDefinitionId, activityId), templateId,
+                "the form of activity '" + activityId + "'");
+    }
+
+    private LetterComposerConfiguration requireOffering(
+            List<LetterComposerConfiguration> configurations,
+            String templateId,
+            String where
+    ) {
         if (configurations.isEmpty()) {
             throw new ComposerException(ComposerException.Reason.NO_COMPOSER,
-                    "No letter composer on the form of activity '" + activityId + "'");
+                    "No letter composer on " + where);
         }
         return configurations.stream()
                 .filter(configuration -> configuration.offers(templateId))
                 .findFirst()
                 .orElseThrow(() -> new ComposerException(ComposerException.Reason.TEMPLATE_NOT_OFFERED,
-                        "Template '" + templateId + "' is not offered by the letter composer on activity '"
-                                + activityId + "'"));
+                        "Template '" + templateId + "' is not offered by the letter composer on " + where));
     }
 
     private List<UUID> formDefinitionIds(String processDefinitionId, String activityId) {
@@ -96,6 +123,25 @@ public class ComposerConfigurationResolver {
                 .map(FormProcessLink.class::cast)
                 .map(FormProcessLink::getFormDefinitionId)
                 .toList();
+    }
+
+    private List<UUID> startFormDefinitionIds(String processDefinitionId) {
+        return processLinkService.getProcessLinks(processDefinitionId).stream()
+                .filter(FormProcessLink.class::isInstance)
+                .map(FormProcessLink.class::cast)
+                .filter(link -> link.getActivityType() == ActivityTypeWithEventName.START_EVENT_START)
+                .map(FormProcessLink::getFormDefinitionId)
+                .toList();
+    }
+
+    /** Collect the composers on one form definition into {@code into}. */
+    private void formDefinitionId(UUID formDefinitionId, List<LetterComposerConfiguration> into) {
+        Optional<FormIoFormDefinition> form = formDefinitionRepository.findById(formDefinitionId);
+        if (form.isEmpty()) {
+            log.warn("Form definition {} is linked to a process but no longer exists", formDefinitionId);
+            return;
+        }
+        collectComposers(form.get().getFormDefinition().path("components"), into);
     }
 
     /**
