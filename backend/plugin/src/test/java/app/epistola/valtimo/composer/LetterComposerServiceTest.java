@@ -58,7 +58,7 @@ class LetterComposerServiceTest {
 
     private static final UUID PLUGIN_CONFIGURATION_ID = UUID.randomUUID();
     private static final ComposerContext CONTEXT =
-            new ComposerContext("process:1:abc", "choose-letter", "pi-1", "doc-1");
+            new ComposerContext("process:1:abc", "choose-letter", "pi-1", "doc-1", "pv:epistolaLetter");
 
     private ComposerConfigurationResolver configurationResolver;
     private EpistolaService epistolaService;
@@ -104,7 +104,7 @@ class LetterComposerServiceTest {
 
     private void offering(LetterComposerConfiguration configuration, String templateId) {
         when(configurationResolver.requireOffering(
-                CONTEXT.processDefinitionId(), CONTEXT.activityId(), templateId))
+                CONTEXT.processDefinitionId(), CONTEXT.activityId(), CONTEXT.componentKey(), templateId))
                 .thenReturn(configuration);
     }
 
@@ -192,7 +192,7 @@ class LetterComposerServiceTest {
 
     @Test
     void refusesToPreviewATemplateTheFormDoesNotOffer() {
-        when(configurationResolver.requireOffering(any(), any(), eq("geheime-brief")))
+        when(configurationResolver.requireOffering(any(), any(), any(), eq("geheime-brief")))
                 .thenThrow(new ComposerException(ComposerException.Reason.TEMPLATE_NOT_OFFERED, "nope"));
 
         assertThatThrownBy(() -> service.preview(CONTEXT, "geheime-brief", Map.of()))

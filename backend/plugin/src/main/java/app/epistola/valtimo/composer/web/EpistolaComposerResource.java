@@ -69,7 +69,7 @@ public class EpistolaComposerResource {
     private final StartEventAuthorization startEventAuthorization;
 
     /** What the composer needs to render one letter's inputs: the task and the chosen template. */
-    public record PrepareRequest(String taskId, String templateId) {
+    public record PrepareRequest(String taskId, String templateId, String componentKey) {
     }
 
     /** A prepared letter: the mapped data, plus a form asking for whatever the mapping left empty. */
@@ -93,7 +93,12 @@ public class EpistolaComposerResource {
     }
 
     /** Preview a letter with the data assembled so far (mapping result plus the employee's input). */
-    public record ComposerPreviewRequest(String taskId, String templateId, Map<String, Object> data) {
+    public record ComposerPreviewRequest(
+            String taskId,
+            String templateId,
+            String componentKey,
+            Map<String, Object> data
+    ) {
     }
 
     /**
@@ -101,7 +106,12 @@ public class EpistolaComposerResource {
      * task exists yet. The caller names the process by its version-stable key — a form stores that
      * rather than a version-pinned id, so a redeployment does not break it.
      */
-    public record StartPrepareRequest(String processDefinitionKey, String documentId, String templateId) {
+    public record StartPrepareRequest(
+            String processDefinitionKey,
+            String documentId,
+            String templateId,
+            String componentKey
+    ) {
     }
 
     /** Preview an ad-hoc letter with the data assembled so far. */
@@ -109,6 +119,7 @@ public class EpistolaComposerResource {
             String processDefinitionKey,
             String documentId,
             String templateId,
+            String componentKey,
             Map<String, Object> data
     ) {
     }
@@ -128,7 +139,7 @@ public class EpistolaComposerResource {
 
         try {
             return ResponseEntity.ok(PrepareResponse.of(
-                    letterComposerService.prepare(contextOf(task), request.templateId())));
+                    letterComposerService.prepare(contextOf(task, request.componentKey()), request.templateId())));
         } catch (ComposerException e) {
             return mapComposerError(e);
         }
@@ -149,7 +160,10 @@ public class EpistolaComposerResource {
 
         try {
             return pdfResponse(
-                    letterComposerService.preview(contextOf(task), request.templateId(), request.data()));
+                    letterComposerService.preview(
+                            contextOf(task, request.componentKey()),
+                            request.templateId(),
+                            request.data()));
         } catch (ComposerException e) {
             return mapComposerError(e);
         }
@@ -181,7 +195,9 @@ public class EpistolaComposerResource {
         try {
             return ResponseEntity.ok(PrepareResponse.of(letterComposerService.prepare(
                     ComposerContext.forStartEvent(
-                            startContext.processDefinitionId(), startContext.documentId()),
+                            startContext.processDefinitionId(),
+                            startContext.documentId(),
+                            request.componentKey()),
                     request.templateId())));
         } catch (ComposerException e) {
             return mapComposerError(e);
@@ -206,7 +222,9 @@ public class EpistolaComposerResource {
         try {
             return pdfResponse(letterComposerService.preview(
                     ComposerContext.forStartEvent(
-                            startContext.processDefinitionId(), startContext.documentId()),
+                            startContext.processDefinitionId(),
+                            startContext.documentId(),
+                            request.componentKey()),
                     request.templateId(),
                     request.data()));
         } catch (ComposerException e) {
@@ -219,12 +237,13 @@ public class EpistolaComposerResource {
      * forged: the form link (and therefore the configuration), the case document and the variables
      * the mapping reads.
      */
-    private ComposerContext contextOf(OperatonTask task) {
+    private ComposerContext contextOf(OperatonTask task, String componentKey) {
         return new ComposerContext(
                 task.getProcessDefinitionId(),
                 task.getTaskDefinitionKey(),
                 task.getProcessInstanceId(),
-                task.getProcessInstance() != null ? task.getProcessInstance().getBusinessKey() : null);
+                task.getProcessInstance() != null ? task.getProcessInstance().getBusinessKey() : null,
+                componentKey);
     }
 
     private OperatonTask requireTaskViewable(String taskId) {

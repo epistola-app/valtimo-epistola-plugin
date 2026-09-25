@@ -120,6 +120,7 @@ describe('EpistolaLetterComposerComponent', () => {
     expect(service.composerPrepare).toHaveBeenCalledWith({
       taskId: 'task-1',
       templateId: 'besluit',
+      componentKey: undefined,
     });
     expect(component.formDefinition).toEqual({
       display: 'form',
@@ -169,6 +170,7 @@ describe('EpistolaLetterComposerComponent', () => {
     expect(service.composerPreviewToBlob).toHaveBeenCalledWith({
       taskId: 'task-1',
       templateId: 'besluit',
+      componentKey: undefined,
       data: { naam: 'Jansen', motivatie: 'daarna' },
     });
   });
@@ -215,6 +217,7 @@ describe('EpistolaLetterComposerComponent', () => {
     expect(service.composerPrepare).toHaveBeenCalledWith({
       taskId: 'task-1',
       templateId: 'besluit',
+      componentKey: undefined,
     });
   });
 
@@ -280,6 +283,7 @@ describe('EpistolaLetterComposerComponent', () => {
       expect(service.composerPreviewToBlob).toHaveBeenCalledWith({
         taskId: 'task-1',
         templateId: 'besluit',
+        componentKey: undefined,
         data: { naam: 'Jansen', motivatie: 'omdat' },
       });
     });
@@ -304,6 +308,7 @@ describe('EpistolaLetterComposerComponent', () => {
         processDefinitionKey: 'correspondentie-ad-hoc',
         documentId: 'doc-1',
         templateId: 'besluit',
+        componentKey: undefined,
       });
       expect(service.composerPrepare).not.toHaveBeenCalled();
     });
@@ -317,6 +322,7 @@ describe('EpistolaLetterComposerComponent', () => {
         processDefinitionKey: 'correspondentie-ad-hoc',
         documentId: 'doc-1',
         templateId: 'besluit',
+        componentKey: undefined,
         data: { naam: 'Jansen' },
       });
       expect(service.composerPreviewToBlob).not.toHaveBeenCalled();
@@ -336,6 +342,19 @@ describe('EpistolaLetterComposerComponent', () => {
       const { component } = startComponent();
 
       expect(component.canCompose).toBe(true);
+    });
+  });
+
+  it('names itself, so the backend finds this composer rather than another on the same form', () => {
+    const { component, service } = createComponent();
+    component.componentKey = 'pv:epistolaLetter';
+
+    component.onTemplateSelected('besluit');
+
+    expect(service.composerPrepare).toHaveBeenCalledWith({
+      taskId: 'task-1',
+      templateId: 'besluit',
+      componentKey: 'pv:epistolaLetter',
     });
   });
 });

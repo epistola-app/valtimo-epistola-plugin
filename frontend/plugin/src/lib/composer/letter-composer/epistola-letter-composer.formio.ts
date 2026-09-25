@@ -52,7 +52,17 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   // Embed the hidden carriers so dropping the component is enough. Valtimo prefills them
   // server-side through the epistola: value resolvers, and the component reads them back: the task
   // id on a task form, the case id on a start form opened against an existing dossier.
-  schema: { components: [PREFILLED_TASK_ID_CARRIER, PREFILLED_DOCUMENT_ID_CARRIER] },
+  //
+  // `prefill: false` excludes the composer's own value from Valtimo's prefill. Its key is a `pv:`
+  // one, so that the chosen letter becomes a process variable on submit — but reading it back is
+  // another matter: Valtimo resolves a `pv:` key against the case's process instances, and once a
+  // dossier has more than one instance holding that variable it cannot pick, and fails the whole
+  // form with a 500. Nothing should be prefilled here anyway: the letter is what the employee is
+  // about to choose.
+  schema: {
+    prefill: false,
+    components: [PREFILLED_TASK_ID_CARRIER, PREFILLED_DOCUMENT_ID_CARRIER],
+  },
   editForm: () => ({
     components: [
       {
@@ -139,6 +149,28 @@ export function registerEpistolaLetterComposerComponent(injector: Injector): voi
 }
 
 /**
+ * Keep `prefill: false` in the saved form.
+ *
+ * Form.io drops schema that equals the registered default, exactly as it does with the hidden
+ * carriers — so a form saved from the builder would lose the flag and start failing with a 500 on
+ * the second process instance. See the schema comment above.
+ */
+function withoutPrefill(
+  BaseComponent: ValtimoFormioComponentConstructor,
+): ValtimoFormioComponentConstructor {
+  class WithoutPrefill extends BaseComponent {
+    getModifiedSchema(schema: any, defaultSchema: any, recursion: boolean): any {
+      const modified = super.getModifiedSchema(schema, defaultSchema, recursion);
+      if (!recursion) {
+        modified.prefill = false;
+      }
+      return modified;
+    }
+  }
+  return WithoutPrefill as unknown as ValtimoFormioComponentConstructor;
+}
+
+/**
  * Forward the server-prefilled ids to the Angular element: the task the composer authorizes
  * against, and — on a start form — the dossier the ad-hoc letter is composed for. Without them the
  * component stays inert, which is what should happen in the builder and in design mode.
@@ -155,6 +187,9 @@ function withTaskContext(
           this._customAngularElement['taskInstanceId'] = prefilledTaskId;
         }
         this._customAngularElement['startDocumentId'] = readPrefilledDocumentId(this.root);
+        // The component's own key, so the backend can find this composer's settings rather than
+        // the first composer that happens to offer the chosen template.
+        this._customAngularElement['componentKey'] = this.component?.key;
       }
       return result;
     }

@@ -4,13 +4,13 @@
 
 package com.ritense.valtimo.epistola
 
+import app.epistola.valtimo.composer.LetterComposerService
+import app.epistola.valtimo.composer.LetterComposerService.ComposerContext
 import app.epistola.valtimo.domain.GenerationJobResult
 import app.epistola.valtimo.domain.SimpleMappingSupport
 import app.epistola.valtimo.domain.TemplateDetails
 import app.epistola.valtimo.schema.JsonSchemaMappingAnalyzer
 import app.epistola.valtimo.service.EpistolaService
-import app.epistola.valtimo.composer.LetterComposerService
-import app.epistola.valtimo.composer.LetterComposerService.ComposerContext
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.ritense.authorization.AuthorizationContext.Companion.runWithoutAuthorization
 import com.ritense.document.domain.impl.request.NewDocumentRequest
@@ -212,6 +212,7 @@ class LetterComposerE2ETest {
             task.taskDefinitionKey,
             processInstance.id,
             document.id().toString(),
+            COMPOSER_COMPONENT_KEY,
         )
     }
 
@@ -265,6 +266,9 @@ class LetterComposerE2ETest {
         private const val DOCUMENT_DEFINITION = "correspondentie"
         private const val PROCESS_KEY = "correspondentie-letter-composer"
         private const val CHOOSE_LETTER_TASK = "choose-letter"
+
+        /** The composer on the demo form names itself in every request, as the component does. */
+        private const val COMPOSER_COMPONENT_KEY = "pv:epistolaLetter"
         private const val CATALOG = "municipality-demo"
         private const val ACKNOWLEDGEMENT = "ontvangstbevestiging-bezwaar"
         private const val DECISION = "besluit-bezwaar"

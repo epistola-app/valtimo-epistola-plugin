@@ -82,8 +82,12 @@ public class ComposerConfigurationResolver {
      *
      * @throws ComposerException when the start form carries no composer, or none offering that template
      */
-    public LetterComposerConfiguration requireStartOffering(String processDefinitionId, String templateId) {
-        return requireOffering(forStartEvent(processDefinitionId), templateId,
+    public LetterComposerConfiguration requireStartOffering(
+            String processDefinitionId,
+            String componentKey,
+            String templateId
+    ) {
+        return requireOffering(forStartEvent(processDefinitionId), componentKey, templateId,
                 "the start form of process definition '" + processDefinitionId + "'");
     }
 
@@ -95,26 +99,44 @@ public class ComposerConfigurationResolver {
     public LetterComposerConfiguration requireOffering(
             String processDefinitionId,
             String activityId,
+            String componentKey,
             String templateId
     ) {
-        return requireOffering(forActivity(processDefinitionId, activityId), templateId,
+        return requireOffering(forActivity(processDefinitionId, activityId), componentKey, templateId,
                 "the form of activity '" + activityId + "'");
     }
 
+    /**
+     * Pick the composer that both is the one asking and offers the template.
+     *
+     * <p>Matching on the component's own key matters on a start form: a form cannot know which
+     * process it starts (Valtimo hands a Form.io component only the components, never the process
+     * link), so the author names it — and a name that points at another process must fail rather
+     * than quietly compose with that process's composer.
+     */
     private LetterComposerConfiguration requireOffering(
             List<LetterComposerConfiguration> configurations,
+            String componentKey,
             String templateId,
             String where
     ) {
-        if (configurations.isEmpty()) {
+        boolean named = componentKey != null && !componentKey.isBlank();
+        List<LetterComposerConfiguration> candidates = named
+                ? configurations.stream()
+                        .filter(configuration -> componentKey.equals(configuration.componentKey()))
+                        .toList()
+                : configurations;
+        String location = named ? "'" + componentKey + "' on " + where : where;
+
+        if (candidates.isEmpty()) {
             throw new ComposerException(ComposerException.Reason.NO_COMPOSER,
-                    "No letter composer on " + where);
+                    "No letter composer on " + location);
         }
-        return configurations.stream()
+        return candidates.stream()
                 .filter(configuration -> configuration.offers(templateId))
                 .findFirst()
                 .orElseThrow(() -> new ComposerException(ComposerException.Reason.TEMPLATE_NOT_OFFERED,
-                        "Template '" + templateId + "' is not offered by the letter composer on " + where));
+                        "Template '" + templateId + "' is not offered by the letter composer on " + location));
     }
 
     private List<UUID> formDefinitionIds(String processDefinitionId, String activityId) {

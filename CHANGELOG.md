@@ -34,6 +34,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     so changing the connection clears ids that mean nothing in the new one.
   - **A single service task generates whichever letter was chosen**, through the
     `epistola-generate-composed-document` action. No gateway branch or service task per letter.
+  - **A composer is excluded from Valtimo's prefill.** Its key is a `pv:` one so the chosen letter
+    becomes a process variable on submit, but Valtimo resolves a `pv:` key against the case's
+    process instances when prefilling — and once a dossier has run the process twice it cannot pick
+    one and fails the whole form with a 500. `prefill: false` is part of the component's schema and
+    is re-added on save, like the hidden carriers, with `BundledComposerFormTest` pinning it for
+    every bundled form.
+  - **A composer names itself in every request.** A form may carry more than one, and a start-form
+    composer has to name the process it starts (Valtimo hands a Form.io component only the
+    components, never the process link). Sending the component's own key means the backend resolves
+    _that_ composer's settings, so a `processDefinitionKey` naming the wrong process now fails with
+    "no letter composer" instead of composing with another process's composer.
   - **An ad-hoc letter, with no user task at all.** The composer also runs on the **start form** of
     a process that starts on the dossier already open, so a case worker picks a letter from the
     dossier's Start menu, adjusts and previews it there, and the process only generates what was

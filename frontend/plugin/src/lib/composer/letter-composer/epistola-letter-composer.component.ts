@@ -227,6 +227,12 @@ export class EpistolaLetterComposerComponent
   @Input() composerContext: 'task' | 'start' = 'task';
   /** Start mode: the process this form starts, named by its version-stable key. */
   @Input() processDefinitionKey?: string;
+  /**
+   * This component's own Form.io key, set by the wrapper. The backend uses it to find *this*
+   * composer's settings, which on a start form is what makes a wrong `processDefinitionKey` fail
+   * rather than silently use another process's composer.
+   */
+  @Input() componentKey?: string;
   /** Start mode: the open dossier, from the server-prefilled `epistola:documentId` carrier. */
   @Input() startDocumentId?: string;
   /** Part of Valtimo's custom-component contract; a read-only form offers no letter to compose. */
@@ -431,8 +437,13 @@ export class EpistolaLetterComposerComponent
           processDefinitionKey: this.processDefinitionKey!,
           documentId: this.composedForDocumentId,
           templateId,
+          componentKey: this.componentKey,
         })
-      : this.composerApi.composerPrepare({ taskId: this.taskInstanceId!, templateId });
+      : this.composerApi.composerPrepare({
+          taskId: this.taskInstanceId!,
+          templateId,
+          componentKey: this.componentKey,
+        });
   }
 
   /** The preview call for the mode this composer was configured in. */
@@ -442,11 +453,13 @@ export class EpistolaLetterComposerComponent
           processDefinitionKey: this.processDefinitionKey!,
           documentId: this.composedForDocumentId,
           templateId,
+          componentKey: this.componentKey,
           data,
         })
       : this.composerApi.composerPreviewToBlob({
           taskId: this.taskInstanceId!,
           templateId,
+          componentKey: this.componentKey,
           data,
         });
   }

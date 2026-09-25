@@ -38,6 +38,8 @@ export interface PluginConfigurationInfo {
 export interface ComposerPrepareRequest {
   taskId: string;
   templateId: string;
+  /** Which composer on that form is asking, so a form may carry more than one. */
+  componentKey?: string | null;
 }
 
 /** A letter ready to be filled in: the mapped data plus a form for whatever the mapping left empty. */
@@ -55,6 +57,7 @@ export interface ComposerPrepareResponse {
 export interface ComposerPreviewRequest {
   taskId: string;
   templateId: string;
+  componentKey?: string | null;
   data: Record<string, unknown>;
 }
 
@@ -67,6 +70,12 @@ export interface ComposerStartPrepareRequest {
   processDefinitionKey: string;
   documentId?: string | null;
   templateId: string;
+  /**
+   * Which composer is asking. On a start form this is what catches a `processDefinitionKey` that
+   * names the wrong process: the backend then finds no composer by that key and refuses, instead
+   * of composing with whatever composer that other process's start form happens to carry.
+   */
+  componentKey?: string | null;
 }
 
 /** Body of a {@link EpistolaComposerApiService.composerPreviewStartToBlob} call. */

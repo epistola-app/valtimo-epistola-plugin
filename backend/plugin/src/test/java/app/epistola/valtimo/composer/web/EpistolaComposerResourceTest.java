@@ -57,6 +57,7 @@ import static org.mockito.Mockito.when;
 class EpistolaComposerResourceTest {
 
     private static final String TASK_ID = "task-1";
+    private static final String COMPONENT_KEY = "pv:epistolaLetter";
 
     private AuthorizationService authorizationService;
     private OperatonTaskService operatonTaskService;
@@ -91,13 +92,13 @@ class EpistolaComposerResourceTest {
                 .thenReturn(new PreparedLetter("besluit", "Besluit", "gemeente",
                         Map.of("naam", "Jansen"), new ObjectMapper().createObjectNode(), true));
 
-        var response = resource.prepare(new EpistolaComposerResource.PrepareRequest(TASK_ID, "besluit"));
+        var response = resource.prepare(new EpistolaComposerResource.PrepareRequest(TASK_ID, "besluit", COMPONENT_KEY));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         ArgumentCaptor<ComposerContext> captor = ArgumentCaptor.forClass(ComposerContext.class);
         verify(letterComposerService).prepare(captor.capture(), eq("besluit"));
         assertThat(captor.getValue()).isEqualTo(
-                new ComposerContext("process:1:abc", "choose-letter", "pi-1", "doc-1"));
+                new ComposerContext("process:1:abc", "choose-letter", "pi-1", "doc-1", COMPONENT_KEY));
     }
 
     @Test
@@ -106,16 +107,16 @@ class EpistolaComposerResourceTest {
                 .when(authorizationService).requirePermission(any(AuthorizationRequest.class));
 
         assertThatThrownBy(() -> resource.prepare(
-                new EpistolaComposerResource.PrepareRequest(TASK_ID, "besluit")))
+                new EpistolaComposerResource.PrepareRequest(TASK_ID, "besluit", COMPONENT_KEY)))
                 .isInstanceOf(AccessDeniedException.class);
         verifyNoInteractions(letterComposerService);
     }
 
     @Test
     void prepare_rejectsAMissingTaskOrTemplate() {
-        assertThat(resource.prepare(new EpistolaComposerResource.PrepareRequest(null, "besluit"))
+        assertThat(resource.prepare(new EpistolaComposerResource.PrepareRequest(null, "besluit", COMPONENT_KEY))
                 .getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(resource.prepare(new EpistolaComposerResource.PrepareRequest(TASK_ID, " "))
+        assertThat(resource.prepare(new EpistolaComposerResource.PrepareRequest(TASK_ID, " ", COMPONENT_KEY))
                 .getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         verifyNoInteractions(letterComposerService);
     }
@@ -124,7 +125,7 @@ class EpistolaComposerResourceTest {
     void prepare_returns404ForAnUnknownTask() {
         when(operatonTaskService.findTaskById("gone")).thenThrow(new TaskNotFoundException("gone"));
 
-        assertThat(resource.prepare(new EpistolaComposerResource.PrepareRequest("gone", "besluit"))
+        assertThat(resource.prepare(new EpistolaComposerResource.PrepareRequest("gone", "besluit", COMPONENT_KEY))
                 .getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
@@ -133,7 +134,7 @@ class EpistolaComposerResourceTest {
         when(letterComposerService.prepare(any(), any()))
                 .thenThrow(new ComposerException(ComposerException.Reason.NO_COMPOSER, "none here"));
 
-        assertThat(resource.prepare(new EpistolaComposerResource.PrepareRequest(TASK_ID, "besluit"))
+        assertThat(resource.prepare(new EpistolaComposerResource.PrepareRequest(TASK_ID, "besluit", COMPONENT_KEY))
                 .getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
@@ -144,7 +145,7 @@ class EpistolaComposerResourceTest {
                         ComposerException.Reason.TEMPLATE_NOT_OFFERED, "not offered"));
 
         var response = resource.preview(new EpistolaComposerResource.ComposerPreviewRequest(
-                TASK_ID, "geheime-brief", Map.of()));
+                TASK_ID, "geheime-brief", COMPONENT_KEY, Map.of()));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
@@ -155,7 +156,7 @@ class EpistolaComposerResourceTest {
                 .thenThrow(new ComposerException(ComposerException.Reason.RENDER_FAILED, "nope"));
 
         var response = resource.preview(new EpistolaComposerResource.ComposerPreviewRequest(
-                TASK_ID, "besluit", Map.of()));
+                TASK_ID, "besluit", COMPONENT_KEY, Map.of()));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
     }
@@ -166,7 +167,7 @@ class EpistolaComposerResourceTest {
                 .thenReturn(new ByteArrayInputStream("%PDF".getBytes()));
 
         var response = resource.preview(new EpistolaComposerResource.ComposerPreviewRequest(
-                TASK_ID, "besluit", Map.of("naam", "Jansen")));
+                TASK_ID, "besluit", COMPONENT_KEY, Map.of("naam", "Jansen")));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getHeaders().getContentType().toString()).isEqualTo("application/pdf");
@@ -182,7 +183,7 @@ class EpistolaComposerResourceTest {
                         Map.of(), new ObjectMapper().createObjectNode(), true));
 
         var response = resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
-                "correspondentie-ad-hoc", "doc-1", "besluit"));
+                "correspondentie-ad-hoc", "doc-1", "besluit", COMPONENT_KEY));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         ArgumentCaptor<ComposerContext> captor = ArgumentCaptor.forClass(ComposerContext.class);
@@ -190,7 +191,7 @@ class EpistolaComposerResourceTest {
         // No task, so no activity and no process instance: the configuration comes from the
         // definition's start form and the mapping reads the case alone.
         assertThat(captor.getValue()).isEqualTo(
-                new ComposerContext("process:2:def", null, null, "doc-1"));
+                new ComposerContext("process:2:def", null, null, "doc-1", COMPONENT_KEY));
         assertThat(captor.getValue().isStartEvent()).isTrue();
     }
 
@@ -200,7 +201,7 @@ class EpistolaComposerResourceTest {
                 .thenThrow(new AccessDeniedException("denied"));
 
         assertThatThrownBy(() -> resource.prepareOnStartForm(
-                new EpistolaComposerResource.StartPrepareRequest("correspondentie-ad-hoc", "doc-1", "besluit")))
+                new EpistolaComposerResource.StartPrepareRequest("correspondentie-ad-hoc", "doc-1", "besluit", COMPONENT_KEY)))
                 .isInstanceOf(AccessDeniedException.class);
         verifyNoInteractions(letterComposerService);
     }
@@ -211,16 +212,16 @@ class EpistolaComposerResourceTest {
                 .thenThrow(new StartEventAuthorization.NotFoundException("gone"));
 
         assertThat(resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
-                "correspondentie-ad-hoc", "doc-1", "besluit")).getStatusCode())
+                "correspondentie-ad-hoc", "doc-1", "besluit", COMPONENT_KEY)).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void prepareOnStartForm_rejectsAMissingProcessOrTemplate() {
         assertThat(resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
-                null, "doc-1", "besluit")).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                null, "doc-1", "besluit", COMPONENT_KEY)).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
-                "correspondentie-ad-hoc", "doc-1", " ")).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                "correspondentie-ad-hoc", "doc-1", " ", COMPONENT_KEY)).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         verifyNoInteractions(letterComposerService);
     }
 
@@ -232,7 +233,7 @@ class EpistolaComposerResourceTest {
                 .thenReturn(new ByteArrayInputStream("%PDF".getBytes()));
 
         var response = resource.previewOnStartForm(new EpistolaComposerResource.StartPreviewRequest(
-                "correspondentie-ad-hoc", null, "besluit", Map.of("naam", "Jansen")));
+                "correspondentie-ad-hoc", null, "besluit", COMPONENT_KEY, Map.of("naam", "Jansen")));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getHeaders().getContentType().toString()).isEqualTo("application/pdf");

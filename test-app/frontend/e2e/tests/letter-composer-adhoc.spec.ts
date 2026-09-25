@@ -17,25 +17,31 @@ import { openDossier } from '../pages/correspondentie.page';
  * Needs a reachable Epistola, since the preview renders a real PDF.
  */
 
-/** The Start menu fills in after the dossier loads, so re-open it until the process is listed. */
+/**
+ * Open the ad-hoc letter from the dossier's Start menu.
+ *
+ * The menu fills in after the dossier loads, and clicking Start toggles it — so wait for the item
+ * to be *visible* rather than merely present, or a retry closes the menu again and the click lands
+ * on a hidden element.
+ */
 async function startAdHocLetter(page: Page) {
   const adHoc = page.getByText('Losse brief versturen', { exact: true });
+  const startButton = page.getByRole('button', { name: /^Start/ }).first();
+
   await expect
     .poll(
       async () => {
-        if (await adHoc.count()) {
+        if (await adHoc.isVisible().catch(() => false)) {
           return true;
         }
-        await page
-          .getByRole('button', { name: /^Start/ })
-          .first()
-          .click({ force: true });
-        await page.waitForTimeout(2_000);
-        return adHoc.count().then((count) => count > 0);
+        await startButton.click({ force: true });
+        await page.waitForTimeout(1_500);
+        return adHoc.isVisible().catch(() => false);
       },
       { timeout: 40_000, message: 'the ad-hoc letter process never appeared in the Start menu' },
     )
     .toBe(true);
+
   await adHoc.click({ force: true });
 }
 

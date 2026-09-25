@@ -114,6 +114,18 @@ previewed is what gets generated**. It is a snapshot: if the case changes betwee
 generation, the letter still carries what the employee approved. `inputs` is kept separately so it
 stays visible what was changed by hand.
 
+## A composer is never prefilled
+
+The component's key is a `pv:` one, so the chosen letter becomes a process variable when the form
+is submitted. Reading it back is another matter, and the component carries `prefill: false` for it:
+Valtimo resolves a `pv:` key against the case's process instances when it prefills a form, and once
+a dossier has run the process twice — two instances holding `epistolaLetter` — it cannot pick one
+and fails the **whole form** with a 500. There is nothing to prefill either; the letter is what the
+employee is about to choose.
+
+Form.io drops component schema that equals the registered default, so the flag is re-added on save
+the same way the hidden carriers are. `BundledComposerFormTest` pins it for every bundled form.
+
 ## Authorization
 
 Both endpoints require `OperatonTask:VIEW` on the supplied task and derive everything else from it:

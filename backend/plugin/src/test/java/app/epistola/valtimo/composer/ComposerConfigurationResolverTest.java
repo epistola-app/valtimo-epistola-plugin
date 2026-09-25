@@ -172,7 +172,7 @@ class ComposerConfigurationResolverTest {
     void requireOffering_returnsTheComposerOfferingThatTemplate() {
         formOnTask(composerJson(""));
 
-        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "besluit").catalogId())
+        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, "besluit").catalogId())
                 .isEqualTo("gemeente");
     }
 
@@ -181,7 +181,7 @@ class ComposerConfigurationResolverTest {
         formOnTask(composerJson(""));
 
         assertThatThrownBy(() ->
-                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "geheime-brief"))
+                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, "geheime-brief"))
                 .isInstanceOf(ComposerException.class)
                 .hasMessageContaining("geheime-brief")
                 .extracting(e -> ((ComposerException) e).getReason())
@@ -194,7 +194,7 @@ class ComposerConfigurationResolverTest {
                 {"components":[{"type":"textfield","key":"pv:motivatie"}]}
                 """);
 
-        assertThatThrownBy(() -> resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "besluit"))
+        assertThatThrownBy(() -> resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, "besluit"))
                 .isInstanceOf(ComposerException.class)
                 .extracting(e -> ((ComposerException) e).getReason())
                 .isEqualTo(ComposerException.Reason.NO_COMPOSER);
@@ -246,7 +246,7 @@ class ComposerConfigurationResolverTest {
 
         assertThat(resolver.forStartEvent(PROCESS_DEFINITION_ID)).singleElement()
                 .satisfies(configuration -> assertThat(configuration.offers("besluit")).isTrue());
-        assertThat(resolver.requireStartOffering(PROCESS_DEFINITION_ID, "besluit").catalogId())
+        assertThat(resolver.requireStartOffering(PROCESS_DEFINITION_ID, null, "besluit").catalogId())
                 .isEqualTo("gemeente");
     }
 
@@ -254,9 +254,40 @@ class ComposerConfigurationResolverTest {
     void refusesATemplateTheStartFormDoesNotOffer() {
         when(processLinkService.getProcessLinks(PROCESS_DEFINITION_ID)).thenReturn(List.of());
 
-        assertThatThrownBy(() -> resolver.requireStartOffering(PROCESS_DEFINITION_ID, "besluit"))
+        assertThatThrownBy(() -> resolver.requireStartOffering(PROCESS_DEFINITION_ID, null, "besluit"))
                 .isInstanceOf(ComposerException.class)
                 .extracting(e -> ((ComposerException) e).getReason())
                 .isEqualTo(ComposerException.Reason.NO_COMPOSER);
+    }
+
+    @Test
+    void refusesWhenTheNamedComposerIsNotOnThatForm() {
+        // A start form cannot know which process it starts, so the author names it — and a name
+        // pointing at another process must fail rather than compose with that form's composer.
+        formOnTask(composerJson(""));
+
+        assertThatThrownBy(() ->
+                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:andereBrief", "besluit"))
+                .isInstanceOf(ComposerException.class)
+                .hasMessageContaining("pv:andereBrief")
+                .extracting(e -> ((ComposerException) e).getReason())
+                .isEqualTo(ComposerException.Reason.NO_COMPOSER);
+    }
+
+    @Test
+    void picksTheNamedComposerWhenAFormHasMoreThanOne() {
+        formOnTask("""
+                {"components":[
+                  {"type":"epistola-letter-composer","key":"pv:eerste",
+                   "pluginConfigurationId":"%s","catalogId":"gemeente",
+                   "templates":[{"templateId":"besluit"}]},
+                  {"type":"epistola-letter-composer","key":"pv:tweede",
+                   "pluginConfigurationId":"%s","catalogId":"andere-catalogus",
+                   "templates":[{"templateId":"besluit"}]}
+                ]}
+                """.formatted(PLUGIN_CONFIGURATION_ID, PLUGIN_CONFIGURATION_ID));
+
+        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:tweede", "besluit")
+                .catalogId()).isEqualTo("andere-catalogus");
     }
 }

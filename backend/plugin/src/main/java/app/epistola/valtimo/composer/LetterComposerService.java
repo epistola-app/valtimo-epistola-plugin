@@ -70,12 +70,14 @@ public class LetterComposerService {
      * @param activityId          The user task's activity id
      * @param processInstanceId   Backs {@code $pv} in the mapping
      * @param documentId          The case document, backing {@code $doc} in the mapping
+     * @param componentKey        Which composer on that form is asking, when the caller names it
      */
     public record ComposerContext(
             String processDefinitionId,
             String activityId,
             String processInstanceId,
-            String documentId
+            String documentId,
+            String componentKey
     ) {
         /**
          * Composing from a start form: the process has not started, so there is no task to name an
@@ -83,8 +85,12 @@ public class LetterComposerService {
          * from the definition's start form instead — see
          * {@link ComposerConfigurationResolver#forStartEvent}.
          */
-        public static ComposerContext forStartEvent(String processDefinitionId, String documentId) {
-            return new ComposerContext(processDefinitionId, null, null, documentId);
+        public static ComposerContext forStartEvent(
+                String processDefinitionId,
+                String documentId,
+                String componentKey
+        ) {
+            return new ComposerContext(processDefinitionId, null, null, documentId, componentKey);
         }
 
         /** True when there is no task, i.e. the letter is composed on a start form. */
@@ -168,9 +174,10 @@ public class LetterComposerService {
 
     private LetterComposerConfiguration configurationFor(ComposerContext ctx, String templateId) {
         return ctx.isStartEvent()
-                ? configurationResolver.requireStartOffering(ctx.processDefinitionId(), templateId)
+                ? configurationResolver.requireStartOffering(
+                        ctx.processDefinitionId(), ctx.componentKey(), templateId)
                 : configurationResolver.requireOffering(
-                        ctx.processDefinitionId(), ctx.activityId(), templateId);
+                        ctx.processDefinitionId(), ctx.activityId(), ctx.componentKey(), templateId);
     }
 
     /**

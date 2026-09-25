@@ -5,6 +5,7 @@
       "type": "epistola-letter-composer",
       "key": "pv:epistolaLetter",
       "input": true,
+      "prefill": false,
       "label": "Welke brief wilt u nu versturen?",
       "placeholder": "— kies een brief —",
       "letterSet": {
