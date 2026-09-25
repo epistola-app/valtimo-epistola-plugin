@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 import { test, expect, type Page } from '@playwright/test';
+import { openDossier } from '../pages/correspondentie.page';
 
 /**
  * An ad-hoc letter from an open dossier, with **no user task anywhere**.
@@ -15,16 +16,6 @@ import { test, expect, type Page } from '@playwright/test';
  *
  * Needs a reachable Epistola, since the preview renders a real PDF.
  */
-
-/** Valtimo polls in the background, so rows and menu items are never "stable" for long. */
-async function openFirstDossier(page: Page) {
-  await page.goto('/cases/correspondentie');
-  await page.getByRole('navigation', { name: /Side navigation/i }).waitFor({ timeout: 20_000 });
-  await page.locator('table tbody tr').first().waitFor({ timeout: 20_000 });
-  await page.waitForTimeout(3_000);
-  await page.locator('table tbody tr').first().click({ force: true });
-  await expect(page.getByRole('button', { name: /^Start/ })).toBeVisible({ timeout: 20_000 });
-}
 
 /** The Start menu fills in after the dossier loads, so re-open it until the process is listed. */
 async function startAdHocLetter(page: Page) {
@@ -52,7 +43,7 @@ test.describe('Letter composer — an ad-hoc letter, without a user task', () =>
   test('composes and generates from the dossier itself', async ({ page }) => {
     test.setTimeout(180_000);
 
-    await openFirstDossier(page);
+    await openDossier(page);
     await startAdHocLetter(page);
 
     // The composer runs on a start form: no task exists, and the case comes from the open dossier.

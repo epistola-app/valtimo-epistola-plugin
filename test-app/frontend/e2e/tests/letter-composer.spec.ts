@@ -2,7 +2,8 @@
 //
 // SPDX-License-Identifier: EUPL-1.2
 
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import { createDossier } from '../pages/correspondentie.page';
 
 /**
  * The letter composer on the Correspondentie case.
@@ -24,27 +25,11 @@ import { test, expect, type Page } from '@playwright/test';
 
 const DECISION_FIELDS = ['decisionType', 'decision', 'motivation'];
 
-async function startDossier(page: Page) {
-  await page.goto('/cases/correspondentie');
-  await page.getByRole('navigation', { name: /Side navigation/i }).waitFor({ timeout: 20_000 });
-  // An empty case list shows the button twice (header and empty state).
-  await page.getByRole('button', { name: 'Creëer Nieuw Dossier' }).first().click();
-
-  // The case has exactly one startable process, so this opens its start form directly. That is
-  // deliberate: with two, Valtimo shows a picker whose tiles reload the app instead of opening the
-  // form, which would leave the demo unstartable.
-  //
-  // The start form ships with valid defaults for the whole schema, so nothing has to be typed —
-  // what matters here is the letter composer on the task that follows.
-  await page.locator('input[name="data[objector.firstName]"]').waitFor({ timeout: 20_000 });
-  await page.getByRole('button', { name: 'Start correspondentie' }).click();
-}
-
 test.describe('Letter composer — pick a letter, fill in what the case cannot supply', () => {
   test('asks for the decision fields only, and previews the chosen letter', async ({ page }) => {
     test.setTimeout(180_000);
 
-    await startDossier(page);
+    await createDossier(page);
     await page
       .getByRole('button', { name: /Start|Aanmaken|Opslaan/ })
       .first()
