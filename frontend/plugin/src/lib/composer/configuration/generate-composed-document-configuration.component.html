@@ -1,0 +1,50 @@
+<v-form
+  data-testid="epistola-composed-form"
+  (valueChange)="formValueChange($event)"
+  *ngIf="prefillResolved$ | async"
+>
+  <v-input
+    name="letterVariable"
+    data-testid="epistola-composed-letter-variable"
+    [title]="'composedLetterVariable' | pluginTranslate: pluginId | async"
+    [tooltip]="'composedLetterVariableTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="resolvedPrefill?.letterVariable || defaultLetterVariable"
+    [disabled]="safeDisabled$ | async"
+  >
+  </v-input>
+
+  <v-input
+    name="resultProcessVariable"
+    data-testid="epistola-composed-result-variable"
+    [title]="'resultProcessVariable' | pluginTranslate: pluginId | async"
+    [tooltip]="'resultProcessVariableTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="resolvedPrefill?.resultProcessVariable"
+    [disabled]="safeDisabled$ | async"
+    [required]="true"
+  >
+  </v-input>
+
+  <v-input
+    name="filename"
+    data-testid="epistola-composed-filename"
+    [title]="'composedFilename' | pluginTranslate: pluginId | async"
+    [tooltip]="'composedFilenameTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="resolvedPrefill?.filename"
+    [disabled]="safeDisabled$ | async"
+  >
+  </v-input>
+
+  <v-input
+    name="correlationId"
+    data-testid="epistola-composed-correlation-id"
+    [title]="'correlationId' | pluginTranslate: pluginId | async"
+    [tooltip]="'correlationIdTooltip' | pluginTranslate: pluginId | async"
+    [margin]="true"
+    [defaultValue]="resolvedPrefill?.correlationId"
+    [disabled]="safeDisabled$ | async"
+  >
+  </v-input>
+</v-form>

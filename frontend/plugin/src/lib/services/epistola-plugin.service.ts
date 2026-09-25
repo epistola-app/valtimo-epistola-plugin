@@ -35,57 +35,6 @@ import {
   VariantInfo,
 } from '../models';
 
-/** One configured Epistola connection, as offered to an author. */
-export interface PluginConfigurationInfo {
-  id: string;
-  title: string;
-  tenantId: string | null;
-}
-
-/**
- * Body of a {@link EpistolaPluginService.composerPrepare} call. The browser names the task and one
- * of the templates its form offers; everything else — the catalog, the mapping, the case — is read
- * server-side from the form definition behind that task (ADR 0006).
- */
-export interface ComposerPrepareRequest {
-  taskId: string;
-  templateId: string;
-}
-
-/** A letter ready to be filled in: the mapped data plus a form for whatever the mapping left empty. */
-export interface ComposerPrepareResponse {
-  templateId: string;
-  label: string;
-  catalogId: string;
-  data: Record<string, unknown>;
-  form: any;
-  /** True when the mapping filled everything, so the employee is asked nothing. */
-  complete: boolean;
-}
-
-/** Body of a {@link EpistolaPluginService.composerPreviewToBlob} call. */
-export interface ComposerPreviewRequest {
-  taskId: string;
-  templateId: string;
-  data: Record<string, unknown>;
-}
-
-/**
- * The same two calls from a start form, where no task exists yet: an ad-hoc letter on an open
- * dossier. The process is named by its version-stable key, and the case by the id a server-side
- * value resolver prefilled into the form.
- */
-export interface ComposerStartPrepareRequest {
-  processDefinitionKey: string;
-  documentId?: string | null;
-  templateId: string;
-}
-
-/** Body of a {@link EpistolaPluginService.composerPreviewStartToBlob} call. */
-export interface ComposerStartPreviewRequest extends ComposerStartPrepareRequest {
-  data: Record<string, unknown>;
-}
-
 /**
  * Body of a {@link EpistolaPluginService.previewToBlob} call. Mirrors the
  * backend {@code PreviewRequest} record. The backend derives the process
@@ -291,50 +240,6 @@ export class EpistolaPluginService {
       params['sourceActivityId'] = sourceActivityId;
     }
     return this.http.get<any>(`${this.apiEndpoint}/retry-form`, { params });
-  }
-
-  /**
-   * The Epistola connections an author can choose from. Used where there is no process link to
-   * inherit one from — the letter composer's settings live in a form, not on a service task.
-   */
-  getConfigurations(): Observable<PluginConfigurationInfo[]> {
-    return this.http.get<PluginConfigurationInfo[]>(`${this.apiEndpoint}/configurations`);
-  }
-
-  /**
-   * Resolve a composer letter for the caller's task: what the mapping produced, and a Formio form
-   * asking for the template fields it left empty.
-   */
-  composerPrepare(request: ComposerPrepareRequest): Observable<ComposerPrepareResponse> {
-    return this.http.post<ComposerPrepareResponse>(`${this.apiEndpoint}/composer/prepare`, request);
-  }
-
-  /**
-   * Render a preview of a composed letter with the data assembled so far. Same
-   * {@code X-Skip-Interceptor: 422} treatment as the other previews, so a template that refuses
-   * this data shows inline instead of as a toast.
-   */
-  composerPreviewToBlob(request: ComposerPreviewRequest): Observable<Blob> {
-    return this.http.post(`${this.apiEndpoint}/composer/preview`, request, {
-      responseType: 'blob',
-      headers: new HttpHeaders().set('X-Skip-Interceptor', '422'),
-    });
-  }
-
-  /** {@link composerPrepare} for a letter composed on a start form. */
-  composerPrepareStart(request: ComposerStartPrepareRequest): Observable<ComposerPrepareResponse> {
-    return this.http.post<ComposerPrepareResponse>(
-      `${this.apiEndpoint}/composer/prepare/start`,
-      request,
-    );
-  }
-
-  /** {@link composerPreviewToBlob} for a letter composed on a start form. */
-  composerPreviewStartToBlob(request: ComposerStartPreviewRequest): Observable<Blob> {
-    return this.http.post(`${this.apiEndpoint}/composer/preview/start`, request, {
-      responseType: 'blob',
-      headers: new HttpHeaders().set('X-Skip-Interceptor', '422'),
-    });
   }
 
   /**

@@ -632,11 +632,10 @@ public class EpistolaAdminService {
         if ("epistola-generate-document".equals(link.getPluginActionDefinitionKey())) {
             try {
                 actionConfig = GenerateDocumentActionConfigurationRegistry.parse(link.getActionProperties());
-                if (actionConfig.version()
-                        < GenerateDocumentActionConfigurationRegistry.MINIMUM_CURRENT_VERSION) {
+                if (actionConfig.version() < GenerateDocumentActionConfigurationRegistry.LATEST_VERSION) {
                     problems.add("Generate-document action configuration v" + actionConfig.version()
                             + " is outdated; open and save this action to upgrade to v"
-                            + GenerateDocumentActionConfigurationRegistry.MINIMUM_CURRENT_VERSION);
+                            + GenerateDocumentActionConfigurationRegistry.LATEST_VERSION);
                 }
             } catch (IllegalArgumentException exception) {
                 problems.add(exception.getMessage());
@@ -653,18 +652,14 @@ public class EpistolaAdminService {
         }
 
         if (actionConfig != null) {
-            // From action version 2 the catalog and template may be expressions (a letter composer
-            // choosing per case), and an expression only resolves at runtime. Verify the literal
-            // ones; report the dynamic ones as configured but unverifiable, exactly as variantId
-            // has always been treated.
-            String catalogId = literalOrNull(actionConfig.catalogId());
-            String templateId = literalOrNull(actionConfig.templateId());
-            String variantId = literalOrNull(actionConfig.variantId());
+            String catalogId = actionConfig.catalogId();
+            String templateId = actionConfig.templateId();
+            String variantId = actionConfig.variantId() instanceof LiteralScalar literal
+                    ? literal.source()
+                    : null;
 
-            boolean catalogConfigured = actionConfig.catalogId().isConfigured();
-            boolean templateConfigured = actionConfig.templateId().isConfigured();
-            boolean staticallyCheckable = catalogId != null && !catalogId.isBlank()
-                    && templateId != null && !templateId.isBlank();
+            boolean catalogConfigured = catalogId != null && !catalogId.isBlank();
+            boolean templateConfigured = templateId != null && !templateId.isBlank();
 
             if (!templateConfigured) {
                 problems.add("No template configured");
@@ -681,7 +676,7 @@ public class EpistolaAdminService {
             // the checks are skipped — never a false "does not exist" (reachability is the
             // /health tab's job). variantId is only checked when it is a plain literal;
             // a JSONata expression resolves at runtime and cannot be verified statically.
-            if (catalogConfigured && templateConfigured && staticallyCheckable) {
+            if (catalogConfigured && templateConfigured) {
                 String configId = link.getPluginConfigurationId().toString();
 
                 Optional<Set<String>> catalogIds = refCache.catalogIds(configId, plugin);
@@ -836,16 +831,5 @@ public class EpistolaAdminService {
             log.error("Failed to load Epistola plugin configurations: {}", e.getMessage());
         }
         return entries;
-    }
-
-    /**
-     * The value of a configured scalar when it is literal, or null when it is an expression that
-     * only resolves at runtime and so cannot be checked against Epistola from here.
-     */
-    @SuppressWarnings("removal")
-    private static String literalOrNull(
-            app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.ConfiguredScalar scalar
-    ) {
-        return scalar instanceof LiteralScalar literal ? literal.source() : null;
     }
 }

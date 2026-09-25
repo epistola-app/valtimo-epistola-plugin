@@ -116,12 +116,14 @@ public class PreviewService {
         PluginProcessLink processLink = resolveProcessLink(processDefinitionId, ctx.sourceActivityId());
 
         var actionConfig = GenerateDocumentActionConfigurationRegistry.parse(processLink.getActionProperties());
+        String catalogId = actionConfig.catalogId();
+        String templateId = actionConfig.templateId();
         String dataMapping = actionConfig.dataMapping();
-        if (!actionConfig.catalogId().isConfigured()) {
+        if (catalogId == null || catalogId.isBlank()) {
             throw new PreviewException(PreviewException.Reason.MISSING_CONTEXT,
                     "No catalogId in process link for activity '" + processLink.getActivityId() + "'");
         }
-        if (!actionConfig.templateId().isConfigured()) {
+        if (templateId == null || templateId.isBlank()) {
             throw new PreviewException(PreviewException.Reason.MISSING_TEMPLATE,
                     "No templateId in process link for activity '" + processLink.getActivityId() + "'");
         }
@@ -182,18 +184,6 @@ public class PreviewService {
                 processLink.getPluginConfigurationId());
 
         var scalarEvalContext = evalCtxBuilder.build();
-        // From action version 2 these may be expressions, so they resolve like any other scalar;
-        // a v0/v1 link carries literals and resolves to exactly what was configured.
-        String catalogId = actionConfig.catalogId().resolve(jsonataMappingService, scalarEvalContext);
-        String templateId = actionConfig.templateId().resolve(jsonataMappingService, scalarEvalContext);
-        if (catalogId == null || catalogId.isBlank()) {
-            throw new PreviewException(PreviewException.Reason.MISSING_CONTEXT,
-                    "catalogId resolved to nothing for activity '" + processLink.getActivityId() + "'");
-        }
-        if (templateId == null || templateId.isBlank()) {
-            throw new PreviewException(PreviewException.Reason.MISSING_TEMPLATE,
-                    "templateId resolved to nothing for activity '" + processLink.getActivityId() + "'");
-        }
         String variantId = actionConfig.variantId().isConfigured()
                 ? actionConfig.variantId().resolve(jsonataMappingService, scalarEvalContext)
                 : null;

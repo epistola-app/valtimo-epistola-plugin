@@ -15,7 +15,7 @@
  *
  * SPDX-License-Identifier: EUPL-1.2
  */
-package app.epistola.valtimo.service.composer;
+package app.epistola.valtimo.composer;
 
 import app.epistola.valtimo.domain.SimpleMappingSupport;
 import app.epistola.valtimo.domain.TemplateDetails;
@@ -24,8 +24,8 @@ import app.epistola.valtimo.domain.TemplateField.FieldType;
 import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaService;
-import app.epistola.valtimo.service.composer.LetterComposerService.ComposerContext;
-import app.epistola.valtimo.service.composer.LetterComposerService.PreparedLetter;
+import app.epistola.valtimo.composer.LetterComposerService.ComposerContext;
+import app.epistola.valtimo.composer.LetterComposerService.PreparedLetter;
 import app.epistola.valtimo.service.form.FormioFormGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.service.PluginService;

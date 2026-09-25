@@ -28,7 +28,7 @@ import {
   registerEpistolaFormioComponent,
   ValtimoFormioComponentConstructor,
   withPrefilledCarriers,
-} from '../valtimo-formio-adapter';
+} from '../../components/valtimo-formio-adapter';
 
 export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-letter-composer',

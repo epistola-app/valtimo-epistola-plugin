@@ -38,9 +38,13 @@ jest.mock('@formio/angular', () => ({
 }));
 
 jest.mock('@valtimo/components', () => ({}));
+jest.mock('@valtimo/plugin', () => ({
+  PluginTranslatePipeModule: class {},
+  PluginTranslationService: class {},
+}));
 
-jest.mock('../../services', () => ({
-  EpistolaPluginService: class {},
+jest.mock('../composer-api.service', () => ({
+  EpistolaComposerApiService: class {},
 }));
 
 import { of, throwError } from 'rxjs';
@@ -98,6 +102,7 @@ describe('EpistolaLetterComposerComponent', () => {
       service as any,
       cdr as any,
       sanitizer as any,
+      { instant: jest.fn((key: string) => key) } as any,
     );
     component.templates = [
       { templateId: 'besluit', label: 'Besluit' },

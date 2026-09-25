@@ -9,8 +9,8 @@ import app.epistola.valtimo.domain.SimpleMappingSupport
 import app.epistola.valtimo.domain.TemplateDetails
 import app.epistola.valtimo.schema.JsonSchemaMappingAnalyzer
 import app.epistola.valtimo.service.EpistolaService
-import app.epistola.valtimo.service.composer.LetterComposerService
-import app.epistola.valtimo.service.composer.LetterComposerService.ComposerContext
+import app.epistola.valtimo.composer.LetterComposerService
+import app.epistola.valtimo.composer.LetterComposerService.ComposerContext
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.ritense.authorization.AuthorizationContext.Companion.runWithoutAuthorization
 import com.ritense.document.domain.impl.request.NewDocumentRequest
@@ -50,8 +50,8 @@ import java.time.Duration
  *   schema, and the real data contracts of the bundled catalog templates;
  * - "ask only for what the mapping did not fill" holds for two templates that share most of their
  *   contract: the acknowledgement needs nothing, the decision needs its three decision fields;
- * - the chosen letter survives the round trip through a process variable and comes back out of
- *   action configuration v2, so a single service task generates the letter that was picked.
+ * - the chosen letter survives the round trip through a process variable and comes back out of the
+ *   composed-letter action, so a single service task generates the letter that was picked.
  *
  * [EpistolaService] is mocked, but the template contracts are read from the bundled catalog rather
  * than invented here: a demo whose mapping drifts from the shipped contract should fail this test.

@@ -25,8 +25,8 @@ import java.util.Map;
 
 public record GenerateDocumentActionConfiguration(
         int version,
-        ConfiguredScalar catalogId,
-        ConfiguredScalar templateId,
+        String catalogId,
+        String templateId,
         ConfiguredScalar variantId,
         List<VariantAttribute> variantAttributes,
         ConfiguredScalar environmentId,
@@ -63,15 +63,10 @@ public record GenerateDocumentActionConfiguration(
     }
 
     /**
-     * A scalar that is taken exactly as written, with no expression evaluation.
+     * A scalar using the literal interpretation rules of legacy v0 actions.
      *
-     * <p>Two things use it. Legacy v0 actions, whose scalars were literal by definition; and the
-     * catalog and template of a v0/v1 action, which are ids picked from a dropdown rather than
-     * expressions — evaluating {@code besluit-bezwaar} as JSONata would read it as a path and
-     * resolve to nothing.
-     *
-     * @deprecated For v0 scalars only. A v1 scalar is a JSONata expression, and from v2 the
-     * catalog and template are expressions too.
+     * @deprecated Only v0 action configurations may contain literal scalars.
+     * V1 values are JSONata expressions.
      */
     @Deprecated(forRemoval = true)
     public record LiteralScalar(String source) implements ConfiguredScalar {

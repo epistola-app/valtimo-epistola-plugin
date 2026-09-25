@@ -15,7 +15,7 @@
  *
  * SPDX-License-Identifier: EUPL-1.2
  */
-package app.epistola.valtimo.service.composer;
+package app.epistola.valtimo.composer;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.ritense.form.domain.FormIoFormDefinition;

@@ -15,12 +15,13 @@
  *
  * SPDX-License-Identifier: EUPL-1.2
  */
-package app.epistola.valtimo.web.rest;
+package app.epistola.valtimo.composer.web;
 
-import app.epistola.valtimo.service.composer.ComposerException;
-import app.epistola.valtimo.service.composer.LetterComposerService;
-import app.epistola.valtimo.service.composer.LetterComposerService.ComposerContext;
-import app.epistola.valtimo.service.composer.LetterComposerService.PreparedLetter;
+import app.epistola.valtimo.composer.ComposerException;
+import app.epistola.valtimo.composer.LetterComposerService;
+import app.epistola.valtimo.composer.LetterComposerService.ComposerContext;
+import app.epistola.valtimo.composer.LetterComposerService.PreparedLetter;
+import app.epistola.valtimo.web.rest.StartEventAuthorization;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.authorization.AuthorizationService;
 import com.ritense.authorization.request.AuthorizationRequest;

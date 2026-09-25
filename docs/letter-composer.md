@@ -11,6 +11,21 @@ one offering three**, and adding a letter is one row in the component's settings
 
 Where its configuration lives, and why, is [ADR 0006](adr/0006-letter-composer-configuration.md).
 
+## It is a module of its own
+
+Nothing else in the plugin depends on the composer, so it is kept together and switchable:
+
+|            |                                                                                                                                                   |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Backend    | `app.epistola.valtimo.composer` (+ `.web`), wired by `EpistolaComposerConfiguration`                                                              |
+| Frontend   | `lib/composer/`, registered through one entry point (`registerEpistolaComposerComponents`) and calling one service (`EpistolaComposerApiService`) |
+| Off switch | `epistola.composer.enabled=false` — no beans, no endpoints                                                                                        |
+
+What it borrows, it borrows narrowly: the Epistola API, the JSONata mapping service, the Form.io
+form generator, and the start-form gate it shares with the document preview. Its generation step is
+an action on the plugin class, because Valtimo scans that class for actions, but the behaviour
+lives in the composer's own `ComposedLetter`.
+
 ## How it works
 
 ```
@@ -65,51 +80,23 @@ letter of this case type needs and the fragment only what makes this one differe
 
 ## Wiring the process
 
-One service task generates whatever was chosen, using **action configuration v2**, where the
-catalog and template are expressions:
+One service task generates whatever was chosen, with the **`epistola-generate-composed-document`**
+action:
 
 ```json
 {
-  "actionConfigVersion": 2,
-  "catalogId": "$pv.epistolaLetter.catalogId",
-  "templateId": "$pv.epistolaLetter.templateId",
-  "dataMapping": "$pv.epistolaLetter.data",
-  "outputFormat": "\"PDF\"",
-  "filename": "$pv.epistolaLetter.templateId & \".pdf\"",
+  "letterVariable": "epistolaLetter",
   "resultProcessVariable": "epistolaResult"
 }
 ```
 
+That is all it needs: the composer already resolved the catalog, the template and the data while
+the employee was looking at the preview, so this action has no template to pick and no mapping to
+write. It is deliberately **not** a mode of `generate-document`: that action's configurator is
+built around choosing a template and mapping to it, and the admin page verifies those ids really
+exist — neither means anything here.
+
 Waiting for the result is unchanged — see [async.md](async.md).
-
-## An ad-hoc letter, without a user task
-
-A case worker often wants to send a letter _now_, on a dossier that is already open, without the
-process having scheduled a task for it. The composer does that by sitting on the **start form of a
-process that runs on the open case**:
-
-```
-dossier → Start → "Losse brief versturen"
-      ↓  the Start dialog is the composer: pick, adjust, preview
-      ↓  submit starts the process with pv:epistolaLetter
-      ↓
-generate → wait for the result → done      (no user task anywhere)
-```
-
-Set the component's **Where is this form shown?** to _On a start form_ and name the process it
-starts. Wire the process with `canInitializeDocument: false` and `startableByUser: true`, so it
-appears in the dossier's Start menu rather than as a way to create a case.
-
-**Authorization differs, deliberately.** There is no task, so the endpoints
-(`/composer/prepare/start`, `/composer/preview/start`) authorize like Valtimo's own start-form path:
-`OperatonExecution:CREATE` on the process definition, plus `JsonSchemaDocument:VIEW` on the case.
-Both gates live in one place, `StartEventAuthorization`, shared with the document preview so the two
-cannot drift apart. The reasoning is [ADR 0004](adr/0004-start-event-preview-authorization.md).
-
-**Which case the letter is for** comes from the server-prefilled `epistola:documentId` carrier when
-Valtimo fills it, and otherwise from the dossier in the route — Valtimo does not prefill
-value-resolver fields on its `start-form?documentId=` route. That is sound for the same reason the
-ADR gives: the id selects _which_ case is checked, never _whether_ it is.
 
 ## What the component stores
 

@@ -115,6 +115,13 @@ docker/            # Docker compose for local dependencies
 - **Newer contract client, older server**: the reverse trap, with the same symptom. A contract release can add a response field older servers never send, and if it is `required` the generated models reject the whole response. Contract `1.3.0` did this with `slug` (fixed in `1.3.1`, which makes it optional), so read a resource's address from `id` (`key` on attributes), which every supported server sends — not from `slug` — until the Suite floor serves contract `1.3.0` or later. `oldestSupportedServerTest` runs `EpistolaServiceImplTest` against the oldest contract a supported Suite serves; it is part of `check`/`build`, not `test`, so run `./gradlew :backend:plugin:build` on a contract bump.
 - **Plugin properties**: Backend `@PluginProperty` keys must match frontend field names exactly
 - **Translations**: Add both `nl` and `en` translations in `epistola.specification.ts`
+- **Letter composer** (`epistola-letter-composer`): pick a letter from a configured list, fill in
+  what the case cannot supply, preview it, and let one `epistola-generate-composed-document` task
+  render it — on a user task or, with no task at all, on the start form of an ad-hoc process. It is
+  a module of its own (`app.epistola.valtimo.composer`, `lib/composer/`), switchable with
+  `epistola.composer.enabled=false`, and nothing else in the plugin depends on it. See
+  [docs/letter-composer.md](docs/letter-composer.md) and
+  [ADR 0006](docs/adr/0006-letter-composer-configuration.md).
 - **Feature toggle**: The plugin can be disabled per environment from a single build artifact.
   - **Backend**: `epistola.enabled=false` (Spring property, defaults to `true`). Disables auto-configuration — no beans, no endpoints, no result collector, and no catch-event auto-wiring (the engine SPI is never registered). Verified by `EpistolaCatchEventAutoWiringConfigTest`.
   - **Catch-event auto-wiring sub-flag**: `epistola.catch-event-auto-wiring.enabled=false` (defaults to `true`, nested under `epistola.enabled`). Drops only the engine-SPI beans (`EpistolaProcessEnginePlugin` + `EpistolaCatchEventParseListener`) so correlation falls back to declarative `epistolaWaitFor` `camunda:inputParameter` mappings — an escape hatch if a future Operaton breaks the SPI, without disabling the whole plugin.

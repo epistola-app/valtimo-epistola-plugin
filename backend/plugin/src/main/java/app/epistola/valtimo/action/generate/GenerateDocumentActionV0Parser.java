@@ -65,8 +65,8 @@ final class GenerateDocumentActionV0Parser implements GenerateDocumentActionVers
 
         return new GenerateDocumentActionConfiguration(
                 version(),
-                new LiteralScalar(properties.catalogId()),
-                new LiteralScalar(properties.templateId()),
+                properties.catalogId(),
+                properties.templateId(),
                 variantId,
                 attributes,
                 scalar("environmentId", properties.environmentId()),

@@ -24,6 +24,7 @@ import app.epistola.valtimo.domain.DocumentStorageTarget;
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
+import app.epistola.valtimo.composer.ComposedLetter;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
@@ -291,8 +292,8 @@ public class EpistolaPlugin {
                         resultProcessVariable));
 
         log.debug("Starting document generation: catalogId={}, templateId={}, variantId={}, variantAttributes={}, outputFormat={}, filename={}",
-                actionConfig.catalogId().source(),
-                actionConfig.templateId().source(),
+                actionConfig.catalogId(),
+                actionConfig.templateId(),
                 actionConfig.variantId().source(),
                 actionConfig.variantAttributes(),
                 actionConfig.outputFormat().source(),
@@ -353,19 +354,6 @@ public class EpistolaPlugin {
         }
         String resolvedFilename = actionConfig.filename().resolve(jsonataMappingService, scalarEvalContext);
 
-        // From action version 2 the catalog and template are expressions, so one service task can
-        // generate whichever letter was chosen (a letter composer writes {templateId, catalogId,
-        // data} to a process variable). A v0/v1 link resolves to the literal ids it was configured
-        // with, so nothing changes for it.
-        String resolvedCatalogId = actionConfig.catalogId().resolve(jsonataMappingService, scalarEvalContext);
-        String resolvedTemplateId = actionConfig.templateId().resolve(jsonataMappingService, scalarEvalContext);
-        if (resolvedCatalogId == null || resolvedCatalogId.isBlank()) {
-            throw new IllegalArgumentException("catalogId resolved to nothing");
-        }
-        if (resolvedTemplateId == null || resolvedTemplateId.isBlank()) {
-            throw new IllegalArgumentException("templateId resolved to nothing");
-        }
-
         // Resolve a dynamic action-level environment and fall back to the plugin default
         // when no usable override is configured or produced.
         String resolvedEnvironmentId = actionConfig.environmentId().isConfigured()
@@ -394,12 +382,123 @@ public class EpistolaPlugin {
                         .toList()
                 : null;
 
+        submitAndRecord(
+                execution,
+                new SubmitRequest(
+                        actionConfig.catalogId(),
+                        actionConfig.templateId(),
+                        resolvedVariantId,
+                        resolvedAttributes,
+                        effectiveEnvironmentId,
+                        resolvedData,
+                        effectiveOutputFormat,
+                        resolvedFilename,
+                        resolvedCorrelationId,
+                        configuredResultVariable));
+    }
+
+    /**
+     * Generate the letter a {@code epistola-letter-composer} put on a process variable.
+     *
+     * <p>Deliberately not a mode of {@code generate-document}: there is no template to pick, no
+     * mapping to write and nothing to verify statically, because the composer already resolved all
+     * of it while the employee was looking at the preview. Keeping it a separate action keeps that
+     * one's configurator — dropdowns, mapping builder, dangling-reference checks — about what it
+     * actually configures.
+     *
+     * @param execution             The process execution context
+     * @param letterVariable        The process variable holding the composed letter; defaults to
+     *                              {@code epistolaLetter}, the composer's own default key
+     * @param filename              Filename or JSONata expression; defaults to the template id
+     * @param correlationId         Optional correlation id or JSONata expression
+     * @param resultProcessVariable The process variable to store the rich result object in
+     */
+    @PluginAction(
+            key = "epistola-generate-composed-document",
+            title = "Generate composed letter",
+            description = "Generate the letter a letter composer put on a process variable. The template and its data come from that variable, so this action needs no template or mapping of its own.",
+            activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
+    )
+    public void generateComposedDocument(
+            DelegateExecution execution,
+            @PluginActionProperty String letterVariable,
+            @PluginActionProperty String filename,
+            @PluginActionProperty String correlationId,
+            @PluginActionProperty String resultProcessVariable
+    ) {
+        String variableName = letterVariable == null || letterVariable.isBlank()
+                ? EpistolaProcessVariables.COMPOSED_LETTER
+                : letterVariable;
+        validateProcessVariableName("resultProcessVariable", resultProcessVariable);
+
+        ComposedLetter letter = ComposedLetter.from(
+                execution.getVariable(variableName), variableName, objectMapper);
+
+        var scalarEvalContext = buildEvalCtx(execution, null);
+        String resolvedFilename = filename == null || filename.isBlank()
+                ? letter.templateId() + ".pdf"
+                : jsonataMappingService.evaluateScalar(scalarEvalContext.withExpression(filename));
+        String resolvedCorrelationId = correlationId == null || correlationId.isBlank()
+                ? null
+                : jsonataMappingService.evaluateScalar(scalarEvalContext.withExpression(correlationId));
+
+        log.debug("Generating composed letter from '{}': catalogId={}, templateId={}",
+                variableName, letter.catalogId(), letter.templateId());
+
+        submitAndRecord(
+                execution,
+                new SubmitRequest(
+                        letter.catalogId(),
+                        letter.templateId(),
+                        null,
+                        null,
+                        defaultEnvironmentId,
+                        letter.data(),
+                        FileFormat.PDF,
+                        resolvedFilename,
+                        resolvedCorrelationId,
+                        resultProcessVariable));
+    }
+
+    /**
+     * Everything a generation submit needs, so the two actions that submit one — a configured
+     * template and a composed letter — cannot drift apart in how they record the result.
+     *
+     * @param catalogId          Catalog the template lives in
+     * @param templateId         Template to render
+     * @param variantId          Explicit variant, or null
+     * @param variantAttributes  Attribute-based variant selection, or null
+     * @param environmentId      Environment to render in
+     * @param data               The template data
+     * @param outputFormat       The file format (PDF)
+     * @param filename           Filename for the generated document
+     * @param correlationId      Correlation id, or null
+     * @param resultProcessVariable Where the rich result object is stored
+     */
+    record SubmitRequest(
+            String catalogId,
+            String templateId,
+            String variantId,
+            List<VariantSelectionAttribute> variantAttributes,
+            String environmentId,
+            Map<String, Object> data,
+            FileFormat outputFormat,
+            String filename,
+            String correlationId,
+            String resultProcessVariable
+    ) {}
+
+    /**
+     * Submit a generation job and record it on the execution: the rich result object, the tenant,
+     * and the jobPath-keyed locator the result collector correlates through.
+     */
+    private void submitAndRecord(DelegateExecution execution, SubmitRequest request) {
         // Compute a routing key that targets this Valtimo node's collector partition.
         // If the collector hasn't completed its first poll yet (cold start) this returns null,
         // in which case the server falls back to the requestId as the routing key — the
         // result then routes by hash, which may land on another node and bypass us.
-        String baseRoutingKey = resolvedCorrelationId != null && !resolvedCorrelationId.isBlank()
-                ? resolvedCorrelationId
+        String baseRoutingKey = request.correlationId() != null && !request.correlationId().isBlank()
+                ? request.correlationId()
                 : java.util.UUID.randomUUID().toString();
         String routingKey = resultCollectorRunner.routingKeyFor(baseUrl, apiKey, tenantId, baseRoutingKey);
 
@@ -410,15 +509,15 @@ public class EpistolaPlugin {
                     baseUrl,
                     apiKey,
                     tenantId,
-                    resolvedCatalogId,
-                    resolvedTemplateId,
-                    resolvedVariantId,
-                    resolvedAttributes,
-                    effectiveEnvironmentId,
-                    resolvedData,
-                    effectiveOutputFormat,
-                    resolvedFilename,
-                    resolvedCorrelationId,
+                    request.catalogId(),
+                    request.templateId(),
+                    request.variantId(),
+                    request.variantAttributes(),
+                    request.environmentId(),
+                    request.data(),
+                    request.outputFormat(),
+                    request.filename(),
+                    request.correlationId(),
                     routingKey
             );
         } catch (Exception e) {
@@ -431,7 +530,7 @@ public class EpistolaPlugin {
             failureData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
             failureData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE,
                     "Document generation request failed: " + e.getMessage());
-            execution.setVariable(configuredResultVariable, failureData);
+            execution.setVariable(request.resultProcessVariable(), failureData);
             throw new RuntimeException("Failed to submit document generation request to Epistola", e);
         }
 
@@ -452,7 +551,7 @@ public class EpistolaPlugin {
         resultData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
         resultData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE, null);
         resultData.put(EpistolaProcessVariables.RESULT_KEY_JOB_PATH, jobPath);
-        execution.setVariable(configuredResultVariable, resultData);
+        execution.setVariable(request.resultProcessVariable(), resultData);
 
         // Store tenantId as a standalone process variable so it can be used in forms
         // (e.g. for building document download URLs without parsing the composite jobPath).
@@ -463,7 +562,7 @@ public class EpistolaPlugin {
         // the result collector can resolve the result variable (and process instance) from just the
         // completed job — including the variable pattern with no catch event. Unique name → parallel
         // branches never clobber it. See EpistolaMessageCorrelationService.
-        execution.setVariable(jobPath, configuredResultVariable);
+        execution.setVariable(jobPath, request.resultProcessVariable());
 
         // Hint the collector to look for the result soon — if it's currently
         // backed off into idle mode, this brings the next poll forward to
@@ -473,7 +572,7 @@ public class EpistolaPlugin {
         resultCollectorRunner.kickFor(baseUrl, apiKey, tenantId);
 
         log.debug("Document generation request submitted. jobPath={}, resultVar={}",
-                jobPath, configuredResultVariable);
+                jobPath, request.resultProcessVariable());
     }
 
     /**

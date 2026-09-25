@@ -15,7 +15,7 @@
  *
  * SPDX-License-Identifier: EUPL-1.2
  */
-package app.epistola.valtimo.service.composer;
+package app.epistola.valtimo.composer;
 
 /** Raised when a letter cannot be prepared or previewed, carrying why so the API can map it. */
 public class ComposerException extends RuntimeException {

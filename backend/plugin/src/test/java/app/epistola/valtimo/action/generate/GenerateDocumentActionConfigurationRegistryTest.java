@@ -23,7 +23,6 @@ import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.operaton.bpm.engine.delegate.DelegateExecution;
 
@@ -131,13 +130,13 @@ class GenerateDocumentActionConfigurationRegistryTest {
     @Test
     void rejectsUnsupportedVersion() {
         assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(properties(
-                99,
+                2,
                 "\"value.pdf\"",
                 null,
                 null)))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("actionConfigVersion 99")
-                .hasMessageContaining("latest supported version is 2");
+                .hasMessageContaining("actionConfigVersion 2")
+                .hasMessageContaining("latest supported version is 1");
     }
 
     @Test
@@ -385,61 +384,4 @@ class GenerateDocumentActionConfigurationRegistryTest {
     }
 
     private record V0ScalarCompatibilityFixture(String name, String value, String interpretation) {}
-
-    @Nested
-    class VersionTwoTemplateReferences {
-
-        private GenerateDocumentActionProperties v2(String catalogId, String templateId) {
-            return new GenerateDocumentActionProperties(
-                    2, catalogId, templateId, null, null, null,
-                    "{}", "\"PDF\"", "\"letter.pdf\"", null, "result");
-        }
-
-        @Test
-        void resolvesTheCatalogAndTemplateFromTheEvaluationContext() {
-            var configuration = GenerateDocumentActionConfigurationRegistry.parse(
-                    v2("$pv.letter.catalogId", "$pv.letter.templateId"));
-
-            var mappingService = new JsonataMappingService(
-                    new app.epistola.valtimo.expression.ExpressionFunctionRegistry(List.of()));
-            var context = EvaluationContext.builder()
-                    .expression("$pv.letter.templateId")
-                    .processVariableResolver(name -> "letter".equals(name)
-                            ? Map.of("catalogId", "gemeente", "templateId", "besluit")
-                            : null)
-                    .build();
-
-            assertThat(configuration.catalogId().resolve(mappingService, context)).isEqualTo("gemeente");
-            assertThat(configuration.templateId().resolve(mappingService, context)).isEqualTo("besluit");
-        }
-
-        @Test
-        void rejectsACatalogOrTemplateThatIsNotValidJsonata() {
-            assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(
-                    v2("$pv.(", "\"besluit\"")))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("catalogId must contain valid JSONata");
-        }
-
-        @Test
-        void stillRequiresBothToBeConfigured() {
-            assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(
-                    v2(" ", "\"besluit\"")))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("No catalog configured");
-        }
-
-        @Test
-        void leavesVersionOneReferencesLiteral() {
-            // A v1 id is picked from a dropdown, not written as JSONata: evaluating `besluit`
-            // would read it as a path and resolve to nothing.
-            var configuration = GenerateDocumentActionConfigurationRegistry.parse(
-                    new GenerateDocumentActionProperties(
-                            1, "gemeente", "besluit", null, null, null,
-                            "{}", "\"PDF\"", "\"letter.pdf\"", null, "result"));
-
-            assertThat(configuration.templateId().resolve(null, null)).isEqualTo("besluit");
-            assertThat(configuration.catalogId().resolve(null, null)).isEqualTo("gemeente");
-        }
-    }
 }

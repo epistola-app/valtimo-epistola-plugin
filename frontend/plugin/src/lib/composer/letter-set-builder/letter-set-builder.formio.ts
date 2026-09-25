@@ -18,7 +18,7 @@
 import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo } from '@valtimo/components';
 import { EpistolaLetterSetBuilderComponent } from './letter-set-builder.component';
-import { registerEpistolaFormioComponent } from '../valtimo-formio-adapter';
+import { registerEpistolaFormioComponent } from '../../components/valtimo-formio-adapter';
 
 export const EPISTOLA_LETTER_SET_BUILDER_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-letter-set-builder',

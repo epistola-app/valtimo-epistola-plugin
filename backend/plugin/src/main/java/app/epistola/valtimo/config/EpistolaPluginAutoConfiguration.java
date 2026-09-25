@@ -85,7 +85,7 @@ import java.util.List;
 @ConditionalOnProperty(name = "epistola.enabled", havingValue = "true", matchIfMissing = true)
 @EnableConfigurationProperties(EpistolaProperties.class)
 @EnableScheduling
-@Import(EpistolaDownloadStorageConfiguration.class)
+@Import({EpistolaDownloadStorageConfiguration.class, app.epistola.valtimo.composer.EpistolaComposerConfiguration.class})
 public class EpistolaPluginAutoConfiguration {
 
     @Bean
@@ -258,46 +258,6 @@ public class EpistolaPluginAutoConfiguration {
         return new app.epistola.valtimo.service.preview.PreviewService(pluginService, epistolaService,
                 processLinkService, operatonRepositoryService, runtimeService,
                 jsonataMappingService, documentService, objectMapper);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(app.epistola.valtimo.service.composer.ComposerConfigurationResolver.class)
-    public app.epistola.valtimo.service.composer.ComposerConfigurationResolver composerConfigurationResolver(
-            ProcessLinkService processLinkService,
-            com.ritense.form.repository.FormDefinitionRepository formDefinitionRepository
-    ) {
-        return new app.epistola.valtimo.service.composer.ComposerConfigurationResolver(
-                processLinkService, formDefinitionRepository);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(app.epistola.valtimo.service.composer.LetterComposerService.class)
-    public app.epistola.valtimo.service.composer.LetterComposerService letterComposerService(
-            app.epistola.valtimo.service.composer.ComposerConfigurationResolver composerConfigurationResolver,
-            PluginService pluginService,
-            EpistolaService epistolaService,
-            JsonataMappingService jsonataMappingService,
-            FormioFormGenerator formioFormGenerator,
-            com.ritense.document.service.DocumentService documentService,
-            RuntimeService runtimeService,
-            ObjectMapper objectMapper
-    ) {
-        return new app.epistola.valtimo.service.composer.LetterComposerService(
-                composerConfigurationResolver, pluginService, epistolaService, jsonataMappingService,
-                formioFormGenerator, documentService, runtimeService, objectMapper);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(app.epistola.valtimo.web.rest.EpistolaComposerResource.class)
-    public app.epistola.valtimo.web.rest.EpistolaComposerResource epistolaComposerResource(
-            app.epistola.valtimo.service.composer.LetterComposerService letterComposerService,
-            com.ritense.authorization.AuthorizationService authorizationService,
-            com.ritense.valtimo.service.OperatonTaskService operatonTaskService,
-            app.epistola.valtimo.web.rest.StartEventAuthorization startEventAuthorization
-    ) {
-        return new app.epistola.valtimo.web.rest.EpistolaComposerResource(
-                letterComposerService, authorizationService, operatonTaskService,
-                startEventAuthorization);
     }
 
     @Bean

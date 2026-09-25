@@ -15,7 +15,7 @@
  *
  * SPDX-License-Identifier: EUPL-1.2
  */
-package app.epistola.valtimo.service.composer;
+package app.epistola.valtimo.composer;
 
 import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateField.FieldType;

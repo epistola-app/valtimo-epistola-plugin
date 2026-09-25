@@ -29,10 +29,11 @@ import {
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent } from '@valtimo/components';
+import { PluginTranslatePipeModule, PluginTranslationService } from '@valtimo/plugin';
 import { FormioModule } from '@formio/angular';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
-import { EpistolaPluginService } from '../../services';
+import { EpistolaComposerApiService } from '../composer-api.service';
 import {
   ComposerData,
   hasValuesFor,
@@ -67,7 +68,7 @@ export interface ComposerValue {
  */
 @Component({
   standalone: true,
-  imports: [CommonModule, FormioModule],
+  imports: [CommonModule, FormioModule, PluginTranslatePipeModule],
   selector: 'epistola-letter-composer-component',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -80,7 +81,9 @@ export interface ComposerValue {
         (change)="onTemplateSelected($any($event.target).value)"
         data-testid="epistola-composer-select"
       >
-        <option value="">{{ placeholder || '— choose —' }}</option>
+        <option value="">
+          {{ placeholder || ('composerChoosePlaceholder' | pluginTranslate: pluginId | async) }}
+        </option>
         <option *ngFor="let option of offeredTemplates" [value]="option.templateId">
           {{ option.label || option.templateId }}
         </option>
@@ -88,14 +91,14 @@ export interface ComposerValue {
 
       <div *ngIf="!canCompose" class="composer-message" data-testid="epistola-composer-no-task">
         {{
-          composerContext === 'start'
-            ? 'This composer needs the process it starts to be configured.'
-            : 'Composing a letter is only available from within a user task.'
+          (composerContext === 'start' ? 'composerNeedsProcess' : 'composerNeedsTask')
+            | pluginTranslate: pluginId
+            | async
         }}
       </div>
 
       <div *ngIf="loading" class="composer-message" data-testid="epistola-composer-loading">
-        Preparing letter…
+        {{ 'composerPreparing' | pluginTranslate: pluginId | async }}
       </div>
 
       <div *ngIf="error" class="composer-error" data-testid="epistola-composer-error">
@@ -113,7 +116,7 @@ export interface ComposerValue {
             class="composer-message"
             data-testid="epistola-composer-nothing-to-ask"
           >
-            This letter needs no further input.
+            {{ 'composerNothingToAsk' | pluginTranslate: pluginId | async }}
           </p>
           <formio
             *ngIf="!complete && formDefinition"
@@ -126,14 +129,14 @@ export interface ComposerValue {
 
         <div class="composer-preview" data-testid="epistola-composer-preview">
           <div class="preview-header">
-            <span>Preview</span>
+            <span>{{ 'composerPreview' | pluginTranslate: pluginId | async }}</span>
           </div>
           <div
             *ngIf="previewLoading"
             class="composer-message"
             data-testid="epistola-composer-preview-loading"
           >
-            Generating preview…
+            {{ 'composerPreviewLoading' | pluginTranslate: pluginId | async }}
           </div>
           <object
             *ngIf="previewUrl && !previewLoading"
@@ -142,7 +145,7 @@ export interface ComposerValue {
             class="preview-pdf"
             data-testid="epistola-composer-preview-pdf"
           >
-            PDF preview not supported in this browser.
+            {{ 'composerPreviewUnsupported' | pluginTranslate: pluginId | async }}
           </object>
           <div
             *ngIf="previewError"
@@ -156,7 +159,7 @@ export interface ComposerValue {
             class="composer-message"
             data-testid="epistola-composer-awaiting-input"
           >
-            Fill in the fields to see the letter.
+            {{ 'composerAwaitingInput' | pluginTranslate: pluginId | async }}
           </div>
         </div>
       </div>
@@ -229,6 +232,9 @@ export class EpistolaLetterComposerComponent
   /** Part of Valtimo's custom-component contract; a read-only form offers no letter to compose. */
   @Input() disabled = false;
 
+  /** The plugin whose translations this component uses; constant, but templates need it bound. */
+  readonly pluginId = 'epistola';
+
   selectedTemplateId: string | null = null;
   catalogId: string | null = null;
   formDefinition: any = null;
@@ -262,9 +268,10 @@ export class EpistolaLetterComposerComponent
   private currentBlobUrl: string | null = null;
 
   constructor(
-    private readonly epistolaPluginService: EpistolaPluginService,
+    private readonly composerApi: EpistolaComposerApiService,
     private readonly cdr: ChangeDetectorRef,
     private readonly sanitizer: DomSanitizer,
+    private readonly pluginTranslationService: PluginTranslationService,
   ) {
     this.previewSubscription = this.previewSubject
       .pipe(debounceTime(1000))
@@ -375,7 +382,7 @@ export class EpistolaLetterComposerComponent
       error: (err) => {
         this.formDefinition = null;
         this.loading = false;
-        this.error = err?.error?.error || 'This letter could not be prepared.';
+        this.error = err?.error?.error || this.translate('composerPrepareFailed');
         this.cdr.markForCheck();
       },
     });
@@ -420,24 +427,24 @@ export class EpistolaLetterComposerComponent
   /** The prepare call for the mode this composer was configured in. */
   private prepareRequest(templateId: string) {
     return this.composerContext === 'start'
-      ? this.epistolaPluginService.composerPrepareStart({
+      ? this.composerApi.composerPrepareStart({
           processDefinitionKey: this.processDefinitionKey!,
           documentId: this.composedForDocumentId,
           templateId,
         })
-      : this.epistolaPluginService.composerPrepare({ taskId: this.taskInstanceId!, templateId });
+      : this.composerApi.composerPrepare({ taskId: this.taskInstanceId!, templateId });
   }
 
   /** The preview call for the mode this composer was configured in. */
   private previewRequest(templateId: string, data: ComposerData) {
     return this.composerContext === 'start'
-      ? this.epistolaPluginService.composerPreviewStartToBlob({
+      ? this.composerApi.composerPreviewStartToBlob({
           processDefinitionKey: this.processDefinitionKey!,
           documentId: this.composedForDocumentId,
           templateId,
           data,
         })
-      : this.epistolaPluginService.composerPreviewToBlob({
+      : this.composerApi.composerPreviewToBlob({
           taskId: this.taskInstanceId!,
           templateId,
           data,
@@ -449,7 +456,7 @@ export class EpistolaLetterComposerComponent
    * so the template's own complaint reaches the employee instead of a generic failure.
    */
   private readError(err: any, done: (message: string) => void): void {
-    const fallback = 'Preview could not be generated';
+    const fallback = this.translate('composerPreviewFailed');
     if (err?.error instanceof Blob) {
       err.error
         .text()
@@ -465,6 +472,11 @@ export class EpistolaLetterComposerComponent
       return;
     }
     done(err?.error?.error || fallback);
+  }
+
+  /** A plugin translation, for the messages that are built in code rather than in the template. */
+  private translate(key: string): string {
+    return this.pluginTranslationService.instant(key, this.pluginId);
   }
 
   private emit(value: ComposerValue | null): void {

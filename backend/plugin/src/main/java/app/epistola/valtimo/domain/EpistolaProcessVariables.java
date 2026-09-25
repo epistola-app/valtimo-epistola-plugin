@@ -62,6 +62,12 @@ public final class EpistolaProcessVariables {
      */
     public static final String RESULT_KEY_JOB_PATH = "jobPath";
 
+    /**
+     * Default process variable a letter composer writes its chosen letter to, and the one the
+     * composed-letter action reads back. A form may use another key; both sides then name it.
+     */
+    public static final String COMPOSED_LETTER = "epistolaLetter";
+
     /** Result-object key for the current job status (PENDING / IN_PROGRESS / COMPLETED / FAILED / CANCELLED). */
     public static final String RESULT_KEY_STATUS = "status";
 

@@ -17,6 +17,7 @@
  */
 
 import { PluginSpecification } from '@valtimo/plugin';
+import { GenerateComposedDocumentConfigurationComponent } from './composer/configuration/generate-composed-document-configuration.component';
 import { EpistolaConfigurationComponent } from './components/epistola-configuration/epistola-configuration.component';
 import { GenerateDocumentConfigurationComponent } from './components/generate-document-configuration/generate-document-configuration.component';
 import { CheckJobStatusConfigurationComponent } from './components/check-job-status-configuration/check-job-status-configuration.component';
@@ -43,6 +44,7 @@ const epistolaPluginSpecification: PluginSpecification = {
     'epistola-generate-document': GenerateDocumentConfigurationComponent,
     'epistola-check-job-status': CheckJobStatusConfigurationComponent,
     'epistola-download-document': DownloadDocumentConfigurationComponent,
+    'epistola-generate-composed-document': GenerateComposedDocumentConfigurationComponent,
   },
 
   // Translations
@@ -186,6 +188,38 @@ const epistolaPluginSpecification: PluginSpecification = {
       errorMessageVariableTooltip:
         'Naam van de procesvariabele waarin de foutmelding wordt opgeslagen (bij fout)',
       // Download document action
+      // Letter composer (runtime UI)
+      composerChooseLetter: 'Kies een brief',
+      composerChoosePlaceholder: '— kies een brief —',
+      composerNeedsTask: 'Een brief opstellen kan alleen vanuit een gebruikerstaak.',
+      composerNeedsProcess: 'Stel eerst in welk proces dit formulier start.',
+      composerPreparing: 'Brief voorbereiden…',
+      composerNothingToAsk: 'Deze brief heeft geen aanvullende invoer nodig.',
+      composerPreview: 'Voorbeeld',
+      composerPreviewLoading: 'Voorbeeld genereren…',
+      composerPreviewUnsupported: 'PDF-voorbeeld wordt niet ondersteund in deze browser.',
+      composerAwaitingInput: 'Vul de velden in om de brief te zien.',
+      composerPrepareFailed: 'Deze brief kon niet worden voorbereid.',
+      composerPreviewFailed: 'Voorbeeld kon niet worden gegenereerd.',
+      letterSetConnection: 'Epistola-verbinding',
+      letterSetChooseConnection: '— kies een verbinding —',
+      letterSetCatalog: 'Catalogus',
+      letterSetChooseCatalog: '— kies een catalogus —',
+      letterSetLetters: 'Beschikbare brieven',
+      letterSetLoading: 'Laden…',
+      letterSetLoadingTemplates: 'Sjablonen laden…',
+      letterSetCatalogFirst: 'Kies een catalogus om de sjablonen te zien.',
+      letterSetLabelPlaceholder: 'Label voor de behandelaar',
+      letterSetConnectionsFailed: 'De Epistola-verbindingen konden niet worden geladen.',
+      letterSetCatalogsFailed: 'De catalogi van deze verbinding konden niet worden geladen.',
+      letterSetTemplatesFailed: 'De sjablonen van deze catalogus konden niet worden geladen.',
+      'epistola-generate-composed-document': 'Genereer samengestelde brief',
+      composedLetterVariable: 'Briefvariabele',
+      composedLetterVariableTooltip:
+        'Naam van de procesvariabele waarin de briefkiezer de gekozen brief heeft gezet. Standaard epistolaLetter. De variabele bevat de catalogus, het sjabloon en de gegevens, dus deze actie heeft zelf geen sjabloon of mapping nodig.',
+      composedFilename: 'Bestandsnaam (optioneel)',
+      composedFilenameTooltip:
+        'JSONata-expressie voor de bestandsnaam. Leeg laten om de naam van het gekozen sjabloon te gebruiken.',
       'epistola-download-document': 'Download Document',
       documentVariable: 'Document Variabele',
       documentVariableTooltip:
@@ -451,6 +485,38 @@ const epistolaPluginSpecification: PluginSpecification = {
       errorMessageVariableTooltip:
         'Name of the process variable to store the error message in (when failed)',
       // Download document action
+      // Letter composer (runtime UI)
+      composerChooseLetter: 'Choose a letter',
+      composerChoosePlaceholder: '— choose a letter —',
+      composerNeedsTask: 'Composing a letter is only available from within a user task.',
+      composerNeedsProcess: 'Configure which process this form starts first.',
+      composerPreparing: 'Preparing letter…',
+      composerNothingToAsk: 'This letter needs no further input.',
+      composerPreview: 'Preview',
+      composerPreviewLoading: 'Generating preview…',
+      composerPreviewUnsupported: 'PDF preview not supported in this browser.',
+      composerAwaitingInput: 'Fill in the fields to see the letter.',
+      composerPrepareFailed: 'This letter could not be prepared.',
+      composerPreviewFailed: 'Preview could not be generated.',
+      letterSetConnection: 'Epistola connection',
+      letterSetChooseConnection: '— choose a connection —',
+      letterSetCatalog: 'Catalog',
+      letterSetChooseCatalog: '— choose a catalog —',
+      letterSetLetters: 'Letters on offer',
+      letterSetLoading: 'Loading…',
+      letterSetLoadingTemplates: 'Loading templates…',
+      letterSetCatalogFirst: 'Choose a catalog to see its templates.',
+      letterSetLabelPlaceholder: 'Label for the employee',
+      letterSetConnectionsFailed: 'Could not load the Epistola connections.',
+      letterSetCatalogsFailed: 'Could not load the catalogs of this connection.',
+      letterSetTemplatesFailed: 'Could not load the templates of this catalog.',
+      'epistola-generate-composed-document': 'Generate composed letter',
+      composedLetterVariable: 'Letter variable',
+      composedLetterVariableTooltip:
+        'Name of the process variable the letter composer wrote the chosen letter to. Defaults to epistolaLetter. It holds the catalog, the template and the data, so this action needs no template or mapping of its own.',
+      composedFilename: 'Filename (optional)',
+      composedFilenameTooltip:
+        "JSONata expression for the filename. Leave empty to use the chosen template's name.",
       'epistola-download-document': 'Download Document',
       documentVariable: 'Document Variable',
       documentVariableTooltip:

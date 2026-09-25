@@ -28,8 +28,9 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FormioCustomComponent } from '@valtimo/components';
+import { PluginTranslatePipeModule, PluginTranslationService } from '@valtimo/plugin';
 import { Subscription } from 'rxjs';
-import { EpistolaPluginService } from '../../services';
+import { EpistolaComposerApiService } from '../composer-api.service';
 import { CatalogInfo, TemplateInfo } from '../../models';
 
 /** One letter on offer, as stored in the composer's settings. */
@@ -57,12 +58,14 @@ export interface LetterSet {
  */
 @Component({
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, PluginTranslatePipeModule],
   selector: 'epistola-letter-set-builder-component',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="letter-set" data-testid="epistola-letter-set">
-      <label class="field-label">Epistola connection</label>
+      <label class="field-label">
+        {{ 'letterSetConnection' | pluginTranslate: pluginId | async }}
+      </label>
       <select
         class="field-input"
         data-testid="epistola-letter-set-configuration"
@@ -71,7 +74,11 @@ export interface LetterSet {
         [disabled]="disabled"
       >
         <option value="">
-          {{ loadingConfigurations ? 'Loading…' : '— choose a connection —' }}
+          {{
+            (loadingConfigurations ? 'letterSetLoading' : 'letterSetChooseConnection')
+              | pluginTranslate: pluginId
+              | async
+          }}
         </option>
         <option *ngFor="let configuration of configurations" [value]="configuration.id">
           {{ configuration.title
@@ -79,7 +86,9 @@ export interface LetterSet {
         </option>
       </select>
 
-      <label class="field-label">Catalog</label>
+      <label class="field-label">{{
+        'letterSetCatalog' | pluginTranslate: pluginId | async
+      }}</label>
       <select
         class="field-input"
         data-testid="epistola-letter-set-catalog"
@@ -87,14 +96,24 @@ export interface LetterSet {
         (ngModelChange)="onCatalogSelected($event)"
         [disabled]="disabled || !value?.pluginConfigurationId"
       >
-        <option value="">{{ loadingCatalogs ? 'Loading…' : '— choose a catalog —' }}</option>
+        <option value="">
+          {{
+            (loadingCatalogs ? 'letterSetLoading' : 'letterSetChooseCatalog')
+              | pluginTranslate: pluginId
+              | async
+          }}
+        </option>
         <option *ngFor="let catalog of catalogs" [value]="catalog.id">{{ catalog.name }}</option>
       </select>
 
-      <label class="field-label">Letters on offer</label>
-      <div *ngIf="loadingTemplates" class="field-note">Loading templates…</div>
+      <label class="field-label">{{
+        'letterSetLetters' | pluginTranslate: pluginId | async
+      }}</label>
+      <div *ngIf="loadingTemplates" class="field-note">
+        {{ 'letterSetLoadingTemplates' | pluginTranslate: pluginId | async }}
+      </div>
       <div *ngIf="!loadingTemplates && !value?.catalogId" class="field-note">
-        Choose a catalog to see its templates.
+        {{ 'letterSetCatalogFirst' | pluginTranslate: pluginId | async }}
       </div>
       <table *ngIf="!loadingTemplates && templates.length" class="letter-table">
         <tbody>
@@ -113,7 +132,9 @@ export interface LetterSet {
               <input
                 type="text"
                 class="field-input"
-                placeholder="Label for the employee"
+                [placeholder]="
+                  ('letterSetLabelPlaceholder' | pluginTranslate: pluginId | async) || ''
+                "
                 [attr.data-testid]="'epistola-letter-set-label-' + template.id"
                 [disabled]="disabled || !isOffered(template.id)"
                 [ngModel]="labelOf(template.id)"
@@ -188,12 +209,16 @@ export class EpistolaLetterSetBuilderComponent
   loadingTemplates = false;
   error: string | null = null;
 
+  /** The plugin whose translations this widget uses; constant, but templates need it bound. */
+  readonly pluginId = 'epistola';
+
   private subscriptions: Subscription[] = [];
   private restored = false;
 
   constructor(
-    private readonly epistolaPluginService: EpistolaPluginService,
+    private readonly composerApi: EpistolaComposerApiService,
     private readonly cdr: ChangeDetectorRef,
+    private readonly pluginTranslationService: PluginTranslationService,
   ) {
     this.loadConfigurations();
   }
@@ -284,7 +309,7 @@ export class EpistolaLetterSetBuilderComponent
   private loadConfigurations(): void {
     this.loadingConfigurations = true;
     this.subscriptions.push(
-      this.epistolaPluginService.getConfigurations().subscribe({
+      this.composerApi.getConfigurations().subscribe({
         next: (configurations) => {
           this.configurations = configurations;
           this.loadingConfigurations = false;
@@ -292,7 +317,10 @@ export class EpistolaLetterSetBuilderComponent
         },
         error: () => {
           this.loadingConfigurations = false;
-          this.error = 'Could not load the Epistola connections.';
+          this.error = this.pluginTranslationService.instant(
+            'letterSetConnectionsFailed',
+            this.pluginId,
+          );
           this.cdr.markForCheck();
         },
       }),
@@ -302,7 +330,7 @@ export class EpistolaLetterSetBuilderComponent
   private loadCatalogs(pluginConfigurationId: string): void {
     this.loadingCatalogs = true;
     this.subscriptions.push(
-      this.epistolaPluginService.getCatalogs(pluginConfigurationId).subscribe({
+      this.composerApi.getCatalogs(pluginConfigurationId).subscribe({
         next: (catalogs) => {
           this.catalogs = catalogs;
           this.loadingCatalogs = false;
@@ -310,7 +338,10 @@ export class EpistolaLetterSetBuilderComponent
         },
         error: () => {
           this.loadingCatalogs = false;
-          this.error = 'Could not load the catalogs of this connection.';
+          this.error = this.pluginTranslationService.instant(
+            'letterSetCatalogsFailed',
+            this.pluginId,
+          );
           this.cdr.markForCheck();
         },
       }),
@@ -320,7 +351,7 @@ export class EpistolaLetterSetBuilderComponent
   private loadTemplates(pluginConfigurationId: string, catalogId: string): void {
     this.loadingTemplates = true;
     this.subscriptions.push(
-      this.epistolaPluginService.getTemplates(pluginConfigurationId, catalogId).subscribe({
+      this.composerApi.getTemplates(pluginConfigurationId, catalogId).subscribe({
         next: (templates) => {
           this.templates = templates;
           this.loadingTemplates = false;
@@ -328,7 +359,10 @@ export class EpistolaLetterSetBuilderComponent
         },
         error: () => {
           this.loadingTemplates = false;
-          this.error = 'Could not load the templates of this catalog.';
+          this.error = this.pluginTranslationService.instant(
+            'letterSetTemplatesFailed',
+            this.pluginId,
+          );
           this.cdr.markForCheck();
         },
       }),

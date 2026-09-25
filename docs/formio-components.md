@@ -114,6 +114,8 @@ Its configuration (plugin configuration, catalog, templates, mappings) lives in 
 read **server-side** from the form definition behind the caller's task; the browser sends the task
 and a template id only, and a template the form does not offer is refused. See
 [letter-composer.md](letter-composer.md) and [ADR 0006](adr/0006-letter-composer-configuration.md).
+The composer lives in `lib/composer/` and is switchable with `epistola.composer.enabled=false`;
+nothing else in the plugin depends on it.
 
 ### `epistola-document` — Document view/download (author-facing)
 

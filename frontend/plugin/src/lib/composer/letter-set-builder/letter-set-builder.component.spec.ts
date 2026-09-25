@@ -29,7 +29,11 @@ jest.mock('@angular/core', () => ({
 jest.mock('@angular/common', () => ({ CommonModule: class {} }));
 jest.mock('@angular/forms', () => ({ FormsModule: class {} }));
 jest.mock('@valtimo/components', () => ({}));
-jest.mock('../../services', () => ({ EpistolaPluginService: class {} }));
+jest.mock('@valtimo/plugin', () => ({
+  PluginTranslatePipeModule: class {},
+  PluginTranslationService: class {},
+}));
+jest.mock('../composer-api.service', () => ({ EpistolaComposerApiService: class {} }));
 
 import { of, throwError } from 'rxjs';
 import { EpistolaLetterSetBuilderComponent } from './letter-set-builder.component';
@@ -49,7 +53,12 @@ describe('EpistolaLetterSetBuilderComponent', () => {
       ),
     };
     const cdr = { markForCheck: jest.fn() };
-    const component = new EpistolaLetterSetBuilderComponent(service as any, cdr as any);
+    const translations = { instant: jest.fn((key: string) => key) };
+    const component = new EpistolaLetterSetBuilderComponent(
+      service as any,
+      cdr as any,
+      translations as any,
+    );
     component.value = initial;
     return { component, service };
   }
@@ -178,7 +187,7 @@ describe('EpistolaLetterSetBuilderComponent', () => {
   });
 
   it('reports a failed lookup instead of silently offering nothing', () => {
-    jest.mock('../../services', () => ({ EpistolaPluginService: class {} }));
+    jest.mock('../composer-api.service', () => ({ EpistolaComposerApiService: class {} }));
     const service = {
       getConfigurations: jest.fn(() => throwError(() => new Error('boom'))),
       getCatalogs: jest.fn(),
@@ -186,11 +195,10 @@ describe('EpistolaLetterSetBuilderComponent', () => {
     };
     const component = new EpistolaLetterSetBuilderComponent(
       service as any,
-      {
-        markForCheck: jest.fn(),
-      } as any,
+      { markForCheck: jest.fn() } as any,
+      { instant: jest.fn((key: string) => key) } as any,
     );
 
-    expect(component.error).toBe('Could not load the Epistola connections.');
+    expect(component.error).toBe('letterSetConnectionsFailed');
   });
 });
