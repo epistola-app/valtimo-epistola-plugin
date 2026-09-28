@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.security.core.authority.SimpleGrantedAuthority
 import org.springframework.security.oauth2.jwt.Jwt
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken
@@ -39,6 +40,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put
+import org.springframework.transaction.support.TransactionTemplate
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.wait.strategy.Wait
@@ -90,6 +92,12 @@ class TraineeScopingE2ETest {
 
     @Autowired
     lateinit var repositoryService: RepositoryService
+
+    @Autowired
+    lateinit var jdbcTemplate: JdbcTemplate
+
+    @Autowired
+    lateinit var transactionTemplate: TransactionTemplate
 
     private val alice = trainee("alice")
     private val bob = trainee("bob")
@@ -187,6 +195,32 @@ class TraineeScopingE2ETest {
         // Another trainee's dossier stays out of reach: its configuration, even to read, and its process links.
         assertThat(status(get(settings), bob)).isEqualTo(403)
         assertThat(status(putJson("/api/v1/process-link", update), bob)).isEqualTo(403)
+    }
+
+    @Test
+    fun `the case list shows shared case types and the trainee's own dossier, never another trainee's`() {
+        status(get("/api/v1/case-definition?active=true"), alice)
+        status(get("/api/v1/case-definition?active=true"), bob)
+        val aliceKey = TraineeKeys.caseDefinitionKey(alice.identity)
+        val bobKey = TraineeKeys.caseDefinitionKey(bob.identity)
+        // Dossiers are active once provisioned (valtimo-epistola-plugin#145); do it here so this
+        // test doesn't depend on that change.
+        transactionTemplate.execute {
+            jdbcTemplate.update("UPDATE case_definition SET active = true WHERE case_definition_key IN (?, ?)", aliceKey, bobKey)
+        }
+
+        val aliceList = caseDefinitionKeys(alice)
+        assertThat(aliceList).contains(SHARED_CASE, aliceKey).doesNotContain(bobKey)
+        assertThat(caseDefinitionKeys(bob)).contains(SHARED_CASE, bobKey).doesNotContain(aliceKey)
+        assertThat(caseDefinitionKeys(admin)).contains(SHARED_CASE, aliceKey, bobKey)
+    }
+
+    private fun caseDefinitionKeys(user: TestUser): List<String> {
+        val result = perform(get("/api/v1/case-definition?active=true&size=100"), user)
+        assertThat(result.response.status).describedAs(result.response.contentAsString).isEqualTo(200)
+        val body = objectMapper.readTree(result.response.contentAsString)
+        val items = if (body.isArray) body else body["content"]
+        return items.map { (it["key"] ?: it["caseDefinitionKey"] ?: it["id"]["key"]).asText() }
     }
 
     @Test
