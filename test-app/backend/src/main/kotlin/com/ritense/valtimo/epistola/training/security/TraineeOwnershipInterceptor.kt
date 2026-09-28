@@ -22,20 +22,14 @@ import java.util.UUID
  * columns, widget/header tabs, startable items, export, internal status). See
  * [TrainingHttpSecurityConfigurer]'s KDoc for what's still explicitly excluded from that surface.
  *
- * **Also covers the case/document/task data plane** — added after discovering that granting
- * trainees real `ROLE_ADMIN` (see [com.ritense.valtimo.epistola.training.TraineeKeys.ADMIN_AUTHORITY]'s
- * KDoc) doesn't just widen the admin-configuration surface above: `all.permission.json` grants
- * `ROLE_ADMIN` unconditioned (no per-tenant scoping at all) access to `JsonSchemaDocument` and
- * `OperatonTask`, among other resource types, and PBAC unions grants across every role a principal
- * carries. Confirmed live, not assumed: a trainee could fetch a document and a task belonging to a
- * completely unrelated demo case type, full content included. Unlike the config-management
- * surface, `document`/`task` identify themselves purely by their own id (never a document-/
- * case-definition name directly), so [DocumentOwnershipResolver]/[TaskOwnershipResolver] resolve
- * that first. Only the document/task endpoints this package's own manual testing found reachable
- * are covered here (view, delete/complete/assign/unassign/set-due-date, search) — see
- * [TraineeAdminSurfaceGuardFilter]'s KDoc-equivalent gap note for the other unconditioned
- * `ROLE_ADMIN` resource types (`Note`, `JsonSchemaDocumentSnapshot`, `Dashboard`, `CaseTab`,
- * `SearchField`, `Object`, `ResourcePermission`) still open.
+ * **Also covers the case/document/task data plane**, as a second line behind PBAC. Trainees no
+ * longer carry `ROLE_ADMIN` server-side ([TraineeAdminAuthorityStripFilter]), so Valtimo's own PBAC
+ * (`demo.permission.json`) already limits them to cases they created. These checks apply the same
+ * rule ([TraineeOwnershipChecks.isOwnDocument]: the case document's `createdBy` is the caller) on
+ * the document/task/process endpoints, which identify themselves only by their own id —
+ * [DocumentOwnershipResolver]/[TaskOwnershipResolver]/[ProcessInstanceOwnershipResolver] resolve
+ * that to the owning case document first. They were the only data-plane protection while trainees
+ * carried an unconditioned `ROLE_ADMIN` (see docs/training-facility.md, "The critical finding").
  *
  * **Also covers what would otherwise be hard-blocked "arbitrary id" endpoints in
  * [TraineeAdminSurfaceGuardFilter]** - force-deleting a process instance and reconciling a stuck
@@ -53,7 +47,8 @@ class TraineeOwnershipInterceptor(
         response: HttpServletResponse,
         handler: Any,
     ): Boolean {
-        val traineeIdentity = ownershipChecks.currentTraineeIdentityOrNull() ?: return true
+        val trainee = ownershipChecks.currentTraineeOrNull() ?: return true
+        val traineeIdentity = trainee.identity
 
         pathVariable(request, "pluginConfigurationId")?.let { pluginConfigurationId ->
             return allowOrForbid(response, ownershipChecks.isOwnPluginConfiguration(traineeIdentity, pluginConfigurationId))
@@ -93,33 +88,32 @@ class TraineeOwnershipInterceptor(
         // only safe to key off because TrainingWebConfig registers this interceptor against
         // /api/v1/document/** specifically, so it only ever fires for these endpoints' own {id}.
         //
-        // Deliberately no allowShared here, unlike the case-definition-management checks above:
-        // "form-flow-demo" is a live, shared case type real staff/other tests can create genuine
-        // case instances under — allowShared there is about sharing read-only *structure*
-        // (settings/tabs/schema), never actual case *data*. demo.permission.json already drew this
-        // exact line before the ROLE_ADMIN pivot: JsonSchemaDocumentDefinition:view has a
-        // "form-flow-demo"-conditioned grant, JsonSchemaDocument:view does not — only
-        // ${currentUserId}. Found by re-checking after the fix looked "mostly right": a trainee's
-        // task list still showed several real tasks, all belonging to form-flow-demo document
-        // instances that were not their own.
+        // Scoped by who created the case, not by its case type: a trainee works on their own cases
+        // in a shared case type as much as in their own dossier, and on nobody else's anywhere.
+        // Same rule as demo.permission.json gives PBAC — see TraineeOwnershipChecks.isOwnDocument.
         pathVariable(request, "id")?.let { documentId ->
-            return allowOrForbid(response, ownershipChecks.isOwnDocument(traineeIdentity, documentId))
+            return allowOrForbid(response, ownershipChecks.isOwnDocument(trainee.login, documentId))
         }
 
         // JsonSchemaDocumentSearchResource: POST /api/v1/document-definition/{name}/search — the
         // definition name is directly in the URL, no resolution needed, same as caseDefinitionKey
         // above; deliberately checked separately (not folded into caseDefinitionKeyPathVariable)
         // since "name" is generic enough that reusing that shared helper risks matching an
-        // unrelated variable on some other already-registered path. No allowShared, same reasoning
-        // as the document id check above.
+        // unrelated variable on some other already-registered path. Shared case types are allowed:
+        // the search itself is narrowed to the caller's own cases by PBAC
+        // (JsonSchemaDocument:view_list, createdBy == ${currentUserEmail}), so paging and totals
+        // stay right. Another trainee's dossier is still refused outright.
         pathVariable(request, "name")?.let { documentDefinitionName ->
-            return allowOrForbid(response, ownershipChecks.isOwnCaseDefinition(traineeIdentity, documentDefinitionName))
+            return allowOrForbid(
+                response,
+                ownershipChecks.isOwnCaseDefinition(traineeIdentity, documentDefinitionName, allowShared = true),
+            )
         }
 
         // TaskResource: GET (view) / POST assign|unassign|complete|set-due-date /api/v1|v2/task/{taskId}.
-        // No allowShared, same reasoning as the document id check above.
+        // Scoped by the task's case document's creator, same as the document id check above.
         pathVariable(request, "taskId")?.let { taskId ->
-            return allowOrForbid(response, ownershipChecks.isOwnTask(traineeIdentity, taskId))
+            return allowOrForbid(response, ownershipChecks.isOwnTask(trainee.login, taskId))
         }
 
         // ProcessResource: POST /api/v1/process/{processInstanceId}/delete — confirmed from Valtimo
@@ -127,7 +121,7 @@ class TraineeOwnershipInterceptor(
         // originally hard-blocked this outright; scoping it instead needed the exact path variable
         // name verified first, since a wrong guess would silently never match and fail open).
         pathVariable(request, "processInstanceId")?.let { processInstanceId ->
-            return allowOrForbid(response, ownershipChecks.isOwnProcessInstance(traineeIdentity, processInstanceId))
+            return allowOrForbid(response, ownershipChecks.isOwnProcessInstance(trainee.login, processInstanceId))
         }
 
         // EpistolaAdminResource: GET .../configurations/{configurationId}/catalogs (list, read-only)
@@ -150,10 +144,27 @@ class TraineeOwnershipInterceptor(
         // the shared template dossier should stay untouched by every trainee, not reconciled by
         // whichever one happens to click it.
         pathVariable(request, "executionId")?.let { executionId ->
-            return allowOrForbid(response, ownershipChecks.isOwnExecution(traineeIdentity, executionId))
+            return allowOrForbid(response, ownershipChecks.isOwnExecution(trainee.login, executionId))
+        }
+
+        // Every case-definition management endpoint that changes something names its case type
+        // in the path, and the branch above has already decided those. A mutation under that
+        // prefix with no case key at all is one this package has not reviewed — refused rather
+        // than let through, now that TrainingHttpSecurityConfigurer widens the whole prefix.
+        // POST .../case-definition/draft names its key in the body instead and is checked by
+        // TraineeOwnershipRequestBodyAdvice.
+        if (isUnscopedManagementMutation(request)) {
+            return allowOrForbid(response, false)
         }
 
         return true
+    }
+
+    private fun isUnscopedManagementMutation(request: HttpServletRequest): Boolean {
+        if (request.method.equals("GET", ignoreCase = true)) return false
+        val path: String = request.requestURI ?: return false
+        if (path == "/api/management/v1/case-definition/draft") return false
+        return MANAGEMENT_CASE_PREFIXES.any { path.startsWith(it) }
     }
 
     private fun caseDefinitionKeyPathVariable(request: HttpServletRequest): String? =
@@ -180,5 +191,14 @@ class TraineeOwnershipInterceptor(
         @Suppress("UNCHECKED_CAST")
         val variables = request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE) as? Map<String, String>
         return variables?.get(name)
+    }
+
+    private companion object {
+        private val MANAGEMENT_CASE_PREFIXES =
+            listOf(
+                "/api/management/v1/case-definition/",
+                "/api/management/v1/case/",
+                "/api/management/v2/case/",
+            )
     }
 }

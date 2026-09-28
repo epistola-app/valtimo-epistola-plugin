@@ -15,6 +15,7 @@ import com.ritense.valtimo.epistola.training.security.DocumentOwnershipResolver
 import com.ritense.valtimo.epistola.training.security.ProcessDefinitionOwnershipResolver
 import com.ritense.valtimo.epistola.training.security.ProcessInstanceOwnershipResolver
 import com.ritense.valtimo.epistola.training.security.TaskOwnershipResolver
+import com.ritense.valtimo.epistola.training.security.TraineeAdminAuthorityStripFilter
 import com.ritense.valtimo.epistola.training.security.TraineeAdminSurfaceGuardFilter
 import com.ritense.valtimo.epistola.training.security.TraineeOwnershipChecks
 import com.ritense.valtimo.epistola.training.security.TraineeOwnershipInterceptor
@@ -91,7 +92,6 @@ class TrainingConfiguration {
         taskOwnershipResolver: TaskOwnershipResolver,
         processInstanceOwnershipResolver: ProcessInstanceOwnershipResolver,
         caseDefinitionRepository: CaseDefinitionRepository,
-        properties: TrainingProperties,
     ) = TraineeOwnershipChecks(
         processDefinitionOwnershipResolver,
         processLinkService,
@@ -99,7 +99,6 @@ class TrainingConfiguration {
         taskOwnershipResolver,
         processInstanceOwnershipResolver,
         caseDefinitionRepository,
-        properties,
     )
 
     @Bean
@@ -135,6 +134,9 @@ class TrainingConfiguration {
     @Bean
     fun traineeAdminSurfaceGuardFilter() = TraineeAdminSurfaceGuardFilter()
 
+    @Bean
+    fun traineeAdminAuthorityStripFilter() = TraineeAdminAuthorityStripFilter()
+
     // No fallback bean, unlike EpistolaTenantProvisioner above: TrainingHttpSecurityConfigurer
     // takes this as a nullable parameter and simply skips registering it when absent, so there is
     // nothing else that unconditionally depends on this bean existing.
@@ -151,10 +153,12 @@ class TrainingConfiguration {
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE + 10)
     fun trainingHttpSecurityConfigurer(
+        traineeAdminAuthorityStripFilter: TraineeAdminAuthorityStripFilter,
         traineeProvisioningFilter: TraineeProvisioningFilter,
         traineeAdminSurfaceGuardFilter: TraineeAdminSurfaceGuardFilter,
         trainingFacilitySharedSecretAuthenticationFilter: TrainingFacilitySharedSecretAuthenticationFilter?,
     ) = TrainingHttpSecurityConfigurer(
+        traineeAdminAuthorityStripFilter,
         traineeProvisioningFilter,
         traineeAdminSurfaceGuardFilter,
         trainingFacilitySharedSecretAuthenticationFilter,

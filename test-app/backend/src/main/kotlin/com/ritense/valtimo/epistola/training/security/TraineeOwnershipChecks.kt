@@ -10,7 +10,6 @@ import com.ritense.processlink.domain.ProcessLink
 import com.ritense.processlink.service.ProcessLinkService
 import com.ritense.valtimo.epistola.training.TraineeIdentity
 import com.ritense.valtimo.epistola.training.TraineeKeys
-import com.ritense.valtimo.epistola.training.TrainingProperties
 import org.springframework.security.core.context.SecurityContextHolder
 import java.util.UUID
 
@@ -26,14 +25,15 @@ class TraineeOwnershipChecks(
     private val taskOwnershipResolver: TaskOwnershipResolver,
     private val processInstanceOwnershipResolver: ProcessInstanceOwnershipResolver,
     private val caseDefinitionRepository: CaseDefinitionRepository,
-    private val properties: TrainingProperties,
 ) {
     /** Null when the caller isn't a trainee at all — genuine `ROLE_ADMIN` staff are never scoped. */
-    fun currentTraineeIdentityOrNull(): String? {
+    fun currentTraineeOrNull(): Trainee? {
         val authentication = SecurityContextHolder.getContext().authentication ?: return null
         if (authentication.authorities.none { it.authority == TraineeKeys.TRAINEE_AUTHORITY }) return null
-        return TraineeIdentity.resolve(authentication)
+        return Trainee(identity = TraineeIdentity.resolve(authentication), login = authentication.name)
     }
+
+    fun currentTraineeIdentityOrNull(): String? = currentTraineeOrNull()?.identity
 
     /**
      * @param allowShared also accept the shared template's Epistola plugin configuration — only
@@ -69,7 +69,8 @@ class TraineeOwnershipChecks(
      * (e.g. `example`) also wire their process-links through the same shared "Epistola Document
      * Suite" configuration — found by actually loading the admin page as a trainee and seeing
      * unrelated case types' usage entries leak through. A usage entry only counts as "shared" when
-     * it belongs to the shared template dossier itself, not merely to the same configuration.
+     * it belongs to a shared case type ([isSharedCaseDefinition]), not merely to the same
+     * configuration — a trainee's clone also references it until they rewire it.
      */
     fun isOwnOrTemplatePluginUsage(
         traineeIdentity: String,
@@ -78,12 +79,13 @@ class TraineeOwnershipChecks(
     ): Boolean {
         if (isOwnPluginConfiguration(traineeIdentity, pluginConfigurationId)) return true
         return isOwnPluginConfiguration(traineeIdentity, pluginConfigurationId, allowShared = true) &&
-            caseDefinitionKey == properties.templateCaseDefinitionKey
+            isSharedCaseDefinition(caseDefinitionKey)
     }
 
     /**
-     * @param allowShared also accept the shared template's process definition — only safe for
-     *   read-only checks, since the template must stay immutable for every trainee.
+     * @param allowShared also accept a process definition of a shared case type
+     *   ([isSharedCaseDefinition]) — only safe for read-only checks, since shared case types must
+     *   stay immutable for every trainee.
      */
     fun isOwnProcessDefinition(
         traineeIdentity: String,
@@ -91,8 +93,7 @@ class TraineeOwnershipChecks(
         allowShared: Boolean = false,
     ): Boolean {
         val caseDefinitionKey = processDefinitionOwnershipResolver.resolveCaseDefinitionKey(processDefinitionId) ?: return false
-        if (caseDefinitionKey == TraineeKeys.caseDefinitionKey(traineeIdentity)) return true
-        return allowShared && caseDefinitionKey == properties.templateCaseDefinitionKey
+        return isOwnCaseDefinition(traineeIdentity, caseDefinitionKey, allowShared)
     }
 
     fun resolveProcessDefinitionIdOfProcessLink(processLinkId: UUID): String? =
@@ -106,7 +107,9 @@ class TraineeOwnershipChecks(
      * 13.44.0 source, not guessed — but it's always the same case key value), so this is a plain
      * string comparison, no resolution step needed.
      *
-     * @param allowShared also accept the shared template's key — only safe for read-only checks.
+     * @param allowShared also accept a shared case type ([isSharedCaseDefinition]) — only safe for
+     *   read-only checks: every trainee may look at a shared case type's configuration, none may
+     *   change it.
      *
      * Beyond the one auto-provisioned dossier (whose key already **is** [TraineeKeys.caseDefinitionKey]),
      * a trainee can also create additional case-definitions of their own through Valtimo's own
@@ -128,8 +131,27 @@ class TraineeOwnershipChecks(
         allowShared: Boolean = false,
     ): Boolean {
         if (caseDefinitionKey == TraineeKeys.caseDefinitionKey(traineeIdentity)) return true
-        if (allowShared && caseDefinitionKey == properties.templateCaseDefinitionKey) return true
+        if (allowShared && isSharedCaseDefinition(caseDefinitionKey)) return true
         return isTraineeCreatedCaseDefinition(traineeIdentity, caseDefinitionKey)
+    }
+
+    /**
+     * A case type every trainee may see and work in: one this app ships (deployed from the
+     * test-app's own `config/case` directory), as opposed to a trainee's cloned dossier or a case
+     * definition someone created through `/admin/dossiers`.
+     *
+     * Recognised from Valtimo's own columns rather than a configured list, so a newly bundled demo
+     * case type is shared without extra configuration: a clone made by [TraineeDossierProvisioner]
+     * via Valtimo's import carries `originalKey` (the template it was copied from), and a draft
+     * created through the admin UI carries `createdBy`. A bundled one has neither — confirmed on
+     * the live demo database (`form-flow-demo`: both null; a trainee's clone: `originalKey =
+     * form-flow-demo`). Every version must qualify, and an unknown key is not shared (fail closed).
+     * A case type an administrator creates by hand is therefore not shared either, until someone
+     * decides it should be.
+     */
+    fun isSharedCaseDefinition(caseDefinitionKey: String): Boolean {
+        val versions = caseDefinitionRepository.findAllByIdKeyOrderByIdVersionTagDesc(caseDefinitionKey)
+        return versions.isNotEmpty() && versions.all { it.createdBy == null && it.originalKey == null }
     }
 
     private fun isTraineeCreatedCaseDefinition(
@@ -158,73 +180,73 @@ class TraineeOwnershipChecks(
         caseDefinitionRepository.findAll().filter { it.createdBy == traineeIdentity }.mapTo(mutableSetOf()) { it.id.key }
 
     /**
-     * Data-plane counterpart to [isOwnCaseDefinition]: a document instance identifies itself only
-     * by its own id, never by document-/case-definition name directly, so it needs resolving via
-     * [DocumentOwnershipResolver] first. `false` (not owned) when the document doesn't exist or its
-     * definition can't be resolved, same fail-closed default as every other resolver-backed check
-     * here.
+     * The data-plane rule: a trainee works on a case — sees it, fills its forms, completes its
+     * tasks, writes its notes — exactly when they created it (`JsonSchemaDocument.createdBy`),
+     * whatever case type it belongs to: a shared one or their own dossier. This is the same rule
+     * `demo.permission.json` gives Valtimo's PBAC (`createdBy == ${currentUserEmail}`), so these
+     * checks and PBAC agree; they are kept on the endpoints this package already guards as a second
+     * line, and for the few endpoints (e.g. this plugin's `evaluate-mapping`) that load a document
+     * without a PBAC check of their own.
      *
-     * @param allowShared also accept a document belonging to the shared template dossier — only
-     *   safe for read-only checks.
+     * [login] is `Authentication.getName()` ([Trainee.login]) — the value Valtimo stamps into
+     * `createdBy` (`SecurityUtils.getCurrentUserLogin()`), not [Trainee.identity]. In the authentik
+     * profile both it and `${currentUserEmail}` resolve through the same claims (email, then
+     * preferred_username, then sub), so they are always equal. Fails closed when the document
+     * doesn't exist or has no creator.
      */
     fun isOwnDocument(
-        traineeIdentity: String,
+        login: String,
         documentId: String,
-        allowShared: Boolean = false,
     ): Boolean {
-        val caseDefinitionKey = documentOwnershipResolver.resolveCaseDefinitionKey(documentId) ?: return false
-        return isOwnCaseDefinition(traineeIdentity, caseDefinitionKey, allowShared)
+        val createdBy = documentOwnershipResolver.resolveCreatedBy(documentId) ?: return false
+        return createdBy == login
     }
 
-    /**
-     * Data-plane counterpart to [isOwnCaseDefinition] for user tasks: a task identifies only its
-     * own id, resolved back to the owning case document (and from there, the document definition)
-     * via [TaskOwnershipResolver].
-     *
-     * @param allowShared also accept a task belonging to the shared template dossier — only safe
-     *   for read-only checks (view/list), never for mutations (assign/complete/etc.).
-     */
+    /** [isOwnDocument] for the case document a user task belongs to. */
     fun isOwnTask(
-        traineeIdentity: String,
+        login: String,
         taskId: String,
-        allowShared: Boolean = false,
     ): Boolean {
-        val caseDefinitionKey = taskOwnershipResolver.resolveCaseDefinitionKey(taskId) ?: return false
-        return isOwnCaseDefinition(traineeIdentity, caseDefinitionKey, allowShared)
+        val documentId = taskOwnershipResolver.resolveDocumentId(taskId) ?: return false
+        return isOwnDocument(login, documentId)
     }
 
     /**
-     * Data-plane counterpart to [isOwnCaseDefinition] for a *runtime* process instance —
-     * `POST /api/v1/process/{processInstanceId}/delete` takes a bare id with nothing else to check
-     * ownership against, resolved via [ProcessInstanceOwnershipResolver]. No `allowShared`: this is
-     * a destructive operation, never appropriate against the shared template regardless of read vs
-     * write (there is no read-only variant of "delete").
+     * [isOwnDocument] for a runtime process instance —
+     * `POST /api/v1/process/{processInstanceId}/delete` takes a bare id, resolved to its case
+     * document via [ProcessInstanceOwnershipResolver].
      */
     fun isOwnProcessInstance(
-        traineeIdentity: String,
+        login: String,
         processInstanceId: String,
     ): Boolean {
-        val caseDefinitionKey =
-            processInstanceOwnershipResolver.resolveCaseDefinitionKeyForProcessInstance(processInstanceId) ?: return false
-        return isOwnCaseDefinition(traineeIdentity, caseDefinitionKey)
+        val documentId = processInstanceOwnershipResolver.resolveDocumentIdForProcessInstance(processInstanceId) ?: return false
+        return isOwnDocument(login, documentId)
     }
 
     /**
-     * Data-plane counterpart to [isOwnCaseDefinition] for an execution —
-     * `POST .../pending/{executionId}/reconcile` manually retries a trainee's own stuck Epistola
-     * catch event, resolved via [ProcessInstanceOwnershipResolver]. No `allowShared`, same reasoning
-     * as [isOwnProcessInstance] — reconciling is a mutation, and the shared template dossier is
-     * meant to stay untouched by every trainee, not reconciled by whichever one happens to click it.
+     * [isOwnDocument] for an execution — `POST .../pending/{executionId}/reconcile` manually
+     * retries a stuck Epistola catch event on the caller's own case.
      */
     fun isOwnExecution(
-        traineeIdentity: String,
+        login: String,
         executionId: String,
     ): Boolean {
-        val caseDefinitionKey = processInstanceOwnershipResolver.resolveCaseDefinitionKeyForExecution(executionId) ?: return false
-        return isOwnCaseDefinition(traineeIdentity, caseDefinitionKey)
+        val documentId = processInstanceOwnershipResolver.resolveDocumentIdForExecution(executionId) ?: return false
+        return isOwnDocument(login, documentId)
     }
 
     companion object {
         const val MAX_TRAINEE_CREATED_CASE_DEFINITIONS = 10
     }
 }
+
+/**
+ * The calling trainee. [identity] ([TraineeIdentity.resolve]) keys their provisioned dossier and
+ * plugin configuration; [login] (`Authentication.getName()`) is what Valtimo records as the creator
+ * of a case they start.
+ */
+data class Trainee(
+    val identity: String,
+    val login: String,
+)

@@ -18,7 +18,8 @@ import java.io.PrintWriter
 import java.io.StringWriter
 import java.util.UUID
 
-private const val TRAINEE = "trainee1@demo"
+private const val TRAINEE = "trainee1-subject"
+private const val LOGIN = "trainee1@demo"
 
 /**
  * Unit coverage for [TraineeOwnershipInterceptor]'s own responsibility: routing a request to the
@@ -34,7 +35,7 @@ class TraineeOwnershipInterceptorTest {
 
     @Test
     fun `short-circuits entirely for a non-trainee caller`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(null)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(null)
         val request = requestWithPathVariables("GET", "pluginConfigurationId" to "some-id")
         val response: HttpServletResponse = mock()
 
@@ -46,7 +47,7 @@ class TraineeOwnershipInterceptorTest {
 
     @Test
     fun `falls through when no known path variable is present`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         val request = requestWithPathVariables("GET")
         val response: HttpServletResponse = mock()
 
@@ -57,7 +58,7 @@ class TraineeOwnershipInterceptorTest {
 
     @Test
     fun `pluginConfigurationId branch defers to isOwnPluginConfiguration with no allowShared`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         whenever(ownershipChecks.isOwnPluginConfiguration(TRAINEE, "own-id")).thenReturn(true)
         whenever(ownershipChecks.isOwnPluginConfiguration(TRAINEE, "other-id")).thenReturn(false)
 
@@ -67,7 +68,7 @@ class TraineeOwnershipInterceptorTest {
 
     @Test
     fun `processLinkId branch resolves to a process-definition id first, fails closed on a malformed UUID`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         val ownLinkId = UUID.randomUUID()
         val otherLinkId = UUID.randomUUID()
         whenever(ownershipChecks.resolveProcessDefinitionIdOfProcessLink(ownLinkId)).thenReturn("own-process-definition")
@@ -83,7 +84,7 @@ class TraineeOwnershipInterceptorTest {
 
     @Test
     fun `processDefinitionId query param allows shared only for GET`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         whenever(ownershipChecks.isOwnProcessDefinition(TRAINEE, "some-id", allowShared = true)).thenReturn(true)
         whenever(ownershipChecks.isOwnProcessDefinition(TRAINEE, "some-id", allowShared = false)).thenReturn(false)
 
@@ -98,7 +99,7 @@ class TraineeOwnershipInterceptorTest {
 
     @Test
     fun `case-definition management branch accepts any of the three Valtimo variable names, allows shared only for GET`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         whenever(ownershipChecks.isOwnCaseDefinition(TRAINEE, "form-flow-demo", allowShared = true)).thenReturn(true)
         whenever(ownershipChecks.isOwnCaseDefinition(TRAINEE, "form-flow-demo", allowShared = false)).thenReturn(false)
 
@@ -109,42 +110,40 @@ class TraineeOwnershipInterceptorTest {
     }
 
     @Test
-    fun `document id branch defers to isOwnDocument with no allowShared`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
-        whenever(ownershipChecks.isOwnDocument(TRAINEE, "own-doc")).thenReturn(true)
-        whenever(ownershipChecks.isOwnDocument(TRAINEE, "other-doc")).thenReturn(false)
+    fun `document id branch defers to isOwnDocument with the caller's login, not their identity`() {
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
+        whenever(ownershipChecks.isOwnDocument(LOGIN, "own-doc")).thenReturn(true)
+        whenever(ownershipChecks.isOwnDocument(LOGIN, "other-doc")).thenReturn(false)
 
         assertAllowed(requestWithPathVariables("GET", "id" to "own-doc"))
         assertForbidden(requestWithPathVariables("DELETE", "id" to "other-doc"))
     }
 
     @Test
-    fun `document-definition search branch keys off name as a case-definition key, no allowShared`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
-        whenever(ownershipChecks.isOwnCaseDefinition(TRAINEE, "own-key")).thenReturn(true)
-        whenever(ownershipChecks.isOwnCaseDefinition(TRAINEE, "form-flow-demo")).thenReturn(false)
+    fun `document-definition search branch allows own and shared case types, PBAC narrowing the results`() {
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
+        whenever(ownershipChecks.isOwnCaseDefinition(TRAINEE, "form-flow-demo", allowShared = true)).thenReturn(true)
+        whenever(ownershipChecks.isOwnCaseDefinition(TRAINEE, "other-trainees-dossier", allowShared = true)).thenReturn(false)
 
-        assertAllowed(requestWithPathVariables("POST", "name" to "own-key"))
-        // form-flow-demo is read-only shared structure elsewhere, but this branch has no
-        // allowShared at all -> even a GET here must not fall back to the shared template.
-        assertForbidden(requestWithPathVariables("GET", "name" to "form-flow-demo"))
+        assertAllowed(requestWithPathVariables("POST", "name" to "form-flow-demo"))
+        assertForbidden(requestWithPathVariables("POST", "name" to "other-trainees-dossier"))
     }
 
     @Test
-    fun `taskId branch defers to isOwnTask with no allowShared`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
-        whenever(ownershipChecks.isOwnTask(TRAINEE, "own-task")).thenReturn(true)
-        whenever(ownershipChecks.isOwnTask(TRAINEE, "other-task")).thenReturn(false)
+    fun `taskId branch defers to isOwnTask with the caller's login`() {
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
+        whenever(ownershipChecks.isOwnTask(LOGIN, "own-task")).thenReturn(true)
+        whenever(ownershipChecks.isOwnTask(LOGIN, "other-task")).thenReturn(false)
 
         assertAllowed(requestWithPathVariables("POST", "taskId" to "own-task"))
         assertForbidden(requestWithPathVariables("GET", "taskId" to "other-task"))
     }
 
     @Test
-    fun `processInstanceId branch defers to isOwnProcessInstance, no allowShared parameter exists`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
-        whenever(ownershipChecks.isOwnProcessInstance(TRAINEE, "own-instance")).thenReturn(true)
-        whenever(ownershipChecks.isOwnProcessInstance(TRAINEE, "other-instance")).thenReturn(false)
+    fun `processInstanceId branch defers to isOwnProcessInstance with the caller's login`() {
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
+        whenever(ownershipChecks.isOwnProcessInstance(LOGIN, "own-instance")).thenReturn(true)
+        whenever(ownershipChecks.isOwnProcessInstance(LOGIN, "other-instance")).thenReturn(false)
 
         assertAllowed(requestWithPathVariables("POST", "processInstanceId" to "own-instance"))
         assertForbidden(requestWithPathVariables("POST", "processInstanceId" to "other-instance"))
@@ -152,7 +151,7 @@ class TraineeOwnershipInterceptorTest {
 
     @Test
     fun `configurationId branch allows shared only for GET, matching the catalogs-list vs redeploy split`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         whenever(ownershipChecks.isOwnPluginConfiguration(TRAINEE, "some-id", allowShared = true)).thenReturn(true)
         whenever(ownershipChecks.isOwnPluginConfiguration(TRAINEE, "some-id", allowShared = false)).thenReturn(false)
 
@@ -161,13 +160,24 @@ class TraineeOwnershipInterceptorTest {
     }
 
     @Test
-    fun `executionId branch defers to isOwnExecution, no allowShared parameter exists`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
-        whenever(ownershipChecks.isOwnExecution(TRAINEE, "own-execution")).thenReturn(true)
-        whenever(ownershipChecks.isOwnExecution(TRAINEE, "other-execution")).thenReturn(false)
+    fun `executionId branch defers to isOwnExecution with the caller's login`() {
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
+        whenever(ownershipChecks.isOwnExecution(LOGIN, "own-execution")).thenReturn(true)
+        whenever(ownershipChecks.isOwnExecution(LOGIN, "other-execution")).thenReturn(false)
 
         assertAllowed(requestWithPathVariables("POST", "executionId" to "own-execution"))
         assertForbidden(requestWithPathVariables("POST", "executionId" to "other-execution"))
+    }
+
+    @Test
+    fun `a management mutation that names no case type is refused, a read or the draft endpoint is not`() {
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
+
+        assertForbidden(requestWithPathVariables("POST", uri = "/api/management/v1/case-definition/something-new"))
+        assertForbidden(requestWithPathVariables("DELETE", uri = "/api/management/v2/case/unknown"))
+        assertAllowed(requestWithPathVariables("GET", uri = "/api/management/v1/case-definition/check"))
+        assertAllowed(requestWithPathVariables("POST", uri = "/api/management/v1/case-definition/draft"))
+        assertAllowed(requestWithPathVariables("POST", uri = "/api/v1/process-link"))
     }
 
     private fun assertAllowed(request: HttpServletRequest) {
@@ -193,9 +203,11 @@ class TraineeOwnershipInterceptorTest {
     private fun requestWithPathVariables(
         method: String,
         vararg pathVariables: Pair<String, String>,
+        uri: String? = null,
     ): HttpServletRequest {
         val request: HttpServletRequest = mock()
         whenever(request.method).thenReturn(method)
+        whenever(request.requestURI).thenReturn(uri)
         whenever(request.getAttribute(HandlerMapping.URI_TEMPLATE_VARIABLES_ATTRIBUTE)).thenReturn(pathVariables.toMap())
         return request
     }
