@@ -499,4 +499,14 @@ entirely.
   loud rather than silently generating nothing. An _optional_ second letter therefore needs a
   gateway checking that variable before the service task.
 
+- **The off switch is backend-only.** `epistola.composer.enabled=false` removes the beans and the
+  endpoints, but the frontend registers the components unconditionally, so the palette entry and
+  the process-link action type stay on offer — an author can build a form that fails on its first
+  call. A frontend flag has to be threaded through every place [embedding.md](embedding.md) lists,
+  so until then, disable the whole plugin or accept that authoring stays visible.
+- **A letter is named on the wire by its bare `templateId`, and template ids are catalog-scoped.**
+  Harmless while a picker offers one catalog, and the _storage_ is already ready for more (see
+  [What it stores](#what-it-stores)) — but two catalogs offering the same template id would be
+  indistinguishable in a request. Settling that is a wire change, so it wants deciding before
+  multi-catalog is common rather than after.
 - Objects nested inside an array item are still flattened by the form generator.
