@@ -60,7 +60,7 @@ export const COMPOSER_TRANSLATIONS = {
     letterSetConnectionsFailed: 'De Epistola-verbindingen konden niet worden geladen.',
     letterSetCatalogsFailed: 'De catalogi van deze verbinding konden niet worden geladen.',
     letterSetTemplatesFailed: 'De sjablonen van deze catalogus konden niet worden geladen.',
-    'epistola-generate-composed-document': 'Genereer samengestelde brief',
+    'epistola-generate-composed-document': 'Genereer Gekozen Brief',
     composedLetterVariable: 'Briefvariabele',
     composedLetterVariableTooltip:
       'Naam van de procesvariabele waarin de briefkiezer de gekozen brief heeft gezet. Standaard epistolaLetter. De variabele bevat de catalogus, het sjabloon en de gegevens, dus deze actie heeft zelf geen sjabloon of mapping nodig.',
@@ -99,7 +99,7 @@ export const COMPOSER_TRANSLATIONS = {
     letterSetConnectionsFailed: 'Could not load the Epistola connections.',
     letterSetCatalogsFailed: 'Could not load the catalogs of this connection.',
     letterSetTemplatesFailed: 'Could not load the templates of this catalog.',
-    'epistola-generate-composed-document': 'Generate composed letter',
+    'epistola-generate-composed-document': 'Generate Chosen Letter',
     composedLetterVariable: 'Letter variable',
     composedLetterVariableTooltip:
       'Name of the process variable the letter composer wrote the chosen letter to. Defaults to epistolaLetter. It holds the catalog, the template and the data, so this action needs no template or mapping of its own.',

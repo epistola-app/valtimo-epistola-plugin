@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The generate action says what it does.** "Genereer samengestelde brief" / "Generate composed
+  letter" described the plumbing, not the job — "samengesteld" is a literal rendering of "composed"
+  and reads as jargon. It is now **"Genereer Gekozen Brief"** / **"Generate Chosen Letter"**, which
+  is what the task does: render the letter the employee picked. The action key is unchanged, so
+  existing process links are unaffected.
+
 ### Fixed
 
 - **A letter needing a value the composer cannot ask for is refused instead of quietly failing.**

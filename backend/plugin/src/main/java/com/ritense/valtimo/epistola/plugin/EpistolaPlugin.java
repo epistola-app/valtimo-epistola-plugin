@@ -415,8 +415,8 @@ public class EpistolaPlugin {
      */
     @PluginAction(
             key = "epistola-generate-composed-document",
-            title = "Generate composed letter",
-            description = "Generate the letter a letter composer put on a process variable. The template and its data come from that variable, so this action needs no template or mapping of its own.",
+            title = "Generate chosen letter",
+            description = "Render the letter the employee chose in a letter composer. The template, catalog and data all come from the process variable the composer wrote, so this action needs no template, catalog or mapping of its own.",
             activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
     )
     public void generateComposedDocument(
