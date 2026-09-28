@@ -148,6 +148,23 @@ successfully. It reads its configuration from the form definition the same way `
 (process definition plus component key), so nothing about where data lands travels over the wire.
 It works unchanged on a start form, where the task runs inside the instance the form started.
 
+**A task of its own, not part of the generate action.** Folding the write into
+`epistola-generate-composed-document` would be fewer things to wire, and it already reads the
+letter — but the two have different cardinalities. Generate tasks are **per letter**, one per `pv:`
+key, while write-back is **per composer**, and a form may carry several composers. Folded in, the
+same destination would be written once per letter, and two composers sharing a case path would let
+the last generate task silently win — which is exactly what keying the map by destination exists to
+prevent. They also have different failure domains: an Epistola outage should not decide whether a
+corrected phone number reaches the case, and a failed document write should not read as "generation
+failed". And generation is asynchronous, so "the generate task" is not a single moment to anchor
+"the case is now updated" to.
+
+The cost of separating them is that it can be forgotten, and a composer configured with a
+`writeBack` map and no apply task loses data **silently** — the worst failure mode in the feature,
+because nothing errors. That is a check the admin page should carry, alongside the dangling
+catalog/template/variant references it already reports, and it should land with the write-back
+rather than after it.
+
 Rejected alternatives: a Valtimo task-completion listener (automatic, but it depends on an
 extension point whose stability would have to be established, is invisible in the process, and has
 an ordering question against Valtimo's own document update); and projecting the generated inputs up
