@@ -485,6 +485,18 @@ entirely.
   detectable here yet — see [What it can ask for](#what-it-can-ask-for).
 - **A per-template mapping fragment is not authorable in the settings widget.** The backend merges
   one and a hand-written form can set it; the widget captures template and label only.
-- **One letter per task or per start.** Offering several at once needs the selection to be a list,
-  and the process to loop or fan out.
+- **One letter per composer, and the count is authored rather than chosen.** The picker is a
+  single select and the component's value is one letter, so a composer produces exactly one. A form
+  may carry several composers — each with its own `pv:` key, each resolved by its own
+  `componentKey` — and a generate task per key, which is how a task sends more than one letter
+  today. What is not possible is letting the employee decide _how many_ go out: "pick two of these
+  five and send both" needs the selection to be a list, the value to become `{ "letters": [ … ] }`
+  (which `ComposedLetter` refuses today, since it requires a template at the top level), and the
+  generate step to loop or the process to fan out.
+
+  If you do put several on one form, note that a composer left unchosen sets no variable at all,
+  and its generate task then fails with "No composed letter on process variable '…'" — deliberately
+  loud rather than silently generating nothing. An _optional_ second letter therefore needs a
+  gateway checking that variable before the service task.
+
 - Objects nested inside an array item are still flattened by the form generator.
