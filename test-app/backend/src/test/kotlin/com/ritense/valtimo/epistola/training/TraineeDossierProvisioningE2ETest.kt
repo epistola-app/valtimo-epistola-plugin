@@ -14,10 +14,12 @@ import org.junit.jupiter.api.Test
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.bean.override.mockito.MockitoBean
+import org.springframework.transaction.support.TransactionTemplate
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.wait.strategy.Wait
@@ -57,6 +59,12 @@ class TraineeDossierProvisioningE2ETest {
     @Autowired
     lateinit var pluginService: PluginService
 
+    @Autowired
+    lateinit var jdbcTemplate: JdbcTemplate
+
+    @Autowired
+    lateinit var transactionTemplate: TransactionTemplate
+
     @Test
     fun `provisions an isolated, finalized dossier per trainee`() {
         whenever(epistolaTenantProvisioner.ensureTenant("11111111-1111-4111-8111-111111111111"))
@@ -71,6 +79,10 @@ class TraineeDossierProvisioningE2ETest {
 
         val caseDefinitionA = caseDefinitionService.findCaseDefinition(dossierA)!!
         assertThat(caseDefinitionA.`final`).describedAs("a trainee's dossier must be finalized").isTrue()
+        // Valtimo's case list only shows active case definitions — an inactive clone left the
+        // trainee seeing just the shared template, which they may not open (403).
+        assertThat(caseDefinitionA.active).describedAs("a trainee's dossier must be active").isTrue()
+        assertThat(caseDefinitionRepository.findByActiveIsTrueAndIdKey(dossierB.key)).isNotNull()
 
         val pluginConfigurationA =
             pluginService.getPluginConfiguration(
@@ -100,6 +112,28 @@ class TraineeDossierProvisioningE2ETest {
 
         assertThat(second).isEqualTo(first)
         assertThat(caseDefinitionRepository.findAllByIdKeyOrderByIdVersionTagDesc(first.key)).hasSize(1)
+    }
+
+    @Test
+    fun `an existing but inactive dossier is activated on the next request`() {
+        whenever(epistolaTenantProvisioner.ensureTenant("44444444-4444-4444-8444-444444444444"))
+            .thenReturn(EpistolaTenantCredentials(tenantId = "trainee-d", apiKey = "epk_test_d"))
+
+        val dossier = provisioningService.ensureDossier("44444444-4444-4444-8444-444444444444")
+        // What a dossier provisioned before activation was added looks like. In a transaction:
+        // the pool runs with auto-commit off, so a bare update is rolled back on connection return.
+        val deactivated =
+            transactionTemplate.execute {
+                jdbcTemplate.update("UPDATE case_definition SET active = false WHERE case_definition_key = ?", dossier.key)
+            }
+        assertThat(deactivated).isEqualTo(1)
+        assertThat(caseDefinitionRepository.findByActiveIsTrueAndIdKey(dossier.key)).isNull()
+
+        val again = provisioningService.ensureDossier("44444444-4444-4444-8444-444444444444")
+
+        assertThat(again).isEqualTo(dossier)
+        assertThat(caseDefinitionRepository.findByActiveIsTrueAndIdKey(dossier.key)).isNotNull()
+        assertThat(caseDefinitionRepository.findAllByIdKeyOrderByIdVersionTagDesc(dossier.key)).hasSize(1)
     }
 
     companion object {

@@ -49,9 +49,14 @@ class TraineeDossierProvisioner(
         val key = TraineeKeys.caseDefinitionKey(traineeIdentity)
 
         // Re-check: two requests from the same trainee could both have passed the fast-path check
-        // in TraineeDossierProvisioningService before either finished.
-        if (caseDefinitionRepository.existsByIdKey(key)) {
-            return CaseDefinitionId(key, properties.templateCaseDefinitionVersionTag)
+        // in TraineeDossierProvisioningService before either finished. Also the repair path for a
+        // dossier that exists but was never activated (provisioned before activation was added).
+        caseDefinitionRepository.findAllByIdKeyOrderByIdVersionTagDesc(key).firstOrNull()?.let { existing ->
+            if (!existing.active) {
+                caseDefinitionService.setActiveCaseDefinition(existing.id)
+                log.info { "Activated existing training dossier '$key'" }
+            }
+            return existing.id
         }
 
         val pluginConfigurationId = TraineeKeys.pluginConfigurationId(traineeIdentity)
@@ -70,6 +75,9 @@ class TraineeDossierProvisioner(
             ) ?: error("Import of the training dossier for '$traineeIdentity' did not return a case definition id")
 
         caseDefinitionService.finalizeCaseDefinition(traineeCaseDefinitionId)
+        // Import leaves the clone inactive, and Valtimo's case list (GET /case-definition?active=true)
+        // only shows active case definitions — without this the trainee's own dossier never appears.
+        caseDefinitionService.setActiveCaseDefinition(traineeCaseDefinitionId)
         log.info { "Provisioned training dossier '$key'" }
         return traineeCaseDefinitionId
     }
