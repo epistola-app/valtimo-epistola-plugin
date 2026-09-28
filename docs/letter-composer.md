@@ -483,8 +483,11 @@ entirely.
   expression over `$inputs` / `$data` / `$doc` / `$pv`. It is evaluated when the letter is composed
   and the _result_ rides on the letter variable next to `data`, so the write uses what the employee
   approved even when the applying task runs long afterwards. A service task applies it, placed
-  where the author wants it — the demo puts it after the catch event, so the case only changes once
-  the letter demonstrably exists. Keying by destination is what keeps one writer per case
+  immediately after the generate task: that action rethrows when Epistola refuses a submission, so
+  a refused letter fails the activity and never reaches the write — "only write back if it worked",
+  with nothing expressing it. Acceptance rather than rendering is the commit point, because the
+  catch event is optional, can be skipped by an error path, and delays the write for as long as
+  rendering takes. Keying by destination is what keeps one writer per case
   path and lets a destination be computed from several inputs; an expression yielding nothing
   writes nothing, so a value the employee never supplied never clobbers the case. The same map also
   makes the preview more faithful rather than less — applied to a copy of `$doc`/`$pv` before the

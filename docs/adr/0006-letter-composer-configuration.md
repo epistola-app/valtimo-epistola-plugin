@@ -167,21 +167,31 @@ generated inputs are invisible to the one Valtimo already has: they live in a ne
 instance and collapse into the component's single `pv:` value, so the field-level write-back that
 handles a `doc:`-keyed form field never sees them.
 
-So the write is a **service task**, and where it goes in the process is the author's choice — which
-is itself an argument for it being a task rather than part of generation. Generation is
-asynchronous, so "after the letter was generated" means after the `EpistolaDocumentGenerated` catch
-event, not after the generate task returns.
+So the write is a **service task**, placed **immediately after the generate task**.
 
-| Placement                 | What it buys                                                  | What it risks                                                                                                           |
-| ------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Before generation         | A correction lands in the case whether or not the PDF renders | The case changed for a letter that was never sent                                                                       |
-| **After the catch event** | The case only changes once the letter demonstrably exists     | A permanently failed generation leaves the correction unapplied — it stays on the variable, so a retry still applies it |
+That placement is what makes "only write back if it worked" true without anything expressing it.
+`submitAndRecord` records a FAILED result object and then rethrows, so a submission Epistola
+refuses fails the activity, the process raises an incident there, and the applying task is never
+reached. No gateway, no condition — BPMN's own failure semantics.
 
-**The demo wires it after the catch event**, so the arrangement people copy is the conservative
-one: an action a user thinks of as _sending a letter_ should not leave the case mutated when
-nothing was sent. The case for placing it earlier is that a corrected phone number is a fact about
-the case and true regardless of the letter; both are defensible, which is why the process expresses
-it rather than the action deciding.
+**Acceptance, not rendering, is the commit point.** Generation is asynchronous: the generate task
+returns once Epistola has taken the request and owns it, while the document itself arrives later at
+the `EpistolaDocumentGenerated` catch event. Waiting for that event is worse than it sounds —
+the catch event is _optional_, so a process that generates without waiting has nowhere to put the
+applying task at all; an error path taken after acceptance may never reach it; and the correction
+stays unapplied for as long as rendering takes.
+
+| Placement                                         | What it means                                    | Why not                                                                                             |
+| ------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Before the generate task                          | Writes even when Epistola refuses the submission | The case changes for a letter that was never even accepted                                          |
+| **Immediately after it**                          | Epistola accepted it and owns it                 | —                                                                                                   |
+| After the `EpistolaDocumentGenerated` catch event | The rendered document demonstrably exists        | Requires the process to wait at all, is skipped by an error path, and delays the write indefinitely |
+
+The residual risk is real and worth stating: **accepted is not rendered.** Epistola can take a
+request and fail on it afterwards — bad data, a template error — leaving the case updated for a
+letter that never went out. The window is narrow, it is recoverable through the existing retry flow
+and retry form, and within that window the value written is still a fact about the case. That is a
+better trade than holding a correction hostage to a wait the process may never perform.
 
 It works unchanged on a start form, where the task runs inside the instance the form started.
 
