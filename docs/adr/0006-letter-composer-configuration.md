@@ -126,14 +126,39 @@ with), and `$doc`/`$pv` for context — the same context the baseline mapping ha
 that yields nothing writes nothing**, which is what makes "only write what was actually supplied"
 the default instead of clobbering good case data with nulls.
 
-Evaluated, the map is exactly the argument `ValueResolverService.handleValues` takes, so the
-configuration is the API's own input shape:
+#### The map is evaluated when the letter is composed, and the result travels with it
+
+The expressions are evaluated at the same moment the data snapshot is taken, and what comes out
+rides on the letter variable alongside it:
+
+```json
+{
+  "schemaVersion": 1,
+  "templateId": "…",
+  "catalogId": "…",
+  "data": { "…": "what the letter renders with" },
+  "inputs": { "…": "only what the employee typed" },
+  "writeBack": { "doc:/aanvrager/telefoon": "0612345678" }
+}
+```
+
+Not the map itself, and not a lookup performed later. Generation is asynchronous, so the task that
+applies the write may run minutes or hours after the form was submitted — long enough for the form
+definition to have been redeployed in between. Reading the map at apply time would then write using
+a configuration the employee never saw. Evaluating at compose time gives write-back the same
+snapshot guarantee `data` already has: **what was approved is what is written.**
+
+It also leaves the applying task with nothing to configure. It reads a map of destination to value
+and hands it straight to the API, because the shape is already the argument
+`ValueResolverService.handleValues` takes:
 
 ```java
-Map<String, Object> values = writeBack.entrySet().stream()
-        .collect(toMap(Map.Entry::getKey, e -> evaluate(e.getValue(), letter)));
-valueResolverService.handleValues(processInstanceId, execution, values);
+valueResolverService.handleValues(processInstanceId, execution, letter.writeBack());
 ```
+
+The composer computes and the process applies — the same division generation already follows. The
+field is additive for `schemaVersion` purposes: a plugin old enough to ignore it has no
+applying task either, so nothing misbehaves silently.
 
 #### It runs as a service task, not at form submission
 
@@ -142,10 +167,22 @@ generated inputs are invisible to the one Valtimo already has: they live in a ne
 instance and collapse into the component's single `pv:` value, so the field-level write-back that
 handles a `doc:`-keyed form field never sees them.
 
-So the write is a **service task**, placed immediately after the composer's user task and **before**
-generation — the case is updated first, so a corrected address does not depend on a PDF rendering
-successfully. It reads its configuration from the form definition the same way `prepare` does
-(process definition plus component key), so nothing about where data lands travels over the wire.
+So the write is a **service task**, and where it goes in the process is the author's choice — which
+is itself an argument for it being a task rather than part of generation. Generation is
+asynchronous, so "after the letter was generated" means after the `EpistolaDocumentGenerated` catch
+event, not after the generate task returns.
+
+| Placement                 | What it buys                                                  | What it risks                                                                                                           |
+| ------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Before generation         | A correction lands in the case whether or not the PDF renders | The case changed for a letter that was never sent                                                                       |
+| **After the catch event** | The case only changes once the letter demonstrably exists     | A permanently failed generation leaves the correction unapplied — it stays on the variable, so a retry still applies it |
+
+**The demo wires it after the catch event**, so the arrangement people copy is the conservative
+one: an action a user thinks of as _sending a letter_ should not leave the case mutated when
+nothing was sent. The case for placing it earlier is that a corrected phone number is a fact about
+the case and true regardless of the letter; both are defensible, which is why the process expresses
+it rather than the action deciding.
+
 It works unchanged on a start form, where the task runs inside the instance the form started.
 
 **A task of its own, not part of the generate action.** Folding the write into
