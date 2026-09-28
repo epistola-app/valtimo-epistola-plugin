@@ -86,6 +86,7 @@ dependencies {
     // Testing
     testImplementation(libs.valtimo.test.utils.common)
     testImplementation(libs.spring.boot.starter.test)
+    testImplementation(libs.spring.security.test)
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.kotlin)
     // No json-schema-validator here: Valtimo ships its own (1.x since 13.47) and a second version

@@ -13,12 +13,14 @@ import com.ritense.formflow.FormFlowTaskOpenResultProperties
 import com.ritense.formflow.web.rest.FormFlowResource
 import com.ritense.processlink.service.ProcessLinkActivityService
 import com.ritense.valtimo.Application
+import com.ritense.valtimo.epistola.training.security.TraineeAdminAuthorityStripFilter
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.operaton.bpm.engine.RuntimeService
 import org.operaton.bpm.engine.TaskService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.ApplicationContext
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -73,6 +75,14 @@ class FormFlowTransitionE2ETest {
 
     @Autowired
     lateinit var objectMapper: ObjectMapper
+
+    @Autowired
+    lateinit var applicationContext: ApplicationContext
+
+    @Test
+    fun `without the training profile nothing strips ROLE_ADMIN from anyone`() {
+        assertThat(applicationContext.getBeanNamesForType(TraineeAdminAuthorityStripFilter::class.java)).isEmpty()
+    }
 
     @Test
     fun `completing the form flow advances the process to the follow-up task`() {
