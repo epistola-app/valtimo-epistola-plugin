@@ -152,13 +152,25 @@ the employee sees:
 | `array` of objects   | datagrid, one column per item field                                                                                                                                                                                            |
 | `object`             | fieldset, one input per property, nested                                                                                                                                                                                       |
 
-**Only `required` and `enum` reach the input.** The contract's other constraints — `maxLength`,
-`minLength`, `pattern`, `minimum`, `maximum`, `multipleOf` — are read by neither the schema
-analyzer nor the generator, so nothing stops an employee typing a value that breaks them. Epistola
-rejects it at render time and the preview shows that complaint, which is a real check but a late
-one: it arrives as a message beside the letter rather than under the field. The bundled contracts
-already use `pattern` (a BSN's `^\d{9}$`) and `minimum`, so this is not hypothetical. Carrying the
-constraints through to `validate` on the generated component is the fix, and it is not done yet.
+**The contract's rules reach the input.** `required` and `enum` do the obvious thing, and
+`minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `minItems` and `maxItems` are carried
+onto the generated component's `validate`, so a value that cannot work is refused under the field
+while it is being typed.
+
+**Epistola stays the authority.** It validates every value against the contract when it renders,
+and would still refuse anything wrong if none of this existed — what the form adds is _where and
+when_ the complaint appears, not whether it happens. Two things follow. It need not be exhaustive:
+`exclusiveMinimum`, `exclusiveMaximum` and `multipleOf` have no Formio validator, so they are left
+to render time. And it must never be _stricter_ than the contract, because a rule the server would
+have accepted becomes work the employee cannot submit at all — which is why a `pattern` gets
+special handling: JSON Schema patterns _search_, Formio wraps what it is given as `^…$`, so an
+unanchored pattern is wrapped to keep searching and an anchored one is passed through untouched.
+
+An `enum` is left without length or pattern rules: the options are the constraint, and a rule on
+top of them can only contradict what is offered.
+
+**The messages are Formio's, in English** — _"Bsn does not match the pattern ^\d{9}$"_. Translating
+them means wiring Formio's i18n into the nested form's options, which is not done yet.
 
 **Local `$ref`s are compiled away; external ones are not.** The analyzer resolves `#/…` pointers
 and merges them, so a contract that factors shapes out internally decomposes exactly as an inlined
@@ -371,9 +383,9 @@ entirely.
 - **Labels come from the contract.** A field with no `title` is labelled by humanizing its property
   name, so an English property name shows an English label in a Dutch form. The fix belongs in the
   template's data contract, where every integration benefits.
-- **Contract constraints are not carried to the inputs** — see [What it can ask for](#what-it-can-ask-for).
-  Only `required` and `enum` are enforced in the form; everything else is caught by Epistola at
-  render time and shown as a preview error.
+- **Validation messages are Formio's English defaults**, and show the raw pattern. Translating them
+  means wiring Formio's i18n into the nested form's options — see
+  [What it can ask for](#what-it-can-ask-for).
 - **Rich text is unsupported**, and a rich-text object that looks like a plain object is not even
   detectable here yet — see [What it can ask for](#what-it-can-ask-for).
 - **A per-template mapping fragment is not authorable in the settings widget.** The backend merges

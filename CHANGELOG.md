@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The contract's rules now reach the generated inputs.** `minLength`, `maxLength`, `pattern`,
+  `minimum`, `maximum`, `minItems` and `maxItems` are carried from the template's data contract
+  onto the component's `validate`, so a value that cannot work is refused under the field instead
+  of coming back as a render error beside the finished letter. Epistola stays the authority — it
+  validates everything when it renders — so this changes where and when the complaint appears, not
+  whether it happens. It therefore need not be exhaustive (`exclusiveMinimum`, `exclusiveMaximum`
+  and `multipleOf` have no Formio validator and are left to render time) but must never be
+  stricter than the contract: JSON Schema patterns _search_ while Formio wraps what it is given as
+  `^…$`, so an unanchored pattern is wrapped to keep searching rather than silently rejecting
+  values the server accepts. An `enum` keeps only its options, since a length or pattern rule on
+  top of them can only contradict. The retry form gets this too, sharing the same generator.
+  Messages are still Formio's English defaults.
+
 ### Changed
 
 - **The generate action says what it does.** "Genereer samengestelde brief" / "Generate composed

@@ -84,17 +84,58 @@ public record TemplateField(
      * @param format        The schema's string {@code format} (e.g. {@code date}, {@code email})
      * @param allowedValues The schema's {@code enum} values, if it constrains the field to a set
      * @param defaultValue  The schema's {@code default}, used when the mapping produced no value
+     * @param constraints   The schema's size and range keywords, or null when it states none
      */
     public record FieldHints(
             String title,
             String format,
             List<Object> allowedValues,
-            Object defaultValue
+            Object defaultValue,
+            Constraints constraints
     ) {
+        /** Hints from a schema that states no constraints. */
+        public FieldHints(String title, String format, List<Object> allowedValues, Object defaultValue) {
+            this(title, format, allowedValues, defaultValue, null);
+        }
+
         public boolean isEmpty() {
             return title == null && format == null
                     && (allowedValues == null || allowedValues.isEmpty())
-                    && defaultValue == null;
+                    && defaultValue == null
+                    && (constraints == null || constraints.isEmpty());
+        }
+    }
+
+    /**
+     * What the schema says a value must satisfy, beyond being present and of the right type.
+     *
+     * <p>Carried so a generated input can refuse a value before it is sent, rather than leaving
+     * every rule to Epistola and surfacing the complaint next to the letter instead of under the
+     * field. Only the keywords a Formio validator understands are kept: {@code exclusiveMinimum},
+     * {@code exclusiveMaximum} and {@code multipleOf} would each need hand-written validation
+     * JavaScript, are rare, and are caught at render time anyway.
+     *
+     * @param minLength Minimum string length
+     * @param maxLength Maximum string length
+     * @param pattern   A regular expression the string must match, in the schema's own semantics
+     * @param minimum   Smallest permitted number, inclusive
+     * @param maximum   Largest permitted number, inclusive
+     * @param minItems  Fewest permitted array items
+     * @param maxItems  Most permitted array items
+     */
+    public record Constraints(
+            Integer minLength,
+            Integer maxLength,
+            String pattern,
+            java.math.BigDecimal minimum,
+            java.math.BigDecimal maximum,
+            Integer minItems,
+            Integer maxItems
+    ) {
+        public boolean isEmpty() {
+            return minLength == null && maxLength == null && pattern == null
+                    && minimum == null && maximum == null
+                    && minItems == null && maxItems == null;
         }
     }
 

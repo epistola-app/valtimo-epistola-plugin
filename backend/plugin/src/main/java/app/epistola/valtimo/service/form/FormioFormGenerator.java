@@ -118,12 +118,91 @@ public class FormioFormGenerator {
             component.set("defaultValue", objectMapper.valueToTree(effectiveValue));
         }
 
-        if (field.required()) {
-            ObjectNode validate = component.putObject("validate");
-            validate.put("required", true);
-        }
+        applyValidation(component, field, hints, constrained);
 
         return component;
+    }
+
+    /**
+     * Put the schema's own rules on the input.
+     *
+     * <p><b>Epistola remains the authority.</b> It validates every value against the contract when
+     * it renders, and it would still refuse anything wrong if none of this existed. What this adds
+     * is <i>where and when</i> the rule appears: under the field while it is being typed, rather
+     * than as a render error beside the finished letter.
+     *
+     * <p>Two things follow from that. It need not be exhaustive — {@code exclusiveMinimum},
+     * {@code exclusiveMaximum} and {@code multipleOf} have no Formio validator, and skipping them
+     * costs a late message rather than a wrong letter. And it must never be <i>stricter</i> than
+     * the contract, because a rule the server would have accepted becomes work the employee cannot
+     * submit at all; see {@link #formioPattern}.
+     */
+    private void applyValidation(
+            ObjectNode component,
+            TemplateField field,
+            TemplateField.FieldHints hints,
+            boolean constrained
+    ) {
+        TemplateField.Constraints constraints = hints != null ? hints.constraints() : null;
+        if (!field.required() && (constraints == null || constraints.isEmpty())) {
+            return;
+        }
+
+        ObjectNode validate = component.putObject("validate");
+        if (field.required()) {
+            validate.put("required", true);
+        }
+        if (constraints == null) {
+            return;
+        }
+
+        // An enum is already a closed list of values, so length and pattern rules on it can only
+        // contradict the options offered.
+        if (!constrained) {
+            putIfPresent(validate, "minLength", constraints.minLength());
+            putIfPresent(validate, "maxLength", constraints.maxLength());
+            String pattern = formioPattern(constraints.pattern());
+            if (pattern != null) {
+                validate.put("pattern", pattern);
+            }
+        }
+        if (constraints.minimum() != null) {
+            validate.put("min", constraints.minimum());
+        }
+        if (constraints.maximum() != null) {
+            validate.put("max", constraints.maximum());
+        }
+        // An array of scalars is one input with `multiple`, and Formio counts its entries with the
+        // same two keywords it uses for string length.
+        if (isPrimitiveArray(field)) {
+            putIfPresent(validate, "minLength", constraints.minItems());
+            putIfPresent(validate, "maxLength", constraints.maxItems());
+        }
+    }
+
+    /**
+     * A JSON Schema {@code pattern} as Formio will evaluate it.
+     *
+     * <p>They do not mean the same thing. JSON Schema's pattern <i>searches</i> — {@code \d{3}}
+     * matches "ab123cd" — while Formio wraps it as {@code ^…$} and so requires the whole value to
+     * match. Passing an unanchored pattern straight through would reject values the contract
+     * allows and Epistola accepts, so it is wrapped to search. An already-anchored pattern is left
+     * exactly as it is, which is the common case.
+     */
+    private String formioPattern(String pattern) {
+        if (pattern == null || pattern.isBlank()) {
+            return null;
+        }
+        if (pattern.startsWith("^") || pattern.endsWith("$")) {
+            return pattern;
+        }
+        return "[\\s\\S]*(?:" + pattern + ")[\\s\\S]*";
+    }
+
+    private void putIfPresent(ObjectNode validate, String key, Integer value) {
+        if (value != null) {
+            validate.put(key, value);
+        }
     }
 
     /**
@@ -184,6 +263,20 @@ public class FormioFormGenerator {
         component.put("label", humanizeLabel(field.name()));
         component.put("input", true);
 
+        // A data grid counts its rows with the same two keywords a string uses for its length.
+        TemplateField.Constraints constraints =
+                field.hints() != null ? field.hints().constraints() : null;
+        if (field.required() || (constraints != null && !constraints.isEmpty())) {
+            ObjectNode validate = component.putObject("validate");
+            if (field.required()) {
+                validate.put("required", true);
+            }
+            if (constraints != null) {
+                putIfPresent(validate, "minLength", constraints.minItems());
+                putIfPresent(validate, "maxLength", constraints.maxItems());
+            }
+        }
+
         // Add item field definitions — use leaf name() since keys are relative to the array item
         ArrayNode components = component.putArray("components");
         for (TemplateField child : safeChildren(field)) {
@@ -198,11 +291,6 @@ public class FormioFormGenerator {
         // Set default values from resolved data
         if (!items.isEmpty()) {
             component.set("defaultValue", objectMapper.valueToTree(items));
-        }
-
-        if (field.required()) {
-            ObjectNode validate = component.putObject("validate");
-            validate.put("required", true);
         }
 
         return component;

@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 class FormioFormGeneratorTest {
@@ -555,6 +556,133 @@ class FormioFormGeneratorTest {
 
             assertEquals("textfield", component.get("type").asText());
             assertTrue(component.get("multiple").asBoolean());
+        }
+    }
+
+    /**
+     * The contract's rules, on the input.
+     *
+     * <p>Epistola validates all of this when it renders, so none of it is a guarantee — it decides
+     * where the complaint appears. Which makes one property matter more than completeness: these
+     * must never refuse a value the contract allows, or the employee is stuck on something the
+     * server would have taken.
+     */
+    @Nested
+    class Constraints {
+
+        private TemplateField constrained(
+                String name, String type, boolean required, TemplateField.Constraints constraints
+        ) {
+            return new TemplateField(
+                    name, name, type, FieldType.SCALAR, required, null, List.of(), false, null, false,
+                    new TemplateField.FieldHints(null, null, null, null, constraints));
+        }
+
+        private ObjectNode generate(TemplateField field) {
+            return (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+        }
+
+        @Test
+        void carriesStringLengths() {
+            ObjectNode validate = (ObjectNode) generate(constrained("naam", "string", false,
+                    new TemplateField.Constraints(2, 40, null, null, null, null, null)))
+                    .get("validate");
+
+            assertThat(validate.get("minLength").asInt()).isEqualTo(2);
+            assertThat(validate.get("maxLength").asInt()).isEqualTo(40);
+        }
+
+        @Test
+        void carriesNumberRanges() {
+            ObjectNode validate = (ObjectNode) generate(constrained("bedrag", "number", false,
+                    new TemplateField.Constraints(null, null, null,
+                            new java.math.BigDecimal("0"), new java.math.BigDecimal("99.5"),
+                            null, null)))
+                    .get("validate");
+
+            assertThat(validate.get("min").decimalValue()).isEqualByComparingTo("0");
+            assertThat(validate.get("max").decimalValue()).isEqualByComparingTo("99.5");
+        }
+
+        @Test
+        void keepsAnAnchoredPatternExactlyAsTheContractWroteIt() {
+            ObjectNode validate = (ObjectNode) generate(constrained("bsn", "string", false,
+                    new TemplateField.Constraints(null, null, "^\\d{9}$", null, null, null, null)))
+                    .get("validate");
+
+            assertThat(validate.get("pattern").asText()).isEqualTo("^\\d{9}$");
+        }
+
+        @Test
+        void wrapsAnUnanchoredPatternSoItStillSearches() {
+            // JSON Schema patterns search; Formio wraps what it is given as ^…$ and so requires the
+            // whole value to match. Passed through, "\d{3}" would reject "ab123" — which the
+            // contract allows and Epistola accepts.
+            String pattern = (String) generate(constrained("code", "string", false,
+                    new TemplateField.Constraints(null, null, "\\d{3}", null, null, null, null)))
+                    .get("validate").get("pattern").asText();
+
+            assertThat(java.util.regex.Pattern.compile("^" + pattern + "$").matcher("ab123cd").matches())
+                    .describedAs("a searching pattern must still match a value that merely contains it")
+                    .isTrue();
+            assertThat(java.util.regex.Pattern.compile("^" + pattern + "$").matcher("abcd").matches())
+                    .describedAs("and must still reject one that does not")
+                    .isFalse();
+        }
+
+        @Test
+        void leavesLengthAndPatternOffAnEnum() {
+            // The options are the constraint; a length rule on top of them can only contradict.
+            TemplateField field = new TemplateField(
+                    "soort", "soort", "string", FieldType.SCALAR, false, null, List.of(), false, null,
+                    false, new TemplateField.FieldHints(null, null, List.of("a", "bb"), null,
+                    new TemplateField.Constraints(5, 10, "^x$", null, null, null, null)));
+
+            ObjectNode component = generate(field);
+
+            assertThat(component.get("type").asText()).isEqualTo("select");
+            assertThat(component.path("validate").has("minLength")).isFalse();
+            assertThat(component.path("validate").has("pattern")).isFalse();
+        }
+
+        @Test
+        void countsTheRowsOfADataGrid() {
+            TemplateField grid = new TemplateField(
+                    "regels", "regels", "array", FieldType.ARRAY, true, null,
+                    List.of(new TemplateField("naam", "naam", "string", FieldType.SCALAR, true, null, List.of())),
+                    false, null, false,
+                    new TemplateField.FieldHints(null, null, null, null,
+                            new TemplateField.Constraints(null, null, null, null, null, 1, 5)));
+
+            ObjectNode validate = (ObjectNode) generate(grid).get("validate");
+
+            assertThat(validate.get("required").asBoolean()).isTrue();
+            assertThat(validate.get("minLength").asInt()).isEqualTo(1);
+            assertThat(validate.get("maxLength").asInt()).isEqualTo(5);
+        }
+
+        @Test
+        void countsTheEntriesOfAnArrayOfScalars() {
+            // One input with `multiple`, whose entries Formio counts with the same two keywords.
+            TemplateField tags = new TemplateField(
+                    "tags", "tags", "array", FieldType.SCALAR, false, null, List.of(), false, null, false,
+                    new TemplateField.FieldHints(null, null, null, null,
+                            new TemplateField.Constraints(null, null, null, null, null, 1, 3)));
+
+            ObjectNode component = generate(tags);
+
+            assertThat(component.get("multiple").asBoolean()).isTrue();
+            assertThat(component.get("validate").get("minLength").asInt()).isEqualTo(1);
+            assertThat(component.get("validate").get("maxLength").asInt()).isEqualTo(3);
+        }
+
+        @Test
+        void addsNoValidateBlockWhenTheContractStatesNothing() {
+            TemplateField plain = new TemplateField(
+                    "vrij", "vrij", "string", FieldType.SCALAR, false, null, List.of());
+
+            assertThat(generate(plain).has("validate")).isFalse();
         }
     }
 }
