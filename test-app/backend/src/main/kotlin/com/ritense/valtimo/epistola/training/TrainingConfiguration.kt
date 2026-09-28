@@ -4,6 +4,7 @@
 
 package com.ritense.valtimo.epistola.training
 
+import app.epistola.valtimo.deploy.EpistolaCatalogSyncService
 import com.ritense.case.service.CaseDefinitionService
 import com.ritense.case_.repository.CaseDefinitionRepository
 import com.ritense.document.service.DocumentService
@@ -109,6 +110,7 @@ class TrainingConfiguration {
         caseDefinitionService: CaseDefinitionService,
         pluginService: PluginService,
         epistolaTenantProvisioner: EpistolaTenantProvisioner,
+        catalogSyncService: EpistolaCatalogSyncService,
         properties: TrainingProperties,
         @Value("\${epistola.base-url}") epistolaBaseUrl: String,
     ) = TraineeDossierProvisioner(
@@ -118,6 +120,7 @@ class TrainingConfiguration {
         caseDefinitionService,
         pluginService,
         epistolaTenantProvisioner,
+        catalogSyncService,
         properties,
         epistolaBaseUrl,
     )

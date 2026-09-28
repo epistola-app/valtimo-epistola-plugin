@@ -74,7 +74,12 @@ authenticated request, only running the expensive path below on a miss:
    a real Keycloak token can omit `sub` entirely, and an email-shaped identity (`trainee1@demo`)
    fails `CaseDefinitionId.key`'s `[a-zA-Z0-9-]+` pattern.
 2. Create the trainee's `PluginConfiguration` (`PluginConfigurationId.newId()`, known up front),
-   wrapped in `AuthorizationContext.runWithoutAuthorization { }`.
+   wrapped in `AuthorizationContext.runWithoutAuthorization { }`, and install the classpath
+   catalogs (the demo templates) into the trainee's new, empty Epistola tenant. It uses the same
+   `EpistolaCatalogSyncService` that `EpistolaCatalogSyncTrigger` runs at startup; a configuration
+   created later never gets that startup run. The import is best effort: a failure is logged and
+   provisioning continues. The configuration is `templateSyncEnabled`, so every restart re-syncs
+   the trainee's tenant as well.
 3. Export the `form-flow-demo` case-definition template and re-import it under the trainee's key
    via Valtimo's own `ExportService`/`ImportService` — `keyOverride`, `nameOverride`, and
    `pluginConfigurationMappings` (remapping the template's plugin-configuration id to the

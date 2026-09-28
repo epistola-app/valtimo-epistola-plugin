@@ -27,6 +27,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   unconditioned `ROLE_ADMIN` permissions no longer apply to them; `demo.permission.json` (now
   changeset `trainee-pbac-v2`) scopes them instead. The plugin's `evaluate-mapping` endpoint is
   scoped to the trainee's own cases. The published plugin is unchanged.
+- **Training (test-app): a trainee's own Epistola tenant gets the demo templates.** Provisioning
+  now installs the classpath catalogs into the trainee's new tenant, using the same catalog
+  deployer as the startup sync, and the trainee's plugin configuration is sync-enabled so restarts
+  keep it current. Before, the tenant stayed empty and every template in the trainee's own dossier
+  failed with "No default variant found".
 
 ### Fixed
 
