@@ -19,6 +19,7 @@ package app.epistola.valtimo.composer;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -51,6 +52,28 @@ public record ComposedLetter(int schemaVersion, String catalogId, String templat
      */
     @SuppressWarnings("unchecked")
     public static ComposedLetter from(Object raw, String variableName, ObjectMapper objectMapper) {
+        List<ComposedLetter> letters = allFrom(raw, variableName, objectMapper);
+        if (letters.size() > 1) {
+            throw new IllegalArgumentException(
+                    "The variable '" + variableName + "' holds " + letters.size() + " letters, and this "
+                            + "plugin generates one. Offer a composer per letter, each with its own pv: "
+                            + "key and its own generate task.");
+        }
+        return letters.get(0);
+    }
+
+    /**
+     * Every letter on the variable.
+     *
+     * <p>Two shapes are accepted: a letter on its own, which is what a composer writes today, and
+     * an envelope carrying a {@code letters} array. The array form is not produced by anything yet
+     * — letting an employee choose *how many* letters go out is unbuilt — but it is what that will
+     * look like, and reading it here is what keeps the shape open. {@link #from} refuses more than
+     * one, so the unbuilt behaviour fails with a sentence rather than by generating the first
+     * letter and dropping the rest.
+     */
+    @SuppressWarnings("unchecked")
+    public static List<ComposedLetter> allFrom(Object raw, String variableName, ObjectMapper objectMapper) {
         Map<String, Object> value;
         if (raw instanceof Map<?, ?> map) {
             value = (Map<String, Object>) map;
@@ -77,6 +100,26 @@ public record ComposedLetter(int schemaVersion, String catalogId, String templat
                 intOrNull(value.get(ComposerSchema.FIELD)),
                 "The composed letter on '" + variableName + "'");
 
+        if (value.get("letters") instanceof List<?> letters) {
+            if (letters.isEmpty()) {
+                throw new IllegalArgumentException(
+                        "The variable '" + variableName + "' names no letters");
+            }
+            return letters.stream()
+                    .map(entry -> one(entry, schemaVersion, variableName))
+                    .toList();
+        }
+        return List.of(one(value, schemaVersion, variableName));
+    }
+
+    @SuppressWarnings("unchecked")
+    private static ComposedLetter one(Object entry, int schemaVersion, String variableName) {
+        if (!(entry instanceof Map<?, ?> map)) {
+            throw new IllegalArgumentException(
+                    "The variable '" + variableName + "' holds something that is not a letter");
+        }
+        Map<String, Object> value = (Map<String, Object>) map;
+
         String templateId = text(value.get("templateId"));
         String catalogId = text(value.get("catalogId"));
         if (templateId == null || catalogId == null) {
@@ -89,7 +132,7 @@ public record ComposedLetter(int schemaVersion, String catalogId, String templat
                 schemaVersion,
                 catalogId,
                 templateId,
-                data instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of());
+                data instanceof Map<?, ?> dataMap ? (Map<String, Object>) dataMap : Map.of());
     }
 
     /** Operaton hands numbers back as Integer, Long or (from JSON) whatever Jackson chose. */

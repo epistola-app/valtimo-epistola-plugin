@@ -20,6 +20,7 @@ package app.epistola.valtimo.composer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -130,5 +131,64 @@ class ComposedLetterTest {
                 objectMapper))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("schemaVersion");
+    }
+
+    @Test
+    void readsTheEnvelopeShapeMultipleLettersWillUse() {
+        // Nothing writes this yet — letting an employee choose how many letters go out is unbuilt
+        // — but reading it is what keeps the shape open, so that feature is a behaviour change
+        // rather than a breaking one.
+        var letters = ComposedLetter.allFrom(
+                Map.of("schemaVersion", 1, "letters", List.of(
+                        Map.of("catalogId", "gemeente", "templateId", "besluit", "data", Map.of("a", 1)),
+                        Map.of("catalogId", "landelijk", "templateId", "aanmaning"))),
+                "epistolaLetter",
+                objectMapper);
+
+        assertThat(letters).hasSize(2);
+        assertThat(letters.get(0).templateId()).isEqualTo("besluit");
+        assertThat(letters.get(1).catalogId()).isEqualTo("landelijk");
+        assertThat(letters.get(0).schemaVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void readsASingleLetterAsAListOfOne() {
+        var letters = ComposedLetter.allFrom(
+                Map.of("catalogId", "gemeente", "templateId", "besluit"), "epistolaLetter", objectMapper);
+
+        assertThat(letters).hasSize(1);
+    }
+
+    @Test
+    void refusesMoreThanOneLetterWithASentenceRatherThanDroppingTheRest() {
+        // The shape is readable, the behaviour is not built. Generating the first and silently
+        // discarding the others would be the worst of both.
+        assertThatThrownBy(() -> ComposedLetter.from(
+                Map.of("letters", List.of(
+                        Map.of("catalogId", "gemeente", "templateId", "besluit"),
+                        Map.of("catalogId", "gemeente", "templateId", "aanmaning"))),
+                "epistolaLetter",
+                objectMapper))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("holds 2 letters")
+                .hasMessageContaining("a composer per letter");
+    }
+
+    @Test
+    void readsOneLetterFromTheEnvelopeShape() {
+        ComposedLetter letter = ComposedLetter.from(
+                Map.of("letters", List.of(Map.of("catalogId", "gemeente", "templateId", "besluit"))),
+                "epistolaLetter",
+                objectMapper);
+
+        assertThat(letter.templateId()).isEqualTo("besluit");
+    }
+
+    @Test
+    void refusesAnEmptyEnvelope() {
+        assertThatThrownBy(() -> ComposedLetter.from(
+                Map.of("letters", List.of()), "epistolaLetter", objectMapper))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("names no letters");
     }
 }

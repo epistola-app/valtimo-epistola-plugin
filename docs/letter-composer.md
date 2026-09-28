@@ -321,6 +321,38 @@ reads it may not be the one that wrote it.
 `correlationId`, `resultProcessVariable`. Plain flat properties, covered by the plugin's existing
 action-configuration versioning.
 
+### Does the shape take what is still missing?
+
+Everything in [Known gaps](#known-gaps) was checked against the three stored shapes before this
+shipped, because they are the part that cannot be changed cheaply once cases are deployed on it.
+The question asked of each was not "is it built" but "would building it change a shape rather than
+add to one".
+
+| Still missing                                                               | What the shape needs                                                                        | Takes it today?                                                                                                                                                                 |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Write-back                                                                  | `writeBack` on the settings; the resolved values on the letter; a write error on the result | Additive object keys                                                                                                                                                            |
+| Variant selection                                                           | `variantId` per offered letter; the resolved one on the letter                              | Additive, with a `schemaVersion` bump — an older plugin ignoring it would render the default, which is a different document. That is the mechanism working, not a shape problem |
+| **Several letters at once**                                                 | The letter variable holding more than one                                                   | **This one did not.** See below                                                                                                                                                 |
+| Rich text                                                                   | A marker in `FieldHints`; a per-template presentation override                              | Additive; `templates[]` is a list of objects                                                                                                                                    |
+| Per-template mapping fragment                                               | `templates[].dataMapping`                                                                   | Already there; only the widget is missing                                                                                                                                       |
+| Catalog-qualified letters                                                   | `catalogId` beside `templateId` on the wire                                                 | Additive request field; storage already holds a catalog per letter                                                                                                              |
+| Form flows                                                                  | Nothing stored — a third resolution path and its own gate                                   | No stored shape involved                                                                                                                                                        |
+| Nested objects in array items, message translation, the frontend off switch | Nothing stored                                                                              | No stored shape involved                                                                                                                                                        |
+
+**The one that did not take it was the letter variable**, which held a single letter and whose
+reader refused anything else. Letting an employee choose _how many_ letters go out would therefore
+have been a breaking change to a structure that outlives the plugin writing it. So the reader now
+also accepts the envelope that feature will use:
+
+```json
+{ "schemaVersion": 1, "letters": [{ "templateId": "…", "catalogId": "…", "data": {} }] }
+```
+
+Nothing writes it. `ComposedLetter.allFrom` reads both shapes, and `from` refuses more than one
+letter with a sentence saying to offer a composer per letter — so the unbuilt behaviour fails
+loudly instead of generating the first and dropping the rest. When multi-letter lands it is a
+behaviour change, not a migration.
+
 ## Wiring the process
 
 One service task generates whatever was chosen, with the **`epistola-generate-composed-document`**
@@ -455,6 +487,12 @@ entirely.
   never offered. The employee can already write the letter's text, so this is a governance limit
   rather than an escalation, but a form that must not allow it should keep using a hand-built form
   and a `generate-document` link per letter.
+
+  _This one is accepted rather than open._ The only fix that closes it is re-resolving the mapping
+  server-side at generation and ignoring what the browser sent — which would break the promise the
+  whole design rests on, that what was previewed is what gets generated. It is a consequence of the
+  composer computing while the employee watches, not an oversight, and it is not expected to change.
+
 - **Every composed letter uses the template's default variant.** Neither the preview nor the
   generate action names a variant, so the three selection modes `generate-document` offers —
   default, an explicit `variantId`, attribute-based — reduce to the first. Preview and generation
@@ -494,7 +532,17 @@ entirely.
   makes the preview more faithful rather than less — applied to a copy of `$doc`/`$pv` before the
   baseline mapping runs, it shows the letter as it will be _once saved_.
 
-- **Form flows are not supported yet**: the configuration is read from a task's _form_ link.
+- **Form flows are not supported yet**: the configuration is read from a task's _form_ link, and a
+  form-flow step is not one.
+
+  _Direction._ The stored shapes need nothing; what changes is how the configuration is found. The
+  request would name the form-flow step instance rather than (or as well as) a task, and the
+  resolver would gain a third entry point beside `forActivity` and `forStartEvent` — the step's own
+  form definition. Authorization is the open question: a form-flow step has no `OperatonTask` to
+  check `VIEW` on, so it needs its own gate rather than reusing either existing one. Worth doing
+  before the other open items, because it is a plausible ask, depends on nobody else, and touches
+  an assumption rather than an edge.
+
 - **Labels come from the contract.** A field with no `title` is labelled by humanizing its property
   name, so an English property name shows an English label in a Dutch form. The fix belongs in the
   template's data contract, where every integration benefits.
@@ -502,7 +550,15 @@ entirely.
   means wiring Formio's i18n into the nested form's options — see
   [What it can ask for](#what-it-can-ask-for).
 - **Rich text is unsupported**, and a rich-text object that looks like a plain object is not even
-  detectable here yet — see [What it can ask for](#what-it-can-ask-for).
+  detectable here — see [What it can ask for](#what-it-can-ask-for).
+
+  _Direction, and it starts elsewhere._ Nothing in this plugin reads a rich-text marker from a
+  contract, and whether Epistola exposes one is an Epistola-side question that has to be answered
+  first. Given a marker, the plugin side is small: the schema analyzer reads it into
+  `FieldHints`, and the generator renders an editor component instead of a fieldset. The
+  per-template presentation override ADR 0006 describes is where an author would pick one
+  otherwise. Until the marker exists, supply rich-text fields from the baseline mapping.
+
 - **A per-template mapping fragment is not authorable in the settings widget.** The backend merges
   one and a hand-written form can set it; the widget captures template and label only.
 - **One letter per composer, and the count is authored rather than chosen.** The picker is a

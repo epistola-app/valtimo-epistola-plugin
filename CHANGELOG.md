@@ -9,6 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The letter variable can carry more than one letter, though nothing writes more than one yet.**
+  Every known gap was checked against the three stored shapes before shipping, since those are the
+  part that cannot be changed cheaply once cases are deployed on them. All of them turned out to be
+  additive — write-back, variants, rich text, catalog-qualified letters — except letting an
+  employee choose _how many_ letters go out, which needed the variable to hold a list and whose
+  reader refused anything else. `ComposedLetter.allFrom` now reads both that envelope and today's
+  single letter, and `from` refuses more than one with a sentence rather than generating the first
+  and dropping the rest. When multi-letter lands it is a behaviour change, not a migration.
+
+- **Every open gap now carries a direction**, including the five that had none: form flows, rich
+  text, nested objects inside array items, catalog-qualified template ids on the wire, and the one
+  that is _accepted rather than open_ — the browser assembling `data`, which only a server-side
+  re-resolve would close, at the cost of the promise that what was previewed is what gets generated.
+
 - **The browser suites run nightly** (`.github/workflows/e2e-ui.yml`, plus `workflow_dispatch`).
   They stand up Postgres, Keycloak, Epistola, the Valtimo backend and the Angular dev server, then
   run every Playwright suite and keep the report and the service logs as artifacts. These are the
