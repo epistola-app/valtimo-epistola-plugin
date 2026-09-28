@@ -25,6 +25,7 @@ import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import com.ritense.processlink.service.ProcessLinkService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.operaton.bpm.engine.RepositoryService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,7 @@ public class ComposerConfigurationResolver {
 
     private final ProcessLinkService processLinkService;
     private final FormDefinitionRepository formDefinitionRepository;
+    private final RepositoryService repositoryService;
 
     /**
      * Every composer configured on the form of this activity, in document order.
@@ -75,6 +77,37 @@ public class ComposerConfigurationResolver {
             formDefinitionId(formDefinitionId, configurations);
         }
         return configurations;
+    }
+
+    /**
+     * Which deployed processes have a <b>start form</b> carrying this composer, offering this
+     * template.
+     *
+     * <p>This is how a start-form composer finds its own process without the author naming one. A
+     * start form is part of exactly one process, so the process is derivable — but not by the
+     * browser: Valtimo hands a Form.io component its components and nothing about the link that
+     * rendered it. So the question is answered here, from the stored links, and the caller is
+     * authorized against whatever comes back.
+     *
+     * <p>Returning a list rather than one id is deliberate. Two processes may well offer the same
+     * letter from a composer keyed the same way, and quietly composing with the first would mean
+     * running someone else's configuration. The caller narrows the list to the processes this user
+     * may actually start, and only a single survivor is used.
+     *
+     * @return the latest deployed definition ids, in no particular order
+     */
+    public List<String> startEventDefinitionsOffering(String componentKey, String templateId) {
+        List<String> matches = new ArrayList<>();
+        for (var definition : repositoryService.createProcessDefinitionQuery().latestVersion().list()) {
+            boolean offered = forStartEvent(definition.getId()).stream()
+                    .filter(configuration -> componentKey == null || componentKey.isBlank()
+                            || componentKey.equals(configuration.componentKey()))
+                    .anyMatch(configuration -> configuration.offers(templateId));
+            if (offered) {
+                matches.add(definition.getId());
+            }
+        }
+        return matches;
     }
 
     /**

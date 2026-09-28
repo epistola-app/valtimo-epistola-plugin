@@ -42,6 +42,7 @@ import {
   requiredKeys,
 } from './composer-data';
 import { readOpenDossierId } from './open-dossier';
+import { isSectioned, sectionForm } from './composer-sections';
 
 /** One selectable letter, as configured on the component. */
 export interface ComposerTemplateOption {
@@ -90,11 +91,7 @@ export interface ComposerValue {
       </select>
 
       <div *ngIf="!canCompose" class="composer-message" data-testid="epistola-composer-no-task">
-        {{
-          (composerContext === 'start' ? 'composerNeedsProcess' : 'composerNeedsTask')
-            | pluginTranslate: pluginId
-            | async
-        }}
+        {{ 'composerNeedsContext' | pluginTranslate: pluginId | async }}
       </div>
 
       <div *ngIf="loading" class="composer-message" data-testid="epistola-composer-loading">
@@ -220,12 +217,10 @@ export class EpistolaLetterComposerComponent
   /** Set by the Formio wrapper from the server-prefilled carrier field. */
   @Input() taskInstanceId?: string;
   /**
-   * Where this composer is used — authored, never inferred. `task` composes a letter on a user
-   * task; `start` composes an ad-hoc letter on a start form, for a dossier that is already open.
-   * Guessing would silently swap a per-task permission for a process-level one.
+   * Which process a start form starts, by its version-stable key. Optional: the backend works it
+   * out from the start form this composer sits on, and only needs telling when two processes offer
+   * the same letter from a composer keyed the same way.
    */
-  @Input() composerContext: 'task' | 'start' = 'task';
-  /** Start mode: the process this form starts, named by its version-stable key. */
   @Input() processDefinitionKey?: string;
   /**
    * This component's own Form.io key, set by the wrapper. The backend uses it to find *this*
@@ -260,10 +255,27 @@ export class EpistolaLetterComposerComponent
   get offeredTemplates(): ComposerTemplateOption[] {
     return this.letterSet?.templates?.length ? this.letterSet.templates : this.templates;
   }
-  readonly formOptions: any = {
-    noAlerts: true,
-    buttonSettings: { showCancel: false, showSubmit: false, showPrevious: false, showNext: false },
-  };
+  /**
+   * Formio options for the generated form.
+   *
+   * <p>A stepped form needs its own navigation — and breadcrumbs that can be clicked, so an
+   * employee can go straight back to a step rather than paging through the ones between. A plain
+   * form gets no buttons at all: the composer is embedded in a Valtimo form that has its own
+   * submit, and a second set of buttons inside it would be ambiguous.
+   */
+  get formOptions(): any {
+    const stepped = isSectioned(this.formDefinition);
+    return {
+      noAlerts: true,
+      breadcrumbSettings: { clickable: true },
+      buttonSettings: {
+        showCancel: false,
+        showSubmit: false,
+        showPrevious: stepped,
+        showNext: stepped,
+      },
+    };
+  }
 
   /** What the mapping produced; the employee's input is laid over this, never into it. */
   private mappedData: ComposerData = {};
@@ -296,12 +308,25 @@ export class EpistolaLetterComposerComponent
   }
 
   /**
-   * Whether the composer has what it needs to authorize a call: a task in task mode, a process to
-   * start in start mode. Without it the component stays inert — which is what should happen in the
-   * form builder and in design mode.
+   * Whether this composer is running on a user task.
+   *
+   * <p>Read from the context rather than authored: the task id arrives through a server-side
+   * prefill carrier that only a task form fills, so its presence *is* the answer, and one
+   * component configuration works on a task form and a start form at once. Nothing about
+   * authorization rides on it — task and start calls are separate endpoints that each check their
+   * own permission — so the worst a wrong reading could do is call the endpoint that then refuses.
+   */
+  get onUserTask(): boolean {
+    return !!this.taskInstanceId;
+  }
+
+  /**
+   * Whether the composer has enough context to authorize a call: a task, or a case to compose an
+   * ad-hoc letter for. Without either it stays inert — which is what should happen in the form
+   * builder and in design mode.
    */
   get canCompose(): boolean {
-    return this.composerContext === 'start' ? !!this.processDefinitionKey : !!this.taskInstanceId;
+    return this.onUserTask || !!this.composedForDocumentId || !!this.processDefinitionKey;
   }
 
   ngOnDestroy(): void {
@@ -369,7 +394,9 @@ export class EpistolaLetterComposerComponent
       next: (prepared) => {
         this.mappedData = prepared.data ?? {};
         this.catalogId = prepared.catalogId;
-        this.formDefinition = prepared.form;
+        this.formDefinition = sectionForm(prepared.form, (step) =>
+          this.translate('composerSection').replace('{step}', String(step)),
+        );
         this.complete = prepared.complete;
         this.requiredInputKeys = requiredKeys(prepared.form);
         this.loading = false;
@@ -426,38 +453,38 @@ export class EpistolaLetterComposerComponent
    * otherwise the case on screen (see {@link readOpenDossierId}). Null means a letter for a case
    * that does not exist yet, which is a new-case start form.
    */
-  private get composedForDocumentId(): string | null {
+  get composedForDocumentId(): string | null {
     return this.startDocumentId ?? readOpenDossierId(globalThis.location?.pathname);
   }
 
-  /** The prepare call for the mode this composer was configured in. */
+  /** The prepare call for wherever this composer turns out to be running. */
   private prepareRequest(templateId: string) {
-    return this.composerContext === 'start'
-      ? this.composerApi.composerPrepareStart({
-          processDefinitionKey: this.processDefinitionKey!,
-          documentId: this.composedForDocumentId,
+    return this.onUserTask
+      ? this.composerApi.composerPrepare({
+          taskId: this.taskInstanceId!,
           templateId,
           componentKey: this.componentKey,
         })
-      : this.composerApi.composerPrepare({
-          taskId: this.taskInstanceId!,
+      : this.composerApi.composerPrepareStart({
+          processDefinitionKey: this.processDefinitionKey,
+          documentId: this.composedForDocumentId,
           templateId,
           componentKey: this.componentKey,
         });
   }
 
-  /** The preview call for the mode this composer was configured in. */
+  /** The preview call for wherever this composer turns out to be running. */
   private previewRequest(templateId: string, data: ComposerData) {
-    return this.composerContext === 'start'
-      ? this.composerApi.composerPreviewStartToBlob({
-          processDefinitionKey: this.processDefinitionKey!,
-          documentId: this.composedForDocumentId,
+    return this.onUserTask
+      ? this.composerApi.composerPreviewToBlob({
+          taskId: this.taskInstanceId!,
           templateId,
           componentKey: this.componentKey,
           data,
         })
-      : this.composerApi.composerPreviewToBlob({
-          taskId: this.taskInstanceId!,
+      : this.composerApi.composerPreviewStartToBlob({
+          processDefinitionKey: this.processDefinitionKey,
+          documentId: this.composedForDocumentId,
           templateId,
           componentKey: this.componentKey,
           data,

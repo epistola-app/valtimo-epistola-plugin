@@ -292,20 +292,20 @@ describe('EpistolaLetterComposerComponent', () => {
   describe('on a start form (an ad-hoc letter, no task)', () => {
     function startComponent() {
       const made = createComponent();
-      made.component.composerContext = 'start';
+      // Nothing is authored: no task id is what a start form looks like, and the dossier on screen
+      // is what the letter is composed for.
       made.component.taskInstanceId = undefined;
-      made.component.processDefinitionKey = 'correspondentie-ad-hoc';
       made.component.startDocumentId = 'doc-1';
       return made;
     }
 
-    it('composes against the open dossier, naming the process it would start', () => {
+    it('composes against the open dossier, leaving the process to the backend', () => {
       const { component, service } = startComponent();
 
       component.onTemplateSelected('besluit');
 
       expect(service.composerPrepareStart).toHaveBeenCalledWith({
-        processDefinitionKey: 'correspondentie-ad-hoc',
+        processDefinitionKey: undefined,
         documentId: 'doc-1',
         templateId: 'besluit',
         componentKey: undefined,
@@ -319,7 +319,7 @@ describe('EpistolaLetterComposerComponent', () => {
       jest.advanceTimersByTime(1000);
 
       expect(service.composerPreviewStartToBlob).toHaveBeenCalledWith({
-        processDefinitionKey: 'correspondentie-ad-hoc',
+        processDefinitionKey: undefined,
         documentId: 'doc-1',
         templateId: 'besluit',
         componentKey: undefined,
@@ -328,20 +328,118 @@ describe('EpistolaLetterComposerComponent', () => {
       expect(service.composerPreviewToBlob).not.toHaveBeenCalled();
     });
 
-    it('stays inert without a process to start, as in the builder', () => {
+    it('passes an authored process key on, as the tie-breaker it is', () => {
       const { component, service } = startComponent();
-      component.processDefinitionKey = undefined;
+      component.processDefinitionKey = 'correspondentie-ad-hoc';
+
+      component.onTemplateSelected('besluit');
+
+      expect(service.composerPrepareStart).toHaveBeenCalledWith(
+        expect.objectContaining({ processDefinitionKey: 'correspondentie-ad-hoc' }),
+      );
+    });
+
+    it('needs no process key, unlike before', () => {
+      const { component } = startComponent();
+
+      expect(component.canCompose).toBe(true);
+    });
+
+    it('stays inert with neither a task nor a case, as in the builder', () => {
+      const { component, service } = startComponent();
+      component.startDocumentId = undefined;
 
       component.onTemplateSelected('besluit');
 
       expect(service.composerPrepareStart).not.toHaveBeenCalled();
       expect(component.canCompose).toBe(false);
     });
+  });
 
-    it('needs no task id, unlike task mode', () => {
-      const { component } = startComponent();
+  describe('which context it is in', () => {
+    /**
+     * The whole point of dropping the authored mode: one configuration, wherever it is dropped.
+     * The task id arrives through a prefill carrier only a task form fills, so its presence is the
+     * answer — and the same component, unchanged, composes ad hoc on a dossier without one.
+     */
+    it('is read from the context, so one configuration serves a task form and a start form', () => {
+      const { component, service } = createComponent();
+      expect(component.onUserTask).toBe(true);
 
-      expect(component.canCompose).toBe(true);
+      component.onTemplateSelected('besluit');
+      expect(service.composerPrepare).toHaveBeenCalled();
+      expect(service.composerPrepareStart).not.toHaveBeenCalled();
+
+      // The very same component, opened where no task exists.
+      component.taskInstanceId = undefined;
+      component.startDocumentId = 'doc-1';
+      expect(component.onUserTask).toBe(false);
+
+      component.onTemplateSelected('besluit');
+      expect(service.composerPrepareStart).toHaveBeenCalled();
+    });
+
+    /**
+     * A task id wins over a case id. A task form's composer must never fall through to the
+     * start-form endpoint just because the dossier is also identifiable from the route: that
+     * endpoint reads another form's configuration and has no process instance for `$pv`.
+     */
+    it('prefers the task even when a dossier is identifiable too', () => {
+      const { component, service } = createComponent();
+      component.startDocumentId = 'doc-1';
+
+      component.onTemplateSelected('besluit');
+
+      expect(service.composerPrepare).toHaveBeenCalled();
+      expect(service.composerPrepareStart).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('a letter with a lot to fill in', () => {
+    const manyFields = (count: number) => ({
+      display: 'form',
+      components: Array.from({ length: count }, (_, index) => ({
+        type: 'textfield',
+        key: `veld${index + 1}`,
+        input: true,
+      })),
+    });
+
+    it('is stepped through, with the navigation a wizard needs', () => {
+      const { component } = createComponent({ form: manyFields(14), complete: false });
+
+      component.onTemplateSelected('besluit');
+
+      expect(component.formDefinition.display).toBe('wizard');
+      expect(component.formOptions.buttonSettings.showNext).toBe(true);
+      // Freely navigable: paging back through every step to fix one field is not filling a form in.
+      expect(component.formOptions.breadcrumbSettings.clickable).toBe(true);
+    });
+
+    it('leaves a short letter as one form, with no navigation', () => {
+      const { component } = createComponent({ form: manyFields(3), complete: false });
+
+      component.onTemplateSelected('besluit');
+
+      expect(component.formDefinition.display).toBe('form');
+      expect(component.formOptions.buttonSettings.showNext).toBe(false);
+    });
+
+    it('still knows which fields are required once they are spread over steps', () => {
+      // requiredKeys has to reach into the steps, or the preview would fire before the letter can
+      // render and show Epistola's validation error instead of waiting.
+      const form = manyFields(14);
+      form.components[9] = {
+        ...form.components[9],
+        ...{ validate: { required: true } },
+      } as any;
+      const { component, service } = createComponent({ form, complete: false });
+
+      component.onTemplateSelected('besluit');
+      jest.advanceTimersByTime(2000);
+
+      expect(component.awaitingRequired).toBe(true);
+      expect(service.composerPreviewToBlob).not.toHaveBeenCalled();
     });
   });
 

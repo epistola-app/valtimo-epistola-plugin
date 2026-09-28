@@ -195,8 +195,9 @@ const epistolaPluginSpecification: PluginSpecification = {
       // Letter composer (runtime UI)
       composerChooseLetter: 'Kies een brief',
       composerChoosePlaceholder: '— kies een brief —',
-      composerNeedsTask: 'Een brief opstellen kan alleen vanuit een gebruikerstaak.',
-      composerNeedsProcess: 'Stel eerst in welk proces dit formulier start.',
+      composerNeedsContext:
+        'Een brief opstellen kan alleen vanuit een gebruikerstaak of een startformulier van een lopend dossier.',
+      composerSection: 'Stap {step}',
       composerPreparing: 'Brief voorbereiden…',
       composerNothingToAsk: 'Deze brief heeft geen aanvullende invoer nodig.',
       composerPreview: 'Voorbeeld',
@@ -496,8 +497,9 @@ const epistolaPluginSpecification: PluginSpecification = {
       // Letter composer (runtime UI)
       composerChooseLetter: 'Choose a letter',
       composerChoosePlaceholder: '— choose a letter —',
-      composerNeedsTask: 'Composing a letter is only available from within a user task.',
-      composerNeedsProcess: 'Configure which process this form starts first.',
+      composerNeedsContext:
+        'Composing a letter is only available from a user task, or from the start form of an open case.',
+      composerSection: 'Step {step}',
       composerPreparing: 'Preparing letter…',
       composerNothingToAsk: 'This letter needs no further input.',
       composerPreview: 'Preview',

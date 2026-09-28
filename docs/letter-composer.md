@@ -48,6 +48,14 @@ submit → pv:epistolaLetter = { templateId, catalogId, data, inputs }
 generate task (action config v2) renders $pv.epistolaLetter.data
 ```
 
+**A letter with a lot to fill in is stepped through.** Above six inputs the generated form is shown
+as a wizard: one step per group the template's contract describes, numbered steps for whatever it
+leaves ungrouped, and clickable breadcrumbs so a step is one click away. A group that is a lot on
+its own is split across steps that keep its name. Below the threshold nothing changes. This happens
+in the browser (`composer-sections.ts`), not in the generator: it is presentation only — same
+fields, same keys, same submission — so the generated form stays canonical and the step titles can
+be translated.
+
 **Which fields the employee is asked for is read from the mapping's outcome, never from its text.**
 A mapping may be opaque (`{"aanvrager": $doc.someObject}`) or computed, so which template field an
 expression feeds cannot be known by reading it. Evaluating it against the real case answers the
@@ -63,6 +71,7 @@ data belongs in a case form, not in one letter.
 | **Which letters, from where**    | Pick the Epistola connection and catalog, then tick the letters to offer and name each one as the employee should see it. The three cascade: changing the connection clears the catalog and the ticks, because those ids mean nothing elsewhere. |
 | **Baseline mapping**             | One JSONata mapping over `$doc`/`$pv` for every offered letter. Whatever it does not fill is asked of the employee.                                                                                                                              |
 | **Also ask for optional fields** | Off by default: only fields the template marks required are asked for.                                                                                                                                                                           |
+| **Process to start**             | Normally left empty — see [Where it is used](#where-it-is-used). Fill it in only when the backend says two processes offer the same letter.                                                                                                      |
 
 Stored, that half looks like this — a form written by hand may also carry the three keys directly
 on the component:
@@ -77,6 +86,29 @@ on the component:
 
 A per-letter `dataMapping` fragment is merged over the baseline, so the baseline says what every
 letter of this case type needs and the fragment only what makes this one different.
+
+### Where it is used
+
+Nothing says so. The same configuration works on a **user task form** and on the **start form** of
+a process running on an open dossier, at the same time, and which one it is follows from where it
+is opened:
+
+- A task form fills the composer's hidden `epistola:taskId` carrier server-side, so a task id is
+  present and the composer calls `/composer/prepare`, authorized on `OperatonTask:VIEW`.
+- A start form fills no such carrier, so the composer calls `/composer/prepare/start` for the
+  dossier on screen, authorized on `OperatonExecution:CREATE` plus `JsonSchemaDocument:VIEW`.
+
+A task id always wins: a task form must not fall through to the start endpoint, which would read
+another form's configuration and have no process instance for `$pv`.
+
+**Which process a start form starts is worked out server-side.** A start form belongs to exactly
+one process, but Valtimo hands a Form.io component nothing about the link that rendered it, so the
+browser cannot know. The backend instead looks for the start forms carrying a composer with this
+component's key that offers the chosen letter, narrows them to the processes the caller may
+actually start on this case, and uses the single survivor. None → the same "no composer" answer a
+form without one gets; more than one → it asks the author to fill in **Process to start**. Either
+way the surviving definition goes through the same two gates as a named one, so discovery buys
+convenience and changes no permission.
 
 ## Wiring the process
 

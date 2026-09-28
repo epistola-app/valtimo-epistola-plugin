@@ -63,17 +63,22 @@ export interface ComposerPreviewRequest {
 
 /**
  * The same two calls from a start form, where no task exists yet: an ad-hoc letter on an open
- * dossier. The process is named by its version-stable key, and the case by the id a server-side
- * value resolver prefilled into the form.
+ * dossier. The case comes from the id a server-side value resolver prefilled into the form, or
+ * from the dossier on screen.
  */
 export interface ComposerStartPrepareRequest {
-  processDefinitionKey: string;
+  /**
+   * Which process this start form starts, by its version-stable key. Normally omitted: a start
+   * form belongs to one process, so the backend finds it from the composer itself. Sent only to
+   * break a tie between two processes offering the same letter from a composer keyed the same way.
+   */
+  processDefinitionKey?: string | null;
   documentId?: string | null;
   templateId: string;
   /**
-   * Which composer is asking. On a start form this is what catches a `processDefinitionKey` that
-   * names the wrong process: the backend then finds no composer by that key and refuses, instead
-   * of composing with whatever composer that other process's start form happens to carry.
+   * Which composer is asking. This is what the backend searches start forms for, and what makes an
+   * explicit `processDefinitionKey` naming the wrong process fail rather than compose with
+   * whatever composer that other process's start form happens to carry.
    */
   componentKey?: string | null;
 }

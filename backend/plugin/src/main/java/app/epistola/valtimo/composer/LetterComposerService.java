@@ -120,6 +120,16 @@ public class LetterComposerService {
     }
 
     /**
+     * Which deployed processes have a start form carrying this composer, offering this template.
+     *
+     * <p>Delegates to {@link ComposerConfigurationResolver#startEventDefinitionsOffering}; the
+     * endpoints reach the configuration only through this service.
+     */
+    public List<String> startEventDefinitionsOffering(String componentKey, String templateId) {
+        return configurationResolver.startEventDefinitionsOffering(componentKey, templateId);
+    }
+
+    /**
      * Resolve a letter's data for this case and build the input form for what is still missing.
      */
     public PreparedLetter prepare(ComposerContext ctx, String templateId) {

@@ -41,14 +41,7 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   // settings widget, or as a bare `templates` array in a hand-written form. Nothing else about the
   // configuration is forwarded: the mappings and the catalog stay server-side, where the backend
   // reads them from this form definition itself (ADR 0006).
-  fieldOptions: [
-    'label',
-    'placeholder',
-    'templates',
-    'letterSet',
-    'composerContext',
-    'processDefinitionKey',
-  ],
+  fieldOptions: ['label', 'placeholder', 'templates', 'letterSet', 'processDefinitionKey'],
   // Embed the hidden carriers so dropping the component is enough. Valtimo prefills them
   // server-side through the epistola: value resolvers, and the component reads them back: the task
   // id on a task form, the case id on a start form opened against an existing dossier.
@@ -97,27 +90,12 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
         weight: 5,
       },
       {
-        type: 'radio',
-        key: 'composerContext',
-        label: 'Where is this form shown?',
-        tooltip:
-          'A start-form composer is authorized on your permission to start that process, not on a user task. Choose it for an ad-hoc letter on an open dossier.',
-        defaultValue: 'task',
-        inline: true,
-        weight: 6,
-        values: [
-          { label: 'In a user task (default)', value: 'task' },
-          { label: 'On a start form', value: 'start' },
-        ],
-      },
-      {
         type: 'textfield',
         key: 'processDefinitionKey',
-        label: 'Process to start',
+        label: 'Process to start (only if ambiguous)',
         tooltip:
-          'The key of the process this start form starts. Stored as a key, not a version-pinned id, so a redeployment does not break the form.',
+          'Leave empty. The same composer works on a user task and on a start form, and which it is follows from where it is opened. Fill this in only when two processes offer the same letter from a composer with the same property name, and the backend asks you to say which. Stored as a key, not a version-pinned id, so a redeployment does not break the form.',
         weight: 7,
-        conditional: { show: true, when: 'composerContext', eq: 'start' },
       },
       {
         type: 'epistola-letter-set-builder',

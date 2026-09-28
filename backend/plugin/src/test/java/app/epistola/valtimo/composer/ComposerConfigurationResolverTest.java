@@ -24,6 +24,9 @@ import com.ritense.form.repository.FormDefinitionRepository;
 import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import com.ritense.processlink.domain.ProcessLink;
 import com.ritense.processlink.service.ProcessLinkService;
+import org.operaton.bpm.engine.RepositoryService;
+import org.operaton.bpm.engine.repository.ProcessDefinition;
+import org.operaton.bpm.engine.repository.ProcessDefinitionQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -53,13 +56,53 @@ class ComposerConfigurationResolverTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private ProcessLinkService processLinkService;
     private FormDefinitionRepository formDefinitionRepository;
+    private RepositoryService repositoryService;
+    private ProcessDefinitionQuery processDefinitionQuery;
     private ComposerConfigurationResolver resolver;
 
     @BeforeEach
     void setUp() {
         processLinkService = mock(ProcessLinkService.class);
         formDefinitionRepository = mock(FormDefinitionRepository.class);
-        resolver = new ComposerConfigurationResolver(processLinkService, formDefinitionRepository);
+        repositoryService = mock(RepositoryService.class);
+        processDefinitionQuery = mock(ProcessDefinitionQuery.class, org.mockito.Mockito.RETURNS_SELF);
+        when(repositoryService.createProcessDefinitionQuery()).thenReturn(processDefinitionQuery);
+        when(processDefinitionQuery.list()).thenReturn(List.of());
+        resolver = new ComposerConfigurationResolver(
+                processLinkService, formDefinitionRepository, repositoryService);
+    }
+
+    /**
+     * Tell the discovery query which definitions are deployed.
+     *
+     * <p>The mocks are built before {@code when(...)} is entered on purpose: constructing them
+     * inside the argument would be stubbing within unfinished stubbing, which Mockito rejects.
+     */
+    private void deployed(String... ids) {
+        List<ProcessDefinition> definitions = new java.util.ArrayList<>();
+        for (String id : ids) {
+            ProcessDefinition definition = mock(ProcessDefinition.class);
+            when(definition.getId()).thenReturn(id);
+            definitions.add(definition);
+        }
+        when(processDefinitionQuery.list()).thenReturn(definitions);
+    }
+
+    /** Give a definition a start form carrying {@code formJson}. */
+    private void startFormOn(String processDefinitionId, UUID formId, String formJson) {
+        FormProcessLink startLink = mock(FormProcessLink.class);
+        when(startLink.getFormDefinitionId()).thenReturn(formId);
+        when(startLink.getActivityType()).thenReturn(ActivityTypeWithEventName.START_EVENT_START);
+        when(processLinkService.getProcessLinks(processDefinitionId))
+                .thenReturn(List.<ProcessLink>of(startLink));
+
+        FormIoFormDefinition form = mock(FormIoFormDefinition.class);
+        try {
+            when(form.getFormDefinition()).thenReturn(objectMapper.readTree(formJson));
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+        when(formDefinitionRepository.findById(formId)).thenReturn(Optional.of(form));
     }
 
     private void formOnTask(String formJson) {
@@ -289,5 +332,62 @@ class ComposerConfigurationResolverTest {
 
         assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:tweede", "besluit")
                 .catalogId()).isEqualTo("andere-catalogus");
+    }
+
+    @Test
+    void discoversWhichProcessesHaveAStartFormOfferingATemplate() {
+        // A start form belongs to exactly one process, so the author should not have to name it.
+        // Valtimo tells a Form.io component nothing about the link that rendered it, so the
+        // question is answered here instead.
+        deployed("ad-hoc:1:a", "other:1:b");
+        startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
+        when(processLinkService.getProcessLinks("other:1:b")).thenReturn(List.of());
+
+        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "besluit"))
+                .containsExactly("ad-hoc:1:a");
+    }
+
+    @Test
+    void discoversNothingForATemplateNoStartFormOffers() {
+        deployed("ad-hoc:1:a");
+        startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
+
+        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "aanmaning")).isEmpty();
+    }
+
+    @Test
+    void discoversNothingForAComposerKeyedDifferently() {
+        // The component names itself, so a start form carrying someone else's composer is not a
+        // match — otherwise an ad-hoc letter could quietly run another form's configuration.
+        deployed("ad-hoc:1:a");
+        startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
+
+        assertThat(resolver.startEventDefinitionsOffering("pv:andereBrief", "besluit")).isEmpty();
+    }
+
+    @Test
+    void reportsEveryProcessWhoseStartFormOffersTheTemplate() {
+        // Two matches is the case an author has to break: the endpoint refuses rather than
+        // composing with whichever came first.
+        UUID secondForm = UUID.randomUUID();
+        deployed("ad-hoc:1:a", "ad-hoc-2:1:b");
+        startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
+        startFormOn("ad-hoc-2:1:b", secondForm, composerJson(""));
+
+        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "besluit"))
+                .containsExactlyInAnyOrder("ad-hoc:1:a", "ad-hoc-2:1:b");
+    }
+
+    @Test
+    void doesNotDiscoverAComposerThatOnlySitsOnATaskForm() {
+        // Only START_EVENT_START links count. A composer on a user-task form has a task to
+        // authorize against, and must not be reachable through the start-form endpoint.
+        deployed(PROCESS_DEFINITION_ID);
+        FormProcessLink taskLink = mock(FormProcessLink.class);
+        when(taskLink.getActivityType()).thenReturn(ActivityTypeWithEventName.USER_TASK_CREATE);
+        when(processLinkService.getProcessLinks(PROCESS_DEFINITION_ID))
+                .thenReturn(List.<ProcessLink>of(taskLink));
+
+        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "besluit")).isEmpty();
     }
 }

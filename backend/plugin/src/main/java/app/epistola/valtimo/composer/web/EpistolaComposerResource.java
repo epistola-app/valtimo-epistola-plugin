@@ -179,17 +179,21 @@ public class EpistolaComposerResource {
 
     @PostMapping("/composer/prepare/start")
     public ResponseEntity<?> prepareOnStartForm(@RequestBody StartPrepareRequest request) {
-        if (isBlank(request.processDefinitionKey()) || isBlank(request.templateId())) {
-            return ResponseEntity.badRequest().body(
-                    Map.of("error", "processDefinitionKey and templateId are required"));
+        if (isBlank(request.templateId())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "templateId is required"));
         }
 
         StartEventAuthorization.StartContext startContext;
         try {
-            startContext = startEventAuthorization.require(
-                    request.processDefinitionKey(), trimToNull(request.documentId()));
+            startContext = startContextFor(
+                    request.processDefinitionKey(),
+                    request.documentId(),
+                    request.componentKey(),
+                    request.templateId());
         } catch (StartEventAuthorization.NotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (ComposerException e) {
+            return mapComposerError(e);
         }
 
         try {
@@ -206,17 +210,21 @@ public class EpistolaComposerResource {
 
     @PostMapping("/composer/preview/start")
     public ResponseEntity<?> previewOnStartForm(@RequestBody StartPreviewRequest request) {
-        if (isBlank(request.processDefinitionKey()) || isBlank(request.templateId())) {
-            return ResponseEntity.badRequest().body(
-                    Map.of("error", "processDefinitionKey and templateId are required"));
+        if (isBlank(request.templateId())) {
+            return ResponseEntity.badRequest().body(Map.of("error", "templateId is required"));
         }
 
         StartEventAuthorization.StartContext startContext;
         try {
-            startContext = startEventAuthorization.require(
-                    request.processDefinitionKey(), trimToNull(request.documentId()));
+            startContext = startContextFor(
+                    request.processDefinitionKey(),
+                    request.documentId(),
+                    request.componentKey(),
+                    request.templateId());
         } catch (StartEventAuthorization.NotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (ComposerException e) {
+            return mapComposerError(e);
         }
 
         try {
@@ -230,6 +238,53 @@ public class EpistolaComposerResource {
         } catch (ComposerException e) {
             return mapComposerError(e);
         }
+    }
+
+    /**
+     * The authorized start context, whether or not the author named a process.
+     *
+     * <p>A start form belongs to exactly one process, so naming it is configuration the system can
+     * work out for itself — but only server-side: Valtimo hands a Form.io component nothing about
+     * the link that rendered it. When no key is given the processes whose start form carries this
+     * composer are looked up, narrowed to the ones this caller may actually start on this case,
+     * and used when exactly one survives. An authored key still wins, and is the way out when two
+     * processes offer the same letter from a composer keyed the same way.
+     *
+     * <p>Discovery changes nothing about the gates: the surviving definition goes through the same
+     * two checks as a named one, and a caller who may start nothing sees the same "no composer"
+     * answer as one whose form carries none — never a list of processes they have no part in.
+     */
+    private StartEventAuthorization.StartContext startContextFor(
+            String processDefinitionKey,
+            String documentId,
+            String componentKey,
+            String templateId
+    ) {
+        String trimmedDocumentId = trimToNull(documentId);
+        if (!isBlank(processDefinitionKey)) {
+            return startEventAuthorization.require(processDefinitionKey, trimmedDocumentId);
+        }
+
+        var document = startEventAuthorization.findDocument(trimmedDocumentId);
+        if (trimmedDocumentId != null && document == null) {
+            throw new StartEventAuthorization.NotFoundException("Case document not found: " + trimmedDocumentId);
+        }
+
+        List<String> startable = letterComposerService
+                .startEventDefinitionsOffering(componentKey, templateId).stream()
+                .filter(definitionId -> startEventAuthorization.permits(definitionId, document))
+                .toList();
+
+        if (startable.isEmpty()) {
+            throw new ComposerException(ComposerException.Reason.NO_COMPOSER,
+                    "No process you can start has a start form offering template '" + templateId + "'");
+        }
+        if (startable.size() > 1) {
+            throw new ComposerException(ComposerException.Reason.MISSING_CONTEXT,
+                    "Template '" + templateId + "' is offered by the start form of " + startable.size()
+                            + " processes. Name the process on the composer to say which one.");
+        }
+        return startEventAuthorization.requireById(startable.get(0), trimmedDocumentId);
     }
 
     /**

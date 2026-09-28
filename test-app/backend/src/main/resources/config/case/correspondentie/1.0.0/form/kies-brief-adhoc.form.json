@@ -7,7 +7,7 @@
       "input": true,
       "prefill": false,
       "label": "Welke brief wilt u nu versturen?",
-      "placeholder": "— kies een brief —",
+      "placeholder": "\u2014 kies een brief \u2014",
       "letterSet": {
         "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
         "catalogId": "municipality-demo",
@@ -45,9 +45,7 @@
             "sourceKey": "epistola:documentId"
           }
         }
-      ],
-      "composerContext": "start",
-      "processDefinitionKey": "correspondentie-ad-hoc-letter"
+      ]
     },
     {
       "key": "submit",

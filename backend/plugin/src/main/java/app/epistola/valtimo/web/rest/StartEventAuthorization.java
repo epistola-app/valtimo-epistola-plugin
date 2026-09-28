@@ -87,7 +87,17 @@ public class StartEventAuthorization {
         if (definition == null) {
             throw new NotFoundException("No deployed process definition for key '" + processDefinitionKey + "'");
         }
+        return requireById(definition.getId(), documentId);
+    }
 
+    /**
+     * The same two gates, for a definition that has already been resolved — used when the process
+     * was discovered rather than named, so there is no key to look up.
+     *
+     * @param processDefinitionId The deployed definition
+     * @param documentId          The case to start on, or null for a new case
+     */
+    public StartContext requireById(String processDefinitionId, String documentId) {
         JsonSchemaDocument document = null;
         if (documentId != null) {
             document = findDocumentOrNull(documentId);
@@ -101,16 +111,7 @@ public class StartEventAuthorization {
         // NB: deliberately NOT JsonSchemaDocumentDefinition:CREATE — despite the name, that action
         // means "may deploy a case schema" (it is used only by JsonSchemaDocumentDefinitionService
         // .deploy) and would make these endpoints admin-only. See ADR 0004.
-        var executionRequest = new RelatedEntityAuthorizationRequest<>(
-                OperatonExecution.class,
-                OperatonExecutionActionProvider.CREATE,
-                OperatonProcessDefinition.class,
-                definition.getId());
-        if (document != null) {
-            executionRequest = executionRequest.withContext(
-                    new AuthorizationResourceContext<>(JsonSchemaDocument.class, document));
-        }
-        authorizationService.requirePermission(executionRequest);
+        authorizationService.requirePermission(startRequest(processDefinitionId, document));
 
         // SECONDARY GATE — CREATE on a process must never confer READ on a case. Stricter than
         // Valtimo's own start-form path, which passes the document only as context: it derives the
@@ -123,7 +124,44 @@ public class StartEventAuthorization {
                     List.of(document)));
         }
 
-        return new StartContext(definition.getId(), documentId, document);
+        return new StartContext(processDefinitionId, documentId, document);
+    }
+
+    /**
+     * Whether this caller could start this definition on this case — the same two gates, asked
+     * rather than enforced.
+     *
+     * <p>Used where a process was discovered rather than named and the candidates have to be
+     * narrowed to the ones the caller may actually start, so that a process they have no business
+     * with is never reported to them, ambiguously or otherwise.
+     */
+    public boolean permits(String processDefinitionId, JsonSchemaDocument document) {
+        if (!authorizationService.hasPermission(startRequest(processDefinitionId, document))) {
+            return false;
+        }
+        return document == null || authorizationService.hasPermission(new EntityAuthorizationRequest<>(
+                JsonSchemaDocument.class,
+                JsonSchemaDocumentActionProvider.VIEW,
+                List.of(document)));
+    }
+
+    /** Look up a case document without authorizing it; null when unknown. */
+    public JsonSchemaDocument findDocument(String documentId) {
+        return documentId == null ? null : findDocumentOrNull(documentId);
+    }
+
+    private RelatedEntityAuthorizationRequest<OperatonExecution> startRequest(
+            String processDefinitionId,
+            JsonSchemaDocument document
+    ) {
+        var request = new RelatedEntityAuthorizationRequest<>(
+                OperatonExecution.class,
+                OperatonExecutionActionProvider.CREATE,
+                OperatonProcessDefinition.class,
+                processDefinitionId);
+        return document == null
+                ? request
+                : request.withContext(new AuthorizationResourceContext<>(JsonSchemaDocument.class, document));
     }
 
     /**

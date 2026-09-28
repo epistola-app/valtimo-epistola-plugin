@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A letter with a lot to fill in is filled in step by step.** Above six inputs the generated form
+  becomes a wizard: one step per section the template's contract already describes, numbered steps
+  for the fields it does not group, and breadcrumbs that can be clicked so a step is one click away
+  rather than a page at a time. The preview stays alongside throughout. A short letter is left
+  exactly as it was — three fields behind Back/Next would be worse than the column it replaces.
+  Presentation only: the same fields, the same keys, the same submission.
+
+- **The composer no longer asks where it is used.** "Where is this form shown?" was a setting that
+  described the situation rather than changing it, and a composer could only be one or the other.
+  The mode is now read from the context — a task form fills a server-side task-id carrier, a start
+  form does not — so one configuration works on a user task and on a start form at the same time.
+  Nothing about authorization rides on the reading: the two endpoints are separate and each checks
+  its own permission, and a task id always wins so a task form can never fall through to the
+  start-form endpoint.
+
+- **A start-form composer finds its own process.** "Process to start" had to be filled in because
+  Valtimo tells a Form.io component nothing about the link that rendered it. The backend now looks
+  for the start forms carrying this composer and offering the chosen letter, narrows them to the
+  processes the caller may actually start on this case, and uses the single survivor — through the
+  same two gates a named process goes through. The setting remains, for the one case discovery
+  cannot decide: two processes offering the same letter from a composer keyed the same way.
+
 - **The composer's baseline mapping is parsed as you type.** It was a plain textarea, so a typo in
   the JSONata surfaced much later as a letter that "could not be prepared", with nothing pointing at
   the mapping. The field now reports the parse error, or — when it parses — which `$doc`/`$pv` paths

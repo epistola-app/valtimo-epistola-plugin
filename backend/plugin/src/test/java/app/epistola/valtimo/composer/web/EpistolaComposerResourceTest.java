@@ -217,12 +217,99 @@ class EpistolaComposerResourceTest {
     }
 
     @Test
-    void prepareOnStartForm_rejectsAMissingProcessOrTemplate() {
+    void prepareOnStartForm_rejectsAMissingTemplate() {
+        // The process is no longer required of the caller — only the template is.
         assertThat(resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
-                null, "doc-1", "besluit", COMPONENT_KEY)).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
-                "correspondentie-ad-hoc", "doc-1", " ", COMPONENT_KEY)).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+                "correspondentie-ad-hoc", "doc-1", " ", COMPONENT_KEY)).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
         verifyNoInteractions(letterComposerService);
+    }
+
+    @Test
+    void prepareOnStartForm_findsTheProcessWhenTheAuthorNamedNone() {
+        // The author should not have to name a process a start form already belongs to.
+        var document = mock(com.ritense.document.domain.impl.JsonSchemaDocument.class);
+        when(startEventAuthorization.findDocument("doc-1")).thenReturn(document);
+        when(letterComposerService.startEventDefinitionsOffering(COMPONENT_KEY, "besluit"))
+                .thenReturn(java.util.List.of("ad-hoc:1:a"));
+        when(startEventAuthorization.permits("ad-hoc:1:a", document)).thenReturn(true);
+        when(startEventAuthorization.requireById("ad-hoc:1:a", "doc-1"))
+                .thenReturn(new StartEventAuthorization.StartContext("ad-hoc:1:a", "doc-1", document));
+        when(letterComposerService.prepare(any(), eq("besluit")))
+                .thenReturn(new PreparedLetter("besluit", "Besluit", "gemeente", Map.of(), null, true));
+
+        var response = resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
+                null, "doc-1", "besluit", COMPONENT_KEY));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        ArgumentCaptor<ComposerContext> context = ArgumentCaptor.forClass(ComposerContext.class);
+        verify(letterComposerService).prepare(context.capture(), eq("besluit"));
+        assertThat(context.getValue().processDefinitionId()).isEqualTo("ad-hoc:1:a");
+        assertThat(context.getValue().isStartEvent()).isTrue();
+        // Discovery does not replace the gates: the survivor still goes through them.
+        verify(startEventAuthorization).requireById("ad-hoc:1:a", "doc-1");
+    }
+
+    @Test
+    void prepareOnStartForm_refusesWhenNoStartFormOffersTheTemplate() {
+        when(letterComposerService.startEventDefinitionsOffering(COMPONENT_KEY, "besluit"))
+                .thenReturn(java.util.List.of());
+
+        var response = resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
+                null, null, "besluit", COMPONENT_KEY));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        verify(letterComposerService, org.mockito.Mockito.never()).prepare(any(), any());
+    }
+
+    @Test
+    void prepareOnStartForm_skipsAProcessThisCallerMayNotStart() {
+        // Narrowing happens before anything is reported, so a caller never learns about — or is
+        // blocked by — a process they have no part in.
+        when(letterComposerService.startEventDefinitionsOffering(COMPONENT_KEY, "besluit"))
+                .thenReturn(java.util.List.of("theirs:1:a", "mine:1:b"));
+        when(startEventAuthorization.permits("theirs:1:a", null)).thenReturn(false);
+        when(startEventAuthorization.permits("mine:1:b", null)).thenReturn(true);
+        when(startEventAuthorization.requireById("mine:1:b", null))
+                .thenReturn(new StartEventAuthorization.StartContext("mine:1:b", null, null));
+        when(letterComposerService.prepare(any(), eq("besluit")))
+                .thenReturn(new PreparedLetter("besluit", "Besluit", "gemeente", Map.of(), null, true));
+
+        var response = resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
+                null, null, "besluit", COMPONENT_KEY));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(startEventAuthorization).requireById("mine:1:b", null);
+    }
+
+    @Test
+    void prepareOnStartForm_asksTheAuthorToChooseWhenTwoProcessesOfferIt() {
+        when(letterComposerService.startEventDefinitionsOffering(COMPONENT_KEY, "besluit"))
+                .thenReturn(java.util.List.of("one:1:a", "two:1:b"));
+        when(startEventAuthorization.permits(any(), any())).thenReturn(true);
+
+        var response = resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
+                null, null, "besluit", COMPONENT_KEY));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().toString()).contains("Name the process");
+        verify(letterComposerService, org.mockito.Mockito.never()).prepare(any(), any());
+    }
+
+    @Test
+    void prepareOnStartForm_stillHonoursAnAuthoredProcessKey() {
+        when(startEventAuthorization.require("correspondentie-ad-hoc", "doc-1"))
+                .thenReturn(new StartEventAuthorization.StartContext("process:2:def", "doc-1", null));
+        when(letterComposerService.prepare(any(), eq("besluit")))
+                .thenReturn(new PreparedLetter("besluit", "Besluit", "gemeente", Map.of(), null, true));
+
+        var response = resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
+                "correspondentie-ad-hoc", "doc-1", "besluit", COMPONENT_KEY));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        verify(startEventAuthorization).require("correspondentie-ad-hoc", "doc-1");
+        verify(letterComposerService, org.mockito.Mockito.never())
+                .startEventDefinitionsOffering(any(), any());
     }
 
     @Test
