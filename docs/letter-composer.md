@@ -471,9 +471,22 @@ entirely.
   letter that names a variant would ignore it and render the default — a different document than
   the one approved — so `ComposerSchema.CURRENT` must be raised when it lands.
 
-- **No write-back to the case.** Input stays with the letter. Fields that belong in the case
-  should be collected in a case form (where the preview picks them up from the field keys — see
-  [document-preview.md](document-preview.md)).
+- **No write-back to the case.** Input stays with the letter: the composer's generated fields live
+  in a nested Form.io instance and collapse into the component's single `pv:` value, so the
+  field-level write-back Valtimo does for a `doc:`-keyed form field never sees them. Until it
+  exists, a value that belongs in the case should be collected in a case form, where the preview
+  picks it up from the field key — see [document-preview.md](document-preview.md).
+
+  The design is settled and written up in
+  [ADR 0006](adr/0006-letter-composer-configuration.md#write-back-is-a-map-from-case-path-to-expression-evaluated-after-the-letter-is-composed):
+  a `writeBack` map on the component, keyed by the **destination** and valued with a JSONata
+  expression over `$inputs` / `$data` / `$doc` / `$pv`, applied by a service task placed after the
+  composer's task and before generation. Keying by destination is what keeps one writer per case
+  path and lets a destination be computed from several inputs; an expression yielding nothing
+  writes nothing, so a value the employee never supplied never clobbers the case. The same map also
+  makes the preview more faithful rather than less — applied to a copy of `$doc`/`$pv` before the
+  baseline mapping runs, it shows the letter as it will be _once saved_.
+
 - **Form flows are not supported yet**: the configuration is read from a task's _form_ link.
 - **Labels come from the contract.** A field with no `title` is labelled by humanizing its property
   name, so an English property name shows an English label in a Dutch form. The fix belongs in the

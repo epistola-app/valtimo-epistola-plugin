@@ -59,7 +59,7 @@ cannot be derived from the mapping text.
 ### The configuration lives in the Form.io component, inside the form definition
 
 The composer's settings — the template list, the baseline mapping, the per-template override, the
-per-input presentation and each input's target — are stored in the component's own JSON, and so in
+per-input presentation and the write-back map — are stored in the component's own JSON, and so in
 the Valtimo form definition that contains it.
 
 Valtimo form definitions are already scoped to a case definition, versioned with it, deployable
@@ -92,25 +92,84 @@ The trade-off is that `data` is a snapshot. If the case changes between the form
 letter still carries what the employee approved. For this flow that is the wanted behaviour, but it
 is a real difference from today's links, which map at generation time.
 
-### An input's target decides both the write-back and the preview semantics
+### Write-back is a map from case path to expression, evaluated after the letter is composed
 
-Generated inputs are declared first; what happens to each one is declared after, as one setting per
-input:
+An input the employee types is, by default, part of that letter and nothing else. Some values
+belong in the case as well — a corrected phone number is worth keeping — so a composer may declare
+where they go:
 
-| Input target              | Written back on completion                | How the preview applies it                                   |
-| ------------------------- | ----------------------------------------- | ------------------------------------------------------------ |
-| `doc:/aanvrager/telefoon` | Case document, via `ValueResolverService` | **Before** the mapping (`inputOverrides`)                    |
-| `pv:motivatie`            | Process variable, same route              | **Before** the mapping (`inputOverrides`)                    |
-| _(none)_                  | Not written back                          | **After** the mapping, onto the template field (`overrides`) |
+```json
+"writeBack": {
+  "doc:/aanvrager/telefoon": "$inputs.telefoon",
+  "doc:/aanvrager/adres": "$inputs.straat & \" \" & $inputs.huisnummer",
+  "pv:motivatie": "$inputs.motivatie"
+}
+```
 
-Both override paths already exist on `PreviewRequest`, and the write uses `ValueResolverService`,
-the same service Valtimo's own form handling and `ValtimoFormFlow.completeTask` use. So a value that
-belongs to the case flows through the mapping exactly as it will after saving, and a value that is
-letter-only never touches the case.
+**The destination is the key and an expression is the value**, not the other way round. That
+direction is deliberate:
 
-This also answers "which fields may the employee edit" without reading the mapping: the composer
-asks for the contract fields the mapping does not fill, and the author decides per input whether it
-also lands in the case.
+- **One writer per destination.** Keying by the input instead would let two of them target the same
+  case path with no defined order; keying by the destination makes that unrepresentable.
+- **It mirrors the baseline mapping.** That reads `template field ← JSONata over the case`; this
+  reads `case path ← JSONata over the letter`. One language, one mental model, and the same
+  authoring widget.
+- **It is not limited to copying.** A destination can be computed from several inputs, or from a
+  constant, which a per-input target cannot express.
+- **It is keyed by something stable.** Contract field paths differ per template, so a per-input map
+  only works where letters share a contract. Case paths are shared across every letter offered.
+- **The keys are resolver keys**, so `ValueResolverService.validateValues` can check them against
+  the case definition while the form is being authored, rather than failing at runtime.
+
+The expression sees `$inputs` (only what a human typed), `$data` (everything the letter renders
+with), and `$doc`/`$pv` for context — the same context the baseline mapping has. **An expression
+that yields nothing writes nothing**, which is what makes "only write what was actually supplied"
+the default instead of clobbering good case data with nulls.
+
+Evaluated, the map is exactly the argument `ValueResolverService.handleValues` takes, so the
+configuration is the API's own input shape:
+
+```java
+Map<String, Object> values = writeBack.entrySet().stream()
+        .collect(toMap(Map.Entry::getKey, e -> evaluate(e.getValue(), letter)));
+valueResolverService.handleValues(processInstanceId, execution, values);
+```
+
+#### It runs as a service task, not at form submission
+
+A plain Valtimo task form offers no completion hook a plugin can write from, and the composer's
+generated inputs are invisible to the one Valtimo already has: they live in a nested Form.io
+instance and collapse into the component's single `pv:` value, so the field-level write-back that
+handles a `doc:`-keyed form field never sees them.
+
+So the write is a **service task**, placed immediately after the composer's user task and **before**
+generation — the case is updated first, so a corrected address does not depend on a PDF rendering
+successfully. It reads its configuration from the form definition the same way `prepare` does
+(process definition plus component key), so nothing about where data lands travels over the wire.
+It works unchanged on a start form, where the task runs inside the instance the form started.
+
+Rejected alternatives: a Valtimo task-completion listener (automatic, but it depends on an
+extension point whose stability would have to be established, is invisible in the process, and has
+an ordering question against Valtimo's own document update); and projecting the generated inputs up
+into the parent form as real `doc:`/`pv:` fields (the composer would have to inject siblings at
+runtime under keys that change per letter, which breaks both the saved form definition and prefill).
+
+#### And it makes the preview more faithful, not less
+
+The preview lays the employee's input over the mapping's result. Once a value also lands in the
+case, that is no longer quite what the saved letter will be: after the write, the baseline mapping
+would produce that value itself.
+
+The fix falls out of the same map. Apply the write-back expressions to a **copy** of `$doc`/`$pv`,
+then run the baseline mapping over that, and the preview answers "what does this letter look like
+once this is saved" — automatically, with nothing extra to configure. `PreviewRequest` already
+carries both an overlay applied before the mapping (`inputOverrides`) and one applied after it
+(`overrides`); the composer has only ever used the second.
+
+> An earlier draft of this ADR put the target on each generated input, and let that target decide
+> the preview semantics. It was replaced by the map above: it could not express a computed
+> destination, it left two inputs able to fight over one case path, and it keyed configuration by
+> contract paths that differ per template.
 
 ### Dropdowns are a contract concern first, a component concern second
 
@@ -198,3 +257,7 @@ The design keeps it open by not assuming the composer lives in the case's own fo
   fix, and until they exist the per-input override carries that weight.
 - Existing processes with one `generate-document` link per letter keep working unchanged. The
   composer is additive.
+- Write-back is a case write configured in a form definition. That is no new authority — a form
+  author can already put a `doc:`-keyed field on a form — and the map is read server-side, so the
+  browser cannot introduce or redirect one. It does mean a composer's settings deserve the same
+  review a case form's field keys get.
