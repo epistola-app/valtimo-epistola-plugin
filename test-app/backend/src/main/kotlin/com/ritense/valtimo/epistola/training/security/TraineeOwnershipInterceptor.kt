@@ -59,7 +59,16 @@ class TraineeOwnershipInterceptor(
                 runCatching { UUID.fromString(processLinkId) }
                     .getOrNull()
                     ?.let { ownershipChecks.resolveProcessDefinitionIdOfProcessLink(it) }
-            val owned = processDefinitionId != null && ownershipChecks.isOwnProcessDefinition(traineeIdentity, processDefinitionId)
+            // Two Valtimo endpoints carry {processLinkId}: DELETE /api/v1/process-link/{processLinkId}
+            // (configuration — own dossier only) and POST .../{processLinkId}/form/submission, which
+            // is how the UI submits a start or task form. Submitting is working a case, not changing
+            // its case type, so a shared case type is allowed there; PBAC then decides whether the
+            // trainee may create the case, start the process or complete the task (their own cases
+            // only). Found on the live demo: every start form of a shared case type returned 403.
+            val isFormSubmission = request.requestURI?.endsWith(FORM_SUBMISSION_SUFFIX) == true
+            val owned =
+                processDefinitionId != null &&
+                    ownershipChecks.isOwnProcessDefinition(traineeIdentity, processDefinitionId, allowShared = isFormSubmission)
             return allowOrForbid(response, owned)
         }
 
@@ -194,6 +203,8 @@ class TraineeOwnershipInterceptor(
     }
 
     private companion object {
+        private const val FORM_SUBMISSION_SUFFIX = "/form/submission"
+
         private val MANAGEMENT_CASE_PREFIXES =
             listOf(
                 "/api/management/v1/case-definition/",

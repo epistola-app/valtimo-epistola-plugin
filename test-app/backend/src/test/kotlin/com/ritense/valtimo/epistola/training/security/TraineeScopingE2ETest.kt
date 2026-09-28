@@ -4,6 +4,7 @@
 
 package com.ritense.valtimo.epistola.training.security
 
+import app.epistola.valtimo.domain.GenerationJobResult
 import app.epistola.valtimo.service.EpistolaService
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
@@ -17,6 +18,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.whenever
 import org.operaton.bpm.engine.RepositoryService
 import org.operaton.bpm.engine.TaskService
@@ -108,6 +110,31 @@ class TraineeScopingE2ETest {
         whenever(epistolaTenantProvisioner.ensureTenant(any())).thenAnswer {
             EpistolaTenantCredentials(tenantId = "trainee-${it.arguments[0]}", apiKey = "epk_test")
         }
+        // Some shared case types generate a letter right after the start form (objection does).
+        // Generation itself is out of scope here; accept the job so the start completes.
+        whenever(
+            epistolaService.submitGenerationJob(
+                anyOrNull(),
+                anyOrNull(),
+                anyOrNull(),
+                anyOrNull(),
+                anyOrNull(),
+                anyOrNull(),
+                anyOrNull(),
+                anyOrNull(),
+                anyOrNull(),
+                anyOrNull(),
+                anyOrNull(),
+                anyOrNull(),
+                anyOrNull(),
+            ),
+        ).thenReturn(
+            GenerationJobResult
+                .builder()
+                .requestId(UUID.randomUUID().toString())
+                .status("PENDING")
+                .build(),
+        )
     }
 
     @Test
@@ -136,6 +163,35 @@ class TraineeScopingE2ETest {
         assertThat(status(get("/api/v1/task/$aliceTask"), alice)).isEqualTo(200)
         assertThat(status(get("/api/v1/task/$bobTask"), alice)).isIn(403, 404)
         assertThat(status(post("/api/v1/task/$bobTask/claim"), alice)).isIn(403, 404)
+    }
+
+    @Test
+    fun `a trainee starts a case in a shared case type through its start form, not in another trainee's dossier`() {
+        // The UI starts a case by submitting the start event's form to
+        // POST /api/v1/process-link/{processLinkId}/form/submission — not through
+        // process-document/operation, which startCase() uses. Found on the live demo: this
+        // returned 403 for every shared case type.
+        val objectionStart = processLinkOf(processDefinitionId("objection-handling", "CD:objection:1.0.0"), "startEvent")
+        val submission =
+            """{"objector":{"firstName":"Alice","lastName":"Trainee","address":{"street":"Straat","houseNumber":"1",""" +
+                """"postalCode":"1234AB","city":"Sittard"}},"originalDecision":{"reference":"D-1","date":"2026-09-01T00:00:00.000Z",""" +
+                """"subject":"Vergunning"},"objection":{"grounds":"Onterecht","receivedDate":"2026-09-10T00:00:00.000Z"}}"""
+        val started =
+            perform(postJson("/api/v1/process-link/$objectionStart/form/submission?documentDefinitionName=objection", submission), alice)
+        assertThat(started.response.status).describedAs(started.response.contentAsString).isBetween(200, 299)
+
+        val aliceObjections = searchIn("objection", alice)
+        assertThat(aliceObjections["totalElements"].asLong()).isEqualTo(1)
+        assertThat(createdBy(ids(aliceObjections).single())).isEqualTo(alice.email)
+        assertThat(searchIn("objection", bob)["totalElements"].asLong()).isEqualTo(0)
+
+        // The same endpoint on another trainee's dossier stays refused.
+        status(get("/api/v1/case-definition?active=true"), alice)
+        val aliceKey = TraineeKeys.caseDefinitionKey(alice.identity)
+        val aliceDossierLink = processLinkOf(processDefinitionId(SHARED_CASE, "CD:$aliceKey:1.0.0"), null)
+        assertThat(
+            status(postJson("/api/v1/process-link/$aliceDossierLink/form/submission?documentDefinitionName=$aliceKey", "{}"), bob),
+        ).isEqualTo(403)
     }
 
     @Test
@@ -240,12 +296,41 @@ class TraineeScopingE2ETest {
         return objectMapper.readTree(result.response.contentAsString)["document"]["id"].asText()
     }
 
-    private fun search(user: TestUser): JsonNode {
+    private fun search(user: TestUser): JsonNode = searchIn(SHARED_CASE, user)
+
+    private fun searchIn(
+        caseDefinitionKey: String,
+        user: TestUser,
+    ): JsonNode {
         val result =
-            perform(postJson("/api/v1/document-definition/$SHARED_CASE/search?page=0&size=10", "{}"), user)
+            perform(postJson("/api/v1/document-definition/$caseDefinitionKey/search?page=0&size=10", "{}"), user)
         assertThat(result.response.status).describedAs(result.response.contentAsString).isEqualTo(200)
         return objectMapper.readTree(result.response.contentAsString)
     }
+
+    private fun processDefinitionId(
+        processDefinitionKey: String,
+        versionTag: String,
+    ): String =
+        repositoryService
+            .createProcessDefinitionQuery()
+            .processDefinitionKey(processDefinitionKey)
+            .versionTag(versionTag)
+            .singleResult()
+            .id
+
+    /** A process link of that process definition, on [activityId] when given. */
+    private fun processLinkOf(
+        processDefinitionId: String,
+        activityId: String?,
+    ): String =
+        jdbcTemplate
+            .queryForList(
+                "SELECT CAST(id AS varchar) FROM process_link WHERE process_definition_id = ?" +
+                    (if (activityId != null) " AND activity_id = ?" else ""),
+                String::class.java,
+                *listOfNotNull(processDefinitionId, activityId).toTypedArray(),
+            ).first()
 
     private fun ids(page: JsonNode): List<String> = page["content"].map { it["id"].asText() }
 
