@@ -127,8 +127,7 @@ class TrainingConfiguration {
     fun traineeDossierProvisioningService(
         caseDefinitionRepository: CaseDefinitionRepository,
         provisioner: TraineeDossierProvisioner,
-        properties: TrainingProperties,
-    ) = TraineeDossierProvisioningService(caseDefinitionRepository, provisioner, properties)
+    ) = TraineeDossierProvisioningService(caseDefinitionRepository, provisioner)
 
     @Bean
     fun traineeProvisioningFilter(provisioningService: TraineeDossierProvisioningService) = TraineeProvisioningFilter(provisioningService)

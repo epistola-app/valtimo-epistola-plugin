@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Training: a trainee sees their own dossier.** The provisioner finalized the cloned case
+  definition but never activated it. Valtimo's case list only shows active case definitions, so
+  the trainee saw just the shared `form-flow-demo` template, and opening it returned "This belongs
+  to another user's dossier, not yours." New dossiers are now activated. A dossier provisioned by
+  0.20.x is activated on the trainee's next request. Test-app only; the published plugin is
+  unchanged.
+
 ## [0.20.1] - 2026-09-24
 
 ### Fixed
