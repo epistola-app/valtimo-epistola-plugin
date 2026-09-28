@@ -32,6 +32,26 @@ form generator, and the start-form gate it shares with the document preview. Its
 an action on the plugin class, because Valtimo scans that class for actions, but the behaviour
 lives in the composer's own `ComposedLetter`.
 
+**Everything outside the module that knows it exists** — the whole list, so it stays short:
+
+| Where                                                                                           | Why                                                                                                                                                                                          |
+| ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `EpistolaPluginAutoConfiguration` `@Import`s `EpistolaComposerConfiguration`                    | One line of wiring; the off switch lives inside the imported class                                                                                                                           |
+| `EpistolaPlugin` imports `ComposedLetter`                                                       | Valtimo scans the plugin class for `@PluginAction`s, so the action must be declared there. It reads the letter and delegates; no composer logic lives in it                                  |
+| `EpistolaRegistrationService` calls `registerEpistolaComposerComponents`                        | One entry point for all four Form.io components                                                                                                                                              |
+| `epistola.specification.ts` names the action's configurator and spreads `COMPOSER_TRANSLATIONS` | Valtimo consumes one specification object, so the composer's half is composed into it rather than written there — see `composer/composer.translations.ts`, and the spec that guards the seam |
+| `components/task-id-carrier.spec.ts` covers the composer too                                    | That suite is about Formio's serializer dropping schema equal to the default, which is a cross-cutting trap; it runs real formiojs with a harness not worth duplicating per component        |
+
+Nothing else imports it, and the library's public API exports none of it.
+
+**One asymmetry to know about:** `epistola.composer.enabled=false` removes the backend beans and
+endpoints, but the frontend registers the composer's components unconditionally. Disabling it
+server-side therefore leaves the palette entry and the process-link action type visible, and a form
+built with them fails on the first call. The plugin-wide `EPISTOLA_ENABLED` does hide everything;
+there is no composer-only equivalent, because a frontend flag has to be threaded through all the
+places listed in [embedding.md](embedding.md). Disable the composer on environments where nobody
+authors forms, or disable the plugin.
+
 ## How it works
 
 ```

@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The composer's own strings moved into the composer.** Thirty-three translation keys per
+  language lived in `epistola.specification.ts`, so deleting `lib/composer/` would have left its
+  labels behind in a file that describes the rest of the plugin. They now live in
+  `composer/composer.translations.ts` and the specification spreads them into the one shape Valtimo
+  consumes. That spread is a silent seam — drop it and every label falls back to its key on screen,
+  with nothing failing — so a spec asserts it, that both languages define the same keys, and that
+  the composer takes over no key the rest of the plugin owns.
+
 - **The letter composer is marked alpha, and its stored shapes are versioned.** It works end to end
   and is covered by tests, but what it stores may still change — so the palette entry reads
   "(alpha)", the component's settings open with a notice saying so, and

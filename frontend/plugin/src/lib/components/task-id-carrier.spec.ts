@@ -19,7 +19,11 @@
  */
 
 /**
- * Guards the *persistence* half of the task-id mechanism.
+ * Guards the *persistence* half of the task-id mechanism — and, further down, every other value a
+ * component must carry rather than inherit: the letter composer's `prefill: false` and its
+ * `schemaVersion`. They are here rather than in `lib/composer/` because the defect is one and the
+ * same, it lives in Formio's serializer rather than in any component, and reproducing it needs the
+ * real-formiojs harness below, which is not worth duplicating per component.
  *
  * The read half is covered by prefilled-task-id.spec.ts and the per-component wrapper specs
  * assert the id reaches the Angular element. Neither exercised what the Formio builder actually
