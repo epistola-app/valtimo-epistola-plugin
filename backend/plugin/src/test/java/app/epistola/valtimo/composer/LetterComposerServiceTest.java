@@ -219,4 +219,38 @@ class LetterComposerServiceTest {
                 .extracting(e -> ((ComposerException) e).getReason())
                 .isEqualTo(ComposerException.Reason.RENDER_FAILED);
     }
+
+    @Test
+    void refusesALetterWhoseRequiredValueItCannotAskFor() {
+        // Rich text and other recursive structures land here. Before, the field was dropped, the
+        // composer said the letter needed no further input, and Epistola refused to render it for
+        // a field nobody had been asked about — a failure two steps from its cause.
+        offering(configuration(offered("besluit", "Besluit", null)), "besluit");
+        when(jsonataMappingService.evaluate(any())).thenReturn(Map.of());
+        templateRequires("besluit", new TemplateField(
+                "body", "body", "object", TemplateField.FieldType.OBJECT, true, null,
+                List.of(), true, "Recursive JSON Schema references require a complete-value mapping.",
+                false, null));
+
+        assertThatThrownBy(() -> service.prepare(CONTEXT, "besluit"))
+                .isInstanceOf(ComposerException.class)
+                .hasMessageContaining("'body'")
+                .hasMessageContaining("baseline mapping")
+                .extracting(e -> ((ComposerException) e).getReason())
+                .isEqualTo(ComposerException.Reason.UNSUPPORTED_FIELD);
+    }
+
+    @Test
+    void composesTheSameLetterOnceTheMappingSuppliesThatValue() {
+        offering(configuration(offered("besluit", "Besluit", null)), "besluit");
+        when(jsonataMappingService.evaluate(any())).thenReturn(Map.of("body", Map.of("type", "doc")));
+        templateRequires("besluit", new TemplateField(
+                "body", "body", "object", TemplateField.FieldType.OBJECT, true, null,
+                List.of(), true, "Recursive JSON Schema references require a complete-value mapping.",
+                false, null));
+
+        PreparedLetter letter = service.prepare(CONTEXT, "besluit");
+
+        assertThat(letter.complete()).isTrue();
+    }
 }

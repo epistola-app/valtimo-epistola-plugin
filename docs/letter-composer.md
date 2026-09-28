@@ -137,6 +137,67 @@ form without one gets; more than one → it asks the author to fill in **Process
 way the surviving definition goes through the same two gates as a named one, so discovery buys
 convenience and changes no permission.
 
+## What it can ask for
+
+The inputs are generated from the template's data contract, so what the contract says decides what
+the employee sees:
+
+| In the contract      | Generated input                                                                                                                                                                                                                |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `enum` / `const`     | `select` of exactly those values                                                                                                                                                                                               |
+| `string`             | text field — `format: email` gives an email field; `format: date`/`date-time` give a text field with an explicit placeholder, because Formio's date picker emits a full ISO timestamp that a `"format": "date"` schema rejects |
+| `number` / `integer` | number field                                                                                                                                                                                                                   |
+| `boolean`            | checkbox                                                                                                                                                                                                                       |
+| `array` of scalars   | one input with `multiple`                                                                                                                                                                                                      |
+| `array` of objects   | datagrid, one column per item field                                                                                                                                                                                            |
+| `object`             | fieldset, one input per property, nested                                                                                                                                                                                       |
+
+**Only `required` and `enum` reach the input.** The contract's other constraints — `maxLength`,
+`minLength`, `pattern`, `minimum`, `maximum`, `multipleOf` — are read by neither the schema
+analyzer nor the generator, so nothing stops an employee typing a value that breaks them. Epistola
+rejects it at render time and the preview shows that complaint, which is a real check but a late
+one: it arrives as a message beside the letter rather than under the field. The bundled contracts
+already use `pattern` (a BSN's `^\d{9}$`) and `minimum`, so this is not hypothetical. Carrying the
+constraints through to `validate` on the generated component is the fix, and it is not done yet.
+
+**Local `$ref`s are compiled away; external ones are not.** The analyzer resolves `#/…` pointers
+and merges them, so a contract that factors shapes out internally decomposes exactly as an inlined
+one would. An external `$ref` — a `https://…` URL — is different: this plugin does not fetch
+schemas, so all it ever sees is `{"$ref": "…"}`. With no `type` and no `properties` there is
+nothing to infer, and the analyzer marks the field as needing "a complete-value mapping".
+
+**A value with no separate fields to fill in is refused, not faked.** If the baseline mapping
+leaves such a field empty and the template requires it, preparing the letter fails with a 422
+naming the field and saying to supply it from the mapping. An _optional_ one is simply never
+offered, and one the mapping fills is not a problem at all — which is the normal case. Two shapes
+qualify:
+
+- a structure that decomposed to no parts, so there is nothing to render;
+- a scalar the analyzer could not see a scalar in — an external or recursive `$ref`, a `oneOf` of
+  shapes, an empty schema.
+
+The second is why the check covers scalars at all. An external `$ref` infers **`SCALAR`**, because
+`{"$ref": "…"}` has neither `type: object` nor `properties`, so without it the field would have
+become a single-line text box for a value that is not text.
+
+What the check deliberately does **not** ask is whether the analyzer flagged the field `complex`.
+That flag belongs to the mapping builder — "Simple mode must map this as one expression" — and an
+ordinary array of objects carries it while decomposing into a data grid perfectly well. Rendering
+asks a different question.
+
+**Rich text is not supported.** How the contract carries it decides what happens:
+
+| How the contract carries it                       | What happens                                                                                                                        |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| External `$ref` (a shared rich-text schema URL)   | Marked complex, so refused with the 422 above when it is required and unmapped                                                      |
+| Inlined — a plain object with ordinary properties | **Not detected.** Indistinguishable from any other object, so it renders as a fieldset asking for the document’s internal structure |
+
+Nothing in this plugin reads a rich-text marker from a contract — not the composer, not the mapping
+builder, not the retry form — so the inlined case has nowhere to be caught. Supporting rich text
+properly means recognising the marker and offering an editor for it, which is its own change and
+not part of the composer. Until then, supply rich-text fields from the baseline mapping rather than
+offering a letter that asks for them.
+
 ## What it stores
 
 Three structures, in three places, with three lifecycles. Two of them outlive the code that wrote
@@ -310,6 +371,11 @@ entirely.
 - **Labels come from the contract.** A field with no `title` is labelled by humanizing its property
   name, so an English property name shows an English label in a Dutch form. The fix belongs in the
   template's data contract, where every integration benefits.
+- **Contract constraints are not carried to the inputs** — see [What it can ask for](#what-it-can-ask-for).
+  Only `required` and `enum` are enforced in the form; everything else is caught by Epistola at
+  render time and shown as a preview error.
+- **Rich text is unsupported**, and a rich-text object that looks like a plain object is not even
+  detectable here yet — see [What it can ask for](#what-it-can-ask-for).
 - **A per-template mapping fragment is not authorable in the settings widget.** The backend merges
   one and a hand-written form can set it; the widget captures template and label only.
 - **One letter per task or per start.** Offering several at once needs the selection to be a list,

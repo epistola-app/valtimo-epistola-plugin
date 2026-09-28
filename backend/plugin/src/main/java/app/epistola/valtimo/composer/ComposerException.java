@@ -30,7 +30,9 @@ public class ComposerException extends RuntimeException {
         /** Epistola refused to render the letter with this data. */
         RENDER_FAILED,
         /** Written by a newer plugin than this one, so reading it could mean misreading it. */
-        UNSUPPORTED_SCHEMA
+        UNSUPPORTED_SCHEMA,
+        /** The letter needs a value the composer cannot generate an input for. */
+        UNSUPPORTED_FIELD
     }
 
     private final Reason reason;

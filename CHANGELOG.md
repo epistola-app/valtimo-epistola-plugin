@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A letter needing a value the composer cannot ask for is refused instead of quietly failing.**
+  Some contract shapes have no separate fields to fill in — a structure that decomposes to no
+  parts, or a scalar the analyzer could not see a scalar in, which is how an external `$ref`
+  arrives, and how a shared rich-text schema usually arrives. A required one the baseline mapping
+  left empty used to be dropped from the generated
+  form, which read as success: the composer announced that the letter needed no further input, and
+  Epistola then refused to render it for a field nobody had been asked about — a failure two steps
+  from its cause. Preparing such a letter now fails with a 422 naming the field and saying to
+  supply it from the mapping. An optional one is still never offered, and one the mapping fills is
+  unaffected. The check covers scalars too, because an external `$ref` reaches the plugin as
+  `{"$ref": "…"}` with no type and no properties, so it infers `SCALAR` and would otherwise have
+  rendered as a single-line text box for a value that is not text. It does **not** key off the
+  analyzer's `complex` flag: that belongs to the mapping builder, and an ordinary array of objects
+  carries it while rendering as a data grid perfectly well.
+
 ### Added
 
 - **The composer's own strings moved into the composer.** Thirty-three translation keys per

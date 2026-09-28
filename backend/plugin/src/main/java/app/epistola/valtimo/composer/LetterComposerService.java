@@ -139,12 +139,14 @@ public class LetterComposerService {
         Map<String, Object> data = resolveData(ctx, configuration, offered);
         TemplateDetails template = templateDetails(configuration, offered.catalogId(), templateId);
 
-        List<TemplateField> missing = MissingFieldSelector.selectMissing(
+        MissingFieldSelector.Selection selection = MissingFieldSelector.select(
                 template.fields(), data, !configuration.askOptionalFields());
-        ObjectNode form = formioFormGenerator.generateForm(missing, data);
+        requireEveryMissingFieldIsAskable(templateId, selection);
+
+        ObjectNode form = formioFormGenerator.generateForm(selection.askable(), data);
 
         log.debug("Prepared letter '{}' for case {}: {} field(s) to ask",
-                templateId, ctx.documentId(), missing.size());
+                templateId, ctx.documentId(), selection.askable().size());
 
         return new PreparedLetter(
                 templateId,
@@ -152,7 +154,7 @@ public class LetterComposerService {
                 offered.catalogId(),
                 data,
                 form,
-                missing.isEmpty());
+                selection.complete());
     }
 
     /**
@@ -180,6 +182,31 @@ public class LetterComposerService {
             throw new ComposerException(ComposerException.Reason.RENDER_FAILED,
                     "Epistola could not render template '" + templateId + "': " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Refuse a letter the composer cannot finish asking for.
+     *
+     * <p>A required field with no parts to generate an input from — a rich-text body, a recursive
+     * structure, anything the analyzer said needs a complete-value mapping — used to be dropped,
+     * which read as success: the composer announced the letter needed no further input and Epistola
+     * then refused to render it for a field nobody was asked about. Saying so here puts the
+     * complaint next to the cause, and names the way out: fill it from the mapping.
+     */
+    private void requireEveryMissingFieldIsAskable(
+            String templateId,
+            MissingFieldSelector.Selection selection
+    ) {
+        if (selection.unsupported().isEmpty()) {
+            return;
+        }
+        String fields = selection.unsupported().stream()
+                .map(field -> "'" + field.path() + "'")
+                .collect(java.util.stream.Collectors.joining(", "));
+        throw new ComposerException(ComposerException.Reason.UNSUPPORTED_FIELD,
+                "Template '" + templateId + "' requires " + fields + ", which the composer cannot ask "
+                        + "for: the value has no separate fields to fill in. Supply it from the "
+                        + "baseline mapping instead.");
     }
 
     private LetterComposerConfiguration configurationFor(ComposerContext ctx, String templateId) {
