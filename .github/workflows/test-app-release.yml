@@ -1,0 +1,244 @@
+name: Test-app release
+
+# Publishes only the test-app demo images (demo-backend + demo-frontend), built
+# from the selected branch, without releasing the plugin: nothing goes to Maven
+# Central or npm, and no GitHub Release or version tag is created. For changes
+# that only affect the test-app (e.g. the training facility) and should reach
+# the demo without a plugin release.
+#
+# Both images are always published under the same tag, because the infra pin
+# bump resolves the backend and frontend pins from one tag. The tag carries a
+# prerelease suffix (<last plugin release>-testapp.<run number>), so it can
+# never collide with a real plugin release and never moves the X.Y / X.Y.Z tags.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag override (X.Y.Z-<suffix>). Empty = <last plugin release>-testapp.<run number>."
+        required: false
+        type: string
+      promote:
+        description: "Dispatch the infra pin bump for the demo afterwards."
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+concurrency:
+  group: test-app-release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Resolve tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve tag
+        id: tag
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ -n "$INPUT_TAG" ]; then
+            TAG="$INPUT_TAG"
+          else
+            BASE="$(git describe --tags --abbrev=0 --match 'v[0-9]*' HEAD)"
+            TAG="${BASE#v}-testapp.${GITHUB_RUN_NUMBER}"
+          fi
+
+          # A prerelease suffix is mandatory: a bare X.Y.Z tag belongs to a real
+          # plugin release (release.yml) and must not be overwritten from here.
+          if ! printf '%s\n' "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+-[0-9A-Za-z.-]+$'; then
+            echo "::error::Invalid test-app tag '${TAG}': expected X.Y.Z-<suffix>"
+            exit 1
+          fi
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "Test-app image tag: ${TAG}"
+
+  test:
+    name: Test test-app backend
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+
+      - name: Test
+        run: ./gradlew :test-app:backend:test
+
+  docker-backend:
+    name: Docker Backend
+    needs: [version, test]
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/epistola-app/valtimo/demo-backend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+
+      - name: Build WAR
+        run: ./gradlew :test-app:backend:bootWar
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: test-app/backend
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ needs.version.outputs.tag }}
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+
+      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+
+      - name: Sign image
+        run: cosign sign --yes "${{ env.IMAGE }}@${{ steps.build.outputs.digest }}"
+
+  docker-frontend:
+    name: Docker Frontend
+    needs: [version, test]
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/epistola-app/valtimo/demo-frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 24.21.0
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build plugin
+        run: pnpm --filter @epistola.app/valtimo-plugin build
+
+      - name: Build test-app
+        run: pnpm --filter gzac-frontend-template build
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: test-app/frontend
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ needs.version.outputs.tag }}
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+
+      - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
+
+      - name: Sign image
+        run: cosign sign --yes "${{ env.IMAGE }}@${{ steps.build.outputs.digest }}"
+
+  scan-backend-image:
+    name: Scan backend image
+    needs: [version, docker-backend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/epistola-app/valtimo/demo-backend:${{ needs.version.outputs.tag }}
+          format: sarif
+          output: trivy-image-backend.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
+        with:
+          sarif_file: trivy-image-backend.sarif
+          category: trivy-image-backend
+
+  scan-frontend-image:
+    name: Scan frontend image
+    needs: [version, docker-frontend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Trivy image scan
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ghcr.io/epistola-app/valtimo/demo-frontend:${{ needs.version.outputs.tag }}
+          format: sarif
+          output: trivy-image-frontend.sarif
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "0"
+
+      - name: Upload SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4
+        with:
+          sarif_file: trivy-image-frontend.sarif
+          category: trivy-image-frontend
+
+  promote-demo:
+    name: Trigger demo pin bump
+    needs: [version, docker-backend, docker-frontend]
+    if: inputs.promote
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger infra pin bump
+        env:
+          GH_TOKEN: ${{ secrets.INFRA_DISPATCH_TOKEN }}
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          # Same dispatch as release.yml: pin only after both images have been
+          # published and signed, under the one tag both pins resolve from.
+          gh workflow run app-pin-bump.yml \
+            -R epistola-app/epistola-nix-infra \
+            --ref main \
+            -f app=valtimo \
+            -f tag="$TAG"

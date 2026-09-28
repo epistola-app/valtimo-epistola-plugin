@@ -76,3 +76,7 @@ Display:
 - NEVER skip the user confirmation steps (version confirmation + push permission)
 - The CI pipeline handles all building, testing, publishing, and Docker image creation — this skill only prepares the changelog, creates the commit, and triggers the pipeline via GitHub Release
 - If a release fails in CI, it can be re-triggered via workflow_dispatch with the version number
+- For a change that only affects the test-app (the demo images), don't release the plugin: run the
+  **Test-app release** workflow instead (`gh workflow run test-app-release.yml --ref main`). It
+  publishes `demo-backend`/`demo-frontend` as `<last release>-testapp.<run number>` and bumps the
+  demo pin, without touching Maven Central, npm or GitHub Releases.

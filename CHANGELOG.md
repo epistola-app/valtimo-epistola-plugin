@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Test-app release workflow** (`test-app-release.yml`, manual dispatch). It publishes only the
+  `demo-backend` and `demo-frontend` images, built from the selected branch, and then dispatches
+  the demo pin bump. Nothing goes to Maven Central or npm, and no GitHub Release or version tag is
+  created. Use it for test-app-only changes that should reach the demo without a plugin release.
+  Both images get the same tag, `<last plugin release>-testapp.<run number>` (for example
+  `0.20.1-testapp.12`), because the infra pin bump resolves both pins from one tag. A bare `X.Y.Z`
+  tag is refused, so a test-app release can never overwrite a plugin release's images.
+
 ### Fixed
 
 - **Training: a trainee sees their own dossier.** The provisioner finalized the cloned case
