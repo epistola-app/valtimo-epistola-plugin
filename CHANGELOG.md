@@ -17,6 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `0.20.1-testapp.12`), because the infra pin bump resolves both pins from one tag. A bare `X.Y.Z`
   tag is refused, so a test-app release can never overwrite a plugin release's images.
 
+### Changed
+
+- **Training (test-app): trainees work in the shared case types, on their own cases only.** A
+  trainee (`ROLE_DEMO`) can now see every bundled case type, start cases in it and work on them,
+  and sees only the cases they created there. They can read a shared case type's configuration but
+  not change it, and can still configure their own cloned dossier. Their token keeps `ROLE_ADMIN`
+  for the admin screens, but the backend no longer honours it for a trainee, so Valtimo's
+  unconditioned `ROLE_ADMIN` permissions no longer apply to them; `demo.permission.json` (now
+  changeset `trainee-pbac-v2`) scopes them instead. The plugin's `evaluate-mapping` endpoint is
+  scoped to the trainee's own cases. The published plugin is unchanged.
+
 ### Fixed
 
 - **Training: a trainee sees their own dossier.** The provisioner finalized the cloned case
