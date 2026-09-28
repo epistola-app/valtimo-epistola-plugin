@@ -335,7 +335,8 @@ action:
 
 That is all it needs: the composer already resolved the catalog, the template and the data while
 the employee was looking at the preview, so this action has no template to pick and no mapping to
-write. It is deliberately **not** a mode of `generate-document`: that action's configurator is
+write. It also names no **variant**, so a composed letter is always the template's default one —
+see [Known gaps](#known-gaps). It is deliberately **not** a mode of `generate-document`: that action's configurator is
 built around choosing a template and mapping to it, and the admin page verifies those ids really
 exist — neither means anything here.
 
@@ -454,6 +455,22 @@ entirely.
   never offered. The employee can already write the letter's text, so this is a governance limit
   rather than an escalation, but a form that must not allow it should keep using a hand-built form
   and a `generate-document` link per letter.
+- **Every composed letter uses the template's default variant.** Neither the preview nor the
+  generate action names a variant, so the three selection modes `generate-document` offers —
+  default, an explicit `variantId`, attribute-based — reduce to the first. Preview and generation
+  agree on it, so nothing is misleading; there is simply no way to choose.
+
+  Adding it means resolving the variant **when the letter is composed** rather than at the service
+  task, because the composer's promise is that what was previewed is what gets generated: an action
+  that selected a variant from attributes while the preview had not would send a document the
+  employee never saw. So the resolved variant belongs on the letter variable next to `catalogId`
+  and `templateId`, with both the preview and generation using it — most likely offered per letter
+  in the settings widget, and resolved from the mapping context for attribute-based selection.
+
+  It is also a real `schemaVersion` case rather than an additive field: an older plugin reading a
+  letter that names a variant would ignore it and render the default — a different document than
+  the one approved — so `ComposerSchema.CURRENT` must be raised when it lands.
+
 - **No write-back to the case.** Input stays with the letter. Fields that belong in the case
   should be collected in a case form (where the preview picks them up from the field keys — see
   [document-preview.md](document-preview.md)).
