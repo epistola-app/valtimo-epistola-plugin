@@ -160,63 +160,54 @@ The composer computes and the process applies — the same division generation a
 field is additive for `schemaVersion` purposes: a plugin old enough to ignore it has no
 applying task either, so nothing misbehaves silently.
 
-#### It runs as a service task, not at form submission
+#### The generate action applies it, after Epistola accepts the letter
 
 A plain Valtimo task form offers no completion hook a plugin can write from, and the composer's
 generated inputs are invisible to the one Valtimo already has: they live in a nested Form.io
 instance and collapse into the component's single `pv:` value, so the field-level write-back that
 handles a `doc:`-keyed form field never sees them.
 
-So the write is a **service task**, placed **immediately after the generate task**.
+The write therefore happens in the process — and in the **generate action itself**, not a task of
+its own. One composer produces one letter, which one generate task renders, so there is nothing to
+coordinate: the action already reads the letter variable, and the resolved values ride on it.
 
-That placement is what makes "only write back if it worked" true without anything expressing it.
-`submitAndRecord` records a FAILED result object and then rethrows, so a submission Epistola
-refuses fails the activity, the process raises an incident there, and the applying task is never
-reached. No gateway, no condition — BPMN's own failure semantics.
+**Acceptance is the commit point.** Generation is asynchronous: the action returns once Epistola
+has taken the request and owns it, while the document arrives later at the
+`EpistolaDocumentGenerated` catch event. Writing at acceptance rather than at rendering matters
+because the catch event is _optional_ — a process may generate without waiting, and then there is
+no later point to write at — an error path taken after acceptance may never reach it, and waiting
+delays the correction for as long as rendering takes.
 
-**Acceptance, not rendering, is the commit point.** Generation is asynchronous: the generate task
-returns once Epistola has taken the request and owns it, while the document itself arrives later at
-the `EpistolaDocumentGenerated` catch event. Waiting for that event is worse than it sounds —
-the catch event is _optional_, so a process that generates without waiting has nowhere to put the
-applying task at all; an error path taken after acceptance may never reach it; and the correction
-stays unapplied for as long as rendering takes.
+**A failed write must not fail the activity.** This is what makes folding it in safe. Once Epistola
+has accepted the request the letter is irreversible, so throwing at that point would claim something
+did not happen that did — and retrying the activity would re-submit and generate a _duplicate
+letter_. So:
 
-| Placement                                         | What it means                                    | Why not                                                                                             |
-| ------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
-| Before the generate task                          | Writes even when Epistola refuses the submission | The case changes for a letter that was never even accepted                                          |
-| **Immediately after it**                          | Epistola accepted it and owns it                 | —                                                                                                   |
-| After the `EpistolaDocumentGenerated` catch event | The rendered document demonstrably exists        | Requires the process to wait at all, is skipped by an error path, and delays the write indefinitely |
+- the submission fails → throw, exactly as today. Nothing was sent and nothing is written;
+- the submission succeeds and the write fails → record it and continue, on the result variable
+  beside the status and error message the action already writes there. A process that cares reads
+  it like any other result field; one that does not carries on with a letter that was genuinely
+  sent.
 
-The residual risk is real and worth stating: **accepted is not rendered.** Epistola can take a
-request and fail on it afterwards — bad data, a template error — leaving the case updated for a
-letter that never went out. The window is narrow, it is recoverable through the existing retry flow
-and retry form, and within that window the value written is still a fact about the case. That is a
-better trade than holding a correction hostage to a wait the process may never perform.
+The residual is worth stating: **accepted is not rendered.** Epistola can take a request and fail on
+it afterwards — bad data, a template error — leaving the case updated for a letter that never went
+out. The window is narrow, it is recoverable through the existing retry flow and retry form, and
+within it the value written is still a fact about the case. That is a better trade than holding a
+correction hostage to a wait the process may never perform.
 
-It works unchanged on a start form, where the task runs inside the instance the form started.
+Rejected alternatives: a **separate apply task** (the author would have to remember it, and a
+composer configured with a `writeBack` map and no apply task would lose data _silently_, which is
+worse than any failure the folded version has; an earlier draft of this ADR chose it on the grounds
+that generate tasks and composers have different cardinalities, which is not true — one composer,
+one letter, one generate task); a **Valtimo task-completion listener** (automatic, but it depends on
+an extension point whose stability would have to be established, is invisible in the process, and
+has an ordering question against Valtimo's own document update); and **projecting the generated
+inputs up into the parent form** as real `doc:`/`pv:` fields (the composer would have to inject
+siblings at runtime under keys that change per letter, which breaks both the saved form definition
+and prefill).
 
-**A task of its own, not part of the generate action.** Folding the write into
-`epistola-generate-composed-document` would be fewer things to wire, and it already reads the
-letter — but the two have different cardinalities. Generate tasks are **per letter**, one per `pv:`
-key, while write-back is **per composer**, and a form may carry several composers. Folded in, the
-same destination would be written once per letter, and two composers sharing a case path would let
-the last generate task silently win — which is exactly what keying the map by destination exists to
-prevent. They also have different failure domains: an Epistola outage should not decide whether a
-corrected phone number reaches the case, and a failed document write should not read as "generation
-failed". And generation is asynchronous, so "the generate task" is not a single moment to anchor
-"the case is now updated" to.
-
-The cost of separating them is that it can be forgotten, and a composer configured with a
-`writeBack` map and no apply task loses data **silently** — the worst failure mode in the feature,
-because nothing errors. That is a check the admin page should carry, alongside the dangling
-catalog/template/variant references it already reports, and it should land with the write-back
-rather than after it.
-
-Rejected alternatives: a Valtimo task-completion listener (automatic, but it depends on an
-extension point whose stability would have to be established, is invisible in the process, and has
-an ordering question against Valtimo's own document update); and projecting the generated inputs up
-into the parent form as real `doc:`/`pv:` fields (the composer would have to inject siblings at
-runtime under keys that change per letter, which breaks both the saved form definition and prefill).
+It works unchanged on a start form, where the generate task runs inside the instance the form
+started.
 
 #### And it makes the preview more faithful, not less
 

@@ -482,12 +482,13 @@ entirely.
   a `writeBack` map on the component, keyed by the **destination** and valued with a JSONata
   expression over `$inputs` / `$data` / `$doc` / `$pv`. It is evaluated when the letter is composed
   and the _result_ rides on the letter variable next to `data`, so the write uses what the employee
-  approved even when the applying task runs long afterwards. A service task applies it, placed
-  immediately after the generate task: that action rethrows when Epistola refuses a submission, so
-  a refused letter fails the activity and never reaches the write — "only write back if it worked",
-  with nothing expressing it. Acceptance rather than rendering is the commit point, because the
-  catch event is optional, can be skipped by an error path, and delays the write for as long as
-  rendering takes. Keying by destination is what keeps one writer per case
+  approved even when the applying task runs long afterwards. The **generate action applies it**, once
+  Epistola has accepted the letter — one composer produces one letter which one generate task
+  renders, so there is nothing to coordinate and nothing an author can forget to wire. A refused
+  submission throws as it does today, so nothing is written for a letter that was never sent; a
+  write that fails _after_ acceptance is recorded on the result variable rather than thrown,
+  because the letter is irreversible by then and failing the activity would make a retry generate a
+  duplicate. Keying by destination is what keeps one writer per case
   path and lets a destination be computed from several inputs; an expression yielding nothing
   writes nothing, so a value the employee never supplied never clobbers the case. The same map also
   makes the preview more faithful rather than less — applied to a copy of `$doc`/`$pv` before the
