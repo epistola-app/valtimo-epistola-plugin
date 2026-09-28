@@ -89,6 +89,18 @@ describe('sectionForm', () => {
   });
 
   describe('uses the sections the contract already describes', () => {
+    it('leaves an unsplit group\u2019s name alone', () => {
+      const sectioned = sectionForm(
+        form([
+          { type: 'fieldset', legend: 'Aanhef', key: 'aanhef', components: fields(4, 'a') },
+          { type: 'fieldset', legend: 'Besluit', key: 'besluit', components: fields(4, 'b') },
+        ]),
+        titleFor,
+      );
+
+      expect(sectioned.components.map((page: any) => page.title)).toEqual(['Aanhef', 'Besluit']);
+    });
+
     it('gives each group its own step, named by its legend', () => {
       const sectioned = sectionForm(
         form([
@@ -125,10 +137,11 @@ describe('sectionForm', () => {
         titleFor,
       );
 
+      // Numbered, because three breadcrumbs all reading "Besluit" name nothing.
       expect(sectioned.components.map((page: any) => page.title)).toEqual([
-        'Besluit',
-        'Besluit',
-        'Besluit',
+        'Besluit 1/3',
+        'Besluit 2/3',
+        'Besluit 3/3',
       ]);
     });
 
@@ -159,6 +172,34 @@ describe('sectionForm', () => {
       expect(sectioned.components[0].components[0]).toBe(grid);
       expect(sectioned.components).toHaveLength(2);
     });
+  });
+
+  it('names a one-field step after that field', () => {
+    // The permit letter's last step is the `activities` grid on its own; "Step 3" says less than
+    // the name the field already carries.
+    const sectioned = sectionForm(
+      form([
+        { type: 'fieldset', legend: 'Aanvrager', key: 'a', components: fields(7, 'a') },
+        { type: 'datagrid', key: 'activities', label: 'Activities', input: true, components: [] },
+      ]),
+      titleFor,
+    );
+
+    expect(sectioned.components.map((page: any) => page.title)).toEqual([
+      'Aanvrager 1/2',
+      'Aanvrager 2/2',
+      'Activities',
+    ]);
+  });
+
+  it('still numbers a step that holds several unnamed fields', () => {
+    const sectioned = sectionForm(form(fields(14)), titleFor);
+
+    expect(sectioned.components.map((page: any) => page.title)).toEqual([
+      'Stap 1',
+      'Stap 2',
+      'Stap 3',
+    ]);
   });
 
   it('gives every step the button settings that suppress Cancel and Submit', () => {

@@ -57,7 +57,9 @@ export function sectionForm(
   /** Turn whatever ungrouped fields have piled up into their own step(s). */
   const flushLoose = () => {
     for (const chunk of chunked(loose, threshold)) {
-      pages.push(page(titleFor(pages.length + 1), chunk));
+      // A step that is one field is that field, and it already has a name — better than a number.
+      const own = chunk.length === 1 ? nameOf(chunk[0]) : null;
+      pages.push(page(own || titleFor(pages.length + 1), chunk));
     }
     loose = [];
   };
@@ -69,12 +71,15 @@ export function sectionForm(
       continue;
     }
     // A named group is a section the template already describes — keep its name, and keep it
-    // whole unless it is a lot on its own, in which case it is split but stays named.
+    // whole unless it is a lot on its own, in which case it is split into numbered parts. Two
+    // steps carrying the same name would be indistinguishable in the breadcrumbs.
     flushLoose();
-    const title = component.legend || component.label || component.title;
-    for (const chunk of chunked(children, threshold)) {
-      pages.push(page(title || titleFor(pages.length + 1), chunk));
-    }
+    const title = nameOf(component);
+    const chunks = chunked(children, threshold);
+    chunks.forEach((chunk, index) => {
+      const name = title || titleFor(pages.length + 1);
+      pages.push(page(chunks.length > 1 ? `${name} ${index + 1}/${chunks.length}` : name, chunk));
+    });
   }
   flushLoose();
 
@@ -111,6 +116,12 @@ function countInputs(components: any[]): number {
     const children = groupChildrenOf(component);
     return total + (children ? countInputs(children) : 1);
   }, 0);
+}
+
+/** Whatever this component calls itself, in the order Formio's own layouts use. */
+function nameOf(component: any): string | null {
+  const name = component?.legend || component?.label || component?.title;
+  return typeof name === 'string' && name.trim() ? name : null;
 }
 
 function chunked<T>(items: T[], size: number): T[][] {

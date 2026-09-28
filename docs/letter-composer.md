@@ -49,12 +49,13 @@ generate task (action config v2) renders $pv.epistolaLetter.data
 ```
 
 **A letter with a lot to fill in is stepped through.** Above six inputs the generated form is shown
-as a wizard: one step per group the template's contract describes, numbered steps for whatever it
-leaves ungrouped, and clickable breadcrumbs so a step is one click away. A group that is a lot on
-its own is split across steps that keep its name. Below the threshold nothing changes. This happens
-in the browser (`composer-sections.ts`), not in the generator: it is presentation only — same
-fields, same keys, same submission — so the generated form stays canonical and the step titles can
-be translated.
+as a wizard, with clickable breadcrumbs so a step is one click away. Steps are named by what the
+contract already calls things: a group becomes a step with its name, a group that is a lot on its
+own is split into numbered parts of it (`Aanvrager 1/2`), a step holding one field takes that
+field's name, and only a step of several unnamed fields falls back to `Stap n`. Below the threshold
+nothing changes. This happens in the browser (`composer-sections.ts`), not in the generator: it is
+presentation only — same fields, same keys, same submission — so the generated form stays canonical
+and the step titles can be translated.
 
 **Which fields the employee is asked for is read from the mapping's outcome, never from its text.**
 A mapping may be opaque (`{"aanvrager": $doc.someObject}`) or computed, so which template field an
@@ -194,6 +195,12 @@ The **Correspondentie** case ships the demo, `correspondentie-letter-composer`:
 Choosing **Ontvangstbevestiging bezwaarschrift** asks for nothing: the case fills its whole
 contract. Choosing **Besluit op bezwaar** asks for the three decision fields the case does not
 know, and previews the letter once they are filled in.
+
+**Bevestiging omgevingsvergunning** is the third letter on purpose: a permit confirmation offered
+from a bezwaar case, which has none of its data. The baseline mapping fills nothing of its twelve
+required fields, so it is the one that crosses the threshold and is stepped through — `Property`,
+`Applicant` and `Activities`, all three named by its own contract. Use it to see sectioning; the
+other two stay one short form, which is the point.
 
 The same case also ships `correspondentie-ad-hoc-letter`: the composer on a start form, started
 from the dossier's Start menu, generating without a task.

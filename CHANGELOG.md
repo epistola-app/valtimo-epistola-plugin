@@ -10,11 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **A letter with a lot to fill in is filled in step by step.** Above six inputs the generated form
-  becomes a wizard: one step per section the template's contract already describes, numbered steps
-  for the fields it does not group, and breadcrumbs that can be clicked so a step is one click away
-  rather than a page at a time. The preview stays alongside throughout. A short letter is left
-  exactly as it was — three fields behind Back/Next would be worse than the column it replaces.
-  Presentation only: the same fields, the same keys, the same submission.
+  becomes a wizard, with breadcrumbs that can be clicked so a step is one click away rather than a
+  page at a time. Steps take the names the template's contract already uses — a group becomes a
+  step, a group that is a lot on its own is split into numbered parts of it, a step holding a
+  single field takes that field's name — and only a step of several unnamed fields is numbered. The
+  preview stays alongside throughout. A short letter is left exactly as it was: three fields behind
+  Back/Next would be worse than the column it replaces. Presentation only: the same fields, the
+  same keys, the same submission.
+
+- **The demo offers a letter that actually needs stepping.** The Correspondentie case now also
+  offers **Bevestiging omgevingsvergunning** — a permit confirmation from a bezwaar case, so the
+  baseline mapping fills none of its twelve required fields. The other two letters ask for three
+  fields and one for none, which showed the composer's promise but never its sectioning.
 
 - **The composer no longer asks where it is used.** "Where is this form shown?" was a setting that
   described the situation rather than changing it, and a composer could only be one or the other.
