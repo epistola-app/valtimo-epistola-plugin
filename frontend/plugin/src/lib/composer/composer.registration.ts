@@ -19,6 +19,7 @@
 import { Injector } from '@angular/core';
 import { registerEpistolaLetterComposerComponent } from './letter-composer/epistola-letter-composer.formio';
 import { registerEpistolaLetterSetBuilderComponent } from './letter-set-builder/letter-set-builder.formio';
+import { registerEpistolaMappingFieldComponent } from './mapping-field/mapping-field.formio';
 
 /**
  * Register the letter composer's Form.io components.
@@ -27,6 +28,7 @@ import { registerEpistolaLetterSetBuilderComponent } from './letter-set-builder/
  * registration service calls this, and everything else about the feature stays inside this folder.
  */
 export function registerEpistolaComposerComponents(injector: Injector): void {
+  registerEpistolaMappingFieldComponent(injector);
   registerEpistolaLetterSetBuilderComponent(injector);
   registerEpistolaLetterComposerComponent(injector);
 }

@@ -43,3 +43,33 @@ describe('letter composer component schema', () => {
     expect(keys).toEqual(['epistolaTaskId', 'epistolaDocumentId']);
   });
 });
+
+describe('property name', () => {
+  const keyField = () =>
+    (EPISTOLA_LETTER_COMPOSER_OPTIONS.editForm as any)().components.find(
+      (component: any) => component.key === 'key',
+    );
+
+  /**
+   * Formio derives a dropped component's key from the palette title — it ignores a schema `key`
+   * and an editForm `defaultValue` alike — so a composer arrives keyed `epistolaLetterComposer`.
+   * Without the `pv:` prefix Valtimo stores the chosen letter in the submission data rather than
+   * as a process variable, and the generate task fails one step later with "no letter was
+   * composed". The author has to be stopped here instead.
+   */
+  it('is validated as a pv: key rather than defaulted', () => {
+    const field = keyField();
+
+    expect(field.defaultValue).toBeUndefined();
+    expect(field.validate.required).toBe(true);
+    expect(new RegExp(field.validate.pattern).test('pv:epistolaLetter')).toBe(true);
+    expect(new RegExp(field.validate.pattern).test('epistolaLetterComposer')).toBe(false);
+    expect(new RegExp(field.validate.pattern).test('doc:/brief')).toBe(false);
+    expect(field.validate.customMessage).toContain('pv:');
+  });
+
+  /** Formio does honour a schema label, so the drop at least arrives named. */
+  it('is labelled from the schema, which Formio does honour', () => {
+    expect((EPISTOLA_LETTER_COMPOSER_OPTIONS.schema as any).label).toBe('Choose a letter');
+  });
+});

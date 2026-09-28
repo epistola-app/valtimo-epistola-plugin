@@ -188,6 +188,10 @@ const epistolaPluginSpecification: PluginSpecification = {
       errorMessageVariableTooltip:
         'Naam van de procesvariabele waarin de foutmelding wordt opgeslagen (bij fout)',
       // Download document action
+      // Letter composer (settings: the baseline mapping field)
+      mappingFieldInvalid: 'Ongeldige JSONata',
+      mappingFieldReads: 'Leest',
+      mappingFieldReadsNothing: 'Leest geen document- of procesgegevens',
       // Letter composer (runtime UI)
       composerChooseLetter: 'Kies een brief',
       composerChoosePlaceholder: '— kies een brief —',
@@ -485,6 +489,10 @@ const epistolaPluginSpecification: PluginSpecification = {
       errorMessageVariableTooltip:
         'Name of the process variable to store the error message in (when failed)',
       // Download document action
+      // Letter composer (settings: the baseline mapping field)
+      mappingFieldInvalid: 'Invalid JSONata',
+      mappingFieldReads: 'Reads',
+      mappingFieldReadsNothing: 'Reads no document or process data',
       // Letter composer (runtime UI)
       composerChooseLetter: 'Choose a letter',
       composerChoosePlaceholder: '— choose a letter —',

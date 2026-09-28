@@ -15,19 +15,20 @@ step — see [form-flows.md](form-flows.md).
 
 ## Overview
 
-| Type (`type:`)                   | Purpose                                                            | Palette\* | Task-bound\*\*       | Backend call                                     |
-| -------------------------------- | ------------------------------------------------------------------ | --------- | -------------------- | ------------------------------------------------ |
-| `epistola-document-preview`      | Live "what would be generated" PDF preview (dry-run, no job)       | visible   | **by default**\*\*\* | `POST /preview` or `POST /preview/start`         |
-| `epistola-document`              | After-generation PDF: inline view and/or download button           | visible   | **yes**              | `GET /documents/download`                        |
-| `epistola-letter-composer`       | Pick a letter, fill in what the case cannot supply, preview it     | visible   | **yes**              | `POST /composer/prepare` + `/composer/preview`   |
-| `epistola-retry-form`            | Dynamic form to retry a failed generation (+ embedded preview)     | hidden    | **yes**              | `GET /retry-form` (+ `POST /preview`)            |
-| `epistola-override-builder`      | editForm widget: map form fields → input overrides                 | hidden    | no                   | — (builder UI)                                   |
-| `epistola-process-link-selector` | editForm widget: pick the generate-document process link           | hidden    | no                   | — (builder UI)                                   |
-| `epistola-letter-set-builder`    | editForm widget: pick connection, catalog and the letters on offer | hidden    | no                   | `GET /configurations`, `/catalogs`, `/templates` |
+| Type (`type:`)                   | Purpose                                                              | Palette\* | Task-bound\*\*       | Backend call                                     |
+| -------------------------------- | -------------------------------------------------------------------- | --------- | -------------------- | ------------------------------------------------ |
+| `epistola-document-preview`      | Live "what would be generated" PDF preview (dry-run, no job)         | visible   | **by default**\*\*\* | `POST /preview` or `POST /preview/start`         |
+| `epistola-document`              | After-generation PDF: inline view and/or download button             | visible   | **yes**              | `GET /documents/download`                        |
+| `epistola-letter-composer`       | Pick a letter, fill in what the case cannot supply, preview it       | visible   | **yes**              | `POST /composer/prepare` + `/composer/preview`   |
+| `epistola-retry-form`            | Dynamic form to retry a failed generation (+ embedded preview)       | hidden    | **yes**              | `GET /retry-form` (+ `POST /preview`)            |
+| `epistola-override-builder`      | editForm widget: map form fields → input overrides                   | hidden    | no                   | — (builder UI)                                   |
+| `epistola-process-link-selector` | editForm widget: pick the generate-document process link             | hidden    | no                   | — (builder UI)                                   |
+| `epistola-letter-set-builder`    | editForm widget: pick connection, catalog and the letters on offer   | hidden    | no                   | `GET /configurations`, `/catalogs`, `/templates` |
+| `epistola-jsonata-mapping`       | editForm widget: the composer's baseline mapping, parsed as you type | hidden    | no                   | — (builder UI)                                   |
 
 \* **Palette** — `visible`: an author can drag it onto a form from the builder's component palette.
-`hidden`: removed from the palette via `hideFormioComponentFromBuilder` (`components/formio-builder-utils.ts`)
-because it is either part of the plugin's own auto-deployed form or an editForm-only widget. Hidden
+`hidden`: kept out of the palette with `group: 'none'` in its `FormioCustomComponentInfo`, because it
+is either part of the plugin's own auto-deployed form or an editForm-only widget. Hidden
 components still render wherever they already exist and inside other components' `editForm`s.
 
 \*\*\* **The preview is task-bound only in its default mode.** Its `previewContext` setting

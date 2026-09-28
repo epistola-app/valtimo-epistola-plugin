@@ -9,6 +9,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The composer's baseline mapping is parsed as you type.** It was a plain textarea, so a typo in
+  the JSONata surfaced much later as a letter that "could not be prepared", with nothing pointing at
+  the mapping. The field now reports the parse error, or — when it parses — which `$doc`/`$pv` paths
+  the mapping reads, which is the other thing an author wants to check. What was typed is kept
+  either way: every intermediate state of writing an expression is invalid.
+
+- **A composer dropped from the palette now has to be given a `pv:` property name.** Form.io derives
+  a new component's key from the palette entry, ignoring a schema key and an `editForm` default
+  alike, so a composer arrived keyed `chooseALetter`. Without the `pv:` prefix Valtimo stores the
+  chosen letter in the submission data instead of as a process variable, and the generate task then
+  failed with "no letter was composed" — one step later, for a mistake made in the builder. The
+  property name is validated where it is typed, with a message that says what to type.
+
+- **The composer keeps `prefill: false` when a form is saved from the builder.** The flag was
+  declared in the registered schema but the wrapper that re-adds it on serialization was never
+  applied, so Form.io dropped it as "equal to the default" — the same trap as the hidden task-id
+  carriers. A composer authored in the builder would have failed the whole form with a 500 on a
+  dossier holding a second process instance. It only ever worked because the bundled demo forms
+  carry the flag literally.
+
 - **Letter composer (pilot): one component for a list of letters.** A new
   `epistola-letter-composer` Form.io component offers a configured list of templates. Choosing one
   resolves that letter's data for the case through a single baseline mapping (plus an optional

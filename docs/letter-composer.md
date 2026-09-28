@@ -186,6 +186,11 @@ entirely.
   should be collected in a case form (where the preview picks them up from the field keys — see
   [document-preview.md](document-preview.md)).
 - **Form flows are not supported yet**: the configuration is read from a task's _form_ link.
+- **Labels come from the contract.** A field with no `title` is labelled by humanizing its property
+  name, so an English property name shows an English label in a Dutch form. The fix belongs in the
+  template's data contract, where every integration benefits.
+- **A per-template mapping fragment is not authorable in the settings widget.** The backend merges
+  one and a hand-written form can set it; the widget captures template and label only.
 - **One letter per task or per start.** Offering several at once needs the selection to be a list,
   and the process to loop or fan out.
 - Objects nested inside an array item are still flattened by the form generator.

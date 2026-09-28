@@ -61,6 +61,10 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   // about to choose.
   schema: {
     prefill: false,
+    // The drop payload's label. Formio honours a schema `label`, but never a schema `key`: it
+    // always recomputes the key from the palette title (`camelCase(builderInfo.title)`), which is
+    // why the property name below is validated rather than defaulted.
+    label: 'Choose a letter',
     components: [PREFILLED_TASK_ID_CARRIER, PREFILLED_DOCUMENT_ID_CARRIER],
   },
   editForm: () => ({
@@ -71,9 +75,19 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
         label: 'Property name',
         tooltip:
           'Where the chosen letter is stored. Use a pv: key (for example pv:epistolaLetter) so the generate task can read it with $pv.',
-        defaultValue: 'pv:epistolaLetter',
         weight: 0,
-        validate: { required: true },
+        // A composer dropped from the palette arrives keyed `epistolaLetterComposer`, because
+        // Formio derives the key from the palette title and ignores both a schema key and an
+        // editForm defaultValue. Without a `pv:` prefix Valtimo stores the chosen letter in the
+        // submission data instead of as a process variable, and the generate task then fails with
+        // "no letter was composed" — a runtime failure, one step later, for a mistake made here.
+        // So the author is made to type it.
+        validate: {
+          required: true,
+          pattern: '^pv:[A-Za-z_][A-Za-z0-9_]*$',
+          customMessage:
+            'The property name must be a pv: key, for example pv:epistolaLetter — that is what makes the chosen letter a process variable the generate task can read.',
+        },
       },
       {
         type: 'textfield',
@@ -115,12 +129,12 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
         validate: { required: true },
       },
       {
-        type: 'textarea',
+        type: 'epistola-jsonata-mapping',
         key: 'dataMapping',
         label: 'Baseline mapping',
         tooltip:
           'One JSONata mapping for every offered letter, over $doc and $pv. Whatever it does not fill is asked of the employee.',
-        rows: 6,
+        rows: 8,
         weight: 40,
       },
       {
@@ -143,7 +157,9 @@ export function registerEpistolaLetterComposerComponent(injector: Injector): voi
     injector,
     (base) =>
       withTaskContext(
-        withPrefilledCarriers(base, [PREFILLED_TASK_ID_CARRIER, PREFILLED_DOCUMENT_ID_CARRIER]),
+        withoutPrefill(
+          withPrefilledCarriers(base, [PREFILLED_TASK_ID_CARRIER, PREFILLED_DOCUMENT_ID_CARRIER]),
+        ),
       ),
   );
 }
