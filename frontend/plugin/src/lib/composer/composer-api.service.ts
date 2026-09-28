@@ -51,6 +51,13 @@ export interface ComposerPrepareResponse {
   form: any;
   /** True when the mapping filled everything, so the employee is asked nothing. */
   complete: boolean;
+  /**
+   * On a start form, which process this composer turned out to belong to. Null on a task form.
+   *
+   * Sent back so the calls that follow can name it: the preview fires on every edit, and finding
+   * the process again each time would read every deployed definition's process links again with it.
+   */
+  processDefinitionKey?: string | null;
 }
 
 /** Body of a {@link EpistolaComposerApiService.composerPreviewToBlob} call. */

@@ -177,7 +177,7 @@ class EpistolaComposerResourceTest {
     @Test
     void prepareOnStartForm_composesAgainstTheCaseItIsAuthorizedFor() {
         when(startEventAuthorization.require("correspondentie-ad-hoc", "doc-1"))
-                .thenReturn(new StartEventAuthorization.StartContext("process:2:def", "doc-1", null));
+                .thenReturn(new StartEventAuthorization.StartContext("process:2:def", "process", "doc-1", null));
         when(letterComposerService.prepare(any(), eq("besluit")))
                 .thenReturn(new PreparedLetter("besluit", "Besluit", "gemeente",
                         Map.of(), new ObjectMapper().createObjectNode(), true));
@@ -234,7 +234,7 @@ class EpistolaComposerResourceTest {
                 .thenReturn(java.util.List.of("ad-hoc:1:a"));
         when(startEventAuthorization.permits("ad-hoc:1:a", document)).thenReturn(true);
         when(startEventAuthorization.requireById("ad-hoc:1:a", "doc-1"))
-                .thenReturn(new StartEventAuthorization.StartContext("ad-hoc:1:a", "doc-1", document));
+                .thenReturn(new StartEventAuthorization.StartContext("ad-hoc:1:a", "ad-hoc", "doc-1", document));
         when(letterComposerService.prepare(any(), eq("besluit")))
                 .thenReturn(new PreparedLetter("besluit", "Besluit", "gemeente", Map.of(), null, true));
 
@@ -271,7 +271,7 @@ class EpistolaComposerResourceTest {
         when(startEventAuthorization.permits("theirs:1:a", null)).thenReturn(false);
         when(startEventAuthorization.permits("mine:1:b", null)).thenReturn(true);
         when(startEventAuthorization.requireById("mine:1:b", null))
-                .thenReturn(new StartEventAuthorization.StartContext("mine:1:b", null, null));
+                .thenReturn(new StartEventAuthorization.StartContext("mine:1:b", "mine", null, null));
         when(letterComposerService.prepare(any(), eq("besluit")))
                 .thenReturn(new PreparedLetter("besluit", "Besluit", "gemeente", Map.of(), null, true));
 
@@ -299,7 +299,7 @@ class EpistolaComposerResourceTest {
     @Test
     void prepareOnStartForm_stillHonoursAnAuthoredProcessKey() {
         when(startEventAuthorization.require("correspondentie-ad-hoc", "doc-1"))
-                .thenReturn(new StartEventAuthorization.StartContext("process:2:def", "doc-1", null));
+                .thenReturn(new StartEventAuthorization.StartContext("process:2:def", "process", "doc-1", null));
         when(letterComposerService.prepare(any(), eq("besluit")))
                 .thenReturn(new PreparedLetter("besluit", "Besluit", "gemeente", Map.of(), null, true));
 
@@ -315,7 +315,7 @@ class EpistolaComposerResourceTest {
     @Test
     void previewOnStartForm_servesThePdfInline() {
         when(startEventAuthorization.require("correspondentie-ad-hoc", null))
-                .thenReturn(new StartEventAuthorization.StartContext("process:2:def", null, null));
+                .thenReturn(new StartEventAuthorization.StartContext("process:2:def", "process", null, null));
         when(letterComposerService.preview(any(), eq("besluit"), any()))
                 .thenReturn(new ByteArrayInputStream("%PDF".getBytes()));
 
@@ -324,5 +324,52 @@ class EpistolaComposerResourceTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getHeaders().getContentType().toString()).isEqualTo("application/pdf");
+    }
+
+    @Test
+    void prepareOnStartForm_handsBackTheProcessItFound() {
+        // So the preview, which fires on every edit, can name it instead of making the backend
+        // read every deployed definition's process links again.
+        when(letterComposerService.startEventDefinitionsOffering(COMPONENT_KEY, "besluit"))
+                .thenReturn(java.util.List.of("ad-hoc:1:a"));
+        when(startEventAuthorization.permits("ad-hoc:1:a", null)).thenReturn(true);
+        when(startEventAuthorization.requireById("ad-hoc:1:a", null)).thenReturn(
+                new StartEventAuthorization.StartContext("ad-hoc:1:a", "correspondentie-ad-hoc", null, null));
+        when(letterComposerService.prepare(any(), eq("besluit")))
+                .thenReturn(new PreparedLetter("besluit", "Besluit", "gemeente", Map.of(), null, true));
+
+        var response = resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
+                null, null, "besluit", COMPONENT_KEY));
+
+        assertThat(((EpistolaComposerResource.PrepareResponse) response.getBody()).processDefinitionKey())
+                .isEqualTo("correspondentie-ad-hoc");
+    }
+
+    @Test
+    void previewOnStartForm_namesTheProcessRatherThanSearchingAgain() {
+        when(startEventAuthorization.require("correspondentie-ad-hoc", null))
+                .thenReturn(new StartEventAuthorization.StartContext(
+                        "ad-hoc:1:a", "correspondentie-ad-hoc", null, null));
+        when(letterComposerService.preview(any(), eq("besluit"), any()))
+                .thenReturn(new ByteArrayInputStream("%PDF".getBytes()));
+
+        resource.previewOnStartForm(new EpistolaComposerResource.StartPreviewRequest(
+                "correspondentie-ad-hoc", null, "besluit", COMPONENT_KEY, Map.of()));
+
+        verify(startEventAuthorization).require("correspondentie-ad-hoc", null);
+        verify(letterComposerService, org.mockito.Mockito.never())
+                .startEventDefinitionsOffering(any(), any());
+    }
+
+    @Test
+    void prepare_onATaskFormNamesNoProcess() {
+        when(letterComposerService.prepare(any(), eq("besluit")))
+                .thenReturn(new PreparedLetter("besluit", "Besluit", "gemeente", Map.of(), null, true));
+
+        var response = resource.prepare(
+                new EpistolaComposerResource.PrepareRequest(TASK_ID, "besluit", COMPONENT_KEY));
+
+        assertThat(((EpistolaComposerResource.PrepareResponse) response.getBody()).processDefinitionKey())
+                .isNull();
     }
 }

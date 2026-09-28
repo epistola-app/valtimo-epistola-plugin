@@ -336,6 +336,58 @@ describe('EpistolaLetterComposerComponent', () => {
       expect(service.composerPreviewToBlob).not.toHaveBeenCalled();
     });
 
+    it('names the process prepare resolved, so preview does not search again', () => {
+      // Discovery reads every deployed definition's process links. The preview fires on every
+      // edit, so paying for that each time would make one letter cost more the more processes an
+      // installation has.
+      const { component, service } = startComponent();
+      service.composerPrepareStart.mockReturnValue(
+        of({
+          templateId: 'besluit',
+          label: 'Besluit',
+          catalogId: 'gemeente',
+          data: { naam: 'Jansen' },
+          form: { display: 'form', components: [] },
+          complete: false,
+          processDefinitionKey: 'correspondentie-ad-hoc',
+        }),
+      );
+
+      component.onTemplateSelected('besluit');
+      jest.advanceTimersByTime(2000);
+
+      expect(service.composerPrepareStart).toHaveBeenCalledWith(
+        expect.objectContaining({ processDefinitionKey: undefined }),
+      );
+      expect(service.composerPreviewStartToBlob).toHaveBeenCalledWith(
+        expect.objectContaining({ processDefinitionKey: 'correspondentie-ad-hoc' }),
+      );
+    });
+
+    it('forgets it when another letter is chosen', () => {
+      // Another letter may belong to another process entirely.
+      const { component, service } = startComponent();
+      service.composerPrepareStart.mockReturnValue(
+        of({
+          templateId: 'besluit',
+          label: 'Besluit',
+          catalogId: 'gemeente',
+          data: { naam: 'Jansen' },
+          form: { display: 'form', components: [] },
+          complete: true,
+          processDefinitionKey: 'correspondentie-ad-hoc',
+        }),
+      );
+      component.onTemplateSelected('besluit');
+
+      service.composerPrepareStart.mockClear();
+      component.onTemplateSelected('herinnering');
+
+      expect(service.composerPrepareStart).toHaveBeenCalledWith(
+        expect.objectContaining({ processDefinitionKey: undefined }),
+      );
+    });
+
     it('passes an authored process key on, as the tie-breaker it is', () => {
       const { component, service } = startComponent();
       component.processDefinitionKey = 'correspondentie-ad-hoc';

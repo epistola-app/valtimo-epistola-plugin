@@ -9,6 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The browser suites run nightly** (`.github/workflows/e2e-ui.yml`, plus `workflow_dispatch`).
+  They stand up Postgres, Keycloak, Epistola, the Valtimo backend and the Angular dev server, then
+  run every Playwright suite and keep the report and the service logs as artifacts. These are the
+  tests that find the defects the unit tests are blind to — a Form.io serializer dropping a
+  component's flags, a wizard rendering its own submit button inside a Valtimo form — and until now
+  nothing ran them automatically.
+
+- **The stepped form is pinned against the real Formio wizard** (`composer-sections.formio.spec.ts`).
+  The sectioning had unit tests for what it produces; this covers what Formio then does with it,
+  which is the part that went wrong. It runs the actual `Wizard` class over a sectioned form and
+  asserts the pages, that no Cancel or Submit button is offered on any of them, that Next and
+  Previous appear where they should, and that every field keeps the key the contract gave it.
+  Verified by deleting the page-level `buttonSettings` and watching it fail.
+
+- **A start-form composer no longer searches for its process on every preview.** Finding it reads
+  every deployed definition's process links, and the preview fires on each edit — so one letter's
+  cost grew with the number of processes on the installation. `prepare` now hands the resolved key
+  back and the calls that follow name it, which changes no permission: a named process goes through
+  the same two gates as a discovered one. Choosing another letter forgets it, since another letter
+  may belong to another process.
+
+- **Flow diagrams in [docs/letter-composer.md](docs/letter-composer.md)**: what happens when an
+  employee picks a letter, how generation renders it, how the composer decides which fields to ask
+  for, and which authorization path a request takes. The document also lost a duplicated section
+  and an Authorization section that predated start-form support.
+
 - **The contract's rules now reach the generated inputs.** `minLength`, `maxLength`, `pattern`,
   `minimum`, `maximum`, `minItems` and `maxItems` are carried from the template's data contract
   onto the component's `validate`, so a value that cannot work is refused under the field instead

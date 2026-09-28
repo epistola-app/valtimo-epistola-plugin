@@ -79,16 +79,27 @@ public class EpistolaComposerResource {
             String catalogId,
             Map<String, Object> data,
             ObjectNode form,
-            boolean complete
+            boolean complete,
+            /**
+             * On a start form, which process this composer turned out to belong to — null on a
+             * task form, where there is none. Sent back so the preview, which fires on every edit,
+             * names the process instead of making the backend search for it again.
+             */
+            String processDefinitionKey
     ) {
         static PrepareResponse of(PreparedLetter letter) {
+            return of(letter, null);
+        }
+
+        static PrepareResponse of(PreparedLetter letter, String processDefinitionKey) {
             return new PrepareResponse(
                     letter.templateId(),
                     letter.label(),
                     letter.catalogId(),
                     letter.data(),
                     letter.form(),
-                    letter.complete());
+                    letter.complete(),
+                    processDefinitionKey);
         }
     }
 
@@ -197,12 +208,14 @@ public class EpistolaComposerResource {
         }
 
         try {
-            return ResponseEntity.ok(PrepareResponse.of(letterComposerService.prepare(
-                    ComposerContext.forStartEvent(
-                            startContext.processDefinitionId(),
-                            startContext.documentId(),
-                            request.componentKey()),
-                    request.templateId())));
+            return ResponseEntity.ok(PrepareResponse.of(
+                    letterComposerService.prepare(
+                            ComposerContext.forStartEvent(
+                                    startContext.processDefinitionId(),
+                                    startContext.documentId(),
+                                    request.componentKey()),
+                            request.templateId()),
+                    startContext.processDefinitionKey()));
         } catch (ComposerException e) {
             return mapComposerError(e);
         }
@@ -253,6 +266,11 @@ public class EpistolaComposerResource {
      * <p>Discovery changes nothing about the gates: the surviving definition goes through the same
      * two checks as a named one, and a caller who may start nothing sees the same "no composer"
      * answer as one whose form carries none — never a list of processes they have no part in.
+     *
+     * <p>It is also not free — it reads every deployed definition's process links — so the answer
+     * is handed back on {@code prepare} and named on the calls that follow. Preview fires on every
+     * edit; searching again each time would make a letter's cost grow with the number of processes
+     * deployed on the installation.
      */
     private StartEventAuthorization.StartContext startContextFor(
             String processDefinitionKey,

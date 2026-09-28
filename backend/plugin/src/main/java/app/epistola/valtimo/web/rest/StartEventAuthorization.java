@@ -56,11 +56,19 @@ public class StartEventAuthorization {
     /**
      * A resolved and authorized start context.
      *
-     * @param processDefinitionId The deployed definition the caller named by key
-     * @param documentId          The case the process would start on, or null for a new case
-     * @param document            That case, loaded, or null
+     * @param processDefinitionId  The deployed definition the caller named by key
+     * @param processDefinitionKey The version-stable key of that definition, so a caller that had
+     *                             it discovered can name it on the next request instead of paying
+     *                             for the search again
+     * @param documentId           The case the process would start on, or null for a new case
+     * @param document             That case, loaded, or null
      */
-    public record StartContext(String processDefinitionId, String documentId, JsonSchemaDocument document) {
+    public record StartContext(
+            String processDefinitionId,
+            String processDefinitionKey,
+            String documentId,
+            JsonSchemaDocument document
+    ) {
     }
 
     /** Raised when the process definition or the case document does not exist — a 404, not a 403. */
@@ -87,7 +95,7 @@ public class StartEventAuthorization {
         if (definition == null) {
             throw new NotFoundException("No deployed process definition for key '" + processDefinitionKey + "'");
         }
-        return requireById(definition.getId(), documentId);
+        return authorize(definition.getId(), definition.getKey(), documentId);
     }
 
     /**
@@ -98,6 +106,16 @@ public class StartEventAuthorization {
      * @param documentId          The case to start on, or null for a new case
      */
     public StartContext requireById(String processDefinitionId, String documentId) {
+        ProcessDefinition definition = repositoryService.createProcessDefinitionQuery()
+                .processDefinitionId(processDefinitionId)
+                .singleResult();
+        if (definition == null) {
+            throw new NotFoundException("No deployed process definition with id '" + processDefinitionId + "'");
+        }
+        return authorize(definition.getId(), definition.getKey(), documentId);
+    }
+
+    private StartContext authorize(String processDefinitionId, String processDefinitionKey, String documentId) {
         JsonSchemaDocument document = null;
         if (documentId != null) {
             document = findDocumentOrNull(documentId);
@@ -124,7 +142,7 @@ public class StartEventAuthorization {
                     List.of(document)));
         }
 
-        return new StartContext(processDefinitionId, documentId, document);
+        return new StartContext(processDefinitionId, processDefinitionKey, documentId, document);
     }
 
     /**

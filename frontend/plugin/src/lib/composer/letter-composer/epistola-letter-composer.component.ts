@@ -286,6 +286,13 @@ export class EpistolaLetterComposerComponent
 
   /** What the mapping produced; the employee's input is laid over this, never into it. */
   private mappedData: ComposerData = {};
+  /**
+   * The process the backend worked out this start form belongs to, kept from the prepare response.
+   *
+   * Naming it on the calls that follow is what keeps the preview cheap: finding it reads every
+   * deployed definition's process links, and the preview fires on every edit.
+   */
+  private resolvedProcessDefinitionKey: string | null = null;
   private requiredInputKeys: string[] = [];
   private previewSubject = new Subject<ComposerData>();
   private previewSubscription?: Subscription;
@@ -344,6 +351,9 @@ export class EpistolaLetterComposerComponent
 
   onTemplateSelected(templateId: string): void {
     this.selectedTemplateId = templateId || null;
+    // Another letter may be offered by another process, so what was resolved for the last one
+    // says nothing about this one.
+    this.resolvedProcessDefinitionKey = null;
     this.formDefinition = null;
     this.error = null;
     this.previewError = null;
@@ -402,6 +412,7 @@ export class EpistolaLetterComposerComponent
       next: (prepared) => {
         this.mappedData = prepared.data ?? {};
         this.catalogId = prepared.catalogId;
+        this.resolvedProcessDefinitionKey = prepared.processDefinitionKey ?? null;
         this.formDefinition = sectionForm(prepared.form, (step) =>
           this.translate('composerSection').replace('{step}', String(step)),
         );
@@ -492,7 +503,9 @@ export class EpistolaLetterComposerComponent
           data,
         })
       : this.composerApi.composerPreviewStartToBlob({
-          processDefinitionKey: this.processDefinitionKey,
+          // What prepare resolved, else what the author named — never nothing, so the backend
+          // does not search again on every edit.
+          processDefinitionKey: this.resolvedProcessDefinitionKey ?? this.processDefinitionKey,
           documentId: this.composedForDocumentId,
           templateId,
           componentKey: this.componentKey,

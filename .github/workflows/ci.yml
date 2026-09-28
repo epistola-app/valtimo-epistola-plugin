@@ -60,8 +60,8 @@ jobs:
 
       # Boots the real test-app against Testcontainers Postgres + Keycloak (Docker is
       # available on GitHub-hosted runners). Epistola itself is mocked, so no external
-      # service is needed. The Playwright UI E2E suites still require a full running stack
-      # and are run locally / planned as a separate nightly workflow.
+      # service is needed. The Playwright UI E2E suites need a full running stack and run
+      # nightly instead — see e2e-ui.yml.
       - name: Run test-app backend E2E
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

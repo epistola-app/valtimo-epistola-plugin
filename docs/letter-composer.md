@@ -54,24 +54,79 @@ authors forms, or disable the plugin.
 
 ## How it works
 
+The composer never holds a letter's fields. Choosing one asks the backend what this case already
+answers and what is left over, and the answer is what gets rendered — in the preview and again at
+generation, from the same snapshot.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor E as Employee
+    participant C as Composer component
+    participant B as Plugin backend
+    participant V as Valtimo
+    participant X as Epistola
+
+    E->>C: picks a letter
+    C->>B: POST /composer/prepare<br/>{ taskId, templateId, componentKey }
+    B->>V: OperatonTask:VIEW on that task
+    Note over B,V: everything else is derived from the task —<br/>process instance, case document, and the form<br/>whose composer configuration applies
+    B->>V: read the composer's settings from that form
+    B->>B: evaluate the baseline mapping over $doc / $pv
+    B->>X: GET the template's data contract
+    B->>B: contract requires − mapping produced = what to ask
+    B-->>C: { data, form, catalogId, complete }
+
+    loop while the employee types (debounced)
+        E->>C: fills a field
+        C->>C: lays input over data, prunes empties
+        C->>B: POST /composer/preview { taskId, templateId, data }
+        B->>X: render
+        X-->>C: PDF
+    end
+
+    E->>C: submits the form
+    C->>V: pv:epistolaLetter = { schemaVersion, templateId, catalogId, data, inputs }
 ```
-employee picks a letter
-      ↓
-POST /composer/prepare  { taskId, templateId }
-      ↓  backend, all derived from the task:
-      ↓    · the composer's configuration, read from the form behind this task
-      ↓    · the baseline mapping evaluated against this case ($doc, $pv)
-      ↓    · the template's contract, from Epistola
-      ↓
-{ data, form }   form = the contract fields the mapping left empty
-      ↓
-employee types    →  laid over `data`, empty inputs pruned
-      ↓
-POST /composer/preview { taskId, templateId, data }   → PDF
-      ↓
-submit → pv:epistolaLetter = { templateId, catalogId, data, inputs }
-      ↓
-generate task (action config v2) renders $pv.epistolaLetter.data
+
+Generation then renders exactly that variable — no template to pick, no mapping to write:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant P as BPMN process
+    participant A as epistola-generate-<br/>composed-document
+    participant X as Epistola
+    participant R as Result collector
+
+    P->>A: service task
+    A->>P: read pv:epistolaLetter
+    A->>A: refuse it if a newer plugin wrote it
+    A->>X: submit { catalogId, templateId, data }
+    X-->>A: requestId
+    A->>P: epistolaResult + jobPath
+    P->>P: wait at EpistolaDocumentGenerated
+    X-->>R: result
+    R->>P: correlate the message
+```
+
+See [async.md](async.md) for the wait itself, which the composer does not change.
+
+### Which fields the employee is asked for
+
+Read from the mapping's **outcome**, never from its text — a mapping may be opaque
+(`{"aanvrager": $doc.someObject}`) or computed, so which template field an expression feeds cannot
+be known by reading it.
+
+```mermaid
+flowchart TD
+    F["A field in the template's contract"] --> M{Did the mapping<br/>produce a value?}
+    M -- yes --> SKIP["Not offered.<br/>Correcting case data belongs<br/>in a case form, not in one letter"]
+    M -- no --> ASK{Does the template<br/>require it?}
+    ASK -- "no, and 'ask optional' is off" --> SKIP2["Not offered"]
+    ASK -- yes --> REND{Is there anything<br/>to build an input from?}
+    REND -- yes --> INPUT["Generated as an input,<br/>with the contract's own rules on it"]
+    REND -- "no — an external $ref,<br/>a oneOf, no parts" --> REFUSE["422: supply it from the mapping"]
 ```
 
 **A letter with a lot to fill in is stepped through.** Above six inputs the generated form is shown
@@ -286,21 +341,9 @@ exist — neither means anything here.
 
 Waiting for the result is unchanged — see [async.md](async.md).
 
-## What the component stores
-
-```json
-{
-  "templateId": "besluit-bezwaar",
-  "catalogId": "municipality-demo",
-  "data": { "…": "the mapping's result with the employee's input laid over it" },
-  "inputs": { "…": "only what the employee typed" }
-}
-```
-
 `data` is what the letter is rendered with, in the preview and at generation, so **what was
 previewed is what gets generated**. It is a snapshot: if the case changes between the form and
-generation, the letter still carries what the employee approved. `inputs` is kept separately so it
-stays visible what was changed by hand.
+generation, the letter still carries what the employee approved.
 
 ## A composer is never prefilled
 
@@ -316,10 +359,45 @@ the same way the hidden carriers are. `BundledComposerFormTest` pins it for ever
 
 ## Authorization
 
-Both endpoints require `OperatonTask:VIEW` on the supplied task and derive everything else from it:
-the process instance, the case document, and the form whose composer configuration applies. The
-browser names a template; **a template the task's form does not offer is refused**. See
-[authorization.md](authorization.md).
+Two paths, each enforcing its own gate. Which one is taken follows from the context (see
+[Where it is used](#where-it-is-used)) and nothing about authorization rides on that reading: a
+caller could address either endpoint directly, and the one they reach checks what it checks.
+
+```mermaid
+flowchart TD
+    REQ["A composer request"] --> T{Is there a task id?}
+    T -- yes --> TV["OperatonTask:VIEW on that task"]
+    TV --> DERIVE["Process instance, case document and the<br/>form carrying the configuration are all<br/>derived from the task — never sent"]
+    T -- no --> K{Did the author<br/>name a process?}
+    K -- yes --> GATE
+    K -- no --> FIND["Find start forms carrying this componentKey<br/>that offer this template"]
+    FIND --> NARROW["Keep only the ones this caller<br/>may start on this case"]
+    NARROW --> ONE{Exactly one left?}
+    ONE -- none --> NC["404 no composer — the same answer<br/>a form without one gives"]
+    ONE -- several --> AMB["400: name the process on the composer"]
+    ONE -- one --> GATE["OperatonExecution:CREATE on the process<br/>+ JsonSchemaDocument:VIEW on the case"]
+    DERIVE --> OFFER
+    GATE --> OFFER{"Does that form's composer<br/>offer this template?"}
+    OFFER -- no --> NO["400: not offered"]
+    OFFER -- yes --> GO["Prepare or preview"]
+```
+
+Three properties are worth stating plainly:
+
+- **The configuration is never sent.** The browser names a template, and the mapping, catalog and
+  plugin configuration are read from the stored form. So the worst a crafted request can do is ask
+  for a letter the caller can already open the form for.
+- **Discovery grants nothing.** Candidates are narrowed by the same two gates _before_ anything is
+  reported, so a caller who may start nothing gets the "no composer" answer rather than a list of
+  processes they have no part in — and the survivor goes through the gates again as a named one
+  would.
+- **Naming the wrong process fails.** The component names itself (`componentKey`), so an authored
+  `processDefinitionKey` pointing elsewhere finds no composer by that key and is refused, instead
+  of quietly composing with that other process's settings.
+
+Both start-form gates live in one `StartEventAuthorization`, shared with the document preview so
+they cannot drift apart — the reasoning is [ADR 0004](adr/0004-start-event-preview-authorization.md).
+See also [authorization.md](authorization.md).
 
 ## Dropdowns, dates and other input shapes
 
