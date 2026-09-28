@@ -165,6 +165,9 @@ public class ComposerConfigurationResolver {
             throw new ComposerException(ComposerException.Reason.NO_COMPOSER,
                     "No letter composer on " + location);
         }
+        // Checked here rather than while reading the form: a component written by a newer plugin
+        // must fail the request that uses it, not quietly remove every composer on that form.
+        candidates.forEach(LetterComposerConfiguration::requireReadable);
         return candidates.stream()
                 .filter(configuration -> configuration.offers(templateId))
                 .findFirst()
@@ -235,33 +238,58 @@ public class ComposerConfigurationResolver {
         JsonNode letterSet = component.has("letterSet") ? component.path("letterSet") : component;
 
         UUID pluginConfigurationId = uuidOrNull(text(letterSet.path("pluginConfigurationId")));
-        String catalogId = text(letterSet.path("catalogId"));
+        // The set's catalog is a default, not the answer: a letter may name its own, which is what
+        // lets one picker offer letters from more than one catalog.
+        String defaultCatalogId = text(letterSet.path("catalogId"));
         String dataMapping = text(component.path("dataMapping"));
+        String componentKey = text(component.path("key"));
 
         List<LetterComposerConfiguration.OfferedTemplate> templates = new ArrayList<>();
+        int withoutCatalog = 0;
         for (JsonNode template : letterSet.path("templates")) {
             String templateId = text(template.path("templateId"));
             if (templateId == null) {
                 continue;
             }
+            String catalogId = text(template.path("catalogId"));
+            if (catalogId == null) {
+                catalogId = defaultCatalogId;
+            }
+            if (catalogId == null) {
+                // Dropped rather than guessed: which catalog a letter comes from decides what is
+                // rendered, and there is nothing to fall back to.
+                withoutCatalog++;
+                continue;
+            }
             String label = text(template.path("label"));
             templates.add(new LetterComposerConfiguration.OfferedTemplate(
+                    catalogId,
                     templateId,
                     label != null ? label : templateId,
                     text(template.path("dataMapping"))));
         }
 
-        if (pluginConfigurationId == null || catalogId == null || templates.isEmpty()) {
-            log.warn("Skipping letter composer '{}': it needs a plugin configuration, a catalog and "
-                    + "at least one template (has configuration={}, catalog={}, templates={})",
-                    text(component.path("key")), pluginConfigurationId, catalogId, templates.size());
+        if (withoutCatalog > 0) {
+            log.warn("Letter composer '{}' offers {} letter(s) with no catalog: give the component a "
+                    + "catalog, or name one on each letter", componentKey, withoutCatalog);
+        }
+
+        if (pluginConfigurationId == null || templates.isEmpty()) {
+            log.warn("Skipping letter composer '{}': it needs a plugin configuration and at least one "
+                    + "letter with a catalog (has configuration={}, usable letters={})",
+                    componentKey, pluginConfigurationId, templates.size());
             return null;
         }
 
         return new LetterComposerConfiguration(
-                text(component.path("key")),
+                componentKey,
+                // Read structurally; refused at the point of use, so one composer written by a
+                // newer plugin does not take the rest of the form down with it.
+                component.has(ComposerSchema.FIELD)
+                        ? component.path(ComposerSchema.FIELD).asInt(ComposerSchema.CURRENT)
+                        : null,
                 pluginConfigurationId,
-                catalogId,
+                defaultCatalogId,
                 dataMapping,
                 List.copyOf(templates),
                 component.path("askOptionalFields").asBoolean(false));

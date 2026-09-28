@@ -90,11 +90,19 @@ class LetterComposerServiceTest {
                 new ObjectMapper());
     }
 
+    /** An offered letter in the test's own catalog, so the catalog stays out of every call. */
+    private LetterComposerConfiguration.OfferedTemplate offered(
+            String templateId, String label, String dataMapping
+    ) {
+        return new LetterComposerConfiguration.OfferedTemplate("gemeente", templateId, label, dataMapping);
+    }
+
     private LetterComposerConfiguration configuration(
             LetterComposerConfiguration.OfferedTemplate... templates
     ) {
         return new LetterComposerConfiguration(
                 "pv:epistolaLetter",
+                null,
                 PLUGIN_CONFIGURATION_ID,
                 "gemeente",
                 "{\"naam\": $doc.naam}",
@@ -120,7 +128,7 @@ class LetterComposerServiceTest {
 
     @Test
     void asksOnlyForTheFieldsTheMappingCouldNotFill() {
-        offering(configuration(new LetterComposerConfiguration.OfferedTemplate("besluit", "Besluit", null)), "besluit");
+        offering(configuration(offered("besluit", "Besluit", null)), "besluit");
         when(jsonataMappingService.evaluate(any())).thenReturn(Map.of("naam", "Jansen"));
         templateRequires("besluit", required("naam"), required("motivatie"));
 
@@ -136,7 +144,7 @@ class LetterComposerServiceTest {
 
     @Test
     void reportsALetterThatNeedsNoInputAtAll() {
-        offering(configuration(new LetterComposerConfiguration.OfferedTemplate("besluit", "Besluit", null)), "besluit");
+        offering(configuration(offered("besluit", "Besluit", null)), "besluit");
         when(jsonataMappingService.evaluate(any())).thenReturn(Map.of("naam", "Jansen"));
         templateRequires("besluit", required("naam"));
 
@@ -148,7 +156,7 @@ class LetterComposerServiceTest {
 
     @Test
     void layersTheTemplateFragmentOverTheBaselineMapping() {
-        offering(configuration(new LetterComposerConfiguration.OfferedTemplate(
+        offering(configuration(offered(
                 "herinnering", "Herinnering", "{\"termijn\": 14}")), "herinnering");
         when(jsonataMappingService.evaluate(any()))
                 .thenReturn(Map.of("naam", "Jansen", "termijn", 30))
@@ -163,7 +171,7 @@ class LetterComposerServiceTest {
 
     @Test
     void evaluatesTheMappingAgainstTheCaseTheTaskBelongsTo() {
-        offering(configuration(new LetterComposerConfiguration.OfferedTemplate("besluit", "Besluit", null)), "besluit");
+        offering(configuration(offered("besluit", "Besluit", null)), "besluit");
         when(jsonataMappingService.evaluate(any())).thenReturn(Map.of());
         templateRequires("besluit");
 
@@ -178,7 +186,7 @@ class LetterComposerServiceTest {
 
     @Test
     void previewsWithTheCatalogAndTenantOfTheConfiguredPlugin() {
-        offering(configuration(new LetterComposerConfiguration.OfferedTemplate("besluit", "Besluit", null)), "besluit");
+        offering(configuration(offered("besluit", "Besluit", null)), "besluit");
         when(epistolaService.previewDocument(anyString(), anyString(), anyString(), anyString(),
                 anyString(), any(), any(), any()))
                 .thenReturn(new ByteArrayInputStream("%PDF".getBytes()));
@@ -201,7 +209,7 @@ class LetterComposerServiceTest {
 
     @Test
     void reportsARefusedRenderAsSuch() {
-        offering(configuration(new LetterComposerConfiguration.OfferedTemplate("besluit", "Besluit", null)), "besluit");
+        offering(configuration(offered("besluit", "Besluit", null)), "besluit");
         when(epistolaService.previewDocument(anyString(), anyString(), anyString(), anyString(),
                 anyString(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("422 from Epistola"));

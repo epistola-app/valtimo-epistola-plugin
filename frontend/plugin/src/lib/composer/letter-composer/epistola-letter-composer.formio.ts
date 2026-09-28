@@ -29,11 +29,14 @@ import {
   ValtimoFormioComponentConstructor,
   withPrefilledCarriers,
 } from '../../components/valtimo-formio-adapter';
+import { COMPOSER_SCHEMA_FIELD, COMPOSER_SCHEMA_VERSION } from '../composer-schema';
 
 export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-letter-composer',
   selector: 'epistola-letter-composer-element',
-  title: 'Epistola Letter Composer',
+  // Alpha: the composer works, but its stored shapes may still change between releases. Saying so
+  // where an author picks it is the honest place — a changelog entry is not read at that moment.
+  title: 'Epistola Letter Composer (alpha)',
   group: 'basic',
   icon: 'envelope',
   emptyValue: null,
@@ -54,6 +57,9 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   // about to choose.
   schema: {
     prefill: false,
+    // Stamped so a later plugin can tell what this component was authored against, and an earlier
+    // one refuses it rather than misreading it. Kept in the saved form by withComposerDefaults.
+    [COMPOSER_SCHEMA_FIELD]: COMPOSER_SCHEMA_VERSION,
     // The drop payload's label. Formio honours a schema `label`, but never a schema `key`: it
     // always recomputes the key from the palette title (`camelCase(builderInfo.title)`), which is
     // why the property name below is validated rather than defaulted.
@@ -62,6 +68,21 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   },
   editForm: () => ({
     components: [
+      {
+        // An author choosing this component deserves to know before they build a case around it.
+        type: 'content',
+        key: 'epistolaComposerAlphaNotice',
+        html:
+          '<div style="border-left:4px solid #f1c21b;background:#fcf4d6;padding:.5rem .75rem;' +
+          'margin-bottom:1rem">' +
+          '<strong>Alpha.</strong> The letter composer works, but how it stores its settings ' +
+          'and the chosen letter may still change between releases. A change is stamped with a ' +
+          'schema version, so an older plugin refuses a newer form rather than misreading it — ' +
+          'but a form built now may need revisiting. See docs/letter-composer.md.' +
+          '</div>',
+        weight: -10,
+        input: false,
+      },
       {
         type: 'textfield',
         key: 'key',
@@ -135,7 +156,7 @@ export function registerEpistolaLetterComposerComponent(injector: Injector): voi
     injector,
     (base) =>
       withTaskContext(
-        withoutPrefill(
+        withComposerDefaults(
           withPrefilledCarriers(base, [PREFILLED_TASK_ID_CARRIER, PREFILLED_DOCUMENT_ID_CARRIER]),
         ),
       ),
@@ -143,25 +164,32 @@ export function registerEpistolaLetterComposerComponent(injector: Injector): voi
 }
 
 /**
- * Keep `prefill: false` in the saved form.
+ * Keep `prefill: false` and the schema version in the saved form.
  *
  * Form.io drops schema that equals the registered default, exactly as it does with the hidden
- * carriers — so a form saved from the builder would lose the flag and start failing with a 500 on
- * the second process instance. See the schema comment above.
+ * carriers. Without this a form saved from the builder loses `prefill: false` and starts failing
+ * with a 500 on the second process instance, and loses the version — leaving a component that
+ * looks like it predates the field to every plugin that reads it afterwards. Both are values the
+ * component must carry rather than inherit, so both are written back on serialization.
+ *
+ * The version is deliberately *not* forced onto a component that carries an older one: a form
+ * authored against an earlier schema stays authored against it until someone changes it.
  */
-function withoutPrefill(
+function withComposerDefaults(
   BaseComponent: ValtimoFormioComponentConstructor,
 ): ValtimoFormioComponentConstructor {
-  class WithoutPrefill extends BaseComponent {
+  class WithComposerDefaults extends BaseComponent {
     getModifiedSchema(schema: any, defaultSchema: any, recursion: boolean): any {
       const modified = super.getModifiedSchema(schema, defaultSchema, recursion);
       if (!recursion) {
         modified.prefill = false;
+        modified[COMPOSER_SCHEMA_FIELD] =
+          (schema ?? {})[COMPOSER_SCHEMA_FIELD] ?? COMPOSER_SCHEMA_VERSION;
       }
       return modified;
     }
   }
-  return WithoutPrefill as unknown as ValtimoFormioComponentConstructor;
+  return WithComposerDefaults as unknown as ValtimoFormioComponentConstructor;
 }
 
 /**

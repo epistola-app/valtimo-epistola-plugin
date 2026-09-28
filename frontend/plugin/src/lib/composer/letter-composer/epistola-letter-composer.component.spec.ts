@@ -49,6 +49,7 @@ jest.mock('../composer-api.service', () => ({
 
 import { of, throwError } from 'rxjs';
 import { EpistolaLetterComposerComponent } from './epistola-letter-composer.component';
+import { COMPOSER_SCHEMA_VERSION } from '../composer-schema';
 
 describe('EpistolaLetterComposerComponent', () => {
   let originalCreateObjectUrl: typeof URL.createObjectURL | undefined;
@@ -148,6 +149,7 @@ describe('EpistolaLetterComposerComponent', () => {
     component.onInputsChanged({ data: { motivatie: 'omdat', naam: '' } });
 
     expect(component.value).toEqual({
+      schemaVersion: COMPOSER_SCHEMA_VERSION,
       templateId: 'besluit',
       catalogId: 'gemeente',
       // The empty `naam` is pruned, so an untouched field never blanks what the mapping produced.
@@ -206,7 +208,13 @@ describe('EpistolaLetterComposerComponent', () => {
   it('prepares the restored letter once the task id arrives after the first render', () => {
     const { component, service } = createComponent();
     component.taskInstanceId = undefined;
-    component.value = { templateId: 'besluit', catalogId: 'gemeente', data: {}, inputs: {} };
+    component.value = {
+      schemaVersion: 1,
+      templateId: 'besluit',
+      catalogId: 'gemeente',
+      data: {},
+      inputs: {},
+    };
 
     component.ngOnChanges({ value: {} } as any);
     expect(service.composerPrepare).not.toHaveBeenCalled();
@@ -393,6 +401,20 @@ describe('EpistolaLetterComposerComponent', () => {
       expect(service.composerPrepare).toHaveBeenCalled();
       expect(service.composerPrepareStart).not.toHaveBeenCalled();
     });
+  });
+
+  it('stamps the schema version on what it stores', () => {
+    // The letter is read back by whichever plugin runs the generate task, which may not be this
+    // one: a process instance can wait months for it.
+    const { component } = createComponent();
+
+    // Both the moment a letter is chosen and every edit afterwards, since either may be the last
+    // thing stored before the form is submitted.
+    component.onTemplateSelected('besluit');
+    expect(component.value?.schemaVersion).toBe(COMPOSER_SCHEMA_VERSION);
+
+    component.onInputsChanged({ data: { motivatie: 'omdat' } });
+    expect(component.value?.schemaVersion).toBe(COMPOSER_SCHEMA_VERSION);
   });
 
   describe('a letter with a lot to fill in', () => {

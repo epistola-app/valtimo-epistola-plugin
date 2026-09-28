@@ -39,7 +39,8 @@
             "sourceKey": "epistola:taskId"
           }
         }
-      ]
+      ],
+      "schemaVersion": 1
     },
     {
       "key": "submit",

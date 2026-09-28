@@ -86,4 +86,49 @@ class ComposedLetterTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("valid JSON");
     }
+
+    @Test
+    void readsALetterThatPredatesTheSchemaVersion() {
+        // A process instance composed before the field existed may still be waiting for its
+        // generate task; an upgrade must not strand it.
+        ComposedLetter letter = ComposedLetter.from(
+                Map.of("catalogId", "gemeente", "templateId", "besluit"),
+                "epistolaLetter",
+                objectMapper);
+
+        assertThat(letter.schemaVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void readsTheVersionTheComposerStamped() {
+        ComposedLetter letter = ComposedLetter.from(
+                Map.of("schemaVersion", 1, "catalogId", "gemeente", "templateId", "besluit"),
+                "epistolaLetter",
+                objectMapper);
+
+        assertThat(letter.schemaVersion()).isEqualTo(1);
+    }
+
+    @Test
+    void refusesALetterWrittenByALaterPlugin() {
+        // Generating the wrong letter is worse than not generating one: what a later schema means
+        // by these fields is exactly what this plugin cannot know.
+        assertThatThrownBy(() -> ComposedLetter.from(
+                Map.of("schemaVersion", 99, "catalogId", "gemeente", "templateId", "besluit"),
+                "epistolaLetter",
+                objectMapper))
+                .isInstanceOf(ComposerException.class)
+                .hasMessageContaining("99")
+                .hasMessageContaining("Upgrade the Epistola plugin");
+    }
+
+    @Test
+    void refusesALetterWhoseVersionIsNotAVersion() {
+        assertThatThrownBy(() -> ComposedLetter.from(
+                "{\"schemaVersion\":\"tweede\",\"catalogId\":\"gemeente\",\"templateId\":\"besluit\"}",
+                "epistolaLetter",
+                objectMapper))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("schemaVersion");
+    }
 }

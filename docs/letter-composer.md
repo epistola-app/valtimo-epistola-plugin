@@ -11,6 +11,12 @@ one offering three**, and adding a letter is one row in the component's settings
 
 Where its configuration lives, and why, is [ADR 0006](adr/0006-letter-composer-configuration.md).
 
+> **Alpha.** The composer works end to end and is covered by tests, but the shapes it stores may
+> still change between releases. What it stores carries a `schemaVersion` so a change is safe to
+> make — an older plugin refuses what a newer one wrote instead of misreading it (see
+> [What it stores](#what-it-stores)) — but a case built on it now may need revisiting. The palette
+> entry and the component's settings say so too, where an author will actually see it.
+
 ## It is a module of its own
 
 Nothing else in the plugin depends on the composer, so it is kept together and switchable:
@@ -110,6 +116,62 @@ actually start on this case, and uses the single survivor. None → the same "no
 form without one gets; more than one → it asks the author to fill in **Process to start**. Either
 way the surviving definition goes through the same two gates as a named one, so discovery buys
 convenience and changes no permission.
+
+## What it stores
+
+Three structures, in three places, with three lifecycles. Two of them outlive the code that wrote
+them, so both carry `schemaVersion` — read tolerantly downwards (absent means 1, so nothing
+deployed before the field existed is invalidated) and refused upwards, loudly, with a message
+naming both versions. The rule is written once, in `ComposerSchema`, and mirrored in
+`composer-schema.ts`.
+
+**1. The component's settings**, in the form definition — versioned with the case definition,
+deployable as config-as-code, editable in the builder:
+
+```json
+{
+  "type": "epistola-letter-composer",
+  "key": "pv:epistolaLetter",
+  "schemaVersion": 1,
+  "prefill": false,
+  "askOptionalFields": false,
+  "dataMapping": "<baseline JSONata>",
+  "letterSet": {
+    "pluginConfigurationId": "…",
+    "catalogId": "municipality-demo",
+    "templates": [{ "templateId": "besluit", "label": "…", "dataMapping": "<fragment>" }]
+  }
+}
+```
+
+`schemaVersion` and `prefill` are written back on every save, because Form.io drops schema equal to
+the registered default and losing either is silent.
+
+**A catalog is a property of the letter, not of the set.** `letterSet.catalogId` is the default; a
+letter may carry its own `catalogId`, which is what lets one picker offer letters from more than
+one catalog. A letter with neither is dropped with a warning — which catalog a letter comes from
+decides what is rendered, and there is nothing to guess. The settings widget writes only the
+default today; a hand-written form can already do both. (One thing still to decide before a second
+catalog is common: a letter is named on the wire by its bare `templateId`, and template ids are
+catalog-scoped.)
+
+A form written before the widget existed carries `pluginConfigurationId`, `catalogId` and
+`templates` directly on the component instead of under `letterSet`; both shapes are read.
+
+**2. The chosen letter**, on the process variable the component's `pv:` key names:
+
+```json
+{ "schemaVersion": 1, "templateId": "…", "catalogId": "…", "data": { … }, "inputs": { … } }
+```
+
+`data` is everything the letter renders with; `inputs` is only what a human typed, kept so it stays
+visible what was changed by hand — and it is what write-back will read. This is the structure with
+the longest reach: a process instance can wait months for its generate task, so the plugin that
+reads it may not be the one that wrote it.
+
+**3. The generate action's configuration**, on the process link — `letterVariable`, `filename`,
+`correlationId`, `resultProcessVariable`. Plain flat properties, covered by the plugin's existing
+action-configuration versioning.
 
 ## Wiring the process
 

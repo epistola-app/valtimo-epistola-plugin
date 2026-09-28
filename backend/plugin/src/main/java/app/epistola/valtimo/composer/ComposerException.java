@@ -28,7 +28,9 @@ public class ComposerException extends RuntimeException {
         /** The composer is configured incompletely (no plugin configuration, catalog or mapping). */
         MISSING_CONTEXT,
         /** Epistola refused to render the letter with this data. */
-        RENDER_FAILED
+        RENDER_FAILED,
+        /** Written by a newer plugin than this one, so reading it could mean misreading it. */
+        UNSUPPORTED_SCHEMA
     }
 
     private final Reason reason;

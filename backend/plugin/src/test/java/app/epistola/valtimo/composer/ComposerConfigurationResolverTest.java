@@ -390,4 +390,125 @@ class ComposerConfigurationResolverTest {
 
         assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "besluit")).isEmpty();
     }
+
+    @Test
+    void readsACatalogNamedOnTheLetterItself() {
+        // A catalog is a property of the letter, so one picker can offer letters from two of them.
+        formOnTask("""
+                {"components":[
+                  {"type":"epistola-letter-composer","key":"pv:epistolaLetter",
+                   "pluginConfigurationId":"%s","catalogId":"gemeente",
+                   "templates":[
+                     {"templateId":"besluit"},
+                     {"templateId":"aanmaning","catalogId":"landelijk"}
+                   ]}
+                ]}
+                """.formatted(PLUGIN_CONFIGURATION_ID));
+
+        var configuration = resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID).get(0);
+
+        assertThat(configuration.findTemplate("besluit").catalogId()).isEqualTo("gemeente");
+        assertThat(configuration.findTemplate("aanmaning").catalogId()).isEqualTo("landelijk");
+        assertThat(configuration.catalogFor("aanmaning")).isEqualTo("landelijk");
+    }
+
+    @Test
+    void acceptsAComposerWhoseCatalogsAllLiveOnItsLetters() {
+        // The forward-compatible case: no set-level catalog at all. Before, the whole composer was
+        // skipped here, which read as "no letter composer on this form".
+        formOnTask("""
+                {"components":[
+                  {"type":"epistola-letter-composer","key":"pv:epistolaLetter",
+                   "pluginConfigurationId":"%s",
+                   "templates":[
+                     {"templateId":"besluit","catalogId":"gemeente"},
+                     {"templateId":"aanmaning","catalogId":"landelijk"}
+                   ]}
+                ]}
+                """.formatted(PLUGIN_CONFIGURATION_ID));
+
+        var configuration = resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID).get(0);
+
+        assertThat(configuration.templates()).hasSize(2);
+        assertThat(configuration.catalogFor("besluit")).isEqualTo("gemeente");
+    }
+
+    @Test
+    void dropsALetterWithNoCatalogAnywhere() {
+        // Which catalog a letter comes from decides what is rendered; there is nothing to guess.
+        formOnTask("""
+                {"components":[
+                  {"type":"epistola-letter-composer","key":"pv:epistolaLetter",
+                   "pluginConfigurationId":"%s",
+                   "templates":[
+                     {"templateId":"besluit","catalogId":"gemeente"},
+                     {"templateId":"zwevend"}
+                   ]}
+                ]}
+                """.formatted(PLUGIN_CONFIGURATION_ID));
+
+        var configuration = resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID).get(0);
+
+        assertThat(configuration.offers("besluit")).isTrue();
+        assertThat(configuration.offers("zwevend")).isFalse();
+    }
+
+    @Test
+    void skipsAComposerWhoseLettersHaveNoCatalogAtAll() {
+        formOnTask("""
+                {"components":[
+                  {"type":"epistola-letter-composer","key":"pv:epistolaLetter",
+                   "pluginConfigurationId":"%s","templates":[{"templateId":"besluit"}]}
+                ]}
+                """.formatted(PLUGIN_CONFIGURATION_ID));
+
+        assertThat(resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID)).isEmpty();
+    }
+
+    @Test
+    void readsAComposerThatPredatesTheSchemaVersion() {
+        // Every form deployed before the field existed is version 1; an upgrade must not
+        // invalidate them.
+        formOnTask(composerJson(""));
+
+        assertThat(resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID).get(0).schemaVersion())
+                .isNull();
+        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, "besluit"))
+                .isNotNull();
+    }
+
+    @Test
+    void refusesAComposerWrittenForALaterSchema() {
+        formOnTask(composerJson(",\"schemaVersion\":99"));
+
+        assertThatThrownBy(() ->
+                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, "besluit"))
+                .isInstanceOf(ComposerException.class)
+                .hasMessageContaining("99")
+                .hasMessageContaining("Upgrade the Epistola plugin")
+                .extracting(e -> ((ComposerException) e).getReason())
+                .isEqualTo(ComposerException.Reason.UNSUPPORTED_SCHEMA);
+    }
+
+    @Test
+    void stillReadsTheFormWhenAnotherComposerOnItIsTooNew() {
+        // The version is checked where a composer is used, not where the form is read, so one
+        // component from a newer plugin does not remove every composer on that form.
+        formOnTask("""
+                {"components":[
+                  {"type":"epistola-letter-composer","key":"pv:nieuw","schemaVersion":99,
+                   "pluginConfigurationId":"%s","catalogId":"gemeente",
+                   "templates":[{"templateId":"besluit"}]},
+                  {"type":"epistola-letter-composer","key":"pv:oud",
+                   "pluginConfigurationId":"%s","catalogId":"gemeente",
+                   "templates":[{"templateId":"besluit"}]}
+                ]}
+                """.formatted(PLUGIN_CONFIGURATION_ID, PLUGIN_CONFIGURATION_ID));
+
+        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:oud", "besluit"))
+                .isNotNull();
+        assertThatThrownBy(() ->
+                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:nieuw", "besluit"))
+                .isInstanceOf(ComposerException.class);
+    }
 }

@@ -43,6 +43,7 @@ import {
 } from './composer-data';
 import { readOpenDossierId } from './open-dossier';
 import { isSectioned, sectionForm } from './composer-sections';
+import { COMPOSER_SCHEMA_VERSION } from '../composer-schema';
 
 /** One selectable letter, as configured on the component. */
 export interface ComposerTemplateOption {
@@ -52,6 +53,12 @@ export interface ComposerTemplateOption {
 
 /** What the component stores on the form, and hands to generation afterwards. */
 export interface ComposerValue {
+  /**
+   * The schema this letter was written with. It is read back by a plugin that may be older or
+   * newer than the one that wrote it — a process instance can wait months for its generate task —
+   * so the shape says which rules apply. See `composer-schema.ts`.
+   */
+  schemaVersion: number;
   templateId: string;
   catalogId: string;
   /** Everything the letter is rendered with: the mapping's result plus the employee's input. */
@@ -357,6 +364,7 @@ export class EpistolaLetterComposerComponent
     const inputs = pruneEmpty(event.data);
     const data = mergeComposerData(this.mappedData, inputs);
     this.emit({
+      schemaVersion: COMPOSER_SCHEMA_VERSION,
       templateId: this.selectedTemplateId,
       catalogId: this.catalogId ?? '',
       data,
@@ -401,6 +409,7 @@ export class EpistolaLetterComposerComponent
         this.requiredInputKeys = requiredKeys(prepared.form);
         this.loading = false;
         this.emit({
+          schemaVersion: COMPOSER_SCHEMA_VERSION,
           templateId,
           catalogId: prepared.catalogId,
           data: this.mappedData,

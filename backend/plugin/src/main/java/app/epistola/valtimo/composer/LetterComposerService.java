@@ -137,7 +137,7 @@ public class LetterComposerService {
         var offered = configuration.findTemplate(templateId);
 
         Map<String, Object> data = resolveData(ctx, configuration, offered);
-        TemplateDetails template = templateDetails(configuration, templateId);
+        TemplateDetails template = templateDetails(configuration, offered.catalogId(), templateId);
 
         List<TemplateField> missing = MissingFieldSelector.selectMissing(
                 template.fields(), data, !configuration.askOptionalFields());
@@ -149,7 +149,7 @@ public class LetterComposerService {
         return new PreparedLetter(
                 templateId,
                 offered.label(),
-                configuration.catalogId(),
+                offered.catalogId(),
                 data,
                 form,
                 missing.isEmpty());
@@ -171,7 +171,7 @@ public class LetterComposerService {
                     plugin.getBaseUrl(),
                     plugin.getApiKey(),
                     plugin.getTenantId(),
-                    configuration.catalogId(),
+                    configuration.catalogFor(templateId),
                     templateId,
                     null,
                     plugin.getDefaultEnvironmentId(),
@@ -229,13 +229,17 @@ public class LetterComposerService {
         return jsonataMappingService.evaluate(evalCtx);
     }
 
-    private TemplateDetails templateDetails(LetterComposerConfiguration configuration, String templateId) {
+    private TemplateDetails templateDetails(
+            LetterComposerConfiguration configuration,
+            String catalogId,
+            String templateId
+    ) {
         EpistolaPlugin plugin = plugin(configuration);
         return epistolaService.getTemplateDetails(
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
-                configuration.catalogId(),
+                catalogId,
                 templateId);
     }
 

@@ -115,13 +115,27 @@ docker/            # Docker compose for local dependencies
 - **Newer contract client, older server**: the reverse trap, with the same symptom. A contract release can add a response field older servers never send, and if it is `required` the generated models reject the whole response. Contract `1.3.0` did this with `slug` (fixed in `1.3.1`, which makes it optional), so read a resource's address from `id` (`key` on attributes), which every supported server sends — not from `slug` — until the Suite floor serves contract `1.3.0` or later. `oldestSupportedServerTest` runs `EpistolaServiceImplTest` against the oldest contract a supported Suite serves; it is part of `check`/`build`, not `test`, so run `./gradlew :backend:plugin:build` on a contract bump.
 - **Plugin properties**: Backend `@PluginProperty` keys must match frontend field names exactly
 - **Translations**: Add both `nl` and `en` translations in `epistola.specification.ts`
-- **Letter composer** (`epistola-letter-composer`): pick a letter from a configured list, fill in
-  what the case cannot supply, preview it, and let one `epistola-generate-composed-document` task
-  render it — on a user task or, with no task at all, on the start form of an ad-hoc process. It is
-  a module of its own (`app.epistola.valtimo.composer`, `lib/composer/`), switchable with
-  `epistola.composer.enabled=false`, and nothing else in the plugin depends on it. See
-  [docs/letter-composer.md](docs/letter-composer.md) and
-  [ADR 0006](docs/adr/0006-letter-composer-configuration.md).
+- **Letter composer** (`epistola-letter-composer`, **alpha**): pick a letter from a configured
+  list, fill in what the case cannot supply, preview it, and let one
+  `epistola-generate-composed-document` task render it. Where it is used is **derived, never
+  authored** — a task form fills the `epistola:taskId` carrier and a start form does not, so one
+  configuration serves both; a start form's process is discovered server-side from the composers on
+  start forms, narrowed to what the caller may start. It is a module of its own
+  (`app.epistola.valtimo.composer`, `lib/composer/`), switchable with
+  `epistola.composer.enabled=false`, and nothing else in the plugin depends on it.
+  - **Alpha means the stored shapes may still change.** The two that outlive the code that wrote
+    them — a component's settings in a form definition, and the chosen letter on a process variable
+    — carry a `schemaVersion`. Read it through `ComposerSchema` (mirrored in `composer-schema.ts`):
+    absent means 1, and anything newer than `CURRENT` is refused with a message naming both
+    versions rather than half-read. Raise `CURRENT` when a shape changes, and keep the two
+    constants in step. The version is written back in `getModifiedSchema`, like `prefill: false`
+    and the hidden carriers — Form.io drops schema equal to the registered default, and losing it
+    would make every saved component look like it predates the field.
+  - **A catalog belongs to the letter, not the set**: `letterSet.catalogId` is only the default,
+    and `templates[].catalogId` overrides it. Use `configuration.catalogFor(templateId)` or the
+    offered letter's own `catalogId()` — never `configuration.catalogId()`, which is the default.
+  - See [docs/letter-composer.md](docs/letter-composer.md) and
+    [ADR 0006](docs/adr/0006-letter-composer-configuration.md).
 - **Feature toggle**: The plugin can be disabled per environment from a single build artifact.
   - **Backend**: `epistola.enabled=false` (Spring property, defaults to `true`). Disables auto-configuration — no beans, no endpoints, no result collector, and no catch-event auto-wiring (the engine SPI is never registered). Verified by `EpistolaCatchEventAutoWiringConfigTest`.
   - **Catch-event auto-wiring sub-flag**: `epistola.catch-event-auto-wiring.enabled=false` (defaults to `true`, nested under `epistola.enabled`). Drops only the engine-SPI beans (`EpistolaProcessEnginePlugin` + `EpistolaCatchEventParseListener`) so correlation falls back to declarative `epistolaWaitFor` `camunda:inputParameter` mappings — an escape hatch if a future Operaton breaks the SPI, without disabling the whole plugin.

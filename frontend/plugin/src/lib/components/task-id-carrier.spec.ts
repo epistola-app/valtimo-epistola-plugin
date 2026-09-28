@@ -354,6 +354,32 @@ describe('letter composer opts out of Valtimo prefill', () => {
     expect(schema.prefill).toBe(false);
   });
 
+  /**
+   * Same trap as `prefill`, with a nastier consequence: a component whose version was dropped
+   * looks to every later plugin like one authored before the field existed, so the very mechanism
+   * meant to make the shape changeable is lost on the first save from the builder.
+   */
+  it('persists the schema version straight from the palette drop payload', () => {
+    const schema = persistedSchemaOf(
+      'epistola-letter-composer',
+      paletteDropPayloadFor('epistola-letter-composer'),
+    );
+
+    expect(schema.schemaVersion).toBe(1);
+  });
+
+  it('keeps the version a stored form already declares rather than restamping it', () => {
+    // A form authored against an earlier schema stays authored against it; re-stamping would
+    // claim it had been migrated when nothing looked at it.
+    const schema = persistedSchemaOf('epistola-letter-composer', {
+      type: 'epistola-letter-composer',
+      key: 'pv:epistolaLetter',
+      schemaVersion: 1,
+    });
+
+    expect(schema.schemaVersion).toBe(1);
+  });
+
   it('carries both prefilled ids as well', () => {
     const schema = persistedSchemaOf(
       'epistola-letter-composer',

@@ -28,11 +28,16 @@ import java.util.Map;
  * exactly what was previewed and needs no template, mapping or catalog of its own (ADR 0006). This
  * record is that contract, and the one place that knows its shape.
  *
+ * <p>It carries the schema version the composer wrote it with, because it outlives that composer:
+ * a process instance can sit in the database for months, and the plugin that generates the letter
+ * may not be the one that composed it. See {@link ComposerSchema} for which way that is tolerated.
+ *
+ * @param schemaVersion The version it was written with; 1 for anything predating the field
  * @param catalogId  The catalog the chosen template lives in
  * @param templateId The chosen template
  * @param data       Everything the letter is rendered with
  */
-public record ComposedLetter(String catalogId, String templateId, Map<String, Object> data) {
+public record ComposedLetter(int schemaVersion, String catalogId, String templateId, Map<String, Object> data) {
 
     /**
      * Read a composed letter from a process variable.
@@ -66,6 +71,12 @@ public record ComposedLetter(String catalogId, String templateId, Map<String, Ob
                             + raw.getClass().getSimpleName() + ", not a composed letter");
         }
 
+        // Before anything is read out of it: a letter from a later plugin may not mean what this
+        // one would take it to mean, and generating the wrong letter is worse than not generating.
+        int schemaVersion = ComposerSchema.readable(
+                intOrNull(value.get(ComposerSchema.FIELD)),
+                "The composed letter on '" + variableName + "'");
+
         String templateId = text(value.get("templateId"));
         String catalogId = text(value.get("catalogId"));
         if (templateId == null || catalogId == null) {
@@ -75,9 +86,26 @@ public record ComposedLetter(String catalogId, String templateId, Map<String, Ob
 
         Object data = value.get("data");
         return new ComposedLetter(
+                schemaVersion,
                 catalogId,
                 templateId,
                 data instanceof Map<?, ?> map ? (Map<String, Object>) map : Map.of());
+    }
+
+    /** Operaton hands numbers back as Integer, Long or (from JSON) whatever Jackson chose. */
+    private static Integer intOrNull(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value instanceof String string && !string.isBlank()) {
+            try {
+                return Integer.valueOf(string.trim());
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(
+                        "A composed letter declares a non-numeric " + ComposerSchema.FIELD + ": " + string, e);
+            }
+        }
+        return null;
     }
 
     private static String text(Object value) {

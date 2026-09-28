@@ -323,7 +323,9 @@ public class EpistolaComposerResource {
                     .body(Map.of("error", e.getMessage()));
             case TEMPLATE_NOT_OFFERED, MISSING_CONTEXT -> ResponseEntity.badRequest()
                     .body(Map.of("error", e.getMessage()));
-            case RENDER_FAILED -> ResponseEntity.unprocessableEntity()
+            // Not the caller's request being wrong but this environment's: the same shape the
+            // catalog sync uses for a wire schema it cannot read — operator-actionable, not 502.
+            case RENDER_FAILED, UNSUPPORTED_SCHEMA -> ResponseEntity.unprocessableEntity()
                     .body(Map.of("error", e.getMessage()));
         };
     }

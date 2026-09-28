@@ -9,6 +9,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The letter composer is marked alpha, and its stored shapes are versioned.** It works end to end
+  and is covered by tests, but what it stores may still change — so the palette entry reads
+  "(alpha)", the component's settings open with a notice saying so, and
+  [docs/letter-composer.md](docs/letter-composer.md) leads with it. Both shapes that outlive the
+  code that wrote them — a component's settings in a form definition, and the chosen letter on a
+  process variable — now carry a `schemaVersion`, read tolerantly downwards (absent means 1, so
+  nothing already deployed is invalidated) and refused upwards with a message naming both versions.
+  A letter from a later plugin is refused rather than half-understood, because generating the wrong
+  letter is worse than not generating one. The rule lives in one place (`ComposerSchema`), and the
+  version is written back on every save, since Form.io drops schema equal to the default.
+
+- **A catalog is now a property of the letter, not of the letter set.** `letterSet.catalogId`
+  becomes the default and a letter may carry its own, which is what a picker offering letters from
+  more than one catalog will need. Nothing changes for an existing form, and the settings widget
+  still writes only the default — but the shape no longer has to change to get there. A composer
+  whose catalogs all live on its letters is accepted rather than skipped, which previously surfaced
+  as "No letter composer on this form"; a letter with no catalog anywhere is dropped with a warning
+  naming the component.
+
 - **A letter with a lot to fill in is filled in step by step.** Above six inputs the generated form
   becomes a wizard, with breadcrumbs that can be clicked so a step is one click away rather than a
   page at a time. Steps take the names the template's contract already uses — a group becomes a

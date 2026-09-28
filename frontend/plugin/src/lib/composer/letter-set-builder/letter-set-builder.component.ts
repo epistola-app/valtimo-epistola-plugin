@@ -35,6 +35,13 @@ import { CatalogInfo, TemplateInfo } from '../../models';
 
 /** One letter on offer, as stored in the composer's settings. */
 export interface OfferedTemplate {
+  /**
+   * Which catalog this letter lives in. The widget leaves it off — every letter it offers comes
+   * from the one catalog picked above, which is stored on the set. A hand-written form may set it
+   * per letter, which is what lets one picker offer letters from more than one catalog; the
+   * backend reads it and falls back to the set's.
+   */
+  catalogId?: string;
   templateId: string;
   label?: string;
   dataMapping?: string;

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 package com.ritense.valtimo.epistola
 
+import app.epistola.valtimo.composer.ComposerSchema
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.assertj.core.api.Assertions.assertThat
@@ -40,6 +41,11 @@ class BundledComposerFormTest {
                     assertThat(composer.path("key").asText())
                         .describedAs("key of %s", where)
                         .startsWith("pv:")
+                    // The bundled forms are what an author copies, so they carry the version a
+                    // builder-saved form carries — and a version this plugin can actually read.
+                    assertThat(composer.path("schemaVersion").asInt(0))
+                        .describedAs("schemaVersion of %s", where)
+                        .isBetween(1, ComposerSchema.CURRENT)
                     true
                 }
         }
