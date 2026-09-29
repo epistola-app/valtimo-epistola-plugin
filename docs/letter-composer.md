@@ -527,6 +527,18 @@ entirely.
   letter that names a variant would ignore it and render the default — a different document than
   the one approved — so `ComposerSchema.CURRENT` must be raised when it lands.
 
+- **A failed composed letter has no retry form.** `epistola-retry-form` rebuilds its inputs from a
+  `generate-document` link's own template and data mapping, and asks the employee to correct what
+  that mapping produced. A composed letter has neither: the template was chosen by the employee and
+  the data was resolved while they watched, both living on a process variable rather than in the
+  link. So the retry component finds no link and offers nothing.
+
+  Retrying a composed letter means composing it again — the same component, on a task the process
+  routes to when generation fails, reading nothing from the previous attempt. That is a form the
+  author already knows how to build; what is missing is the composer reading the failed letter back
+  so the employee corrects rather than retypes, which needs the composer to accept an initial value
+  (it deliberately sets `prefill: false` today, see [A composer is never prefilled](#a-composer-is-never-prefilled)).
+
 - **No write-back to the case.** Input stays with the letter: the composer's generated fields live
   in a nested Form.io instance and collapse into the component's single `pv:` value, so the
   field-level write-back Valtimo does for a `doc:`-keyed form field never sees them. Until it

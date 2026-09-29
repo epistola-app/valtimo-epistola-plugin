@@ -131,6 +131,12 @@ Part of the plugin's auto-deployed `epistola-retry-document` form (hidden from t
 dynamically generated Formio form for correcting and resubmitting a failed generation (`GET /retry-form`)
 and shows an embedded live preview (`POST /preview`) of the corrected document.
 
+**It covers `generate-document` only, not a composed letter.** The form is rebuilt from the link's own
+template and data mapping, and a composed letter has neither — the template was chosen by the employee
+and the data resolved while they watched, both on a process variable rather than in the link. Retrying
+one means composing it again; see
+[letter-composer.md](letter-composer.md#known-gaps).
+
 ### `epistola-override-builder` — Input-override mapping (editForm-only)
 
 A builder-UI widget used **inside the preview component's `editForm`**. Lets the author map form field

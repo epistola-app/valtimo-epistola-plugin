@@ -28,6 +28,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A composed letter generated, then left its process waiting forever.** The catch event takes its
+  correlation token from a start listener that asks which generate task feeds it, and that lookup
+  matched one hardcoded action key. `epistola-generate-composed-document` was added without being
+  registered there, so the wait was never given a token, nothing subscribed, and the result came
+  back to nowhere — the letter rendered perfectly and the process sat on "wacht op document". The
+  same omission was in the deployment validator (a composer process was never warned about a
+  generate with no reachable wait) and in the admin page's usage overview (composer usage was
+  invisible). All three now read one list, `EpistolaProcessVariables.GENERATING_ACTION_KEYS`, and
+  `EpistolaGeneratingActionsTest` derives it from the plugin class by reflection rather than
+  trusting the next person to update three files.
+
 - **A letter with a data grid could never be previewed.** The preview waits until every required
   field has a value, and it read those from the generated form — including the grid's _columns_,
   which are keyed inside a row (`type`) rather than against the submission. Demanded at document
