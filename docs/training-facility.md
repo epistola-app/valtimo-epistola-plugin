@@ -74,7 +74,12 @@ authenticated request, only running the expensive path below on a miss:
    a real Keycloak token can omit `sub` entirely, and an email-shaped identity (`trainee1@demo`)
    fails `CaseDefinitionId.key`'s `[a-zA-Z0-9-]+` pattern.
 2. Create the trainee's `PluginConfiguration` (`PluginConfigurationId.newId()`, known up front),
-   wrapped in `AuthorizationContext.runWithoutAuthorization { }`.
+   wrapped in `AuthorizationContext.runWithoutAuthorization { }`, and install the classpath
+   catalogs (the demo templates) into the trainee's new, empty Epistola tenant. It uses the same
+   `EpistolaCatalogSyncService` that `EpistolaCatalogSyncTrigger` runs at startup; a configuration
+   created later never gets that startup run. The import is best effort: a failure is logged and
+   provisioning continues. The configuration is `templateSyncEnabled`, so every restart re-syncs
+   the trainee's tenant as well.
 3. Export the `form-flow-demo` case-definition template and re-import it under the trainee's key
    via Valtimo's own `ExportService`/`ImportService` — `keyOverride`, `nameOverride`, and
    `pluginConfigurationMappings` (remapping the template's plugin-configuration id to the
@@ -99,12 +104,19 @@ clone; only full process-definition/process-instance/execution/document **ids** 
 ## Authorization model
 
 ```
-HTTP layer (Spring Security)
-  └─ TrainingHttpSecurityConfigurer widens ~45 admin-gated endpoints
-     to hasAnyAuthority(ADMIN, ROLE_DEMO), ordered ahead of Valtimo's
-     own module configurers for the same paths
+Authorities
+  └─ TraineeAdminAuthorityStripFilter removes ROLE_ADMIN from a ROLE_DEMO
+     principal server-side (the token keeps it, for the frontend)
         ↓
-Ownership layer (ROLE_DEMO-scoped, real ROLE_ADMIN untouched)
+HTTP layer (Spring Security)
+  └─ TrainingHttpSecurityConfigurer widens the admin-gated endpoints a
+     trainee needs for their own dossier to hasAnyAuthority(ADMIN, ROLE_DEMO)
+        ↓
+Data layer (Valtimo PBAC, demo.permission.json)
+  └─ ROLE_DEMO: every case type visible; cases, tasks, notes and case
+     resources only where createdBy == ${currentUserEmail}
+        ↓
+Ownership layer (ROLE_DEMO-scoped, genuine admins untouched)
   ├─ TraineeOwnershipInterceptor        — path/query-param-identified requests
   ├─ TraineeOwnershipRequestBodyAdvice  — POST/PUT bodies
   └─ TraineeOwnershipResponseBodyAdvice — list responses, filtered to "owned by me"
@@ -114,15 +126,41 @@ Hard block (no safe per-trainee scoping exists at all)
      authorization decision runs, filter position fixed at chain build
 ```
 
-### Why trainees carry real `ROLE_ADMIN`
+### Why the token carries `ROLE_ADMIN` but the backend ignores it
 
-The original design deliberately avoided this, specifically so a trainee could never pass
-Valtimo's own `hasAuthority(ADMIN)` gates by construction. That held until a real browser login
-showed Valtimo's frontend gates its entire admin UI on `ROLE_ADMIN` **client-side**, with no
-finer-grained frontend role to widen instead — with `ROLE_DEMO` alone, a trainee's side-nav had no
-Admin section at all. Satisfying the frontend meant granting the real authority, and the backend
-fully compensating for everything that grant would otherwise open up — everything below exists
-because of this one pivot.
+A real browser login showed Valtimo's frontend gates its entire admin UI on `ROLE_ADMIN`
+**client-side**, with no finer-grained frontend role to widen instead — with `ROLE_DEMO` alone, a
+trainee's side-nav had no Admin section at all. So the identity provider still puts `ROLE_ADMIN` in
+a trainee's token; the frontend reads roles straight from the token
+(`test-app/frontend/src/environments/auth/authentik-config.ts`).
+
+The backend does not honour it: `TraineeAdminAuthorityStripFilter` drops `ROLE_ADMIN` from any
+principal that also carries `ROLE_DEMO`, before Spring Security's HTTP gate and before any PBAC
+check. That matters because PBAC unions grants across roles, and this app's `all.permission.json`
+grants `ROLE_ADMIN` every case, task and note unconditioned (see
+[The critical finding](#the-critical-finding-unconditioned-role_admin-pbac)). Without it, no
+`ROLE_DEMO` condition could narrow anything.
+
+What a trainee may do then comes from two places:
+
+- **`demo.permission.json`** (PBAC, `ROLE_DEMO`): view every case definition; start a case in any
+  of them; view, work on and search only the cases they created
+  (`createdBy == ${currentUserEmail}`), and the tasks, notes and case resources of those cases.
+- **`TrainingHttpSecurityConfigurer`**: the admin endpoints needed to configure their own dossier,
+  widened to `ROLE_DEMO`. The ownership layer below keeps those to their own dossier (read-only for
+  shared case types).
+
+`${currentUserEmail}` and `JsonSchemaDocument.createdBy` resolve to the same value in the
+`authentik` profile: both come from the token's `email` claim (principal name, and
+`OidcUserManagementService.getCurrentUser().email`). `TraineeScopingE2ETest` asserts this.
+
+### Shared case types
+
+A **shared** case type is one this app ships (`config/case`), recognised by Valtimo's own columns:
+every version has neither `originalKey` (a trainee's clone has it) nor `createdBy` (a draft
+created through `/admin/dossiers` has it). Confirmed on the live demo database. An unknown key is
+not shared. Trainees can start and work their own cases in a shared case type and read its
+configuration; they cannot change it.
 
 ### The ownership layer
 
@@ -133,21 +171,21 @@ check resolves a resource to its owning case-definition key and compares it agai
 [Self-service dossier creation](#self-service-dossier-creation) below), against
 `CaseDefinition.createdBy`:
 
-| Resource                           | Resolved via                                     | Shared `form-flow-demo` template allowed? |
-| ---------------------------------- | ------------------------------------------------ | ----------------------------------------- |
-| Plugin configuration               | direct id comparison                             | read-only (`allowShared`)                 |
-| Case-definition management surface | path variable is the key directly                | read-only (`allowShared`)                 |
-| Process definition                 | `ProcessDefinitionOwnershipResolver`             | read-only (`allowShared`)                 |
-| Document                           | `DocumentOwnershipResolver`                      | **never** — live case data, not structure |
-| Task                               | `TaskOwnershipResolver` → process instance → doc | **never**                                 |
-| Process instance (force-delete)    | `ProcessInstanceOwnershipResolver`               | **never** — mutation, no read-only form   |
-| Execution (reconcile)              | `ProcessInstanceOwnershipResolver`               | **never** — mutation                      |
+| Resource                           | Owned when                                     | Shared case types              |
+| ---------------------------------- | ---------------------------------------------- | ------------------------------ |
+| Plugin configuration               | it is the trainee's own (direct id comparison) | read-only (`allowShared`)      |
+| Case-definition management surface | the path key is the trainee's dossier          | read-only (`allowShared`)      |
+| Process definition                 | it belongs to the trainee's dossier            | read-only (`allowShared`)      |
+| Document search                    | the case type is theirs or shared              | yes — PBAC narrows the results |
+| Document                           | the trainee created it (`createdBy`)           | same rule, any case type       |
+| Task                               | the trainee created its case document          | same rule                      |
+| Process instance (force-delete)    | the trainee created its case document          | same rule                      |
+| Execution (reconcile)              | the trainee created its case document          | same rule                      |
 
-The line drawn for `form-flow-demo` sharing is deliberate: it's a live case type real staff and
-other automated tests can create genuine instances under, so "shared" stops at read-only
-**structure** (settings/schema/config) and never extends to actual case **data**. Every resolver
-fails closed — an id that doesn't resolve (deleted, or a lookup error) is treated as not owned,
-never as owned by default.
+Configuration of a shared case type is read-only; its **cases** belong to whoever created them.
+Every resolver fails closed — an id that doesn't resolve (deleted, or a lookup error) is treated
+as not owned, never as owned by default. A mutation under the case-scoped management prefixes that
+names no case type at all is refused.
 
 ### The hard-block filter
 
@@ -238,15 +276,18 @@ has overrides a conditioned/restrictive grant on another role.
 
 Confirmed live: a trainee could fetch a full, unrelated case's document and task — including its
 process variables — via `GET /api/v1/document/{id}` / `GET /api/v1/task/{taskId}`, and
-`GET /api/v1/task?filter=all` returned tasks mixed across every case type in the instance. This
-existed from the moment `ROLE_ADMIN` was first granted until the data-plane scoping (the
-`Document`/`Task` rows in the table above) closed it.
+`GET /api/v1/task?filter=all` returned tasks mixed across every case type in the instance. The
+interceptor-level data-plane scoping closed those two; 9 more unconditioned resource types
+(`Note`, `JsonSchemaDocumentSnapshot`, `Dashboard`, `CaseTab`, `SearchField`, `Object`,
+`ResourcePermission`, `CaseDefinition` view/view_list, `OperatonExecution`) and the task batch
+endpoints stayed open.
 
-**Not yet closed** — tracked, not silently assumed safe: 9 more unconditioned `ROLE_ADMIN`
-resource types found in the same review pass (`Note`, `JsonSchemaDocumentSnapshot`, `Dashboard`,
-`CaseTab`, `SearchField`, `Object`, `ResourcePermission`, plus `CaseDefinition` view/view_list and
-`OperatonExecution`'s non-`create` actions), and the task batch endpoints
-(`batch-assign`/`batch-complete`).
+**Addressed at the root** by `TraineeAdminAuthorityStripFilter`: a trainee no longer holds
+`ROLE_ADMIN` server-side, so none of `all.permission.json`'s unconditioned grants apply to them;
+their PBAC rights are only what `demo.permission.json` grants `ROLE_DEMO`. Verified by
+`TraineeScopingE2ETest` for documents, tasks and case search (disabling the filter makes it fail).
+`JsonSchemaDocumentSnapshot`, `Dashboard`, `Object` and the task batch endpoints now have no
+`ROLE_DEMO` grant at all, so PBAC denies them; not separately exercised over HTTP.
 
 **The lesson, if you extend this pattern elsewhere**: granting a real Valtimo role as a
 compensating measure for a frontend gate is not free — audit every PBAC grant that role already
@@ -256,13 +297,17 @@ carries unconditioned, not just the specific endpoints you set out to widen.
 
 - **Dossier retention/cleanup is not implemented.** Abandoned dossiers accumulate indefinitely —
   there is no scheduled purge job yet.
-- The 9 unconditioned `ROLE_ADMIN` resource types and task batch endpoints above.
-- `TraineeOwnershipScopingE2ETest` — an automated, two-trainee, real-HTTP test covering everything
-  manual/live verification has exercised by hand across this feature's development — is not
-  written. Manual verification has substituted for it so far.
-- The "own OR shared-template" PBAC pattern (where it appears) assumes Valtimo unions multiple
-  permission entries for the same resourceType/action/role — this deploys without error, but isn't
-  proven correct for actual query-layer filtering via a dedicated test.
+- **Admin screens without `ROLE_ADMIN` are not browser-verified.** The endpoints a trainee's own
+  dossier editors call were widened from Valtimo's `HttpSecurityConfigurer` rules, not from a real
+  browser session. A screen that calls an endpoint not in `TrainingHttpSecurityConfigurer` now
+  gets a 403 for trainees; add it there (read-only lookups) or scope it.
+- **Case-definition metadata** (`CaseDefinition` view) is granted to `ROLE_DEMO` for every case
+  type, because PBAC cannot express "the trainee's own clone" (its key is a hash). Lists are
+  filtered by `TraineeOwnershipResponseBodyAdvice`; a direct `GET` of another trainee's
+  case-definition settings on the non-management API still returns its metadata (name included),
+  never its cases.
+- **Keycloak mode is not verified.** `TraineeScopingE2ETest` runs the `authentik` profile. Under
+  `keycloak-iam`, `${currentUserEmail}` is looked up through Keycloak's admin API.
 
 ## Local testing notes
 
@@ -337,10 +382,12 @@ After changing anything under `training/security/`:
       still works.
 - [ ] Cross-trainee access to the same resource types is a 403 with a specific reason, not a
       generic "forbidden" or a silent empty result.
-- [ ] The shared `form-flow-demo` template stays visible read-only, and rejects every mutation
-      attempt from a trainee.
-- [ ] Every newly-reachable admin surface (via the `ROLE_ADMIN` grant) is still 403 for a trainee
-      while remaining 200 for a genuine `ROLE_ADMIN`-only account.
+- [ ] Shared case types stay visible read-only, reject every configuration change from a
+      trainee, and show each trainee only the cases they created.
+- [ ] `TraineeScopingE2ETest` passes, and still fails with `TraineeAdminAuthorityStripFilter`
+      disabled.
+- [ ] Every admin surface not widened for trainees is 403 for a trainee and 200 for a genuine
+      `ROLE_ADMIN`-only account.
 - [ ] `TrainingWebConfig`'s registered path patterns still cover every endpoint family
       `TraineeOwnershipInterceptor` handles — this has drifted out of sync with the interceptor's
       own branches twice before, each time leaving Spring Security correctly widening the HTTP

@@ -4,6 +4,7 @@
 
 package com.ritense.valtimo.epistola.training
 
+import app.epistola.valtimo.deploy.EpistolaCatalogSyncService
 import com.fasterxml.jackson.databind.node.JsonNodeFactory
 import com.fasterxml.jackson.databind.node.ObjectNode
 import com.ritense.case.service.CaseDefinitionService
@@ -40,6 +41,7 @@ class TraineeDossierProvisioner(
     private val caseDefinitionService: CaseDefinitionService,
     private val pluginService: PluginService,
     private val epistolaTenantProvisioner: EpistolaTenantProvisioner,
+    private val catalogSyncService: EpistolaCatalogSyncService,
     private val properties: TrainingProperties,
     private val epistolaBaseUrl: String,
 ) {
@@ -106,6 +108,41 @@ class TraineeDossierProvisioner(
             epistolaPluginProperties(tenant),
             EPISTOLA_PLUGIN_DEFINITION_KEY,
         )
+        syncCatalogs(pluginConfigurationId, tenant)
+    }
+
+    /**
+     * Installs the classpath catalogs (the demo templates) into the trainee's new, empty Epistola
+     * tenant — the same deployer [app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger] runs for
+     * every sync-enabled configuration at startup, which a configuration created later never gets.
+     * Without it every template lookup in the trainee's own dossier failed ("No default variant
+     * found for template example-template in tenant trainee-…"), seen on the live demo.
+     *
+     * Best effort: a failed import is logged and the dossier is still provisioned; because the
+     * configuration is sync-enabled, the next startup retries it, and the trainee can also redeploy
+     * a catalog from the Epistola admin page.
+     */
+    private fun syncCatalogs(
+        pluginConfigurationId: com.ritense.plugin.domain.PluginConfigurationId,
+        tenant: EpistolaTenantCredentials,
+    ) {
+        runCatching {
+            catalogSyncService.syncCatalogs(
+                pluginConfigurationId.id.toString(),
+                epistolaBaseUrl,
+                tenant.apiKey,
+                tenant.tenantId,
+                CATALOG_TYPE,
+            )
+        }.onSuccess { result ->
+            if (!result.isFullySuccessful) {
+                log.warn {
+                    "Catalog sync into trainee tenant '${tenant.tenantId}': ${result.failCount()} of ${result.totalCatalogs()} failed"
+                }
+            }
+        }.onFailure { e ->
+            log.warn(e) { "Catalog sync into trainee tenant '${tenant.tenantId}' failed" }
+        }
     }
 
     /**
@@ -125,10 +162,15 @@ class TraineeDossierProvisioner(
             put("baseUrl", epistolaBaseUrl)
             put("apiKey", tenant.apiKey)
             put("tenantId", tenant.tenantId)
-            put("templateSyncEnabled", false)
+            // Sync-enabled like the shared configuration, so a restart re-syncs the trainee's tenant
+            // too (and a newer catalog version reaches it); provisioning does the first sync itself.
+            put("templateSyncEnabled", true)
         }
 
     companion object {
         private const val EPISTOLA_PLUGIN_DEFINITION_KEY = "epistola"
+
+        /** Same catalog type the startup trigger imports with. */
+        private const val CATALOG_TYPE = "AUTHORED"
     }
 }

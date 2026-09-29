@@ -4,6 +4,7 @@
 
 package com.ritense.valtimo.epistola.training.security
 
+import app.epistola.valtimo.web.rest.dto.EvaluationRequest
 import com.ritense.case.web.rest.dto.CaseDefinitionDraftCreateRequest
 import com.ritense.document.domain.impl.request.ModifyDocumentRequest
 import com.ritense.document.domain.impl.request.NewDocumentRequest
@@ -82,7 +83,8 @@ class TraineeOwnershipRequestBodyAdvice(
             NewDocumentRequest::class.java.isAssignableFrom(methodParameter.parameterType) ||
             ModifyDocumentRequest::class.java.isAssignableFrom(methodParameter.parameterType) ||
             SearchRequest::class.java.isAssignableFrom(methodParameter.parameterType) ||
-            CaseDefinitionDraftCreateRequest::class.java.isAssignableFrom(methodParameter.parameterType)
+            CaseDefinitionDraftCreateRequest::class.java.isAssignableFrom(methodParameter.parameterType) ||
+            EvaluationRequest::class.java.isAssignableFrom(methodParameter.parameterType)
 
     override fun beforeBodyRead(
         inputMessage: HttpInputMessage,
@@ -98,7 +100,8 @@ class TraineeOwnershipRequestBodyAdvice(
         targetType: Type,
         converterType: Class<out HttpMessageConverter<*>>,
     ): Any {
-        val traineeIdentity = ownershipChecks.currentTraineeIdentityOrNull() ?: return body
+        val trainee = ownershipChecks.currentTraineeOrNull() ?: return body
+        val traineeIdentity = trainee.identity
 
         when (body) {
             is CreatePluginConfigurationDto ->
@@ -115,14 +118,21 @@ class TraineeOwnershipRequestBodyAdvice(
                 requireOwnProcessDefinition(traineeIdentity, body.processDefinitionId)
             is ProcessLinkUpdateRequestDto ->
                 requireOwnProcessDefinition(traineeIdentity, ownershipChecks.resolveProcessDefinitionIdOfProcessLink(body.id))
+            // Starting a case: in the trainee's own dossier or in any shared case type. The new
+            // case is theirs (Valtimo records them as its creator), so nobody else sees it.
             is NewDocumentRequest ->
-                requireOwnCaseDefinition(traineeIdentity, body.documentDefinitionName())
+                requireOwnCaseDefinition(traineeIdentity, body.documentDefinitionName(), allowShared = true)
             is ModifyDocumentRequest ->
-                requireOwnDocument(traineeIdentity, body.documentId())
+                requireOwnDocument(trainee.login, body.documentId())
             is SearchRequest ->
-                // No allowShared — see TraineeOwnershipInterceptor's document-id check for why
-                // sharing form-flow-demo's structure doesn't extend to searching its actual data.
-                requireOwnCaseDefinition(traineeIdentity, body.documentDefinitionName)
+                // Shared case types allowed: PBAC narrows the results to the caller's own cases.
+                requireOwnCaseDefinition(traineeIdentity, body.documentDefinitionName, allowShared = true)
+            // This plugin's evaluate-mapping loads the document it evaluates against without a
+            // PBAC check of its own — without this, any document id would be readable through it.
+            is EvaluationRequest -> {
+                body.documentId()?.let { requireOwnDocument(trainee.login, it) }
+                body.processInstanceId()?.let { requireOwnProcessInstance(trainee.login, it) }
+            }
             is CaseDefinitionDraftCreateRequest ->
                 requireCanCreateCaseDefinition(traineeIdentity, body)
         }
@@ -170,10 +180,19 @@ class TraineeOwnershipRequestBodyAdvice(
     }
 
     private fun requireOwnDocument(
-        traineeIdentity: String,
+        login: String,
         documentId: String?,
     ) {
-        if (documentId == null || !ownershipChecks.isOwnDocument(traineeIdentity, documentId)) {
+        if (documentId == null || !ownershipChecks.isOwnDocument(login, documentId)) {
+            throw AccessDeniedException("Not your dossier")
+        }
+    }
+
+    private fun requireOwnProcessInstance(
+        login: String,
+        processInstanceId: String,
+    ) {
+        if (!ownershipChecks.isOwnProcessInstance(login, processInstanceId)) {
             throw AccessDeniedException("Not your dossier")
         }
     }

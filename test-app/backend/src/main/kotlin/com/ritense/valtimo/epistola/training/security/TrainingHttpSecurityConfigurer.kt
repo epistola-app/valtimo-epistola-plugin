@@ -81,6 +81,7 @@ import org.springframework.security.web.util.matcher.AntPathRequestMatcher.antMa
  * `authorizeHttpRequests` widening can.
  */
 class TrainingHttpSecurityConfigurer(
+    private val traineeAdminAuthorityStripFilter: TraineeAdminAuthorityStripFilter,
     private val traineeProvisioningFilter: TraineeProvisioningFilter,
     private val traineeAdminSurfaceGuardFilter: TraineeAdminSurfaceGuardFilter,
     private val trainingFacilitySharedSecretAuthenticationFilter: TrainingFacilitySharedSecretAuthenticationFilter?,
@@ -92,7 +93,13 @@ class TrainingHttpSecurityConfigurer(
                 for ((method, path) in WIDENED_ENDPOINTS) {
                     registry = registry.requestMatchers(antMatcher(method, path)).hasAnyAuthority(*TRAINEE_OR_ADMIN)
                 }
+                for (path in WIDENED_PATHS) {
+                    registry = registry.requestMatchers(antMatcher(path)).hasAnyAuthority(*TRAINEE_OR_ADMIN)
+                }
             }
+            // First of the training filters: everything after it — the HTTP gate below and every
+            // PBAC check in the controllers — must see a trainee without ROLE_ADMIN.
+            http.addFilterBefore(traineeAdminAuthorityStripFilter, AuthorizationFilter::class.java)
             // Registered first so it sets the SecurityContext, when its header matches, before
             // traineeProvisioningFilter/traineeAdminSurfaceGuardFilter read it below — both are
             // no-ops for this principal anyway (it never carries TraineeKeys.TRAINEE_AUTHORITY),
@@ -212,6 +219,56 @@ class TrainingHttpSecurityConfigurer(
                 add(PUT to MANAGEMENT_INTERNAL_STATUS_URL)
                 add(PUT to "$MANAGEMENT_INTERNAL_STATUS_URL/{internalStatusKey}")
                 add(DELETE to "$MANAGEMENT_INTERNAL_STATUS_URL/{internalStatusKey}")
+
+                // Read-only, instance-wide lookups the process-link and case editors fill their
+                // pickers from (plugin definitions and their actions, value resolvers, process
+                // beans, form-flow registry, building blocks). Needed since trainees lost
+                // ROLE_ADMIN server-side (TraineeAdminAuthorityStripFilter); none of them returns
+                // case data or changes anything.
+                add(GET to "/api/v1/plugin/definition")
+                add(GET to "/api/v1/plugin/definition/{pluginDefinitionKey}/action")
+                add(GET to "/api/v1/process-link/plugin")
+                add(GET to "/api/v1/process-link/form-flow-definition")
+                add(GET to "/api/management/v1/value-resolver")
+                add(GET to "/api/management/v1/process-bean")
+                add(GET to "/api/management/v1/process-bean/{beanName}")
+                add(GET to "/api/management/v1/form-flow/registry")
+                add(GET to "/api/management/v1/form-flow-definition/schema")
+                add(GET to "/api/management/v1/building-block")
+                add(GET to "/api/management/v1/building-block/search")
+                add(GET to "/api/management/v1/building-block/{key}/version/**")
+                add(GET to "/api/management/v1/search-engine")
             }
+
+        /**
+         * Whole prefixes, any method. The case-scoped management surface: every endpoint under
+         * these names its case type in the path, and [TraineeOwnershipInterceptor] (registered for
+         * the same prefixes in [TrainingWebConfig]) allows a trainee to change only their own and
+         * to read only their own or a shared one — and refuses a mutation under them that names no
+         * case type. Covers forms, form flows, process definitions, decision tables, case tags,
+         * ZGW/document settings and the rest of the per-case editors without listing each one.
+         * The global, non-case-scoped siblings (e.g. `/api/management/v1/form`) are not under these
+         * prefixes and stay ROLE_ADMIN-only or blocked by [TraineeAdminSurfaceGuardFilter].
+         *
+         * Plus this plugin's own configurator endpoints (`EpistolaHttpSecurityConfigurer`, ROLE_ADMIN
+         * there), which a trainee needs to author an Epistola action on their own dossier:
+         * everything under `configurations` is scoped by plugin-configuration id in [TraineeOwnershipInterceptor],
+         * `evaluate-mapping` by document in [TraineeOwnershipRequestBodyAdvice]; the rest are
+         * read-only lookups (process variables, suggestions, functions, JSONata validation, the
+         * mapping stored on a process link).
+         */
+        private val WIDENED_PATHS: List<String> =
+            listOf(
+                "/api/management/v1/case-definition/*/**",
+                "/api/management/v1/case/*/**",
+                "/api/management/v2/case/*/**",
+                "/api/v1/plugin/epistola/configurations/**",
+                "/api/v1/plugin/epistola/process-variables",
+                "/api/v1/plugin/epistola/variable-suggestions",
+                "/api/v1/plugin/epistola/expression-functions",
+                "/api/v1/plugin/epistola/validate-jsonata",
+                "/api/v1/plugin/epistola/evaluate-mapping",
+                "/api/v1/plugin/epistola/process-link-mapping",
+            )
     }
 }

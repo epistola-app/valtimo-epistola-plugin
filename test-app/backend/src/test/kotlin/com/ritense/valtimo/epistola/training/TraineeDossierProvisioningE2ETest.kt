@@ -11,6 +11,10 @@ import com.ritense.plugin.service.PluginService
 import com.ritense.valtimo.Application
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.any
+import org.mockito.kotlin.atLeastOnce
+import org.mockito.kotlin.eq
+import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
@@ -100,6 +104,13 @@ class TraineeDossierProvisioningE2ETest {
             )
         assertThat(pluginConfigurationB.properties?.get("tenantId")?.asText()).isEqualTo("trainee-b")
         assertThat(pluginConfigurationB.properties?.get("baseUrl")?.asText()).isEqualTo("http://localhost:1/api")
+
+        // The demo catalog is installed into each trainee's own, new tenant — not only into the
+        // shared one at startup. Without it every template lookup in their dossier failed.
+        verify(epistolaService, atLeastOnce()).importCatalog(any(), eq("epk_test_a"), eq("trainee-a"), any(), eq("AUTHORED"))
+        verify(epistolaService, atLeastOnce()).importCatalog(any(), eq("epk_test_b"), eq("trainee-b"), any(), eq("AUTHORED"))
+        // Sync-enabled, so a restart re-syncs the trainee's tenant like the shared one.
+        assertThat(pluginConfigurationA.properties?.get("templateSyncEnabled")?.asBoolean()).isTrue()
     }
 
     @Test
