@@ -164,53 +164,6 @@ class ComposerConfigurationResolverTest {
     }
 
     @Test
-    void findsAComposerNestedInsideALayoutComponent() {
-        formOnTask(composerJson(""));
-
-        List<LetterComposerConfiguration> configurations =
-                resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID);
-
-        assertThat(configurations).hasSize(1);
-        LetterComposerConfiguration configuration = configurations.get(0);
-        assertThat(configuration.componentKey()).isEqualTo("pv:epistolaLetter");
-        assertThat(configuration.pluginConfigurationId()).isEqualTo(PLUGIN_CONFIGURATION_ID);
-        assertThat(configuration.catalogId()).isEqualTo("gemeente");
-        assertThat(configuration.dataMapping()).isEqualTo("{\"naam\": $doc.naam}");
-        assertThat(configuration.templates()).hasSize(2);
-        assertThat(configuration.askOptionalFields()).isFalse();
-    }
-
-    @Test
-    void labelsATemplateWithItsIdWhenNoneWasConfigured() {
-        formOnTask(composerJson(""));
-
-        var template = resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID).get(0)
-                .requireOne(null, "herinnering");
-
-        assertThat(template.label()).isEqualTo("herinnering");
-        assertThat(template.dataMapping()).isEqualTo("{\"termijn\": 14}");
-    }
-
-    @Test
-    void readsTheOptionalFieldsSetting() {
-        formOnTask(composerJson(",\"askOptionalFields\":true"));
-
-        assertThat(resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID).get(0).askOptionalFields())
-                .isTrue();
-    }
-
-    @Test
-    void ignoresAComposerWithoutAPluginConfigurationCatalogOrTemplates() {
-        formOnTask("""
-                {"components":[
-                  {"type":"epistola-letter-composer","key":"half-configured","catalogId":"gemeente"}
-                ]}
-                """);
-
-        assertThat(resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID)).isEmpty();
-    }
-
-    @Test
     void ignoresAFormWithoutAComposer() {
         formOnTask("""
                 {"components":[{"type":"textfield","key":"pv:motivatie"}]}
@@ -268,30 +221,6 @@ class ComposerConfigurationResolverTest {
                 .isInstanceOf(ComposerException.class)
                 .extracting(e -> ((ComposerException) e).getReason())
                 .isEqualTo(ComposerException.Reason.NO_COMPOSER);
-    }
-
-    @Test
-    void readsTheSettingsWidgetsNestedLetterSet() {
-        formOnTask("""
-                {"components":[
-                  {"type":"epistola-letter-composer","key":"pv:epistolaLetter",
-                   "dataMapping":"{\\"naam\\": $doc.naam}",
-                   "letterSet":{
-                     "pluginConfigurationId":"%s","catalogId":"gemeente",
-                     "templates":[{"templateId":"besluit","label":"Besluit"}]
-                   }}
-                ]}
-                """.formatted(PLUGIN_CONFIGURATION_ID));
-
-        List<LetterComposerConfiguration> configurations =
-                resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID);
-
-        assertThat(configurations).singleElement().satisfies(configuration -> {
-            assertThat(configuration.pluginConfigurationId()).isEqualTo(PLUGIN_CONFIGURATION_ID);
-            assertThat(configuration.catalogId()).isEqualTo("gemeente");
-            assertThat(configuration.dataMapping()).isEqualTo("{\"naam\": $doc.naam}");
-            assertThat(configuration.offers("besluit")).isTrue();
-        });
     }
 
     @Test
@@ -419,27 +348,6 @@ class ComposerConfigurationResolverTest {
     }
 
     @Test
-    void readsACatalogNamedOnTheLetterItself() {
-        // A catalog is a property of the letter, so one picker can offer letters from two of them.
-        formOnTask("""
-                {"components":[
-                  {"type":"epistola-letter-composer","key":"pv:epistolaLetter",
-                   "pluginConfigurationId":"%s","catalogId":"gemeente",
-                   "templates":[
-                     {"templateId":"besluit"},
-                     {"templateId":"aanmaning","catalogId":"landelijk"}
-                   ]}
-                ]}
-                """.formatted(PLUGIN_CONFIGURATION_ID));
-
-        var configuration = resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID).get(0);
-
-        assertThat(configuration.requireOne(null, "besluit").catalogId()).isEqualTo("gemeente");
-        assertThat(configuration.requireOne(null, "aanmaning").catalogId()).isEqualTo("landelijk");
-        assertThat(configuration.requireOne(null, "aanmaning").catalogId()).isEqualTo("landelijk");
-    }
-
-    @Test
     void acceptsAComposerWhoseCatalogsAllLiveOnItsLetters() {
         // The forward-compatible case: no set-level catalog at all. Before, the whole composer was
         // skipped here, which read as "no letter composer on this form".
@@ -458,26 +366,6 @@ class ComposerConfigurationResolverTest {
 
         assertThat(configuration.templates()).hasSize(2);
         assertThat(configuration.requireOne(null, "besluit").catalogId()).isEqualTo("gemeente");
-    }
-
-    @Test
-    void dropsALetterWithNoCatalogAnywhere() {
-        // Which catalog a letter comes from decides what is rendered; there is nothing to guess.
-        formOnTask("""
-                {"components":[
-                  {"type":"epistola-letter-composer","key":"pv:epistolaLetter",
-                   "pluginConfigurationId":"%s",
-                   "templates":[
-                     {"templateId":"besluit","catalogId":"gemeente"},
-                     {"templateId":"zwevend"}
-                   ]}
-                ]}
-                """.formatted(PLUGIN_CONFIGURATION_ID));
-
-        var configuration = resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID).get(0);
-
-        assertThat(configuration.offers("besluit")).isTrue();
-        assertThat(configuration.offers("zwevend")).isFalse();
     }
 
     @Test

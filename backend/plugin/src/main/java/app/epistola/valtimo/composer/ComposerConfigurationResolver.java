@@ -17,7 +17,6 @@
  */
 package app.epistola.valtimo.composer;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.ritense.form.domain.FormIoFormDefinition;
 import com.ritense.form.domain.FormProcessLink;
 import com.ritense.form.repository.FormDefinitionRepository;
@@ -51,9 +50,6 @@ import java.util.UUID;
 @Slf4j
 @RequiredArgsConstructor
 public class ComposerConfigurationResolver {
-
-    /** The Formio component type a composer configuration lives on. */
-    public static final String COMPOSER_COMPONENT_TYPE = "epistola-letter-composer";
 
     private final ProcessLinkService processLinkService;
     private final FormDefinitionRepository formDefinitionRepository;
@@ -125,7 +121,7 @@ public class ComposerConfigurationResolver {
             formDefinitionRepository.findByNameAndCaseDefinitionId(form.getDefinition(), caseDefinitionId)
                     .or(() -> formDefinitionRepository.findByNameAndCaseDefinitionIdIsNull(form.getDefinition()))
                     .ifPresentOrElse(
-                            definitionOnStep -> collectComposers(
+                            definitionOnStep -> ComposerParser.collectComposers(
                                     definitionOnStep.getFormDefinition().path("components"), into),
                             () -> log.warn("Form flow '{}' step '{}' names form '{}', which does not exist",
                                     formFlowDefinitionKey, step.getId().getKey(), form.getDefinition()));
@@ -228,8 +224,8 @@ public class ComposerConfigurationResolver {
             String catalogId,
             String templateId
     ) {
-        return requireOffering(forStartEvent(processDefinitionId), componentKey, catalogId, templateId,
-                "the start form of process definition '" + processDefinitionId + "'");
+        return ComposerSelection.require(forStartEvent(processDefinitionId), componentKey, catalogId,
+                templateId, "the start form of process definition '" + processDefinitionId + "'");
     }
 
     /**
@@ -244,59 +240,10 @@ public class ComposerConfigurationResolver {
             String catalogId,
             String templateId
     ) {
-        return requireOffering(forActivity(processDefinitionId, activityId), componentKey, catalogId,
-                templateId, "the form of activity '" + activityId + "'");
+        return ComposerSelection.require(forActivity(processDefinitionId, activityId), componentKey,
+                catalogId, templateId, "the form of activity '" + activityId + "'");
     }
 
-    /**
-     * Pick the composer that both is the one asking and offers the template.
-     *
-     * <p>Matching on the component's own key matters on a start form: a form cannot know which
-     * process it starts (Valtimo hands a Form.io component only the components, never the process
-     * link), so the author names it — and a name that points at another process must fail rather
-     * than quietly compose with that process's composer.
-     */
-    private LetterComposerConfiguration requireOffering(
-            List<LetterComposerConfiguration> configurations,
-            String componentKey,
-            String catalogId,
-            String templateId,
-            String where
-    ) {
-        boolean named = componentKey != null && !componentKey.isBlank();
-        List<LetterComposerConfiguration> candidates = named
-                ? configurations.stream()
-                        .filter(configuration -> componentKey.equals(configuration.componentKey()))
-                        .toList()
-                : configurations;
-        String location = named ? "'" + componentKey + "' on " + where : where;
-
-        if (candidates.isEmpty()) {
-            throw new ComposerException(ComposerException.Reason.NO_COMPOSER,
-                    "No letter composer on " + location);
-        }
-        // Checked here rather than while reading the form: a component written by a newer plugin
-        // must fail the request that uses it, not quietly remove every composer on that form.
-        candidates.forEach(LetterComposerConfiguration::requireReadable);
-
-        LetterComposerConfiguration offering = candidates.stream()
-                .filter(configuration -> configuration.offers(catalogId, templateId))
-                .findFirst()
-                .orElseThrow(() -> new ComposerException(ComposerException.Reason.TEMPLATE_NOT_OFFERED,
-                        "Template '" + templateId + "'"
-                                + (catalogId != null ? " in catalog '" + catalogId + "'" : "")
-                                + " is not offered by the letter composer on " + location));
-
-        // A template id is unique only within a catalog, so a composer offering letters from two
-        // of them can hold the same id twice. Rendering whichever was configured first would be a
-        // coin toss between two different letters, so the caller is made to say which.
-        if (offering.matching(catalogId, templateId).size() > 1) {
-            throw new ComposerException(ComposerException.Reason.TEMPLATE_NOT_OFFERED,
-                    "The letter composer on " + location + " offers template '" + templateId
-                            + "' from more than one catalog. Name the catalog on the request.");
-        }
-        return offering;
-    }
 
     /** Collect the composers on one form definition into {@code into}. */
     private void formDefinitionId(UUID formDefinitionId, List<LetterComposerConfiguration> into) {
@@ -305,119 +252,7 @@ public class ComposerConfigurationResolver {
             log.warn("Form definition {} is linked to a process but no longer exists", formDefinitionId);
             return;
         }
-        collectComposers(form.get().getFormDefinition().path("components"), into);
+        ComposerParser.collectComposers(form.get().getFormDefinition().path("components"), into);
     }
 
-    /**
-     * Walk the component tree. Composers are found wherever an author put them — inside a panel,
-     * a columns layout or a fieldset — mirroring how Valtimo itself walks a form's components.
-     */
-    private void collectComposers(JsonNode components, List<LetterComposerConfiguration> into) {
-        if (components == null || !components.isArray()) {
-            return;
-        }
-        for (JsonNode component : components) {
-            if (COMPOSER_COMPONENT_TYPE.equals(component.path("type").asText())) {
-                LetterComposerConfiguration configuration = parse(component);
-                if (configuration != null) {
-                    into.add(configuration);
-                }
-                // A composer's own children are plumbing (the prefilled task-id carrier), never
-                // another composer, so there is nothing to descend into here.
-                continue;
-            }
-            collectComposers(component.path("components"), into);
-            for (JsonNode column : component.path("columns")) {
-                collectComposers(column.path("components"), into);
-            }
-            for (JsonNode row : component.path("rows")) {
-                for (JsonNode cell : row) {
-                    collectComposers(cell.path("components"), into);
-                }
-            }
-        }
-    }
-
-    private LetterComposerConfiguration parse(JsonNode component) {
-        // The settings widget stores the "which letters, from where" half as one object; a form
-        // written before it existed carries the same three keys at the component's own level.
-        JsonNode letterSet = component.has("letterSet") ? component.path("letterSet") : component;
-
-        UUID pluginConfigurationId = uuidOrNull(text(letterSet.path("pluginConfigurationId")));
-        // The set's catalog is a default, not the answer: a letter may name its own, which is what
-        // lets one picker offer letters from more than one catalog.
-        String defaultCatalogId = text(letterSet.path("catalogId"));
-        String dataMapping = text(component.path("dataMapping"));
-        String componentKey = text(component.path("key"));
-
-        List<LetterComposerConfiguration.OfferedTemplate> templates = new ArrayList<>();
-        int withoutCatalog = 0;
-        for (JsonNode template : letterSet.path("templates")) {
-            String templateId = text(template.path("templateId"));
-            if (templateId == null) {
-                continue;
-            }
-            String catalogId = text(template.path("catalogId"));
-            if (catalogId == null) {
-                catalogId = defaultCatalogId;
-            }
-            if (catalogId == null) {
-                // Dropped rather than guessed: which catalog a letter comes from decides what is
-                // rendered, and there is nothing to fall back to.
-                withoutCatalog++;
-                continue;
-            }
-            String label = text(template.path("label"));
-            templates.add(new LetterComposerConfiguration.OfferedTemplate(
-                    catalogId,
-                    templateId,
-                    label != null ? label : templateId,
-                    text(template.path("dataMapping"))));
-        }
-
-        if (withoutCatalog > 0) {
-            log.warn("Letter composer '{}' offers {} letter(s) with no catalog: give the component a "
-                    + "catalog, or name one on each letter", componentKey, withoutCatalog);
-        }
-
-        if (pluginConfigurationId == null || templates.isEmpty()) {
-            log.warn("Skipping letter composer '{}': it needs a plugin configuration and at least one "
-                    + "letter with a catalog (has configuration={}, usable letters={})",
-                    componentKey, pluginConfigurationId, templates.size());
-            return null;
-        }
-
-        return new LetterComposerConfiguration(
-                componentKey,
-                // Read structurally; refused at the point of use, so one composer written by a
-                // newer plugin does not take the rest of the form down with it.
-                component.has(ComposerSchema.FIELD)
-                        ? component.path(ComposerSchema.FIELD).asInt(ComposerSchema.CURRENT)
-                        : null,
-                pluginConfigurationId,
-                defaultCatalogId,
-                dataMapping,
-                List.copyOf(templates),
-                component.path("askOptionalFields").asBoolean(false));
-    }
-
-    private String text(JsonNode node) {
-        if (node == null || node.isNull() || !node.isValueNode()) {
-            return null;
-        }
-        String value = node.asText();
-        return value.isBlank() ? null : value;
-    }
-
-    private UUID uuidOrNull(String value) {
-        if (value == null) {
-            return null;
-        }
-        try {
-            return UUID.fromString(value);
-        } catch (IllegalArgumentException e) {
-            log.warn("Letter composer has an unusable plugin configuration id: {}", value);
-            return null;
-        }
-    }
 }

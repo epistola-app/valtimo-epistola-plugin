@@ -115,6 +115,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The composer resolver was doing three jobs; now it does one.** Finding which form applies needs
+  four Valtimo services and three link paths; reading composers out of a form's JSON and picking
+  the one a request means need nothing at all. Those two are now `ComposerParser` and
+  `ComposerSelection`, and the resolver is 423 lines down to 259. The rules that actually change
+  when the stored shape changes are the ones that moved, and `ComposerParserTest` exercises them
+  with no mocks at all — where before a question like "is a letter without a catalog usable" could
+  only be asked through a mocked process-link service, form repository, form-flow service and case
+  definition service.
+
 - **Start-form discovery asks the case, not the installation.** Finding which process a composer's
   start form belongs to read _every deployed process definition's_ process links, so one ad-hoc
   letter cost more the more processes were deployed — unrelated ones included. It now asks which
