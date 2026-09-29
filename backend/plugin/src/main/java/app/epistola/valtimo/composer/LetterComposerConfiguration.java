@@ -64,11 +64,6 @@ public record LetterComposerConfiguration(
     public record OfferedTemplate(String catalogId, String templateId, String label, String dataMapping) {
     }
 
-    /** Whether this component offers the given template. */
-    public boolean offers(String templateId) {
-        return findTemplate(templateId) != null;
-    }
-
     /**
      * Refuse a component this plugin may not understand.
      *
@@ -76,6 +71,16 @@ public record LetterComposerConfiguration(
      */
     public void requireReadable() {
         ComposerSchema.readable(schemaVersion, "Letter composer '" + componentKey + "'");
+    }
+
+    /** Whether this component offers the given template, in any catalog. */
+    public boolean offers(String templateId) {
+        return offers(null, templateId);
+    }
+
+    /** Whether this component offers the given letter; a null catalog means any of them. */
+    public boolean offers(String catalogId, String templateId) {
+        return !matching(catalogId, templateId).isEmpty();
     }
 
     /**
@@ -91,12 +96,26 @@ public record LetterComposerConfiguration(
 
     /** The offered template with this id, or null when the component does not offer it. */
     public OfferedTemplate findTemplate(String templateId) {
+        List<OfferedTemplate> matches = matching(null, templateId);
+        return matches.isEmpty() ? null : matches.get(0);
+    }
+
+    /**
+     * Every offered letter with this id, narrowed to one catalog when the caller names one.
+     *
+     * <p>A template id is only unique <i>within</i> a catalog, so a component offering letters from
+     * two of them can hold the same id twice. Returning a list rather than the first match is what
+     * lets the caller refuse that rather than render whichever happened to be configured first.
+     *
+     * @param catalogId the catalog to narrow to, or null for any
+     */
+    public List<OfferedTemplate> matching(String catalogId, String templateId) {
         if (templateId == null || templates == null) {
-            return null;
+            return List.of();
         }
         return templates.stream()
                 .filter(template -> templateId.equals(template.templateId()))
-                .findFirst()
-                .orElse(null);
+                .filter(template -> catalogId == null || catalogId.equals(template.catalogId()))
+                .toList();
     }
 }

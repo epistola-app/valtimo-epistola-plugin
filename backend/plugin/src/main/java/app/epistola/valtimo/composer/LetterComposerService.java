@@ -125,16 +125,17 @@ public class LetterComposerService {
      * <p>Delegates to {@link ComposerConfigurationResolver#startEventDefinitionsOffering}; the
      * endpoints reach the configuration only through this service.
      */
-    public List<String> startEventDefinitionsOffering(String componentKey, String templateId) {
-        return configurationResolver.startEventDefinitionsOffering(componentKey, templateId);
+    public List<String> startEventDefinitionsOffering(
+            String componentKey, String catalogId, String templateId) {
+        return configurationResolver.startEventDefinitionsOffering(componentKey, catalogId, templateId);
     }
 
     /**
      * Resolve a letter's data for this case and build the input form for what is still missing.
      */
-    public PreparedLetter prepare(ComposerContext ctx, String templateId) {
-        LetterComposerConfiguration configuration = configurationFor(ctx, templateId);
-        var offered = configuration.findTemplate(templateId);
+    public PreparedLetter prepare(ComposerContext ctx, String catalogId, String templateId) {
+        LetterComposerConfiguration configuration = configurationFor(ctx, catalogId, templateId);
+        var offered = configuration.matching(catalogId, templateId).get(0);
 
         Map<String, Object> data = resolveData(ctx, configuration, offered);
         TemplateDetails template = templateDetails(configuration, offered.catalogId(), templateId);
@@ -164,8 +165,10 @@ public class LetterComposerService {
      * object is stored on the form and handed to generation afterwards, so the preview shows
      * exactly what will be generated (ADR 0006).
      */
-    public InputStream preview(ComposerContext ctx, String templateId, Map<String, Object> data) {
-        LetterComposerConfiguration configuration = configurationFor(ctx, templateId);
+    public InputStream preview(
+            ComposerContext ctx, String catalogId, String templateId, Map<String, Object> data) {
+        LetterComposerConfiguration configuration = configurationFor(ctx, catalogId, templateId);
+        var offered = configuration.matching(catalogId, templateId).get(0);
         EpistolaPlugin plugin = plugin(configuration);
 
         try {
@@ -173,7 +176,7 @@ public class LetterComposerService {
                     plugin.getBaseUrl(),
                     plugin.getApiKey(),
                     plugin.getTenantId(),
-                    configuration.catalogFor(templateId),
+                    offered.catalogId(),
                     templateId,
                     null,
                     plugin.getDefaultEnvironmentId(),
@@ -209,12 +212,14 @@ public class LetterComposerService {
                         + "baseline mapping instead.");
     }
 
-    private LetterComposerConfiguration configurationFor(ComposerContext ctx, String templateId) {
+    private LetterComposerConfiguration configurationFor(
+            ComposerContext ctx, String catalogId, String templateId) {
         return ctx.isStartEvent()
                 ? configurationResolver.requireStartOffering(
-                        ctx.processDefinitionId(), ctx.componentKey(), templateId)
+                        ctx.processDefinitionId(), ctx.componentKey(), catalogId, templateId)
                 : configurationResolver.requireOffering(
-                        ctx.processDefinitionId(), ctx.activityId(), ctx.componentKey(), templateId);
+                        ctx.processDefinitionId(), ctx.activityId(), ctx.componentKey(),
+                        catalogId, templateId);
     }
 
     /**

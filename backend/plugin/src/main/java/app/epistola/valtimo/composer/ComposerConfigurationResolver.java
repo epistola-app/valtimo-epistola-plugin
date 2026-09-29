@@ -96,13 +96,14 @@ public class ComposerConfigurationResolver {
      *
      * @return the latest deployed definition ids, in no particular order
      */
-    public List<String> startEventDefinitionsOffering(String componentKey, String templateId) {
+    public List<String> startEventDefinitionsOffering(
+            String componentKey, String catalogId, String templateId) {
         List<String> matches = new ArrayList<>();
         for (var definition : repositoryService.createProcessDefinitionQuery().latestVersion().list()) {
             boolean offered = forStartEvent(definition.getId()).stream()
                     .filter(configuration -> componentKey == null || componentKey.isBlank()
                             || componentKey.equals(configuration.componentKey()))
-                    .anyMatch(configuration -> configuration.offers(templateId));
+                    .anyMatch(configuration -> configuration.offers(catalogId, templateId));
             if (offered) {
                 matches.add(definition.getId());
             }
@@ -118,9 +119,10 @@ public class ComposerConfigurationResolver {
     public LetterComposerConfiguration requireStartOffering(
             String processDefinitionId,
             String componentKey,
+            String catalogId,
             String templateId
     ) {
-        return requireOffering(forStartEvent(processDefinitionId), componentKey, templateId,
+        return requireOffering(forStartEvent(processDefinitionId), componentKey, catalogId, templateId,
                 "the start form of process definition '" + processDefinitionId + "'");
     }
 
@@ -133,10 +135,11 @@ public class ComposerConfigurationResolver {
             String processDefinitionId,
             String activityId,
             String componentKey,
+            String catalogId,
             String templateId
     ) {
-        return requireOffering(forActivity(processDefinitionId, activityId), componentKey, templateId,
-                "the form of activity '" + activityId + "'");
+        return requireOffering(forActivity(processDefinitionId, activityId), componentKey, catalogId,
+                templateId, "the form of activity '" + activityId + "'");
     }
 
     /**
@@ -150,6 +153,7 @@ public class ComposerConfigurationResolver {
     private LetterComposerConfiguration requireOffering(
             List<LetterComposerConfiguration> configurations,
             String componentKey,
+            String catalogId,
             String templateId,
             String where
     ) {
@@ -168,11 +172,24 @@ public class ComposerConfigurationResolver {
         // Checked here rather than while reading the form: a component written by a newer plugin
         // must fail the request that uses it, not quietly remove every composer on that form.
         candidates.forEach(LetterComposerConfiguration::requireReadable);
-        return candidates.stream()
-                .filter(configuration -> configuration.offers(templateId))
+
+        LetterComposerConfiguration offering = candidates.stream()
+                .filter(configuration -> configuration.offers(catalogId, templateId))
                 .findFirst()
                 .orElseThrow(() -> new ComposerException(ComposerException.Reason.TEMPLATE_NOT_OFFERED,
-                        "Template '" + templateId + "' is not offered by the letter composer on " + location));
+                        "Template '" + templateId + "'"
+                                + (catalogId != null ? " in catalog '" + catalogId + "'" : "")
+                                + " is not offered by the letter composer on " + location));
+
+        // A template id is unique only within a catalog, so a composer offering letters from two
+        // of them can hold the same id twice. Rendering whichever was configured first would be a
+        // coin toss between two different letters, so the caller is made to say which.
+        if (offering.matching(catalogId, templateId).size() > 1) {
+            throw new ComposerException(ComposerException.Reason.TEMPLATE_NOT_OFFERED,
+                    "The letter composer on " + location + " offers template '" + templateId
+                            + "' from more than one catalog. Name the catalog on the request.");
+        }
+        return offering;
     }
 
     private List<UUID> formDefinitionIds(String processDefinitionId, String activityId) {

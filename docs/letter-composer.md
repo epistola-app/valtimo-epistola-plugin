@@ -299,9 +299,13 @@ the registered default and losing either is silent.
 letter may carry its own `catalogId`, which is what lets one picker offer letters from more than
 one catalog. A letter with neither is dropped with a warning — which catalog a letter comes from
 decides what is rendered, and there is nothing to guess. The settings widget writes only the
-default today; a hand-written form can already do both. (One thing still to decide before a second
-catalog is common: a letter is named on the wire by its bare `templateId`, and template ids are
-catalog-scoped.)
+default today; a hand-written form can already do both.
+
+**The wire carries the catalog too.** A prepare or preview request may name a `catalogId` beside
+the `templateId`, and the picker sends whichever catalog the form gave the chosen letter. It stays
+optional, because a template id is unique within a catalog and a composer usually offers one — but
+a composer offering two can hold the same id twice, and the backend refuses to guess between them
+rather than rendering whichever happened to be configured first.
 
 A form written before the widget existed carries `pluginConfigurationId`, `catalogId` and
 `templates` directly on the component instead of under `letterSet`; both shapes are read.
@@ -580,9 +584,3 @@ entirely.
   the process-link action type stay on offer — an author can build a form that fails on its first
   call. A frontend flag has to be threaded through every place [embedding.md](embedding.md) lists,
   so until then, disable the whole plugin or accept that authoring stays visible.
-- **A letter is named on the wire by its bare `templateId`, and template ids are catalog-scoped.**
-  Harmless while a picker offers one catalog, and the _storage_ is already ready for more (see
-  [What it stores](#what-it-stores)) — but two catalogs offering the same template id would be
-  indistinguishable in a request. Settling that is a wire change, so it wants deciding before
-  multi-catalog is common rather than after.
-- Objects nested inside an array item are still flattened by the form generator.

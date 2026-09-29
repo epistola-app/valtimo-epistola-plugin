@@ -69,7 +69,7 @@ public class EpistolaComposerResource {
     private final StartEventAuthorization startEventAuthorization;
 
     /** What the composer needs to render one letter's inputs: the task and the chosen template. */
-    public record PrepareRequest(String taskId, String templateId, String componentKey) {
+    public record PrepareRequest(String taskId, String catalogId, String templateId, String componentKey) {
     }
 
     /** A prepared letter: the mapped data, plus a form asking for whatever the mapping left empty. */
@@ -106,6 +106,7 @@ public class EpistolaComposerResource {
     /** Preview a letter with the data assembled so far (mapping result plus the employee's input). */
     public record ComposerPreviewRequest(
             String taskId,
+            String catalogId,
             String templateId,
             String componentKey,
             Map<String, Object> data
@@ -120,6 +121,7 @@ public class EpistolaComposerResource {
     public record StartPrepareRequest(
             String processDefinitionKey,
             String documentId,
+            String catalogId,
             String templateId,
             String componentKey
     ) {
@@ -129,6 +131,7 @@ public class EpistolaComposerResource {
     public record StartPreviewRequest(
             String processDefinitionKey,
             String documentId,
+            String catalogId,
             String templateId,
             String componentKey,
             Map<String, Object> data
@@ -150,7 +153,8 @@ public class EpistolaComposerResource {
 
         try {
             return ResponseEntity.ok(PrepareResponse.of(
-                    letterComposerService.prepare(contextOf(task, request.componentKey()), request.templateId())));
+                    letterComposerService.prepare(contextOf(task, request.componentKey()),
+                            trimToNull(request.catalogId()), request.templateId())));
         } catch (ComposerException e) {
             return mapComposerError(e);
         }
@@ -173,6 +177,7 @@ public class EpistolaComposerResource {
             return pdfResponse(
                     letterComposerService.preview(
                             contextOf(task, request.componentKey()),
+                            trimToNull(request.catalogId()),
                             request.templateId(),
                             request.data()));
         } catch (ComposerException e) {
@@ -200,6 +205,7 @@ public class EpistolaComposerResource {
                     request.processDefinitionKey(),
                     request.documentId(),
                     request.componentKey(),
+                    trimToNull(request.catalogId()),
                     request.templateId());
         } catch (StartEventAuthorization.NotFoundException e) {
             return ResponseEntity.notFound().build();
@@ -214,6 +220,7 @@ public class EpistolaComposerResource {
                                     startContext.processDefinitionId(),
                                     startContext.documentId(),
                                     request.componentKey()),
+                            trimToNull(request.catalogId()),
                             request.templateId()),
                     startContext.processDefinitionKey()));
         } catch (ComposerException e) {
@@ -233,6 +240,7 @@ public class EpistolaComposerResource {
                     request.processDefinitionKey(),
                     request.documentId(),
                     request.componentKey(),
+                    trimToNull(request.catalogId()),
                     request.templateId());
         } catch (StartEventAuthorization.NotFoundException e) {
             return ResponseEntity.notFound().build();
@@ -246,6 +254,7 @@ public class EpistolaComposerResource {
                             startContext.processDefinitionId(),
                             startContext.documentId(),
                             request.componentKey()),
+                    trimToNull(request.catalogId()),
                     request.templateId(),
                     request.data()));
         } catch (ComposerException e) {
@@ -276,6 +285,7 @@ public class EpistolaComposerResource {
             String processDefinitionKey,
             String documentId,
             String componentKey,
+            String catalogId,
             String templateId
     ) {
         String trimmedDocumentId = trimToNull(documentId);
@@ -289,7 +299,7 @@ public class EpistolaComposerResource {
         }
 
         List<String> startable = letterComposerService
-                .startEventDefinitionsOffering(componentKey, templateId).stream()
+                .startEventDefinitionsOffering(componentKey, catalogId, templateId).stream()
                 .filter(definitionId -> startEventAuthorization.permits(definitionId, document))
                 .toList();
 

@@ -37,6 +37,12 @@ export interface PluginConfigurationInfo {
  */
 export interface ComposerPrepareRequest {
   taskId: string;
+  /**
+   * Which catalog the chosen letter lives in. Optional, because a template id is unique within a
+   * catalog and a composer usually offers one — but a composer offering two can hold the same id
+   * twice, and the backend refuses to guess between them.
+   */
+  catalogId?: string | null;
   templateId: string;
   /** Which composer on that form is asking, so a form may carry more than one. */
   componentKey?: string | null;
@@ -63,6 +69,8 @@ export interface ComposerPrepareResponse {
 /** Body of a {@link EpistolaComposerApiService.composerPreviewToBlob} call. */
 export interface ComposerPreviewRequest {
   taskId: string;
+  /** See {@link ComposerPrepareRequest.catalogId}. */
+  catalogId?: string | null;
   templateId: string;
   componentKey?: string | null;
   data: Record<string, unknown>;
@@ -81,6 +89,8 @@ export interface ComposerStartPrepareRequest {
    */
   processDefinitionKey?: string | null;
   documentId?: string | null;
+  /** See {@link ComposerPrepareRequest.catalogId}. */
+  catalogId?: string | null;
   templateId: string;
   /**
    * Which composer is asking. This is what the backend searches start forms for, and what makes an

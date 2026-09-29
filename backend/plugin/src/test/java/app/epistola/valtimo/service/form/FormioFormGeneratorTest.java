@@ -685,4 +685,75 @@ class FormioFormGeneratorTest {
             assertThat(generate(plain).has("validate")).isFalse();
         }
     }
+
+    /**
+     * A data grid scopes its components to the row, while the analyzer paths an item's fields
+     * against the whole document. Objects inside an item used to be flattened to a single text
+     * field because of that mismatch.
+     */
+    @Nested
+    class NestedInsideAnArrayItem {
+
+        private TemplateField scalarAt(String name, String path, boolean required) {
+            return new TemplateField(name, path, "string", FieldType.SCALAR, required, null, List.of());
+        }
+
+        private ObjectNode grid(TemplateField... children) {
+            TemplateField array = new TemplateField(
+                    "regels", "regels", "array", FieldType.ARRAY, true, null, List.of(children),
+                    true, "Arrays of objects must be mapped as a complete value.", false, null);
+            return (ObjectNode) generator.generateForm(List.of(array), Map.of())
+                    .get("components").get(0);
+        }
+
+        @Test
+        void keepsAnObjectAsAFieldsetInsteadOfFlatteningIt() {
+            TemplateField address = new TemplateField(
+                    "adres", "regels[].adres", "object", FieldType.OBJECT, true, null,
+                    List.of(scalarAt("straat", "regels[].adres.straat", true),
+                            scalarAt("plaats", "regels[].adres.plaats", false)));
+
+            ObjectNode column = (ObjectNode) grid(scalarAt("naam", "regels[].naam", true), address)
+                    .get("components").get(1);
+
+            assertThat(column.get("type").asText()).isEqualTo("fieldset");
+            assertThat(column.get("components")).hasSize(2);
+        }
+
+        @Test
+        void keysTheItemFields_relativeToTheRow() {
+            // Keyed against the document, a row would write regels[].adres.straat into every row.
+            TemplateField address = new TemplateField(
+                    "adres", "regels[].adres", "object", FieldType.OBJECT, true, null,
+                    List.of(scalarAt("straat", "regels[].adres.straat", true)));
+
+            ObjectNode datagrid = grid(scalarAt("naam", "regels[].naam", true), address);
+
+            assertThat(datagrid.get("components").get(0).get("key").asText()).isEqualTo("naam");
+            assertThat(datagrid.get("components").get(1).get("components").get(0).get("key").asText())
+                    .isEqualTo("adres.straat");
+        }
+
+        @Test
+        void rebasesANestedGridAgainstItsOwnRow() {
+            TemplateField inner = new TemplateField(
+                    "bijlagen", "regels[].bijlagen", "array", FieldType.ARRAY, false, null,
+                    List.of(scalarAt("naam", "regels[].bijlagen[].naam", true)),
+                    true, "Arrays of objects must be mapped as a complete value.", false, null);
+
+            ObjectNode innerGrid = (ObjectNode) grid(inner).get("components").get(0);
+
+            assertThat(innerGrid.get("type").asText()).isEqualTo("datagrid");
+            assertThat(innerGrid.get("key").asText()).isEqualTo("bijlagen");
+            assertThat(innerGrid.get("components").get(0).get("key").asText()).isEqualTo("naam");
+        }
+
+        @Test
+        void stillCarriesTheItemFieldsOwnRules() {
+            ObjectNode column = (ObjectNode) grid(scalarAt("naam", "regels[].naam", true))
+                    .get("components").get(0);
+
+            assertThat(column.get("validate").get("required").asBoolean()).isTrue();
+        }
+    }
 }

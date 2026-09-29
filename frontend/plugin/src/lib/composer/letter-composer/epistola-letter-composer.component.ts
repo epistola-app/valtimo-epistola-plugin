@@ -49,6 +49,12 @@ import { COMPOSER_SCHEMA_VERSION } from '../composer-schema';
 export interface ComposerTemplateOption {
   templateId: string;
   label?: string;
+  /**
+   * Which catalog it lives in, when the form says. A template id is unique only within a catalog,
+   * so this is what distinguishes two letters that share one — sent along so the backend never has
+   * to guess between them.
+   */
+  catalogId?: string;
 }
 
 /** What the component stores on the form, and hands to generation afterwards. */
@@ -477,17 +483,24 @@ export class EpistolaLetterComposerComponent
     return this.startDocumentId ?? readOpenDossierId(globalThis.location?.pathname);
   }
 
+  /** The catalog the offered letter names, when the form named one. */
+  private catalogFor(templateId: string): string | undefined {
+    return this.offeredTemplates.find((option) => option.templateId === templateId)?.catalogId;
+  }
+
   /** The prepare call for wherever this composer turns out to be running. */
   private prepareRequest(templateId: string) {
     return this.onUserTask
       ? this.composerApi.composerPrepare({
           taskId: this.taskInstanceId!,
+          catalogId: this.catalogFor(templateId),
           templateId,
           componentKey: this.componentKey,
         })
       : this.composerApi.composerPrepareStart({
           processDefinitionKey: this.processDefinitionKey,
           documentId: this.composedForDocumentId,
+          catalogId: this.catalogFor(templateId),
           templateId,
           componentKey: this.componentKey,
         });
@@ -498,6 +511,7 @@ export class EpistolaLetterComposerComponent
     return this.onUserTask
       ? this.composerApi.composerPreviewToBlob({
           taskId: this.taskInstanceId!,
+          catalogId: this.catalogFor(templateId),
           templateId,
           componentKey: this.componentKey,
           data,
@@ -507,6 +521,7 @@ export class EpistolaLetterComposerComponent
           // does not search again on every edit.
           processDefinitionKey: this.resolvedProcessDefinitionKey ?? this.processDefinitionKey,
           documentId: this.composedForDocumentId,
+          catalogId: this.catalogFor(templateId),
           templateId,
           componentKey: this.componentKey,
           data,

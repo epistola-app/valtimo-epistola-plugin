@@ -215,7 +215,7 @@ class ComposerConfigurationResolverTest {
     void requireOffering_returnsTheComposerOfferingThatTemplate() {
         formOnTask(composerJson(""));
 
-        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, "besluit").catalogId())
+        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, null, "besluit").catalogId())
                 .isEqualTo("gemeente");
     }
 
@@ -224,7 +224,7 @@ class ComposerConfigurationResolverTest {
         formOnTask(composerJson(""));
 
         assertThatThrownBy(() ->
-                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, "geheime-brief"))
+                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, null, "geheime-brief"))
                 .isInstanceOf(ComposerException.class)
                 .hasMessageContaining("geheime-brief")
                 .extracting(e -> ((ComposerException) e).getReason())
@@ -237,7 +237,7 @@ class ComposerConfigurationResolverTest {
                 {"components":[{"type":"textfield","key":"pv:motivatie"}]}
                 """);
 
-        assertThatThrownBy(() -> resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, "besluit"))
+        assertThatThrownBy(() -> resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, null, "besluit"))
                 .isInstanceOf(ComposerException.class)
                 .extracting(e -> ((ComposerException) e).getReason())
                 .isEqualTo(ComposerException.Reason.NO_COMPOSER);
@@ -289,7 +289,7 @@ class ComposerConfigurationResolverTest {
 
         assertThat(resolver.forStartEvent(PROCESS_DEFINITION_ID)).singleElement()
                 .satisfies(configuration -> assertThat(configuration.offers("besluit")).isTrue());
-        assertThat(resolver.requireStartOffering(PROCESS_DEFINITION_ID, null, "besluit").catalogId())
+        assertThat(resolver.requireStartOffering(PROCESS_DEFINITION_ID, null, null, "besluit").catalogId())
                 .isEqualTo("gemeente");
     }
 
@@ -297,7 +297,7 @@ class ComposerConfigurationResolverTest {
     void refusesATemplateTheStartFormDoesNotOffer() {
         when(processLinkService.getProcessLinks(PROCESS_DEFINITION_ID)).thenReturn(List.of());
 
-        assertThatThrownBy(() -> resolver.requireStartOffering(PROCESS_DEFINITION_ID, null, "besluit"))
+        assertThatThrownBy(() -> resolver.requireStartOffering(PROCESS_DEFINITION_ID, null, null, "besluit"))
                 .isInstanceOf(ComposerException.class)
                 .extracting(e -> ((ComposerException) e).getReason())
                 .isEqualTo(ComposerException.Reason.NO_COMPOSER);
@@ -310,7 +310,7 @@ class ComposerConfigurationResolverTest {
         formOnTask(composerJson(""));
 
         assertThatThrownBy(() ->
-                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:andereBrief", "besluit"))
+                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:andereBrief", null, "besluit"))
                 .isInstanceOf(ComposerException.class)
                 .hasMessageContaining("pv:andereBrief")
                 .extracting(e -> ((ComposerException) e).getReason())
@@ -330,7 +330,7 @@ class ComposerConfigurationResolverTest {
                 ]}
                 """.formatted(PLUGIN_CONFIGURATION_ID, PLUGIN_CONFIGURATION_ID));
 
-        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:tweede", "besluit")
+        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:tweede", null, "besluit")
                 .catalogId()).isEqualTo("andere-catalogus");
     }
 
@@ -343,7 +343,7 @@ class ComposerConfigurationResolverTest {
         startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
         when(processLinkService.getProcessLinks("other:1:b")).thenReturn(List.of());
 
-        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "besluit"))
+        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", null, "besluit"))
                 .containsExactly("ad-hoc:1:a");
     }
 
@@ -352,7 +352,7 @@ class ComposerConfigurationResolverTest {
         deployed("ad-hoc:1:a");
         startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
 
-        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "aanmaning")).isEmpty();
+        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", null, "aanmaning")).isEmpty();
     }
 
     @Test
@@ -362,7 +362,7 @@ class ComposerConfigurationResolverTest {
         deployed("ad-hoc:1:a");
         startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
 
-        assertThat(resolver.startEventDefinitionsOffering("pv:andereBrief", "besluit")).isEmpty();
+        assertThat(resolver.startEventDefinitionsOffering("pv:andereBrief", null, "besluit")).isEmpty();
     }
 
     @Test
@@ -374,7 +374,7 @@ class ComposerConfigurationResolverTest {
         startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
         startFormOn("ad-hoc-2:1:b", secondForm, composerJson(""));
 
-        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "besluit"))
+        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", null, "besluit"))
                 .containsExactlyInAnyOrder("ad-hoc:1:a", "ad-hoc-2:1:b");
     }
 
@@ -388,7 +388,7 @@ class ComposerConfigurationResolverTest {
         when(processLinkService.getProcessLinks(PROCESS_DEFINITION_ID))
                 .thenReturn(List.<ProcessLink>of(taskLink));
 
-        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "besluit")).isEmpty();
+        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", null, "besluit")).isEmpty();
     }
 
     @Test
@@ -473,7 +473,7 @@ class ComposerConfigurationResolverTest {
 
         assertThat(resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID).get(0).schemaVersion())
                 .isNull();
-        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, "besluit"))
+        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, null, "besluit"))
                 .isNotNull();
     }
 
@@ -482,7 +482,7 @@ class ComposerConfigurationResolverTest {
         formOnTask(composerJson(",\"schemaVersion\":99"));
 
         assertThatThrownBy(() ->
-                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, "besluit"))
+                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, null, "besluit"))
                 .isInstanceOf(ComposerException.class)
                 .hasMessageContaining("99")
                 .hasMessageContaining("Upgrade the Epistola plugin")
@@ -505,10 +505,79 @@ class ComposerConfigurationResolverTest {
                 ]}
                 """.formatted(PLUGIN_CONFIGURATION_ID, PLUGIN_CONFIGURATION_ID));
 
-        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:oud", "besluit"))
+        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:oud", null, "besluit"))
                 .isNotNull();
         assertThatThrownBy(() ->
-                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:nieuw", "besluit"))
+                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:nieuw", null, "besluit"))
                 .isInstanceOf(ComposerException.class);
+    }
+
+    /** A template id is unique only within a catalog, so one composer can offer the same id twice. */
+    private String twoCatalogsJson() {
+        return """
+                {"components":[
+                  {"type":"epistola-letter-composer","key":"pv:epistolaLetter",
+                   "pluginConfigurationId":"%s",
+                   "templates":[
+                     {"templateId":"besluit","catalogId":"gemeente","label":"Gemeentelijk besluit"},
+                     {"templateId":"besluit","catalogId":"landelijk","label":"Landelijk besluit"}
+                   ]}
+                ]}
+                """.formatted(PLUGIN_CONFIGURATION_ID);
+    }
+
+    @Test
+    void refusesALetterOfferedByTwoCatalogsWhenTheRequestNamesNeither() {
+        // Rendering whichever was configured first would be a coin toss between two different
+        // letters, both of which the form legitimately offers.
+        formOnTask(twoCatalogsJson());
+
+        assertThatThrownBy(() ->
+                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, null, "besluit"))
+                .isInstanceOf(ComposerException.class)
+                .hasMessageContaining("more than one catalog")
+                .hasMessageContaining("Name the catalog");
+    }
+
+    @Test
+    void composesTheOneTheRequestNames() {
+        formOnTask(twoCatalogsJson());
+
+        var configuration =
+                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, "landelijk", "besluit");
+
+        assertThat(configuration.matching("landelijk", "besluit")).singleElement()
+                .satisfies(template -> assertThat(template.label()).isEqualTo("Landelijk besluit"));
+    }
+
+    @Test
+    void refusesACatalogTheComposerDoesNotOfferThatLetterFrom() {
+        formOnTask(twoCatalogsJson());
+
+        assertThatThrownBy(() ->
+                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, "provinciaal", "besluit"))
+                .isInstanceOf(ComposerException.class)
+                .hasMessageContaining("in catalog 'provinciaal'")
+                .extracting(e -> ((ComposerException) e).getReason())
+                .isEqualTo(ComposerException.Reason.TEMPLATE_NOT_OFFERED);
+    }
+
+    @Test
+    void namingACatalogIsOptionalWhenTheLetterIsUnambiguous() {
+        formOnTask(composerJson(""));
+
+        assertThat(resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, null, null, "besluit"))
+                .isNotNull();
+    }
+
+    @Test
+    void discoveryNarrowsByCatalogToo() {
+        deployed("ad-hoc:1:a");
+        startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
+
+        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "gemeente", "besluit"))
+                .containsExactly("ad-hoc:1:a");
+        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "landelijk", "besluit"))
+                .isEmpty();
     }
 }

@@ -112,7 +112,8 @@ class LetterComposerServiceTest {
 
     private void offering(LetterComposerConfiguration configuration, String templateId) {
         when(configurationResolver.requireOffering(
-                CONTEXT.processDefinitionId(), CONTEXT.activityId(), CONTEXT.componentKey(), templateId))
+                CONTEXT.processDefinitionId(), CONTEXT.activityId(), CONTEXT.componentKey(),
+                null, templateId))
                 .thenReturn(configuration);
     }
 
@@ -132,7 +133,7 @@ class LetterComposerServiceTest {
         when(jsonataMappingService.evaluate(any())).thenReturn(Map.of("naam", "Jansen"));
         templateRequires("besluit", required("naam"), required("motivatie"));
 
-        PreparedLetter letter = service.prepare(CONTEXT, "besluit");
+        PreparedLetter letter = service.prepare(CONTEXT, null, "besluit");
 
         var components = letter.form().get("components");
         assertThat(components).hasSize(1);
@@ -148,7 +149,7 @@ class LetterComposerServiceTest {
         when(jsonataMappingService.evaluate(any())).thenReturn(Map.of("naam", "Jansen"));
         templateRequires("besluit", required("naam"));
 
-        PreparedLetter letter = service.prepare(CONTEXT, "besluit");
+        PreparedLetter letter = service.prepare(CONTEXT, null, "besluit");
 
         assertThat(letter.complete()).isTrue();
         assertThat(letter.form().get("components")).isEmpty();
@@ -163,7 +164,7 @@ class LetterComposerServiceTest {
                 .thenReturn(Map.of("termijn", 14));
         templateRequires("herinnering", required("naam"), required("termijn"));
 
-        PreparedLetter letter = service.prepare(CONTEXT, "herinnering");
+        PreparedLetter letter = service.prepare(CONTEXT, null, "herinnering");
 
         assertThat(letter.data()).containsEntry("naam", "Jansen").containsEntry("termijn", 14);
         assertThat(letter.complete()).isTrue();
@@ -175,7 +176,7 @@ class LetterComposerServiceTest {
         when(jsonataMappingService.evaluate(any())).thenReturn(Map.of());
         templateRequires("besluit");
 
-        service.prepare(CONTEXT, "besluit");
+        service.prepare(CONTEXT, null, "besluit");
 
         ArgumentCaptor<EvaluationContext> captor = ArgumentCaptor.forClass(EvaluationContext.class);
         org.mockito.Mockito.verify(jsonataMappingService).evaluate(captor.capture());
@@ -191,7 +192,7 @@ class LetterComposerServiceTest {
                 anyString(), any(), any(), any()))
                 .thenReturn(new ByteArrayInputStream("%PDF".getBytes()));
 
-        service.preview(CONTEXT, "besluit", Map.of("naam", "Jansen"));
+        service.preview(CONTEXT, null, "besluit", Map.of("naam", "Jansen"));
 
         org.mockito.Mockito.verify(epistolaService).previewDocument(
                 eq("http://epistola"), eq("key"), eq("gemeente"), eq("gemeente"), eq("besluit"),
@@ -200,10 +201,10 @@ class LetterComposerServiceTest {
 
     @Test
     void refusesToPreviewATemplateTheFormDoesNotOffer() {
-        when(configurationResolver.requireOffering(any(), any(), any(), eq("geheime-brief")))
+        when(configurationResolver.requireOffering(any(), any(), any(), any(), eq("geheime-brief")))
                 .thenThrow(new ComposerException(ComposerException.Reason.TEMPLATE_NOT_OFFERED, "nope"));
 
-        assertThatThrownBy(() -> service.preview(CONTEXT, "geheime-brief", Map.of()))
+        assertThatThrownBy(() -> service.preview(CONTEXT, null, "geheime-brief", Map.of()))
                 .isInstanceOf(ComposerException.class);
     }
 
@@ -214,7 +215,7 @@ class LetterComposerServiceTest {
                 anyString(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("422 from Epistola"));
 
-        assertThatThrownBy(() -> service.preview(CONTEXT, "besluit", Map.of()))
+        assertThatThrownBy(() -> service.preview(CONTEXT, null, "besluit", Map.of()))
                 .isInstanceOf(ComposerException.class)
                 .extracting(e -> ((ComposerException) e).getReason())
                 .isEqualTo(ComposerException.Reason.RENDER_FAILED);
@@ -232,7 +233,7 @@ class LetterComposerServiceTest {
                 List.of(), true, "Recursive JSON Schema references require a complete-value mapping.",
                 false, null));
 
-        assertThatThrownBy(() -> service.prepare(CONTEXT, "besluit"))
+        assertThatThrownBy(() -> service.prepare(CONTEXT, null, "besluit"))
                 .isInstanceOf(ComposerException.class)
                 .hasMessageContaining("'body'")
                 .hasMessageContaining("baseline mapping")
@@ -249,7 +250,7 @@ class LetterComposerServiceTest {
                 List.of(), true, "Recursive JSON Schema references require a complete-value mapping.",
                 false, null));
 
-        PreparedLetter letter = service.prepare(CONTEXT, "besluit");
+        PreparedLetter letter = service.prepare(CONTEXT, null, "besluit");
 
         assertThat(letter.complete()).isTrue();
     }

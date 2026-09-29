@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A letter can be named with its catalog.** A prepare or preview request may carry a `catalogId`
+  beside the `templateId`, and the picker sends whichever catalog the form gave the chosen letter.
+  It stays optional, since a template id is unique within a catalog and a composer usually offers
+  one — but a composer offering two can hold the same id twice, and the backend now refuses to
+  guess rather than rendering whichever was configured first. Storage already carried a catalog per
+  letter; this is the wire catching up, and it is the last piece multi-catalog needed that could
+  not have been added later without changing an endpoint.
+
+### Fixed
+
+- **An object inside a data-grid row keeps its shape.** A nested object used to be flattened to a
+  single text field, because the analyzer paths an item's fields against the document
+  (`regels[].adres.straat`) while a Form.io data grid scopes its components to the row. Item
+  components are now built exactly as top-level ones are — so an object becomes a fieldset and a
+  nested array becomes another grid — and then rebased onto the row. A nested grid rebases its own
+  children first, so it is left alone by the outer pass.
+
 - **The letter variable can carry more than one letter, though nothing writes more than one yet.**
   Every known gap was checked against the three stored shapes before shipping, since those are the
   part that cannot be changed cheaply once cases are deployed on them. All of them turned out to be

@@ -18,6 +18,7 @@
 package app.epistola.valtimo.service.form;
 
 import app.epistola.valtimo.domain.TemplateField;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -38,7 +39,8 @@ import java.util.Map;
  *   <li>SCALAR boolean → checkbox</li>
  *   <li>OBJECT → fieldset with nested components</li>
  *   <li>SCALAR typed {@code array} (array of scalars) → one input with {@code multiple}</li>
- *   <li>ARRAY → datagrid with item components and defaultValue</li>
+ *   <li>ARRAY → datagrid with item components and defaultValue; an object or array nested inside
+ *       an item keeps its shape, with keys rebased to the row</li>
  * </ul>
  */
 @RequiredArgsConstructor
@@ -199,6 +201,29 @@ public class FormioFormGenerator {
         return "[\\s\\S]*(?:" + pattern + ")[\\s\\S]*";
     }
 
+    /**
+     * Strip an array item's own path from every key beneath it.
+     *
+     * <p>The analyzer paths an item's fields against the document — {@code regels[].adres.straat} —
+     * while a Form.io data grid scopes each row's components to the row, so the same field has to
+     * be keyed {@code adres.straat} inside the grid. A nested grid has already rebased its own
+     * children against its own prefix by the time this runs, and those no longer carry this one,
+     * so they are left alone.
+     */
+    private void rebaseKeys(ObjectNode component, String itemPrefix) {
+        JsonNode key = component.get("key");
+        if (key != null && key.isTextual() && key.asText().startsWith(itemPrefix)) {
+            component.put("key", key.asText().substring(itemPrefix.length()));
+        }
+        if (component.get("components") instanceof ArrayNode children) {
+            for (JsonNode child : children) {
+                if (child instanceof ObjectNode childObject) {
+                    rebaseKeys(childObject, itemPrefix);
+                }
+            }
+        }
+    }
+
     private void putIfPresent(ObjectNode validate, String key, Integer value) {
         if (value != null) {
             validate.put(key, value);
@@ -277,16 +302,17 @@ public class FormioFormGenerator {
             }
         }
 
-        // Add item field definitions — use leaf name() since keys are relative to the array item
+        // An item's components are built exactly as top-level ones are — so an object inside an
+        // item becomes a fieldset and a nested array becomes another grid — and then rebased,
+        // because a data grid scopes its children to the row while the analyzer gives them paths
+        // relative to the whole document.
         ArrayNode components = component.putArray("components");
+        String itemPrefix = field.path() + "[].";
         for (TemplateField child : safeChildren(field)) {
-            ObjectNode colComponent = buildScalarComponent(child, null);
-            // Override key to use leaf name (not full path) since datagrid items are scoped
-            colComponent.put("key", child.name());
-            components.add(colComponent);
+            ObjectNode column = buildComponent(child, Map.of());
+            rebaseKeys(column, itemPrefix);
+            components.add(column);
         }
-        // Known gap: an object nested inside an array item is flattened to a single input here,
-        // because its children would carry paths relative to the array rather than the item.
 
         // Set default values from resolved data
         if (!items.isEmpty()) {
