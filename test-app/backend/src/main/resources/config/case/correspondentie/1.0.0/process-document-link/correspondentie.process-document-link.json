@@ -10,5 +10,11 @@
     "canInitializeDocument": false,
     "startableByUser": true,
     "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "correspondentie-flow-letter",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
   }
 ]

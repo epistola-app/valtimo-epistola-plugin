@@ -1,0 +1,19 @@
+{
+  "type": "form",
+  "display": "form",
+  "components": [
+    {
+      "type": "content",
+      "key": "confirmIntro",
+      "input": false,
+      "html": "<p>De gekozen brief wordt na deze stap gegenereerd.</p>"
+    },
+    {
+      "type": "button",
+      "key": "submit",
+      "label": "Verstuur brief",
+      "action": "submit",
+      "input": true
+    }
+  ]
+}

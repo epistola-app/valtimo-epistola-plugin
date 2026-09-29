@@ -1,0 +1,32 @@
+{
+  "key": "kies-brief-flow",
+  "startStep": "kies-brief",
+  "steps": [
+    {
+      "key": "kies-brief",
+      "title": "Brief kiezen",
+      "type": {
+        "name": "form",
+        "properties": {
+          "definition": "kies-brief-flow"
+        }
+      },
+      "nextSteps": [
+        {
+          "step": "bevestigen"
+        }
+      ]
+    },
+    {
+      "key": "bevestigen",
+      "title": "Bevestigen",
+      "type": {
+        "name": "form",
+        "properties": {
+          "definition": "bevestig-brief-flow"
+        }
+      },
+      "onComplete": ["${valtimoFormFlow.completeTask(additionalProperties, step.submissionData)}"]
+    }
+  ]
+}

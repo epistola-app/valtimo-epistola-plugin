@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A demo of the composer on a form-flow step.** Form-flow support had unit tests and nothing to
+  click: the `form-flow-demo` case has a flow, but no composer on any of its steps, and that demo
+  is pinned by five tests that expect its preview to target a `generate-document` link. So the
+  Correspondentie case gains `correspondentie-flow-letter` — started from the dossier's Start menu,
+  its user task linked to a **form flow** whose first step carries a composer, then generation and
+  the catch event as the other composer demos have them.
+
 - **The three lists that adding a Form.io component means updating are now checked.** Registering a
   component, forwarding its settings through `fieldOptions`, and listing it in
   [docs/formio-components.md](docs/formio-components.md) are all written by hand somewhere other

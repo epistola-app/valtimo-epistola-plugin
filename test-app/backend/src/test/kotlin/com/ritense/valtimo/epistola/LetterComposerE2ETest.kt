@@ -116,7 +116,7 @@ class LetterComposerE2ETest {
     fun `a letter the case can fill completely asks the employee for nothing`() {
         val context = startCaseAndOpenChooseLetter()
 
-        val prepared = runWithoutAuthorization { letterComposerService.prepare(context, ACKNOWLEDGEMENT) }
+        val prepared = runWithoutAuthorization { letterComposerService.prepare(context, null, ACKNOWLEDGEMENT) }
 
         assertThat(prepared.complete())
             .describedAs("the baseline mapping covers this template's whole contract")
@@ -129,7 +129,7 @@ class LetterComposerE2ETest {
     fun `a letter the case cannot fill asks for exactly the missing fields`() {
         val context = startCaseAndOpenChooseLetter()
 
-        val prepared = runWithoutAuthorization { letterComposerService.prepare(context, DECISION) }
+        val prepared = runWithoutAuthorization { letterComposerService.prepare(context, null, DECISION) }
 
         val asked = prepared.form().path("components").map { it.path("key").asText() }
         assertThat(asked)
@@ -141,7 +141,7 @@ class LetterComposerE2ETest {
     @Test
     fun `one generate task renders whichever letter was chosen`() {
         val context = startCaseAndOpenChooseLetter()
-        val prepared = runWithoutAuthorization { letterComposerService.prepare(context, DECISION) }
+        val prepared = runWithoutAuthorization { letterComposerService.prepare(context, null, DECISION) }
 
         // What the composer component stores when the employee submits: the mapped data with their
         // input laid over it, under the pv: key the form declares.
