@@ -1,7 +1,10 @@
 services:
   ved-epistola-server:
     profiles: ["server"]
-    image: ghcr.io/epistola-app/epistola-suite:latest
+    # -demo, not plain latest: since Suite 1.3.0 demo mode ships only in the -demo image, so
+    # that a production install cannot be turned into a demo by setting a profile. The plain
+    # image refuses to start with SPRING_PROFILES_ACTIVE=demo.
+    image: ghcr.io/epistola-app/epistola-suite:latest-demo
     container_name: ved-epistola-server
     environment:
       SPRING_PROFILES_ACTIVE: demo,localauth

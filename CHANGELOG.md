@@ -51,6 +51,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The local stack could not be started from scratch.** Both failures were invisible on a machine
+  that already had the stack running, and both surfaced the first time the browser E2E workflow
+  actually ran on a clean runner.
+
+  Keycloak refused to start: `ROLE_DEMO`'s description in the realm import is 395 characters and
+  Keycloak stores a role description in a `varchar(255)`, so the import aborted the boot. Keycloak
+  imports with `IGNORE_EXISTING`, so an existing volume never re-reads the realm — the realm had
+  been broken for as long as the description had been that long, and only a fresh volume showed it.
+  The description is now short and the rationale stays in
+  [docs/training-facility.md](docs/training-facility.md), with `KeycloakRealmImportTest` failing on
+  any name or description that would not fit the column Keycloak stores it in.
+
+  Epistola then exited during startup: since Suite 1.3.0 demo mode ships only in
+  `epistola-suite:{version}-demo`, and the plain image refuses the `demo` profile on purpose, so
+  that a production install cannot be demoted by configuration. A cached 1.2.0 `:latest` still has
+  demo built in, which is why only a fresh pull hit it. Compose and the README's `docker run` flow
+  now use `latest-demo`.
+
+  The workflow's own diagnosis was wrong on top of that, and is fixed too: nothing waited for
+  Keycloak, so a dead Keycloak was reported as "Epistola never came up"; the waits now fail as soon
+  as a container exits instead of after five more minutes; and the Epistola image is a Paketo build
+  that prints a ~90-line native-memory summary when the JVM exits, so the `--tail 100` that was
+  meant to show the error showed only that. The container logs are now captured in full and
+  uploaded with the run.
+
 - **A composed letter generated, then left its process waiting forever.** The catch event takes its
   correlation token from a start listener that asks which generate task feeds it, and that lookup
   matched one hardcoded action key. `epistola-generate-composed-document` was added without being
