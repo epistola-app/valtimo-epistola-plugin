@@ -131,8 +131,40 @@ test.describe('Letter composer — pick a letter, fill in what the case cannot s
     await expect(inputs.locator('[name="data[applicant.bsn]"]')).toBeVisible({ timeout: 10_000 });
     await expect(button(/^Previous$/)).toBeVisible();
 
-    // Still not previewing: the letter cannot render until its required fields have values.
+    // Not previewing yet: the letter cannot render until its required fields have values.
     await expect(page.getByTestId('epistola-composer-awaiting-input')).toBeVisible();
     await expect(page.getByTestId('epistola-composer-preview-error')).toBeHidden();
+
+    // And it *does* preview once they do. Asserting only the waiting state was how a dead end hid
+    // here: the grid's columns were demanded against the submission, where a row's fields can
+    // never appear, so this letter waited however much was typed into it.
+    for (const step of ['Property', 'Applicant', 'Activities']) {
+      await steps.filter({ hasText: step }).click();
+      await page.waitForTimeout(500);
+      for (const field of await inputs
+        .locator('input[name^="data["]:visible, textarea[name^="data["]:visible')
+        .all()) {
+        await field.fill('proef');
+        await field.blur();
+      }
+    }
+
+    await expect(page.getByTestId('epistola-composer-awaiting-input')).toBeHidden({
+      timeout: 30_000,
+    });
+
+    // And something was actually rendered with it. The letter or Epistola's complaint about the
+    // data both prove the gate opened; only "still waiting" means it never did. Asserting the
+    // waiting state is gone is not enough on its own — an error, or a composer that never got
+    // going, would satisfy that too.
+    await expect
+      .poll(
+        async () =>
+          (await page.getByTestId('epistola-composer-preview-pdf').isVisible()) ||
+          (await page.getByTestId('epistola-composer-preview-error').isVisible()),
+        { timeout: 60_000, message: 'the preview was never attempted' },
+      )
+      .toBe(true);
+    await expect(page.getByTestId('epistola-composer-error')).toBeHidden();
   });
 });

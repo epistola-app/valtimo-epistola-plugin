@@ -28,6 +28,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A letter with a data grid could never be previewed.** The preview waits until every required
+  field has a value, and it read those from the generated form — including the grid's _columns_,
+  which are keyed inside a row (`type`) rather than against the submission. Demanded at document
+  level they can never appear, so the composer asked for the form to be filled in however much was
+  typed into it. The demo's permit letter is the only bundled letter with a required grid, which is
+  why it surfaced there. The gate now descends only through layout — panels, fieldsets, wizard
+  steps — and asks for the grid as a whole, which is what makes a row necessary; an empty grid also
+  counts as unfilled now, as an empty field does.
+
+  The browser E2E had asserted only that the letter _waits_, which certified the dead end as
+  correct. It now fills every step and asserts the composer leaves the waiting state and actually
+  renders something — the letter or Epistola's complaint about the data, either of which proves the
+  gate opened.
+
 - **An object inside a data-grid row keeps its shape.** A nested object used to be flattened to a
   single text field, because the analyzer paths an item's fields against the document
   (`regels[].adres.straat`) while a Form.io data grid scopes its components to the row. Item

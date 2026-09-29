@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-import { mergeComposerData, pruneEmpty } from './composer-data';
+import { hasValuesFor, mergeComposerData, pruneEmpty, requiredKeys } from './composer-data';
 
 describe('composer-data', () => {
   describe('mergeComposerData', () => {
@@ -76,5 +76,63 @@ describe('composer-data', () => {
         besluit: { datum: '2026-01-01' },
       });
     });
+  });
+});
+
+describe('what the preview waits for', () => {
+  /**
+   * A grid's columns are keyed inside a row. Demanded against the submission they can never be
+   * satisfied and the composer waits for them forever — which is exactly what the permit letter
+   * did: everything filled in, and the preview still asking for the form to be filled in.
+   */
+  const gridForm = {
+    display: 'form',
+    components: [
+      {
+        type: 'datagrid',
+        key: 'activities',
+        validate: { required: true },
+        components: [
+          { type: 'textfield', key: 'type', validate: { required: true } },
+          { type: 'textfield', key: 'description', validate: { required: true } },
+        ],
+      },
+    ],
+  };
+
+  it('asks for a grid as a whole, not for its columns separately', () => {
+    expect(requiredKeys(gridForm)).toEqual(['activities']);
+  });
+
+  it('counts a grid as filled once it has a row', () => {
+    expect(hasValuesFor({ activities: [{ type: 'bouw' }] }, requiredKeys(gridForm))).toBe(true);
+  });
+
+  it('counts a grid as empty while it has none', () => {
+    expect(hasValuesFor({ activities: [] }, requiredKeys(gridForm))).toBe(false);
+    expect(hasValuesFor({}, requiredKeys(gridForm))).toBe(false);
+  });
+
+  it('still descends through layout, which keys its children against the submission', () => {
+    const layout = {
+      display: 'wizard',
+      components: [
+        {
+          type: 'panel',
+          key: 'step1',
+          components: [
+            {
+              type: 'fieldset',
+              key: 'applicant',
+              components: [
+                { type: 'textfield', key: 'applicant.bsn', validate: { required: true } },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    expect(requiredKeys(layout)).toEqual(['applicant.bsn']);
   });
 });

@@ -81,11 +81,22 @@ export function requiredKeys(formDefinition: any): string[] {
       if (component?.validate?.required && component?.key) {
         keys.push(component.key);
       }
-      walk(component?.components);
+      // Descend only through layout — a panel, a fieldset, a wizard step. A data grid's children
+      // are keyed inside a row (`type`), not against the submission, so demanding them here asks
+      // for something that can never exist and leaves the preview waiting forever. The grid itself
+      // is still required when the contract says so, which is what makes a row necessary.
+      if (!scopesItsOwnData(component)) {
+        walk(component?.components);
+      }
     }
   };
   walk(formDefinition?.components);
   return keys;
+}
+
+/** Formio components whose children are keyed within them rather than against the submission. */
+function scopesItsOwnData(component: any): boolean {
+  return ['datagrid', 'editgrid', 'container', 'tree'].includes(component?.type);
 }
 
 /** Whether `data` holds a usable value at every one of those keys. */
@@ -94,6 +105,12 @@ export function hasValuesFor(data: ComposerData, keys: string[]): boolean {
     const value = key
       .split('.')
       .reduce<any>((node, segment) => (node == null ? undefined : node[segment]), data);
-    return value !== undefined && value !== null && value !== '';
+    // An empty grid is as unfilled as an empty field.
+    return (
+      value !== undefined &&
+      value !== null &&
+      value !== '' &&
+      !(Array.isArray(value) && !value.length)
+    );
   });
 }
