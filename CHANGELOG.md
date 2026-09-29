@@ -51,6 +51,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The browser suites now run in CI, and 10 of 18 of them fail.** Wiring up
+  `E2E (browser)` was the point of the exercise; finding out that most of the suites had rotted
+  while nothing executed them was the result. The failures reproduce on a developer machine exactly
+  as on a runner — stale selectors against the current Valtimo admin UI, not anything
+  environmental — and none of them is the letter composer, whose four suites all pass. The list is
+  recorded in CLAUDE.md and tracked for a follow-up before release.
+
 - **The composer on a form-flow step generated nothing, and the task never completed.** The demo
   added for it looked right in the browser — the letter was offered, previewed and submitted — and
   then the final step answered 500 with _"No composed letter on process variable

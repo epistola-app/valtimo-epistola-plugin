@@ -404,3 +404,11 @@ an explicit, commented allowlist rather than by loosening the assertion.
 - Full multi-node result collector behavior depends on Epistola contract/server integration tests
 - Frontend `.spec.ts` unit tests — partial coverage (Playwright E2E covers the main flows)
 - Playwright UI E2E runs nightly and on demand, not on pull requests — a change to a Form.io component or a task flow is worth a manual `gh workflow run` before merging
+- **10 of the 18 browser tests fail, and did so long before they ran in CI.** The first real run of
+  `E2E (browser)` is what surfaced it: the suites had rotted while nothing executed them, and the
+  failures reproduce on a developer machine exactly as they do on a runner, so they are stale
+  selectors against the current Valtimo admin UI rather than anything environmental. Failing:
+  `plugin-configuration` (5), `generate-document` (2), and one each in `check-job-status`,
+  `download-document` and `form-flow-transition`. Passing: all four letter-composer suites and the
+  three navigation checks. Tracked for a follow-up before release — do not read a red
+  `E2E (browser)` as "the composer is broken" until that list shrinks.
