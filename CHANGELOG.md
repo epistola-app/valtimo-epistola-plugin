@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A letter composer works on a form-flow step.** The configuration was read only from a task's
+  _form_ link, so a composer inside a form flow was never found. Both link kinds are now followed:
+  a form link gives its form directly, a form-flow link gives the flow and every form step in it is
+  read. Authorization is unchanged — the task still exists and still gates the request, so a form
+  flow needs no gate of its own, contrary to what this was expected to need. What differs is only
+  the lookup: a step stores its form by _name_, which is unique only within a case definition, so
+  the flow and its forms resolve against the case definition the process belongs to. Every API used
+  was verified present in 13.21 with identical signatures, so the floor is unchanged.
+
 - **A letter can be named with its catalog.** A prepare or preview request may carry a `catalogId`
   beside the `templateId`, and the picker sends whichever catalog the form gave the chosen letter.
   It stays optional, since a template id is unique within a catalog and a composer usually offers

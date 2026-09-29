@@ -169,6 +169,20 @@ on the component:
 A per-letter `dataMapping` fragment is merged over the baseline, so the baseline says what every
 letter of this case type needs and the fragment only what makes this one different.
 
+### On a task form, a start form, or a form-flow step
+
+A composer is found wherever the activity's process link leads. A **form** link gives its form
+directly; a **form-flow** link gives the flow, and every form step in it is read — all of them
+belong to the one task, so a caller who may open the task may reach any of them anyway, and naming
+a step on the wire would be the browser saying where configuration is read from, which is exactly
+what reading it server-side exists to prevent.
+
+A form flow needs no authorization of its own: the task still exists and still gates the request.
+What differs is only the lookup — a step stores its form by _name_, and a form name is unique only
+within a case definition, so the flow and its forms are resolved against the case definition the
+process belongs to. Every API it uses has been in Valtimo since 13.21, the plugin's floor,
+so this costs no compatibility.
+
 ### Where it is used
 
 Nothing says so. The same configuration works on a **user task form** and on the **start form** of
@@ -340,7 +354,7 @@ add to one".
 | Rich text                                                                   | A marker in `FieldHints`; a per-template presentation override                              | Additive; `templates[]` is a list of objects                                                                                                                                    |
 | Per-template mapping fragment                                               | `templates[].dataMapping`                                                                   | Already there; only the widget is missing                                                                                                                                       |
 | Catalog-qualified letters                                                   | `catalogId` beside `templateId` on the wire                                                 | Additive request field; storage already holds a catalog per letter                                                                                                              |
-| Form flows                                                                  | Nothing stored — a third resolution path and its own gate                                   | No stored shape involved                                                                                                                                                        |
+| Form flows (now supported)                                                  | Nothing stored — a second resolution path, and the task still gates it                      | No stored shape involved                                                                                                                                                        |
 | Nested objects in array items, message translation, the frontend off switch | Nothing stored                                                                              | No stored shape involved                                                                                                                                                        |
 
 **The one that did not take it was the letter variable**, which held a single letter and whose
@@ -535,17 +549,6 @@ entirely.
   writes nothing, so a value the employee never supplied never clobbers the case. The same map also
   makes the preview more faithful rather than less — applied to a copy of `$doc`/`$pv` before the
   baseline mapping runs, it shows the letter as it will be _once saved_.
-
-- **Form flows are not supported yet**: the configuration is read from a task's _form_ link, and a
-  form-flow step is not one.
-
-  _Direction._ The stored shapes need nothing; what changes is how the configuration is found. The
-  request would name the form-flow step instance rather than (or as well as) a task, and the
-  resolver would gain a third entry point beside `forActivity` and `forStartEvent` — the step's own
-  form definition. Authorization is the open question: a form-flow step has no `OperatonTask` to
-  check `VIEW` on, so it needs its own gate rather than reusing either existing one. Worth doing
-  before the other open items, because it is a plausible ask, depends on nobody else, and touches
-  an assumption rather than an edge.
 
 - **Labels come from the contract.** A field with no `title` is labelled by humanizing its property
   name, so an English property name shows an English label in a Dutch form. The fix belongs in the

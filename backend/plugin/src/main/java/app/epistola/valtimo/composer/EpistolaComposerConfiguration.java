@@ -29,6 +29,8 @@ import com.ritense.form.repository.FormDefinitionRepository;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processlink.service.ProcessLinkService;
 import com.ritense.valtimo.service.OperatonTaskService;
+import com.ritense.formflow.service.FormFlowService;
+import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
 import org.operaton.bpm.engine.RepositoryService;
 import org.operaton.bpm.engine.RuntimeService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -59,9 +61,16 @@ public class EpistolaComposerConfiguration {
     public ComposerConfigurationResolver composerConfigurationResolver(
             ProcessLinkService processLinkService,
             FormDefinitionRepository formDefinitionRepository,
-            RepositoryService repositoryService
+            RepositoryService repositoryService,
+            FormFlowService formFlowService,
+            ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService
     ) {
-        return new ComposerConfigurationResolver(processLinkService, formDefinitionRepository, repositoryService);
+        return new ComposerConfigurationResolver(
+                processLinkService,
+                formDefinitionRepository,
+                repositoryService,
+                formFlowService,
+                processDefinitionCaseDefinitionService);
     }
 
     @Bean

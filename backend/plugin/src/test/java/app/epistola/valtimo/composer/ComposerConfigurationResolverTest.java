@@ -24,10 +24,16 @@ import com.ritense.form.repository.FormDefinitionRepository;
 import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import com.ritense.processlink.domain.ProcessLink;
 import com.ritense.processlink.service.ProcessLinkService;
+import com.ritense.formflow.domain.FormFlowProcessLink;
+import com.ritense.formflow.domain.definition.configuration.step.FormStepTypeProperties;
+import com.ritense.valtimo.contract.case_.CaseDefinitionId;
+import com.ritense.formflow.service.FormFlowService;
+import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
 import org.operaton.bpm.engine.RepositoryService;
 import org.operaton.bpm.engine.repository.ProcessDefinition;
 import org.operaton.bpm.engine.repository.ProcessDefinitionQuery;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -57,6 +63,8 @@ class ComposerConfigurationResolverTest {
     private ProcessLinkService processLinkService;
     private FormDefinitionRepository formDefinitionRepository;
     private RepositoryService repositoryService;
+    private FormFlowService formFlowService;
+    private ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
     private ProcessDefinitionQuery processDefinitionQuery;
     private ComposerConfigurationResolver resolver;
 
@@ -68,8 +76,11 @@ class ComposerConfigurationResolverTest {
         processDefinitionQuery = mock(ProcessDefinitionQuery.class, org.mockito.Mockito.RETURNS_SELF);
         when(repositoryService.createProcessDefinitionQuery()).thenReturn(processDefinitionQuery);
         when(processDefinitionQuery.list()).thenReturn(List.of());
+        formFlowService = mock(FormFlowService.class);
+        processDefinitionCaseDefinitionService = mock(ProcessDefinitionCaseDefinitionService.class);
         resolver = new ComposerConfigurationResolver(
-                processLinkService, formDefinitionRepository, repositoryService);
+                processLinkService, formDefinitionRepository, repositoryService,
+                formFlowService, processDefinitionCaseDefinitionService);
     }
 
     /**
@@ -579,5 +590,115 @@ class ComposerConfigurationResolverTest {
                 .containsExactly("ad-hoc:1:a");
         assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "landelijk", "besluit"))
                 .isEmpty();
+    }
+
+    /**
+     * A form flow's steps store their form by name, so the composer on a step is reached through
+     * the case definition the process belongs to rather than through a form link's id. The task is
+     * unchanged by any of this — it still exists and still gates the request — so form flows need
+     * no authorization of their own.
+     */
+    @Nested
+    class OnAFormFlowStep {
+
+        private final CaseDefinitionId caseDefinitionId = new CaseDefinitionId("correspondentie", "1.0.0");
+
+        private void flowOnTask(String flowKey, java.util.Map<String, String> stepForms) {
+            FormFlowProcessLink link = mock(FormFlowProcessLink.class);
+            when(link.getFormFlowDefinitionKey()).thenReturn(flowKey);
+            when(processLinkService.getProcessLinks(PROCESS_DEFINITION_ID, ACTIVITY_ID))
+                    .thenReturn(List.<ProcessLink>of(link));
+
+            var caseLink = mock(com.ritense.processdocument.domain.ProcessDefinitionCaseDefinition.class);
+            var caseLinkId = mock(com.ritense.processdocument.domain.ProcessDefinitionCaseDefinitionId.class);
+            when(caseLinkId.getCaseDefinitionId()).thenReturn(caseDefinitionId);
+            when(caseLink.getId()).thenReturn(caseLinkId);
+            when(processDefinitionCaseDefinitionService.findByProcessDefinitionId(any()))
+                    .thenReturn(caseLink);
+
+            var steps = new java.util.LinkedHashSet<com.ritense.formflow.domain.definition.FormFlowStep>();
+            stepForms.forEach((stepKey, formName) -> {
+                var step = mock(com.ritense.formflow.domain.definition.FormFlowStep.class);
+                var stepId = mock(com.ritense.formflow.domain.definition.FormFlowStepId.class);
+                when(stepId.getKey()).thenReturn(stepKey);
+                when(step.getId()).thenReturn(stepId);
+                when(step.getType()).thenReturn(
+                        new com.ritense.formflow.domain.definition.configuration.FormFlowStepType(
+                                "form", new FormStepTypeProperties(formName)));
+                steps.add(step);
+            });
+            var definition = mock(com.ritense.formflow.domain.definition.FormFlowDefinition.class);
+            when(definition.getSteps()).thenReturn(steps);
+            when(formFlowService.findDefinitionOrNull(flowKey, caseDefinitionId)).thenReturn(definition);
+        }
+
+        private void formNamed(String name, String json) {
+            FormIoFormDefinition form = mock(FormIoFormDefinition.class);
+            try {
+                when(form.getFormDefinition()).thenReturn(objectMapper.readTree(json));
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+            when(formDefinitionRepository.findByNameAndCaseDefinitionId(name, caseDefinitionId))
+                    .thenReturn(Optional.of(form));
+        }
+
+        @Test
+        void findsTheComposerOnAStepsForm() {
+            flowOnTask("brief-flow", java.util.Map.of("kies", "kies-brief"));
+            formNamed("kies-brief", composerJson(""));
+
+            assertThat(resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID)).singleElement()
+                    .satisfies(configuration -> assertThat(configuration.offers("besluit")).isTrue());
+        }
+
+        @Test
+        void readsEveryStepRatherThanOnlyTheOneOnScreen() {
+            // All the steps belong to the one task, so a caller who may open it may reach any of
+            // them anyway — and naming a step on the wire would be the browser saying where
+            // configuration is read from, which is what this resolver exists to prevent.
+            flowOnTask("brief-flow", new java.util.LinkedHashMap<>(java.util.Map.of(
+                    "kies", "kies-brief", "controleer", "controleer-brief")));
+            formNamed("kies-brief", composerJson(""));
+            formNamed("controleer-brief", composerJson("").replace("pv:epistolaLetter", "pv:tweedeBrief"));
+
+            assertThat(resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID))
+                    .extracting(LetterComposerConfiguration::componentKey)
+                    .containsExactlyInAnyOrder("pv:epistolaLetter", "pv:tweedeBrief");
+        }
+
+        @Test
+        void survivesAStepWhoseFormIsGone() {
+            flowOnTask("brief-flow", java.util.Map.of("kies", "verdwenen"));
+
+            assertThat(resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID)).isEmpty();
+        }
+
+        @Test
+        void survivesAProcessThatBelongsToNoCaseDefinition() {
+            flowOnTask("brief-flow", java.util.Map.of("kies", "kies-brief"));
+            when(processDefinitionCaseDefinitionService.findByProcessDefinitionId(any()))
+                    .thenThrow(new IllegalStateException("no case definition"));
+
+            assertThat(resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID)).isEmpty();
+        }
+
+        @Test
+        void fallsBackToAGloballyScopedForm() {
+            // A form deployed outside a case definition is found by name alone.
+            flowOnTask("brief-flow", java.util.Map.of("kies", "globaal"));
+            FormIoFormDefinition form = mock(FormIoFormDefinition.class);
+            try {
+                when(form.getFormDefinition()).thenReturn(objectMapper.readTree(composerJson("")));
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+            when(formDefinitionRepository.findByNameAndCaseDefinitionId("globaal", caseDefinitionId))
+                    .thenReturn(Optional.empty());
+            when(formDefinitionRepository.findByNameAndCaseDefinitionIdIsNull("globaal"))
+                    .thenReturn(Optional.of(form));
+
+            assertThat(resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID)).hasSize(1);
+        }
     }
 }

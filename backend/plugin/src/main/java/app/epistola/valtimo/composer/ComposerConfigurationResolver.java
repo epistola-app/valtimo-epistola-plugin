@@ -21,6 +21,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.ritense.form.domain.FormIoFormDefinition;
 import com.ritense.form.domain.FormProcessLink;
 import com.ritense.form.repository.FormDefinitionRepository;
+import com.ritense.formflow.domain.FormFlowProcessLink;
+import com.ritense.formflow.domain.definition.FormFlowDefinition;
+import com.ritense.formflow.domain.definition.configuration.step.FormStepTypeProperties;
+import com.ritense.formflow.service.FormFlowService;
+import com.ritense.processdocument.domain.ProcessDefinitionId;
+import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
+import com.ritense.valtimo.contract.case_.CaseDefinitionId;
 import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import com.ritense.processlink.service.ProcessLinkService;
 import lombok.RequiredArgsConstructor;
@@ -51,17 +58,90 @@ public class ComposerConfigurationResolver {
     private final ProcessLinkService processLinkService;
     private final FormDefinitionRepository formDefinitionRepository;
     private final RepositoryService repositoryService;
+    private final FormFlowService formFlowService;
+    private final ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
 
     /**
      * Every composer configured on the form of this activity, in document order.
      * Empty when the activity has no form link, or a form without a composer.
      */
     public List<LetterComposerConfiguration> forActivity(String processDefinitionId, String activityId) {
+        return forLinks(processDefinitionId, processLinkService.getProcessLinks(processDefinitionId, activityId));
+    }
+
+    /**
+     * Every composer reachable through these links, whether the activity opens a form or a form
+     * flow.
+     *
+     * <p>A form flow contributes the composers on <i>all</i> of its form steps, not only the one on
+     * screen. They all belong to the same task, so a caller who may open the task may reach any of
+     * them anyway — and the alternative, naming a step on the wire, would be something the browser
+     * supplies about where configuration is read from, which is exactly what this resolver exists
+     * to avoid.
+     */
+    private List<LetterComposerConfiguration> forLinks(String processDefinitionId, List<?> links) {
         List<LetterComposerConfiguration> configurations = new ArrayList<>();
-        for (UUID formDefinitionId : formDefinitionIds(processDefinitionId, activityId)) {
-            formDefinitionId(formDefinitionId, configurations);
+        for (Object link : links) {
+            if (link instanceof FormProcessLink form) {
+                formDefinitionId(form.getFormDefinitionId(), configurations);
+            } else if (link instanceof FormFlowProcessLink flow) {
+                collectFromFormFlow(processDefinitionId, flow.getFormFlowDefinitionKey(), configurations);
+            }
         }
         return configurations;
+    }
+
+    /**
+     * The composers on a form flow's form steps.
+     *
+     * <p>A step stores its form by <i>name</i>, and a form name is only unique within a case
+     * definition, so both the flow and its forms are looked up against the case definition the
+     * process belongs to. Every API used here has been in Valtimo since 13.21, the plugin's floor.
+     */
+    private void collectFromFormFlow(
+            String processDefinitionId,
+            String formFlowDefinitionKey,
+            List<LetterComposerConfiguration> into
+    ) {
+        CaseDefinitionId caseDefinitionId = caseDefinitionOf(processDefinitionId);
+        if (caseDefinitionId == null) {
+            log.warn("Cannot read the composers on form flow '{}': process definition {} belongs to no "
+                    + "case definition", formFlowDefinitionKey, processDefinitionId);
+            return;
+        }
+
+        FormFlowDefinition definition =
+                formFlowService.findDefinitionOrNull(formFlowDefinitionKey, caseDefinitionId);
+        if (definition == null) {
+            log.warn("Form flow '{}' is linked to process definition {} but no longer exists",
+                    formFlowDefinitionKey, processDefinitionId);
+            return;
+        }
+
+        for (var step : definition.getSteps()) {
+            if (!(step.getType().getProperties() instanceof FormStepTypeProperties form)) {
+                continue;
+            }
+            formDefinitionRepository.findByNameAndCaseDefinitionId(form.getDefinition(), caseDefinitionId)
+                    .or(() -> formDefinitionRepository.findByNameAndCaseDefinitionIdIsNull(form.getDefinition()))
+                    .ifPresentOrElse(
+                            definitionOnStep -> collectComposers(
+                                    definitionOnStep.getFormDefinition().path("components"), into),
+                            () -> log.warn("Form flow '{}' step '{}' names form '{}', which does not exist",
+                                    formFlowDefinitionKey, step.getId().getKey(), form.getDefinition()));
+        }
+    }
+
+    /** The case definition a process belongs to, or null when it belongs to none. */
+    private CaseDefinitionId caseDefinitionOf(String processDefinitionId) {
+        try {
+            var link = processDefinitionCaseDefinitionService
+                    .findByProcessDefinitionId(new ProcessDefinitionId(processDefinitionId));
+            return link == null ? null : link.getId().getCaseDefinitionId();
+        } catch (RuntimeException e) {
+            log.debug("No case definition for process definition {}: {}", processDefinitionId, e.getMessage());
+            return null;
+        }
     }
 
     /**
@@ -72,11 +152,9 @@ public class ComposerConfigurationResolver {
      * request point at another activity's link.
      */
     public List<LetterComposerConfiguration> forStartEvent(String processDefinitionId) {
-        List<LetterComposerConfiguration> configurations = new ArrayList<>();
-        for (UUID formDefinitionId : startFormDefinitionIds(processDefinitionId)) {
-            formDefinitionId(formDefinitionId, configurations);
-        }
-        return configurations;
+        return forLinks(processDefinitionId, processLinkService.getProcessLinks(processDefinitionId).stream()
+                .filter(link -> link.getActivityType() == ActivityTypeWithEventName.START_EVENT_START)
+                .toList());
     }
 
     /**
@@ -190,23 +268,6 @@ public class ComposerConfigurationResolver {
                             + "' from more than one catalog. Name the catalog on the request.");
         }
         return offering;
-    }
-
-    private List<UUID> formDefinitionIds(String processDefinitionId, String activityId) {
-        return processLinkService.getProcessLinks(processDefinitionId, activityId).stream()
-                .filter(FormProcessLink.class::isInstance)
-                .map(FormProcessLink.class::cast)
-                .map(FormProcessLink::getFormDefinitionId)
-                .toList();
-    }
-
-    private List<UUID> startFormDefinitionIds(String processDefinitionId) {
-        return processLinkService.getProcessLinks(processDefinitionId).stream()
-                .filter(FormProcessLink.class::isInstance)
-                .map(FormProcessLink.class::cast)
-                .filter(link -> link.getActivityType() == ActivityTypeWithEventName.START_EVENT_START)
-                .map(FormProcessLink::getFormDefinitionId)
-                .toList();
     }
 
     /** Collect the composers on one form definition into {@code into}. */

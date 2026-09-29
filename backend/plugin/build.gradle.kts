@@ -79,6 +79,8 @@ dependencies {
     compileOnly(libs.valtimo.case)
     compileOnly(libs.valtimo.process.document)
     compileOnly(libs.valtimo.form)
+    // The letter composer reads its configuration from a form flow's steps as well as a task's form.
+    compileOnly(libs.valtimo.form.flow)
     compileOnly(libs.valtimo.importer)
     compileOnly(libs.valtimo.temporary.resource.storage)
     compileOnly(libs.spring.boot.starter.aop)
@@ -89,6 +91,7 @@ dependencies {
     annotationProcessor(libs.lombok)
 
     // Test dependencies
+    testImplementation(libs.valtimo.form.flow)
     testImplementation(libs.valtimo.core)
     testImplementation(libs.valtimo.audit)
     testImplementation(libs.valtimo.contract)
