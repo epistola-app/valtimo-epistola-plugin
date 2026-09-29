@@ -115,6 +115,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The preview's object-URL lifecycle moved out of the composer component** into `PreviewRenderer`,
+  which owns creating and revoking the URL and reading a refused render's complaint out of its Blob
+  body. Both were untested while they lived among the component's state, and both are the kind that
+  fail quietly: a preview refreshes on every edit, so a URL that is never revoked leaks one per
+  keystroke, and a refusal read as an error object says nothing at all. Nine tests now cover them,
+  including that rendering a second letter releases the first.
+
 - **The composer resolver was doing three jobs; now it does one.** Finding which form applies needs
   four Valtimo services and three link paths; reading composers out of a form's JSON and picking
   the one a request means need nothing at all. Those two are now `ComposerParser` and

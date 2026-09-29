@@ -42,6 +42,7 @@ import {
   requiredKeys,
 } from './composer-data';
 import { readOpenDossierId } from './open-dossier';
+import { isRendered, PreviewRenderer } from './preview-renderer';
 import { isSectioned, sectionForm } from './composer-sections';
 import { COMPOSER_SCHEMA_VERSION } from '../composer-schema';
 
@@ -303,7 +304,8 @@ export class EpistolaLetterComposerComponent
   private previewSubject = new Subject<ComposerData>();
   private previewSubscription?: Subscription;
   private prepareSubscription?: Subscription;
-  private currentBlobUrl: string | null = null;
+  /** Owns the rendered PDF's object URL, and reads a refused render's complaint out of its body. */
+  private readonly previews: PreviewRenderer;
 
   constructor(
     private readonly composerApi: EpistolaComposerApiService,
@@ -311,6 +313,9 @@ export class EpistolaLetterComposerComponent
     private readonly sanitizer: DomSanitizer,
     private readonly pluginTranslationService: PluginTranslationService,
   ) {
+    this.previews = new PreviewRenderer(this.sanitizer, () =>
+      this.translate('composerPreviewFailed'),
+    );
     this.previewSubscription = this.previewSubject
       .pipe(debounceTime(1000))
       .subscribe((data) => this.loadPreview(data));
@@ -453,24 +458,19 @@ export class EpistolaLetterComposerComponent
     }
     this.previewLoading = true;
     this.previewError = null;
-    this.revokePreview();
+    this.previewUrl = null;
     this.cdr.markForCheck();
 
-    this.previewRequest(this.selectedTemplateId, data).subscribe({
-      next: (blob) => {
-        this.currentBlobUrl = URL.createObjectURL(blob);
-        this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.currentBlobUrl);
-        this.previewLoading = false;
-        this.cdr.markForCheck();
-      },
-      error: (err) => {
+    this.previews.render(this.previewRequest(this.selectedTemplateId, data)).subscribe((result) => {
+      this.previewLoading = false;
+      if (isRendered(result)) {
+        this.previewUrl = result.url;
+        this.previewError = null;
+      } else {
         this.previewUrl = null;
-        this.previewLoading = false;
-        this.readError(err, (message) => {
-          this.previewError = message;
-          this.cdr.markForCheck();
-        });
-      },
+        this.previewError = result.error;
+      }
+      this.cdr.markForCheck();
     });
   }
 
@@ -528,29 +528,6 @@ export class EpistolaLetterComposerComponent
         });
   }
 
-  /**
-   * A refused render arrives as a Blob body, because the request asked for a PDF. Read it as text
-   * so the template's own complaint reaches the employee instead of a generic failure.
-   */
-  private readError(err: any, done: (message: string) => void): void {
-    const fallback = this.translate('composerPreviewFailed');
-    if (err?.error instanceof Blob) {
-      err.error
-        .text()
-        .then((text: string) => {
-          try {
-            const body = JSON.parse(text);
-            done(body.details || body.error || fallback);
-          } catch {
-            done(fallback);
-          }
-        })
-        .catch(() => done(fallback));
-      return;
-    }
-    done(err?.error?.error || fallback);
-  }
-
   /** A plugin translation, for the messages that are built in code rather than in the template. */
   private translate(key: string): string {
     return this.pluginTranslationService.instant(key, this.pluginId);
@@ -562,10 +539,7 @@ export class EpistolaLetterComposerComponent
   }
 
   private revokePreview(): void {
-    if (this.currentBlobUrl) {
-      URL.revokeObjectURL(this.currentBlobUrl);
-      this.currentBlobUrl = null;
-    }
+    this.previews.release();
     this.previewUrl = null;
   }
 }
