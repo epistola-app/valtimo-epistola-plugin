@@ -84,20 +84,21 @@ public record LetterComposerConfiguration(
     }
 
     /**
-     * The catalog the given letter lives in, or the set's own when it is not offered here.
+     * The one offered letter with this id, narrowed by catalog when the caller names one.
      *
-     * <p>For callers that hold a template id but not the offered letter. Never fall back to
-     * {@link #catalogId()} directly: that is the set's default, not necessarily this letter's.
+     * <p>Only safe to call once {@code ComposerConfigurationResolver.requireOffering} has accepted
+     * the request, which is what guarantees exactly one match — it refuses both "not offered" and
+     * "offered by two catalogs". Hence the exception rather than a null: reaching either branch
+     * means the caller skipped that check.
      */
-    public String catalogFor(String templateId) {
-        OfferedTemplate template = findTemplate(templateId);
-        return template != null ? template.catalogId() : catalogId;
-    }
-
-    /** The offered template with this id, or null when the component does not offer it. */
-    public OfferedTemplate findTemplate(String templateId) {
-        List<OfferedTemplate> matches = matching(null, templateId);
-        return matches.isEmpty() ? null : matches.get(0);
+    public OfferedTemplate requireOne(String catalogId, String templateId) {
+        List<OfferedTemplate> matches = matching(catalogId, templateId);
+        if (matches.size() != 1) {
+            throw new IllegalStateException(
+                    "Letter composer '" + componentKey + "' offers " + matches.size() + " letters for "
+                            + "template '" + templateId + "'; requireOffering should have refused this");
+        }
+        return matches.get(0);
     }
 
     /**

@@ -27,6 +27,7 @@ import com.ritense.processlink.service.ProcessLinkService;
 import com.ritense.formflow.domain.FormFlowProcessLink;
 import com.ritense.formflow.domain.definition.configuration.step.FormStepTypeProperties;
 import com.ritense.valtimo.contract.case_.CaseDefinitionId;
+import com.ritense.case_.service.ActiveCaseDefinitionService;
 import com.ritense.formflow.service.FormFlowService;
 import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
 import org.operaton.bpm.engine.RepositoryService;
@@ -64,6 +65,7 @@ class ComposerConfigurationResolverTest {
     private FormDefinitionRepository formDefinitionRepository;
     private RepositoryService repositoryService;
     private FormFlowService formFlowService;
+    private ActiveCaseDefinitionService activeCaseDefinitionService;
     private ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
     private ProcessDefinitionQuery processDefinitionQuery;
     private ComposerConfigurationResolver resolver;
@@ -78,25 +80,39 @@ class ComposerConfigurationResolverTest {
         when(processDefinitionQuery.list()).thenReturn(List.of());
         formFlowService = mock(FormFlowService.class);
         processDefinitionCaseDefinitionService = mock(ProcessDefinitionCaseDefinitionService.class);
+        activeCaseDefinitionService = mock(ActiveCaseDefinitionService.class);
         resolver = new ComposerConfigurationResolver(
-                processLinkService, formDefinitionRepository, repositoryService,
-                formFlowService, processDefinitionCaseDefinitionService);
+                processLinkService, formDefinitionRepository, formFlowService,
+                activeCaseDefinitionService, processDefinitionCaseDefinitionService);
     }
 
+    private static final String CASE_KEY = "correspondentie";
+
     /**
-     * Tell the discovery query which definitions are deployed.
+     * Say which processes a user may start on the case, which is what discovery now asks.
      *
      * <p>The mocks are built before {@code when(...)} is entered on purpose: constructing them
      * inside the argument would be stubbing within unfinished stubbing, which Mockito rejects.
      */
-    private void deployed(String... ids) {
-        List<ProcessDefinition> definitions = new java.util.ArrayList<>();
-        for (String id : ids) {
-            ProcessDefinition definition = mock(ProcessDefinition.class);
-            when(definition.getId()).thenReturn(id);
-            definitions.add(definition);
+    private void startableOnTheCase(String... processDefinitionIds) {
+        var caseDefinitionId = new CaseDefinitionId(CASE_KEY, "1.0.0");
+        var caseDefinition = mock(com.ritense.case_.domain.definition.CaseDefinition.class);
+        when(caseDefinition.getId()).thenReturn(caseDefinitionId);
+        when(activeCaseDefinitionService.getActiveCaseDefinition(CASE_KEY)).thenReturn(caseDefinition);
+
+        List<com.ritense.processdocument.domain.ProcessDefinitionCaseDefinition> links =
+                new java.util.ArrayList<>();
+        for (String id : processDefinitionIds) {
+            var link = mock(com.ritense.processdocument.domain.ProcessDefinitionCaseDefinition.class);
+            var linkId = mock(com.ritense.processdocument.domain.ProcessDefinitionCaseDefinitionId.class);
+            when(linkId.getProcessDefinitionId())
+                    .thenReturn(new com.ritense.processdocument.domain.ProcessDefinitionId(id));
+            when(link.getId()).thenReturn(linkId);
+            links.add(link);
         }
-        when(processDefinitionQuery.list()).thenReturn(definitions);
+        when(processDefinitionCaseDefinitionService
+                .findProcessDefinitionCaseDefinitions(caseDefinitionId, true, null))
+                .thenReturn(links);
     }
 
     /** Give a definition a start form carrying {@code formJson}. */
@@ -169,7 +185,7 @@ class ComposerConfigurationResolverTest {
         formOnTask(composerJson(""));
 
         var template = resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID).get(0)
-                .findTemplate("herinnering");
+                .requireOne(null, "herinnering");
 
         assertThat(template.label()).isEqualTo("herinnering");
         assertThat(template.dataMapping()).isEqualTo("{\"termijn\": 14}");
@@ -350,30 +366,30 @@ class ComposerConfigurationResolverTest {
         // A start form belongs to exactly one process, so the author should not have to name it.
         // Valtimo tells a Form.io component nothing about the link that rendered it, so the
         // question is answered here instead.
-        deployed("ad-hoc:1:a", "other:1:b");
+        startableOnTheCase("ad-hoc:1:a", "other:1:b");
         startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
         when(processLinkService.getProcessLinks("other:1:b")).thenReturn(List.of());
 
-        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", null, "besluit"))
+        assertThat(resolver.startEventDefinitionsOffering(CASE_KEY, "pv:epistolaLetter", null, "besluit"))
                 .containsExactly("ad-hoc:1:a");
     }
 
     @Test
     void discoversNothingForATemplateNoStartFormOffers() {
-        deployed("ad-hoc:1:a");
+        startableOnTheCase("ad-hoc:1:a");
         startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
 
-        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", null, "aanmaning")).isEmpty();
+        assertThat(resolver.startEventDefinitionsOffering(CASE_KEY, "pv:epistolaLetter", null, "aanmaning")).isEmpty();
     }
 
     @Test
     void discoversNothingForAComposerKeyedDifferently() {
         // The component names itself, so a start form carrying someone else's composer is not a
         // match — otherwise an ad-hoc letter could quietly run another form's configuration.
-        deployed("ad-hoc:1:a");
+        startableOnTheCase("ad-hoc:1:a");
         startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
 
-        assertThat(resolver.startEventDefinitionsOffering("pv:andereBrief", null, "besluit")).isEmpty();
+        assertThat(resolver.startEventDefinitionsOffering(CASE_KEY, "pv:andereBrief", null, "besluit")).isEmpty();
     }
 
     @Test
@@ -381,11 +397,11 @@ class ComposerConfigurationResolverTest {
         // Two matches is the case an author has to break: the endpoint refuses rather than
         // composing with whichever came first.
         UUID secondForm = UUID.randomUUID();
-        deployed("ad-hoc:1:a", "ad-hoc-2:1:b");
+        startableOnTheCase("ad-hoc:1:a", "ad-hoc-2:1:b");
         startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
         startFormOn("ad-hoc-2:1:b", secondForm, composerJson(""));
 
-        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", null, "besluit"))
+        assertThat(resolver.startEventDefinitionsOffering(CASE_KEY, "pv:epistolaLetter", null, "besluit"))
                 .containsExactlyInAnyOrder("ad-hoc:1:a", "ad-hoc-2:1:b");
     }
 
@@ -393,13 +409,13 @@ class ComposerConfigurationResolverTest {
     void doesNotDiscoverAComposerThatOnlySitsOnATaskForm() {
         // Only START_EVENT_START links count. A composer on a user-task form has a task to
         // authorize against, and must not be reachable through the start-form endpoint.
-        deployed(PROCESS_DEFINITION_ID);
+        startableOnTheCase(PROCESS_DEFINITION_ID);
         FormProcessLink taskLink = mock(FormProcessLink.class);
         when(taskLink.getActivityType()).thenReturn(ActivityTypeWithEventName.USER_TASK_CREATE);
         when(processLinkService.getProcessLinks(PROCESS_DEFINITION_ID))
                 .thenReturn(List.<ProcessLink>of(taskLink));
 
-        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", null, "besluit")).isEmpty();
+        assertThat(resolver.startEventDefinitionsOffering(CASE_KEY, "pv:epistolaLetter", null, "besluit")).isEmpty();
     }
 
     @Test
@@ -418,9 +434,9 @@ class ComposerConfigurationResolverTest {
 
         var configuration = resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID).get(0);
 
-        assertThat(configuration.findTemplate("besluit").catalogId()).isEqualTo("gemeente");
-        assertThat(configuration.findTemplate("aanmaning").catalogId()).isEqualTo("landelijk");
-        assertThat(configuration.catalogFor("aanmaning")).isEqualTo("landelijk");
+        assertThat(configuration.requireOne(null, "besluit").catalogId()).isEqualTo("gemeente");
+        assertThat(configuration.requireOne(null, "aanmaning").catalogId()).isEqualTo("landelijk");
+        assertThat(configuration.requireOne(null, "aanmaning").catalogId()).isEqualTo("landelijk");
     }
 
     @Test
@@ -441,7 +457,7 @@ class ComposerConfigurationResolverTest {
         var configuration = resolver.forActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID).get(0);
 
         assertThat(configuration.templates()).hasSize(2);
-        assertThat(configuration.catalogFor("besluit")).isEqualTo("gemeente");
+        assertThat(configuration.requireOne(null, "besluit").catalogId()).isEqualTo("gemeente");
     }
 
     @Test
@@ -583,12 +599,12 @@ class ComposerConfigurationResolverTest {
 
     @Test
     void discoveryNarrowsByCatalogToo() {
-        deployed("ad-hoc:1:a");
+        startableOnTheCase("ad-hoc:1:a");
         startFormOn("ad-hoc:1:a", FORM_ID, composerJson(""));
 
-        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "gemeente", "besluit"))
+        assertThat(resolver.startEventDefinitionsOffering(CASE_KEY, "pv:epistolaLetter", "gemeente", "besluit"))
                 .containsExactly("ad-hoc:1:a");
-        assertThat(resolver.startEventDefinitionsOffering("pv:epistolaLetter", "landelijk", "besluit"))
+        assertThat(resolver.startEventDefinitionsOffering(CASE_KEY, "pv:epistolaLetter", "landelijk", "besluit"))
                 .isEmpty();
     }
 

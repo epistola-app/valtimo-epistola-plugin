@@ -298,8 +298,13 @@ public class EpistolaComposerResource {
             throw new StartEventAuthorization.NotFoundException("Case document not found: " + trimmedDocumentId);
         }
 
+        // Narrowed to the case on screen: an ad-hoc letter starts a process on the open dossier,
+        // so a case with no dossier (a new-case start form) has nothing to narrow by and the
+        // author names the process instead.
+        String caseDefinitionKey = document == null ? null : document.definitionId().name();
         List<String> startable = letterComposerService
-                .startEventDefinitionsOffering(componentKey, catalogId, templateId).stream()
+                .startEventDefinitionsOffering(caseDefinitionKey, componentKey, catalogId, templateId)
+                .stream()
                 .filter(definitionId -> startEventAuthorization.permits(definitionId, document))
                 .toList();
 

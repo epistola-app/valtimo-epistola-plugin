@@ -29,6 +29,7 @@ import com.ritense.form.repository.FormDefinitionRepository;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processlink.service.ProcessLinkService;
 import com.ritense.valtimo.service.OperatonTaskService;
+import com.ritense.case_.service.ActiveCaseDefinitionService;
 import com.ritense.formflow.service.FormFlowService;
 import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
 import org.operaton.bpm.engine.RepositoryService;
@@ -61,15 +62,15 @@ public class EpistolaComposerConfiguration {
     public ComposerConfigurationResolver composerConfigurationResolver(
             ProcessLinkService processLinkService,
             FormDefinitionRepository formDefinitionRepository,
-            RepositoryService repositoryService,
             FormFlowService formFlowService,
+            ActiveCaseDefinitionService activeCaseDefinitionService,
             ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService
     ) {
         return new ComposerConfigurationResolver(
                 processLinkService,
                 formDefinitionRepository,
-                repositoryService,
                 formFlowService,
+                activeCaseDefinitionService,
                 processDefinitionCaseDefinitionService);
     }
 

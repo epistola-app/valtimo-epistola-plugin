@@ -126,16 +126,18 @@ public class LetterComposerService {
      * endpoints reach the configuration only through this service.
      */
     public List<String> startEventDefinitionsOffering(
-            String componentKey, String catalogId, String templateId) {
-        return configurationResolver.startEventDefinitionsOffering(componentKey, catalogId, templateId);
+            String caseDefinitionKey, String componentKey, String catalogId, String templateId) {
+        return configurationResolver.startEventDefinitionsOffering(
+                caseDefinitionKey, componentKey, catalogId, templateId);
     }
 
     /**
      * Resolve a letter's data for this case and build the input form for what is still missing.
      */
     public PreparedLetter prepare(ComposerContext ctx, String catalogId, String templateId) {
-        LetterComposerConfiguration configuration = configurationFor(ctx, catalogId, templateId);
-        var offered = configuration.matching(catalogId, templateId).get(0);
+        ResolvedLetter resolved = resolve(ctx, catalogId, templateId);
+        LetterComposerConfiguration configuration = resolved.configuration();
+        var offered = resolved.letter();
 
         Map<String, Object> data = resolveData(ctx, configuration, offered);
         TemplateDetails template = templateDetails(configuration, offered.catalogId(), templateId);
@@ -167,16 +169,15 @@ public class LetterComposerService {
      */
     public InputStream preview(
             ComposerContext ctx, String catalogId, String templateId, Map<String, Object> data) {
-        LetterComposerConfiguration configuration = configurationFor(ctx, catalogId, templateId);
-        var offered = configuration.matching(catalogId, templateId).get(0);
-        EpistolaPlugin plugin = plugin(configuration);
+        ResolvedLetter resolved = resolve(ctx, catalogId, templateId);
+        EpistolaPlugin plugin = plugin(resolved.configuration());
 
         try {
             return epistolaService.previewDocument(
                     plugin.getBaseUrl(),
                     plugin.getApiKey(),
                     plugin.getTenantId(),
-                    offered.catalogId(),
+                    resolved.letter().catalogId(),
                     templateId,
                     null,
                     plugin.getDefaultEnvironmentId(),
@@ -210,6 +211,25 @@ public class LetterComposerService {
                 "Template '" + templateId + "' requires " + fields + ", which the composer cannot ask "
                         + "for: the value has no separate fields to fill in. Supply it from the "
                         + "baseline mapping instead.");
+    }
+
+    /** A composer and the one letter of it this request is about. */
+    private record ResolvedLetter(
+            LetterComposerConfiguration configuration,
+            LetterComposerConfiguration.OfferedTemplate letter
+    ) {
+    }
+
+    /**
+     * The composer that offers this letter, and the letter itself.
+     *
+     * <p>One step rather than two, because they are not independent: the letter is only findable
+     * once a composer has been accepted, and that acceptance is what guarantees there is exactly
+     * one of it.
+     */
+    private ResolvedLetter resolve(ComposerContext ctx, String catalogId, String templateId) {
+        LetterComposerConfiguration configuration = configurationFor(ctx, catalogId, templateId);
+        return new ResolvedLetter(configuration, configuration.requireOne(catalogId, templateId));
     }
 
     private LetterComposerConfiguration configurationFor(

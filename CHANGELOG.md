@@ -115,6 +115,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Start-form discovery asks the case, not the installation.** Finding which process a composer's
+  start form belongs to read _every deployed process definition's_ process links, so one ad-hoc
+  letter cost more the more processes were deployed — unrelated ones included. It now asks which
+  processes a user can start on the open dossier's case, which is the only set of candidates there
+  ever were: an ad-hoc letter starts a process on that case. The resolver loses its
+  `RepositoryService` dependency with it. A start form for a _new_ case has no case to narrow by,
+  and naming the process remains the answer there.
+
+- **One lookup where there were two.** `prepare` and `preview` each resolved the composer and then
+  picked the letter out of it with `.get(0)` — safe only because of an invariant enforced in
+  another class and stated at neither call site. Both now go through one `resolve(…)`, and
+  `LetterComposerConfiguration.requireOne` makes the invariant explicit rather than assumed.
+  `catalogFor` is deleted: it had no callers left and fell back to the _set's_ catalog, which is
+  exactly the mistake that made a letter's own catalog matter in the first place.
+
 - **The generate action says what it does.** "Genereer samengestelde brief" / "Generate composed
   letter" described the plumbing, not the job — "samengesteld" is a literal rendering of "composed"
   and reads as jargon. It is now **"Genereer Gekozen Brief"** / **"Generate Chosen Letter"**, which

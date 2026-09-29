@@ -24,6 +24,7 @@ import com.ritense.form.repository.FormDefinitionRepository;
 import com.ritense.formflow.domain.FormFlowProcessLink;
 import com.ritense.formflow.domain.definition.FormFlowDefinition;
 import com.ritense.formflow.domain.definition.configuration.step.FormStepTypeProperties;
+import com.ritense.case_.service.ActiveCaseDefinitionService;
 import com.ritense.formflow.service.FormFlowService;
 import com.ritense.processdocument.domain.ProcessDefinitionId;
 import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
@@ -32,7 +33,6 @@ import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import com.ritense.processlink.service.ProcessLinkService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.operaton.bpm.engine.RepositoryService;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,8 +57,8 @@ public class ComposerConfigurationResolver {
 
     private final ProcessLinkService processLinkService;
     private final FormDefinitionRepository formDefinitionRepository;
-    private final RepositoryService repositoryService;
     private final FormFlowService formFlowService;
+    private final ActiveCaseDefinitionService activeCaseDefinitionService;
     private final ProcessDefinitionCaseDefinitionService processDefinitionCaseDefinitionService;
 
     /**
@@ -175,18 +175,46 @@ public class ComposerConfigurationResolver {
      * @return the latest deployed definition ids, in no particular order
      */
     public List<String> startEventDefinitionsOffering(
-            String componentKey, String catalogId, String templateId) {
+            String caseDefinitionKey, String componentKey, String catalogId, String templateId) {
         List<String> matches = new ArrayList<>();
-        for (var definition : repositoryService.createProcessDefinitionQuery().latestVersion().list()) {
-            boolean offered = forStartEvent(definition.getId()).stream()
+        for (String processDefinitionId : startableProcessesFor(caseDefinitionKey)) {
+            boolean offered = forStartEvent(processDefinitionId).stream()
                     .filter(configuration -> componentKey == null || componentKey.isBlank()
                             || componentKey.equals(configuration.componentKey()))
                     .anyMatch(configuration -> configuration.offers(catalogId, templateId));
             if (offered) {
-                matches.add(definition.getId());
+                matches.add(processDefinitionId);
             }
         }
         return matches;
+    }
+
+    /**
+     * The processes a user can start on this case.
+     *
+     * <p>An ad-hoc letter starts a process <i>on the open dossier</i>, so those are the only
+     * candidates there have ever been — an earlier version read every deployed definition's
+     * process links to find out, which grew with the installation rather than with the case.
+     *
+     * <p>Returns nothing for a case that has none, and for a caller with no dossier at all: a
+     * composer on the start form of a new case has no case to narrow by, and naming the process is
+     * the answer there.
+     */
+    private List<String> startableProcessesFor(String caseDefinitionKey) {
+        if (caseDefinitionKey == null || caseDefinitionKey.isBlank()) {
+            return List.of();
+        }
+        try {
+            var caseDefinition = activeCaseDefinitionService.getActiveCaseDefinition(caseDefinitionKey);
+            return processDefinitionCaseDefinitionService
+                    .findProcessDefinitionCaseDefinitions(caseDefinition.getId(), true, null).stream()
+                    .map(link -> link.getId().getProcessDefinitionId().getId())
+                    .toList();
+        } catch (RuntimeException e) {
+            log.debug("No startable processes for case definition '{}': {}",
+                    caseDefinitionKey, e.getMessage());
+            return List.of();
+        }
     }
 
     /**

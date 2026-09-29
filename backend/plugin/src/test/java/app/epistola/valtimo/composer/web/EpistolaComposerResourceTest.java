@@ -42,6 +42,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -228,9 +229,14 @@ class EpistolaComposerResourceTest {
     @Test
     void prepareOnStartForm_findsTheProcessWhenTheAuthorNamedNone() {
         // The author should not have to name a process a start form already belongs to.
+        // Discovery is narrowed to the case the dossier belongs to, so the document has to name it.
+        var definitionId = mock(com.ritense.document.domain.impl.JsonSchemaDocumentDefinitionId.class);
+        when(definitionId.name()).thenReturn("correspondentie");
         var document = mock(com.ritense.document.domain.impl.JsonSchemaDocument.class);
+        when(document.definitionId()).thenReturn(definitionId);
         when(startEventAuthorization.findDocument("doc-1")).thenReturn(document);
-        when(letterComposerService.startEventDefinitionsOffering(COMPONENT_KEY, null, "besluit"))
+        when(letterComposerService.startEventDefinitionsOffering(
+                eq("correspondentie"), eq(COMPONENT_KEY), isNull(), eq("besluit")))
                 .thenReturn(java.util.List.of("ad-hoc:1:a"));
         when(startEventAuthorization.permits("ad-hoc:1:a", document)).thenReturn(true);
         when(startEventAuthorization.requireById("ad-hoc:1:a", "doc-1"))
@@ -252,7 +258,7 @@ class EpistolaComposerResourceTest {
 
     @Test
     void prepareOnStartForm_refusesWhenNoStartFormOffersTheTemplate() {
-        when(letterComposerService.startEventDefinitionsOffering(COMPONENT_KEY, null, "besluit"))
+        when(letterComposerService.startEventDefinitionsOffering(any(), eq(COMPONENT_KEY), isNull(), eq("besluit")))
                 .thenReturn(java.util.List.of());
 
         var response = resource.prepareOnStartForm(new EpistolaComposerResource.StartPrepareRequest(
@@ -266,7 +272,7 @@ class EpistolaComposerResourceTest {
     void prepareOnStartForm_skipsAProcessThisCallerMayNotStart() {
         // Narrowing happens before anything is reported, so a caller never learns about — or is
         // blocked by — a process they have no part in.
-        when(letterComposerService.startEventDefinitionsOffering(COMPONENT_KEY, null, "besluit"))
+        when(letterComposerService.startEventDefinitionsOffering(any(), eq(COMPONENT_KEY), isNull(), eq("besluit")))
                 .thenReturn(java.util.List.of("theirs:1:a", "mine:1:b"));
         when(startEventAuthorization.permits("theirs:1:a", null)).thenReturn(false);
         when(startEventAuthorization.permits("mine:1:b", null)).thenReturn(true);
@@ -284,7 +290,7 @@ class EpistolaComposerResourceTest {
 
     @Test
     void prepareOnStartForm_asksTheAuthorToChooseWhenTwoProcessesOfferIt() {
-        when(letterComposerService.startEventDefinitionsOffering(COMPONENT_KEY, null, "besluit"))
+        when(letterComposerService.startEventDefinitionsOffering(any(), eq(COMPONENT_KEY), isNull(), eq("besluit")))
                 .thenReturn(java.util.List.of("one:1:a", "two:1:b"));
         when(startEventAuthorization.permits(any(), any())).thenReturn(true);
 
@@ -309,7 +315,7 @@ class EpistolaComposerResourceTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         verify(startEventAuthorization).require("correspondentie-ad-hoc", "doc-1");
         verify(letterComposerService, org.mockito.Mockito.never())
-                .startEventDefinitionsOffering(any(), any(), any());
+                .startEventDefinitionsOffering(any(), any(), any(), any());
     }
 
     @Test
@@ -330,7 +336,7 @@ class EpistolaComposerResourceTest {
     void prepareOnStartForm_handsBackTheProcessItFound() {
         // So the preview, which fires on every edit, can name it instead of making the backend
         // read every deployed definition's process links again.
-        when(letterComposerService.startEventDefinitionsOffering(COMPONENT_KEY, null, "besluit"))
+        when(letterComposerService.startEventDefinitionsOffering(any(), eq(COMPONENT_KEY), isNull(), eq("besluit")))
                 .thenReturn(java.util.List.of("ad-hoc:1:a"));
         when(startEventAuthorization.permits("ad-hoc:1:a", null)).thenReturn(true);
         when(startEventAuthorization.requireById("ad-hoc:1:a", null)).thenReturn(
@@ -358,7 +364,7 @@ class EpistolaComposerResourceTest {
 
         verify(startEventAuthorization).require("correspondentie-ad-hoc", null);
         verify(letterComposerService, org.mockito.Mockito.never())
-                .startEventDefinitionsOffering(any(), any(), any());
+                .startEventDefinitionsOffering(any(), any(), any(), any());
     }
 
     @Test
