@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The three lists that adding a Form.io component means updating are now checked.** Registering a
+  component, forwarding its settings through `fieldOptions`, and listing it in
+  [docs/formio-components.md](docs/formio-components.md) are all written by hand somewhere other
+  than the component itself, and forgetting any of them is silent — an unregistered component
+  simply does not exist in the builder, a setting left out of `fieldOptions` arrives as
+  `undefined`, and a missing docs row is a component nobody knows about. None is a compile error
+  and no behavioural test notices, which is how a generate action missing from a list shipped a
+  letter that generated perfectly and left its process waiting forever.
+
+  `component-registry.spec.ts` reads the components off disk rather than restating them, so adding
+  one needs no list updated here. Each check was proved by breaking it: dropping a registration
+  call, adding a setting the component reads but nothing forwards, and removing a row from the docs
+  table each fail it. The registration check ignores import lines — a registration imported and
+  never called is exactly the mistake it exists to catch, and the name alone cannot tell the
+  difference.
+
 - **A letter composer works on a form-flow step.** The configuration was read only from a task's
   _form_ link, so a composer inside a form flow was never found. Both link kinds are now followed:
   a form link gives its form directly, a form-flow link gives the flow and every form step in it is
