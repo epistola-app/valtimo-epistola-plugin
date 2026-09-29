@@ -2,8 +2,8 @@
 //
 // SPDX-License-Identifier: EUPL-1.2
 
-import { test, expect, type Page } from '@playwright/test';
-import { openDossier } from '../pages/correspondentie.page';
+import { test, expect } from '@playwright/test';
+import { openDossier, startFromMenu } from '../pages/correspondentie.page';
 
 /**
  * An ad-hoc letter from an open dossier, with **no user task anywhere**.
@@ -17,40 +17,12 @@ import { openDossier } from '../pages/correspondentie.page';
  * Needs a reachable Epistola, since the preview renders a real PDF.
  */
 
-/**
- * Open the ad-hoc letter from the dossier's Start menu.
- *
- * The menu fills in after the dossier loads, and clicking Start toggles it — so wait for the item
- * to be *visible* rather than merely present, or a retry closes the menu again and the click lands
- * on a hidden element.
- */
-async function startAdHocLetter(page: Page) {
-  const adHoc = page.getByText('Losse brief versturen', { exact: true });
-  const startButton = page.getByRole('button', { name: /^Start/ }).first();
-
-  await expect
-    .poll(
-      async () => {
-        if (await adHoc.isVisible().catch(() => false)) {
-          return true;
-        }
-        await startButton.click({ force: true });
-        await page.waitForTimeout(1_500);
-        return adHoc.isVisible().catch(() => false);
-      },
-      { timeout: 40_000, message: 'the ad-hoc letter process never appeared in the Start menu' },
-    )
-    .toBe(true);
-
-  await adHoc.click({ force: true });
-}
-
 test.describe('Letter composer — an ad-hoc letter, without a user task', () => {
   test('composes and generates from the dossier itself', async ({ page }) => {
     test.setTimeout(180_000);
 
     await openDossier(page);
-    await startAdHocLetter(page);
+    await startFromMenu(page, 'Losse brief versturen');
 
     // The composer runs on a start form: no task exists, and the case comes from the open dossier.
     const select = page.getByTestId('epistola-composer-select');

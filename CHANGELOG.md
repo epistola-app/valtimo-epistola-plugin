@@ -51,6 +51,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The composer on a form-flow step generated nothing, and the task never completed.** The demo
+  added for it looked right in the browser — the letter was offered, previewed and submitted — and
+  then the final step answered 500 with _"No composed letter on process variable
+  'epistolaFlowLetter'"_. Two separate reasons, both particular to form flows.
+
+  A flow does not resolve `pv:` keys. Outside one, Valtimo maps a field keyed `pv:x` onto a process
+  variable on submit; inside one, `completeTask`'s two-argument overload writes the whole submission
+  to a single path (`doc:/submission`) and resolves nothing. The three-argument overload takes a map
+  of value-resolver target → JSON pointer into the submission, so `kies-brief-flow` now names the
+  variable the generate task reads. With the mapping explicit, nothing is written to
+  `doc:/submission` any more, so the case schema needs no `submission` property.
+
+  And only the **completing** step's submission is mapped, while the composer sits on the first
+  step — so the confirming step re-declares the same key as a hidden carrier, the pattern the
+  form-flow demo already used for its subject field. Prefill fills it from the flow's merged
+  submission data, which was verified against a live flow instance rather than assumed.
+
+  Both were found by walking the demo in a browser; the fixture tests that guard the demo's shape
+  saw neither. `letter-composer-flow.spec.ts` now covers it, and the ad-hoc suite shares the
+  Start-menu helper it needed.
+
 - **The local stack could not be started from scratch.** Both failures were invisible on a machine
   that already had the stack running, and both surfaced the first time the browser E2E workflow
   actually ran on a clean runner.

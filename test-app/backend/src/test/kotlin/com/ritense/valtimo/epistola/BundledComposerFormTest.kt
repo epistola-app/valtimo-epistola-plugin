@@ -55,6 +55,100 @@ class BundledComposerFormTest {
             .isPositive
     }
 
+    /**
+     * A composer inside a form flow needs two things spelled out, and neither is a compile error.
+     *
+     * A flow does not resolve `pv:` keys the way an ordinary form does: `completeTask`'s
+     * two-argument overload writes the whole submission to one path and resolves nothing, so the
+     * variable the generate task reads has to be named in the three-argument overload's mapping.
+     * And only the *completing* step's submission is mapped, so a composer on an earlier step needs
+     * a hidden same-key carrier on the completing step to reach it.
+     *
+     * Miss either and the demo still looks right — the letter is offered, previewed and submitted —
+     * and the last step answers 500 with "No composed letter on process variable". Both were shipped
+     * that way, and only walking the flow in a browser found them.
+     */
+    @Test
+    fun `a composer in a form flow can reach the process variable the generate task reads`() {
+        var checked = 0
+
+        resolver.getResources("classpath*:config/case/**/form-flow/*.form-flow.json").forEach { flowResource ->
+            val flow = flowResource.inputStream.use { mapper.readTree(it) }
+            val case = caseOf(flowResource.uri.toString())
+            val steps = flow.path("steps").toList()
+            val completing =
+                steps.lastOrNull { step ->
+                    step.path("onComplete").any { it.asText().contains("completeTask") }
+                } ?: return@forEach
+            val onComplete = completing.path("onComplete").joinToString(" ") { it.asText() }
+            val completingKeys = formFor(case, completing)?.path("components")?.inputKeys() ?: emptySet()
+
+            steps.forEach { step ->
+                val form = formFor(case, step) ?: return@forEach
+                form.path("components").composers().forEach { composer ->
+                    val key = composer.path("key").asText()
+                    val where = "$key in ${flowResource.description}"
+                    checked++
+
+                    assertThat(onComplete)
+                        .describedAs(
+                            "the completing step of %s must map %s onto the process variable — a form " +
+                                "flow resolves no pv: key on its own, so completeTask needs the " +
+                                "three-argument mapping",
+                            where,
+                            key,
+                        ).contains("'$key':'/$key'")
+
+                    if (step != completing) {
+                        assertThat(completingKeys)
+                            .describedAs(
+                                "the completing step of %s must re-declare %s as a hidden carrier — only " +
+                                    "its own submission data is mapped, so a letter chosen earlier never " +
+                                    "reaches the mapping",
+                                where,
+                                key,
+                            ).contains(key)
+                    }
+                }
+            }
+        }
+
+        assertThat(checked)
+            .describedAs("expected a bundled form flow carrying a letter composer")
+            .isPositive
+    }
+
+    /** The case a bundled resource belongs to; form names are unique only within one. */
+    private fun caseOf(uri: String): String = Regex("config/case/([^/]+)/").find(uri)!!.groupValues[1]
+
+    /** The form a flow step renders, resolved the way Valtimo resolves it: by name, within the case. */
+    private fun formFor(
+        case: String,
+        step: JsonNode,
+    ): JsonNode? {
+        val name =
+            step
+                .path("type")
+                .path("properties")
+                .path("definition")
+                .asText()
+        if (name.isEmpty()) {
+            return null
+        }
+        return resolver
+            .getResources("classpath*:config/case/$case/**/form/$name.form.json")
+            .firstOrNull()
+            ?.inputStream
+            ?.use { mapper.readTree(it) }
+    }
+
+    /** Every input key in a component tree, whatever nests it. */
+    private fun JsonNode.inputKeys(): Set<String> =
+        flatMap { component ->
+            component.path("components").inputKeys() +
+                if (component.path("input").asBoolean(false)) setOf(component.path("key").asText()) else emptySet()
+        }.toSet()
+
     /** Every letter composer in a component tree, however deeply a layout component nests it. */
     private fun JsonNode.composers(): List<JsonNode> =
         flatMap { component ->

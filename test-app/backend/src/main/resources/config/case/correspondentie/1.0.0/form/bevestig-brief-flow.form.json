@@ -9,6 +9,12 @@
       "html": "<p>De gekozen brief wordt na deze stap gegenereerd.</p>"
     },
     {
+      "comment": "Carries the letter chosen on the previous step. completeTask maps only the COMPLETING step's submission data, so without this the generate task finds no letter on epistolaFlowLetter and the task fails to complete. Valtimo prefills each step from the flow's merged submission data, so re-declaring the key here arrives with the earlier value.",
+      "type": "hidden",
+      "key": "pv:epistolaFlowLetter",
+      "input": true
+    },
+    {
       "type": "button",
       "key": "submit",
       "label": "Verstuur brief",

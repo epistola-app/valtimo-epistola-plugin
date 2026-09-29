@@ -51,3 +51,31 @@ export async function openDossier(page: Page): Promise<void> {
   await rows.first().click({ force: true });
   await expect(page.getByRole('button', { name: /^Start/ })).toBeVisible({ timeout: 20_000 });
 }
+
+/**
+ * Start one of the dossier's own processes from its Start menu.
+ *
+ * The menu fills in after the dossier loads, and clicking Start toggles it — so wait for the item
+ * to be *visible* rather than merely present, or a retry closes the menu again and the click lands
+ * on a hidden element.
+ */
+export async function startFromMenu(page: Page, name: string): Promise<void> {
+  const item = page.getByText(name, { exact: true });
+  const startButton = page.getByRole('button', { name: /^Start/ }).first();
+
+  await expect
+    .poll(
+      async () => {
+        if (await item.isVisible().catch(() => false)) {
+          return true;
+        }
+        await startButton.click({ force: true });
+        await page.waitForTimeout(1_500);
+        return item.isVisible().catch(() => false);
+      },
+      { timeout: 40_000, message: `"${name}" never appeared in the Start menu` },
+    )
+    .toBe(true);
+
+  await item.click({ force: true });
+}
