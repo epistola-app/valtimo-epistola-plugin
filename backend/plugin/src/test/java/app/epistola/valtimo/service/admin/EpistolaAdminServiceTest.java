@@ -21,6 +21,7 @@ import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
 import app.epistola.valtimo.service.EpistolaService;
+import app.epistola.valtimo.service.versioncheck.SemVersion;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.versioncheck.VersionCheckService;
 
@@ -144,7 +145,7 @@ class EpistolaAdminServiceTest {
             // The contract version the plugin ships, read from epistola-contract-version.txt
             // inside the client jar. Pinned deliberately: bumping the contract dependency
             // should be a conscious update here, not a silent drift.
-            assertThat(status.contractVersion()).isEqualTo("1.3.1");
+            assertThat(status.contractVersion()).isEqualTo("1.4.0");
             assertThat(status.serverContractVersion()).isNull();
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
@@ -156,14 +157,14 @@ class EpistolaAdminServiceTest {
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("0.26.3", "1.3.1"));
+                    .thenReturn(new EpistolaService.SystemInfo("0.26.3", "1.4.0"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
             ConnectionStatus status = results.get(0);
             assertThat(status.serverVersion()).isEqualTo("0.26.3");
-            assertThat(status.contractVersion()).isEqualTo("1.3.1");
-            assertThat(status.serverContractVersion()).isEqualTo("1.3.1");
+            assertThat(status.contractVersion()).isEqualTo("1.4.0");
+            assertThat(status.serverContractVersion()).isEqualTo("1.4.0");
             assertThat(status.contractCompatibilitySeverity()).isEqualTo(ContractCompatibilitySeverity.OK);
         }
 
@@ -202,15 +203,19 @@ class EpistolaAdminServiceTest {
                     .thenReturn(List.of());
             // Must stay ahead of the plugin's own contract version, or this asserts nothing.
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("1.4.2", "1.4.2"));
+                    .thenReturn(new EpistolaService.SystemInfo("1.5.3", "1.5.3"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
             ConnectionStatus status = results.get(0);
             // The premise, checked rather than trusted: a contract bump once made this server
             // equal to the plugin's own version, and the test kept passing.
-            assertThat(Runtime.Version.parse(status.serverContractVersion()))
-                    .isGreaterThan(Runtime.Version.parse(status.contractVersion()));
+            //
+            // Compared with the plugin's own SemVersion, not Runtime.Version: the JDK's parser
+            // rejects a version whose last element is zero, so it cannot read "1.4.0" at all and
+            // threw here the moment the contract reached a x.y.0 release.
+            assertThat(SemVersion.parse(status.serverContractVersion()).orElseThrow())
+                    .isGreaterThan(SemVersion.parse(status.contractVersion()).orElseThrow());
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.OK);
         }
@@ -264,7 +269,7 @@ class EpistolaAdminServiceTest {
             ConnectionStatus status = results.get(0);
             assertThat(status.reachable()).isFalse();
             assertThat(status.errorMessage()).isEqualTo("Connection refused");
-            assertThat(status.contractVersion()).isEqualTo("1.3.1");
+            assertThat(status.contractVersion()).isEqualTo("1.4.0");
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
         }

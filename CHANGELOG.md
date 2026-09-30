@@ -218,6 +218,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Upgraded the Epistola contract client from `1.3.1` to `1.4.0`.** Both of the release's changes
+  are additive, and that was checked rather than taken from the release notes:
+  - **`template-data-invalid`**, a new 400 problem type carrying `missingFields` and `invalidFields`
+    as JSON Pointers into `data`, each with the field's own JSON Schema, plus a new
+    `validateTemplateData` operation. Every new field is optional. Nothing in the plugin reads them
+    yet — they are the obvious way to close [#150](https://github.com/epistola-app/valtimo-epistola-plugin/issues/150),
+    since the composer currently shows Epistola's message verbatim and cannot say which input is at
+    fault.
+  - **Page headers and footers anywhere in a catalog's flow**, which only loosens the old
+    `PAGEHEADER_*` rules. No wire `schemaVersion` bump, so the bundled catalogs stay at `4` and
+    need no re-authoring.
+
+  The risk on a client bump is the reverse of the usual one: a newer client can stop reading older
+  servers, which is how `1.3.0` broke on `slug`. `oldestSupportedServerTest` passes with the `1.4.0`
+  client against a contract-`0.16.1` server — the oldest a supported Suite serves — so the floor
+  stays where it was. The mock-server image moves with the pin.
+
+  **The admin page's contract check now expects `1.4.0`**, so a Suite serving contract `1.3.x` or
+  earlier shows a warning where a `1.3.1` server previously showed OK. The compatibility rule
+  itself is unchanged — a server whose contract minor is behind the plugin's is a warning, because
+  it may lack something the plugin can ask for — and reading such a server still works, which is
+  what `oldestSupportedServerTest` covers. Confirmed against a live Suite serving `1.3.1`.
+
+  The bump also surfaced a latent bug in the test that guards this: it compared versions with
+  `Runtime.Version.parse`, which rejects a version whose last element is zero and so cannot read
+  `"1.4.0"` at all. Any `x.y.0` contract would have broken it. It now uses the plugin's own
+  `SemVersion`, and its newer-server case moved to a server a **minor** ahead rather than a patch,
+  which is what its name claims to cover.
+
 - **The preview's object-URL lifecycle moved out of the composer component** into `PreviewRenderer`,
   which owns creating and revoking the URL and reading a refused render's complaint out of its Blob
   body. Both were untested while they lived among the component's state, and both are the kind that

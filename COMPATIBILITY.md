@@ -45,6 +45,7 @@ is rejected with RFC-9457 `400 catalog-schema-too-old`.
 
 | Plugin build | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema | Compatible Epistola Suite        |
 | ------------ | --------------------------------------------- | --------------------------- | -------------------------------- |
+| Unreleased   | `1.4.0`                                       | `4`                         | `>= 1.0.0`                       |
 | 0.20.0       | `1.3.1`                                       | `4`                         | `>= 1.0.0`                       |
 | 0.12.0       | `0.8.0`                                       | `4`                         | `>= 0.26.0`                      |
 | ≤ 0.11.x     | `0.6.0`                                       | `2`                         | `<= 0.25.x` (broken on ≥ 0.26.0) |
@@ -66,6 +67,12 @@ Notes:
   than `1.3.0`; this plugin skips it for `1.3.1`, which makes the field optional. The floor is
   guarded by `oldestSupportedServerTest`, which runs the mock-server integration test against
   contract `0.16.1` — the one Epistola Suite `1.0.0` serves. Raise it with the Suite floor.
+- Contract `1.4.0` is **additive on both counts**: its new problem type
+  (`template-data-invalid`, with `missingFields`/`invalidFields`), its `validateTemplateData`
+  operation and its new schemas are all optional, and its catalog change only _loosens_ the
+  page-header rules with no wire `schemaVersion` bump. Verified rather than assumed:
+  `oldestSupportedServerTest` passes with the `1.4.0` client against a contract-`0.16.1` server, so
+  neither the Suite floor nor the bundled catalog schema moves.
 
 ## Engine-integration dependency (correlation)
 

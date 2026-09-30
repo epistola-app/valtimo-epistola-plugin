@@ -55,7 +55,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Testcontainers
 class EpistolaServiceImplTest {
 
-    private static final String MOCK_SERVER_VERSION = System.getProperty("epistola.mock-server.version", "1.3.1");
+    private static final String MOCK_SERVER_VERSION = System.getProperty("epistola.mock-server.version", "1.4.0");
 
     @Container
     private static final GenericContainer<?> MOCK_SERVER = new GenericContainer<>(
