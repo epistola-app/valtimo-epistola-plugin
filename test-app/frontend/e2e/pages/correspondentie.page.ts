@@ -41,15 +41,35 @@ export async function openDossier(page: Page): Promise<void> {
   await page.getByRole('navigation', { name: /Side navigation/i }).waitFor({ timeout: 20_000 });
 
   const rows = page.locator('table tbody tr');
+  const startButton = page.getByRole('button', { name: /^Start/ });
+
   if ((await rows.count()) === 0) {
+    // Cold database: create one and stay on it. Creating a dossier already lands on its detail
+    // page, and going back to the list to click the first row is what failed on a fresh runner —
+    // Valtimo fills that list by polling, so the row can be clicked before it is ready and the
+    // detail page never arrives.
     await createDossier(page);
-    await page.goto('/cases/correspondentie');
+    await expect(startButton).toBeVisible({ timeout: 30_000 });
+    return;
   }
 
   await rows.first().waitFor({ timeout: 20_000 });
-  await page.waitForTimeout(3_000);
-  await rows.first().click({ force: true });
-  await expect(page.getByRole('button', { name: /^Start/ })).toBeVisible({ timeout: 20_000 });
+
+  // Rows are never stable for long either, for the same reason, so the click is retried rather
+  // than preceded by a fixed wait.
+  await expect
+    .poll(
+      async () => {
+        if (await startButton.isVisible().catch(() => false)) {
+          return true;
+        }
+        await rows.first().click({ force: true });
+        await page.waitForTimeout(1_500);
+        return startButton.isVisible().catch(() => false);
+      },
+      { timeout: 40_000, message: 'no dossier detail page opened from the case list' },
+    )
+    .toBe(true);
 }
 
 /**

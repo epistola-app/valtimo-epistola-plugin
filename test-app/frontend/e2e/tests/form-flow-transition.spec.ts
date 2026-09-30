@@ -69,8 +69,10 @@ test.describe('Form Flow voorbeeld — transition with a preview on the confirma
 
     await openCaseList(page);
 
-    // Start a new dossier through the start form.
-    await page.getByRole('button', { name: 'Creëer Nieuw Dossier' }).click();
+    // Start a new dossier through the start form. `.first()`: an empty case list renders this
+    // button twice, in the header and in the empty state, so an unscoped click fails strict mode
+    // on a cold database — which is how this passed locally for months and failed on a runner.
+    await page.getByRole('button', { name: 'Creëer Nieuw Dossier' }).first().click();
     const titleField = page.locator('input[name="data[title]"]');
     await titleField.waitFor({ timeout: 15_000 });
     await titleField.fill('Playwright Form Flow-test');

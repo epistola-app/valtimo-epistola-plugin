@@ -2,108 +2,82 @@
 //
 // SPDX-License-Identifier: EUPL-1.2
 
-import { test, expect, type Page } from '@playwright/test';
-
-const MOCK_TEMPLATES = [
-  { id: 'tpl-1', name: 'Invoice Template', description: 'Generates invoices' },
-  { id: 'tpl-2', name: 'Letter Template', description: 'Generates letters' },
-];
-
-const MOCK_VARIANTS = [
-  { id: 'var-1', templateId: 'tpl-1', name: 'Default', tags: [] },
-  { id: 'var-2', templateId: 'tpl-1', name: 'Formal', tags: ['formal', 'B2B'] },
-];
-
-const MOCK_ENVIRONMENTS = [
-  { id: 'env-1', name: 'Development' },
-  { id: 'env-2', name: 'Production' },
-];
-
-const MOCK_TEMPLATE_DETAILS = {
-  id: 'tpl-1',
-  name: 'Invoice Template',
-  fields: [
-    {
-      name: 'customerName',
-      path: 'customerName',
-      type: 'string',
-      fieldType: 'SCALAR',
-      required: true,
-    },
-    { name: 'amount', path: 'amount', type: 'number', fieldType: 'SCALAR', required: true },
-    { name: 'notes', path: 'notes', type: 'string', fieldType: 'SCALAR', required: false },
-  ],
-};
+import { test, expect } from '@playwright/test';
+import { ProcessLinkPage } from '../pages/process-link.page';
 
 /**
- * Sets up API route mocking for the generate-document form.
- * The form loads templates, variants, environments, and template details from the backend.
+ * The `generate-document` action's configurator, opened on the link the demo declares.
+ *
+ * This file used to mock four Epistola endpoints, navigate to `/plugins`, assert the URL, and then
+ * check its own fixtures back through `page.request` — which bypasses `page.route` entirely, so it
+ * was asserting that the real backend served a template called "Invoice Template". It rendered no
+ * part of the configurator it was named after. Nothing is mocked now: the point of a browser test
+ * here is that the real component, fed the real stored link, shows what was stored.
+ *
+ * The configurator's own logic is covered far more thoroughly by
+ * `generate-document-configuration.component.spec.ts` (Jest). What only a browser can show is that
+ * it renders at all inside Valtimo's process-link wizard, and that the values survive the round
+ * trip through the backend's `@PluginProperty` names.
  */
-async function mockEpistolaApis(page: Page) {
-  await page.route('**/api/v1/plugin/epistola/configurations/*/templates', (route) =>
-    route.fulfill({ json: MOCK_TEMPLATES }),
-  );
-  await page.route('**/api/v1/plugin/epistola/configurations/*/templates/*/variants', (route) =>
-    route.fulfill({ json: MOCK_VARIANTS }),
-  );
-  await page.route('**/api/v1/plugin/epistola/configurations/*/environments', (route) =>
-    route.fulfill({ json: MOCK_ENVIRONMENTS }),
-  );
-  await page.route('**/api/v1/plugin/epistola/configurations/*/templates/tpl-1', (route) =>
-    route.fulfill({ json: MOCK_TEMPLATE_DETAILS }),
-  );
-  await page.route('**/api/v1/plugin/epistola/process-variables**', (route) =>
-    route.fulfill({ json: ['orderId', 'customerEmail', 'totalAmount'] }),
-  );
-}
+test.describe('Generate Document action configuration', () => {
+  test('opens the stored configuration of a linked generate activity', async ({ page }) => {
+    test.setTimeout(120_000);
+    const processLinks = new ProcessLinkPage(page);
 
-test.describe('Generate Document Action Configuration', () => {
-  test('should render all form fields', async ({ page }) => {
-    await mockEpistolaApis(page);
+    // config/case/example/1.0.0/process-link/single-document.process-link.json
+    await processLinks.openProcess('Generate Single Document');
+    await processLinks.openActivity('generate-document');
 
-    // Navigate to a process link configuration page that uses the generate-document action.
-    // This URL pattern is used by Valtimo's process link management.
-    // NOTE: This test may need adjustment for exact navigation — see README.
-    await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await expect(processLinks.region('epistola-generate-form')).toBeVisible({ timeout: 20_000 });
 
-    // Verify the key labels/fields exist on the page when the component renders.
-    // Since we can't easily trigger the action config modal from e2e without a full
-    // BPMN process link flow, we verify the component renders its labels correctly
-    // by checking translations are present in the plugin specification.
-    // Full navigation tests should be done via Playwright MCP interactive sessions.
+    // Read back what the fixture stored, rather than merely that the fields exist — a configurator
+    // that renders empty is exactly what a property-name mismatch looks like.
+    //
+    // Catalog and template show their **names**, not the ids the link stores
+    // (`municipality-demo` / `example-template`). That is the stronger assertion: the names only
+    // appear if the configurator resolved those ids against a reachable Epistola.
+    await expect(processLinks.control('epistola-generate-catalog-id')).toHaveValue(
+      /Municipality Demo/,
+    );
+    await expect(processLinks.control('epistola-generate-template-id')).toHaveValue(
+      /Example Template/,
+    );
+    await expect(processLinks.control('epistola-generate-result-process-variable')).toHaveValue(
+      'epistolaResult',
+    );
 
-    // For now, verify the app loads and the plugin page is accessible
-    await page.goto('/plugins');
-    await page.waitForLoadState('networkidle');
-    await expect(page).toHaveURL(/.*plugins.*/);
+    // Filename is an expression, edited in a contenteditable rather than an input, so it is read as
+    // text. The fixture stores it quoted (`"example-document.pdf"`).
+    await expect(processLinks.region('epistola-generate-filename-expression-input')).toContainText(
+      'example-document.pdf',
+    );
   });
 
-  test('should have correct mock API responses', async ({ page }) => {
-    await mockEpistolaApis(page);
+  test('offers all three variant-selection modes, and the mapping the template needs', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const processLinks = new ProcessLinkPage(page);
 
-    // Verify that our mocked endpoints respond correctly
-    const templatesResponse = await page.request.get(
-      'http://localhost:4200/api/v1/plugin/epistola/configurations/test-config/templates',
-    );
-    expect(templatesResponse.ok()).toBeTruthy();
-    const templates = await templatesResponse.json();
-    expect(templates).toHaveLength(2);
-    expect(templates[0].name).toBe('Invoice Template');
+    await processLinks.openProcess('Generate Single Document');
+    await processLinks.openActivity('generate-document');
+    await expect(processLinks.region('epistola-generate-form')).toBeVisible({ timeout: 20_000 });
 
-    const environmentsResponse = await page.request.get(
-      'http://localhost:4200/api/v1/plugin/epistola/configurations/test-config/environments',
-    );
-    expect(environmentsResponse.ok()).toBeTruthy();
-    const environments = await environmentsResponse.json();
-    expect(environments).toHaveLength(2);
+    // The three modes are the action's documented contract: default, explicit variantId, and
+    // attribute-based. The stored link names none, so it sits on the default.
+    await expect(processLinks.region('epistola-generate-variant-mode-toggle')).toBeVisible();
+    await expect(processLinks.region('epistola-generate-variant-mode-explicit')).toBeVisible();
+    await expect(processLinks.region('epistola-generate-variant-mode-attributes')).toBeVisible();
 
-    const variantsResponse = await page.request.get(
-      'http://localhost:4200/api/v1/plugin/epistola/configurations/test-config/templates/tpl-1/variants',
+    // The mapping builder is driven by the template's contract, fetched from Epistola — so a row
+    // per contract field is also proof the backend reached the server and returned this template.
+    // example-template declares exactly one field, firstName.
+    await expect(processLinks.region('epistola-mapping-builder')).toBeVisible();
+    await expect(processLinks.region('epistola-mapping-row-firstName')).toBeVisible();
+    // Also an expression editor; its text carries zero-width spaces around the expression, so this
+    // matches the expression itself rather than the whole string.
+    await expect(processLinks.region('epistola-mapping-field-input-firstName-input')).toContainText(
+      /\$doc\.firstName/,
     );
-    expect(variantsResponse.ok()).toBeTruthy();
-    const variants = await variantsResponse.json();
-    expect(variants).toHaveLength(2);
-    expect(variants[1].tags).toContain('formal');
   });
 });

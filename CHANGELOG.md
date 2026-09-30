@@ -51,6 +51,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The browser suites are green again, and three of them now test what they are named after.**
+  Wiring `E2E (browser)` into CI showed 10 of 18 failing; they failed the same way on a developer
+  machine, so it was rot rather than anything about the runner.
+
+  Two structural facts about Valtimo's admin UI defeated the selectors. `getByLabel` cannot work on
+  any Valtimo admin form: Carbon's `cds-label` points its `for` at its own generated id and the
+  input is a sibling further up inside `div.v-input-container`, so every `getByLabel(/Base URL/)`
+  was resolving to nothing. And the plugin wizard is fully mounted from page load, so presence
+  proves nothing, a bare text match is ambiguous, and the tiles are radios driven by their labels —
+  clicking the heading text selected nothing and left the wizard unable to advance, which is why
+  the configuration fields looked absent.
+
+  `check-job-status`, `download-document` and `generate-document` were not stale but **placeholders**:
+  they navigated to `/plugins` and asserted a URL under names promising they checked the action
+  configurators, and `generate-document` mocked four endpoints then verified its own fixtures
+  through `page.request`, which bypasses `page.route`. They now open the real links the demo
+  declares, through a new `ProcessLinkPage` that addresses activities by their BPMN
+  `data-element-id`, and read back what each fixture stored. `check-job-status` is the one action no
+  demo links, so it walks the new-link wizard and on the way asserts all four action types are
+  offered.
+
+  Two more failures were **cold-database only**, which is why they passed everywhere but on a fresh
+  runner: an empty case list renders "Creëer Nieuw Dossier" twice, and `openDossier` clicked a list
+  row Valtimo's polling had not filled yet.
+
+  Proved by reverting: putting `getByLabel` back returns five of them to failing.
+
 - **The browser suites now run in CI, and 10 of 18 of them fail.** Wiring up
   `E2E (browser)` was the point of the exercise; finding out that most of the suites had rotted
   while nothing executed them was the result. The failures reproduce on a developer machine exactly

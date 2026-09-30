@@ -5,6 +5,17 @@
 import { test, expect } from '@playwright/test';
 import { PluginManagementPage } from '../pages/plugin-management.page';
 
+/**
+ * The plugin's own configuration form, as an administrator meets it.
+ *
+ * Every field here comes from a backend `@PluginProperty`, and the pairing is by name — a rename on
+ * one side and not the other produces a field that silently never arrives. That is what these
+ * check: that the form Valtimo builds from the plugin definition still has the properties the
+ * plugin declares, with `apiKey` masked and `tenantId`'s slug pattern enforced.
+ *
+ * Selectors live in {@link PluginManagementPage}, which documents why `getByLabel` cannot be used
+ * on this screen.
+ */
 test.describe('Epistola Plugin Configuration', () => {
   let pluginPage: PluginManagementPage;
 
@@ -13,68 +24,74 @@ test.describe('Epistola Plugin Configuration', () => {
     await pluginPage.navigate();
   });
 
-  test('should show Epistola in the plugin list', async ({ page }) => {
+  test('should show Epistola in the plugin list', async () => {
     await pluginPage.openAddPluginModal();
-    await expect(page.getByText('Epistola Document Suite')).toBeVisible();
+
+    // Scoped to the tile: the name also appears in a heading and a description span, so an
+    // unscoped text match resolves to three elements and fails strict mode.
+    await expect(pluginPage.tile('Epistola Document Suite')).toBeVisible();
   });
 
-  test('should render all plugin configuration fields', async ({ page }) => {
+  test('should render all plugin configuration fields', async () => {
     await pluginPage.openAddPluginModal();
     await pluginPage.selectEpistolaPlugin();
 
-    // Verify all plugin configuration fields are present
-    await expect(page.getByLabel(/Configuration name|Configuratienaam/i)).toBeVisible();
-    await expect(page.getByLabel(/Base URL/i)).toBeVisible();
-    await expect(page.getByLabel(/API Key/i)).toBeVisible();
-    await expect(page.getByLabel(/Tenant ID/i)).toBeVisible();
-    await expect(page.getByLabel(/Default Environment|Standaard Omgeving/i)).toBeVisible();
+    for (const label of [
+      /Configuration name|Configuratienaam/i,
+      /Base URL/i,
+      /API Key/i,
+      /Tenant ID/i,
+      /Default Environment|Standaard Omgeving/i,
+    ]) {
+      await expect(pluginPage.field(label)).toBeVisible();
+    }
   });
 
-  test('should mask API Key as password field', async ({ page }) => {
+  test('should mask API Key as password field', async () => {
     await pluginPage.openAddPluginModal();
     await pluginPage.selectEpistolaPlugin();
 
-    const apiKeyInput = page.getByLabel(/API Key/i);
-    await expect(apiKeyInput).toHaveAttribute('type', 'password');
+    await expect(pluginPage.field(/API Key/i)).toHaveAttribute('type', 'password');
   });
 
-  test('should require mandatory fields before saving', async ({ page }) => {
+  test('should require mandatory fields before saving', async () => {
     await pluginPage.openAddPluginModal();
     await pluginPage.selectEpistolaPlugin();
 
-    // The save button should be disabled when required fields are empty
-    const saveButton = page.getByRole('button', { name: /save|opslaan/i });
-    await expect(saveButton).toBeDisabled();
+    await expect(pluginPage.saveButton).toBeDisabled();
   });
 
-  test('should validate tenantId slug format', async ({ page }) => {
+  test('should validate tenantId slug format', async () => {
     await pluginPage.openAddPluginModal();
     await pluginPage.selectEpistolaPlugin();
 
-    // Fill required fields with valid data except tenantId
-    await page.getByLabel(/Configuration name|Configuratienaam/i).fill('Test Config');
-    await page.getByLabel(/Base URL/i).fill('https://api.epistola.app');
-    await page.getByLabel(/API Key/i).fill('test-api-key');
+    await pluginPage.field(/Configuration name|Configuratienaam/i).fill('Test Config');
+    await pluginPage.field(/Base URL/i).fill('https://api.epistola.app');
+    await pluginPage.field(/API Key/i).fill('test-api-key');
 
-    // Enter an invalid tenant ID (uppercase, spaces)
-    await page.getByLabel(/Tenant ID/i).fill('INVALID TENANT');
+    // Asserting "save is disabled" on its own proves nothing here — it is disabled while the form
+    // is incomplete too, so this test would pass even if the tenant field were never filled. So
+    // start from a form that saves, and change only the tenant.
+    await pluginPage.field(/Tenant ID/i).fill('my-tenant');
+    await pluginPage.field(/Tenant ID/i).blur();
+    await expect(pluginPage.saveButton).toBeEnabled();
 
-    // Save should remain disabled due to validation
-    const saveButton = page.getByRole('button', { name: /save|opslaan/i });
-    await expect(saveButton).toBeDisabled();
+    // Uppercase and a space: the slug is 3-63 chars, lowercase with hyphens.
+    await pluginPage.field(/Tenant ID/i).fill('INVALID TENANT');
+    await pluginPage.field(/Tenant ID/i).blur();
+    await expect(pluginPage.saveButton).toBeDisabled();
   });
 
-  test('should enable save when all required fields are filled correctly', async ({ page }) => {
+  test('should enable save when all required fields are filled correctly', async () => {
     await pluginPage.openAddPluginModal();
     await pluginPage.selectEpistolaPlugin();
 
-    await page.getByLabel(/Configuration name|Configuratienaam/i).fill('Test Config');
-    await page.getByLabel(/Base URL/i).fill('https://api.epistola.app');
-    await page.getByLabel(/API Key/i).fill('test-api-key');
-    await page.getByLabel(/Tenant ID/i).fill('my-tenant');
+    await pluginPage.field(/Configuration name|Configuratienaam/i).fill('Test Config');
+    await pluginPage.field(/Base URL/i).fill('https://api.epistola.app');
+    await pluginPage.field(/API Key/i).fill('test-api-key');
+    await pluginPage.field(/Tenant ID/i).fill('my-tenant');
+    await pluginPage.field(/Tenant ID/i).blur();
 
-    // Save should now be enabled
-    const saveButton = page.getByRole('button', { name: /save|opslaan/i });
-    await expect(saveButton).toBeEnabled();
+    await expect(pluginPage.saveButton).toBeEnabled();
   });
 });

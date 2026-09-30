@@ -404,11 +404,16 @@ an explicit, commented allowlist rather than by loosening the assertion.
 - Full multi-node result collector behavior depends on Epistola contract/server integration tests
 - Frontend `.spec.ts` unit tests — partial coverage (Playwright E2E covers the main flows)
 - Playwright UI E2E runs nightly and on demand, not on pull requests — a change to a Form.io component or a task flow is worth a manual `gh workflow run` before merging
-- **10 of the 18 browser tests fail, and did so long before they ran in CI.** The first real run of
-  `E2E (browser)` is what surfaced it: the suites had rotted while nothing executed them, and the
-  failures reproduce on a developer machine exactly as they do on a runner, so they are stale
-  selectors against the current Valtimo admin UI rather than anything environmental. Failing:
-  `plugin-configuration` (5), `generate-document` (2), and one each in `check-job-status`,
-  `download-document` and `form-flow-transition`. Passing: all four letter-composer suites and the
-  three navigation checks. Tracked for a follow-up before release — do not read a red
-  `E2E (browser)` as "the composer is broken" until that list shrinks.
+- **The browser suites are green, and three of them only became real in the process.** Wiring up
+  `E2E (browser)` showed 10 of 18 failing, and they failed the same way on a developer machine, so
+  it was rot rather than anything environmental. Two causes, worth knowing before touching them:
+  Valtimo's form labels are **not associated with their controls** (Carbon's `cds-label` points its
+  `for` at itself, and the input is a sibling further up in `div.v-input-container`), so
+  `getByLabel` resolves to nothing on any Valtimo admin form — fields are reached via
+  `PluginManagementPage.field()`. And the plugin-screen wizard is fully mounted from page load, so
+  presence proves nothing and bare text matches are ambiguous.
+  `check-job-status`, `download-document` and `generate-document` were placeholders that navigated
+  to `/plugins` and asserted a URL under names promising they checked the configurators; they now
+  open real links through `ProcessLinkPage`, which addresses activities by their BPMN
+  `data-element-id`. The action configurators render **only** on `/process-links`, so that page
+  object is the way to reach them.
