@@ -75,12 +75,13 @@ export class ProcessLinkPage {
   }
 
   /**
-   * Walk the new-link wizard on an **unlinked** activity up to a chosen Epistola action.
+   * Begin a new link on an **unlinked** activity, stopping on the "choose your action" step.
    *
-   * The steps are: what kind of link ("Plugins & Apps"), which plugin configuration (a table with
-   * a row per configuration), which action, then the action's own form.
+   * The wizard is: what kind of link ("Plugins & Apps"), which plugin configuration (a table with
+   * a row per configuration), which action (tiles), then the action's own form. It stops before
+   * the action so a caller can inspect what is on offer.
    */
-  async chooseEpistolaAction(actionLabel: string | RegExp): Promise<void> {
+  async startNewEpistolaLink(): Promise<void> {
     await this.page
       .getByRole('button', { name: /Plugins & Apps/i })
       .first()
@@ -94,10 +95,23 @@ export class ProcessLinkPage {
     await configRow.click();
     await this.next();
 
-    const actionRow = this.page.locator('cds-list-row').filter({ hasText: actionLabel }).first();
-    await expect(actionRow).toBeVisible({ timeout: 15_000 });
-    await actionRow.click();
+    await expect(this.actionTiles().first()).toBeVisible({ timeout: 15_000 });
+  }
+
+  /** Choose an action and advance to its configuration form. */
+  async chooseAction(actionLabel: string | RegExp): Promise<void> {
+    await this.actionTile(actionLabel).click();
     await this.next();
+  }
+
+  /** A selectable action tile on the wizard's "choose your action" step. */
+  actionTile(actionLabel: string | RegExp): Locator {
+    return this.page.locator('label[for^="tile-"]').filter({ hasText: actionLabel }).first();
+  }
+
+  /** Every action the chosen plugin offers, as an author reads them. */
+  actionTiles(): Locator {
+    return this.page.locator('label[for^="tile-"]');
   }
 
   private async next(): Promise<void> {
