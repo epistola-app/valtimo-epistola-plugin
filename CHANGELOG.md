@@ -396,6 +396,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   preview semantics, and reuse across processes is packaged as a building block later. See
   [docs/adr/0006-letter-composer-configuration.md](docs/adr/0006-letter-composer-configuration.md).
 
+- **Test-app release workflow** (`test-app-release.yml`, manual dispatch). It publishes only the
+  `demo-backend` and `demo-frontend` images, built from the selected branch, and then dispatches
+  the demo pin bump. Nothing goes to Maven Central or npm, and no GitHub Release or version tag is
+  created. Use it for test-app-only changes that should reach the demo without a plugin release.
+  Both images get the same tag, `<last plugin release>-testapp.<run number>` (for example
+  `0.20.1-testapp.12`), because the infra pin bump resolves both pins from one tag. A bare `X.Y.Z`
+  tag is refused, so a test-app release can never overwrite a plugin release's images.
+
+### Changed
+
+- **Training (test-app): trainees work in the shared case types, on their own cases only.** A
+  trainee (`ROLE_DEMO`) can now see every bundled case type, start cases in it and work on them,
+  and sees only the cases they created there. They can read a shared case type's configuration but
+  not change it, and can still configure their own cloned dossier. Their token keeps `ROLE_ADMIN`
+  for the admin screens, but the backend no longer honours it for a trainee, so Valtimo's
+  unconditioned `ROLE_ADMIN` permissions no longer apply to them; `demo.permission.json` (now
+  changeset `trainee-pbac-v2`) scopes them instead. The plugin's `evaluate-mapping` endpoint is
+  scoped to the trainee's own cases. The published plugin is unchanged.
+- **Training (test-app): a trainee's own Epistola tenant gets the demo templates.** Provisioning
+  now installs the classpath catalogs into the trainee's new tenant, using the same catalog
+  deployer as the startup sync, and the trainee's plugin configuration is sync-enabled so restarts
+  keep it current. Before, the tenant stayed empty and every template in the trainee's own dossier
+  failed with "No default variant found".
+
+### Fixed
+
+- **Training: a trainee sees their own dossier.** The provisioner finalized the cloned case
+  definition but never activated it. Valtimo's case list only shows active case definitions, so
+  the trainee saw just the shared `form-flow-demo` template, and opening it returned "This belongs
+  to another user's dossier, not yours." New dossiers are now activated. A dossier provisioned by
+  0.20.x is activated on the trainee's next request. Test-app only; the published plugin is
+  unchanged.
+
 ## [0.20.1] - 2026-09-24
 
 ### Fixed

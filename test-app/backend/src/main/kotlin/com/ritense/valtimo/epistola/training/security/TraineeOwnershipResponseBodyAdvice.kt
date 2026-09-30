@@ -53,9 +53,9 @@ class TraineeOwnershipResponseBodyAdvice(
         request: ServerHttpRequest,
         response: ServerHttpResponse,
     ): Any? {
-        val traineeIdentity = ownershipChecks.currentTraineeIdentityOrNull() ?: return body
+        val trainee = ownershipChecks.currentTraineeOrNull() ?: return body
         return when (body) {
-            is List<*> -> body.filter { isOwnedOrShared(traineeIdentity, it) }
+            is List<*> -> body.filter { isOwnedOrShared(trainee, it) }
             // GET /api/management/v1/case-definition is the one bare, cross-dossier list in the
             // widened surface (every other list endpoint is already path-scoped to one dossier by
             // TraineeOwnershipInterceptor, so filtering its content again here would be redundant).
@@ -63,7 +63,7 @@ class TraineeOwnershipResponseBodyAdvice(
             // a trainee only ever has at most their own dossier plus the shared template, so
             // real pagination across pages never applies to what they're allowed to see.
             is Page<*> -> {
-                val filteredContent = body.content.filter { isOwnedOrShared(traineeIdentity, it) }
+                val filteredContent = body.content.filter { isOwnedOrShared(trainee, it) }
                 PageImpl(filteredContent, body.pageable, filteredContent.size.toLong())
             }
             else -> body
@@ -71,10 +71,11 @@ class TraineeOwnershipResponseBodyAdvice(
     }
 
     private fun isOwnedOrShared(
-        traineeIdentity: String,
+        trainee: Trainee,
         item: Any?,
-    ): Boolean =
-        when (item) {
+    ): Boolean {
+        val traineeIdentity = trainee.identity
+        return when (item) {
             is PluginConfigurationDto -> ownershipChecks.isOwnPluginConfiguration(traineeIdentity, item.id)
             is ProcessLinkResponseDto ->
                 ownershipChecks.isOwnProcessDefinition(
@@ -104,12 +105,13 @@ class TraineeOwnershipResponseBodyAdvice(
             // Valtimo's own TaskResource list endpoints (GET /api/v1|v2/task) — carries the owning
             // case document's id directly (caseDocumentId), so no extra resolution is needed here
             // the way the single-task view does (see TraineeOwnershipInterceptor's `taskId` check).
-            // No allowShared — same reasoning as that check: form-flow-demo's shared structure
-            // doesn't extend to its actual task/document data.
+            // Scoped by the case document's creator, like that check. PBAC (OperatonTask:view_list)
+            // already filters these for a trainee, so this is a second line, not the only one.
             is TaskExtended -> {
                 val caseDocumentId = item.caseDocumentId
-                caseDocumentId != null && ownershipChecks.isOwnDocument(traineeIdentity, caseDocumentId)
+                caseDocumentId != null && ownershipChecks.isOwnDocument(trainee.login, caseDocumentId)
             }
             else -> true
         }
+    }
 }

@@ -22,27 +22,37 @@ class ProcessInstanceOwnershipResolver(
     private val documentOwnershipResolver: DocumentOwnershipResolver,
 ) {
     fun resolveCaseDefinitionKeyForProcessInstance(processInstanceId: String): String? {
-        val businessKey =
-            runCatching {
-                runtimeService
-                    .createProcessInstanceQuery()
-                    .processInstanceId(processInstanceId)
-                    .singleResult()
-                    ?.businessKey
-            }.getOrNull() ?: return null
+        val businessKey = resolveDocumentIdForProcessInstance(processInstanceId) ?: return null
         return documentOwnershipResolver.resolveCaseDefinitionKey(businessKey)
     }
 
+    /** The case document's id: Valtimo uses it as the business key of a case-driven process instance. */
+    fun resolveDocumentIdForProcessInstance(processInstanceId: String): String? =
+        runCatching {
+            runtimeService
+                .createProcessInstanceQuery()
+                .processInstanceId(processInstanceId)
+                .singleResult()
+                ?.businessKey
+        }.getOrNull()
+
     /** An execution's own id resolves to its process instance first — an execution never carries a business key directly. */
     fun resolveCaseDefinitionKeyForExecution(executionId: String): String? {
-        val processInstanceId =
-            runCatching {
-                runtimeService
-                    .createExecutionQuery()
-                    .executionId(executionId)
-                    .singleResult()
-                    ?.processInstanceId
-            }.getOrNull() ?: return null
+        val processInstanceId = resolveProcessInstanceIdForExecution(executionId) ?: return null
         return resolveCaseDefinitionKeyForProcessInstance(processInstanceId)
     }
+
+    fun resolveDocumentIdForExecution(executionId: String): String? {
+        val processInstanceId = resolveProcessInstanceIdForExecution(executionId) ?: return null
+        return resolveDocumentIdForProcessInstance(processInstanceId)
+    }
+
+    private fun resolveProcessInstanceIdForExecution(executionId: String): String? =
+        runCatching {
+            runtimeService
+                .createExecutionQuery()
+                .executionId(executionId)
+                .singleResult()
+                ?.processInstanceId
+        }.getOrNull()
 }

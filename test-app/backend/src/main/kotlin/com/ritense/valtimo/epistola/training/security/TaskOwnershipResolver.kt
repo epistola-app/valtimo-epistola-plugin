@@ -20,14 +20,22 @@ class TaskOwnershipResolver(
     private val processInstanceOwnershipResolver: ProcessInstanceOwnershipResolver,
 ) {
     fun resolveCaseDefinitionKey(taskId: String): String? {
-        val processInstanceId =
-            runCatching {
-                taskService
-                    .createTaskQuery()
-                    .taskId(taskId)
-                    .singleResult()
-                    ?.processInstanceId
-            }.getOrNull() ?: return null
+        val processInstanceId = resolveProcessInstanceId(taskId) ?: return null
         return processInstanceOwnershipResolver.resolveCaseDefinitionKeyForProcessInstance(processInstanceId)
     }
+
+    /** The task's case document id (the business key of its process instance). */
+    fun resolveDocumentId(taskId: String): String? {
+        val processInstanceId = resolveProcessInstanceId(taskId) ?: return null
+        return processInstanceOwnershipResolver.resolveDocumentIdForProcessInstance(processInstanceId)
+    }
+
+    private fun resolveProcessInstanceId(taskId: String): String? =
+        runCatching {
+            taskService
+                .createTaskQuery()
+                .taskId(taskId)
+                .singleResult()
+                ?.processInstanceId
+        }.getOrNull()
 }

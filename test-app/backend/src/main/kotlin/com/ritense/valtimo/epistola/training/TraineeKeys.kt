@@ -24,19 +24,15 @@ object TraineeKeys {
      * and "trainee". Named `ROLE_DEMO`, not `ROLE_TRAINEE`, specifically so it reads as "this
      * person is here to try the demo," distinct from Valtimo's own generic `ROLE_USER`.
      *
-     * **Trainees are also granted real [ADMIN_AUTHORITY].** Valtimo's own admin Angular
-     * routes/menu (`test-app/frontend/src/environments/environment.ts`'s "Admin" menu group, and
-     * the `@valtimo/case-management`/`@valtimo/plugin-management` route guards behind it) are
-     * hard-gated to `ROLE_ADMIN` client-side — confirmed by driving a real login as `trainee1@demo`
-     * in a headless browser: with `ROLE_DEMO` alone, the side-nav had no Admin section at all, and
-     * navigating straight to `/case-management` or `/plugins` bounced back before ever reaching the
-     * backend. There is no finer-grained frontend role model to widen instead, so short of building
-     * a bespoke trainee-only UI, `ROLE_ADMIN` has to be granted for real. The backend compensates:
-     * every operation a trainee must not be allowed now has to be blocked explicitly rather than
-     * simply never being reachable — see [com.ritense.valtimo.epistola.training.security.TraineeAdminSurfaceGuardFilter]
-     * for the hard-block list, and [com.ritense.valtimo.epistola.training.security.TraineeOwnershipChecks]
-     * for the per-resource scoping that still applies on top of that. Every check in this package
-     * keys off [TRAINEE_AUTHORITY] presence alone, never off [ADMIN_AUTHORITY]'s absence.
+     * **Trainees' tokens also carry [ADMIN_AUTHORITY]; the backend drops it.** Valtimo's own admin
+     * Angular routes/menu are hard-gated to `ROLE_ADMIN` client-side, read from the token — with
+     * `ROLE_DEMO` alone a trainee had no Admin section at all. So the identity provider grants it,
+     * and [com.ritense.valtimo.epistola.training.security.TraineeAdminAuthorityStripFilter] removes
+     * it server-side, so Valtimo's unconditioned `ROLE_ADMIN` PBAC grants never apply to a trainee.
+     * What a trainee may do comes from `demo.permission.json` (PBAC, `ROLE_DEMO`) and the endpoints
+     * [com.ritense.valtimo.epistola.training.security.TrainingHttpSecurityConfigurer] widens to
+     * [TRAINEE_AUTHORITY]. Every check in this package keys off [TRAINEE_AUTHORITY] presence alone,
+     * never off [ADMIN_AUTHORITY]'s absence.
      */
     const val TRAINEE_AUTHORITY = "ROLE_DEMO"
     const val ADMIN_AUTHORITY = "ROLE_ADMIN"
@@ -62,13 +58,9 @@ object TraineeKeys {
      * by actually running this against the real stack, not by reading source.
      *
      * Now a deterministic hash, like [pluginConfigurationId] — safe regardless of what shape the
-     * identity happens to have. The cost: the `${currentUserId}`-based PBAC conditions on
-     * `JsonSchemaDocument`/`OperatonTask` in `demo.permission.json` no longer match anything (the
-     * stored key is a hash, not the raw placeholder value), so trainee-vs-trainee scoping of case
-     * *data* (as opposed to case-definition *configuration*, which goes through
-     * [TraineeOwnershipChecks.isOwnCaseDefinition] and never relied on this) is currently
-     * unenforced. Needs the same interceptor-based treatment the case-definition management
-     * surface already has, not a placeholder-matching fix.
+     * identity happens to have. PBAC therefore can't name a trainee's dossier by key; case *data* is
+     * scoped by creator instead (`createdBy == ${currentUserEmail}` in `demo.permission.json`), and
+     * case-definition *configuration* by [TraineeOwnershipChecks.isOwnCaseDefinition].
      */
     fun caseDefinitionKey(traineeIdentity: String): String = "t" + sha256Hex(traineeIdentity).take(15)
 

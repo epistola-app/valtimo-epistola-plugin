@@ -4,6 +4,7 @@
 
 package com.ritense.valtimo.epistola.training
 
+import app.epistola.valtimo.deploy.EpistolaCatalogSyncService
 import com.ritense.case.service.CaseDefinitionService
 import com.ritense.case_.repository.CaseDefinitionRepository
 import com.ritense.document.service.DocumentService
@@ -15,6 +16,7 @@ import com.ritense.valtimo.epistola.training.security.DocumentOwnershipResolver
 import com.ritense.valtimo.epistola.training.security.ProcessDefinitionOwnershipResolver
 import com.ritense.valtimo.epistola.training.security.ProcessInstanceOwnershipResolver
 import com.ritense.valtimo.epistola.training.security.TaskOwnershipResolver
+import com.ritense.valtimo.epistola.training.security.TraineeAdminAuthorityStripFilter
 import com.ritense.valtimo.epistola.training.security.TraineeAdminSurfaceGuardFilter
 import com.ritense.valtimo.epistola.training.security.TraineeOwnershipChecks
 import com.ritense.valtimo.epistola.training.security.TraineeOwnershipInterceptor
@@ -91,7 +93,6 @@ class TrainingConfiguration {
         taskOwnershipResolver: TaskOwnershipResolver,
         processInstanceOwnershipResolver: ProcessInstanceOwnershipResolver,
         caseDefinitionRepository: CaseDefinitionRepository,
-        properties: TrainingProperties,
     ) = TraineeOwnershipChecks(
         processDefinitionOwnershipResolver,
         processLinkService,
@@ -99,7 +100,6 @@ class TrainingConfiguration {
         taskOwnershipResolver,
         processInstanceOwnershipResolver,
         caseDefinitionRepository,
-        properties,
     )
 
     @Bean
@@ -110,6 +110,7 @@ class TrainingConfiguration {
         caseDefinitionService: CaseDefinitionService,
         pluginService: PluginService,
         epistolaTenantProvisioner: EpistolaTenantProvisioner,
+        catalogSyncService: EpistolaCatalogSyncService,
         properties: TrainingProperties,
         @Value("\${epistola.base-url}") epistolaBaseUrl: String,
     ) = TraineeDossierProvisioner(
@@ -119,6 +120,7 @@ class TrainingConfiguration {
         caseDefinitionService,
         pluginService,
         epistolaTenantProvisioner,
+        catalogSyncService,
         properties,
         epistolaBaseUrl,
     )
@@ -127,14 +129,16 @@ class TrainingConfiguration {
     fun traineeDossierProvisioningService(
         caseDefinitionRepository: CaseDefinitionRepository,
         provisioner: TraineeDossierProvisioner,
-        properties: TrainingProperties,
-    ) = TraineeDossierProvisioningService(caseDefinitionRepository, provisioner, properties)
+    ) = TraineeDossierProvisioningService(caseDefinitionRepository, provisioner)
 
     @Bean
     fun traineeProvisioningFilter(provisioningService: TraineeDossierProvisioningService) = TraineeProvisioningFilter(provisioningService)
 
     @Bean
     fun traineeAdminSurfaceGuardFilter() = TraineeAdminSurfaceGuardFilter()
+
+    @Bean
+    fun traineeAdminAuthorityStripFilter() = TraineeAdminAuthorityStripFilter()
 
     // No fallback bean, unlike EpistolaTenantProvisioner above: TrainingHttpSecurityConfigurer
     // takes this as a nullable parameter and simply skips registering it when absent, so there is
@@ -152,10 +156,12 @@ class TrainingConfiguration {
     @Bean
     @Order(Ordered.HIGHEST_PRECEDENCE + 10)
     fun trainingHttpSecurityConfigurer(
+        traineeAdminAuthorityStripFilter: TraineeAdminAuthorityStripFilter,
         traineeProvisioningFilter: TraineeProvisioningFilter,
         traineeAdminSurfaceGuardFilter: TraineeAdminSurfaceGuardFilter,
         trainingFacilitySharedSecretAuthenticationFilter: TrainingFacilitySharedSecretAuthenticationFilter?,
     ) = TrainingHttpSecurityConfigurer(
+        traineeAdminAuthorityStripFilter,
         traineeProvisioningFilter,
         traineeAdminSurfaceGuardFilter,
         trainingFacilitySharedSecretAuthenticationFilter,

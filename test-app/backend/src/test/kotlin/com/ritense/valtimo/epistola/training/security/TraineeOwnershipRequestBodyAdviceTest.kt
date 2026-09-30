@@ -4,6 +4,7 @@
 
 package com.ritense.valtimo.epistola.training.security
 
+import app.epistola.valtimo.web.rest.dto.EvaluationRequest
 import com.ritense.case.web.rest.dto.CaseDefinitionDraftCreateRequest
 import com.ritense.plugin.domain.PluginConfigurationReferenceType
 import com.ritense.plugin.web.rest.request.PluginProcessLinkCreateDto
@@ -21,7 +22,8 @@ import org.springframework.http.converter.HttpMessageConverter
 import org.springframework.security.access.AccessDeniedException
 import java.util.UUID
 
-private const val TRAINEE = "trainee1@demo"
+private const val TRAINEE = "trainee1-subject"
+private const val LOGIN = "trainee1@demo"
 
 /**
  * Focused on [CaseDefinitionDraftCreateRequest] and the plugin-process-link `pluginConfigurationId`
@@ -39,7 +41,7 @@ class TraineeOwnershipRequestBodyAdviceTest {
 
     @Test
     fun `passes through untouched for a non-trainee caller`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(null)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(null)
         val request = draftRequest("brand-new-key")
 
         val result = afterBodyRead(request)
@@ -49,7 +51,7 @@ class TraineeOwnershipRequestBodyAdviceTest {
 
     @Test
     fun `allows a brand-new key once the trainee is under the cap`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         whenever(ownershipChecks.caseDefinitionKeyExists("brand-new-key")).thenReturn(false)
         whenever(ownershipChecks.canCreateAnotherCaseDefinition(TRAINEE)).thenReturn(true)
         val request = draftRequest("brand-new-key")
@@ -61,7 +63,7 @@ class TraineeOwnershipRequestBodyAdviceTest {
 
     @Test
     fun `rejects a brand-new key once the trainee has reached the cap`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         whenever(ownershipChecks.caseDefinitionKeyExists("brand-new-key")).thenReturn(false)
         whenever(ownershipChecks.canCreateAnotherCaseDefinition(TRAINEE)).thenReturn(false)
 
@@ -71,7 +73,7 @@ class TraineeOwnershipRequestBodyAdviceTest {
 
     @Test
     fun `allows drafting a new version of a key the trainee already owns, regardless of the cap`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         whenever(ownershipChecks.caseDefinitionKeyExists("my-own-flow")).thenReturn(true)
         whenever(ownershipChecks.isOwnCaseDefinition(TRAINEE, "my-own-flow")).thenReturn(true)
         // Drafting a new version of an already-owned key isn't a *new* dossier, so it must not be
@@ -86,7 +88,7 @@ class TraineeOwnershipRequestBodyAdviceTest {
 
     @Test
     fun `rejects drafting a new version of a key the trainee does not own`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         whenever(ownershipChecks.caseDefinitionKeyExists("someone-elses-flow")).thenReturn(true)
         whenever(ownershipChecks.isOwnCaseDefinition(TRAINEE, "someone-elses-flow")).thenReturn(false)
 
@@ -96,7 +98,7 @@ class TraineeOwnershipRequestBodyAdviceTest {
 
     @Test
     fun `plugin process-link create rejects a pluginConfigurationId the trainee does not own`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         whenever(ownershipChecks.isOwnProcessDefinition(TRAINEE, "own-process-definition")).thenReturn(true)
         val othersConfigId = UUID.randomUUID()
         whenever(ownershipChecks.isOwnPluginConfiguration(TRAINEE, othersConfigId.toString(), allowShared = true)).thenReturn(false)
@@ -110,7 +112,7 @@ class TraineeOwnershipRequestBodyAdviceTest {
 
     @Test
     fun `plugin process-link create allows the trainee's own pluginConfigurationId`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         whenever(ownershipChecks.isOwnProcessDefinition(TRAINEE, "own-process-definition")).thenReturn(true)
         val ownConfigId = UUID.randomUUID()
         whenever(ownershipChecks.isOwnPluginConfiguration(TRAINEE, ownConfigId.toString(), allowShared = true)).thenReturn(true)
@@ -123,7 +125,7 @@ class TraineeOwnershipRequestBodyAdviceTest {
 
     @Test
     fun `plugin process-link update rejects a pluginConfigurationId the trainee does not own`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         val linkId = UUID.randomUUID()
         whenever(ownershipChecks.resolveProcessDefinitionIdOfProcessLink(linkId)).thenReturn("own-process-definition")
         whenever(ownershipChecks.isOwnProcessDefinition(TRAINEE, "own-process-definition")).thenReturn(true)
@@ -137,7 +139,7 @@ class TraineeOwnershipRequestBodyAdviceTest {
 
     @Test
     fun `plugin process-link create does not check ownership for a BUILDING_BLOCK reference`() {
-        whenever(ownershipChecks.currentTraineeIdentityOrNull()).thenReturn(TRAINEE)
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
         whenever(ownershipChecks.isOwnProcessDefinition(TRAINEE, "own-process-definition")).thenReturn(true)
         val request =
             pluginProcessLinkCreate(
@@ -149,6 +151,30 @@ class TraineeOwnershipRequestBodyAdviceTest {
         val result = afterBodyRead(request)
 
         assertThat(result).isSameAs(request)
+    }
+
+    @Test
+    fun `evaluate-mapping is refused for a document the trainee did not create`() {
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
+        whenever(ownershipChecks.isOwnDocument(LOGIN, "own-doc")).thenReturn(true)
+        whenever(ownershipChecks.isOwnDocument(LOGIN, "other-doc")).thenReturn(false)
+        val own = EvaluationRequest("$", "own-doc", null)
+
+        assertThat(afterBodyRead(own)).isSameAs(own)
+        assertThatThrownBy { afterBodyRead(EvaluationRequest("$", "other-doc", null)) }
+            .isInstanceOf(AccessDeniedException::class.java)
+        // No document at all evaluates against nothing — nothing to protect.
+        val noDocument = EvaluationRequest("1 + 1", null, null)
+        assertThat(afterBodyRead(noDocument)).isSameAs(noDocument)
+    }
+
+    @Test
+    fun `evaluate-mapping is refused for a process instance of a case the trainee did not create`() {
+        whenever(ownershipChecks.currentTraineeOrNull()).thenReturn(Trainee(TRAINEE, LOGIN))
+        whenever(ownershipChecks.isOwnProcessInstance(LOGIN, "other-instance")).thenReturn(false)
+
+        assertThatThrownBy { afterBodyRead(EvaluationRequest("$", null, "other-instance")) }
+            .isInstanceOf(AccessDeniedException::class.java)
     }
 
     private fun pluginProcessLinkCreate(
