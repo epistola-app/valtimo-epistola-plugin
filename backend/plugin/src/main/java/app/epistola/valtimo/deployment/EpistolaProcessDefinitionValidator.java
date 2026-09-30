@@ -111,7 +111,8 @@ import java.util.concurrent.atomic.AtomicReference;
 @Slf4j
 public class EpistolaProcessDefinitionValidator {
 
-    private static final String GENERATE_DOCUMENT_ACTION_KEY = "epistola-generate-document";
+    private static final java.util.Set<String> GENERATING_ACTION_KEYS =
+            app.epistola.valtimo.domain.EpistolaProcessVariables.GENERATING_ACTION_KEYS;
     private static final long FALLBACK_INTERVAL_MS = 600_000L;
 
     /** Random per-node delay applied after the aligned cron tick, to de-synchronise the herd. */
@@ -286,7 +287,7 @@ public class EpistolaProcessDefinitionValidator {
         return processLinkService.getProcessLinks(definition.getId()).stream()
                 .filter(PluginProcessLink.class::isInstance)
                 .map(PluginProcessLink.class::cast)
-                .filter(link -> GENERATE_DOCUMENT_ACTION_KEY.equals(link.getPluginActionDefinitionKey()))
+                .filter(link -> GENERATING_ACTION_KEYS.contains(link.getPluginActionDefinitionKey()))
                 .toList();
     }
 

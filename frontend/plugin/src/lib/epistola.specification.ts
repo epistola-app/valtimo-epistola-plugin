@@ -17,6 +17,8 @@
  */
 
 import { PluginSpecification } from '@valtimo/plugin';
+import { GenerateComposedDocumentConfigurationComponent } from './composer/configuration/generate-composed-document-configuration.component';
+import { COMPOSER_TRANSLATIONS } from './composer/composer.translations';
 import { EpistolaConfigurationComponent } from './components/epistola-configuration/epistola-configuration.component';
 import { GenerateDocumentConfigurationComponent } from './components/generate-document-configuration/generate-document-configuration.component';
 import { CheckJobStatusConfigurationComponent } from './components/check-job-status-configuration/check-job-status-configuration.component';
@@ -43,6 +45,7 @@ const epistolaPluginSpecification: PluginSpecification = {
     'epistola-generate-document': GenerateDocumentConfigurationComponent,
     'epistola-check-job-status': CheckJobStatusConfigurationComponent,
     'epistola-download-document': DownloadDocumentConfigurationComponent,
+    'epistola-generate-composed-document': GenerateComposedDocumentConfigurationComponent,
   },
 
   // Translations
@@ -186,6 +189,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       errorMessageVariableTooltip:
         'Naam van de procesvariabele waarin de foutmelding wordt opgeslagen (bij fout)',
       // Download document action
+      // The composer owns its own strings; see composer/composer.translations.ts.
+      ...COMPOSER_TRANSLATIONS.nl,
       'epistola-download-document': 'Download Document',
       documentVariable: 'Document Variabele',
       documentVariableTooltip:
@@ -451,6 +456,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       errorMessageVariableTooltip:
         'Name of the process variable to store the error message in (when failed)',
       // Download document action
+      // The composer owns its own strings; see composer/composer.translations.ts.
+      ...COMPOSER_TRANSLATIONS.en,
       'epistola-download-document': 'Download Document',
       documentVariable: 'Document Variable',
       documentVariableTooltip:

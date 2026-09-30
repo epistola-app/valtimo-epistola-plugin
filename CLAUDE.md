@@ -110,11 +110,39 @@ docker/            # Docker compose for local dependencies
   ```
 - **Package name**: Epistola client uses `app.epistola.client` (not `io.epistola`)
 - **`$form` in a form flow is one step's data**: the preview component's `overrideMapping` is evaluated against `this.root.data` — the currently rendered form. To read a field submitted on an _earlier_ step, re-declare a component with the same key on the later step (a `hidden` one is fine). Valtimo prefills each step's form from the flow's merged submission data (`FormFlowInstance.getSubmissionDataContext()` → `FormDefinition.preFill`), so the re-declared component arrives with the earlier value in its `defaultValue` and Formio copies it into `root.data`. Without that carrier the reference is simply undefined and the mapping silently falls back. A hidden carrier fires neither `change` nor `focusout`, so it is picked up by the preview's initial compute, not by auto-refresh. Guarded by `FormFlowDemoConfigurationTest`.
-- **Form flows write to the case document**: `valtimoFormFlow.completeTask(additionalProperties, step.submissionData)` — the **two-argument** overload — defaults its save path to `doc:/submission`, so it writes the completing step's submission data onto the case document before completing the task. A document definition with `additionalProperties: false` that does not declare `submission` therefore rejects the write, the `onComplete` expression throws, and the task never completes — surfacing as a 500 (_"Error while executing expression"_) on the final step, not as a schema error. Either declare `submission` on the schema or pass an explicit save path as the third argument. Guarded by `FormFlowDemoConfigurationTest`.
+- **Form flows write to the case document**: `valtimoFormFlow.completeTask(additionalProperties, step.submissionData)` — the **two-argument** overload — defaults its save path to `doc:/submission`, so it writes the completing step's submission data onto the case document before completing the task. A document definition with `additionalProperties: false` that does not declare `submission` therefore rejects the write, the `onComplete` expression throws, and the task never completes — surfacing as a 500 (_"Error while executing expression"_) on the final step, not as a schema error. Either declare `submission` on the schema or pass an explicit mapping as the third argument. Guarded by `FormFlowDemoConfigurationTest`.
+- **A form flow does not resolve `pv:` keys**, which is the trap behind the one above. Outside a flow, Valtimo resolves a form field keyed `pv:x` onto a process variable on submit; a flow does not. `completeTask`'s **three-argument** overload takes a `Map<String, String>` of _value-resolver target_ → _JSON pointer into the completing step's submission_ — verified against 13.47 (`JsonPointer.valueOf` + `ValueResolverService.handleValues`), and the two-argument overload is just `{"doc:/submission": ""}`, which is why it writes the whole submission to one path. So a component whose value a service task must read needs the mapping spelled out:
+  ```
+  ${valtimoFormFlow.completeTask(additionalProperties, step.submissionData,
+      {'pv:epistolaFlowLetter':'/pv:epistolaFlowLetter'})}
+  ```
+  And because only the **completing** step's submission is mapped, a value chosen on an earlier step needs the hidden same-key carrier described above to reach it — `kies-brief-flow` uses both, and without either the generate task fails with _"No composed letter on process variable"_ and the task never completes.
 - **Stale `epistola-suite:latest`**: a locally cached image can predate the pinned contract client (`epistola-client` in `gradle/libs.versions.toml`). The symptom is not a version error but a **500 on `/templates`** — the older response omits `page`, which the generated client requires as non-nullable. `docker pull` before blaming the plugin, and check `docker inspect <container> --format '{{index .Config.Labels "org.opencontainers.image.version"}}'` against [COMPATIBILITY.md](COMPATIBILITY.md).
+- **Demo mode is a separate image**: the compose stack and the README's `docker run` flow both run `SPRING_PROFILES_ACTIVE=demo,localauth`, and since Suite **1.3.0** demo mode ships only in `epistola-suite:{version}-demo` — the plain image refuses to start ("this image does not contain demo mode"), on purpose, so a production install cannot be demoted by configuration. A locally cached 1.2.0 `:latest` still has demo built in, so this breaks only where the image is pulled fresh: a new machine, or CI. Use `latest-demo`.
 - **Newer contract client, older server**: the reverse trap, with the same symptom. A contract release can add a response field older servers never send, and if it is `required` the generated models reject the whole response. Contract `1.3.0` did this with `slug` (fixed in `1.3.1`, which makes it optional), so read a resource's address from `id` (`key` on attributes), which every supported server sends — not from `slug` — until the Suite floor serves contract `1.3.0` or later. `oldestSupportedServerTest` runs `EpistolaServiceImplTest` against the oldest contract a supported Suite serves; it is part of `check`/`build`, not `test`, so run `./gradlew :backend:plugin:build` on a contract bump.
 - **Plugin properties**: Backend `@PluginProperty` keys must match frontend field names exactly
 - **Translations**: Add both `nl` and `en` translations in `epistola.specification.ts`
+- **Letter composer** (`epistola-letter-composer`, **alpha**): pick a letter from a configured
+  list, fill in what the case cannot supply, preview it, and let one
+  `epistola-generate-composed-document` task render it. Where it is used is **derived, never
+  authored** — a task form fills the `epistola:taskId` carrier and a start form does not, so one
+  configuration serves both; a start form's process is discovered server-side from the composers on
+  start forms, narrowed to what the caller may start. It is a module of its own
+  (`app.epistola.valtimo.composer`, `lib/composer/`), switchable with
+  `epistola.composer.enabled=false`, and nothing else in the plugin depends on it.
+  - **Alpha means the stored shapes may still change.** The two that outlive the code that wrote
+    them — a component's settings in a form definition, and the chosen letter on a process variable
+    — carry a `schemaVersion`. Read it through `ComposerSchema` (mirrored in `composer-schema.ts`):
+    absent means 1, and anything newer than `CURRENT` is refused with a message naming both
+    versions rather than half-read. Raise `CURRENT` when a shape changes, and keep the two
+    constants in step. The version is written back in `getModifiedSchema`, like `prefill: false`
+    and the hidden carriers — Form.io drops schema equal to the registered default, and losing it
+    would make every saved component look like it predates the field.
+  - **A catalog belongs to the letter, not the set**: `letterSet.catalogId` is only the default,
+    and `templates[].catalogId` overrides it. Use `configuration.catalogFor(templateId)` or the
+    offered letter's own `catalogId()` — never `configuration.catalogId()`, which is the default.
+  - See [docs/letter-composer.md](docs/letter-composer.md) and
+    [ADR 0006](docs/adr/0006-letter-composer-configuration.md).
 - **Feature toggle**: The plugin can be disabled per environment from a single build artifact.
   - **Backend**: `epistola.enabled=false` (Spring property, defaults to `true`). Disables auto-configuration — no beans, no endpoints, no result collector, and no catch-event auto-wiring (the engine SPI is never registered). Verified by `EpistolaCatchEventAutoWiringConfigTest`.
   - **Catch-event auto-wiring sub-flag**: `epistola.catch-event-auto-wiring.enabled=false` (defaults to `true`, nested under `epistola.enabled`). Drops only the engine-SPI beans (`EpistolaProcessEnginePlugin` + `EpistolaCatchEventParseListener`) so correlation falls back to declarative `epistolaWaitFor` `camunda:inputParameter` mappings — an escape hatch if a future Operaton breaks the SPI, without disabling the whole plugin.
@@ -327,7 +355,12 @@ in `test-app/frontend/src/app/embedding/`; the published plugin library is untou
   and failure states
 - **End-to-end** (`test-app`, Testcontainers, runs in CI): `DownloadDocumentE2ETest` — real app boot, both download storage strategies, async catch-event completion, and the task-scope value resolver; `FormFlowTransitionE2ETest` — walks the Form Flow demo case (open the task, complete both steps, assert the process reached the follow-up task and the submission reached the document)
 - `FormFlowDemoConfigurationTest` — shape of the Form Flow demo fixtures, including the invariant that the preview variant differs from the preview-free baseline **only** by the preview component and generates after (not between) the user tasks
-- **5 Playwright E2E suites** (run locally / planned nightly, not in PR CI): plugin-configuration, generate-document, check-job-status, download-document, form-flow-transition
+- **Playwright E2E suites** — plugin-configuration, generate-document, check-job-status,
+  download-document, form-flow-transition, letter-composer (×2), letter-composer-adhoc. They run
+  **nightly and on demand** (`.github/workflows/e2e-ui.yml`, `gh workflow run "E2E (browser)"`),
+  not in PR CI: they need Postgres, Keycloak, Epistola, the backend and the Angular dev server, so
+  they are far slower than a PR check should be. Run them before a release — they are where the
+  Form.io and Valtimo integration defects actually surface.
 
 ### Driving the test-app by hand
 
@@ -370,4 +403,12 @@ an explicit, commented allowlist rather than by loosening the assertion.
 - `EpistolaPlugin.generateDocument` orchestration is covered only via integration paths, not an isolated unit test
 - Full multi-node result collector behavior depends on Epistola contract/server integration tests
 - Frontend `.spec.ts` unit tests — partial coverage (Playwright E2E covers the main flows)
-- Playwright UI E2E not yet wired into CI (needs a full running stack; planned as a nightly workflow)
+- Playwright UI E2E runs nightly and on demand, not on pull requests — a change to a Form.io component or a task flow is worth a manual `gh workflow run` before merging
+- **10 of the 18 browser tests fail, and did so long before they ran in CI.** The first real run of
+  `E2E (browser)` is what surfaced it: the suites had rotted while nothing executed them, and the
+  failures reproduce on a developer machine exactly as they do on a runner, so they are stale
+  selectors against the current Valtimo admin UI rather than anything environmental. Failing:
+  `plugin-configuration` (5), `generate-document` (2), and one each in `check-job-status`,
+  `download-document` and `form-flow-transition`. Passing: all four letter-composer suites and the
+  three navigation checks. Tracked for a follow-up before release — do not read a red
+  `E2E (browser)` as "the composer is broken" until that list shrinks.

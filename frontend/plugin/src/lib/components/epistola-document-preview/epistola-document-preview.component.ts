@@ -76,7 +76,7 @@ import {
         <span>{{ label || 'Document Preview' }}</span>
         <div class="preview-controls">
           <label
-            *ngIf="overrideMapping"
+            *ngIf="overrideMapping || liveOverrides"
             class="preview-autorefresh"
             title="Automatically refresh the preview as you fill in the form"
           >
@@ -276,6 +276,12 @@ export class EpistolaDocumentPreviewComponent
    * not-yet-re-saved forms — the legacy `form:`-ref object.
    */
   @Input() overrideMapping?: string | Record<string, any>;
+  /**
+   * Set by the Formio wrapper when the preview is driven by live form data —
+   * through a mapping, or through the form's own `pv:`/`doc:` field keys. It
+   * decides whether the auto-refresh toggle is offered.
+   */
+  @Input() liveOverrides = false;
   /**
    * Task id forwarded by the Formio wrapper from the server-prefilled form
    * ({@code epistola:taskId} value resolver), populated in every Valtimo task-open flow.

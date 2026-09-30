@@ -25,6 +25,7 @@ import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.valtimo.service.EpistolaApiException;
 import app.epistola.valtimo.service.EpistolaService;
+import com.ritense.plugin.domain.PluginConfiguration;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.valtimo.contract.annotation.SkipComponentScan;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
@@ -55,6 +56,46 @@ public class EpistolaTemplateResource {
 
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
+
+    /**
+     * The Epistola plugin configurations an author can choose from.
+     *
+     * <p>Needed wherever there is no process-link context to inherit one from — the letter
+     * composer's settings live in a form, not on a service task, so the author picks the
+     * connection themselves. Deliberately lighter than {@code /admin/health}: it lists what is
+     * configured without contacting Epistola.
+     *
+     * @return id, title and tenant of every configured Epistola connection
+     */
+    @GetMapping("/configurations")
+    public ResponseEntity<List<PluginConfigurationInfo>> getConfigurations() {
+        List<PluginConfigurationInfo> configurations = pluginService
+                .findPluginConfigurations(EpistolaPlugin.class, properties -> true)
+                .stream()
+                .map(PluginConfiguration.class::cast)
+                .map(configuration -> {
+                    String tenantId = null;
+                    try {
+                        tenantId = ((EpistolaPlugin) pluginService.createInstance(configuration)).getTenantId();
+                    } catch (Exception e) {
+                        // A configuration that cannot be instantiated (bad credentials, missing
+                        // property) must still be listable, or an author cannot select and fix it.
+                        log.debug("Could not read tenant of configuration {}: {}",
+                                configuration.getId(), e.getMessage());
+                    }
+                    return new PluginConfigurationInfo(
+                            configuration.getId().toString(),
+                            configuration.getTitle(),
+                            tenantId);
+                })
+                .toList();
+
+        return ResponseEntity.ok(configurations);
+    }
+
+    /** One configured Epistola connection, as offered to an author. */
+    public record PluginConfigurationInfo(String id, String title, String tenantId) {
+    }
 
     /**
      * Get all available catalogs for a plugin configuration.

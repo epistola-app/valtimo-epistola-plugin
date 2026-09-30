@@ -326,7 +326,7 @@ The plugin connects to a running Epistola backend. There are three ways to provi
 
 ### Option A — Docker only, no clone (simplest)
 
-The Epistola server is published as `ghcr.io/epistola-app/epistola-suite:latest` and needs a Postgres alongside it. A self-contained `docker run` flow:
+The Epistola server is published as `ghcr.io/epistola-app/epistola-suite:latest-demo` and needs a Postgres alongside it. (Use the `-demo` tag: since Suite 1.3.0 demo mode ships only in that image, and the plain one refuses to start with the `demo` profile.) A self-contained `docker run` flow:
 
 ```bash
 docker network create epistola-net
@@ -341,7 +341,7 @@ docker run -d --name epistola-server --network epistola-net \
   -e SPRING_DATASOURCE_URL=jdbc:postgresql://epistola-pg:5432/epistola_suite \
   -e SPRING_DATASOURCE_USERNAME=epistola \
   -e SPRING_DATASOURCE_PASSWORD=epistola \
-  ghcr.io/epistola-app/epistola-suite:latest
+  ghcr.io/epistola-app/epistola-suite:latest-demo
 ```
 
 Epistola UI: <http://localhost:4000>. Set the plugin's `baseUrl` to `http://localhost:4000/api`.

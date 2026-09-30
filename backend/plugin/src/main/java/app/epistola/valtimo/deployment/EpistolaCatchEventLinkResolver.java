@@ -51,7 +51,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 public class EpistolaCatchEventLinkResolver {
 
-    private static final String GENERATE_DOCUMENT_ACTION_KEY = "epistola-generate-document";
+    private static final java.util.Set<String> GENERATING_ACTION_KEYS =
+            app.epistola.valtimo.domain.EpistolaProcessVariables.GENERATING_ACTION_KEYS;
     private static final String RESULT_PROCESS_VARIABLE_PROPERTY = "resultProcessVariable";
 
     private final RepositoryService repositoryService;
@@ -130,7 +131,7 @@ public class EpistolaCatchEventLinkResolver {
         return processLinkService.getProcessLinks(processDefinitionId).stream()
                 .filter(PluginProcessLink.class::isInstance)
                 .map(PluginProcessLink.class::cast)
-                .filter(link -> GENERATE_DOCUMENT_ACTION_KEY.equals(link.getPluginActionDefinitionKey()))
+                .filter(link -> GENERATING_ACTION_KEYS.contains(link.getPluginActionDefinitionKey()))
                 .toList();
     }
 

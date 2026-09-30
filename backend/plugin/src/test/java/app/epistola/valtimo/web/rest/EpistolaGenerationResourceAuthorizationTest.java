@@ -90,7 +90,8 @@ class EpistolaGenerationResourceAuthorizationTest {
                 previewService, retryFormService, jsonataMappingService,
                 documentService, objectMapper, authorizationService, operatonTaskService,
                 mock(org.operaton.bpm.engine.RuntimeService.class),
-                mock(org.operaton.bpm.engine.RepositoryService.class));
+                mock(org.operaton.bpm.engine.RepositoryService.class),
+                mock(StartEventAuthorization.class));
     }
 
     private PreviewRequest validPreviewRequest() {

@@ -28,6 +28,7 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -142,5 +143,52 @@ class JsonSchemaMappingAnalyzerTest {
                 .filter(field -> field.name().equals(name))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("Field not found: " + name));
+    }
+
+    @Test
+    void readsTheConstraintsAGeneratedInputCanEnforce() {
+        var analysis = analyzer.analyze(Map.of(
+                "type", "object",
+                "properties", Map.of(
+                        "bsn", Map.of("type", "string", "pattern", "^\\d{9}$",
+                                "minLength", 9, "maxLength", 9),
+                        "bedrag", Map.of("type", "number", "minimum", 0, "maximum", 99.5),
+                        "regels", Map.of("type", "array", "minItems", 1, "maxItems", 5,
+                                "items", Map.of("type", "object",
+                                        "properties", Map.of("naam", Map.of("type", "string")))))));
+
+        var bsn = field(analysis.fields(), "bsn").hints().constraints();
+        assertThat(bsn.pattern()).isEqualTo("^\\d{9}$");
+        assertThat(bsn.minLength()).isEqualTo(9);
+        assertThat(bsn.maxLength()).isEqualTo(9);
+
+        var bedrag = field(analysis.fields(), "bedrag").hints().constraints();
+        assertThat(bedrag.minimum()).isEqualByComparingTo("0");
+        assertThat(bedrag.maximum()).isEqualByComparingTo("99.5");
+
+        var regels = field(analysis.fields(), "regels").hints().constraints();
+        assertThat(regels.minItems()).isEqualTo(1);
+        assertThat(regels.maxItems()).isEqualTo(5);
+    }
+
+    @Test
+    void leavesHintsNullWhenTheSchemaStatesNothingToPresent() {
+        var analysis = analyzer.analyze(Map.of(
+                "type", "object",
+                "properties", Map.of("vrij", Map.of("type", "string"))));
+
+        assertThat(field(analysis.fields(), "vrij").hints()).isNull();
+    }
+
+    @Test
+    void readsConstraintsThroughALocalReference() {
+        // A contract that factors a shape out is no different once the pointer is followed.
+        var analysis = analyzer.analyze(Map.of(
+                "type", "object",
+                "$defs", Map.of("Bsn", Map.of("type", "string", "pattern", "^\\d{9}$")),
+                "properties", Map.of("bsn", Map.of("$ref", "#/$defs/Bsn"))));
+
+        assertThat(field(analysis.fields(), "bsn").hints().constraints().pattern())
+                .isEqualTo("^\\d{9}$");
     }
 }

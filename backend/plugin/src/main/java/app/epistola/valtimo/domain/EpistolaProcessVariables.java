@@ -25,6 +25,19 @@ package app.epistola.valtimo.domain;
  */
 public final class EpistolaProcessVariables {
 
+    /**
+     * Every plugin action that submits a generation job.
+     *
+     * <p>Anything that reasons about "a task that generates a document" has to know all of them:
+     * the catch-event correlation that gives a wait its token, the deployment validator that warns
+     * about a generate without a reachable wait, and the admin page's usage overview. Adding an
+     * action and forgetting this list is how a composed letter generated fine and then left its
+     * process waiting forever, so {@code EpistolaGeneratingActionsTest} pins it against the plugin
+     * class rather than trusting the next person to remember.
+     */
+    public static final java.util.Set<String> GENERATING_ACTION_KEYS =
+            java.util.Set.of("epistola-generate-document", "epistola-generate-composed-document");
+
     private EpistolaProcessVariables() {}
 
     /** Prefix for the composite job path: {@code epistola:job:{tenantId}/{requestId}}. */
@@ -61,6 +74,12 @@ public final class EpistolaProcessVariables {
      * with {@code ${<resultVar>.jobPath}}.
      */
     public static final String RESULT_KEY_JOB_PATH = "jobPath";
+
+    /**
+     * Default process variable a letter composer writes its chosen letter to, and the one the
+     * composed-letter action reads back. A form may use another key; both sides then name it.
+     */
+    public static final String COMPOSED_LETTER = "epistolaLetter";
 
     /** Result-object key for the current job status (PENDING / IN_PROGRESS / COMPLETED / FAILED / CANCELLED). */
     public static final String RESULT_KEY_STATUS = "status";

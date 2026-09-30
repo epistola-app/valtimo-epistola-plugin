@@ -38,6 +38,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -197,5 +198,48 @@ class EpistolaTemplateResourceTest {
 
     private static EpistolaApiException upstream(int status) {
         return new EpistolaApiException("Epistola answered " + status, null, status, null, null);
+    }
+
+    @Test
+    void getConfigurations_listsEveryConfiguredConnection() {
+        var configuration = mock(com.ritense.plugin.domain.PluginConfiguration.class);
+        var configurationId = mock(com.ritense.plugin.domain.PluginConfigurationId.class);
+        when(configurationId.toString()).thenReturn(CONFIG_ID.toString());
+        when(configuration.getId()).thenReturn(configurationId);
+        when(configuration.getTitle()).thenReturn("Epistola productie");
+        org.mockito.Mockito.doReturn(List.of(configuration))
+                .when(pluginService).findPluginConfigurations(eq(EpistolaPlugin.class), any());
+        EpistolaPlugin plugin = mock(EpistolaPlugin.class);
+        when(plugin.getTenantId()).thenReturn(TENANT_ID);
+        when(pluginService.createInstance(configuration)).thenReturn(plugin);
+
+        var response = resource.getConfigurations();
+
+        assertThat(response.getBody()).singleElement().satisfies(info -> {
+            assertThat(info.id()).isEqualTo(CONFIG_ID.toString());
+            assertThat(info.title()).isEqualTo("Epistola productie");
+            assertThat(info.tenantId()).isEqualTo(TENANT_ID);
+        });
+    }
+
+    @Test
+    void getConfigurations_stillListsAConnectionThatCannotBeInstantiated() {
+        // Otherwise a broken configuration becomes invisible, and an author cannot select it to fix
+        // whatever is wrong with it.
+        var configuration = mock(com.ritense.plugin.domain.PluginConfiguration.class);
+        var configurationId = mock(com.ritense.plugin.domain.PluginConfigurationId.class);
+        when(configurationId.toString()).thenReturn(CONFIG_ID.toString());
+        when(configuration.getId()).thenReturn(configurationId);
+        when(configuration.getTitle()).thenReturn("Kapotte configuratie");
+        org.mockito.Mockito.doReturn(List.of(configuration))
+                .when(pluginService).findPluginConfigurations(eq(EpistolaPlugin.class), any());
+        when(pluginService.createInstance(configuration)).thenThrow(new IllegalStateException("missing apiKey"));
+
+        var response = resource.getConfigurations();
+
+        assertThat(response.getBody()).singleElement().satisfies(info -> {
+            assertThat(info.title()).isEqualTo("Kapotte configuratie");
+            assertThat(info.tenantId()).isNull();
+        });
     }
 }

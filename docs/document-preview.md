@@ -89,7 +89,27 @@ A dropdown listing all `generate-document` process links across deployed process
 - `processDefinitionKey` — identifies the process (e.g., `objection-handling`)
 - `sourceActivityId` — identifies the generate-document service task (e.g., `generate-decision-gegrond`)
 
+### Field keys as overrides (optional, default on)
+
+Most overrides need no configuration at all. A field keyed `pv:motivation` already states that
+Valtimo saves it to the `motivation` process variable, and `doc:/aanvrager/naam` that it is written
+to that path in the case document. With **Use the form's field keys as overrides** on (the default),
+the preview reads those keys straight from the live form data and overlays the unsaved values
+itself — which is exactly what saving the form would do. Both Valtimo notations work, so
+`doc:aanvrager.naam` and `doc:/aanvrager/naam` address the same field.
+
+Fields without a `pv:`/`doc:` prefix are ignored: they are plain form fields (or Formio plumbing
+such as `submit`) and say nothing about where their value lands.
+
+Turn it off when a field key does not match where its value is stored. The main case is a **Form
+Flow**, where a step's data is saved by its `onComplete` expression rather than by field key —
+see [form-flows.md](form-flows.md).
+
 ### Input Overrides (optional)
+
+Only needed for what the field keys cannot say: a value that is transformed before it reaches the
+mapping, a field whose key differs from its target, or a Form Flow step. Where both apply to the
+same field, **this mapping wins** over the derived value.
 
 A mapping from the live form fields onto the `doc`/`pv` inputs the data mapping will read,
 authored as a **JSONata expression over `$form`** (the form's component values). The expression
@@ -188,10 +208,12 @@ Formio wrapper (when auto-refresh is on):
   - root.element focusout (blur) — flushes immediately
   (when auto-refresh is off, only the initial paint + the Refresh button trigger it)
   ↓
-computeInputOverrides(overrideMapping, formData)  [async]
+computeInputOverrides(overrideMapping, formData, deriveFromKeys)  [async]
+  - derives {doc, pv} from the form's own pv:/doc: field keys (unless turned off)
   - evaluates the JSONata expression with $form = formData
     (legacy form:-ref objects are converted to JSONata first)
   - keeps only doc/pv scopes that resolved at least one field
+  - merges both, the mapping winning per field
   ↓
 Dedup: skip if the computed overrides equal the last pushed value
   ↓

@@ -19,6 +19,8 @@
 import {
   expandDotNotation,
   computeInputOverrides,
+  deriveInputOverridesFromKeys,
+  mergeInputOverrides,
   isExpression,
   isOverrideDriven,
   hasUsableOverrides,
@@ -244,6 +246,116 @@ describe('preview-utils', () => {
 
     it('returns {} for an empty mapping', async () => {
       expect(await computeInputOverrides({}, { someField: 'value' })).toEqual({});
+    });
+  });
+
+  describe('deriveInputOverridesFromKeys', () => {
+    it('should derive a process variable from a pv: key', () => {
+      expect(deriveInputOverridesFromKeys({ 'pv:motivatie': 'omdat' })).toEqual({
+        pv: { motivatie: 'omdat' },
+      });
+    });
+
+    it('should derive a nested document path from a JSON-pointer doc: key', () => {
+      expect(deriveInputOverridesFromKeys({ 'doc:/aanvrager/naam': 'Jansen' })).toEqual({
+        doc: { aanvrager: { naam: 'Jansen' } },
+      });
+    });
+
+    it('should derive the same path from the dotted doc: notation', () => {
+      // Valtimo's toJsonPointer treats doc:aanvrager.naam and doc:/aanvrager/naam alike.
+      expect(deriveInputOverridesFromKeys({ 'doc:aanvrager.naam': 'Jansen' })).toEqual({
+        doc: { aanvrager: { naam: 'Jansen' } },
+      });
+    });
+
+    it('should keep an object value whole, as Formio nests dotted keys itself', () => {
+      expect(deriveInputOverridesFromKeys({ 'doc:aanvrager': { naam: 'Jansen' } })).toEqual({
+        doc: { aanvrager: { naam: 'Jansen' } },
+      });
+    });
+
+    it('should merge several fields under the same scope', () => {
+      expect(
+        deriveInputOverridesFromKeys({
+          'pv:decision': 'gegrond',
+          'pv:motivation': 'omdat',
+        }),
+      ).toEqual({ pv: { decision: 'gegrond', motivation: 'omdat' } });
+    });
+
+    it('should ignore keys without a value-resolver prefix', () => {
+      expect(deriveInputOverridesFromKeys({ subject: 'hello', submit: true })).toEqual({});
+    });
+
+    it('should ignore a prefix without a path', () => {
+      expect(deriveInputOverridesFromKeys({ 'pv:': 'x', 'doc:/': 'y' })).toEqual({});
+    });
+
+    it('should keep falsy values a save would also write', () => {
+      expect(deriveInputOverridesFromKeys({ 'pv:count': 0, 'pv:note': '' })).toEqual({
+        pv: { count: 0, note: '' },
+      });
+    });
+
+    it('should skip undefined values', () => {
+      expect(deriveInputOverridesFromKeys({ 'pv:note': undefined })).toEqual({});
+    });
+
+    it('should return an empty object for missing form data', () => {
+      expect(deriveInputOverridesFromKeys(null)).toEqual({});
+      expect(deriveInputOverridesFromKeys(undefined)).toEqual({});
+    });
+  });
+
+  describe('mergeInputOverrides', () => {
+    it('should let the explicit mapping win on the same field', () => {
+      expect(
+        mergeInputOverrides({ pv: { motivatie: 'derived' } }, { pv: { motivatie: 'explicit' } }),
+      ).toEqual({ pv: { motivatie: 'explicit' } });
+    });
+
+    it('should keep derived fields the mapping does not address', () => {
+      expect(mergeInputOverrides({ pv: { a: 1 }, doc: { x: 'y' } }, { pv: { b: 2 } })).toEqual({
+        pv: { a: 1, b: 2 },
+        doc: { x: 'y' },
+      });
+    });
+  });
+
+  describe('computeInputOverrides with key derivation', () => {
+    it('should derive overrides when no mapping is configured', async () => {
+      const overrides = await computeInputOverrides(null, { 'pv:motivatie': 'omdat' }, true);
+      expect(overrides).toEqual({ pv: { motivatie: 'omdat' } });
+    });
+
+    it('should not derive anything when derivation is off', async () => {
+      const overrides = await computeInputOverrides(null, { 'pv:motivatie': 'omdat' });
+      expect(overrides).toEqual({});
+    });
+
+    it('should combine derived keys with an explicit mapping, mapping winning', async () => {
+      const mapping = '{ "pv": { "motivatie": $uppercase($form.`pv:motivatie`) } }';
+      const overrides = await computeInputOverrides(
+        mapping,
+        { 'pv:motivatie': 'omdat', 'doc:/aanvrager/naam': 'Jansen' },
+        true,
+      );
+      expect(overrides).toEqual({
+        pv: { motivatie: 'OMDAT' },
+        doc: { aanvrager: { naam: 'Jansen' } },
+      });
+    });
+
+    it('should still derive when the mapping expression fails', async () => {
+      const overrides = await computeInputOverrides(
+        'this is not jsonata {{',
+        {
+          'pv:motivatie': 'omdat',
+        },
+        true,
+      );
+      expect(overrides).toEqual({ pv: { motivatie: 'omdat' } });
     });
   });
 });

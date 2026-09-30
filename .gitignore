@@ -92,6 +92,9 @@ coverage/
 test-results/
 playwright-report/
 
+# Throwaway scripts used to drive the running app by hand
+*.tmp.mjs
+
 # Helm chart dependencies (downloaded via helm dependency build)
 charts/*/charts/*.tgz
 /.claude/worktrees/

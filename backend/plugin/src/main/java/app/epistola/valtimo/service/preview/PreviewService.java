@@ -21,6 +21,7 @@ import app.epistola.valtimo.action.generate.GenerateDocumentActionConfigurationR
 import app.epistola.valtimo.service.EpistolaService;
 
 import app.epistola.valtimo.mapping.JsonataMappingService;
+import app.epistola.valtimo.mapping.MapMerge;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -283,21 +284,9 @@ public class PreviewService {
                 .orElse(null);
     }
 
-    @SuppressWarnings("unchecked")
+    /** Kept as a thin alias: the merge itself lives in {@link MapMerge} so every caller shares it. */
     static Map<String, Object> deepMerge(Map<String, Object> base, Map<String, Object> overrides) {
-        Map<String, Object> result = new LinkedHashMap<>(base);
-        for (var entry : overrides.entrySet()) {
-            Object baseValue = result.get(entry.getKey());
-            Object overrideValue = entry.getValue();
-            if (baseValue instanceof Map && overrideValue instanceof Map) {
-                result.put(entry.getKey(), deepMerge(
-                        (Map<String, Object>) baseValue,
-                        (Map<String, Object>) overrideValue));
-            } else {
-                result.put(entry.getKey(), overrideValue);
-            }
-        }
-        return result;
+        return MapMerge.deepMerge(base, overrides);
     }
 
     /**

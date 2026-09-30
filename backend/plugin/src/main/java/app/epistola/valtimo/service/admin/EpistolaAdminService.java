@@ -80,9 +80,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class EpistolaAdminService {
 
-    private static final Set<String> EPISTOLA_ACTION_KEYS = Set.of(
-            "epistola-generate-document", "epistola-check-job-status", "epistola-download-document"
-    );
+    private static final Set<String> EPISTOLA_ACTION_KEYS = java.util.stream.Stream.concat(
+            app.epistola.valtimo.domain.EpistolaProcessVariables.GENERATING_ACTION_KEYS.stream(),
+            Set.of("epistola-check-job-status", "epistola-download-document").stream()
+    ).collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     /** Catalog import type — mirrors the value used by the startup sync trigger. */
     private static final String CATALOG_SYNC_TYPE = "AUTHORED";

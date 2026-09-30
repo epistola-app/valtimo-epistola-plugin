@@ -21,6 +21,7 @@ import app.epistola.valtimo.domain.SimpleMappingSupport;
 import app.epistola.valtimo.domain.TemplateField;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -170,7 +171,8 @@ public final class JsonSchemaMappingAnalyzer {
         }
 
         if (isArraySchema(resolved.schema())) {
-            return buildArrayField(name, path, required, description, resolved, root, depth);
+            return buildArrayField(
+                    name, path, required, description, fieldSchema, resolved, root, depth);
         }
 
         return new TemplateField(
@@ -183,8 +185,76 @@ public final class JsonSchemaMappingAnalyzer {
                 Collections.emptyList(),
                 false,
                 null,
-                resolved.nullable()
+                resolved.nullable(),
+                hints(fieldSchema, resolved.schema())
         );
+    }
+
+    /**
+     * Read the presentation keywords a generated input can use. They are looked up on the original
+     * field schema first, then on the resolved one, so a {@code $ref}'d definition still supplies
+     * them while a local override wins.
+     */
+    private TemplateField.FieldHints hints(Map<String, Object> fieldSchema, Map<String, Object> resolvedSchema) {
+        String title = firstNonNull(text(fieldSchema.get("title")), text(resolvedSchema.get("title")));
+        String format = firstNonNull(text(fieldSchema.get("format")), text(resolvedSchema.get("format")));
+        List<Object> allowedValues = allowedValues(fieldSchema, resolvedSchema);
+        Object defaultValue = fieldSchema.containsKey("default")
+                ? fieldSchema.get("default")
+                : resolvedSchema.get("default");
+
+        var candidate = new TemplateField.FieldHints(
+                title, format, allowedValues, defaultValue, constraints(fieldSchema, resolvedSchema));
+        return candidate.isEmpty() ? null : candidate;
+    }
+
+    /**
+     * The size and range keywords, looked up the same way as the rest of the hints: the field's own
+     * schema first, then the resolved one, so a {@code $ref}'d definition supplies them and a local
+     * override wins.
+     */
+    private TemplateField.Constraints constraints(
+            Map<String, Object> fieldSchema,
+            Map<String, Object> resolvedSchema
+    ) {
+        var candidate = new TemplateField.Constraints(
+                wholeNumber(keyword(fieldSchema, resolvedSchema, "minLength")),
+                wholeNumber(keyword(fieldSchema, resolvedSchema, "maxLength")),
+                text(keyword(fieldSchema, resolvedSchema, "pattern")),
+                decimal(keyword(fieldSchema, resolvedSchema, "minimum")),
+                decimal(keyword(fieldSchema, resolvedSchema, "maximum")),
+                wholeNumber(keyword(fieldSchema, resolvedSchema, "minItems")),
+                wholeNumber(keyword(fieldSchema, resolvedSchema, "maxItems")));
+        return candidate.isEmpty() ? null : candidate;
+    }
+
+    private Object keyword(Map<String, Object> fieldSchema, Map<String, Object> resolvedSchema, String name) {
+        return fieldSchema.containsKey(name) ? fieldSchema.get(name) : resolvedSchema.get(name);
+    }
+
+    private Integer wholeNumber(Object value) {
+        return value instanceof Number number ? number.intValue() : null;
+    }
+
+    private java.math.BigDecimal decimal(Object value) {
+        if (value instanceof java.math.BigDecimal decimal) {
+            return decimal;
+        }
+        return value instanceof Number number ? new java.math.BigDecimal(number.toString()) : null;
+    }
+
+    private List<Object> allowedValues(Map<String, Object> fieldSchema, Map<String, Object> resolvedSchema) {
+        Object raw = fieldSchema.containsKey("enum") ? fieldSchema.get("enum") : resolvedSchema.get("enum");
+        if (raw instanceof Collection<?> values && !values.isEmpty()) {
+            return values.stream().map(value -> (Object) value).toList();
+        }
+        // A single-value `const` constrains the field just as tightly as a one-entry enum.
+        Object constant = fieldSchema.containsKey("const") ? fieldSchema.get("const") : resolvedSchema.get("const");
+        return constant != null ? List.of(constant) : null;
+    }
+
+    private String firstNonNull(String first, String second) {
+        return first != null ? first : second;
     }
 
     private TemplateField buildArrayField(
@@ -192,10 +262,14 @@ public final class JsonSchemaMappingAnalyzer {
             String path,
             boolean required,
             String description,
+            Map<String, Object> fieldSchema,
             ResolvedSchema arraySchema,
             Map<String, Object> root,
             int depth
     ) {
+        // An array's own keywords — minItems, maxItems — describe the array, not its items, so
+        // they are read here rather than from the item schema below.
+        TemplateField.FieldHints hints = hints(fieldSchema, arraySchema.schema());
         Object rawItems = arraySchema.schema().get("items");
         if (!(rawItems instanceof Map<?, ?> itemsMap)) {
             return new TemplateField(
@@ -208,7 +282,8 @@ public final class JsonSchemaMappingAnalyzer {
                     Collections.emptyList(),
                     false,
                     null,
-                    arraySchema.nullable()
+                    arraySchema.nullable(),
+                    hints
             );
         }
 
@@ -257,7 +332,8 @@ public final class JsonSchemaMappingAnalyzer {
                     children,
                     true,
                     "Arrays of objects must be mapped as a complete value.",
-                    arraySchema.nullable()
+                    arraySchema.nullable(),
+                    hints
             );
         }
         return new TemplateField(
@@ -270,7 +346,8 @@ public final class JsonSchemaMappingAnalyzer {
                 Collections.emptyList(),
                 false,
                 null,
-                arraySchema.nullable()
+                arraySchema.nullable(),
+                hints
         );
     }
 

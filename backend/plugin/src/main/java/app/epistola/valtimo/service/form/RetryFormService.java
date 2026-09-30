@@ -197,6 +197,15 @@ public class RetryFormService {
                 .orElse(null);
     }
 
+    /**
+     * Deliberately {@code epistola-generate-document} only, not every generating action.
+     *
+     * <p>A retry form is rebuilt from the link's own template and data mapping, and asks the
+     * employee to correct the values that mapping produced. A composed letter has neither: its
+     * template was chosen by the employee and its data was resolved while they watched, and both
+     * live on a process variable rather than in the link. Retrying one means composing it again,
+     * which is a different form — see docs/letter-composer.md.
+     */
     private List<PluginProcessLink> findGenerateDocumentProcessLinks(String processDefinitionId) {
         return processLinkService.getProcessLinks(processDefinitionId).stream()
                 .filter(PluginProcessLink.class::isInstance)

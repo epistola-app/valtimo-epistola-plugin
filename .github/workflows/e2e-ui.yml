@@ -1,0 +1,175 @@
+# Browser E2E, against a full running stack.
+#
+# The suites here are the ones that find the defects the unit tests are blind to: Form.io's
+# serializer dropping a component's flags, a wizard rendering its own submit button inside a
+# Valtimo form, a task completing without the letter reaching the process. None of that is visible
+# without a browser, a real backend and a real Epistola.
+#
+# They are not in PR CI because they need that whole stack — Postgres, Keycloak, Epistola, the
+# Valtimo backend and the Angular dev server — which takes far longer than a PR check should. So
+# they run nightly, and on demand before a release.
+name: E2E (browser)
+
+on:
+  schedule:
+    # 03:00 UTC, after the day's merges have settled.
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: "Playwright filter (a file name or test title); empty runs everything"
+        required: false
+        type: string
+
+concurrency:
+  group: e2e-ui-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  e2e-ui:
+    name: Browser E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+
+      # The Epistola image lives in this repository's own organisation.
+      - name: Log in to ghcr.io
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Start Postgres, Keycloak and Epistola
+        working-directory: docker
+        run: docker compose --profile server up -d
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The test-app's frontend consumes the plugin through a workspace link, so the library has to
+      # exist before the dev server starts — the same build order the README and CLAUDE.md give.
+      - name: Build the plugin library
+        run: pnpm --filter @epistola.app/valtimo-plugin build
+
+      # Keycloak is waited on separately, and first. It is the one service nothing else depends on
+      # at boot, so a Keycloak that dies during realm import stays invisible until the browser
+      # cannot log in — and the run then blames whichever service is checked next. That is exactly
+      # what happened: an over-long role description in the realm import aborted Keycloak's start,
+      # and the failure surfaced as "Epistola never came up".
+      - name: Wait for Keycloak
+        run: |
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8081/realms/valtimo || true)
+            if [ "$code" = "200" ]; then echo "Keycloak serving the valtimo realm"; exit 0; fi
+            if [ "$(docker inspect -f '{{.State.Running}}' ved-keycloak)" != "true" ]; then
+              echo "::error::Keycloak exited during startup"; exit 1
+            fi
+            sleep 5
+          done
+          echo "::error::Keycloak never served the valtimo realm on :8081"
+          exit 1
+
+      - name: Wait for Epistola
+        run: |
+          for i in $(seq 1 60); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:4000/api/tenants/demo/catalogs || true)
+            if [ "$code" != "000" ]; then echo "Epistola answering: HTTP $code"; exit 0; fi
+            # A container that has exited is never going to answer, and waiting out the full five
+            # minutes only buries the reason further up the log.
+            if [ "$(docker inspect -f '{{.State.Running}}' ved-epistola-server)" != "true" ]; then
+              echo "::error::Epistola exited during startup"; exit 1
+            fi
+            sleep 5
+          done
+          echo "::error::Epistola never came up on :4000"
+          exit 1
+
+      - name: Start the Valtimo backend
+        run: |
+          nohup ./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev' \
+            > backend.log 2>&1 &
+          disown
+          for i in $(seq 1 120); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/ || true)
+            case "$code" in 200|401|403|404) echo "Backend up: HTTP $code"; exit 0;; esac
+            sleep 5
+          done
+          echo "::error::The Valtimo backend never came up on :8080"
+          tail -100 backend.log
+          exit 1
+
+      - name: Start the Valtimo frontend
+        run: |
+          nohup pnpm --filter gzac-frontend-template start > frontend.log 2>&1 &
+          disown
+          for i in $(seq 1 120); do
+            if grep -q "Compiled successfully" frontend.log 2>/dev/null; then
+              echo "Frontend compiled"; exit 0
+            fi
+            if grep -q "Failed to compile" frontend.log 2>/dev/null; then
+              echo "::error::The frontend failed to compile"; tail -60 frontend.log; exit 1
+            fi
+            sleep 5
+          done
+          echo "::error::The frontend never finished compiling"
+          tail -60 frontend.log
+          exit 1
+
+      - name: Install Playwright's browser
+        working-directory: test-app/frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run the browser suites
+        working-directory: test-app/frontend
+        env:
+          SUITE: ${{ inputs.suite }}
+        run: pnpm exec playwright test --config e2e/playwright.config.ts $SUITE
+
+      - name: Upload the Playwright report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: playwright-report
+          path: |
+            test-app/frontend/playwright-report/
+            test-app/frontend/test-results/
+          retention-days: 14
+
+      # A failure here is usually in one of the services rather than in the test, and the run is
+      # unattended, so the logs have to come back with it — in full. Tailing them does not work:
+      # the Epistola image is a Paketo build, which prints a ~90-line native-memory summary when
+      # the JVM exits, so any tail short enough to read shows only that and never the error.
+      - name: Capture the container logs
+        if: failure()
+        run: |
+          for service in ved-epistola-server ved-keycloak ved-postgres; do
+            docker logs "$service" > "$service.log" 2>&1 || true
+          done
+          echo "::group::Epistola (native-memory summary stripped)"
+          sed '/Native Memory Tracking:/,$d' ved-epistola-server.log | tail -60
+          echo "::endgroup::"
+          echo "::group::Keycloak errors"
+          grep -iE "error|failed to start" ved-keycloak.log | tail -20 || echo "none"
+          echo "::endgroup::"
+
+      - name: Upload the service logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: e2e-ui-service-logs
+          path: |
+            backend.log
+            frontend.log
+            ved-*.log
+          retention-days: 14
+
+      - name: Stop the stack
+        if: always()
+        working-directory: docker
+        run: docker compose --profile server down -v

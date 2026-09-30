@@ -19,7 +19,11 @@
  */
 
 /**
- * Guards the *persistence* half of the task-id mechanism.
+ * Guards the *persistence* half of the task-id mechanism — and, further down, every other value a
+ * component must carry rather than inherit: the letter composer's `prefill: false` and its
+ * `schemaVersion`. They are here rather than in `lib/composer/` because the defect is one and the
+ * same, it lives in Formio's serializer rather than in any component, and reproducing it needs the
+ * real-formiojs harness below, which is not worth duplicating per component.
  *
  * The read half is covered by prefilled-task-id.spec.ts and the per-component wrapper specs
  * assert the id reaches the Angular element. Neither exercised what the Formio builder actually
@@ -72,11 +76,15 @@ jest.mock('./epistola-document/epistola-document.component', () => ({
 jest.mock('./epistola-retry-form/epistola-retry-form.component', () => ({
   EpistolaRetryFormComponent: class {},
 }));
+jest.mock('../composer/letter-composer/epistola-letter-composer.component', () => ({
+  EpistolaLetterComposerComponent: class {},
+}));
 
 import { Components } from 'formiojs';
 import { registerEpistolaDocumentPreviewComponent } from './epistola-document-preview/epistola-document-preview.formio';
 import { registerEpistolaDocumentComponent } from './epistola-document/epistola-document.formio';
 import { registerEpistolaRetryFormComponent } from './epistola-retry-form/epistola-retry-form.formio';
+import { registerEpistolaLetterComposerComponent } from '../composer/letter-composer/epistola-letter-composer.formio';
 import {
   PREFILLED_TASK_ID_DATA_KEY,
   PREFILLED_TASK_ID_SOURCE_KEY,
@@ -315,5 +323,78 @@ describe('document-id carrier (start-event preview)', () => {
       const schema = persistedSchemaOf(type, paletteDropPayloadFor(type));
       expect(documentCarriersOf(schema)).toHaveLength(0);
     }
+  });
+});
+
+describe('letter composer opts out of Valtimo prefill', () => {
+  beforeAll(() => {
+    registerEpistolaLetterComposerComponent({} as any);
+  });
+
+  /**
+   * `prefill: false` is what keeps a composer out of Valtimo's prefill, and it has to survive the
+   * builder. Its key is a `pv:` one, and Valtimo resolves a `pv:` key against *all* of the case's
+   * process instances: once a dossier holds a second one carrying that variable it cannot pick,
+   * and fails the whole form with a 500. Declaring the flag in the registered schema is not
+   * enough — that is exactly the value Formio's serializer classifies as unmodified and drops,
+   * the same trap as the carriers above.
+   */
+  it('persists prefill: false straight from the palette drop payload', () => {
+    const schema = persistedSchemaOf(
+      'epistola-letter-composer',
+      paletteDropPayloadFor('epistola-letter-composer'),
+    );
+
+    expect(schema.prefill).toBe(false);
+  });
+
+  it('persists prefill: false for a form saved without it', () => {
+    // A composer authored before the flag existed, or one Formio already stripped once.
+    const schema = persistedSchemaOf('epistola-letter-composer', {
+      type: 'epistola-letter-composer',
+      key: 'pv:epistolaLetter',
+    });
+
+    expect(schema.prefill).toBe(false);
+  });
+
+  /**
+   * Same trap as `prefill`, with a nastier consequence: a component whose version was dropped
+   * looks to every later plugin like one authored before the field existed, so the very mechanism
+   * meant to make the shape changeable is lost on the first save from the builder.
+   */
+  it('persists the schema version straight from the palette drop payload', () => {
+    const schema = persistedSchemaOf(
+      'epistola-letter-composer',
+      paletteDropPayloadFor('epistola-letter-composer'),
+    );
+
+    expect(schema.schemaVersion).toBe(1);
+  });
+
+  it('keeps the version a stored form already declares rather than restamping it', () => {
+    // A form authored against an earlier schema stays authored against it; re-stamping would
+    // claim it had been migrated when nothing looked at it.
+    const schema = persistedSchemaOf('epistola-letter-composer', {
+      type: 'epistola-letter-composer',
+      key: 'pv:epistolaLetter',
+      schemaVersion: 1,
+    });
+
+    expect(schema.schemaVersion).toBe(1);
+  });
+
+  it('carries both prefilled ids as well', () => {
+    const schema = persistedSchemaOf(
+      'epistola-letter-composer',
+      paletteDropPayloadFor('epistola-letter-composer'),
+    );
+
+    expect(carriersOf(schema)).toHaveLength(1);
+    expect(
+      (schema.components ?? []).filter(
+        (child: any) => child?.properties?.sourceKey === 'epistola:documentId',
+      ),
+    ).toHaveLength(1);
   });
 });

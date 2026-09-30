@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
 class FormioFormGeneratorTest {
@@ -449,6 +450,310 @@ class FormioFormGeneratorTest {
 
             ObjectNode component = (ObjectNode) form.get("components").get(0);
             assertNull(component.get("defaultValue"));
+        }
+    }
+
+    @Nested
+    class SchemaHints {
+
+        private TemplateField scalar(String name, String type, TemplateField.FieldHints hints) {
+            return new TemplateField(
+                    name, name, type, FieldType.SCALAR, false, null,
+                    List.of(), false, null, false, hints);
+        }
+
+        @Test
+        void enumField_generatesSelectWithExactlyThoseValues() {
+            TemplateField field = scalar("besluit", "string",
+                    new TemplateField.FieldHints(null, null, List.of("gegrond", "ongegrond"), null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("select", component.get("type").asText());
+            ArrayNode values = (ArrayNode) component.get("data").get("values");
+            assertEquals(2, values.size());
+            assertEquals("gegrond", values.get(0).get("value").asText());
+            assertEquals("ongegrond", values.get(1).get("label").asText());
+        }
+
+        @Test
+        void constField_isOfferedAsASingleOption() {
+            TemplateField field = scalar("kanaal", "string",
+                    new TemplateField.FieldHints(null, null, List.of("post"), null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("select", component.get("type").asText());
+            assertEquals(1, component.get("data").get("values").size());
+        }
+
+        @Test
+        void schemaTitle_winsOverTheHumanizedName() {
+            TemplateField field = scalar("besluitDatum", "string",
+                    new TemplateField.FieldHints("Datum van het besluit", null, null, null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("Datum van het besluit", component.get("label").asText());
+        }
+
+        @Test
+        void dateFormat_keepsATextfieldWithAnExplicitPlaceholder() {
+            // Formio's date picker emits a full ISO timestamp, which "format": "date" rejects.
+            TemplateField field = scalar("datum", "string",
+                    new TemplateField.FieldHints(null, "date", null, null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("textfield", component.get("type").asText());
+            assertEquals("YYYY-MM-DD", component.get("placeholder").asText());
+        }
+
+        @Test
+        void emailFormat_generatesAnEmailComponent() {
+            TemplateField field = scalar("contact", "string",
+                    new TemplateField.FieldHints(null, "email", null, null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("email", component.get("type").asText());
+        }
+
+        @Test
+        void schemaDefault_fillsTheFieldWhenTheDataDoesNot() {
+            TemplateField field = scalar("aanhef", "string",
+                    new TemplateField.FieldHints(null, null, null, "Geachte heer/mevrouw"));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("Geachte heer/mevrouw", component.get("defaultValue").asText());
+        }
+
+        @Test
+        void resolvedData_winsOverTheSchemaDefault() {
+            TemplateField field = scalar("aanhef", "string",
+                    new TemplateField.FieldHints(null, null, null, "Geachte heer/mevrouw"));
+
+            ObjectNode component = (ObjectNode) generator
+                    .generateForm(List.of(field), Map.of("aanhef", "Beste Jan"))
+                    .get("components").get(0);
+
+            assertEquals("Beste Jan", component.get("defaultValue").asText());
+        }
+
+        @Test
+        void arrayOfScalars_generatesOneRepeatingInput() {
+            TemplateField field = scalar("bijlagen", "array", null);
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("textfield", component.get("type").asText());
+            assertTrue(component.get("multiple").asBoolean());
+        }
+    }
+
+    /**
+     * The contract's rules, on the input.
+     *
+     * <p>Epistola validates all of this when it renders, so none of it is a guarantee — it decides
+     * where the complaint appears. Which makes one property matter more than completeness: these
+     * must never refuse a value the contract allows, or the employee is stuck on something the
+     * server would have taken.
+     */
+    @Nested
+    class Constraints {
+
+        private TemplateField constrained(
+                String name, String type, boolean required, TemplateField.Constraints constraints
+        ) {
+            return new TemplateField(
+                    name, name, type, FieldType.SCALAR, required, null, List.of(), false, null, false,
+                    new TemplateField.FieldHints(null, null, null, null, constraints));
+        }
+
+        private ObjectNode generate(TemplateField field) {
+            return (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+        }
+
+        @Test
+        void carriesStringLengths() {
+            ObjectNode validate = (ObjectNode) generate(constrained("naam", "string", false,
+                    new TemplateField.Constraints(2, 40, null, null, null, null, null)))
+                    .get("validate");
+
+            assertThat(validate.get("minLength").asInt()).isEqualTo(2);
+            assertThat(validate.get("maxLength").asInt()).isEqualTo(40);
+        }
+
+        @Test
+        void carriesNumberRanges() {
+            ObjectNode validate = (ObjectNode) generate(constrained("bedrag", "number", false,
+                    new TemplateField.Constraints(null, null, null,
+                            new java.math.BigDecimal("0"), new java.math.BigDecimal("99.5"),
+                            null, null)))
+                    .get("validate");
+
+            assertThat(validate.get("min").decimalValue()).isEqualByComparingTo("0");
+            assertThat(validate.get("max").decimalValue()).isEqualByComparingTo("99.5");
+        }
+
+        @Test
+        void keepsAnAnchoredPatternExactlyAsTheContractWroteIt() {
+            ObjectNode validate = (ObjectNode) generate(constrained("bsn", "string", false,
+                    new TemplateField.Constraints(null, null, "^\\d{9}$", null, null, null, null)))
+                    .get("validate");
+
+            assertThat(validate.get("pattern").asText()).isEqualTo("^\\d{9}$");
+        }
+
+        @Test
+        void wrapsAnUnanchoredPatternSoItStillSearches() {
+            // JSON Schema patterns search; Formio wraps what it is given as ^…$ and so requires the
+            // whole value to match. Passed through, "\d{3}" would reject "ab123" — which the
+            // contract allows and Epistola accepts.
+            String pattern = (String) generate(constrained("code", "string", false,
+                    new TemplateField.Constraints(null, null, "\\d{3}", null, null, null, null)))
+                    .get("validate").get("pattern").asText();
+
+            assertThat(java.util.regex.Pattern.compile("^" + pattern + "$").matcher("ab123cd").matches())
+                    .describedAs("a searching pattern must still match a value that merely contains it")
+                    .isTrue();
+            assertThat(java.util.regex.Pattern.compile("^" + pattern + "$").matcher("abcd").matches())
+                    .describedAs("and must still reject one that does not")
+                    .isFalse();
+        }
+
+        @Test
+        void leavesLengthAndPatternOffAnEnum() {
+            // The options are the constraint; a length rule on top of them can only contradict.
+            TemplateField field = new TemplateField(
+                    "soort", "soort", "string", FieldType.SCALAR, false, null, List.of(), false, null,
+                    false, new TemplateField.FieldHints(null, null, List.of("a", "bb"), null,
+                    new TemplateField.Constraints(5, 10, "^x$", null, null, null, null)));
+
+            ObjectNode component = generate(field);
+
+            assertThat(component.get("type").asText()).isEqualTo("select");
+            assertThat(component.path("validate").has("minLength")).isFalse();
+            assertThat(component.path("validate").has("pattern")).isFalse();
+        }
+
+        @Test
+        void countsTheRowsOfADataGrid() {
+            TemplateField grid = new TemplateField(
+                    "regels", "regels", "array", FieldType.ARRAY, true, null,
+                    List.of(new TemplateField("naam", "naam", "string", FieldType.SCALAR, true, null, List.of())),
+                    false, null, false,
+                    new TemplateField.FieldHints(null, null, null, null,
+                            new TemplateField.Constraints(null, null, null, null, null, 1, 5)));
+
+            ObjectNode validate = (ObjectNode) generate(grid).get("validate");
+
+            assertThat(validate.get("required").asBoolean()).isTrue();
+            assertThat(validate.get("minLength").asInt()).isEqualTo(1);
+            assertThat(validate.get("maxLength").asInt()).isEqualTo(5);
+        }
+
+        @Test
+        void countsTheEntriesOfAnArrayOfScalars() {
+            // One input with `multiple`, whose entries Formio counts with the same two keywords.
+            TemplateField tags = new TemplateField(
+                    "tags", "tags", "array", FieldType.SCALAR, false, null, List.of(), false, null, false,
+                    new TemplateField.FieldHints(null, null, null, null,
+                            new TemplateField.Constraints(null, null, null, null, null, 1, 3)));
+
+            ObjectNode component = generate(tags);
+
+            assertThat(component.get("multiple").asBoolean()).isTrue();
+            assertThat(component.get("validate").get("minLength").asInt()).isEqualTo(1);
+            assertThat(component.get("validate").get("maxLength").asInt()).isEqualTo(3);
+        }
+
+        @Test
+        void addsNoValidateBlockWhenTheContractStatesNothing() {
+            TemplateField plain = new TemplateField(
+                    "vrij", "vrij", "string", FieldType.SCALAR, false, null, List.of());
+
+            assertThat(generate(plain).has("validate")).isFalse();
+        }
+    }
+
+    /**
+     * A data grid scopes its components to the row, while the analyzer paths an item's fields
+     * against the whole document. Objects inside an item used to be flattened to a single text
+     * field because of that mismatch.
+     */
+    @Nested
+    class NestedInsideAnArrayItem {
+
+        private TemplateField scalarAt(String name, String path, boolean required) {
+            return new TemplateField(name, path, "string", FieldType.SCALAR, required, null, List.of());
+        }
+
+        private ObjectNode grid(TemplateField... children) {
+            TemplateField array = new TemplateField(
+                    "regels", "regels", "array", FieldType.ARRAY, true, null, List.of(children),
+                    true, "Arrays of objects must be mapped as a complete value.", false, null);
+            return (ObjectNode) generator.generateForm(List.of(array), Map.of())
+                    .get("components").get(0);
+        }
+
+        @Test
+        void keepsAnObjectAsAFieldsetInsteadOfFlatteningIt() {
+            TemplateField address = new TemplateField(
+                    "adres", "regels[].adres", "object", FieldType.OBJECT, true, null,
+                    List.of(scalarAt("straat", "regels[].adres.straat", true),
+                            scalarAt("plaats", "regels[].adres.plaats", false)));
+
+            ObjectNode column = (ObjectNode) grid(scalarAt("naam", "regels[].naam", true), address)
+                    .get("components").get(1);
+
+            assertThat(column.get("type").asText()).isEqualTo("fieldset");
+            assertThat(column.get("components")).hasSize(2);
+        }
+
+        @Test
+        void keysTheItemFields_relativeToTheRow() {
+            // Keyed against the document, a row would write regels[].adres.straat into every row.
+            TemplateField address = new TemplateField(
+                    "adres", "regels[].adres", "object", FieldType.OBJECT, true, null,
+                    List.of(scalarAt("straat", "regels[].adres.straat", true)));
+
+            ObjectNode datagrid = grid(scalarAt("naam", "regels[].naam", true), address);
+
+            assertThat(datagrid.get("components").get(0).get("key").asText()).isEqualTo("naam");
+            assertThat(datagrid.get("components").get(1).get("components").get(0).get("key").asText())
+                    .isEqualTo("adres.straat");
+        }
+
+        @Test
+        void rebasesANestedGridAgainstItsOwnRow() {
+            TemplateField inner = new TemplateField(
+                    "bijlagen", "regels[].bijlagen", "array", FieldType.ARRAY, false, null,
+                    List.of(scalarAt("naam", "regels[].bijlagen[].naam", true)),
+                    true, "Arrays of objects must be mapped as a complete value.", false, null);
+
+            ObjectNode innerGrid = (ObjectNode) grid(inner).get("components").get(0);
+
+            assertThat(innerGrid.get("type").asText()).isEqualTo("datagrid");
+            assertThat(innerGrid.get("key").asText()).isEqualTo("bijlagen");
+            assertThat(innerGrid.get("components").get(0).get("key").asText()).isEqualTo("naam");
+        }
+
+        @Test
+        void stillCarriesTheItemFieldsOwnRules() {
+            ObjectNode column = (ObjectNode) grid(scalarAt("naam", "regels[].naam", true))
+                    .get("components").get(0);
+
+            assertThat(column.get("validate").get("required").asBoolean()).isTrue();
         }
     }
 }

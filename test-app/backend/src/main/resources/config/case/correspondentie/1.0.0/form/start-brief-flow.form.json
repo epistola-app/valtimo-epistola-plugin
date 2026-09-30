@@ -1,0 +1,19 @@
+{
+  "type": "form",
+  "display": "form",
+  "components": [
+    {
+      "type": "content",
+      "key": "startIntro",
+      "input": false,
+      "html": "<p>Hierna opent een <strong>form flow</strong> waarin u de brief kiest. Deze demo bestaat om te laten zien dat de briefkiezer zijn instellingen ook van een form-flow-stap leest.</p>"
+    },
+    {
+      "type": "button",
+      "key": "submit",
+      "label": "Beginnen",
+      "action": "submit",
+      "input": true
+    }
+  ]
+}
