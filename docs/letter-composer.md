@@ -501,6 +501,19 @@ entirely.
 
 ## Known gaps
 
+Each of these is tracked, so the list below is the explanation and the issue is the state:
+[#149](https://github.com/epistola-app/valtimo-epistola-plugin/issues/149) write-back to the case ·
+[#150](https://github.com/epistola-app/valtimo-epistola-plugin/issues/150) validation messages ·
+[#151](https://github.com/epistola-app/valtimo-epistola-plugin/issues/151) variant selection ·
+[#152](https://github.com/epistola-app/valtimo-epistola-plugin/issues/152) more than one letter ·
+[#153](https://github.com/epistola-app/valtimo-epistola-plugin/issues/153) frontend off-switch ·
+[#154](https://github.com/epistola-app/valtimo-epistola-plugin/issues/154) retrying a composed letter ·
+[#155](https://github.com/epistola-app/valtimo-epistola-plugin/issues/155) per-template mapping in the builder ·
+[#20](https://github.com/epistola-app/valtimo-epistola-plugin/issues/20) rich text.
+
+The first one below is **accepted rather than open** — it has no issue because closing it would cost
+the promise the composer makes. The rest are open.
+
 - **The browser assembles `data`.** A crafted submission could carry values for fields that were
   never offered. The employee can already write the letter's text, so this is a governance limit
   rather than an escalation, but a form that must not allow it should keep using a hand-built form
