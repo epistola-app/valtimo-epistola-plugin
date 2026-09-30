@@ -11,10 +11,6 @@
 name: E2E (browser)
 
 on:
-  # TEMPORARY, removed before merge: a workflow can only be dispatched once it is on the default
-  # branch, so this is the only way to find out whether it runs at all before merging it.
-  push:
-    branches: [feat/letter-composer]
   schedule:
     # 03:00 UTC, after the day's merges have settled.
     - cron: "0 3 * * *"
