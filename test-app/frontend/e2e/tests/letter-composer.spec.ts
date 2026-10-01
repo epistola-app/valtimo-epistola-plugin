@@ -184,7 +184,14 @@ test.describe('Letter composer — pick a letter, fill in what the case cannot s
    * Epistola older than the `template-data-invalid` work answers a refused preview with one
    * flattened sentence, and against such a server this path cannot be reached at all.
    */
-  test('shows what Epistola refused under the field it refused', async ({ page }) => {
+  // Skipped until it has been seen to pass: it was written against a supplied 422 and the local
+  // Epistola was stopped before it could be run, so it has never gone green. The behaviour it
+  // covers is tested in `composer-findings.spec.ts` (the resolution) and
+  // `TemplateDataFindingsTest` / `EpistolaComposerResourceTest` (reading the problem body); what is
+  // missing is only the rendered page. Remove the skip and run it against a stack whose Epistola is
+  // new enough to answer `template-data-invalid` — an older one answers with a single flattened
+  // sentence and this path is unreachable.
+  test.skip('shows what Epistola refused under the field it refused', async ({ page }) => {
     test.setTimeout(180_000);
 
     // The documented answer for a letter refused over one field, named by pointer.
