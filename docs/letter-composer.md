@@ -578,9 +578,15 @@ the promise the composer makes. The rest are open.
 - **Labels come from the contract.** A field with no `title` is labelled by humanizing its property
   name, so an English property name shows an English label in a Dutch form. The fix belongs in the
   template's data contract, where every integration benefits.
-- **Validation messages are Formio's English defaults**, and show the raw pattern. Translating them
-  means wiring Formio's i18n into the nested form's options — see
-  [What it can ask for](#what-it-can-ask-for).
+- **Epistola's own complaint about the data is still one message, not a field.** The browser's half
+  of this is done: a value that breaks a rule the contract put on the field is explained in the
+  reader's language, and a `pattern` failure leans on the field's description instead of printing
+  the expression (`composer-messages.ts`). But the browser only checks the fields it offered. The
+  rest of `data` comes from the baseline mapping, and when Epistola refuses _that_, the preview
+  fails with a single string above it. Contract 1.4.0 answers a failing preview with
+  `template-data-invalid`, carrying a JSON Pointer per bad or absent field, so those pointers can be
+  attached to the generated inputs the same way — that is the remaining half of
+  [#150](https://github.com/epistola-app/valtimo-epistola-plugin/issues/150).
 - **Rich text is unsupported**, and a rich-text object that looks like a plain object is not even
   detectable here — see [What it can ask for](#what-it-can-ask-for).
 
