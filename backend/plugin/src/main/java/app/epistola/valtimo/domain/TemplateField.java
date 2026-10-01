@@ -85,24 +85,44 @@ public record TemplateField(
      * @param allowedValues The schema's {@code enum} values, if it constrains the field to a set
      * @param defaultValue  The schema's {@code default}, used when the mapping produced no value
      * @param constraints   The schema's size and range keywords, or null when it states none
+     * @param example       One valid value for the field, from the schema's {@code examples} or
+     *                      {@code example}, as text; null when it offers none. Text rather than
+     *                      {@code Object} because it is only ever shown to a person: the analyzer
+     *                      accepts a string, number or boolean and renders it, and an example of
+     *                      any other shape is not an example of a value. Unlike
+     *                      {@code defaultValue}, which is written back into the submission as JSON
+     *                      and so has to keep its type.
      */
     public record FieldHints(
             String title,
             String format,
             List<Object> allowedValues,
             Object defaultValue,
-            Constraints constraints
+            Constraints constraints,
+            String example
     ) {
+        /** Hints from a schema that offers no example. */
+        public FieldHints(
+                String title,
+                String format,
+                List<Object> allowedValues,
+                Object defaultValue,
+                Constraints constraints
+        ) {
+            this(title, format, allowedValues, defaultValue, constraints, null);
+        }
+
         /** Hints from a schema that states no constraints. */
         public FieldHints(String title, String format, List<Object> allowedValues, Object defaultValue) {
-            this(title, format, allowedValues, defaultValue, null);
+            this(title, format, allowedValues, defaultValue, null, null);
         }
 
         public boolean isEmpty() {
             return title == null && format == null
                     && (allowedValues == null || allowedValues.isEmpty())
                     && defaultValue == null
-                    && (constraints == null || constraints.isEmpty());
+                    && (constraints == null || constraints.isEmpty())
+                    && example == null;
         }
     }
 

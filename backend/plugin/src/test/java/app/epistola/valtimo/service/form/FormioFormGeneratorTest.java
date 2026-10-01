@@ -501,6 +501,48 @@ class FormioFormGeneratorTest {
         }
 
         @Test
+        void anAuthoredExample_becomesThePlaceholderAndIsNamedForTheMessage() {
+            // The only value here a person could read back into the box. It is also named
+            // separately, because the placeholder may be a format shape instead — see below — and
+            // a shape is not an example.
+            TemplateField field = scalar("bsn", "string",
+                    new TemplateField.FieldHints(null, null, null, null, null, "123456789"));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("123456789", component.get("placeholder").asText());
+            assertEquals("123456789", component.get("epistolaExample").asText());
+        }
+
+        @Test
+        void anExample_winsOverAFormatShape() {
+            // `YYYY-MM-DD` says how a date is written; `2026-03-01` is a date. Given both, the
+            // employee is better served by the one they can copy.
+            TemplateField field = scalar("datum", "string",
+                    new TemplateField.FieldHints(null, "date", null, null, null, "2026-03-01"));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("2026-03-01", component.get("placeholder").asText());
+        }
+
+        @Test
+        void noExample_leavesTheComponentExactlyAsItWas() {
+            // The normal case today: nothing authored carries the keyword yet, so its absence must
+            // change nothing rather than emit an empty hint.
+            TemplateField field = scalar("naam", "string",
+                    new TemplateField.FieldHints(null, null, null, null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertFalse(component.has("epistolaExample"));
+            assertFalse(component.has("placeholder"));
+        }
+
+        @Test
         void dateFormat_keepsATextfieldWithAnExplicitPlaceholder() {
             // Formio's date picker emits a full ISO timestamp, which "format": "date" rejects.
             TemplateField field = scalar("datum", "string",

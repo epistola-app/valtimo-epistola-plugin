@@ -204,8 +204,46 @@ public final class JsonSchemaMappingAnalyzer {
                 : resolvedSchema.get("default");
 
         var candidate = new TemplateField.FieldHints(
-                title, format, allowedValues, defaultValue, constraints(fieldSchema, resolvedSchema));
+                title,
+                format,
+                allowedValues,
+                defaultValue,
+                constraints(fieldSchema, resolvedSchema),
+                example(fieldSchema, resolvedSchema));
         return candidate.isEmpty() ? null : candidate;
+    }
+
+    /**
+     * One valid value for the field, if its schema offers one.
+     *
+     * <p>Read from JSON Schema's {@code examples} (an array, of which the first entry is taken) or
+     * the singular {@code example} some tooling writes instead. Looked up the same way as the rest
+     * of the hints: the field's own schema first, then the resolved one.
+     *
+     * <p>Shown to an employee, so it is only taken when it is something a person can read back into
+     * the field: a string, a number or a boolean. An object or an array is an example of a
+     * structure, not of a value, and a field holding one is not the field being typed into.
+     *
+     * <p>Absent is the normal case today. Nothing authored carries this keyword yet — a Suite that
+     * derives per-field examples from a template's {@code dataExamples} is where they are expected
+     * to come from — so a field without one is left exactly as it was.
+     */
+    private String example(Map<String, Object> fieldSchema, Map<String, Object> resolvedSchema) {
+        Object examples = keyword(fieldSchema, resolvedSchema, "examples");
+        if (examples instanceof List<?> list) {
+            return list.stream()
+                    .filter(this::isReadableValue)
+                    .findFirst()
+                    .map(String::valueOf)
+                    .orElse(null);
+        }
+        Object singular = keyword(fieldSchema, resolvedSchema, "example");
+        return isReadableValue(singular) ? String.valueOf(singular) : null;
+    }
+
+    /** Whether a value is one an employee could read and retype. */
+    private boolean isReadableValue(Object value) {
+        return value instanceof String text ? !text.isBlank() : value instanceof Number || value instanceof Boolean;
     }
 
     /**

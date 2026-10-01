@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The letter composer says what is wrong with an input in the reader's language, and never shows
+  a regular expression.** The contract's constraints reach the generated form, so the browser
+  already checks them as the employee types — but it reported the failure with Form.io's English
+  defaults, and for `pattern` it printed the expression. That expression is not even the contract's
+  own: a JSON Schema `pattern` searches while Form.io's matches, so the generator wraps it, and a
+  Dutch case worker was shown `[\s\S]*(?:[A-Z]{2}\d{4})[\s\S]*` — a regex this plugin
+  assembled, about a rule it did not invent. A `pattern` message now leans on the contract field's
+  own `description` where there is one, since that is text an author wrote for this field, and says
+  only that the value has the wrong form where there is not. Frontend only; the rules themselves are
+  unchanged, so nothing newly accepts what Epistola would refuse (#150).
+
+### Added
+
+- **A field that offers a valid value now shows one.** Where a template's data contract carries
+  JSON Schema `examples` (or `example`) on a field, that value becomes the generated input's
+  placeholder and is appended to the message when the value is refused — "Bijvoorbeeld: 3511 LX".
+  One valid value says more than any description of a rule, and a placeholder says it _before_ the
+  employee types rather than after they fail. Only strings, numbers and booleans are taken: an
+  object or an array is an example of a structure, not of a value. Nothing authored carries the
+  keyword yet, and a field without one is unchanged — Epistola deriving per-field examples from a
+  template's `dataExamples` is where they are expected to come from, so this is the consuming half,
+  ready for it.
+
 ### Added
 
 - **A demo of the composer on a form-flow step.** Form-flow support had unit tests and nothing to

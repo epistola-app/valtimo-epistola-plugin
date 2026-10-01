@@ -115,6 +115,13 @@ public class FormioFormGenerator {
             component.put("placeholder", placeholder);
         }
 
+        // The example again, named rather than inferred from the placeholder, because a placeholder
+        // may be a format shape ("YYYY-MM-DD") instead — a description of how a value is written,
+        // which is not an example of one and should not be offered as if it were.
+        if (hints != null && hints.example() != null) {
+            component.put("epistolaExample", hints.example());
+        }
+
         Object effectiveValue = value != null ? value : (hints != null ? hints.defaultValue() : null);
         if (effectiveValue != null) {
             component.set("defaultValue", objectMapper.valueToTree(effectiveValue));
@@ -248,7 +255,16 @@ public class FormioFormGenerator {
      * rejects.
      */
     private String placeholderFor(TemplateField.FieldHints hints) {
-        if (hints == null || hints.format() == null) {
+        if (hints == null) {
+            return null;
+        }
+        // An authored example beats a shape: it is a value for this field, in the letter's own
+        // vocabulary, and the employee can read it straight back into the box. The format shapes
+        // below only say how a value is written.
+        if (hints.example() != null) {
+            return hints.example();
+        }
+        if (hints.format() == null) {
             return null;
         }
         return switch (hints.format()) {

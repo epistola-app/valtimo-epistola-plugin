@@ -84,6 +84,90 @@ test.describe('Letter composer — pick a letter, fill in what the case cannot s
   });
 
   /**
+   * What the employee reads when a value breaks the template's own rule.
+   *
+   * The permit letter is the one with constrained fields, and it has both cases: `applicant.bsn`
+   * carries a `pattern` *and* a description ("Burgerservicenummer (9 cijfers)"), while
+   * `applicant.address.postalCode` carries a pattern and no description at all.
+   *
+   * Worth a browser rather than a unit test. The unit tests prove the transform writes the message
+   * onto the component; only a rendered page proves Form.io *reads* it — and it reads a `pattern`
+   * message by two different paths, so setting one and not the other would look correct and still
+   * put a regular expression in front of a case worker.
+   */
+  test('explains a bad value in Dutch, without showing the expression', async ({ page }) => {
+    test.setTimeout(180_000);
+
+    await createDossier(page);
+    await page
+      .getByRole('button', { name: /Start|Aanmaken|Opslaan/ })
+      .first()
+      .click();
+
+    const chooseTask = page.getByText('Kies een brief').first();
+    await expect(chooseTask).toBeVisible({ timeout: 20_000 });
+    await chooseTask.click();
+
+    await expect(page.getByTestId('epistola-composer')).toBeVisible({ timeout: 20_000 });
+    await page.getByTestId('epistola-composer-select').selectOption('bevestigingsbrief-vergunning');
+
+    const inputs = page.getByTestId('epistola-composer-inputs');
+    await expect(inputs.locator('.page-link')).toHaveCount(3, { timeout: 30_000 });
+    await inputs.locator('.page-link').filter({ hasText: 'Applicant' }).click();
+
+    // A value that cannot satisfy `^\d{9}$`.
+    const bsn = inputs.locator('[name="data[applicant.bsn]"]');
+    await expect(bsn).toBeVisible({ timeout: 10_000 });
+    await bsn.fill('not-a-bsn');
+    await bsn.blur();
+
+    const shown = async () => (await inputs.innerText()).replace(/\s+/g, ' ');
+
+    // The contract's own description, which is the only text here written for a person.
+    await expect
+      .poll(shown, { timeout: 15_000, message: 'no message appeared for the invalid BSN' })
+      .toContain('Burgerservicenummer (9 cijfers)');
+
+    // And one valid value, which is worth more than any description of the rule. It comes from the
+    // field's `examples` in the contract, so this also proves the keyword survives the round trip
+    // through Epistola and back out as a generated form.
+    await expect
+      .poll(shown, { timeout: 15_000, message: 'the example from the contract was not offered' })
+      .toContain('123456789');
+
+    const afterBsn = await shown();
+    // The regression this test exists for. The pattern a generated field carries is not even the
+    // contract's own — the generator wraps it so Form.io's match behaves like JSON Schema's search
+    // — so any of these on screen means a case worker is reading a regex this plugin assembled.
+    expect(afterBsn).not.toContain('[\\s\\S]');
+    expect(afterBsn).not.toContain('\\d{9}');
+    expect(afterBsn).not.toContain('does not match the pattern');
+    // Dutch, not Form.io's English default.
+    expect(afterBsn).toContain('juiste vorm');
+
+    // And the other path: a patterned field the contract says nothing readable about still gets a
+    // sentence rather than an expression.
+    const postalCode = inputs.locator('[name="data[applicant.address.postalCode]"]');
+    // Offered before anything goes wrong, which is the better moment for it: an example in the
+    // empty box prevents the error rather than explaining it.
+    await expect(postalCode).toHaveAttribute('placeholder', '3511 LX');
+    await postalCode.fill('nope');
+    await postalCode.blur();
+
+    // Polled on this field's own example, not on `juiste vorm`: the BSN message above already
+    // contains that, so a looser wait returns instantly and reads the page before this field's
+    // message has rendered.
+    await expect
+      .poll(shown, { timeout: 15_000, message: 'no message appeared for the invalid postal code' })
+      .toContain('3511 LX');
+
+    const afterPostalCode = await shown();
+    expect(afterPostalCode).toContain('3511 LX');
+    expect(afterPostalCode).not.toContain('[\\s\\S]');
+    expect(afterPostalCode).not.toContain('[A-Z]{2}');
+  });
+
+  /**
    * A letter with a lot to fill in is stepped through rather than stacked in one column.
    *
    * The permit confirmation is deliberately a letter this case has no data for: the baseline
