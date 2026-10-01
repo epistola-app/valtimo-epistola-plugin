@@ -37,8 +37,20 @@ import java.util.Map;
  * @param catalogId  The catalog the chosen template lives in
  * @param templateId The chosen template
  * @param data       Everything the letter is rendered with
+ * @param writeBack  Where values from this letter also belong in the case: a value-resolver key
+ *                   (such as {@code doc:/aanvrager/telefoon}) to the value resolved when the letter
+ *                   was composed. Empty when the composer declared none, which is the ordinary
+ *                   case. The <em>values</em> are the browser's; the <em>destinations</em> are only
+ *                   honoured where the composer's stored configuration also names them — see
+ *                   {@link #writeBackLimitedTo}.
  */
-public record ComposedLetter(int schemaVersion, String catalogId, String templateId, Map<String, Object> data) {
+public record ComposedLetter(
+        int schemaVersion,
+        String catalogId,
+        String templateId,
+        Map<String, Object> data,
+        Map<String, Object> writeBack
+) {
 
     /**
      * Read a composed letter from a process variable.
@@ -128,11 +140,49 @@ public record ComposedLetter(int schemaVersion, String catalogId, String templat
         }
 
         Object data = value.get("data");
+        Object writeBack = value.get("writeBack");
         return new ComposedLetter(
                 schemaVersion,
                 catalogId,
                 templateId,
-                data instanceof Map<?, ?> dataMap ? (Map<String, Object>) dataMap : Map.of());
+                data instanceof Map<?, ?> dataMap ? (Map<String, Object>) dataMap : Map.of(),
+                writeBack instanceof Map<?, ?> writeBackMap ? Map.copyOf((Map<String, Object>) writeBackMap) : Map.of());
+    }
+
+    /**
+     * The write-back entries whose destination the composer's own configuration names, and no
+     * others.
+     *
+     * <p>This is the one place the distinction matters. The letter's values are computed in the
+     * browser — that is deliberate, and it is what makes what was previewed the thing that gets
+     * generated — but it means the <em>keys</em> on this map arrived from the browser too. A
+     * crafted submission could otherwise name any case path at all, and writing to an arbitrary
+     * {@code doc:} path is a different matter from rendering a letter with odd data: one is a
+     * document nobody asked for, the other is a silent edit to the case.
+     *
+     * <p>So the form definition stays the authority on <em>where</em> data may go, and the browser
+     * decides only <em>what</em>. An entry whose destination is not in {@code allowed} is dropped
+     * rather than refused: a letter that Epistola has already accepted must not fail here, and a
+     * dropped destination is reported on the result variable by the caller.
+     *
+     * @param allowed the destinations the composer's stored {@code writeBack} map declares
+     */
+    public Map<String, Object> writeBackLimitedTo(java.util.Set<String> allowed) {
+        if (writeBack.isEmpty() || allowed.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Object> permitted = new java.util.LinkedHashMap<>();
+        writeBack.forEach((destination, value) -> {
+            if (allowed.contains(destination)) {
+                permitted.put(destination, value);
+            }
+        });
+        return java.util.Collections.unmodifiableMap(permitted);
+    }
+
+    /** The destinations this letter asks for that {@code allowed} does not name. */
+    public java.util.List<String> writeBackRefused(java.util.Set<String> allowed) {
+        return writeBack.keySet().stream().filter(destination -> !allowed.contains(destination)).sorted().toList();
     }
 
     /** Operaton hands numbers back as Integer, Long or (from JSON) whatever Jackson chose. */

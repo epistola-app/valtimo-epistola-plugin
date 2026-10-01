@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -90,6 +91,7 @@ public final class ComposerParser {
         String defaultCatalogId = text(letterSet.path("catalogId"));
         String dataMapping = text(component.path("dataMapping"));
         String componentKey = text(component.path("key"));
+        Map<String, String> writeBack = writeBackOn(component, componentKey);
 
         List<LetterComposerConfiguration.OfferedTemplate> templates = new ArrayList<>();
         int withoutCatalog = 0;
@@ -139,7 +141,46 @@ public final class ComposerParser {
                 defaultCatalogId,
                 dataMapping,
                 List.copyOf(templates),
-                component.path("askOptionalFields").asBoolean(false));
+                component.path("askOptionalFields").asBoolean(false),
+                writeBack);
+    }
+
+    /**
+     * Where this composer declares that a letter's values also belong in the case: a value-resolver
+     * key to a JSONata expression over the composed letter.
+     *
+     * <p>Read here, from the stored form definition, because this map is the authority on
+     * <em>where</em> data may go. The expressions are evaluated in the browser, over the letter it
+     * assembled, so the destinations on a submitted letter are browser-supplied and are checked
+     * against these before anything is written.
+     *
+     * <p>An entry with no destination or no expression is dropped with a warning rather than
+     * guessed at: a half-written rule is an authoring mistake, and writing to the wrong place in a
+     * case is not worth recovering from silently.
+     */
+    private static Map<String, String> writeBackOn(JsonNode component, String componentKey) {
+        JsonNode declared = component.path("writeBack");
+        if (!declared.isObject() || declared.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, String> writeBack = new java.util.LinkedHashMap<>();
+        int dropped = 0;
+        var fields = declared.fields();
+        while (fields.hasNext()) {
+            var entry = fields.next();
+            String destination = entry.getKey() == null ? null : entry.getKey().trim();
+            String expression = text(entry.getValue());
+            if (destination == null || destination.isEmpty() || expression == null) {
+                dropped++;
+                continue;
+            }
+            writeBack.put(destination, expression);
+        }
+        if (dropped > 0) {
+            log.warn("Letter composer '{}' declares {} write-back rule(s) with no destination or no "
+                    + "expression; they are ignored", componentKey, dropped);
+        }
+        return Map.copyOf(writeBack);
     }
 
     private static String text(JsonNode node) {
