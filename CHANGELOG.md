@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A letter Epistola refuses now says which fields are stopping it.** The browser can only check
+  the fields it offered; most of a letter's data comes from the baseline mapping, which it neither
+  computed nor holds the contract for, so a refusal over one of those arrived as a single flattened
+  sentence above the preview. Contract 1.4.0 answers a refused preview with `template-data-invalid`,
+  naming each bad or absent field by JSON Pointer, so the composer now lists them — each named the
+  way the employee sees the field named, with Epistola's own sentence about the rule that failed.
+  A field the form does not have keeps its pointer, which is less friendly than a label and more
+  truthful than inventing one. An absent **optional** field is not reported: the contract says it is
+  not a failure. Requires a server on contract 1.4.0 or later; against an older one the single
+  message is shown exactly as before (#150).
+
 - **A field that offers a valid value now shows one.** Where a template's data contract carries
   JSON Schema `examples` (or `example`) on a field, that value becomes the generated input's
   placeholder and is appended to the message when the value is refused — "Bijvoorbeeld: 3511 LX".

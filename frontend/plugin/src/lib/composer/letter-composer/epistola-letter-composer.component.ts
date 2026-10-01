@@ -45,6 +45,12 @@ import { readOpenDossierId } from './open-dossier';
 import { isRendered, PreviewRenderer } from './preview-renderer';
 import { isSectioned, sectionForm } from './composer-sections';
 import { withValidationMessages, type ValidationMessages } from './composer-messages';
+import {
+  describeFindings,
+  type AddressableForm,
+  type FieldFinding,
+  type ShownFinding,
+} from './composer-findings';
 import { COMPOSER_SCHEMA_VERSION } from '../composer-schema';
 
 /** One selectable letter, as configured on the component. */
@@ -135,6 +141,7 @@ export interface ComposerValue {
             [form]="formDefinition"
             [options]="formOptions"
             (change)="onInputsChanged($event)"
+            (ready)="onFormReady($event)"
             data-testid="epistola-composer-formio"
           ></formio>
         </div>
@@ -165,6 +172,24 @@ export interface ComposerValue {
             data-testid="epistola-composer-preview-error"
           >
             {{ previewError }}
+          </div>
+          <!--
+            The fields Epistola refused, each named as the employee sees it named. Shown here
+            rather than under the inputs because most of them have no input: the baseline mapping
+            supplies them, so the employee was never asked. See composer-findings.ts.
+          -->
+          <div
+            *ngIf="refusedFields.length"
+            class="composer-error"
+            data-testid="epistola-composer-refused-fields"
+          >
+            <p>{{ 'composerRefusedFields' | pluginTranslate: pluginId | async }}</p>
+            <ul>
+              <li *ngFor="let field of refusedFields" data-testid="epistola-composer-refused-field">
+                <strong>{{ field.label }}</strong
+                >: {{ field.message }}
+              </li>
+            </ul>
           </div>
           <div
             *ngIf="awaitingRequired"
@@ -291,6 +316,12 @@ export class EpistolaLetterComposerComponent
       },
     };
   }
+
+  /** The generated form's Form.io instance, once it has mounted. */
+  private generatedForm: AddressableForm | null = null;
+
+  /** The fields the last refused render named, each ready to show. */
+  refusedFields: readonly ShownFinding[] = [];
 
   /** What the mapping produced; the employee's input is laid over this, never into it. */
   private mappedData: ComposerData = {};
@@ -465,15 +496,52 @@ export class EpistolaLetterComposerComponent
 
     this.previews.render(this.previewRequest(this.selectedTemplateId, data)).subscribe((result) => {
       this.previewLoading = false;
+      // Whatever the previous answer named is stale now.
+      this.refusedFields = [];
+
       if (isRendered(result)) {
         this.previewUrl = result.url;
         this.previewError = null;
       } else {
         this.previewUrl = null;
-        this.previewError = result.error;
+        this.previewError = this.describeRefusal(result.error, result.fields);
       }
       this.cdr.markForCheck();
     });
+  }
+
+  /**
+   * Puts each field Epistola named under the field, and says what is left over.
+   *
+   * <p>Returns the message for above the preview: nothing when every finding found a home, since
+   * repeating them there would say the same thing twice; otherwise the server's own sentence, which
+   * still has to be shown for a letter refused over something no single input holds — a rule about
+   * the data as a whole, a row inside a grid, or a field the mapping supplies and the employee was
+   * never asked for.
+   */
+  private describeRefusal(
+    error: string,
+    findings: readonly FieldFinding[] | undefined,
+  ): string | null {
+    if (!findings?.length) {
+      return error;
+    }
+    this.refusedFields = describeFindings(this.generatedForm, findings, this.validationMessages);
+    // The server's own sentence is dropped once the fields are named: it is a flattened version of
+    // the same complaint, and showing both says there are twice as many problems as there are.
+    return null;
+  }
+
+  /**
+   * Keeps the generated form's Form.io instance, which is the only way to put a message on a field
+   * the form did not work out for itself.
+   *
+   * <p>`(ready)` hands over the Angular component; the instance underneath is what addresses
+   * components by key.
+   */
+  onFormReady(formio: { formio?: AddressableForm } | AddressableForm): void {
+    const instance = (formio as { formio?: AddressableForm })?.formio;
+    this.generatedForm = instance ?? (formio as AddressableForm) ?? null;
   }
 
   /**

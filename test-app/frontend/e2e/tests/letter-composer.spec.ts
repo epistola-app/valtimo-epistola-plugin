@@ -168,6 +168,99 @@ test.describe('Letter composer — pick a letter, fill in what the case cannot s
   });
 
   /**
+   * What Epistola refuses, shown under the field it refused.
+   *
+   * The browser checks what the contract says about the fields it offered. It cannot check the
+   * rest — most of a letter's data comes from the baseline mapping, which the browser neither
+   * computed nor holds the contract for — so a letter can be refused over a field nobody was asked
+   * about, and that answer exists only on the server.
+   *
+   * **The 422 is supplied here, and that is deliberate.** What this test covers is the half no unit
+   * test can: that a JSON Pointer from the server ends up rendered against the right input, by
+   * Form.io, in a wizard. Whether the pointers are read correctly out of a real problem body is
+   * covered by `TemplateDataFindingsTest` and `EpistolaComposerResourceTest` against the shape the
+   * contract specifies; whether Epistola sends it is covered by the Suite's own
+   * `PreviewDocumentApiIT`. Supplying it also keeps this test honest about server version: an
+   * Epistola older than the `template-data-invalid` work answers a refused preview with one
+   * flattened sentence, and against such a server this path cannot be reached at all.
+   */
+  test('shows what Epistola refused under the field it refused', async ({ page }) => {
+    test.setTimeout(180_000);
+
+    // The documented answer for a letter refused over one field, named by pointer.
+    let refusals = 0;
+    await page.route('**/composer/preview', async (route) => {
+      refusals += 1;
+      await route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          error: "Epistola could not render template 'bevestigingsbrief-vergunning'",
+          fields: [
+            {
+              path: '/applicant/bsn',
+              keyword: 'pattern',
+              message: 'is geen geldig burgerservicenummer',
+            },
+          ],
+        }),
+      });
+    });
+
+    await createDossier(page);
+    await page
+      .getByRole('button', { name: /Start|Aanmaken|Opslaan/ })
+      .first()
+      .click();
+
+    const chooseTask = page.getByText('Kies een brief').first();
+    await expect(chooseTask).toBeVisible({ timeout: 20_000 });
+    await chooseTask.click();
+
+    await expect(page.getByTestId('epistola-composer')).toBeVisible({ timeout: 20_000 });
+    await page.getByTestId('epistola-composer-select').selectOption('bevestigingsbrief-vergunning');
+
+    const inputs = page.getByTestId('epistola-composer-inputs');
+    await expect(inputs.locator('.page-link')).toHaveCount(3, { timeout: 30_000 });
+
+    // Fill every step so the composer stops waiting and asks for a render, with values the browser
+    // is happy about — so the only complaint on screen can be the server's.
+    for (const step of ['Property', 'Applicant', 'Activities']) {
+      await inputs.locator('.page-link').filter({ hasText: step }).click();
+      await page.waitForTimeout(500);
+      for (const field of await inputs
+        .locator('input[name^="data["]:visible, textarea[name^="data["]:visible')
+        .all()) {
+        const name = (await field.getAttribute('name')) ?? '';
+        await field.fill(
+          name.includes('bsn') ? '123456789' : name.includes('postalCode') ? '3511 LX' : 'proef',
+        );
+        await field.blur();
+      }
+    }
+
+    await expect
+      .poll(() => refusals, { timeout: 60_000, message: 'no preview was ever requested' })
+      .toBeGreaterThan(0);
+
+    // Named, one line per field, in the composer's own markup — see composer-findings.ts for why
+    // not in Form.io's per-component error slots.
+    const refused = page.getByTestId('epistola-composer-refused-fields');
+    await expect(refused).toBeVisible({ timeout: 30_000 });
+
+    const shown = (await refused.innerText()).replace(/\s+/g, ' ');
+    // Epistola's own sentence about the rule that failed...
+    expect(shown).toContain('is geen geldig burgerservicenummer');
+    // ...against the field named the way the employee sees it named, not as a JSON Pointer.
+    expect(shown).toContain('Bsn');
+    expect(shown).not.toContain('/applicant/bsn');
+
+    // And the flattened sentence is dropped: it is the same complaint, and showing both would say
+    // there are two problems.
+    await expect(page.getByTestId('epistola-composer-preview-error')).toBeHidden();
+  });
+
+  /**
    * A letter with a lot to fill in is stepped through rather than stacked in one column.
    *
    * The permit confirmation is deliberately a letter this case has no data for: the baseline
