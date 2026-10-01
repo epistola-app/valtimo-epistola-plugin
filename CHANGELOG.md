@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The letter composer says what is wrong with an input in the reader's language, and never shows
+  a regular expression.** The contract's constraints reach the generated form, so the browser
+  already checks them as the employee types — but it reported the failure with Form.io's English
+  defaults, and for `pattern` it printed the expression. That expression is not even the contract's
+  own: a JSON Schema `pattern` searches while Form.io's matches, so the generator wraps it, and a
+  Dutch case worker was shown `[\s\S]*(?:[A-Z]{2}\d{4})[\s\S]*` — a regex this plugin
+  assembled, about a rule it did not invent. A `pattern` message now leans on the contract field's
+  own `description` where there is one, since that is text an author wrote for this field, and says
+  only that the value has the wrong form where there is not. Frontend only; the rules themselves are
+  unchanged, so nothing newly accepts what Epistola would refuse (#150).
+
 ### Added
 
 - **A demo of the composer on a form-flow step.** Form-flow support had unit tests and nothing to

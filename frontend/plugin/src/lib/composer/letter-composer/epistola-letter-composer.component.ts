@@ -44,6 +44,7 @@ import {
 import { readOpenDossierId } from './open-dossier';
 import { isRendered, PreviewRenderer } from './preview-renderer';
 import { isSectioned, sectionForm } from './composer-sections';
+import { withValidationMessages, type ValidationMessages } from './composer-messages';
 import { COMPOSER_SCHEMA_VERSION } from '../composer-schema';
 
 /** One selectable letter, as configured on the component. */
@@ -424,8 +425,9 @@ export class EpistolaLetterComposerComponent
         this.mappedData = prepared.data ?? {};
         this.catalogId = prepared.catalogId;
         this.resolvedProcessDefinitionKey = prepared.processDefinitionKey ?? null;
-        this.formDefinition = sectionForm(prepared.form, (step) =>
-          this.translate('composerSection').replace('{step}', String(step)),
+        this.formDefinition = sectionForm(
+          withValidationMessages(prepared.form, this.validationMessages),
+          (step) => this.translate('composerSection').replace('{step}', String(step)),
         );
         this.complete = prepared.complete;
         this.requiredInputKeys = requiredKeys(prepared.form);
@@ -531,6 +533,25 @@ export class EpistolaLetterComposerComponent
   /** A plugin translation, for the messages that are built in code rather than in the template. */
   private translate(key: string): string {
     return this.pluginTranslationService.instant(key, this.pluginId);
+  }
+
+  /**
+   * What the browser says when a generated input breaks the template's own rule.
+   *
+   * Resolved here rather than wired into Form.io's i18n: these are already in the reader's
+   * language, so nothing downstream needs to know which one that is. See
+   * [composer-messages.ts](./composer-messages.ts).
+   */
+  private get validationMessages(): ValidationMessages {
+    return {
+      required: this.translate('composerValidationRequired'),
+      minLength: this.translate('composerValidationMinLength'),
+      maxLength: this.translate('composerValidationMaxLength'),
+      min: this.translate('composerValidationMin'),
+      max: this.translate('composerValidationMax'),
+      pattern: this.translate('composerValidationPattern'),
+      patternDescribed: this.translate('composerValidationPatternDescribed'),
+    };
   }
 
   private emit(value: ComposerValue | null): void {
