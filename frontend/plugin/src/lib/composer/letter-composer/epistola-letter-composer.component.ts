@@ -551,6 +551,7 @@ export class EpistolaLetterComposerComponent
       max: this.translate('composerValidationMax'),
       pattern: this.translate('composerValidationPattern'),
       patternDescribed: this.translate('composerValidationPatternDescribed'),
+      exampleSuffix: this.translate('composerValidationExample'),
     };
   }
 

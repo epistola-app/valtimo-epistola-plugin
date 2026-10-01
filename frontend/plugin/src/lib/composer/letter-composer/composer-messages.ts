@@ -68,12 +68,23 @@ export interface ValidationMessages {
    * this field, in the letter's own language.
    */
   readonly patternDescribed: string;
+  /**
+   * Appended when the contract offers a valid value for the field. May use `{{example}}`.
+   *
+   * A sentence saying what is wrong is worth less than one valid value, so where there is an
+   * example it is shown whether or not the field also describes itself. It arrives as
+   * `epistolaExample`, which the generator sets only from the schema's `examples`/`example` — not
+   * from the placeholder, which may instead be a format shape (`YYYY-MM-DD`) and so an example of
+   * nothing.
+   */
+  readonly exampleSuffix: string;
 }
 
 /** A Form.io component, as far as this module needs to care. */
 interface Component {
   type?: string;
   tooltip?: string;
+  epistolaExample?: string;
   validate?: Record<string, unknown>;
   errors?: Record<string, string>;
   components?: Component[];
@@ -151,9 +162,10 @@ function withMessages(component: Component, messages: ValidationMessages): Compo
 
   if (isPresent(validate['pattern'])) {
     const described = typeof component.tooltip === 'string' && component.tooltip.trim() !== '';
-    const message = described
+    const base = described
       ? messages.patternDescribed.replace('{{description}}', component.tooltip!.trim())
       : messages.pattern;
+    const message = base + exampleSuffix(component, messages);
     errors['pattern'] = message;
     // Form.io reads this one first for `pattern`, so it has to agree with `errors.pattern` or the
     // regex comes back through the other path.
@@ -164,6 +176,18 @@ function withMessages(component: Component, messages: ValidationMessages): Compo
     mapped.errors = errors;
   }
   return mapped;
+}
+
+/**
+ * ` (bijvoorbeeld 3511 LX)`, or nothing when the contract offers no example.
+ *
+ * One valid value tells an employee more than any description of the rule, so this is appended to
+ * whichever message was chosen rather than replacing it.
+ */
+function exampleSuffix(component: Component, messages: ValidationMessages): string {
+  const example =
+    typeof component.epistolaExample === 'string' ? component.epistolaExample.trim() : '';
+  return example === '' ? '' : messages.exampleSuffix.replace('{{example}}', example);
 }
 
 /** A rule Form.io will act on. `0` is a real bound; `''`, `null` and `undefined` are not. */

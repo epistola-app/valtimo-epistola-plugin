@@ -128,6 +128,13 @@ test.describe('Letter composer — pick a letter, fill in what the case cannot s
       .poll(shown, { timeout: 15_000, message: 'no message appeared for the invalid BSN' })
       .toContain('Burgerservicenummer (9 cijfers)');
 
+    // And one valid value, which is worth more than any description of the rule. It comes from the
+    // field's `examples` in the contract, so this also proves the keyword survives the round trip
+    // through Epistola and back out as a generated form.
+    await expect
+      .poll(shown, { timeout: 15_000, message: 'the example from the contract was not offered' })
+      .toContain('123456789');
+
     const afterBsn = await shown();
     // The regression this test exists for. The pattern a generated field carries is not even the
     // contract's own — the generator wraps it so Form.io's match behaves like JSON Schema's search
@@ -141,14 +148,21 @@ test.describe('Letter composer — pick a letter, fill in what the case cannot s
     // And the other path: a patterned field the contract says nothing readable about still gets a
     // sentence rather than an expression.
     const postalCode = inputs.locator('[name="data[applicant.address.postalCode]"]');
+    // Offered before anything goes wrong, which is the better moment for it: an example in the
+    // empty box prevents the error rather than explaining it.
+    await expect(postalCode).toHaveAttribute('placeholder', '3511 LX');
     await postalCode.fill('nope');
     await postalCode.blur();
 
+    // Polled on this field's own example, not on `juiste vorm`: the BSN message above already
+    // contains that, so a looser wait returns instantly and reads the page before this field's
+    // message has rendered.
     await expect
       .poll(shown, { timeout: 15_000, message: 'no message appeared for the invalid postal code' })
-      .toMatch(/juiste vorm/);
+      .toContain('3511 LX');
 
     const afterPostalCode = await shown();
+    expect(afterPostalCode).toContain('3511 LX');
     expect(afterPostalCode).not.toContain('[\\s\\S]');
     expect(afterPostalCode).not.toContain('[A-Z]{2}');
   });

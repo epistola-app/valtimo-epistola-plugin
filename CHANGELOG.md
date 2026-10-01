@@ -22,6 +22,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A field that offers a valid value now shows one.** Where a template's data contract carries
+  JSON Schema `examples` (or `example`) on a field, that value becomes the generated input's
+  placeholder and is appended to the message when the value is refused — "Bijvoorbeeld: 3511 LX".
+  One valid value says more than any description of a rule, and a placeholder says it _before_ the
+  employee types rather than after they fail. Only strings, numbers and booleans are taken: an
+  object or an array is an example of a structure, not of a value. Nothing authored carries the
+  keyword yet, and a field without one is unchanged — Epistola deriving per-field examples from a
+  template's `dataExamples` is where they are expected to come from, so this is the consuming half,
+  ready for it.
+
+### Added
+
 - **A demo of the composer on a form-flow step.** Form-flow support had unit tests and nothing to
   click: the `form-flow-demo` case has a flow, but no composer on any of its steps, and that demo
   is pinned by five tests that expect its preview to target a `generate-document` link. So the

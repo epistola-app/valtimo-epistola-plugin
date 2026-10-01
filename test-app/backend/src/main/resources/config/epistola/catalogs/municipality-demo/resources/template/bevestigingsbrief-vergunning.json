@@ -23,7 +23,8 @@
             "bsn": {
               "type": "string",
               "pattern": "^\\d{9}$",
-              "description": "Burgerservicenummer (9 cijfers)"
+              "description": "Burgerservicenummer (9 cijfers)",
+              "examples": ["123456789"]
             },
             "address": {
               "type": "object",
@@ -37,7 +38,8 @@
                 },
                 "postalCode": {
                   "type": "string",
-                  "pattern": "^\\d{4}\\s?[A-Z]{2}$"
+                  "pattern": "^\\d{4}\\s?[A-Z]{2}$",
+                  "examples": ["3511 LX"]
                 },
                 "city": {
                   "type": "string"
@@ -64,7 +66,8 @@
                 },
                 "postalCode": {
                   "type": "string",
-                  "pattern": "^\\d{4}\\s?[A-Z]{2}$"
+                  "pattern": "^\\d{4}\\s?[A-Z]{2}$",
+                  "examples": ["3511 LX"]
                 },
                 "city": {
                   "type": "string"

@@ -172,6 +172,52 @@ class JsonSchemaMappingAnalyzerTest {
     }
 
     @Test
+    void readsOneValidValueFromTheSchemasExamples() {
+        // `examples` is JSON Schema's own way of saying "a valid value for this field", which is
+        // worth more to an employee than any description of the rule. The first readable entry is
+        // taken; a Suite deriving these from a template's dataExamples is where they are expected
+        // to come from.
+        var analysis = analyzer.analyze(Map.of(
+                "type", "object",
+                "properties", Map.of(
+                        "bsn", Map.of("type", "string", "examples", List.of("123456789")),
+                        "postcode", Map.of("type", "string", "example", "3511 LX"),
+                        "aantal", Map.of("type", "integer", "examples", List.of(42)))));
+
+        assertThat(field(analysis.fields(), "bsn").hints().example()).isEqualTo("123456789");
+        assertThat(field(analysis.fields(), "postcode").hints().example()).isEqualTo("3511 LX");
+        assertThat(field(analysis.fields(), "aantal").hints().example()).isEqualTo(42);
+    }
+
+    @Test
+    void ignoresAnExampleAnEmployeeCouldNotRetype() {
+        // An object or an array is an example of a structure, not of a value, and the field holding
+        // one is not the field being typed into. An empty string says nothing either.
+        var analysis = analyzer.analyze(Map.of(
+                "type", "object",
+                "properties", Map.of(
+                        "adres", Map.of("type", "string", "examples",
+                                List.of(Map.of("straat", "Kerkstraat"))),
+                        "leeg", Map.of("type", "string", "examples", List.of("  ")),
+                        "geen", Map.of("type", "string", "examples", List.of()))));
+
+        assertThat(field(analysis.fields(), "adres").hints()).isNull();
+        assertThat(field(analysis.fields(), "leeg").hints()).isNull();
+        assertThat(field(analysis.fields(), "geen").hints()).isNull();
+    }
+
+    @Test
+    void prefersTheFirstReadableExampleOverAnUnusableOne() {
+        var analysis = analyzer.analyze(Map.of(
+                "type", "object",
+                "properties", Map.of(
+                        "postcode", Map.of("type", "string", "examples",
+                                List.of(Map.of("nested", true), "3511 LX")))));
+
+        assertThat(field(analysis.fields(), "postcode").hints().example()).isEqualTo("3511 LX");
+    }
+
+    @Test
     void leavesHintsNullWhenTheSchemaStatesNothingToPresent() {
         var analysis = analyzer.analyze(Map.of(
                 "type", "object",

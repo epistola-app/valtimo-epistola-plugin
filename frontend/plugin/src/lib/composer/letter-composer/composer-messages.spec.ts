@@ -27,6 +27,7 @@ const MESSAGES: ValidationMessages = {
   max: 'MAX {{field}} {{max}}',
   pattern: 'PATTERN {{field}}',
   patternDescribed: 'PATTERNDESC {{field}} {{description}}',
+  exampleSuffix: ' EG {{example}}',
 };
 
 /** The shape `FormioFormGenerator` emits, trimmed to what this transform reads. */
@@ -124,6 +125,57 @@ describe('withValidationMessages', () => {
     it('ignores a description that is only whitespace', () => {
       const result = withValidationMessages(
         form({ key: 'reference', tooltip: '   ', validate: { pattern: PATTERN } }),
+        MESSAGES,
+      );
+
+      expect(errorsOf(result)?.['pattern']).toBe('PATTERN {{field}}');
+    });
+
+    it('offers a valid value when the contract has one', () => {
+      // One valid value says more than any description of the rule, so it is appended rather than
+      // replacing what was already chosen.
+      const result = withValidationMessages(
+        form({
+          key: 'postalCode',
+          epistolaExample: '3511 LX',
+          validate: { pattern: PATTERN },
+        }),
+        MESSAGES,
+      );
+
+      expect(errorsOf(result)?.['pattern']).toBe('PATTERN {{field}} EG 3511 LX');
+    });
+
+    it('offers the example alongside the description, not instead of it', () => {
+      const result = withValidationMessages(
+        form({
+          key: 'bsn',
+          tooltip: 'Burgerservicenummer (9 cijfers)',
+          epistolaExample: '123456789',
+          validate: { pattern: PATTERN },
+        }),
+        MESSAGES,
+      );
+
+      expect(errorsOf(result)?.['pattern']).toBe(
+        'PATTERNDESC {{field}} Burgerservicenummer (9 cijfers) EG 123456789',
+      );
+    });
+
+    it('says nothing extra when the contract offers no example', () => {
+      // The normal case today: nothing authored carries the keyword yet, so the message must read
+      // correctly without it rather than trailing an empty "for example:".
+      const result = withValidationMessages(
+        form({ key: 'reference', validate: { pattern: PATTERN } }),
+        MESSAGES,
+      );
+
+      expect(errorsOf(result)?.['pattern']).toBe('PATTERN {{field}}');
+    });
+
+    it('ignores an example that is only whitespace', () => {
+      const result = withValidationMessages(
+        form({ key: 'reference', epistolaExample: '  ', validate: { pattern: PATTERN } }),
         MESSAGES,
       );
 
