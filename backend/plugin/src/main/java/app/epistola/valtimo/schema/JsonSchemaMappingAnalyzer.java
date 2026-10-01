@@ -228,13 +228,17 @@ public final class JsonSchemaMappingAnalyzer {
      * derives per-field examples from a template's {@code dataExamples} is where they are expected
      * to come from — so a field without one is left exactly as it was.
      */
-    private Object example(Map<String, Object> fieldSchema, Map<String, Object> resolvedSchema) {
+    private String example(Map<String, Object> fieldSchema, Map<String, Object> resolvedSchema) {
         Object examples = keyword(fieldSchema, resolvedSchema, "examples");
         if (examples instanceof List<?> list) {
-            return list.stream().filter(this::isReadableValue).findFirst().orElse(null);
+            return list.stream()
+                    .filter(this::isReadableValue)
+                    .findFirst()
+                    .map(String::valueOf)
+                    .orElse(null);
         }
         Object singular = keyword(fieldSchema, resolvedSchema, "example");
-        return isReadableValue(singular) ? singular : null;
+        return isReadableValue(singular) ? String.valueOf(singular) : null;
     }
 
     /** Whether a value is one an employee could read and retype. */

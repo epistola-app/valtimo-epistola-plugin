@@ -86,7 +86,12 @@ public record TemplateField(
      * @param defaultValue  The schema's {@code default}, used when the mapping produced no value
      * @param constraints   The schema's size and range keywords, or null when it states none
      * @param example       One valid value for the field, from the schema's {@code examples} or
-     *                      {@code example}, or null when it offers none
+     *                      {@code example}, as text; null when it offers none. Text rather than
+     *                      {@code Object} because it is only ever shown to a person: the analyzer
+     *                      accepts a string, number or boolean and renders it, and an example of
+     *                      any other shape is not an example of a value. Unlike
+     *                      {@code defaultValue}, which is written back into the submission as JSON
+     *                      and so has to keep its type.
      */
     public record FieldHints(
             String title,
@@ -94,7 +99,7 @@ public record TemplateField(
             List<Object> allowedValues,
             Object defaultValue,
             Constraints constraints,
-            Object example
+            String example
     ) {
         /** Hints from a schema that offers no example. */
         public FieldHints(

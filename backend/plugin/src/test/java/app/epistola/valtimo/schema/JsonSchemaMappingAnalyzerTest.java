@@ -186,7 +186,8 @@ class JsonSchemaMappingAnalyzerTest {
 
         assertThat(field(analysis.fields(), "bsn").hints().example()).isEqualTo("123456789");
         assertThat(field(analysis.fields(), "postcode").hints().example()).isEqualTo("3511 LX");
-        assertThat(field(analysis.fields(), "aantal").hints().example()).isEqualTo(42);
+        // Rendered as text: it is only ever shown, never written back as JSON.
+        assertThat(field(analysis.fields(), "aantal").hints().example()).isEqualTo("42");
     }
 
     @Test

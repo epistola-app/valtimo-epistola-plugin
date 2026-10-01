@@ -119,7 +119,7 @@ public class FormioFormGenerator {
         // may be a format shape ("YYYY-MM-DD") instead — a description of how a value is written,
         // which is not an example of one and should not be offered as if it were.
         if (hints != null && hints.example() != null) {
-            component.put("epistolaExample", String.valueOf(hints.example()));
+            component.put("epistolaExample", hints.example());
         }
 
         Object effectiveValue = value != null ? value : (hints != null ? hints.defaultValue() : null);
@@ -262,7 +262,7 @@ public class FormioFormGenerator {
         // vocabulary, and the employee can read it straight back into the box. The format shapes
         // below only say how a value is written.
         if (hints.example() != null) {
-            return String.valueOf(hints.example());
+            return hints.example();
         }
         if (hints.format() == null) {
             return null;
