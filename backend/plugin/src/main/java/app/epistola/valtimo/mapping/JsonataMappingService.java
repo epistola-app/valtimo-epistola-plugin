@@ -105,6 +105,9 @@ public class JsonataMappingService {
         return evaluateWithMaps(expression, documentData, processVariables, caseData, null);
     }
 
+    /** The bindings this service owns; a caller's extra binding may not shadow them. */
+    private static final java.util.Set<String> RESERVED_BINDINGS = java.util.Set.of("doc", "pv", "case");
+
     private Frame buildFrame(EvaluationContext ctx, Jsonata jsonataExpr) {
         Map<String, Object> docMap = buildDocumentMap(ctx);
         Map<String, Object> pvMap = buildProcessVariableMap(ctx);
@@ -123,6 +126,14 @@ public class JsonataMappingService {
         frame.bind("doc", docMap);
         frame.bind("pv", pvMap);
         frame.bind("case", Map.of());
+
+        // Bound after the three above and never over them: a mapping that reads $doc must mean the
+        // case, whatever else a caller has supplied.
+        ctx.getExtraBindings().forEach((name, value) -> {
+            if (!RESERVED_BINDINGS.contains(name)) {
+                frame.bind(name, value);
+            }
+        });
 
         registerCustomFunctions(frame, exprCtx);
         return frame;

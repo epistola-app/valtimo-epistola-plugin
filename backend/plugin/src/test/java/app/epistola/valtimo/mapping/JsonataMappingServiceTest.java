@@ -44,6 +44,62 @@ class JsonataMappingServiceTest {
     }
 
     @Nested
+    class ExtraBindings {
+
+        /** What a composer's write-back rule reads: the letter, and what a person typed into it. */
+        private Map<String, Object> evaluate(String expression, Map<String, Object> bindings) {
+            return service.evaluate(EvaluationContext.builder()
+                    .expression(expression)
+                    .extraBindings(bindings)
+                    .build());
+        }
+
+        @Test
+        void bindsAVariableByName() {
+            // Neither $doc nor $pv can reach these: nothing has been written anywhere yet.
+            Map<String, Object> result = evaluate(
+                    "{ \"telefoon\": $data.aanvrager.telefoon, \"getypt\": $inputs.telefoon }",
+                    Map.of(
+                            "data", Map.of("aanvrager", Map.of("telefoon", "0612345678")),
+                            "inputs", Map.of("telefoon", "0612345678")));
+
+            assertThat(result)
+                    .containsEntry("telefoon", "0612345678")
+                    .containsEntry("getypt", "0612345678");
+        }
+
+        @Test
+        void leavesAnAbsentBindingUndefined() {
+            // An expression yielding nothing writes nothing, which is what keeps "only write what
+            // was supplied" the default rather than clobbering good case data with nulls.
+            Map<String, Object> result = evaluate(
+                    "{ \"telefoon\": $data.aanvrager.telefoon }",
+                    Map.of("data", Map.of()));
+
+            assertThat(result).doesNotContainKey("telefoon");
+        }
+
+        @Test
+        void cannotShadowTheCaseOrProcessBindings() {
+            // A mapping that reads $doc must mean the case, whatever a caller supplied.
+            Map<String, Object> result = service.evaluate(EvaluationContext.builder()
+                    .expression("{ \"naam\": $doc.naam }")
+                    .documentResolver(id -> Map.of("naam", "uit het dossier"))
+                    .documentId("doc-1")
+                    .extraBindings(Map.of("doc", Map.of("naam", "overschreven")))
+                    .build());
+
+            assertThat(result).containsEntry("naam", "uit het dossier");
+        }
+
+        @Test
+        void bindsNothingWhenNoneAreGiven() {
+            assertThat(evaluate("{ \"vast\": \"waarde\" }", Map.of()))
+                    .containsEntry("vast", "waarde");
+        }
+    }
+
+    @Nested
     class SimpleFieldMappings {
 
         @Test

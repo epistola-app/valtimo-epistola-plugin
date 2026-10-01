@@ -42,6 +42,7 @@ public class EvaluationContext {
     private final String processDefinitionId;
     private final String processInstanceId;
     private final String activityId;
+    private final Map<String, Object> extraBindings;
 
     private EvaluationContext(Builder builder) {
         this.expression = builder.expression;
@@ -49,6 +50,7 @@ public class EvaluationContext {
         this.processVariableResolver = builder.processVariableResolver;
         this.processVariableEnumerator = builder.processVariableEnumerator;
         this.documentId = builder.documentId;
+        this.extraBindings = builder.extraBindings;
         this.execution = builder.execution;
         this.operation = builder.operation;
         this.processDefinitionId = builder.processDefinitionId;
@@ -61,6 +63,7 @@ public class EvaluationContext {
     public Function<String, Object> getProcessVariableResolver() { return processVariableResolver; }
     public Supplier<Map<String, Object>> getProcessVariableEnumerator() { return processVariableEnumerator; }
     public String getDocumentId() { return documentId; }
+    public Map<String, Object> getExtraBindings() { return extraBindings; }
     public DelegateExecution getExecution() { return execution; }
     public String getOperation() { return operation; }
     public String getProcessDefinitionId() { return processDefinitionId; }
@@ -86,6 +89,7 @@ public class EvaluationContext {
     public static Builder builder() { return new Builder(); }
 
     public static class Builder {
+        private Map<String, Object> extraBindings = Map.of();
         private String expression;
         private Function<String, Map<String, Object>> documentResolver;
         private Function<String, Object> processVariableResolver;
@@ -143,6 +147,23 @@ public class EvaluationContext {
 
         public Builder processInstanceId(String processInstanceId) {
             this.processInstanceId = processInstanceId;
+            return this;
+        }
+
+        /**
+         * Extra JSONata variables, bound by name alongside {@code $doc}, {@code $pv} and
+         * {@code $case}.
+         *
+         * <p>For an expression whose subject is neither the case nor the process: a composer's
+         * write-back rule reads {@code $data} — the letter as it will be sent — and
+         * {@code $inputs}, what a person typed into it. Neither is reachable through {@code $doc}
+         * or {@code $pv}, because neither has been written anywhere yet.
+         *
+         * <p>Deliberately a plain map rather than resolvers: these are small values already in
+         * hand, not something to look up lazily per expression (see issue #99 for the lazy case).
+         */
+        public Builder extraBindings(Map<String, Object> extraBindings) {
+            this.extraBindings = extraBindings == null ? Map.of() : Map.copyOf(extraBindings);
             return this;
         }
 
