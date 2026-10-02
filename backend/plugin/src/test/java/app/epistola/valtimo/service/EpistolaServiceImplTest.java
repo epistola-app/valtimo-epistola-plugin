@@ -110,6 +110,28 @@ class EpistolaServiceImplTest {
         assertNotNull(details.simpleMappingSupport());
     }
 
+    /**
+     * Releasing works against every Epistola the plugin supports, not only a current one.
+     *
+     * <p>This runs twice, and the second run is the point: against the oldest contract a supported
+     * Suite serves (0.16.1, Suite 1.0.0). Releasing a catalog is <em>not</em> a new endpoint —
+     * measured, not assumed, since the first guess was that it was. What changed in Epistola is
+     * that generation now <em>requires</em> a release, which is why the sync has to do it; the call
+     * itself has been answerable all along. So both runs expect a release.
+     *
+     * <p>The plugin tolerates a 404/405 here anyway, for a server older than anything claimed as
+     * supported. That path cannot be reached through this harness — even the oldest contract
+     * answers 200 — so it is covered by {@code EpistolaCatalogSyncServiceTest} instead.
+     */
+    @Test
+    void releaseCatalog_worksOnEveryServerThePluginSupports() {
+        boolean released = assertDoesNotThrow(() -> service.releaseCatalog(
+                baseUrl, API_KEY, TENANT_ID, CATALOG_ID, "1.0.0", "released by a test"));
+
+        assertTrue(released,
+                "a server serving contract " + MOCK_SERVER_VERSION + " should accept a catalog release");
+    }
+
     @Test
     void getEnvironments_returnsEnvironmentList() {
         List<EnvironmentInfo> environments = service.getEnvironments(baseUrl, API_KEY, TENANT_ID);

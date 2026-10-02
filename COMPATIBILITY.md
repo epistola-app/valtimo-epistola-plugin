@@ -43,6 +43,25 @@ bundled classpath catalogs it imports carry a catalog **wire `schemaVersion`**, 
 gates imports against its own `[baseline, current]` window. A catalog below the suite's baseline
 is rejected with RFC-9457 `400 catalog-schema-too-old`.
 
+### Catalog releases
+
+A newer Suite **generates from catalog releases**, not from an import: importing makes a catalog's
+templates present, and generation refuses with `CATALOG_NOT_RELEASED` until a release exists. The
+plugin therefore releases each catalog it imports, at the catalog's own declared version.
+
+Releasing a catalog is **not a new endpoint** — it has been in the contract since `0.15.0`, which
+covers every Suite the plugin supports, and `oldestSupportedServerTest` asserts a successful release
+against the oldest contract a supported Suite serves (`0.16.1`, Suite 1.0.0). What changed in
+Epistola is only that generation now _requires_ a release. So:
+
+- **Plugin older than this change, Suite newer** — every generation fails, including previews. The
+  symptom is _"Catalog '…' has no release to generate from. Release the catalog first."_ Releasing
+  the catalog by hand in Epistola is the workaround; upgrading the plugin is the fix.
+- **Plugin newer, Suite older** — nothing breaks: the older server accepts the release, and
+  generation there never needed one. A 404/405 is still tolerated as "nothing to release", for a
+  server older than anything claimed as supported, and a release that fails for any other reason is
+  logged against the catalog without failing the import — the catalog is installed either way.
+
 | Plugin build | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema | Compatible Epistola Suite        |
 | ------------ | --------------------------------------------- | --------------------------- | -------------------------------- |
 | Unreleased   | `1.4.0`                                       | `4`                         | `>= 1.0.0`                       |
