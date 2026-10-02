@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.composer.web;
 
+import app.epistola.valtimo.service.TemplateDataFindings;
 import app.epistola.valtimo.composer.ComposerException;
 import app.epistola.valtimo.composer.LetterComposerService;
 import app.epistola.valtimo.composer.LetterComposerService.ComposerContext;
@@ -42,6 +43,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -358,9 +360,40 @@ public class EpistolaComposerResource {
                     .body(Map.of("error", e.getMessage()));
             // Not the caller's request being wrong but this environment's: the same shape the
             // catalog sync uses for a wire schema it cannot read — operator-actionable, not 502.
-            case RENDER_FAILED, UNSUPPORTED_SCHEMA, UNSUPPORTED_FIELD -> ResponseEntity.unprocessableEntity()
+            case UNSUPPORTED_SCHEMA, UNSUPPORTED_FIELD -> ResponseEntity.unprocessableEntity()
                     .body(Map.of("error", e.getMessage()));
+            case RENDER_FAILED -> renderFailed(e);
         };
+    }
+
+    /**
+     * A letter Epistola refused, with the fields it named when it named any.
+     *
+     * <p>{@code error} is unchanged, so a caller that knows only how to show one message still
+     * shows one. {@code fields} is additive: each entry is a JSON Pointer into the letter's data
+     * plus the keyword that failed, which is what lets the generated input carry the complaint
+     * instead of the preview pane carrying all of them.
+     *
+     * <p>Why this matters here and not for a hand-built form: the composer's inputs are generated,
+     * so a pointer can be matched to the field it names. And the browser can only check the fields
+     * it offered — most of a letter's data comes from the baseline mapping, which it neither
+     * computed nor has the contract for — so these are exactly the failures it could not have
+     * caught.
+     *
+     * <p>Only present when Epistola answered {@code template-data-invalid}. A render can fail for
+     * reasons that have nothing to do with the data, and a server older than contract 1.4.0 says
+     * nothing field-by-field; the list is left out rather than sent empty so the absence is
+     * unambiguous.
+     */
+    private ResponseEntity<?> renderFailed(ComposerException e) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", e.getMessage());
+
+        List<TemplateDataFindings> findings = TemplateDataFindings.of(e);
+        if (!findings.isEmpty()) {
+            body.put("fields", findings);
+        }
+        return ResponseEntity.unprocessableEntity().body(body);
     }
 
     private static boolean isBlank(String value) {

@@ -36,6 +36,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.io.ByteArrayInputStream;
+import app.epistola.valtimo.service.EpistolaApiException;
+import app.epistola.valtimo.service.TemplateDataFindings;
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -160,6 +163,60 @@ class EpistolaComposerResourceTest {
                 TASK_ID, null, "besluit", COMPONENT_KEY, Map.of()));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void preview_namesTheFieldsEpistolaRefused() {
+        // The half the browser cannot do: most of a letter's data comes from the baseline mapping,
+        // which it neither computed nor holds the contract for, so a refusal over one of those
+        // fields only exists here. Each entry is a pointer the generated input can be matched to.
+        var problem = new EpistolaApiException(
+                "Template data invalid",
+                new RuntimeException("downstream"),
+                400,
+                "https://epistola.app/errors/template-data-invalid",
+                Map.of(
+                        "invalidFields", List.of(Map.of(
+                                "path", "/customer/email",
+                                "keyword", "format",
+                                "message", "must be a valid email address")),
+                        "missingFields", List.of(
+                                Map.of("path", "/invoiceNumber", "required", true),
+                                Map.of("path", "/customer/phone", "required", false))));
+        when(letterComposerService.preview(any(), any(), any(), any()))
+                .thenThrow(new ComposerException(
+                        ComposerException.Reason.RENDER_FAILED, "Epistola refused it", problem));
+
+        var response = resource.preview(new EpistolaComposerResource.ComposerPreviewRequest(
+                TASK_ID, null, "besluit", COMPONENT_KEY, Map.of()));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNPROCESSABLE_ENTITY);
+        var body = (Map<String, Object>) response.getBody();
+        // The single message stays, so a caller that only knows how to show one still shows one.
+        assertThat(body).containsEntry("error", "Epistola refused it");
+
+        var fields = (List<TemplateDataFindings>) body.get("fields");
+        // The absent optional field is not reported: complaining about something nobody requires
+        // would send the employee looking for a field the letter does not need.
+        assertThat(fields).containsExactly(
+                new TemplateDataFindings("/customer/email", "format", "must be a valid email address"),
+                new TemplateDataFindings("/invoiceNumber", "required", null));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void preview_saysNothingFieldByFieldWhenEpistolaDidNot() {
+        // A render can fail for reasons that have nothing to do with the data, and a server older
+        // than contract 1.4.0 says nothing field by field. The key is left out rather than sent
+        // empty, so its absence is unambiguous to the browser.
+        when(letterComposerService.preview(any(), any(), any(), any()))
+                .thenThrow(new ComposerException(ComposerException.Reason.RENDER_FAILED, "nope"));
+
+        var response = resource.preview(new EpistolaComposerResource.ComposerPreviewRequest(
+                TASK_ID, null, "besluit", COMPONENT_KEY, Map.of()));
+
+        assertThat((Map<String, Object>) response.getBody()).doesNotContainKey("fields");
     }
 
     @Test

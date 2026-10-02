@@ -18,8 +18,23 @@
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Observable } from 'rxjs';
 
+import type { FieldFinding } from './composer-findings';
+
 /** A rendered letter, or why it could not be rendered. */
-export type PreviewResult = { url: SafeResourceUrl } | { error: string };
+export type PreviewResult =
+  | { url: SafeResourceUrl }
+  | {
+      error: string;
+      /**
+       * The fields Epistola named, when it named any.
+       *
+       * Only a `template-data-invalid` answer carries these, so absent is the ordinary case — a
+       * render can fail for reasons that have nothing to do with the data, and a server older than
+       * contract 1.4.0 says nothing field by field. See
+       * [composer-findings.ts](./composer-findings.ts) for what is done with them.
+       */
+      fields?: readonly FieldFinding[];
+    };
 
 export function isRendered(result: PreviewResult): result is { url: SafeResourceUrl } {
   return 'url' in result;
@@ -59,8 +74,8 @@ export class PreviewRenderer {
           subscriber.complete();
         },
         error: (failure) => {
-          this.readError(failure, (error) => {
-            subscriber.next({ error });
+          this.readError(failure, (error, fields) => {
+            subscriber.next(fields?.length ? { error, fields } : { error });
             subscriber.complete();
           });
         },
@@ -81,7 +96,10 @@ export class PreviewRenderer {
    * A refused render arrives as a Blob body, because the request asked for a PDF. Read it as text
    * so the template's own complaint reaches the employee instead of a generic failure.
    */
-  private readError(failure: any, done: (message: string) => void): void {
+  private readError(
+    failure: any,
+    done: (message: string, fields?: readonly FieldFinding[]) => void,
+  ): void {
     const fallback = this.fallbackMessage();
     if (failure?.error instanceof Blob) {
       failure.error
@@ -89,7 +107,7 @@ export class PreviewRenderer {
         .then((text: string) => {
           try {
             const body = JSON.parse(text);
-            done(body.details || body.error || fallback);
+            done(body.details || body.error || fallback, fields(body));
           } catch {
             done(fallback);
           }
@@ -97,6 +115,22 @@ export class PreviewRenderer {
         .catch(() => done(fallback));
       return;
     }
-    done(failure?.error?.error || fallback);
+    done(failure?.error?.error || fallback, fields(failure?.error));
   }
+}
+
+/**
+ * The `fields` member of an error body, keeping only entries that name a location.
+ *
+ * An entry without a `path` cannot be put anywhere, and inventing one would claim a field the
+ * server did not name.
+ */
+function fields(body: any): readonly FieldFinding[] | undefined {
+  if (!Array.isArray(body?.fields)) {
+    return undefined;
+  }
+  const found = body.fields.filter(
+    (entry: any) => entry && typeof entry.path === 'string' && entry.path !== '',
+  );
+  return found.length ? found : undefined;
 }
