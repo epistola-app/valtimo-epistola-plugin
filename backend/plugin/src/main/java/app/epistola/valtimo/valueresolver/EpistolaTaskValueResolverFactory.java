@@ -23,7 +23,6 @@ import com.ritense.valtimo.operaton.domain.OperatonTask;
 import com.ritense.valueresolver.ValueResolverFactory;
 import com.ritense.valueresolver.ValueResolverOption;
 import com.ritense.valueresolver.ValueResolverPropertyKey;
-import app.epistola.valtimo.composer.ComposerWriteBackService;
 import kotlin.Unit;
 import org.operaton.bpm.engine.delegate.VariableScope;
 
@@ -58,17 +57,7 @@ import java.util.function.Function;
  */
 public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
 
-    public EpistolaTaskValueResolverFactory(ComposerWriteBackService writeBackService) {
-        this.writeBackService = writeBackService;
-    }
-
     public static final String PREFIX = "epistola";
-
-    /**
-     * Applies a composer's write-back when a submission carried one; null where the composer module
-     * is switched off ({@code epistola.composer.enabled=false}), in which case nothing is written.
-     */
-    private final ComposerWriteBackService writeBackService;
 
     static final String KEY_TASK_ID = "taskId";
     static final String KEY_EXECUTION_ID = "executionId";
@@ -164,31 +153,14 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
 
     @Override
     public void handleValues(String processInstanceId, VariableScope variableScope, Map<String, ?> values) {
-        // Task identity is never written back, and Valtimo does not reach this overload when a
-        // form is submitted — it uses the document-scoped one below. See there.
+        // Read-only resolver: task identity is never written back.
     }
 
-    /**
-     * Apply a composer's write-back, when a submission carried one.
-     *
-     * <p>This is the overload Valtimo's form submission uses: it hands the case document and the
-     * submitted values, keyed by resolver key with the {@code epistola:} prefix already stripped.
-     * Everything else under this prefix is task identity, which is read-only.
-     *
-     * <p>Delegated rather than implemented here: what reaches this class is one submitted value,
-     * while deciding what to do with it means reading the case type's composers and evaluating
-     * their rules. {@link ComposerWriteBackService} owns that, and can be tested without a
-     * resolver SPI around it.
-     */
     @Override
     public void handleValues(UUID documentId, Map<String, ?> values) {
-        if (writeBackService == null || values == null) {
-            return;
-        }
-        Object letter = values.get(ComposerWriteBackService.SUBMITTED_KEY);
-        if (letter != null) {
-            writeBackService.apply(documentId, letter);
-        }
+        // Read-only resolver. A composed letter's write-back is applied by the generate action,
+        // which has the case through its process instance's business key and so needs nothing from
+        // a submission — see ComposerWriteBackService.
     }
 
     @Override

@@ -206,6 +206,80 @@ form without one gets; more than one → it asks the author to fill in **Process
 way the surviving definition goes through the same two gates as a named one, so discovery buys
 convenience and changes no permission.
 
+## Wiring it into a process
+
+Three shapes, all shipped as demos on the `correspondentie` case. The composer is a Form.io
+component, so it goes on a form like any other field; what differs is only which form.
+
+### A letter as a step in a process
+
+The ordinary case: somewhere in the process an employee has to choose a letter.
+
+```
+UserTask  choose-letter          → form "kies-brief"            (the composer)
+                                    ↓  pv:epistolaLetter
+ServiceTask generate-chosen-letter → action "Generate chosen letter"
+```
+
+Demo: `correspondentie-letter-composer`. To build one: drop the component on the task's form, set
+its **Property name** to `pv:epistolaLetter`, choose the Epistola connection and the letters to
+offer, then add a service task with the **Generate chosen letter** action reading the same
+variable. The action needs no template, catalog or mapping of its own — the letter carries them.
+
+### A letter inside a form flow
+
+The same, where the task opens a flow rather than a single form. Every form step of the flow is
+read, so the composer may sit on any step.
+
+Demo: `correspondentie-flow-letter`, composer on `kies-brief-flow`.
+
+**This one needs two extra pieces, and without them the generate task fails one step later.** A
+form flow does not resolve `pv:` keys the way a plain form does, so the chosen letter never reaches
+the process variable:
+
+- the flow's `onComplete` needs the **three-argument** `completeTask`, naming the mapping
+  explicitly: `{'pv:epistolaFlowLetter':'/pv:epistolaFlowLetter'}`;
+- and because only the **completing** step's submission is mapped, a letter chosen on an earlier
+  step needs a hidden component with the same key on the completing step to carry it forward.
+
+Both are in the demo, and `BundledComposerFormTest` fails if either is removed.
+
+### A letter sent ad hoc from an open case
+
+No task at all. An employee looking at a dossier decides to send a letter; the composer sits on the
+**start form of a small process of its own**, and submitting starts that process on the case
+already on screen.
+
+```
+(open dossier) → start form "kies-brief-adhoc"   (the composer)
+                   ↓  starts the process on this case document
+                 ServiceTask generate-chosen-letter
+```
+
+Demo: `correspondentie-ad-hoc-letter`. Which process gets started is worked out server-side rather
+than wired by the author — see [Where it is used](#where-it-is-used) — so if more than one process
+has a start form offering the chosen letter, the author has to fill in **Process to start**.
+
+### What each shape costs
+
+|                                 | Task form           | Form-flow step                   | Ad-hoc start form                                      |
+| ------------------------------- | ------------------- | -------------------------------- | ------------------------------------------------------ |
+| Needs a user task               | yes                 | yes                              | **no**                                                 |
+| `$doc` available to the mapping | yes                 | yes                              | yes                                                    |
+| `$pv` available to the mapping  | yes                 | yes                              | **no** — there is no instance yet                      |
+| Extra wiring                    | none                | `completeTask` mapping + carrier | **Process to start**, when ambiguous                   |
+| Authorized on                   | `OperatonTask:VIEW` | `OperatonTask:VIEW`              | `OperatonExecution:CREATE` + `JsonSchemaDocument:VIEW` |
+
+Two limits apply to all three:
+
+- **A generate task is required.** The composer only records what was chosen; nothing is sent
+  without a service task to send it. A composer with no generate task downstream produces a process
+  variable nobody reads.
+- **One letter per composer.** The picker is a single select and the value is one letter. A form may
+  carry several composers, each with its own `pv:` key and its own generate task, which is how a
+  task sends more than one letter today — but letting the employee decide _how many_ go out is
+  unbuilt ([#152](https://github.com/epistola-app/valtimo-epistola-plugin/issues/152)).
+
 ## What it can ask for
 
 The inputs are generated from the template's data contract, so what the contract says decides what

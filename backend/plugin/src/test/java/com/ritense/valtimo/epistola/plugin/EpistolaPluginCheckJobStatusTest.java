@@ -76,7 +76,8 @@ class EpistolaPluginCheckJobStatusTest {
                 mock(JsonataMappingService.class),
                 mock(DocumentService.class),
                 mock(EpistolaResultCollectorRunner.class),
-                strategies);
+                strategies,
+                mock(app.epistola.valtimo.composer.ComposerWriteBackService.class));
         ReflectionTestUtils.setField(plugin, "baseUrl", BASE_URL);
         ReflectionTestUtils.setField(plugin, "apiKey", API_KEY);
         ReflectionTestUtils.setField(plugin, "tenantId", TENANT_ID);
