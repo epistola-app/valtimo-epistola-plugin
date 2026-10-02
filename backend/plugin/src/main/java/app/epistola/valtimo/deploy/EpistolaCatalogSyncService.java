@@ -159,9 +159,27 @@ public class EpistolaCatalogSyncService {
                 log.info("Catalog '{}' released as v{}", catalogId, catalog.version());
             }
         } catch (Exception e) {
-            log.error("Catalog '{}' was imported but could not be released as v{}: {}. Documents "
-                            + "cannot be generated from it until it is released.",
-                    catalogId, catalog.version(), e.getMessage());
+            // Epistola refuses a release at a version it has already released ("Version 1.3.0 must
+            // be greater than the last release 1.3.0"), which is what a forced redeploy of an
+            // unchanged catalog hits every time. That is benign — the existing release is still
+            // there — so it must not look like a failure, or the redeploy button trains operators
+            // to ignore errors. The match is on the message because this only chooses a log level;
+            // behaviour is identical either way, and a message that stops matching means noisier
+            // logs, never a wrong deploy.
+            String reason = String.valueOf(e.getMessage());
+            if (reason.contains("must be greater than the last release")) {
+                log.info("Catalog '{}' is already released at v{}; nothing to release. Raise the "
+                                + "catalog's version to publish changed templates.",
+                        catalogId, catalog.version());
+                return;
+            }
+            // Deliberately not "documents cannot be generated": if an earlier release exists they
+            // can, from that one — which is the trap worth naming, because imported changes then
+            // silently do not appear.
+            log.warn("Catalog '{}' was imported but not released as v{}: {}. Generation keeps using "
+                            + "the last release, so the imported changes will not appear until the "
+                            + "catalog's version is raised.",
+                    catalogId, catalog.version(), reason);
         }
     }
 

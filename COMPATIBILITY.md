@@ -57,6 +57,13 @@ Epistola is only that generation now _requires_ a release. So:
 - **Plugin older than this change, Suite newer** — every generation fails, including previews. The
   symptom is _"Catalog '…' has no release to generate from. Release the catalog first."_ Releasing
   the catalog by hand in Epistola is the workaround; upgrading the plugin is the fix.
+  **Publishing changed templates needs the catalog's version raised.** Epistola refuses a release at
+  a version it has already released (_"Version 1.3.0 must be greater than the last release 1.3.0"_),
+  so re-importing a catalog whose content changed but whose version did not will update the templates
+  and then generate from the **previous** release — the change silently does not appear. The sync logs
+  that rather than failing the import, and a forced redeploy of an unchanged catalog logs it as
+  routine.
+
 - **Plugin newer, Suite older** — nothing breaks: the older server accepts the release, and
   generation there never needed one. A 404/405 is still tolerated as "nothing to release", for a
   server older than anything claimed as supported, and a release that fails for any other reason is
