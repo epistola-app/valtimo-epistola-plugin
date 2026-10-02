@@ -277,7 +277,16 @@ public class ComposerConfigurationResolver {
         List<LetterComposerConfiguration> configurations = new ArrayList<>();
         for (FormIoFormDefinition form : formDefinitionRepository
                 .findAllByCaseDefinitionIdOrderByNameAsc(caseDefinitionId)) {
-            ComposerParser.collectComposers(form.getFormDefinition().path("components"), configurations);
+            // Per form, so one that cannot be read does not hide the composers on all the others.
+            // This list decides where a letter's values are allowed to go, and answering "nowhere"
+            // because an unrelated form is malformed is both wrong and very hard to see.
+            try {
+                ComposerParser.collectComposers(form.getFormDefinition().path("components"), configurations);
+            } catch (RuntimeException e) {
+                log.warn("Could not read form '{}' on case type '{}' while looking for letter "
+                                + "composers; its composers are ignored: {}",
+                        form.getName(), caseDefinitionKey, e.getMessage());
+            }
         }
         return configurations;
     }

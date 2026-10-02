@@ -18,6 +18,7 @@
 package app.epistola.valtimo.composer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -103,6 +104,22 @@ class ComposerWriteBackServiceTest {
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(valueResolverService).handleValues(eq(DOCUMENT_ID), captor.capture());
         return captor.getValue();
+    }
+
+    @Test
+    @DisplayName("a failure finding the rules does not fail the letter")
+    void neverThrows() {
+        // The contract this method documents, and the reason for it: by the time write-back runs
+        // the letter is with Epistola and cannot be unsent. Throwing here would fail the activity,
+        // and a retry would send a second letter. Reading the configuration can fail like anything
+        // else that touches a database.
+        when(resolver.forCaseDefinition(CASE_KEY)).thenThrow(new RuntimeException("database is gone"));
+
+        assertThatCode(() -> service.apply(
+                DOCUMENT_ID, letter(Map.of(), Map.of("decisionType", "gegrond")), "epistolaLetter"))
+                .doesNotThrowAnyException();
+
+        verify(valueResolverService, never()).handleValues(any(UUID.class), any());
     }
 
     @Test

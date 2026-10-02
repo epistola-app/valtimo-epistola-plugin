@@ -128,13 +128,11 @@ public class ComposerWriteBackService {
             return;
         }
 
-        Map<String, String> rules = rulesFor(documentId, letterVariable);
-        if (rules.isEmpty()) {
-            return;
-        }
-
         ComposedLetter letter;
         try {
+            // Reading the letter before looking for rules: cheap, and it keeps every path that can
+            // throw inside the overload that guarantees it does not. Looking for rules first used
+            // to short-circuit a letter nobody writes back, and bought a hole in that guarantee.
             letter = ComposedLetter.from(submittedLetter, "epistola:" + SUBMITTED_KEY, objectMapper);
         } catch (RuntimeException e) {
             log.warn("Letter composer write-back skipped for case {}: the submitted letter could not "
@@ -167,18 +165,26 @@ public class ComposerWriteBackService {
             return;
         }
 
-        Map<String, String> rules = rulesFor(documentId, letterVariable);
-        if (rules.isEmpty()) {
-            return;
-        }
+        // The whole method, because of what "never throws" is protecting: by the time this runs the
+        // letter is with Epistola and cannot be unsent, so throwing would fail the activity and a
+        // retry would send a second one. Reading the configuration touches a database and can fail
+        // like anything else; a lost write-back is the cheaper failure.
+        try {
+            Map<String, String> rules = rulesFor(documentId, letterVariable);
+            if (rules.isEmpty()) {
+                return;
+            }
 
-        Map<String, Object> resolved = resolve(rules, letter, documentId);
-        if (resolved.isEmpty()) {
-            log.debug("Letter composer write-back for case {} resolved no values", documentId);
-            return;
-        }
+            Map<String, Object> resolved = resolve(rules, letter, documentId);
+            if (resolved.isEmpty()) {
+                log.debug("Letter composer write-back for case {} resolved no values", documentId);
+                return;
+            }
 
-        write(documentId, resolved);
+            write(documentId, resolved);
+        } catch (RuntimeException e) {
+            log.error("Letter composer write-back failed for case {}: {}", documentId, e.getMessage(), e);
+        }
     }
 
     /**
