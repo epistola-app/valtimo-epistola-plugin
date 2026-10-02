@@ -106,6 +106,15 @@ public class ComposerWriteBackService {
             return;
         }
 
+        // A caller that has already read the letter passes it as it is. The generate action does
+        // exactly that, and handing its parsed letter to the raw-value branch is how this silently
+        // wrote nothing: `from` is for a value that arrived on a submission and rejects anything
+        // that is not one — including, absurdly, a ComposedLetter.
+        if (submittedLetter instanceof ComposedLetter composed) {
+            apply(documentId, composed);
+            return;
+        }
+
         Map<String, String> rules = rulesFor(documentId);
         if (rules.isEmpty()) {
             return;
@@ -117,6 +126,28 @@ public class ComposerWriteBackService {
         } catch (RuntimeException e) {
             log.warn("Letter composer write-back skipped for case {}: the submitted letter could not "
                     + "be read ({})", documentId, e.getMessage());
+            return;
+        }
+
+        apply(documentId, letter);
+    }
+
+    /**
+     * Apply the write-back for a letter that has already been read.
+     *
+     * <p>This is the shape the generate action has: it parsed the letter to decide what to render,
+     * and the values written back must be the ones that were actually sent.
+     *
+     * @param documentId the case document the letter was composed for
+     * @param letter     the letter as it was sent to Epistola
+     */
+    public void apply(UUID documentId, ComposedLetter letter) {
+        if (documentId == null || letter == null) {
+            return;
+        }
+
+        Map<String, String> rules = rulesFor(documentId);
+        if (rules.isEmpty()) {
             return;
         }
 

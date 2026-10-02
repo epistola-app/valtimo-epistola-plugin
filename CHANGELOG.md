@@ -22,7 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **A composer can save a letter's values on the case.** Each rule is a destination — a
+- **A composer can save a letter's values on the case.** (Fixed before release: the generate action
+  handed the service an already-read letter where a raw submission was expected, so every write was
+  skipped with a warning and the case silently received nothing.) Each rule is a destination — a
   `doc:` case path or a `pv:` process variable — and a JSONata expression over the letter, authored
   in **Also save these values on the case**. `$letter` (or `$data`, the contract's own name for it)
   is the letter as it will be sent, `$inputs` only what the employee typed; an expression that yields nothing writes nothing, so a value nobody

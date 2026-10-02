@@ -78,6 +78,9 @@ class LetterComposerE2ETest {
     lateinit var valueResolverService: ValueResolverService
 
     @Autowired
+    lateinit var historyService: org.operaton.bpm.engine.HistoryService
+
+    @Autowired
     lateinit var objectMapper: ObjectMapper
 
     @BeforeEach
@@ -187,6 +190,69 @@ class LetterComposerE2ETest {
             .containsEntry("decisionType", "gegrond")
             .containsEntry("motivation", "De dakkapel voldoet aan de welstandscriteria.")
         assertThat(dataCaptor.firstValue["objector"] as Map<String, Any>).containsEntry("lastName", "Jansen")
+    }
+
+    /**
+     * The values a letter carries reach the case, because a composer on this case type says where
+     * they belong.
+     *
+     * This is the end of the write-back path and the only test that walks all of it: the rules are
+     * read from the deployed form rather than from the letter, evaluated against the letter that
+     * was actually sent, and written through the same resolver Valtimo's own forms write through.
+     * Everything below it is unit-tested; what no unit test can show is that a rule authored in a
+     * bundled form reaches a running process at all.
+     *
+     * Asserted after the generate task, because that is where write-back happens — only once
+     * Epistola has accepted the letter, so a refused letter changes nothing.
+     */
+    @Test
+    fun `a letter's values land on the case the composer named`() {
+        val context = startCaseAndOpenChooseLetter()
+        val prepared = runWithoutAuthorization { letterComposerService.prepare(context, null, DECISION) }
+
+        val typed =
+            mapOf(
+                "decisionType" to "gegrond",
+                "decision" to "Het bezwaar is gegrond verklaard.",
+                "motivation" to "De dakkapel voldoet aan de welstandscriteria.",
+            )
+        val data = prepared.data().toMutableMap().apply { putAll(typed) }
+        valueResolverService.handleValues(
+            context.processInstanceId(),
+            null,
+            mapOf(
+                // `inputs` is what the employee typed, which is what the demo rules read. The
+                // component sends both, and the difference matters: `data` also holds everything
+                // the baseline mapping supplied, which nobody asked a person to confirm.
+                "pv:epistolaLetter" to
+                    mapOf(
+                        "templateId" to DECISION,
+                        "catalogId" to CATALOG,
+                        "data" to data,
+                        "inputs" to typed,
+                    ),
+            ),
+        )
+
+        val task =
+            engineTaskService
+                .createTaskQuery()
+                .processInstanceId(context.processInstanceId())
+                .taskDefinitionKey(CHOOSE_LETTER_TASK)
+                .singleResult()
+        runWithoutAuthorization { engineTaskService.complete(task.id) }
+
+        val written =
+            historyService
+                .createHistoricVariableInstanceQuery()
+                .processInstanceId(context.processInstanceId())
+                .list()
+                .associate { it.name to it.value }
+
+        assertThat(written)
+            .describedAs("the demo form's write-back rules put the typed values on the process")
+            .containsEntry("besluitType", "gegrond")
+            .containsEntry("besluitToelichting", "De dakkapel voldoet aan de welstandscriteria.")
     }
 
     private fun startCaseAndOpenChooseLetter(): ComposerContext {
