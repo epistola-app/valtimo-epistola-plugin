@@ -280,9 +280,15 @@ in its settings. Each rule is a destination and a JSONata expression over the le
 | `doc:/aanvrager/telefoon` | `$inputs.telefoon`     | the number the employee typed is saved on the case             |
 | `pv:besluitType`          | `$inputs.decisionType` | it becomes a process variable the rest of the process can read |
 
-`$data` is the letter as it will be sent; `$inputs` only what the employee typed themselves. An
+`$letter` is the letter as it will be sent; `$inputs` only what the employee typed themselves. An
 expression that yields nothing writes nothing, which is what keeps "only save what was actually
 supplied" the default rather than clobbering good case data with nulls.
+
+`$data` is the same object as `$letter`, under the name the contract uses — Epistola's API field is
+`data`, and the stored letter has a `data` key, so an author reading the process variable sees that
+name. Either works. There is deliberately no `$form`: in a form flow that already means one step's
+submission, and these are the composer's own generated fields rather than the Valtimo form around
+them.
 
 The rules are applied **when the letter is generated**, by the generate task, once Epistola has
 accepted it. So a letter Epistola refuses saves nothing — nothing was sent — while a save that

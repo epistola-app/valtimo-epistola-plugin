@@ -140,6 +140,22 @@ class ComposerWriteBackServiceTest {
     }
 
     @Test
+    @DisplayName("$letter is the same letter as $data, under a name that reads better in a rule")
+    void letterIsAnAliasForData() {
+        // $data is kept because it is the contract's own word for that object; $letter because
+        // "the letter's phone number" is what a rule is actually saying.
+        declaring(Map.of(
+                "doc:/via-data", "$data.veld",
+                "doc:/via-letter", "$letter.veld"));
+
+        service.apply(DOCUMENT_ID, letter(Map.of("veld", "zelfde waarde"), Map.of()));
+
+        assertThat(written())
+                .containsEntry("doc:/via-data", "zelfde waarde")
+                .containsEntry("doc:/via-letter", "zelfde waarde");
+    }
+
+    @Test
     @DisplayName("a rule that yields nothing writes nothing")
     void yieldsNothing() {
         // What keeps "only write what was actually supplied" the default, instead of clobbering

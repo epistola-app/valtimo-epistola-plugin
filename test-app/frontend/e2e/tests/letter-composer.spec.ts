@@ -184,14 +184,7 @@ test.describe('Letter composer — pick a letter, fill in what the case cannot s
    * Epistola older than the `template-data-invalid` work answers a refused preview with one
    * flattened sentence, and against such a server this path cannot be reached at all.
    */
-  // Skipped until it has been seen to pass: it was written against a supplied 422 and the local
-  // Epistola was stopped before it could be run, so it has never gone green. The behaviour it
-  // covers is tested in `composer-findings.spec.ts` (the resolution) and
-  // `TemplateDataFindingsTest` / `EpistolaComposerResourceTest` (reading the problem body); what is
-  // missing is only the rendered page. Remove the skip and run it against a stack whose Epistola is
-  // new enough to answer `template-data-invalid` — an older one answers with a single flattened
-  // sentence and this path is unreachable.
-  test.skip('shows what Epistola refused under the field it refused', async ({ page }) => {
+  test('shows what Epistola refused under the field it refused', async ({ page }) => {
     test.setTimeout(180_000);
 
     // The documented answer for a letter refused over one field, named by pointer.
@@ -322,13 +315,20 @@ test.describe('Letter composer — pick a letter, fill in what the case cannot s
     // And it *does* preview once they do. Asserting only the waiting state was how a dead end hid
     // here: the grid's columns were demanded against the submission, where a row's fields can
     // never appear, so this letter waited however much was typed into it.
+    // Filled from each field's own placeholder where it has one, which is the contract's example
+    // for that field. Typing 'proef' everywhere is what this did before, and it only passed while
+    // Epistola was refusing the letter for an unrelated reason: a BSN of 'proef' does not match
+    // ^\\d{9}$, so a working server rejects the data and no letter ever renders. Using the example
+    // is also the honest test of the examples feature — if an example is not valid for its own
+    // field, this goes red.
     for (const step of ['Property', 'Applicant', 'Activities']) {
       await steps.filter({ hasText: step }).click();
       await page.waitForTimeout(500);
       for (const field of await inputs
         .locator('input[name^="data["]:visible, textarea[name^="data["]:visible')
         .all()) {
-        await field.fill('proef');
+        const example = await field.getAttribute('placeholder');
+        await field.fill(example?.trim() ? example : 'proef');
         await field.blur();
       }
     }
@@ -337,18 +337,15 @@ test.describe('Letter composer — pick a letter, fill in what the case cannot s
       timeout: 30_000,
     });
 
-    // And something was actually rendered with it. The letter or Epistola's complaint about the
-    // data both prove the gate opened; only "still waiting" means it never did. Asserting the
-    // waiting state is gone is not enough on its own — an error, or a composer that never got
-    // going, would satisfy that too.
-    await expect
-      .poll(
-        async () =>
-          (await page.getByTestId('epistola-composer-preview-pdf').isVisible()) ||
-          (await page.getByTestId('epistola-composer-preview-error').isVisible()),
-        { timeout: 60_000, message: 'the preview was never attempted' },
-      )
-      .toBe(true);
+    // And the letter actually rendered. This used to accept Epistola's complaint as proof too,
+    // which was the weaker claim it could make while the demo data could not satisfy the template:
+    // every refusal counted as "the gate opened". Now that the fields are filled with values their
+    // own schema accepts, nothing short of a rendered letter will do.
+    await expect(page.getByTestId('epistola-composer-preview-pdf')).toBeVisible({
+      timeout: 60_000,
+    });
+    await expect(page.getByTestId('epistola-composer-refused-fields')).toBeHidden();
+    await expect(page.getByTestId('epistola-composer-preview-error')).toBeHidden();
     await expect(page.getByTestId('epistola-composer-error')).toBeHidden();
   });
 });

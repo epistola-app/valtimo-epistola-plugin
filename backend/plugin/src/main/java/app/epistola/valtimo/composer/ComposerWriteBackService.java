@@ -185,7 +185,19 @@ public class ComposerWriteBackService {
                         // $data is the letter as it will be sent; $inputs only what a person
                         // typed, so a rule can write back a correction without also writing back
                         // everything the mapping already knew.
-                        .extraBindings(Map.of("data", letter.data(), "inputs", letter.inputs()))
+                        //
+                        // $letter is the same object as $data, under the name that reads better in
+                        // a rule — "the letter's phone number" rather than "the data's". $data is
+                        // kept because it is the contract's own word: Epistola's API field is
+                        // `data`, and the stored letter has a `data` key, so an author reading the
+                        // process variable sees that name and not this one. There is deliberately
+                        // no $form alias for $inputs: a form flow's `$form` already means one
+                        // step's submission, and these are the composer's own generated fields
+                        // rather than the Valtimo form around them.
+                        .extraBindings(Map.of(
+                                "data", letter.data(),
+                                "letter", letter.data(),
+                                "inputs", letter.inputs()))
                         .build());
                 if (result.containsKey("value") && result.get("value") != null) {
                     resolved.put(destination, result.get("value"));
