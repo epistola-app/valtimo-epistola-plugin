@@ -42,8 +42,9 @@
       ],
       "schemaVersion": 1,
       "writeBack": {
-        "pv:besluitType": "$inputs.decisionType",
-        "pv:besluitToelichting": "$inputs.motivation"
+        "doc:/besluit/type": "$inputs.decisionType",
+        "doc:/besluit/toelichting": "$inputs.motivation",
+        "pv:besluitType": "$inputs.decisionType"
       }
     },
     {

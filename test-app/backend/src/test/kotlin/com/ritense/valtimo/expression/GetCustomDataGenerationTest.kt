@@ -85,6 +85,9 @@ class GetCustomDataGenerationTest {
                 mock<DocumentService>(),
                 resultCollectorRunner,
                 EnumMap<DocumentStorageTarget, DocumentStorageStrategy>(DocumentStorageTarget::class.java),
+                // This test is about the mapping, not about write-back: no composer is involved, so
+                // the generate action has nothing to write back.
+                mock<app.epistola.valtimo.composer.ComposerWriteBackService>(),
             )
         ReflectionTestUtils.setField(plugin, "baseUrl", "https://api.epistola.app")
         ReflectionTestUtils.setField(plugin, "apiKey", "api-key")

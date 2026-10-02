@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **The demo case shows its own data, and the letter writes into it.** Correspondentie's
+  **Algemeen** tab is now a widget tab (Bezwaarmaker, Bezwaar, Besluit op bezwaar), the case schema
+  gained an optional `besluit` object, and the bundled composer writes the typed decision into it —
+  so a sent letter visibly changes the case rather than only a process variable. This also needed a
+  PBAC grant the app never had: `CaseWidgetTabWidget:view`. Without it Valtimo filters every widget
+  out of the tab (an empty tab, with no error) and answers the widget data call with 403, which
+  surfaces in the UI as an error right after a letter is sent.
+
 - **A composer can save a letter's values on the case.** (Fixed before release: the generate action
   handed the service an already-read letter where a raw submission was expected, so every write was
   skipped with a warning and the case silently received nothing.) Each rule is a destination — a

@@ -13,6 +13,7 @@ import app.epistola.valtimo.schema.JsonSchemaMappingAnalyzer
 import app.epistola.valtimo.service.EpistolaService
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.ritense.authorization.AuthorizationContext.Companion.runWithoutAuthorization
+import com.ritense.document.domain.impl.JsonSchemaDocumentId
 import com.ritense.document.domain.impl.request.NewDocumentRequest
 import com.ritense.document.service.DocumentService
 import com.ritense.valtimo.Application
@@ -250,9 +251,32 @@ class LetterComposerE2ETest {
                 .associate { it.name to it.value }
 
         assertThat(written)
-            .describedAs("the demo form's write-back rules put the typed values on the process")
+            .describedAs("a pv: destination reaches the process")
             .containsEntry("besluitType", "gegrond")
-            .containsEntry("besluitToelichting", "De dakkapel voldoet aan de welstandscriteria.")
+
+        // And the case document, which is the destination that matters: a process variable is gone
+        // once the process ends, while this is what the dossier shows and what a later step reads.
+        // It works only because `besluit` is declared in the schema — the case has
+        // additionalProperties false, so an undeclared path would be refused and the write lost.
+        val documentId =
+            runtimeService
+                .createProcessInstanceQuery()
+                .processInstanceId(context.processInstanceId())
+                .singleResult()!!
+                .businessKey
+        val content =
+            runWithoutAuthorization {
+                documentService
+                    .findBy(JsonSchemaDocumentId.existingId(java.util.UUID.fromString(documentId)))
+                    .orElseThrow()
+                    .content()
+                    .asJson()
+            }
+        assertThat(content.at("/besluit/type").asText())
+            .describedAs("a doc: destination reaches the case document")
+            .isEqualTo("gegrond")
+        assertThat(content.at("/besluit/toelichting").asText())
+            .isEqualTo("De dakkapel voldoet aan de welstandscriteria.")
     }
 
     private fun startCaseAndOpenChooseLetter(): ComposerContext {
