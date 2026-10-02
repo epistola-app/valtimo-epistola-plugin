@@ -22,7 +22,7 @@ test.describe('Download Document action configuration', () => {
 
     // The objection demo downloads the acknowledgement it generated; see
     // config/case/objection/1.0.0/process-link/objection-handling.process-link.json.
-    await processLinks.openProcess('Bezwaarprocedure');
+    await processLinks.openProcess('Bezwaarprocedure', 'download-ack');
     await processLinks.openActivity('download-ack');
 
     await expect(processLinks.region('epistola-download-form')).toBeVisible({ timeout: 15_000 });

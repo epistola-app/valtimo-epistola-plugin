@@ -30,7 +30,7 @@ test.describe('Check Job Status action configuration', () => {
 
     // "Drie takken, één gekoppeld" exists for exactly this: st-gen-a is linked, st-plain-b and
     // st-plain-c are plain service tasks with no link.
-    await processLinks.openProcess('Drie takken, één gekoppeld');
+    await processLinks.openProcess('Drie takken, één gekoppeld', 'st-plain-b');
     await processLinks.openActivity('st-plain-b');
 
     await processLinks.startNewEpistolaLink();

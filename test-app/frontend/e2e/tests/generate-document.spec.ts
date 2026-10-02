@@ -25,7 +25,7 @@ test.describe('Generate Document action configuration', () => {
     const processLinks = new ProcessLinkPage(page);
 
     // config/case/example/1.0.0/process-link/single-document.process-link.json
-    await processLinks.openProcess('Generate Single Document');
+    await processLinks.openProcess('Generate Single Document', 'generate-document');
     await processLinks.openActivity('generate-document');
 
     await expect(processLinks.region('epistola-generate-form')).toBeVisible({ timeout: 20_000 });
@@ -59,7 +59,7 @@ test.describe('Generate Document action configuration', () => {
     test.setTimeout(120_000);
     const processLinks = new ProcessLinkPage(page);
 
-    await processLinks.openProcess('Generate Single Document');
+    await processLinks.openProcess('Generate Single Document', 'generate-document');
     await processLinks.openActivity('generate-document');
     await expect(processLinks.region('epistola-generate-form')).toBeVisible({ timeout: 20_000 });
 

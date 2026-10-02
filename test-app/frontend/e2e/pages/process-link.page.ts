@@ -27,17 +27,46 @@ import { type Page, type Locator, expect } from '@playwright/test';
 export class ProcessLinkPage {
   constructor(private readonly page: Page) {}
 
-  /** Open the screen and select a process definition by the name shown in its dropdown. */
-  async openProcess(processLabel: string): Promise<void> {
+  /**
+   * Open the screen and select a process definition by the name shown in its dropdown.
+   *
+   * `expectedElementId` is the activity the caller is about to open, and it is what makes this
+   * wait mean anything. Waiting for `[data-element-id]` — any shape — was the original check, and
+   * it passes while the *previous* process's diagram is still on screen: the selection triggers a
+   * fetch, and until it returns the old shapes are there to be found. The next step then waits for
+   * a shape that belongs to a diagram nobody asked for and times out on a click, which is how this
+   * failed in roughly two of three full-suite runs while passing on its own.
+   *
+   * It is the same trap the repo already records for this screen in CLAUDE.md: the wizard is fully
+   * mounted from page load, so presence proves nothing. Here the cure is to name what must appear.
+   *
+   * One retry, because the failure seen was a selection whose diagram never arrived at all rather
+   * than one that was merely slow — re-selecting fixes that, waiting longer does not.
+   */
+  async openProcess(processLabel: string, expectedElementId: string): Promise<void> {
     await this.page.goto('/process-links');
     await this.page.waitForLoadState('domcontentloaded');
 
     const processSelect = this.page.locator('select').first();
     await expect(processSelect).toBeVisible({ timeout: 20_000 });
-    await processSelect.selectOption({ label: processLabel });
 
-    // The diagram replaces itself when the process changes; its shapes are the signal it arrived.
-    await expect(this.page.locator('[data-element-id]').first()).toBeVisible({ timeout: 20_000 });
+    const shape = this.page.locator(`[data-element-id="${expectedElementId}"]`);
+    for (const attempt of [1, 2]) {
+      await processSelect.selectOption({ label: processLabel });
+      try {
+        await shape.first().waitFor({ state: 'attached', timeout: 25_000 });
+        return;
+      } catch (error) {
+        if (attempt === 2) {
+          throw error;
+        }
+        // Re-select from a clean page: the dropdown keeps its value, so selecting the same option
+        // again on this one would fire no change event.
+        await this.page.reload();
+        await this.page.waitForLoadState('domcontentloaded');
+        await expect(processSelect).toBeVisible({ timeout: 20_000 });
+      }
+    }
   }
 
   /**
