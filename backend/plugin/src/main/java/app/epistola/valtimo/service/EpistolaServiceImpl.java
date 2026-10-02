@@ -43,6 +43,7 @@ import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.GenerationJobResponse;
 import app.epistola.client.error.ProblemDetailException;
 import app.epistola.client.model.ImportCatalogResponse;
+import app.epistola.client.model.ReleaseCatalogRequest;
 import app.epistola.client.model.PageMeta;
 import app.epistola.client.model.PreviewDocumentRequest;
 import app.epistola.client.model.PingRequest;
@@ -459,6 +460,40 @@ public class EpistolaServiceImpl implements EpistolaService {
             // import endpoint returns a structured body (e.g. catalog-schema-too-old with
             // version/baselineVersion) that callers translate and map to a correct status class.
             throw toApiException("Failed to import catalog", e);
+        }
+    }
+
+    @Override
+    public boolean releaseCatalog(
+            String baseUrl,
+            String apiKey,
+            String tenantId,
+            String catalogId,
+            String releaseVersion,
+            String notes
+    ) {
+        log.info("Releasing catalog '{}' as v{} for tenant {}", catalogId, releaseVersion, tenantId);
+        try {
+            var response = apiClientFactory.createCatalogsApi(baseUrl, apiKey)
+                    .releaseCatalog(tenantId, catalogId, new ReleaseCatalogRequest(releaseVersion, notes));
+            log.info("Catalog '{}' released for tenant {}: {}", catalogId, tenantId, response);
+            return true;
+        } catch (RestClientResponseException e) {
+            // Not the older-Suite case: every Epistola the plugin supports answers this, down to
+            // the oldest contract a supported Suite serves, which oldestSupportedServerTest pins.
+            // This is for a server older than anything claimed as supported, where treating a
+            // missing endpoint as a failure would stop the sync over a step that server never
+            // needed. Anything else is a real failure and is raised.
+            if (e.getStatusCode().value() == 404 || e.getStatusCode().value() == 405) {
+                log.debug("This Epistola has no catalog release endpoint ({}); nothing to release",
+                        e.getStatusCode());
+                return false;
+            }
+            throw toApiException("Failed to release catalog '" + catalogId + "'", e);
+        } catch (EpistolaApiException e) {
+            throw e;
+        } catch (Exception e) {
+            throw toApiException("Failed to release catalog '" + catalogId + "'", e);
         }
     }
 

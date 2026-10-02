@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Generation no longer fails against an Epistola that generates from catalog releases.** Importing
+  a catalog makes its templates present; a newer Suite will not render from one until a release
+  exists, answering `CATALOG_NOT_RELEASED` — so every generation and preview failed with _"Catalog
+  '…' has no release to generate from"_. The sync now releases what it imports, at the catalog's own
+  declared version, and a forced redeploy from the admin page does the same. Safe on older Epistola
+  too: releasing is not a new endpoint — it has been in the contract since `0.15.0`, and
+  `oldestSupportedServerTest` asserts a release against the oldest contract a supported Suite
+  serves — only the requirement to have released is new (#165).
+
+### Fixed
+
 - **The letter composer says what is wrong with an input in the reader's language, and never shows
   a regular expression.** The contract's constraints reach the generated form, so the browser
   already checks them as the employee types — but it reported the failure with Form.io's English
