@@ -74,6 +74,29 @@ public class EpistolaComposerConfiguration {
                 processDefinitionCaseDefinitionService);
     }
 
+    /**
+     * Applies a composer's write-back when a form carrying one is submitted.
+     *
+     * <p>Declared here, so it is absent when the composer module is switched off — the value
+     * resolver that reaches it then has nothing to delegate to and writes nothing.
+     */
+    @Bean
+    @ConditionalOnMissingBean(ComposerWriteBackService.class)
+    public ComposerWriteBackService composerWriteBackService(
+            ComposerConfigurationResolver composerConfigurationResolver,
+            com.ritense.document.service.DocumentService documentService,
+            app.epistola.valtimo.mapping.JsonataMappingService jsonataMappingService,
+            com.ritense.valueresolver.ValueResolverService valueResolverService,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper
+    ) {
+        return new ComposerWriteBackService(
+                composerConfigurationResolver,
+                documentService,
+                jsonataMappingService,
+                valueResolverService,
+                objectMapper);
+    }
+
     @Bean
     @ConditionalOnMissingBean(LetterComposerService.class)
     public LetterComposerService letterComposerService(

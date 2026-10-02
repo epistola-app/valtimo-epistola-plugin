@@ -107,7 +107,8 @@ class LetterComposerServiceTest {
                 "gemeente",
                 "{\"naam\": $doc.naam}",
                 List.of(templates),
-                false);
+                false,
+                java.util.Map.of());
     }
 
     private void offering(LetterComposerConfiguration configuration, String templateId) {

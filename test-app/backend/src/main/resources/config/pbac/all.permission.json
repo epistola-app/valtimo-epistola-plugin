@@ -1,5 +1,5 @@
 {
-  "changesetId": "permissions-v1",
+  "changesetId": "permissions-v2",
   "permissions": [
     {
       "resourceType": "com.ritense.case_.domain.definition.CaseDefinition",
@@ -18,6 +18,11 @@
     },
     {
       "resourceType": "com.ritense.case.domain.CaseTab",
+      "action": "view",
+      "roleKey": "ROLE_ADMIN"
+    },
+    {
+      "resourceType": "com.ritense.case_.domain.tab.CaseWidgetTabWidget",
       "action": "view",
       "roleKey": "ROLE_ADMIN"
     },

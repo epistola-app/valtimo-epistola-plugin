@@ -2,8 +2,8 @@
   {
     "key": "algemeen",
     "name": "Algemeen",
-    "type": "standard",
-    "contentKey": "summary",
+    "type": "widgets",
+    "contentKey": "algemeen",
     "showTasks": true
   },
   {

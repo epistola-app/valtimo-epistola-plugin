@@ -69,6 +69,22 @@
         }
       },
       "required": ["grounds", "receivedDate"]
+    },
+    "besluit": {
+      "type": "object",
+      "title": "Besluit",
+      "description": "Wat de behandelaar heeft besloten. Gevuld door de briefcomponent: de waarden die in de brief zijn ingevuld worden hier teruggeschreven.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "title": "Besluittype"
+        },
+        "toelichting": {
+          "type": "string",
+          "title": "Toelichting"
+        }
+      },
+      "additionalProperties": false
     }
   },
   "required": ["objector", "originalDecision", "objection"]

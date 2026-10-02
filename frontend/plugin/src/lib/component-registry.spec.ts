@@ -76,9 +76,12 @@ const components = filesUnder(LIB, '.formio.ts').map((path) => {
   const componentPath = path.replace('.formio.ts', '.component.ts');
   let inputs: string[] = [];
   try {
-    inputs = [...readFileSync(componentPath, 'utf8').matchAll(/@Input\(\)\s+(\w+)/g)].map(
-      (match) => match[1],
-    );
+    // `set` is skipped: an @Input() may be a setter, and the setting is named after it, not
+    // "set". A component that reads its value through one otherwise looks like it takes a
+    // setting called `set` that no author can type.
+    inputs = [
+      ...readFileSync(componentPath, 'utf8').matchAll(/@Input\(\)\s+(?:set\s+)?(\w+)/g),
+    ].map((match) => match[1]);
   } catch {
     // A few registrations reuse a component from elsewhere; nothing to compare then.
   }

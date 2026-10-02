@@ -1,0 +1,79 @@
+[
+  {
+    "key": "algemeen",
+    "widgets": [
+      {
+        "type": "fields",
+        "key": "bezwaarmaker",
+        "title": "Bezwaarmaker",
+        "width": 1,
+        "highContrast": false,
+        "properties": {
+          "columns": [
+            [
+              { "key": "voornaam", "title": "Voornaam", "value": "doc:objector.firstName" },
+              { "key": "achternaam", "title": "Achternaam", "value": "doc:objector.lastName" }
+            ],
+            [
+              { "key": "straat", "title": "Straat", "value": "doc:objector.address.street" },
+              {
+                "key": "huisnummer",
+                "title": "Huisnummer",
+                "value": "doc:objector.address.houseNumber"
+              },
+              {
+                "key": "postcode",
+                "title": "Postcode",
+                "value": "doc:objector.address.postalCode"
+              },
+              { "key": "woonplaats", "title": "Woonplaats", "value": "doc:objector.address.city" }
+            ]
+          ]
+        }
+      },
+      {
+        "type": "fields",
+        "key": "bezwaar",
+        "title": "Bezwaar",
+        "width": 1,
+        "highContrast": false,
+        "properties": {
+          "columns": [
+            [
+              {
+                "key": "kenmerk",
+                "title": "Kenmerk besluit",
+                "value": "doc:originalDecision.reference"
+              },
+              { "key": "onderwerp", "title": "Onderwerp", "value": "doc:originalDecision.subject" },
+              {
+                "key": "besluitdatum",
+                "title": "Besluitdatum",
+                "value": "doc:originalDecision.date"
+              }
+            ],
+            [
+              { "key": "gronden", "title": "Gronden", "value": "doc:objection.grounds" },
+              { "key": "ontvangen", "title": "Ontvangen op", "value": "doc:objection.receivedDate" }
+            ]
+          ]
+        }
+      },
+      {
+        "type": "fields",
+        "key": "besluit",
+        "title": "Besluit op bezwaar",
+        "width": 1,
+        "highContrast": false,
+        "properties": {
+          "columns": [
+            [
+              { "key": "besluittype", "title": "Besluittype", "value": "doc:besluit.type" },
+              { "key": "toelichting", "title": "Toelichting", "value": "doc:besluit.toelichting" }
+            ]
+          ]
+        }
+      }
+    ]
+  }
+]

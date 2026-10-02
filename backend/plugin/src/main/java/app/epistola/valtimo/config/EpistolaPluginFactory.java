@@ -43,6 +43,12 @@ public class EpistolaPluginFactory extends PluginFactory<EpistolaPlugin> {
     private final DocumentService documentService;
     private final EpistolaResultCollectorRunner resultCollectorRunner;
     private final Map<DocumentStorageTarget, DocumentStorageStrategy> storageStrategies;
+    // Held as the provider, not as what it resolved to at startup: a plugin instance is created
+    // per configuration long after the context is up, and resolving then is both later and safer.
+    // Resolving in this constructor instead captured null whenever the composer bean was not yet
+    // instantiable, and the generate action then wrote nothing at all, silently.
+    private final org.springframework.beans.factory.ObjectProvider<
+            app.epistola.valtimo.composer.ComposerWriteBackService> writeBackService;
 
     public EpistolaPluginFactory(
             @NotNull PluginService pluginService,
@@ -51,7 +57,11 @@ public class EpistolaPluginFactory extends PluginFactory<EpistolaPlugin> {
             @NotNull JsonataMappingService jsonataMappingService,
             @NotNull DocumentService documentService,
             @NotNull EpistolaResultCollectorRunner resultCollectorRunner,
-            @NotNull List<DocumentStorageStrategy> storageStrategies
+            @NotNull List<DocumentStorageStrategy> storageStrategies,
+            // Absent when the composer module is switched off; the generate-composed action is
+            // then unreachable anyway, so there is nothing to apply.
+            org.springframework.beans.factory.ObjectProvider<
+                    app.epistola.valtimo.composer.ComposerWriteBackService> writeBackService
     ) {
         super(pluginService);
         this.epistolaService = epistolaService;
@@ -61,6 +71,7 @@ public class EpistolaPluginFactory extends PluginFactory<EpistolaPlugin> {
         this.resultCollectorRunner = resultCollectorRunner;
         // Only the strategies whose backend is present are registered as beans (see auto-config),
         // so this map reflects what is actually available in this environment.
+        this.writeBackService = writeBackService;
         this.storageStrategies = storageStrategies.stream().collect(Collectors.toMap(
                 DocumentStorageStrategy::target,
                 Function.identity(),
@@ -73,6 +84,6 @@ public class EpistolaPluginFactory extends PluginFactory<EpistolaPlugin> {
     protected EpistolaPlugin create() {
         return new EpistolaPlugin(epistolaService, objectMapper,
                 jsonataMappingService, documentService, resultCollectorRunner,
-                storageStrategies);
+                storageStrategies, writeBackService.getIfAvailable());
     }
 }

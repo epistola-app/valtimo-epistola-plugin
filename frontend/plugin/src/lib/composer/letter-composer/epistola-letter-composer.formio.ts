@@ -137,6 +137,14 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
         weight: 40,
       },
       {
+        type: 'epistola-write-back-builder',
+        key: 'writeBack',
+        label: 'Also save these values on the case',
+        tooltip:
+          "Optional. A letter's values stay with the letter unless you say otherwise. Add a rule per value that also belongs in the case: a doc: or pv: destination, and a JSONata expression over the letter ($data, $inputs). Applied when the letter is generated, so nothing is saved for a letter Epistola refused.",
+        weight: 45,
+      },
+      {
         type: 'checkbox',
         key: 'askOptionalFields',
         label: 'Also ask for optional fields the mapping left empty',

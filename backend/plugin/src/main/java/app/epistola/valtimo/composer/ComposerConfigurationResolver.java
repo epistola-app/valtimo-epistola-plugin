@@ -245,6 +245,43 @@ public class ComposerConfigurationResolver {
     }
 
 
+    /**
+     * Every composer on every form of a case definition.
+     *
+     * <p>For the one caller that has no activity to start from: a form submission reaches the
+     * plugin with the case document and nothing else, because Valtimo writes submitted values
+     * through the document-scoped side of the value-resolver SPI. So the composers are found the
+     * other way round — from the case type the document belongs to, rather than from the task the
+     * form was opened on.
+     *
+     * <p>Broader than {@link #forActivity} on purpose, and safe <i>because</i> it is broader: it
+     * reads every form the case definition has, so nothing the browser sends decides which
+     * configuration applies. The alternative — believing a submitted activity id — would let a
+     * request point at another activity's composer.
+     *
+     * @param caseDefinitionKey the case definition the document belongs to
+     */
+    public List<LetterComposerConfiguration> forCaseDefinition(String caseDefinitionKey) {
+        CaseDefinitionId caseDefinitionId;
+        try {
+            var caseDefinition = activeCaseDefinitionService.getActiveCaseDefinition(caseDefinitionKey);
+            caseDefinitionId = caseDefinition == null ? null : caseDefinition.getId();
+        } catch (RuntimeException e) {
+            log.debug("No active case definition '{}': {}", caseDefinitionKey, e.getMessage());
+            return List.of();
+        }
+        if (caseDefinitionId == null) {
+            return List.of();
+        }
+
+        List<LetterComposerConfiguration> configurations = new ArrayList<>();
+        for (FormIoFormDefinition form : formDefinitionRepository
+                .findAllByCaseDefinitionIdOrderByNameAsc(caseDefinitionId)) {
+            ComposerParser.collectComposers(form.getFormDefinition().path("components"), configurations);
+        }
+        return configurations;
+    }
+
     /** Collect the composers on one form definition into {@code into}. */
     private void formDefinitionId(UUID formDefinitionId, List<LetterComposerConfiguration> into) {
         Optional<FormIoFormDefinition> form = formDefinitionRepository.findById(formDefinitionId);

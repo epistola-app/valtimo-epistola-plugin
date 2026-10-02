@@ -158,7 +158,9 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
 
     @Override
     public void handleValues(UUID documentId, Map<String, ?> values) {
-        // Read-only resolver.
+        // Read-only resolver. A composed letter's write-back is applied by the generate action,
+        // which has the case through its process instance's business key and so needs nothing from
+        // a submission — see ComposerWriteBackService.
     }
 
     @Override
