@@ -123,7 +123,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
 
             plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
 
-            verify(writeBackService).apply(eq(CASE), any());
+            verify(writeBackService).apply(eq(CASE), any(), org.mockito.ArgumentMatchers.anyString());
         }
 
         @Test
@@ -139,7 +139,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
             org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () ->
                     plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR));
 
-            verify(writeBackService, org.mockito.Mockito.never()).apply(any(), any());
+            verify(writeBackService, org.mockito.Mockito.never()).apply(any(), any(), org.mockito.ArgumentMatchers.anyString());
         }
 
         @Test
@@ -151,7 +151,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
 
             plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
 
-            verify(writeBackService, org.mockito.Mockito.never()).apply(any(), any());
+            verify(writeBackService, org.mockito.Mockito.never()).apply(any(), any(), org.mockito.ArgumentMatchers.anyString());
         }
 
         @Test
@@ -161,11 +161,11 @@ class EpistolaPluginGenerateComposedDocumentTest {
             composerWrote(letter());
             when(execution.getBusinessKey()).thenReturn(CASE.toString());
             org.mockito.Mockito.doThrow(new RuntimeException("case is locked"))
-                    .when(writeBackService).apply(any(), any());
+                    .when(writeBackService).apply(any(), any(), org.mockito.ArgumentMatchers.anyString());
 
             plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
 
-            verify(writeBackService).apply(eq(CASE), any());
+            verify(writeBackService).apply(eq(CASE), any(), org.mockito.ArgumentMatchers.anyString());
         }
 
         @Test
@@ -176,7 +176,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
 
             plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
 
-            verify(writeBackService, org.mockito.Mockito.never()).apply(any(), any());
+            verify(writeBackService, org.mockito.Mockito.never()).apply(any(), any(), org.mockito.ArgumentMatchers.anyString());
         }
     }
 

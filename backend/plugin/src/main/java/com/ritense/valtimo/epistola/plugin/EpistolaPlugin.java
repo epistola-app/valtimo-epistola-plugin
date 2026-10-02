@@ -470,7 +470,7 @@ public class EpistolaPlugin {
         // Only now: submitAndRecord throws if Epistola refused the request, so reaching this line
         // means the letter is sent and irreversible. Writing before it would update the case for a
         // letter that never went out; writing after an exception is impossible, which is the point.
-        applyWriteBack(execution, letter);
+        applyWriteBack(execution, letter, variableName);
     }
 
     /**
@@ -489,7 +489,7 @@ public class EpistolaPlugin {
      * cannot be made is recorded beside the result and the process carries on with a letter that
      * was genuinely sent.
      */
-    private void applyWriteBack(DelegateExecution execution, ComposedLetter letter) {
+    private void applyWriteBack(DelegateExecution execution, ComposedLetter letter, String letterVariable) {
         if (writeBackService == null) {
             return;
         }
@@ -500,7 +500,9 @@ public class EpistolaPlugin {
             return;
         }
         try {
-            writeBackService.apply(java.util.UUID.fromString(documentId), letter);
+            // Named, so only the composer that wrote this variable decides where its values go.
+            // A case type may carry several composers, and one letter is not the others' business.
+            writeBackService.apply(java.util.UUID.fromString(documentId), letter, letterVariable);
         } catch (RuntimeException e) {
             log.warn("Could not write letter values back to case {}: {}", documentId, e.getMessage());
         }

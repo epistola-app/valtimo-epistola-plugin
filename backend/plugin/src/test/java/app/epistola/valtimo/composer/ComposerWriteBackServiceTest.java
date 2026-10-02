@@ -106,6 +106,47 @@ class ComposerWriteBackServiceTest {
     }
 
     @Test
+    @DisplayName("only the composer that produced this letter decides where its values go")
+    void usesTheRulesOfTheComposerTheLetterCameFrom() {
+        // A case type may carry several composers — the demo has three. Applying all of their rules
+        // to whichever letter was generated means a rule written for one letter is evaluated
+        // against another, and `$letter.x` is not nothing just because it came from the wrong
+        // letter. The letter arrives on a named process variable, and a composer declares the key
+        // it writes to, so there is no need to guess.
+        when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(
+                composerWriting("pv:epistolaLetter", Map.of("pv:uitBrief", "$inputs.decisionType")),
+                composerWriting("pv:andereBrief", Map.of("pv:uitAndereBrief", "$inputs.decisionType"))));
+
+        service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("decisionType", "gegrond")), "epistolaLetter");
+
+        assertThat(written())
+                .containsEntry("pv:uitBrief", "gegrond")
+                .describedAs("the other composer's rule is not this letter's business")
+                .doesNotContainKey("pv:uitAndereBrief");
+    }
+
+    @Test
+    @DisplayName("a letter whose variable matches no composer writes nothing")
+    void writesNothingWhenNoComposerClaimsTheVariable() {
+        // Writing from a composer that did not produce this letter is worse than writing nothing,
+        // so the mismatch is reported rather than papered over by falling back to every composer.
+        when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(
+                composerWriting("pv:andereBrief", Map.of("pv:uitAndereBrief", "$inputs.decisionType"))));
+
+        service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("decisionType", "gegrond")), "epistolaLetter");
+
+        verify(valueResolverService, never()).handleValues(any(UUID.class), any());
+    }
+
+    private static LetterComposerConfiguration composerWriting(String componentKey, Map<String, String> writeBack) {
+        return new LetterComposerConfiguration(
+                componentKey, null, UUID.randomUUID(), "gemeente", null,
+                List.of(new LetterComposerConfiguration.OfferedTemplate("gemeente", "besluit", "Besluit", null)),
+                false,
+                writeBack);
+    }
+
+    @Test
     @DisplayName("one destination Valtimo refuses does not cost the others")
     void salvagesTheWritesThatCanBeMade() {
         // resolve() already promises that one bad expression does not cost the others. The write
