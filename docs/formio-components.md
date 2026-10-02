@@ -25,6 +25,7 @@ step — see [form-flows.md](form-flows.md).
 | `epistola-process-link-selector` | editForm widget: pick the generate-document process link             | hidden    | no                   | — (builder UI)                                   |
 | `epistola-letter-set-builder`    | editForm widget: pick connection, catalog and the letters on offer   | hidden    | no                   | `GET /configurations`, `/catalogs`, `/templates` |
 | `epistola-jsonata-mapping`       | editForm widget: the composer's baseline mapping, parsed as you type | hidden    | no                   | — (builder UI)                                   |
+| `epistola-write-back-builder`    | editForm widget: where a letter's values also belong in the case     | hidden    | no                   | — (builder UI)                                   |
 
 \* **Palette** — `visible`: an author can drag it onto a form from the builder's component palette.
 `hidden`: kept out of the palette with `group: 'none'` in its `FormioCustomComponentInfo`, because it

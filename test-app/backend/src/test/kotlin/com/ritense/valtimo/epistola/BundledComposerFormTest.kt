@@ -56,6 +56,45 @@ class BundledComposerFormTest {
     }
 
     /**
+     * Every write-back rule a bundled form declares is one the plugin will actually apply.
+     *
+     * A rule is dropped at runtime, with a warning nobody reads, if its destination has no resolver
+     * prefix or its expression is missing — so a bundled form carrying one would demonstrate
+     * nothing while looking configured. Checked here because the rules are JSON: no compiler sees
+     * them, and the failure is a value quietly not arriving in a case.
+     *
+     * Note what is *not* checked: whether a `doc:` destination exists in the case schema. That
+     * needs the document definition, and the demo deliberately writes to `pv:` destinations for
+     * exactly that reason — a case with `additionalProperties: false` refuses an undeclared path.
+     */
+    @Test
+    fun `a bundled write-back rule is one the plugin can apply`() {
+        var rules = 0
+
+        resolver.getResources("classpath*:config/case/**/form/*.form.json").forEach { resource ->
+            val form = resource.inputStream.use { mapper.readTree(it) }
+            form.path("components").composers().forEach { composer ->
+                val writeBack = composer.path("writeBack")
+                if (!writeBack.isObject) return@forEach
+                writeBack.fields().forEach { (destination, expression) ->
+                    val where = "$destination on ${composer.path("key").asText()} in ${resource.description}"
+                    assertThat(destination)
+                        .describedAs("destination of %s", where)
+                        .matches("^(doc:/.*|pv:[A-Za-z_][A-Za-z0-9_]*)$")
+                    assertThat(expression.asText(""))
+                        .describedAs("expression of %s", where)
+                        .isNotBlank()
+                    rules++
+                }
+            }
+        }
+
+        assertThat(rules)
+            .describedAs("expected at least one bundled write-back rule, so the feature is demonstrated")
+            .isPositive
+    }
+
+    /**
      * A composer inside a form flow needs two things spelled out, and neither is a compile error.
      *
      * A flow does not resolve `pv:` keys the way an ordinary form does: `completeTask`'s

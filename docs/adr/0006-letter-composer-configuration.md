@@ -160,6 +160,42 @@ The composer computes and the process applies — the same division generation a
 field is additive for `schemaVersion` purposes: a plugin old enough to ignore it has no
 applying task either, so nothing misbehaves silently.
 
+#### Amended once it was built (2026-10-02)
+
+Three things in the sections above did not survive implementation. They are corrected here rather
+than rewritten away, because the reasoning that led to them is the useful part.
+
+**The write-back map is read from the form, not from the letter.** The sections below describe the
+resolved values riding on the letter variable and the generate action handing them "straight to the
+API". That cannot be done safely: the letter is assembled in the browser — which is what makes the
+previewed letter the generated one — so its keys arrive from the browser too, and a crafted
+submission could name any case path. Writing to an arbitrary `doc:` path is a silent edit to the
+case, which is a different matter from a letter rendered with odd data. So the **destinations and
+the expressions both come from the stored composer**, found through the case the process runs on,
+and the letter contributes only the data the expressions read. The snapshot guarantee the map was
+meant to provide is kept a different way: the rules are evaluated at generate time against the
+letter that was approved, and a form redeployed in between changes the rules, not the data.
+
+**Finding the composer needs no identifiers from the letter.** An earlier draft of this amendment
+had the letter carry a component key and activity id so the generate action could find its
+configuration. It does not need them: the execution's process instance carries the case document as
+its business key, which gives the case definition, and therefore every form on it and every composer
+and rule those declare. Broader than one composer, and safe _because_ it is broader — nothing the
+browser sends decides which configuration applies.
+
+**Applying it at form submission is not possible, which is worth stating because it is the obvious
+idea.** Valtimo decides a submitted field is a resolver value from its _top-level_ key, so a
+`doc:`-keyed field writes to the case on submit and that is how every ordinary form behaves — the
+composer behaving differently is a real inconsistency. But a composer cannot get such a field onto
+the form: its own field is already keyed `pv:`, so the letter reaches the process variable the
+generate task reads, and a Form.io component cannot add a top-level sibling beside itself. That is
+the same obstacle this ADR already records under "projecting the generated inputs up into the parent
+form", which was written about per-letter input keys and applies just as much here.
+
+**And one assumption that was wrong in the other direction:** `pv:` destinations are _not_ limited
+to a process-scoped context. Valtimo's own process-variable resolver finds the instance by business
+key when all it has is a document id, so a `pv:` destination works wherever a `doc:` one does.
+
 #### The generate action applies it, after Epistola accepts the letter
 
 A plain Valtimo task form offers no completion hook a plugin can write from, and the composer's

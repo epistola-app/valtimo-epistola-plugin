@@ -20,6 +20,7 @@ import { Injector } from '@angular/core';
 import { registerEpistolaLetterComposerComponent } from './letter-composer/epistola-letter-composer.formio';
 import { registerEpistolaLetterSetBuilderComponent } from './letter-set-builder/letter-set-builder.formio';
 import { registerEpistolaMappingFieldComponent } from './mapping-field/mapping-field.formio';
+import { registerEpistolaWriteBackBuilderComponent } from './write-back-builder/write-back-builder.formio';
 
 /**
  * Register the letter composer's Form.io components.
@@ -30,5 +31,6 @@ import { registerEpistolaMappingFieldComponent } from './mapping-field/mapping-f
 export function registerEpistolaComposerComponents(injector: Injector): void {
   registerEpistolaMappingFieldComponent(injector);
   registerEpistolaLetterSetBuilderComponent(injector);
+  registerEpistolaWriteBackBuilderComponent(injector);
   registerEpistolaLetterComposerComponent(injector);
 }

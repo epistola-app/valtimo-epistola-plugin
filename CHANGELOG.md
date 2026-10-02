@@ -22,6 +22,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A composer can save a letter's values on the case.** Each rule is a destination — a
+  `doc:` case path or a `pv:` process variable — and a JSONata expression over the letter, authored
+  in **Also save these values on the case**. `$data` is the letter as it will be sent, `$inputs`
+  only what the employee typed; an expression that yields nothing writes nothing, so a value nobody
+  supplied never clobbers good case data. Applied by the generate task once Epistola has accepted
+  the letter, so a refused letter saves nothing and a failed save never fails a letter that was
+  genuinely sent. The destinations and expressions are read from the stored form, never from the
+  submission: the letter is assembled in the browser, so a crafted one could otherwise name any
+  case path. A `doc:` destination must already exist in the case schema — a case with
+  `additionalProperties: false` refuses an undeclared path (#149).
+
 - **A letter Epistola refuses now says which fields are stopping it.** The browser can only check
   the fields it offered; most of a letter's data comes from the baseline mapping, which it neither
   computed nor holds the contract for, so a refusal over one of those arrived as a single flattened

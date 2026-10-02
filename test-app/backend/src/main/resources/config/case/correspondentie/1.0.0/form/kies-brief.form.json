@@ -7,7 +7,7 @@
       "input": true,
       "prefill": false,
       "label": "Welke brief wilt u versturen?",
-      "placeholder": "\u2014 kies een brief \u2014",
+      "placeholder": "— kies een brief —",
       "letterSet": {
         "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
         "catalogId": "municipality-demo",
@@ -40,7 +40,11 @@
           }
         }
       ],
-      "schemaVersion": 1
+      "schemaVersion": 1,
+      "writeBack": {
+        "pv:besluitType": "$inputs.decisionType",
+        "pv:besluitToelichting": "$inputs.motivation"
+      }
     },
     {
       "key": "submit",

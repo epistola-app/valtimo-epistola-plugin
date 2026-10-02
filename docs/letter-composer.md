@@ -270,6 +270,38 @@ has a start form offering the chosen letter, the author has to fill in **Process
 | Extra wiring                    | none                | `completeTask` mapping + carrier | **Process to start**, when ambiguous                   |
 | Authorized on                   | `OperatonTask:VIEW` | `OperatonTask:VIEW`              | `OperatonExecution:CREATE` + `JsonSchemaDocument:VIEW` |
 
+### Saving a letter's values on the case
+
+A composer may declare where a letter's values also belong — **Also save these values on the case**
+in its settings. Each rule is a destination and a JSONata expression over the letter:
+
+| Destination               | Expression             | What happens                                                   |
+| ------------------------- | ---------------------- | -------------------------------------------------------------- |
+| `doc:/aanvrager/telefoon` | `$inputs.telefoon`     | the number the employee typed is saved on the case             |
+| `pv:besluitType`          | `$inputs.decisionType` | it becomes a process variable the rest of the process can read |
+
+`$data` is the letter as it will be sent; `$inputs` only what the employee typed themselves. An
+expression that yields nothing writes nothing, which is what keeps "only save what was actually
+supplied" the default rather than clobbering good case data with nulls.
+
+The rules are applied **when the letter is generated**, by the generate task, once Epistola has
+accepted it. So a letter Epistola refuses saves nothing — nothing was sent — while a save that
+fails after acceptance is logged and the process carries on, because the letter is irreversible by
+then and failing the activity would make a retry send a duplicate.
+
+Three things to know before using it:
+
+- **A `doc:` destination must already exist in the case schema.** A case with
+  `additionalProperties: false` refuses an undeclared path, and the failure is a logged warning
+  rather than a stopped process. The bundled demo writes to `pv:` destinations for exactly this
+  reason.
+- **The form decides where values may go, not the letter.** The expressions and destinations are
+  read from the stored composer, never from the submission — the letter is assembled in the browser,
+  so a crafted one could otherwise name any case path.
+- **A rule with no destination or no expression is ignored**, with a warning. The settings widget
+  says so while it is being written, and `BundledComposerFormTest` fails if a bundled form carries
+  one.
+
 Two limits apply to all three:
 
 - **A generate task is required.** The composer only records what was chosen; nothing is sent
