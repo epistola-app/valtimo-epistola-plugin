@@ -336,6 +336,16 @@ export class EpistolaLetterComposerComponent
   private previewSubject = new Subject<ComposerData>();
   private previewSubscription?: Subscription;
   private prepareSubscription?: Subscription;
+  /**
+   * The render currently in flight.
+   *
+   * <p>Separate from {@link previewSubscription}, which is the debounced stream rather than any one
+   * render. Two renders can overlap — the debounce spaces requests out, it does not wait for an
+   * answer — and if the earlier one is slower its answer arrives last and wins, leaving a preview
+   * that does not match what was typed. For a component whose premise is that what was previewed is
+   * what gets sent, that is the one thing it must not show.
+   */
+  private renderSubscription?: Subscription;
   /** Owns the rendered PDF's object URL, and reads a refused render's complaint out of its body. */
   private readonly previews: PreviewRenderer;
 
@@ -389,6 +399,7 @@ export class EpistolaLetterComposerComponent
   ngOnDestroy(): void {
     this.prepareSubscription?.unsubscribe();
     this.previewSubscription?.unsubscribe();
+    this.renderSubscription?.unsubscribe();
     this.revokePreview();
   }
 
@@ -494,20 +505,25 @@ export class EpistolaLetterComposerComponent
     this.previewUrl = null;
     this.cdr.markForCheck();
 
-    this.previews.render(this.previewRequest(this.selectedTemplateId, data)).subscribe((result) => {
-      this.previewLoading = false;
-      // Whatever the previous answer named is stale now.
-      this.refusedFields = [];
+    // Supersedes whatever was still rendering: a newer preview is the only one worth showing, and
+    // unsubscribing cancels the request rather than merely ignoring its answer.
+    this.renderSubscription?.unsubscribe();
+    this.renderSubscription = this.previews
+      .render(this.previewRequest(this.selectedTemplateId, data))
+      .subscribe((result) => {
+        this.previewLoading = false;
+        // Whatever the previous answer named is stale now.
+        this.refusedFields = [];
 
-      if (isRendered(result)) {
-        this.previewUrl = result.url;
-        this.previewError = null;
-      } else {
-        this.previewUrl = null;
-        this.previewError = this.describeRefusal(result.error, result.fields);
-      }
-      this.cdr.markForCheck();
-    });
+        if (isRendered(result)) {
+          this.previewUrl = result.url;
+          this.previewError = null;
+        } else {
+          this.previewUrl = null;
+          this.previewError = this.describeRefusal(result.error, result.fields);
+        }
+        this.cdr.markForCheck();
+      });
   }
 
   /**

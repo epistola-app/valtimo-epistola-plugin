@@ -47,7 +47,7 @@ jest.mock('../composer-api.service', () => ({
   EpistolaComposerApiService: class {},
 }));
 
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { EpistolaLetterComposerComponent } from './epistola-letter-composer.component';
 import { COMPOSER_SCHEMA_VERSION } from '../composer-schema';
 
@@ -175,6 +175,40 @@ describe('EpistolaLetterComposerComponent', () => {
       componentKey: undefined,
       data: { naam: 'Jansen', motivatie: 'daarna' },
     });
+  });
+
+  it('a slow earlier preview does not overwrite a newer one', () => {
+    // The composer's premise is that what was previewed is what gets sent (ADR 0006). Two previews
+    // can be in flight — the debounce only spaces them out — and if the first is slower than the
+    // second, its answer arrives last and wins. The employee is then looking at a letter that does
+    // not match what they typed, which is the one thing this component must never show.
+    const { component, service } = createComponent();
+    component.onTemplateSelected('besluit');
+
+    // A distinct URL per render, or both answers look identical and this passes whichever won.
+    let rendered = 0;
+    URL.createObjectURL = jest.fn(() => `blob:preview-${++rendered}`);
+
+    const first = new Subject<Blob>();
+    const second = new Subject<Blob>();
+    service.composerPreviewToBlob
+      .mockReturnValueOnce(first.asObservable())
+      .mockReturnValueOnce(second.asObservable());
+
+    component.onInputsChanged({ data: { motivatie: 'eerst' } });
+    jest.advanceTimersByTime(1000);
+    component.onInputsChanged({ data: { motivatie: 'daarna' } });
+    jest.advanceTimersByTime(1000);
+
+    // The newer render answers first, then the older one finally answers.
+    second.next(new Blob(['nieuw'], { type: 'application/pdf' }));
+    second.complete();
+    const afterNewest = component.previewUrl;
+    first.next(new Blob(['oud'], { type: 'application/pdf' }));
+    first.complete();
+
+    expect(afterNewest).toBeTruthy();
+    expect(component.previewUrl).toBe(afterNewest);
   });
 
   it('says so when the mapping already filled everything', () => {
