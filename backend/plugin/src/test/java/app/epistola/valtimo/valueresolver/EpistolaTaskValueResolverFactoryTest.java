@@ -31,7 +31,7 @@ import static org.mockito.Mockito.when;
 
 class EpistolaTaskValueResolverFactoryTest {
 
-    private final EpistolaTaskValueResolverFactory factory = new EpistolaTaskValueResolverFactory();
+    private final EpistolaTaskValueResolverFactory factory = new EpistolaTaskValueResolverFactory(null);
 
     @Test
     void supportsTheEpistolaTaskPrefix() {

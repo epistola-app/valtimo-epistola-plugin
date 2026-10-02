@@ -154,8 +154,14 @@ public class EpistolaPluginAutoConfiguration {
     // process-link GET the frontend interceptor relies on. See EpistolaTaskValueResolverFactory.
     @Bean
     @ConditionalOnMissingBean(EpistolaTaskValueResolverFactory.class)
-    public EpistolaTaskValueResolverFactory epistolaTaskValueResolverFactory() {
-        return new EpistolaTaskValueResolverFactory();
+    public EpistolaTaskValueResolverFactory epistolaTaskValueResolverFactory(
+            org.springframework.beans.factory.ObjectProvider<
+                    app.epistola.valtimo.composer.ComposerWriteBackService> writeBackService
+    ) {
+        // Optional on purpose: this resolver is always registered, because the task-id carrier the
+        // Formio components read is not a composer feature, while the write-back it delegates is.
+        // With epistola.composer.enabled=false there is no service and nothing is written.
+        return new EpistolaTaskValueResolverFactory(writeBackService.getIfAvailable());
     }
 
     @Bean

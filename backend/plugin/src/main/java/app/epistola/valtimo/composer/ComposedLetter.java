@@ -37,6 +37,8 @@ import java.util.Map;
  * @param catalogId  The catalog the chosen template lives in
  * @param templateId The chosen template
  * @param data       Everything the letter is rendered with
+ * @param inputs     Only what the employee typed, kept apart from {@code data} so a write-back
+ *                   rule can distinguish a value a person supplied from one the mapping produced
  * @param writeBack  Where values from this letter also belong in the case: a value-resolver key
  *                   (such as {@code doc:/aanvrager/telefoon}) to the value resolved when the letter
  *                   was composed. Empty when the composer declared none, which is the ordinary
@@ -49,6 +51,7 @@ public record ComposedLetter(
         String catalogId,
         String templateId,
         Map<String, Object> data,
+        Map<String, Object> inputs,
         Map<String, Object> writeBack
 ) {
 
@@ -140,12 +143,14 @@ public record ComposedLetter(
         }
 
         Object data = value.get("data");
+        Object inputs = value.get("inputs");
         Object writeBack = value.get("writeBack");
         return new ComposedLetter(
                 schemaVersion,
                 catalogId,
                 templateId,
                 data instanceof Map<?, ?> dataMap ? (Map<String, Object>) dataMap : Map.of(),
+                inputs instanceof Map<?, ?> inputsMap ? Map.copyOf((Map<String, Object>) inputsMap) : Map.of(),
                 writeBack instanceof Map<?, ?> writeBackMap ? Map.copyOf((Map<String, Object>) writeBackMap) : Map.of());
     }
 
