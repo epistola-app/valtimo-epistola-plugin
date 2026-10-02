@@ -31,48 +31,6 @@ export async function createDossier(page: Page): Promise<void> {
 }
 
 /**
- * Open a dossier from the list, creating one first when the case has none.
- *
- * Valtimo polls in the background, so rows are never "stable" for long — hence the settle and the
- * forced click.
- */
-export async function openDossier(page: Page): Promise<void> {
-  await page.goto('/cases/correspondentie');
-  await page.getByRole('navigation', { name: /Side navigation/i }).waitFor({ timeout: 20_000 });
-
-  const rows = page.locator('table tbody tr');
-  const startButton = page.getByRole('button', { name: /^Start/ });
-
-  if ((await rows.count()) === 0) {
-    // Cold database: create one and stay on it. Creating a dossier already lands on its detail
-    // page, and going back to the list to click the first row is what failed on a fresh runner —
-    // Valtimo fills that list by polling, so the row can be clicked before it is ready and the
-    // detail page never arrives.
-    await createDossier(page);
-    await expect(startButton).toBeVisible({ timeout: 30_000 });
-    return;
-  }
-
-  await rows.first().waitFor({ timeout: 20_000 });
-
-  // Rows are never stable for long either, for the same reason, so the click is retried rather
-  // than preceded by a fixed wait.
-  await expect
-    .poll(
-      async () => {
-        if (await startButton.isVisible().catch(() => false)) {
-          return true;
-        }
-        await rows.first().click({ force: true });
-        await page.waitForTimeout(1_500);
-        return startButton.isVisible().catch(() => false);
-      },
-      { timeout: 40_000, message: 'no dossier detail page opened from the case list' },
-    )
-    .toBe(true);
-}
-
-/**
  * Start one of the dossier's own processes from its Start menu.
  *
  * The menu fills in after the dossier loads, and clicking Start toggles it — so wait for the item

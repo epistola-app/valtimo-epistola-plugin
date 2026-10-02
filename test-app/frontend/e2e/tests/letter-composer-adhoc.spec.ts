@@ -3,7 +3,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 import { test, expect } from '@playwright/test';
-import { openDossier, startFromMenu } from '../pages/correspondentie.page';
+import { createDossier, startFromMenu } from '../pages/correspondentie.page';
 
 /**
  * An ad-hoc letter from an open dossier, with **no user task anywhere**.
@@ -21,7 +21,13 @@ test.describe('Letter composer — an ad-hoc letter, without a user task', () =>
   test('composes and generates from the dossier itself', async ({ page }) => {
     test.setTimeout(180_000);
 
-    await openDossier(page);
+    // A dossier of its own, rather than whichever one the list happens to show first. Opening
+    // from the list is what failed this suite on two consecutive nightlies: Valtimo fills that
+    // list by polling, so a row can be clicked before it is ready and the detail page never
+    // arrives. Every other suite here already creates one, and this test needs *a* dossier rather
+    // than a particular one.
+    await createDossier(page);
+    await expect(page.getByRole('button', { name: /^Start/ })).toBeVisible({ timeout: 30_000 });
     await startFromMenu(page, 'Losse brief versturen');
 
     // The composer runs on a start form: no task exists, and the case comes from the open dossier.
