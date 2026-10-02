@@ -30,6 +30,69 @@ class ComposedLetterTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * A field someone cleared is a null in the letter, and a null must not cost the whole letter.
+     *
+     * <p>`Map.copyOf` refuses a null value, so a letter carrying one failed to be read at all — and
+     * it failed inside the generate action, where the only visible symptom is an activity that
+     * threw `NullPointerException` with no message. The browser prunes empties today, which is the
+     * only reason this was not hit; a letter written by a process, by an older plugin version, or
+     * by a form that stores an explicit null is enough to reach it.
+     */
+    @Test
+    void readsALetterWhoseInputWasCleared() {
+        Map<String, Object> inputs = new java.util.HashMap<>();
+        inputs.put("motivation", null);
+        inputs.put("decisionType", "gegrond");
+        Map<String, Object> raw = new java.util.HashMap<>();
+        raw.put("catalogId", "gemeente");
+        raw.put("templateId", "besluit");
+        raw.put("data", Map.of("naam", "Jansen"));
+        raw.put("inputs", inputs);
+
+        ComposedLetter letter = ComposedLetter.from(raw, "epistolaLetter", objectMapper);
+
+        assertThat(letter.inputs())
+                .describedAs("a cleared field is still part of what was typed")
+                .containsEntry("decisionType", "gegrond")
+                .containsEntry("motivation", null);
+    }
+
+    @Test
+    void readsALetterWhoseDataHoldsAClearedValue() {
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("naam", null);
+        Map<String, Object> raw = new java.util.HashMap<>();
+        raw.put("catalogId", "gemeente");
+        raw.put("templateId", "besluit");
+        raw.put("data", data);
+
+        ComposedLetter letter = ComposedLetter.from(raw, "epistolaLetter", objectMapper);
+
+        assertThat(letter.data()).containsEntry("naam", null);
+    }
+
+    /**
+     * The letter is read from a process variable the engine owns. Keeping a reference to that map
+     * would let a later activity's edit change what this letter says it sent, after the fact.
+     */
+    @Test
+    void doesNotKeepTheVariablesOwnMap() {
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("naam", "Jansen");
+        Map<String, Object> raw = new java.util.HashMap<>();
+        raw.put("catalogId", "gemeente");
+        raw.put("templateId", "besluit");
+        raw.put("data", data);
+
+        ComposedLetter letter = ComposedLetter.from(raw, "epistolaLetter", objectMapper);
+        data.put("naam", "iemand anders");
+
+        assertThat(letter.data())
+                .describedAs("the letter holds what it was read with")
+                .containsEntry("naam", "Jansen");
+    }
+
     @Test
     void readsTheLetterAnObjectVariableHolds() {
         ComposedLetter letter = ComposedLetter.from(

@@ -23,7 +23,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.document.domain.impl.JsonSchemaDocumentId;
 import com.ritense.document.service.DocumentService;
 import com.ritense.valueresolver.ValueResolverService;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -157,14 +159,53 @@ public class ComposerWriteBackService {
             return;
         }
 
+        write(documentId, resolved);
+    }
+
+    /**
+     * Write the resolved values, keeping whatever can be written.
+     *
+     * <p>In one call, because several {@code doc:} destinations then land in a single document
+     * save rather than one version of the case per rule. But one destination this case cannot
+     * accept — a path its schema does not declare, a resolver that refuses — fails that whole
+     * call, and every other value is lost with it. {@link #resolve} already holds the opposite
+     * principle for expressions ("one bad expression should not cost the others"); this is the
+     * same principle applied to the write.
+     *
+     * <p>So on failure each destination is attempted on its own, which both salvages the good ones
+     * and names the bad one. Re-writing a value that already landed in the failed batch is
+     * harmless: writing the same value twice says the same thing.
+     */
+    private void write(UUID documentId, Map<String, Object> resolved) {
         try {
             valueResolverService.handleValues(documentId, resolved);
             log.debug("Letter composer write-back wrote {} value(s) to case {}: {}",
                     resolved.size(), documentId, resolved.keySet());
+            return;
         } catch (RuntimeException e) {
-            log.error("Letter composer write-back could not write {} to case {}: {}",
-                    resolved.keySet(), documentId, e.getMessage(), e);
+            if (resolved.size() == 1) {
+                log.error("Letter composer write-back could not write {} to case {}: {}",
+                        resolved.keySet(), documentId, e.getMessage(), e);
+                return;
+            }
+            log.warn("Letter composer write-back could not write {} value(s) to case {} in one go "
+                            + "({}); trying them one at a time", resolved.size(), documentId, e.getMessage());
         }
+
+        List<String> failed = new ArrayList<>();
+        List<String> written = new ArrayList<>();
+        resolved.forEach((destination, value) -> {
+            try {
+                valueResolverService.handleValues(documentId, Map.of(destination, value));
+                written.add(destination);
+            } catch (RuntimeException e) {
+                failed.add(destination);
+                log.error("Letter composer write-back could not write '{}' to case {}: {}",
+                        destination, documentId, e.getMessage());
+            }
+        });
+        log.info("Letter composer write-back on case {}: wrote {}, could not write {}",
+                documentId, written, failed);
     }
 
     /**
@@ -186,6 +227,17 @@ public class ComposerWriteBackService {
                 continue;
             }
             configuration.writeBack().forEach((destination, expression) -> {
+                // Also checked when the form is parsed, where it can be reported against the
+                // component that declared it. Repeated here because this is the last point before
+                // a write: a destination naming no resolver fails the call, and a configuration
+                // can reach this service without having come through the parser.
+                if (destination == null || destination.indexOf(':') <= 0
+                        || destination.indexOf(':') == destination.length() - 1) {
+                    log.warn("Letter composer write-back on case type '{}' ignores destination '{}': "
+                            + "it names no value resolver (expected doc:/… or pv:…)",
+                            caseDefinitionKey, destination);
+                    return;
+                }
                 String existing = rules.putIfAbsent(destination, expression);
                 if (existing != null && !existing.equals(expression)) {
                     log.warn("Two letter composers on case type '{}' write to '{}' with different "
