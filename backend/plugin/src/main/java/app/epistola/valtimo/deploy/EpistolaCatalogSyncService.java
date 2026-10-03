@@ -112,6 +112,8 @@ public class EpistolaCatalogSyncService {
                         catalog.slug(), catalog.version(),
                         result.catalogKey(), result.installed(), result.updated(),
                         result.failed(), result.total());
+
+                release(baseUrl, apiKey, tenantId, result.catalogKey(), catalog);
             } catch (Exception e) {
                 failCount++;
                 log.error("Failed to sync catalog '{}' v{}: {}",
@@ -122,6 +124,63 @@ public class EpistolaCatalogSyncService {
         deployedVersions.put(configId, updatedVersions);
 
         return new SyncResult(allCatalogs.size(), successCount, failCount);
+    }
+
+    /**
+     * Release what was just imported, so documents can be generated from it.
+     *
+     * <p>Importing makes a catalog's templates present; a Suite that generates from releases will
+     * not render from one until a release exists, answering {@code CATALOG_NOT_RELEASED} instead.
+     * The two steps are separate so an operator can stage a catalog before it is used — but a
+     * classpath catalog deployed on startup is staged by nobody, so what this plugin imports it
+     * also releases.
+     *
+     * <p>Released at the catalog's <b>own declared version</b>, the same one the version-skip
+     * compares, so a release exists per deployed version and a redeploy of an unchanged catalog
+     * makes no new one.
+     *
+     * <p>A failure here does not fail the import. The catalog is installed either way, and an
+     * operator can release it by hand; counting it as a failed sync would hide a successful import
+     * behind a step that older Suites do not even have.
+     */
+    private void release(
+            String baseUrl,
+            String apiKey,
+            String tenantId,
+            String catalogKey,
+            CatalogScanner.CatalogOnClasspath catalog
+    ) {
+        String catalogId = catalogKey != null && !catalogKey.isBlank() ? catalogKey : catalog.slug();
+        try {
+            boolean released = epistolaService.releaseCatalog(
+                    baseUrl, apiKey, tenantId, catalogId, catalog.version(),
+                    "Deployed from the application classpath by valtimo-epistola-plugin");
+            if (released) {
+                log.info("Catalog '{}' released as v{}", catalogId, catalog.version());
+            }
+        } catch (Exception e) {
+            // Epistola refuses a release at a version it has already released ("Version 1.3.0 must
+            // be greater than the last release 1.3.0"), which is what a forced redeploy of an
+            // unchanged catalog hits every time. That is benign — the existing release is still
+            // there — so it must not look like a failure, or the redeploy button trains operators
+            // to ignore errors. The match is on the message because this only chooses a log level;
+            // behaviour is identical either way, and a message that stops matching means noisier
+            // logs, never a wrong deploy.
+            String reason = String.valueOf(e.getMessage());
+            if (reason.contains("must be greater than the last release")) {
+                log.info("Catalog '{}' is already released at v{}; nothing to release. Raise the "
+                                + "catalog's version to publish changed templates.",
+                        catalogId, catalog.version());
+                return;
+            }
+            // Deliberately not "documents cannot be generated": if an earlier release exists they
+            // can, from that one — which is the trap worth naming, because imported changes then
+            // silently do not appear.
+            log.warn("Catalog '{}' was imported but not released as v{}: {}. Generation keeps using "
+                            + "the last release, so the imported changes will not appear until the "
+                            + "catalog's version is raised.",
+                    catalogId, catalog.version(), reason);
+        }
     }
 
     /**
@@ -175,6 +234,11 @@ public class EpistolaCatalogSyncService {
                             + "key={}, installed={}, updated={}, failed={}, total={}",
                     catalog.slug(), catalog.version(), tenantId, result.catalogKey(),
                     result.installed(), result.updated(), result.failed(), result.total());
+
+            // A forced redeploy bypasses the version skip because the operator is saying "install
+            // this again"; it bypasses the release skip for the same reason. A redeploy that left
+            // the catalog unreleased would install templates nothing can render.
+            release(baseUrl, apiKey, tenantId, result.catalogKey(), catalog);
 
             return new RedeployOutcome(catalog.slug(), catalog.version(), true,
                     result.catalogKey(), result.installed(), result.updated(),
