@@ -30,14 +30,14 @@ Nothing else in the plugin depends on the composer, so it is kept together and s
 What it borrows, it borrows narrowly: the Epistola API, the JSONata mapping service, the Form.io
 form generator, and the start-form gate it shares with the document preview. Its generation step is
 an action on the plugin class, because Valtimo scans that class for actions, but the behaviour
-lives in the composer's own `ComposedLetter`.
+lives in the composer's own `DynamicDocument`.
 
 **Everything outside the module that knows it exists** — the whole list, so it stays short:
 
 | Where                                                                                           | Why                                                                                                                                                                                          |
 | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `EpistolaPluginAutoConfiguration` `@Import`s `EpistolaComposerConfiguration`                    | One line of wiring; the off switch lives inside the imported class                                                                                                                           |
-| `EpistolaPlugin` imports `ComposedLetter`                                                       | Valtimo scans the plugin class for `@PluginAction`s, so the action must be declared there. It reads the letter and delegates; no composer logic lives in it                                  |
+| `EpistolaPlugin` imports `DynamicDocument`                                                      | Valtimo scans the plugin class for `@PluginAction`s, so the action must be declared there. It reads the letter and delegates; no composer logic lives in it                                  |
 | `EpistolaRegistrationService` calls `registerEpistolaComposerComponents`                        | One entry point for all four Form.io components                                                                                                                                              |
 | `epistola.specification.ts` names the action's configurator and spreads `COMPOSER_TRANSLATIONS` | Valtimo consumes one specification object, so the composer's half is composed into it rather than written there — see `composer/composer.translations.ts`, and the spec that guards the seam |
 | `components/task-id-carrier.spec.ts` covers the composer too                                    | That suite is about Formio's serializer dropping schema equal to the default, which is a cross-cutting trap; it runs real formiojs with a harness not worth duplicating per component        |
@@ -245,12 +245,12 @@ The whole contract is three fields:
 
 `schemaVersion` may be omitted (absent means 1). A JSON _string_ works as well as an object, since
 the engine hands back whichever the writer stored. From JVM code, build it rather than copying this
-literal — `ComposedLetter.dynamicDocument(catalogId, templateId, data)` is the same contract, kept
+literal — `DynamicDocument.of(catalogId, templateId, data)` is the same contract, kept
 in step with the reader by a round-trip test:
 
 ```java
 execution.setVariable("epistolaLetter",
-        ComposedLetter.dynamicDocument("gemeente", "besluit-bezwaar", Map.of("naam", "Jansen")));
+        DynamicDocument.of("gemeente", "besluit-bezwaar", Map.of("naam", "Jansen")));
 ```
 
 Everything else behaves as it does for a composed letter: the filename defaults to the template's
@@ -520,7 +520,7 @@ also accepts the envelope that feature will use:
 { "schemaVersion": 1, "letters": [{ "templateId": "…", "catalogId": "…", "data": {} }] }
 ```
 
-Nothing writes it. `ComposedLetter.allFrom` reads both shapes, and `from` refuses more than one
+Nothing writes it. `DynamicDocument.allFrom` reads both shapes, and `from` refuses more than one
 letter with a sentence saying to offer a composer per letter — so the unbuilt behaviour fails
 loudly instead of generating the first and dropping the rest. When multi-letter lands it is a
 behaviour change, not a migration.
@@ -759,7 +759,7 @@ the promise the composer makes. The rest are open.
   `componentKey` — and a generate task per key, which is how a task sends more than one letter
   today. What is not possible is letting the employee decide _how many_ go out: "pick two of these
   five and send both" needs the selection to be a list, the value to become `{ "letters": [ … ] }`
-  (which `ComposedLetter` refuses today, since it requires a template at the top level), and the
+  (which `DynamicDocument` refuses today, since it requires a template at the top level), and the
   generate step to loop or the process to fan out.
 
   If you do put several on one form, note that a composer left unchosen sets no variable at all,

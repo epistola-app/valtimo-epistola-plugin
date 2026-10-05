@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.composer;
 
+import app.epistola.valtimo.domain.DynamicDocument;
 import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -122,18 +123,18 @@ public class ComposerWriteBackService {
         // A caller that has already read the letter passes it as it is. The generate action does
         // exactly that, and handing its parsed letter to the raw-value branch is how this silently
         // wrote nothing: `from` is for a value that arrived on a submission and rejects anything
-        // that is not one — including, absurdly, a ComposedLetter.
-        if (submittedLetter instanceof ComposedLetter composed) {
+        // that is not one — including, absurdly, a DynamicDocument.
+        if (submittedLetter instanceof DynamicDocument composed) {
             apply(documentId, composed, letterVariable);
             return;
         }
 
-        ComposedLetter letter;
+        DynamicDocument letter;
         try {
             // Reading the letter before looking for rules: cheap, and it keeps every path that can
             // throw inside the overload that guarantees it does not. Looking for rules first used
             // to short-circuit a letter nobody writes back, and bought a hole in that guarantee.
-            letter = ComposedLetter.from(submittedLetter, "epistola:" + SUBMITTED_KEY, objectMapper);
+            letter = DynamicDocument.from(submittedLetter, "epistola:" + SUBMITTED_KEY, objectMapper);
         } catch (RuntimeException e) {
             log.warn("Letter composer write-back skipped for case {}: the submitted letter could not "
                     + "be read ({})", documentId, e.getMessage());
@@ -152,7 +153,7 @@ public class ComposerWriteBackService {
      * @param documentId the case document the letter was composed for
      * @param letter     the letter as it was sent to Epistola
      */
-    public void apply(UUID documentId, ComposedLetter letter) {
+    public void apply(UUID documentId, DynamicDocument letter) {
         apply(documentId, letter, null);
     }
 
@@ -160,7 +161,7 @@ public class ComposerWriteBackService {
      * Apply the write-back for a letter that has already been read, using the rules of the composer
      * that wrote {@code letterVariable}.
      */
-    public void apply(UUID documentId, ComposedLetter letter, String letterVariable) {
+    public void apply(UUID documentId, DynamicDocument letter, String letterVariable) {
         if (documentId == null || letter == null) {
             return;
         }
@@ -302,7 +303,7 @@ public class ComposerWriteBackService {
      * fails to evaluate is dropped with a warning rather than failing the rest: one bad expression
      * should not cost the others.
      */
-    private Map<String, Object> resolve(Map<String, String> rules, ComposedLetter letter, UUID documentId) {
+    private Map<String, Object> resolve(Map<String, String> rules, DynamicDocument letter, UUID documentId) {
         Map<String, Object> resolved = new LinkedHashMap<>();
         rules.forEach((destination, expression) -> {
             try {

@@ -52,7 +52,7 @@ public record GenerationSubject(
             throw new IllegalArgumentException("A generation subject names a template");
         }
         // Not Map.copyOf: it rejects a null value, and a field someone cleared is a null here. That
-        // exact copy cost a whole letter its readability once already — see ComposedLetter.
+        // exact copy cost a whole letter its readability once already — see DynamicDocument.
         if (data == null) {
             data = Map.of();
         } else {

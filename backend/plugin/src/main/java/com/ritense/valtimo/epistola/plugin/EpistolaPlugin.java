@@ -24,7 +24,7 @@ import app.epistola.valtimo.domain.DocumentStorageTarget;
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
-import app.epistola.valtimo.composer.ComposedLetter;
+import app.epistola.valtimo.domain.DynamicDocument;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
@@ -439,7 +439,7 @@ public class EpistolaPlugin {
                 : letterVariable;
         validateProcessVariableName("resultProcessVariable", resultProcessVariable);
 
-        ComposedLetter letter = ComposedLetter.from(
+        DynamicDocument letter = DynamicDocument.from(
                 execution.getVariable(variableName), variableName, objectMapper);
 
         var scalarEvalContext = buildEvalCtx(execution, null);
@@ -489,7 +489,7 @@ public class EpistolaPlugin {
      * cannot be made is recorded beside the result and the process carries on with a letter that
      * was genuinely sent.
      */
-    private void applyWriteBack(DelegateExecution execution, ComposedLetter letter, String letterVariable) {
+    private void applyWriteBack(DelegateExecution execution, DynamicDocument letter, String letterVariable) {
         if (writeBackService == null) {
             return;
         }

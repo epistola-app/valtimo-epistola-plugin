@@ -133,7 +133,7 @@ Not a principle — a measurement and a product question.
 3. **Who picks the action?** If authors configuring process links are the same people who configure
    composers, two actions are a small vocabulary. If the dynamic path is mostly used by integrators
    setting a variable from code, they never see the picker at all and the title matters less than
-   the documented contract (`ComposedLetter.dynamicDocument`).
+   the documented contract (`DynamicDocument.of`).
 
 ## Decision
 

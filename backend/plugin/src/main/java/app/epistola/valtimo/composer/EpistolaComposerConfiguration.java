@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.composer;
 
+import app.epistola.valtimo.domain.DynamicDocument;
 import app.epistola.valtimo.composer.web.EpistolaComposerResource;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaService;
@@ -51,7 +52,7 @@ import org.springframework.context.annotation.Configuration;
  * <p>What it depends on, it depends on narrowly: the Epistola API, the JSONata mapping service, the
  * Formio form generator and Valtimo's own services. The generation step itself is a plugin action
  * on {@code EpistolaPlugin}, because Valtimo scans the plugin class for actions; its behaviour
- * lives in {@link ComposedLetter}.
+ * lives in {@link DynamicDocument}.
  */
 @Configuration
 @ConditionalOnProperty(prefix = "epistola.composer", name = "enabled", havingValue = "true", matchIfMissing = true)

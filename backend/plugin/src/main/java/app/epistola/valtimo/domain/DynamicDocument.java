@@ -15,8 +15,9 @@
  *
  * SPDX-License-Identifier: EUPL-1.2
  */
-package app.epistola.valtimo.composer;
+package app.epistola.valtimo.domain;
 
+import app.epistola.valtimo.composer.ComposerSchema;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
@@ -46,7 +47,7 @@ import java.util.Map;
  *                   honoured where the composer's stored configuration also names them — see
  *                   {@link #writeBackLimitedTo}.
  */
-public record ComposedLetter(
+public record DynamicDocument(
         int schemaVersion,
         String catalogId,
         String templateId,
@@ -65,16 +66,17 @@ public record ComposedLetter(
      * documentation and hoping.
      *
      * <p>{@code schemaVersion} is written for the reader on the other side, which may belong to a
-     * newer plugin than the writer: see {@link ComposerSchema}. {@code inputs} and {@code writeBack}
-     * are deliberately absent — both describe what a person typed into a composer and where a
-     * composer says it belongs, and a document a process prepared has neither.
+     * newer plugin than the writer: see {@link ComposerSchema}, which versions this shape because a
+     * letter composer was the first thing to write it. {@code inputs} and {@code writeBack} are
+     * deliberately absent — both describe what a person typed into a composer and where a composer
+     * says it belongs, and a document a process prepared has neither.
      *
      * @param catalogId  the catalog the template lives in
      * @param templateId the template to render
      * @param data       everything the document is rendered with
      * @return the value to set on the process variable the action reads
      */
-    public static Map<String, Object> dynamicDocument(
+    public static Map<String, Object> of(
             String catalogId, String templateId, Map<String, Object> data) {
         if (catalogId == null || catalogId.isBlank() || templateId == null || templateId.isBlank()) {
             throw new IllegalArgumentException(
@@ -99,8 +101,8 @@ public record ComposedLetter(
      * @throws IllegalArgumentException when the variable does not hold a usable letter
      */
     @SuppressWarnings("unchecked")
-    public static ComposedLetter from(Object raw, String variableName, ObjectMapper objectMapper) {
-        List<ComposedLetter> letters = allFrom(raw, variableName, objectMapper);
+    public static DynamicDocument from(Object raw, String variableName, ObjectMapper objectMapper) {
+        List<DynamicDocument> letters = allFrom(raw, variableName, objectMapper);
         if (letters.size() > 1) {
             throw new IllegalArgumentException(
                     "The variable '" + variableName + "' holds " + letters.size() + " letters, and this "
@@ -121,7 +123,7 @@ public record ComposedLetter(
      * letter and dropping the rest.
      */
     @SuppressWarnings("unchecked")
-    public static List<ComposedLetter> allFrom(Object raw, String variableName, ObjectMapper objectMapper) {
+    public static List<DynamicDocument> allFrom(Object raw, String variableName, ObjectMapper objectMapper) {
         Map<String, Object> value;
         if (raw instanceof Map<?, ?> map) {
             value = (Map<String, Object>) map;
@@ -161,7 +163,7 @@ public record ComposedLetter(
     }
 
     @SuppressWarnings("unchecked")
-    private static ComposedLetter one(Object entry, int schemaVersion, String variableName) {
+    private static DynamicDocument one(Object entry, int schemaVersion, String variableName) {
         if (!(entry instanceof Map<?, ?> map)) {
             throw new IllegalArgumentException(
                     "The variable '" + variableName + "' holds something that is not a letter");
@@ -178,7 +180,7 @@ public record ComposedLetter(
         Object data = value.get("data");
         Object inputs = value.get("inputs");
         Object writeBack = value.get("writeBack");
-        return new ComposedLetter(
+        return new DynamicDocument(
                 schemaVersion,
                 catalogId,
                 templateId,

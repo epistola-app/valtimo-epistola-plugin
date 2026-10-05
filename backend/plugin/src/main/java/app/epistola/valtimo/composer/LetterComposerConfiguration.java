@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.composer;
 
+import app.epistola.valtimo.domain.DynamicDocument;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -73,7 +74,7 @@ public record LetterComposerConfiguration(
      * themselves are computed in the browser — that is what makes the previewed letter the
      * generated one — so the keys on a submitted letter arrived from the browser too, and are only
      * honoured where they appear here. See
-     * {@link ComposedLetter#writeBackLimitedTo(java.util.Set)}.
+     * {@link DynamicDocument#writeBackLimitedTo(java.util.Set)}.
      */
     public java.util.Set<String> writeBackDestinations() {
         return writeBack == null ? java.util.Set.of() : java.util.Set.copyOf(writeBack.keySet());

@@ -17,7 +17,7 @@
  */
 package app.epistola.valtimo.service.generation;
 
-import app.epistola.valtimo.composer.ComposedLetter;
+import app.epistola.valtimo.domain.DynamicDocument;
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.domain.PluginProcessLink;
@@ -30,7 +30,7 @@ import org.operaton.bpm.engine.RuntimeService;
  *
  * <p>The template and the data were decided before this activity ran and left on a process
  * variable — by a letter composer, or by any process that set it (see
- * {@link ComposedLetter#dynamicDocument}). So unlike a process link, there is no mapping to
+ * {@link DynamicDocument#dynamicDocument}). So unlike a process link, there is no mapping to
  * evaluate: the document is read back exactly as it was going to be sent.
  *
  * <p>That difference matters for a retry. A configured activity re-evaluates its mapping, picking
@@ -59,9 +59,9 @@ public class DynamicDocumentGenerationSource implements GenerationSubjectSource 
                             + link.getActivityId() + "', so there is nothing to rebuild");
         }
 
-        ComposedLetter letter;
+        DynamicDocument letter;
         try {
-            letter = ComposedLetter.from(raw, variableName, objectMapper);
+            letter = DynamicDocument.from(raw, variableName, objectMapper);
         } catch (RuntimeException e) {
             throw new GenerationSubjectException(GenerationSubjectException.Reason.UNREADABLE_DOCUMENT,
                     "The document on '" + variableName + "' could not be read: " + e.getMessage(), e);
