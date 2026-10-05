@@ -195,6 +195,34 @@ public interface EpistolaService {
     ImportCatalogResult importCatalog(String baseUrl, String apiKey, String tenantId, byte[] zipBytes, String catalogType);
 
     /**
+     * Release an imported catalog, so documents can be generated from it.
+     *
+     * <p>Importing a catalog makes its templates <i>present</i>; a Suite that generates from
+     * releases will not render from one until a release exists, answering
+     * {@code CATALOG_NOT_RELEASED} instead. Importing and releasing are separate on purpose — an
+     * operator may want to stage a catalog before it is used — but a classpath catalog deployed by
+     * this plugin is not staged by anyone, so the sync releases what it imports.
+     *
+     * @param baseUrl        The Epistola API base URL
+     * @param apiKey         The API key for authentication
+     * @param tenantId       The tenant ID in Epistola
+     * @param catalogId      The catalog to release
+     * @param releaseVersion The version to release as; the catalog's own declared version
+     * @param notes          What this release is, for whoever reads the history
+     * @return {@code true} when the catalog was released, {@code false} when this server has no
+     *         release endpoint at all. That is not a failure, and it is not the older-Suite case:
+     *         releasing is answered by every Epistola the plugin supports, down to the oldest
+     *         contract a supported Suite serves — only the requirement to have released is new
+     */
+    boolean releaseCatalog(
+            String baseUrl,
+            String apiKey,
+            String tenantId,
+            String catalogId,
+            String releaseVersion,
+            String notes);
+
+    /**
      * Result of a catalog import operation.
      */
     record ImportCatalogResult(

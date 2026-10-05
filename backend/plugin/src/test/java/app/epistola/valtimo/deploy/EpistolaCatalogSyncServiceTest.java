@@ -39,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -79,6 +80,93 @@ class EpistolaCatalogSyncServiceTest {
             assertThat(result.failCount()).isZero();
             assertThat(result.totalCatalogs()).isGreaterThanOrEqualTo(1);
             verify(epistolaService).importCatalog(eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), any(byte[].class), eq(CATALOG_TYPE));
+        }
+    }
+
+    /**
+     * A Suite that generates from releases will not render from a catalog that was only imported,
+     * answering {@code CATALOG_NOT_RELEASED}. So what this plugin imports, it releases — and the
+     * awkward half is the other direction: a Suite old enough to have no release endpoint must not
+     * be treated as a failure, or fixing the new one breaks every supported older one.
+     */
+    @Nested
+    class ReleaseAfterImport {
+
+        private void importSucceeds() {
+            when(epistolaService.importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString()))
+                    .thenReturn(new EpistolaService.ImportCatalogResult("municipality-demo", "Demo", 1, 0, 0, 1));
+        }
+
+        @Test
+        void releasesWhatItImported_atTheCatalogsOwnVersion() {
+            // The same version the skip compares, so there is one release per deployed version and
+            // a redeploy of an unchanged catalog makes no new one.
+            importSucceeds();
+            when(epistolaService.releaseCatalog(anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+                    .thenReturn(true);
+
+            syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+
+            verify(epistolaService, atLeastOnce()).releaseCatalog(
+                    eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), eq("municipality-demo"),
+                    anyString(), anyString());
+        }
+
+        @Test
+        void aServerWithNoReleaseEndpointIsNotAFailure() {
+            // Such a Suite generates from the import alone. Reporting a failed sync would make the
+            // plugin look broken on every version it still supports.
+            importSucceeds();
+            when(epistolaService.releaseCatalog(anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+                    .thenReturn(false);
+
+            var result = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+
+            assertThat(result.failCount()).isZero();
+            assertThat(result.successCount()).isGreaterThanOrEqualTo(1);
+        }
+
+        @Test
+        void aFailedReleaseDoesNotFailTheImport() {
+            // The catalog is installed either way, and an operator can release it by hand. Counting
+            // it as a failed sync would hide a successful import behind a later step.
+            importSucceeds();
+            when(epistolaService.releaseCatalog(anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+                    .thenThrow(new EpistolaApiException("release refused"));
+
+            var result = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+
+            assertThat(result.failCount()).isZero();
+            assertThat(result.successCount()).isGreaterThanOrEqualTo(1);
+        }
+
+        @Test
+        void nothingIsReleasedWhenNothingWasImported() {
+            // The version skip already decided there was nothing to do; releasing anyway would
+            // make a release per restart.
+            importSucceeds();
+            syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+            org.mockito.Mockito.clearInvocations(epistolaService);
+
+            syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+
+            verify(epistolaService, never()).releaseCatalog(
+                    anyString(), anyString(), anyString(), anyString(), anyString(), anyString());
+        }
+
+        @Test
+        void aForcedRedeployReleasesToo() {
+            // It bypasses the version skip because the operator is saying "install this again"; a
+            // redeploy that left the catalog unreleased would install templates nothing can render.
+            importSucceeds();
+            when(epistolaService.releaseCatalog(anyString(), anyString(), anyString(), anyString(), anyString(), anyString()))
+                    .thenReturn(true);
+
+            var catalog = syncService.listClasspathCatalogs().get(0);
+            syncService.redeployCatalog(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE, catalog.slug());
+
+            verify(epistolaService, atLeastOnce()).releaseCatalog(
+                    eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), anyString(), anyString(), anyString());
         }
     }
 

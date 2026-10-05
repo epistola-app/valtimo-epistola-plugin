@@ -43,6 +43,32 @@ bundled classpath catalogs it imports carry a catalog **wire `schemaVersion`**, 
 gates imports against its own `[baseline, current]` window. A catalog below the suite's baseline
 is rejected with RFC-9457 `400 catalog-schema-too-old`.
 
+### Catalog releases
+
+A newer Suite **generates from catalog releases**, not from an import: importing makes a catalog's
+templates present, and generation refuses with `CATALOG_NOT_RELEASED` until a release exists. The
+plugin therefore releases each catalog it imports, at the catalog's own declared version.
+
+Releasing a catalog is **not a new endpoint** — it has been in the contract since `0.15.0`, which
+covers every Suite the plugin supports, and `oldestSupportedServerTest` asserts a successful release
+against the oldest contract a supported Suite serves (`0.16.1`, Suite 1.0.0). What changed in
+Epistola is only that generation now _requires_ a release. So:
+
+- **Plugin older than this change, Suite newer** — every generation fails, including previews. The
+  symptom is _"Catalog '…' has no release to generate from. Release the catalog first."_ Releasing
+  the catalog by hand in Epistola is the workaround; upgrading the plugin is the fix.
+  **Publishing changed templates needs the catalog's version raised.** Epistola refuses a release at
+  a version it has already released (_"Version 1.3.0 must be greater than the last release 1.3.0"_),
+  so re-importing a catalog whose content changed but whose version did not will update the templates
+  and then generate from the **previous** release — the change silently does not appear. The sync logs
+  that rather than failing the import, and a forced redeploy of an unchanged catalog logs it as
+  routine.
+
+- **Plugin newer, Suite older** — nothing breaks: the older server accepts the release, and
+  generation there never needed one. A 404/405 is still tolerated as "nothing to release", for a
+  server older than anything claimed as supported, and a release that fails for any other reason is
+  logged against the catalog without failing the import — the catalog is installed either way.
+
 | Plugin build | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema | Compatible Epistola Suite        |
 | ------------ | --------------------------------------------- | --------------------------- | -------------------------------- |
 | Unreleased   | `1.4.0`                                       | `4`                         | `>= 1.0.0`                       |
