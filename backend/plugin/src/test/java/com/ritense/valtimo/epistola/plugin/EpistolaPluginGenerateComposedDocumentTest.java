@@ -180,6 +180,72 @@ class EpistolaPluginGenerateComposedDocumentTest {
         }
     }
 
+    /**
+     * What happens when the letter no longer exists, or no longer accepts this data.
+     *
+     * <p>Both are the same shape at generate time and both are ordinary: a template removed from
+     * the catalog, or one whose data contract moved after this letter was composed. The letter sits
+     * on a process variable and can wait there for days, so the thing it was composed against is
+     * not guaranteed to still be there — and Epistola is the only party that can say so.
+     *
+     * <p>The process must be able to see it. A submit-time refusal writes the same FAILED result
+     * object a later failure would, so a BPMN branch or the retry form reads
+     * {@code ${result.errorMessage}} either way, and the activity then fails rather than reporting
+     * a letter it did not send.
+     */
+    /**
+     * The action renders a letter object; the composer is one way to produce one, not the only way.
+     *
+     * <p>Worth pinning, because it decides whether this action is usable at all outside the
+     * composer UI — a process started with the variable set by hand, by an API caller, by a
+     * previous service task. Nothing here consults a composer: the catalog, the template and the
+     * data all come from the variable, and the only requirement is that it names a catalog and a
+     * template.
+     *
+     * <p>What such a letter does not get is write-back, and that is correct rather than a
+     * limitation: the rules live on a composer, so a letter no composer produced has nobody to say
+     * where its values belong.
+     */
+    @Test
+    void rendersALetterNoComposerProduced() {
+        // The least a process can set: no schemaVersion, no inputs, no label — a catalog, a
+        // template, and the data to render with.
+        when(execution.getVariable(EpistolaProcessVariables.COMPOSED_LETTER)).thenReturn(Map.of(
+                "catalogId", "gemeente",
+                "templateId", "besluit-bezwaar",
+                "data", Map.of("naam", "Jansen")));
+        when(execution.getBusinessKey()).thenReturn(java.util.UUID.randomUUID().toString());
+
+        plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
+
+        ArgumentCaptor<Map<String, Object>> data = ArgumentCaptor.forClass(Map.class);
+        verify(epistolaService).submitGenerationJob(
+                eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
+                eq("gemeente"), eq("besluit-bezwaar"),
+                isNull(), isNull(), eq("prod"),
+                data.capture(), eq(FileFormat.PDF), eq("besluit-bezwaar.pdf"), isNull(), any());
+        assertThat(data.getValue()).containsEntry("naam", "Jansen");
+    }
+
+    @Test
+    void recordsTheRefusalWhereTheProcessCanReadIt() {
+        composerWrote(letter());
+        when(epistolaService.submitGenerationJob(anyString(), anyString(), anyString(), anyString(),
+                anyString(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenThrow(new RuntimeException("Template 'besluit-bezwaar' not found in catalog 'gemeente'"));
+
+        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () ->
+                plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR));
+
+        ArgumentCaptor<Map<String, Object>> result = ArgumentCaptor.forClass(Map.class);
+        verify(execution).setVariable(eq(RESULT_VAR), result.capture());
+        assertThat(result.getValue())
+                .containsEntry(EpistolaProcessVariables.RESULT_KEY_STATUS, "FAILED");
+        assertThat(String.valueOf(result.getValue().get(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE)))
+                .describedAs("the reason Epistola gave, not a generic failure")
+                .contains("not found in catalog");
+    }
+
     @Test
     void generatesTheLetterTheComposerChose() {
         composerWrote(letter());

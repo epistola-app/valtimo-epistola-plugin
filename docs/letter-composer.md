@@ -218,13 +218,55 @@ The ordinary case: somewhere in the process an employee has to choose a letter.
 ```
 UserTask  choose-letter          → form "kies-brief"            (the composer)
                                     ↓  pv:epistolaLetter
-ServiceTask generate-chosen-letter → action "Generate chosen letter"
+ServiceTask generate-chosen-letter → action "Generate Dynamic Document"
 ```
 
 Demo: `correspondentie-letter-composer`. To build one: drop the component on the task's form, set
 its **Property name** to `pv:epistolaLetter`, choose the Epistola connection and the letters to
-offer, then add a service task with the **Generate chosen letter** action reading the same
+offer, then add a service task with the **Generate Dynamic Document** action reading the same
 variable. The action needs no template, catalog or mapping of its own — the letter carries them.
+
+### Without a composer at all
+
+The generate action renders a **document object**; a composer is one way to produce one, not the
+only way. Anything that can set a process variable can prepare a document — an earlier service task,
+an integration, an API caller starting the process — and the action renders it without knowing where
+it came from.
+
+The whole contract is three fields:
+
+```json
+{
+  "catalogId": "gemeente",
+  "templateId": "besluit-bezwaar",
+  "data": { "naam": "Jansen" }
+}
+```
+
+`schemaVersion` may be omitted (absent means 1). A JSON _string_ works as well as an object, since
+the engine hands back whichever the writer stored. From JVM code, build it rather than copying this
+literal — `ComposedLetter.dynamicDocument(catalogId, templateId, data)` is the same contract, kept
+in step with the reader by a round-trip test:
+
+```java
+execution.setVariable("epistolaLetter",
+        ComposedLetter.dynamicDocument("gemeente", "besluit-bezwaar", Map.of("naam", "Jansen")));
+```
+
+Everything else behaves as it does for a composed letter: the filename defaults to the template's
+id, the environment comes from the plugin configuration, and the rich result variable and the
+`jobPath` correlation locator are written the same way, so the async catch-event pattern works
+unchanged.
+
+Two things such a document does **not** get, both by design rather than omission:
+
+- **No write-back.** The rules live on a composer, so a document no composer produced has nobody to
+  say where its values belong. Nothing is written and nothing is logged as wrong.
+- **No check that the template was meant to be offered.** `requireOffering` guards the browser-facing
+  prepare and preview endpoints; a BPMN action runs with the engine identity and trusts the process,
+  as the plugin's other actions do. A process can therefore render any template in any catalog its
+  plugin configuration can reach — which is the point of this shape, and worth knowing before using
+  it.
 
 ### A letter inside a form flow
 
@@ -485,7 +527,7 @@ behaviour change, not a migration.
 
 ## Wiring the process
 
-One service task generates whatever was chosen, with the **`epistola-generate-composed-document`**
+One service task generates whatever was chosen, with the **`epistola-generate-dynamic-document`**
 action:
 
 ```json

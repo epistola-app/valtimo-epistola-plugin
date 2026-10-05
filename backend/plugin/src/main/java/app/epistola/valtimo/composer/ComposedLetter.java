@@ -56,6 +56,39 @@ public record ComposedLetter(
 ) {
 
     /**
+     * The input for the <b>Generate Dynamic Document</b> action, as the variable must hold it.
+     *
+     * <p>The generate action renders a document object; a letter composer is one way to produce
+     * one, and a process that sets the variable itself is another — an integration, an earlier
+     * service task, an API caller. Nothing in the action consults a composer, so this is the whole
+     * contract, and it is public so that it can be built without copying a map literal out of the
+     * documentation and hoping.
+     *
+     * <p>{@code schemaVersion} is written for the reader on the other side, which may belong to a
+     * newer plugin than the writer: see {@link ComposerSchema}. {@code inputs} and {@code writeBack}
+     * are deliberately absent — both describe what a person typed into a composer and where a
+     * composer says it belongs, and a document a process prepared has neither.
+     *
+     * @param catalogId  the catalog the template lives in
+     * @param templateId the template to render
+     * @param data       everything the document is rendered with
+     * @return the value to set on the process variable the action reads
+     */
+    public static Map<String, Object> dynamicDocument(
+            String catalogId, String templateId, Map<String, Object> data) {
+        if (catalogId == null || catalogId.isBlank() || templateId == null || templateId.isBlank()) {
+            throw new IllegalArgumentException(
+                    "A document to render names a catalog and a template");
+        }
+        Map<String, Object> prepared = new java.util.LinkedHashMap<>();
+        prepared.put("schemaVersion", ComposerSchema.CURRENT);
+        prepared.put("catalogId", catalogId);
+        prepared.put("templateId", templateId);
+        prepared.put("data", data == null ? Map.of() : data);
+        return java.util.Collections.unmodifiableMap(prepared);
+    }
+
+    /**
      * Read a composed letter from a process variable.
      *
      * <p>Operaton hands back what the value resolver stored — a Map for an object variable, or the

@@ -63,6 +63,64 @@ describe('EpistolaLetterSetBuilderComponent', () => {
     return { component, service };
   }
 
+  describe('a letter that is no longer in the catalog', () => {
+    /**
+     * The table is drawn from what Epistola returns now, ticking the letters this composer stores.
+     * A stored letter that has been removed is therefore simply not drawn, and the configuration
+     * looks healthy while one of its letters is dead — the author finds out when an employee opens
+     * the task and the composer refuses it.
+     */
+    it('is named, so the author can see it at all', () => {
+      const { component } = createComponent({
+        pluginConfigurationId: 'config-1',
+        catalogId: 'gemeente',
+        templates: [
+          { templateId: 'besluit', label: 'Besluit' },
+          { templateId: 'ingetrokken', label: 'Ingetrokken brief' },
+        ],
+      });
+      component.ngOnChanges();
+
+      expect(component.missingTemplates.map((t) => t.templateId)).toEqual(['ingetrokken']);
+    });
+
+    it('can be dropped from the set', () => {
+      const { component } = createComponent({
+        pluginConfigurationId: 'config-1',
+        catalogId: 'gemeente',
+        templates: [
+          { templateId: 'besluit', label: 'Besluit' },
+          { templateId: 'ingetrokken', label: 'Ingetrokken brief' },
+        ],
+      });
+      component.ngOnChanges();
+
+      component.toggleTemplate('ingetrokken', false);
+
+      expect(component.value?.templates.map((t: any) => t.templateId)).toEqual(['besluit']);
+      expect(component.missingTemplates).toEqual([]);
+    });
+
+    it('says nothing when the catalog could not be read', () => {
+      // Everything looks missing when the fetch failed, and telling an author that all their
+      // letters are gone because Epistola was briefly unreachable is worse than saying nothing.
+      const { component, service } = createComponent({
+        pluginConfigurationId: 'config-1',
+        catalogId: 'gemeente',
+        templates: [{ templateId: 'besluit', label: 'Besluit' }],
+      });
+      // Succeed first, so the answer is not simply "nothing has been loaded yet": this has to stay
+      // quiet when a catalog that *was* readable stops being readable.
+      component.ngOnChanges();
+      expect(component.missingTemplates).toEqual([]);
+
+      service.getTemplates.mockReturnValue(throwError(() => new Error('Epistola unreachable')));
+      component.onCatalogSelected('andere');
+
+      expect(component.missingTemplates).toEqual([]);
+    });
+  });
+
   it('offers the configured Epistola connections', () => {
     const { component } = createComponent();
 

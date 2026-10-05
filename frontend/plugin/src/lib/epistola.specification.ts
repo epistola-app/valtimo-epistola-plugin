@@ -45,7 +45,7 @@ const epistolaPluginSpecification: PluginSpecification = {
     'epistola-generate-document': GenerateDocumentConfigurationComponent,
     'epistola-check-job-status': CheckJobStatusConfigurationComponent,
     'epistola-download-document': DownloadDocumentConfigurationComponent,
-    'epistola-generate-composed-document': GenerateComposedDocumentConfigurationComponent,
+    'epistola-generate-dynamic-document': GenerateComposedDocumentConfigurationComponent,
   },
 
   // Translations

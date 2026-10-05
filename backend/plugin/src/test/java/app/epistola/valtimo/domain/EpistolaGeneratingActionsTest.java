@@ -74,6 +74,6 @@ class EpistolaGeneratingActionsTest {
     @Test
     void bothKnownGeneratingActionsAreListed() {
         assertThat(EpistolaProcessVariables.GENERATING_ACTION_KEYS)
-                .contains("epistola-generate-document", "epistola-generate-composed-document");
+                .contains("epistola-generate-document", "epistola-generate-dynamic-document");
     }
 }

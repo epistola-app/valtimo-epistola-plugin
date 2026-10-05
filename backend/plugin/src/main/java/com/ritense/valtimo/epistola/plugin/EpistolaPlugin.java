@@ -422,9 +422,9 @@ public class EpistolaPlugin {
      * @param resultProcessVariable The process variable to store the rich result object in
      */
     @PluginAction(
-            key = "epistola-generate-composed-document",
-            title = "Generate chosen letter",
-            description = "Render the letter the employee chose in a letter composer. The template, catalog and data all come from the process variable the composer wrote, so this action needs no template, catalog or mapping of its own.",
+            key = "epistola-generate-dynamic-document",
+            title = "Generate Dynamic Document",
+            description = "The catalog, template and data are chosen while the process runs and read from a process variable, rather than configured here — unlike Generate Document, where the author pins the template. A letter composer is one way to prepare that variable; a process that sets it itself is another.",
             activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
     )
     public void generateComposedDocument(

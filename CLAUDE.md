@@ -124,7 +124,7 @@ docker/            # Docker compose for local dependencies
 - **Translations**: Add both `nl` and `en` translations in `epistola.specification.ts`
 - **Letter composer** (`epistola-letter-composer`, **alpha**): pick a letter from a configured
   list, fill in what the case cannot supply, preview it, and let one
-  `epistola-generate-composed-document` task render it. Where it is used is **derived, never
+  `epistola-generate-dynamic-document` task render it. Where it is used is **derived, never
   authored** — a task form fills the `epistola:taskId` carrier and a start form does not, so one
   configuration serves both; a start form's process is discovered server-side from the composers on
   start forms, narrowed to what the caller may start. It is a module of its own

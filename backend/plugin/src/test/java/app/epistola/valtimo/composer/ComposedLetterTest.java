@@ -93,6 +93,48 @@ class ComposedLetterTest {
                 .containsEntry("naam", "Jansen");
     }
 
+    /**
+     * What a process builds and what the action reads are the same thing, and this is where that
+     * is kept true. A round trip rather than two assertions: if either side drifts, the document a
+     * process prepared stops being renderable, and the only place that shows up is a failed
+     * activity in someone else's system.
+     */
+    @Test
+    void aPreparedDocumentIsReadBackAsOneLetter() {
+        Map<String, Object> prepared = ComposedLetter.dynamicDocument(
+                "gemeente", "besluit-bezwaar", Map.of("naam", "Jansen"));
+
+        ComposedLetter letter = ComposedLetter.from(prepared, "epistolaLetter", objectMapper);
+
+        assertThat(letter.catalogId()).isEqualTo("gemeente");
+        assertThat(letter.templateId()).isEqualTo("besluit-bezwaar");
+        assertThat(letter.data()).containsEntry("naam", "Jansen");
+        assertThat(letter.schemaVersion()).isEqualTo(ComposerSchema.CURRENT);
+        assertThat(letter.inputs())
+                .describedAs("a document a process prepared has no typed input")
+                .isEmpty();
+        assertThat(letter.writeBack())
+                .describedAs("and nothing says where its values belong")
+                .isEmpty();
+    }
+
+    @Test
+    void refusesAPreparedDocumentThatNamesNoTemplate() {
+        assertThatThrownBy(() -> ComposedLetter.dynamicDocument("gemeente", " ", Map.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("catalog and a template");
+    }
+
+    @Test
+    void preparesADocumentWithNoDataAtAll() {
+        // A template that needs nothing is a real template; null should not be a different case
+        // from empty for a caller assembling this by hand.
+        assertThat(ComposedLetter.from(
+                ComposedLetter.dynamicDocument("gemeente", "besluit", null),
+                "epistolaLetter", objectMapper).data())
+                .isEmpty();
+    }
+
     @Test
     void readsTheLetterAnObjectVariableHolds() {
         ComposedLetter letter = ComposedLetter.from(
