@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.domain;
 
+import app.epistola.valtimo.composer.ComposedLetter;
 import app.epistola.valtimo.composer.ComposerException;
 import app.epistola.valtimo.composer.ComposerSchema;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,7 +55,7 @@ class DynamicDocumentTest {
 
         DynamicDocument letter = DynamicDocument.from(raw, "epistolaLetter", objectMapper);
 
-        assertThat(letter.inputs())
+        assertThat(ComposedLetter.from(raw, "epistolaLetter", objectMapper).inputs())
                 .describedAs("a cleared field is still part of what was typed")
                 .containsEntry("decisionType", "gegrond")
                 .containsEntry("motivation", null);
@@ -112,10 +113,11 @@ class DynamicDocumentTest {
         assertThat(letter.templateId()).isEqualTo("besluit-bezwaar");
         assertThat(letter.data()).containsEntry("naam", "Jansen");
         assertThat(letter.schemaVersion()).isEqualTo(ComposerSchema.CURRENT);
-        assertThat(letter.inputs())
+        ComposedLetter asComposer = ComposedLetter.from(prepared, "epistolaLetter", objectMapper);
+        assertThat(asComposer.inputs())
                 .describedAs("a document a process prepared has no typed input")
                 .isEmpty();
-        assertThat(letter.writeBack())
+        assertThat(asComposer.writeBack())
                 .describedAs("and nothing says where its values belong")
                 .isEmpty();
     }

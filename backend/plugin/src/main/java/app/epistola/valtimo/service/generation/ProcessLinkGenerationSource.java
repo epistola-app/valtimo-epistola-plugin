@@ -84,8 +84,9 @@ public class ProcessLinkGenerationSource implements GenerationSubjectSource {
                             + "' could not be evaluated: " + e.getMessage(), e);
         }
 
-        return new GenerationSubject(
-                actionConfig.catalogId(), actionConfig.templateId(), data, link.getPluginConfigurationId().getId());
+        return GenerationSubject.of(
+                actionConfig.catalogId(), actionConfig.templateId(), data,
+                link.getPluginConfigurationId().getId());
     }
 
     @SuppressWarnings("unchecked")

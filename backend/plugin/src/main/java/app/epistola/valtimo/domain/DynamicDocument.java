@@ -30,6 +30,12 @@ import java.util.Map;
  * exactly what was previewed and needs no template, mapping or catalog of its own (ADR 0006). This
  * record is that contract, and the one place that knows its shape.
  *
+ * <p>Only what it takes to render: a template, where it lives, and the data. A letter composer
+ * writes more than this onto the same variable — what a person typed, and where those values also
+ * belong in the case — and {@link app.epistola.valtimo.composer.ComposedLetter} is that richer
+ * reading of it. Keeping them apart is what lets this type mean what its name says: a process that
+ * prepares a document has no composer, and nothing here suggests it should.
+ *
  * <p>It carries the schema version the composer wrote it with, because it outlives that composer:
  * a process instance can sit in the database for months, and the plugin that generates the letter
  * may not be the one that composed it. See {@link ComposerSchema} for which way that is tolerated.
@@ -38,22 +44,12 @@ import java.util.Map;
  * @param catalogId  The catalog the chosen template lives in
  * @param templateId The chosen template
  * @param data       Everything the letter is rendered with
- * @param inputs     Only what the employee typed, kept apart from {@code data} so a write-back
- *                   rule can distinguish a value a person supplied from one the mapping produced
- * @param writeBack  Where values from this letter also belong in the case: a value-resolver key
- *                   (such as {@code doc:/aanvrager/telefoon}) to the value resolved when the letter
- *                   was composed. Empty when the composer declared none, which is the ordinary
- *                   case. The <em>values</em> are the browser's; the <em>destinations</em> are only
- *                   honoured where the composer's stored configuration also names them — see
- *                   {@link #writeBackLimitedTo}.
  */
 public record DynamicDocument(
         int schemaVersion,
         String catalogId,
         String templateId,
-        Map<String, Object> data,
-        Map<String, Object> inputs,
-        Map<String, Object> writeBack
+        Map<String, Object> data
 ) {
 
     /**
@@ -67,9 +63,7 @@ public record DynamicDocument(
      *
      * <p>{@code schemaVersion} is written for the reader on the other side, which may belong to a
      * newer plugin than the writer: see {@link ComposerSchema}, which versions this shape because a
-     * letter composer was the first thing to write it. {@code inputs} and {@code writeBack} are
-     * deliberately absent — both describe what a person typed into a composer and where a composer
-     * says it belongs, and a document a process prepared has neither.
+     * letter composer was the first thing to write one.
      *
      * @param catalogId  the catalog the template lives in
      * @param templateId the template to render
@@ -177,16 +171,11 @@ public record DynamicDocument(
                     "The composed letter on '" + variableName + "' names no catalog and template");
         }
 
-        Object data = value.get("data");
-        Object inputs = value.get("inputs");
-        Object writeBack = value.get("writeBack");
         return new DynamicDocument(
                 schemaVersion,
                 catalogId,
                 templateId,
-                copyOf(data),
-                copyOf(inputs),
-                copyOf(writeBack));
+                copyOf(value.get("data")));
     }
 
     /**
@@ -212,43 +201,6 @@ public record DynamicDocument(
         return java.util.Collections.unmodifiableMap(snapshot);
     }
 
-    /**
-     * The write-back entries whose destination the composer's own configuration names, and no
-     * others.
-     *
-     * <p>This is the one place the distinction matters. The letter's values are computed in the
-     * browser — that is deliberate, and it is what makes what was previewed the thing that gets
-     * generated — but it means the <em>keys</em> on this map arrived from the browser too. A
-     * crafted submission could otherwise name any case path at all, and writing to an arbitrary
-     * {@code doc:} path is a different matter from rendering a letter with odd data: one is a
-     * document nobody asked for, the other is a silent edit to the case.
-     *
-     * <p>So the form definition stays the authority on <em>where</em> data may go, and the browser
-     * decides only <em>what</em>. An entry whose destination is not in {@code allowed} is dropped
-     * rather than refused: a letter that Epistola has already accepted must not fail here, and a
-     * dropped destination is reported on the result variable by the caller.
-     *
-     * @param allowed the destinations the composer's stored {@code writeBack} map declares
-     */
-    public Map<String, Object> writeBackLimitedTo(java.util.Set<String> allowed) {
-        if (writeBack.isEmpty() || allowed.isEmpty()) {
-            return Map.of();
-        }
-        Map<String, Object> permitted = new java.util.LinkedHashMap<>();
-        writeBack.forEach((destination, value) -> {
-            if (allowed.contains(destination)) {
-                permitted.put(destination, value);
-            }
-        });
-        return java.util.Collections.unmodifiableMap(permitted);
-    }
-
-    /** The destinations this letter asks for that {@code allowed} does not name. */
-    public java.util.List<String> writeBackRefused(java.util.Set<String> allowed) {
-        return writeBack.keySet().stream().filter(destination -> !allowed.contains(destination)).sorted().toList();
-    }
-
-    /** Operaton hands numbers back as Integer, Long or (from JSON) whatever Jackson chose. */
     private static Integer intOrNull(Object value) {
         if (value instanceof Number number) {
             return number.intValue();

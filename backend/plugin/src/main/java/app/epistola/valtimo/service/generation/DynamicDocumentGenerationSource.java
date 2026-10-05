@@ -30,7 +30,7 @@ import org.operaton.bpm.engine.RuntimeService;
  *
  * <p>The template and the data were decided before this activity ran and left on a process
  * variable — by a letter composer, or by any process that set it (see
- * {@link DynamicDocument#dynamicDocument}). So unlike a process link, there is no mapping to
+ * {@link DynamicDocument#of}). So unlike a process link, there is no mapping to
  * evaluate: the document is read back exactly as it was going to be sent.
  *
  * <p>That difference matters for a retry. A configured activity re-evaluates its mapping, picking
@@ -59,17 +59,16 @@ public class DynamicDocumentGenerationSource implements GenerationSubjectSource 
                             + link.getActivityId() + "', so there is nothing to rebuild");
         }
 
-        DynamicDocument letter;
+        DynamicDocument document;
         try {
-            letter = DynamicDocument.from(raw, variableName, objectMapper);
+            document = DynamicDocument.from(raw, variableName, objectMapper);
         } catch (RuntimeException e) {
             throw new GenerationSubjectException(GenerationSubjectException.Reason.UNREADABLE_DOCUMENT,
                     "The document on '" + variableName + "' could not be read: " + e.getMessage(), e);
         }
 
-        return new GenerationSubject(
-                letter.catalogId(), letter.templateId(), letter.data(),
-                link.getPluginConfigurationId().getId());
+        // The document as it was going to be sent, handed on whole rather than taken apart.
+        return new GenerationSubject(document, link.getPluginConfigurationId().getId());
     }
 
     /** The variable the action was configured to read, defaulting as the action itself does. */

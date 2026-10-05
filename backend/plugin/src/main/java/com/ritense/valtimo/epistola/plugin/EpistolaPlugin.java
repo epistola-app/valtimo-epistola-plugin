@@ -470,7 +470,10 @@ public class EpistolaPlugin {
         // Only now: submitAndRecord throws if Epistola refused the request, so reaching this line
         // means the letter is sent and irreversible. Writing before it would update the case for a
         // letter that never went out; writing after an exception is impossible, which is the point.
-        applyWriteBack(execution, letter, variableName);
+        // The raw value, not the parsed document: write-back reads the composer's own view of the
+        // same variable — what a person typed, and where the composer says it belongs — and this
+        // action has no business knowing about either.
+        applyWriteBack(execution, execution.getVariable(variableName), variableName);
     }
 
     /**
@@ -489,7 +492,7 @@ public class EpistolaPlugin {
      * cannot be made is recorded beside the result and the process carries on with a letter that
      * was genuinely sent.
      */
-    private void applyWriteBack(DelegateExecution execution, DynamicDocument letter, String letterVariable) {
+    private void applyWriteBack(DelegateExecution execution, Object letter, String letterVariable) {
         if (writeBackService == null) {
             return;
         }

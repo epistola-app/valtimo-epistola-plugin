@@ -258,6 +258,12 @@ id, the environment comes from the plugin configuration, and the rich result var
 `jobPath` correlation locator are written the same way, so the async catch-event pattern works
 unchanged.
 
+A letter composer writes more than this onto the same variable — what the employee typed, and where
+those values also belong in the case — and `ComposedLetter` is that richer reading of it. Two types
+over one wire shape, because the extra fields were doing the explaining: a document a process
+prepared has no inputs and no write-back, and one type carrying them said otherwise every time
+someone read it.
+
 Two things such a document does **not** get, both by design rather than omission:
 
 - **No write-back.** The rules live on a composer, so a document no composer produced has nobody to

@@ -17,6 +17,9 @@
  */
 package app.epistola.valtimo.service.generation;
 
+import app.epistola.valtimo.composer.ComposerSchema;
+import app.epistola.valtimo.domain.DynamicDocument;
+
 import java.util.Map;
 import java.util.UUID;
 
@@ -35,30 +38,44 @@ import java.util.UUID;
  * or a document a composer (or any process) left on a variable. Naming that difference once is what
  * lets the retry form cover both without becoming two services; see ADR 0007.
  *
- * @param catalogId              the catalog the template lives in
- * @param templateId             the template being rendered
- * @param data                   the data it is rendered with, resolved for this process instance
- * @param pluginConfigurationId  the Epistola connection to ask, which belongs to the process link
- *                               rather than to the document — a document names no connection
+ * <p>It holds a {@link DynamicDocument} rather than repeating its fields: that record already is
+ * "what to render", and two types with the same three fields would drift. What it adds is the one
+ * thing a document cannot name — which Epistola connection to ask — because that belongs to the
+ * process link, not to the document.
+ *
+ * @param document               what is being rendered
+ * @param pluginConfigurationId  the Epistola connection to ask
  */
 public record GenerationSubject(
-        String catalogId,
-        String templateId,
-        Map<String, Object> data,
+        DynamicDocument document,
         UUID pluginConfigurationId
 ) {
     public GenerationSubject {
+        if (document == null) {
+            throw new IllegalArgumentException("A generation subject names a document");
+        }
+    }
+
+    /** Built from parts, for a source that reads them from a process link rather than a document. */
+    public static GenerationSubject of(
+            String catalogId, String templateId, Map<String, Object> data, UUID pluginConfigurationId) {
         if (templateId == null || templateId.isBlank()) {
             throw new IllegalArgumentException("A generation subject names a template");
         }
-        // Not Map.copyOf: it rejects a null value, and a field someone cleared is a null here. That
-        // exact copy cost a whole letter its readability once already — see DynamicDocument.
-        if (data == null) {
-            data = Map.of();
-        } else {
-            Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
-            data.forEach(snapshot::put);
-            data = java.util.Collections.unmodifiableMap(snapshot);
-        }
+        return new GenerationSubject(
+                new DynamicDocument(ComposerSchema.CURRENT, catalogId, templateId, data),
+                pluginConfigurationId);
+    }
+
+    public String catalogId() {
+        return document.catalogId();
+    }
+
+    public String templateId() {
+        return document.templateId();
+    }
+
+    public Map<String, Object> data() {
+        return document.data();
     }
 }
