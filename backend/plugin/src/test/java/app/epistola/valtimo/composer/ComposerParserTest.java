@@ -57,6 +57,33 @@ class ComposerParserTest {
                 """.formatted(PLUGIN_CONFIGURATION_ID, extra);
     }
 
+    /**
+     * Write-back is optional, and a composer that declares none must be as usable as one that does.
+     *
+     * <p>Worth pinning rather than assuming: the parser, the configuration and the service each
+     * have their own idea of "no rules" (absent key, null map, empty map), and a composer that
+     * silently stopped working because it saves nothing would be a bad way to find that out.
+     */
+    @Test
+    void aComposerThatSavesNothingIsStillAComposer() {
+        for (String writeBack : new String[] {"", ",\"writeBack\":{}", ",\"writeBack\":null"}) {
+            var found = parse("""
+                    {"components":[{"type":"epistola-letter-composer","key":"pv:brief",
+                      "pluginConfigurationId":"%s","catalogId":"gemeente",
+                      "templates":[{"templateId":"besluit"}]%s}]}
+                    """.formatted(PLUGIN_CONFIGURATION_ID, writeBack));
+
+            assertThat(found)
+                    .describedAs("composer with writeBack '%s'", writeBack)
+                    .singleElement()
+                    .satisfies(c -> {
+                        assertThat(c.componentKey()).isEqualTo("pv:brief");
+                        assertThat(c.writeBack()).isEmpty();
+                        assertThat(c.templates()).hasSize(1);
+                    });
+        }
+    }
+
     @Test
     void findsAComposerHoweverDeeplyALayoutNestsIt() {
         var found = parse("""
