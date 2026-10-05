@@ -33,6 +33,7 @@ import com.ritense.document.service.DocumentService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -55,7 +56,9 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -95,8 +98,91 @@ class RetryFormServiceTest {
                 jsonataMappingService,
                 documentService,
                 formioFormGenerator,
+                // The real sources, not mocks: this suite's subject is what a retry form contains,
+                // and that now depends on where the template and data were read from. Stubbing the
+                // source would stub out the thing most likely to break.
+                java.util.List.of(
+                        new app.epistola.valtimo.service.generation.ProcessLinkGenerationSource(
+                                jsonataMappingService, runtimeService, documentService, objectMapper),
+                        new app.epistola.valtimo.service.generation.DynamicDocumentGenerationSource(
+                                runtimeService, objectMapper)),
                 objectMapper
         );
+    }
+
+    /**
+     * A dynamic document that failed can be corrected, instead of being composed from scratch.
+     *
+     * <p>This is what #154 asked for, and it works because the retry form stopped reading action
+     * properties itself and started asking the source that understands the activity (ADR 0007). A
+     * configured activity re-evaluates its mapping; a dynamic document is read back as it was going
+     * to be sent, because re-deriving it would mean composing it again — which is exactly what the
+     * employee is being spared.
+     */
+    @Nested
+    class GenerateRetryFormForADynamicDocument {
+
+        @Test
+        void rebuildsTheFormFromTheDocumentThatFailed() {
+            ProcessInstance processInstance = mockProcessInstanceLookup(BUSINESS_KEY);
+            PluginProcessLink link = mockDynamicDocumentLink(ACTIVITY_ID, null);
+            mockProcessLinkServiceForActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID, link);
+            mockPluginInstance(link);
+            mockTaskQueryReturnsEmpty();
+
+            when(runtimeService.getVariable(PROCESS_INSTANCE_ID, "epistolaLetter")).thenReturn(Map.of(
+                    "catalogId", CATALOG_ID,
+                    "templateId", TEMPLATE_ID,
+                    "data", Map.of("name", "Jansen")));
+            when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID))
+                    .thenReturn(new TemplateDetails(TEMPLATE_ID, "Besluit",
+                            List.of(new TemplateField("name", "name", "string",
+                                    TemplateField.FieldType.SCALAR, true, null, List.of()))));
+            when(formioFormGenerator.generateForm(any(), any())).thenReturn(objectMapper.createObjectNode()
+                    .set("components", objectMapper.createArrayNode()));
+
+            ObjectNode form = retryFormService.generateRetryForm(
+                    PROCESS_INSTANCE_ID, null, ACTIVITY_ID);
+
+            assertThat(form).isNotNull();
+            ArgumentCaptor<Map<String, Object>> data = ArgumentCaptor.forClass(Map.class);
+            verify(formioFormGenerator).generateForm(any(), data.capture());
+            assertThat(data.getValue())
+                    .describedAs("the values that failed come back for the employee to correct")
+                    .containsEntry("name", "Jansen");
+            verify(jsonataMappingService, never())
+                    .evaluate(any(app.epistola.valtimo.mapping.EvaluationContext.class));
+        }
+
+        @Test
+        void saysSoWhenTheDocumentIsNoLongerOnTheVariable() {
+            mockProcessInstanceLookup(BUSINESS_KEY);
+            PluginProcessLink link = mockDynamicDocumentLink(ACTIVITY_ID, "mijnBrief");
+            mockProcessLinkServiceForActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID, link);
+            mockTaskQueryReturnsEmpty();
+            when(runtimeService.getVariable(PROCESS_INSTANCE_ID, "mijnBrief")).thenReturn(null);
+
+            assertThatThrownBy(() -> retryFormService.generateRetryForm(
+                    PROCESS_INSTANCE_ID, null, ACTIVITY_ID))
+                    .isInstanceOf(RetryFormService.RetryFormException.class)
+                    .hasMessageContaining("mijnBrief");
+        }
+
+        private PluginProcessLink mockDynamicDocumentLink(String activityId, String letterVariable) {
+            PluginProcessLink link = mock(PluginProcessLink.class);
+            lenient().when(link.getActivityId()).thenReturn(activityId);
+            lenient().when(link.getPluginActionDefinitionKey())
+                    .thenReturn("epistola-generate-dynamic-document");
+            ObjectNode actionProps = objectMapper.createObjectNode();
+            actionProps.put("resultProcessVariable", "generationResult");
+            if (letterVariable != null) {
+                actionProps.put("letterVariable", letterVariable);
+            }
+            lenient().when(link.getActionProperties()).thenReturn(actionProps);
+            // Opaque to this test, as in the sibling helper below.
+            lenient().when(link.getPluginConfigurationId()).thenReturn(mock());
+            return link;
+        }
     }
 
     @Nested

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A failed dynamic document can be retried.** `epistola-retry-form` rebuilt a failed generation's
+  form from the process link's own template and mapping, so it covered `epistola-generate-document`
+  only — a composed letter that failed had no retry path and the employee composed it again from
+  scratch (#154). Where the template and data come from is now a **source** the retry form asks,
+  with one implementation per kind of activity, so covering the dynamic action was an
+  implementation rather than a second service (ADR 0007).
+
+  The two sources differ in one way worth knowing: a configured activity **re-evaluates** its
+  mapping, picking up whatever the case has learned since the failure, while a dynamic document is
+  read back **exactly as it was going to be sent** — re-deriving it would mean composing it again,
+  which is what the employee is being spared.
+
 ### Changed
 
 - **Upgraded Valtimo from `13.47.0` to `13.48.0` (backend + frontend).** No toolchain change: Spring
