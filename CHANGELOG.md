@@ -25,6 +25,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Letter composer hardening.** Eight defects found by working through the edges rather than the
+  happy path, each reproduced by a failing test first:
+  - A **cleared field** made a letter unreadable: `Map.copyOf` rejects a null value, so the generate
+    action threw `NullPointerException` with no message. Nulls are kept — "cleared" and "never
+    offered" are different things to a rule reading them.
+  - A letter **aliased the process variable's own map**, so a later activity could change what it
+    said it had sent, after sending.
+  - Write-back applied the rules of **every composer on the case type**, whatever letter was sent.
+    The generate action now names the variable it read, and only the composer writing it
+    contributes rules.
+  - One destination the case refused **lost every other value** in the same write. The write now
+    falls back to one destination at a time, salvaging what it can and naming what it cannot.
+  - A destination with **no resolver prefix** (`besluit` rather than `doc:/besluit`) is refused
+    where it can be reported against the component that declared it.
+  - Write-back's documented **"never throws"** did not hold for a failure reading configuration —
+    which would fail the activity, and a retry sends a second letter.
+  - One **malformed form hid every composer** on the case type, which for write-back reads as "this
+    case saves nothing".
+  - `prepare` returned a **raw 500** when Epistola could not describe the template (catalog removed,
+    template renamed, Epistola down) or when the author's own mapping failed. Both now answer 422
+    with a message saying which it is, so the right person is called.
+  - A **slow earlier preview overwrote a newer one**, showing a letter that did not match what was
+    typed.
+
+### Fixed
+
 - **The letter composer says what is wrong with an input in the reader's language, and never shows
   a regular expression.** The contract's constraints reach the generated form, so the browser
   already checks them as the employee types — but it reported the failure with Form.io's English
