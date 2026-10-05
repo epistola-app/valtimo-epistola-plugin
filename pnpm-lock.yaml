@@ -239,6 +239,9 @@ importers:
       '@valtimo/bootstrap':
         specifier: 13.48.0
         version: 13.48.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
+      '@valtimo/building-block-management':
+        specifier: 13.48.0
+        version: 13.48.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@typescript-eslint/types@8.57.2)
       '@valtimo/case':
         specifier: 13.48.0
         version: 13.48.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
@@ -3955,6 +3958,12 @@ packages:
 
   '@valtimo/bootstrap@13.48.0':
     resolution: {integrity: sha512-bEpzQu9pH4aOGBN85uo0FJmCIIPXBLfY/ejkLtfpHV27fP8/DkHZyRXSXfYmQ1V8oYKCRNahVtiZyIZfspIxyg==}
+    peerDependencies:
+      '@angular/common': 19.2.25
+      '@angular/core': 19.2.25
+
+  '@valtimo/building-block-management@13.48.0':
+    resolution: {integrity: sha512-Fn3800rSPKJbvCM4ItEeRpFYnZDBgcatDsfdzBLyPMB0BfWS8aNeisT1TIrz+YnwWtZYTfKdA00VmjCPNiaXTw==}
     peerDependencies:
       '@angular/common': 19.2.25
       '@angular/core': 19.2.25
@@ -13399,6 +13408,16 @@ snapshots:
       '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
       '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
       tslib: 2.8.1
+
+  '@valtimo/building-block-management@13.48.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(@typescript-eslint/types@8.57.2)':
+    dependencies:
+      '@angular/common': 19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2)
+      '@angular/core': 19.2.25(rxjs@7.8.2)(zone.js@0.15.1)
+      ajv: 8.18.0
+      tslib: 2.8.1
+      vanilla-jsoneditor: 3.10.0(@typescript-eslint/types@8.57.2)
+    transitivePeerDependencies:
+      - '@typescript-eslint/types'
 
   '@valtimo/case-management@13.48.0(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))':
     dependencies:

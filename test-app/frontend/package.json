@@ -43,6 +43,7 @@
     "@valtimo/account": "13.48.0",
     "@valtimo/analyse": "13.48.0",
     "@valtimo/bootstrap": "13.48.0",
+    "@valtimo/building-block-management": "13.48.0",
     "@valtimo/case": "13.48.0",
     "@valtimo/case-management": "13.48.0",
     "@valtimo/case-migration": "13.48.0",

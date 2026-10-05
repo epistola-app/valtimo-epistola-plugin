@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Upgraded Valtimo from `13.47.0` to `13.48.0` (backend + frontend).** No toolchain change: Spring
+  Boot, Java, Gradle and Kotlin are unchanged, and the Epistola client stays at `1.4.0`.
+
+  The upgrade needs one package Renovate cannot add on its own:
+  `@valtimo/building-block-management`. `@valtimo/case-management@13.48.0` imports it but declares it
+  neither as a dependency nor as a peerDependency, so the build fails with
+  `Can't resolve '@valtimo/building-block-management'` — naming the importing package rather than the
+  missing one. It is not in the release notes either. See #177, which also records the check worth
+  running on the next bump.
+
+  Two 13.48 changes touch what this plugin relies on, both verified rather than assumed: a fix to
+  selecting an alternate start process (the ad-hoc letter composer runs on a start form) and faster
+  loading of multi-widget case tabs (the demo's Algemeen tab).
+
 ### Fixed
 
 - **The letter composer says what is wrong with an input in the reader's language, and never shows
