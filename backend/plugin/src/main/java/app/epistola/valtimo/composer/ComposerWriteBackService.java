@@ -23,7 +23,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.document.domain.impl.JsonSchemaDocumentId;
 import com.ritense.document.service.DocumentService;
 import com.ritense.valueresolver.ValueResolverService;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -102,6 +104,17 @@ public class ComposerWriteBackService {
      * @param submittedLetter the composer's value, as it arrived on the submission
      */
     public void apply(UUID documentId, Object submittedLetter) {
+        apply(documentId, submittedLetter, null);
+    }
+
+    /**
+     * Apply the write-back, using the rules of the composer that wrote {@code letterVariable}.
+     *
+     * @param letterVariable the process variable the letter arrived on, or {@code null} when the
+     *                       caller cannot say — then every composer on the case type is consulted,
+     *                       which is what this did before composers could be told apart
+     */
+    public void apply(UUID documentId, Object submittedLetter, String letterVariable) {
         if (documentId == null || submittedLetter == null) {
             return;
         }
@@ -111,17 +124,15 @@ public class ComposerWriteBackService {
         // wrote nothing: `from` is for a value that arrived on a submission and rejects anything
         // that is not one — including, absurdly, a ComposedLetter.
         if (submittedLetter instanceof ComposedLetter composed) {
-            apply(documentId, composed);
-            return;
-        }
-
-        Map<String, String> rules = rulesFor(documentId);
-        if (rules.isEmpty()) {
+            apply(documentId, composed, letterVariable);
             return;
         }
 
         ComposedLetter letter;
         try {
+            // Reading the letter before looking for rules: cheap, and it keeps every path that can
+            // throw inside the overload that guarantees it does not. Looking for rules first used
+            // to short-circuit a letter nobody writes back, and bought a hole in that guarantee.
             letter = ComposedLetter.from(submittedLetter, "epistola:" + SUBMITTED_KEY, objectMapper);
         } catch (RuntimeException e) {
             log.warn("Letter composer write-back skipped for case {}: the submitted letter could not "
@@ -129,7 +140,7 @@ public class ComposerWriteBackService {
             return;
         }
 
-        apply(documentId, letter);
+        apply(documentId, letter, letterVariable);
     }
 
     /**
@@ -142,29 +153,84 @@ public class ComposerWriteBackService {
      * @param letter     the letter as it was sent to Epistola
      */
     public void apply(UUID documentId, ComposedLetter letter) {
+        apply(documentId, letter, null);
+    }
+
+    /**
+     * Apply the write-back for a letter that has already been read, using the rules of the composer
+     * that wrote {@code letterVariable}.
+     */
+    public void apply(UUID documentId, ComposedLetter letter, String letterVariable) {
         if (documentId == null || letter == null) {
             return;
         }
 
-        Map<String, String> rules = rulesFor(documentId);
-        if (rules.isEmpty()) {
-            return;
-        }
+        // The whole method, because of what "never throws" is protecting: by the time this runs the
+        // letter is with Epistola and cannot be unsent, so throwing would fail the activity and a
+        // retry would send a second one. Reading the configuration touches a database and can fail
+        // like anything else; a lost write-back is the cheaper failure.
+        try {
+            Map<String, String> rules = rulesFor(documentId, letterVariable);
+            if (rules.isEmpty()) {
+                return;
+            }
 
-        Map<String, Object> resolved = resolve(rules, letter, documentId);
-        if (resolved.isEmpty()) {
-            log.debug("Letter composer write-back for case {} resolved no values", documentId);
-            return;
-        }
+            Map<String, Object> resolved = resolve(rules, letter, documentId);
+            if (resolved.isEmpty()) {
+                log.debug("Letter composer write-back for case {} resolved no values", documentId);
+                return;
+            }
 
+            write(documentId, resolved);
+        } catch (RuntimeException e) {
+            log.error("Letter composer write-back failed for case {}: {}", documentId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Write the resolved values, keeping whatever can be written.
+     *
+     * <p>In one call, because several {@code doc:} destinations then land in a single document
+     * save rather than one version of the case per rule. But one destination this case cannot
+     * accept — a path its schema does not declare, a resolver that refuses — fails that whole
+     * call, and every other value is lost with it. {@link #resolve} already holds the opposite
+     * principle for expressions ("one bad expression should not cost the others"); this is the
+     * same principle applied to the write.
+     *
+     * <p>So on failure each destination is attempted on its own, which both salvages the good ones
+     * and names the bad one. Re-writing a value that already landed in the failed batch is
+     * harmless: writing the same value twice says the same thing.
+     */
+    private void write(UUID documentId, Map<String, Object> resolved) {
         try {
             valueResolverService.handleValues(documentId, resolved);
             log.debug("Letter composer write-back wrote {} value(s) to case {}: {}",
                     resolved.size(), documentId, resolved.keySet());
+            return;
         } catch (RuntimeException e) {
-            log.error("Letter composer write-back could not write {} to case {}: {}",
-                    resolved.keySet(), documentId, e.getMessage(), e);
+            if (resolved.size() == 1) {
+                log.error("Letter composer write-back could not write {} to case {}: {}",
+                        resolved.keySet(), documentId, e.getMessage(), e);
+                return;
+            }
+            log.warn("Letter composer write-back could not write {} value(s) to case {} in one go "
+                            + "({}); trying them one at a time", resolved.size(), documentId, e.getMessage());
         }
+
+        List<String> failed = new ArrayList<>();
+        List<String> written = new ArrayList<>();
+        resolved.forEach((destination, value) -> {
+            try {
+                valueResolverService.handleValues(documentId, Map.of(destination, value));
+                written.add(destination);
+            } catch (RuntimeException e) {
+                failed.add(destination);
+                log.error("Letter composer write-back could not write '{}' to case {}: {}",
+                        destination, documentId, e.getMessage());
+            }
+        });
+        log.info("Letter composer write-back on case {}: wrote {}, could not write {}",
+                documentId, written, failed);
     }
 
     /**
@@ -174,18 +240,50 @@ public class ComposerWriteBackService {
      * resolve: keying by destination makes one writer per case path the representable thing, and
      * the first rule found wins with a warning so the result is at least stable.
      */
-    private Map<String, String> rulesFor(UUID documentId) {
+    private Map<String, String> rulesFor(UUID documentId, String letterVariable) {
         String caseDefinitionKey = caseDefinitionKeyOf(documentId);
         if (caseDefinitionKey == null) {
             return Map.of();
         }
 
+        List<LetterComposerConfiguration> composers =
+                configurationResolver.forCaseDefinition(caseDefinitionKey);
+        if (letterVariable != null && !letterVariable.isBlank()) {
+            List<LetterComposerConfiguration> claiming = composers.stream()
+                    .filter(c -> writes(c, letterVariable))
+                    .toList();
+            if (claiming.isEmpty()) {
+                // Deliberately not falling back to every composer: applying rules written for a
+                // different letter is worse than applying none, and silently doing it would be
+                // very hard to see from the case afterwards.
+                if (composers.stream().anyMatch(c -> c.writeBack() != null && !c.writeBack().isEmpty())) {
+                    log.warn("Letter composer write-back on case type '{}' found no composer writing "
+                                    + "to '{}'; the rules declared by {} are not applied",
+                            caseDefinitionKey, letterVariable,
+                            composers.stream().map(LetterComposerConfiguration::componentKey).toList());
+                }
+                return Map.of();
+            }
+            composers = claiming;
+        }
+
         Map<String, String> rules = new LinkedHashMap<>();
-        for (LetterComposerConfiguration configuration : configurationResolver.forCaseDefinition(caseDefinitionKey)) {
+        for (LetterComposerConfiguration configuration : composers) {
             if (configuration.writeBack() == null) {
                 continue;
             }
             configuration.writeBack().forEach((destination, expression) -> {
+                // Also checked when the form is parsed, where it can be reported against the
+                // component that declared it. Repeated here because this is the last point before
+                // a write: a destination naming no resolver fails the call, and a configuration
+                // can reach this service without having come through the parser.
+                if (destination == null || destination.indexOf(':') <= 0
+                        || destination.indexOf(':') == destination.length() - 1) {
+                    log.warn("Letter composer write-back on case type '{}' ignores destination '{}': "
+                            + "it names no value resolver (expected doc:/… or pv:…)",
+                            caseDefinitionKey, destination);
+                    return;
+                }
                 String existing = rules.putIfAbsent(destination, expression);
                 if (existing != null && !existing.equals(expression)) {
                     log.warn("Two letter composers on case type '{}' write to '{}' with different "
@@ -239,6 +337,18 @@ public class ComposerWriteBackService {
             }
         });
         return resolved;
+    }
+
+    /**
+     * Whether this composer is the one that wrote that process variable.
+     *
+     * <p>A composer's key is the form field it occupies, which for a composer is a {@code pv:}
+     * destination — that is how the letter reaches the process at all. The generate action knows
+     * the variable by its bare name, so both spellings match.
+     */
+    private static boolean writes(LetterComposerConfiguration configuration, String letterVariable) {
+        String key = configuration.componentKey();
+        return key != null && (key.equals(letterVariable) || key.equals("pv:" + letterVariable));
     }
 
     private String caseDefinitionKeyOf(UUID documentId) {

@@ -32,7 +32,19 @@ public class ComposerException extends RuntimeException {
         /** Written by a newer plugin than this one, so reading it could mean misreading it. */
         UNSUPPORTED_SCHEMA,
         /** The letter needs a value the composer cannot generate an input for. */
-        UNSUPPORTED_FIELD
+        UNSUPPORTED_FIELD,
+        /**
+         * Epistola could not describe the template: a catalog removed from the connection, a
+         * template renamed, or Epistola being unreachable. Nothing the caller can fix by asking
+         * differently, so it is reported like the other environment problems rather than as a
+         * server error.
+         */
+        TEMPLATE_UNAVAILABLE,
+        /**
+         * The composer's own mapping could not be evaluated. The form author's mistake rather than
+         * the employee's, and the message should make that plain so the right person is called.
+         */
+        MAPPING_FAILED
     }
 
     private final Reason reason;

@@ -128,6 +128,45 @@ class LetterComposerServiceTest {
         return new TemplateField(name, name, "string", FieldType.SCALAR, true, null, List.of());
     }
 
+    /**
+     * Epistola being unable to describe the template is an environment problem, and the employee
+     * should be told that rather than shown a 500.
+     *
+     * <p>It is the common shape of a catalog that was removed from the connection, a template that
+     * was renamed, or Epistola being down — none of which the caller can fix by asking differently.
+     * Preview already wraps this; prepare did not, so the first thing an employee does with a
+     * broken configuration produced an unhandled server error.
+     */
+    @Test
+    void saysSoWhenEpistolaCannotDescribeTheTemplate() {
+        offering(configuration(offered("besluit", "Besluit", null)), "besluit");
+        when(jsonataMappingService.evaluate(any())).thenReturn(Map.of("naam", "Jansen"));
+        when(epistolaService.getTemplateDetails(anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit")))
+                .thenThrow(new RuntimeException("Catalog 'gemeente' not found"));
+
+        assertThatThrownBy(() -> service.prepare(CONTEXT, null, "besluit"))
+                .isInstanceOf(ComposerException.class)
+                .hasMessageContaining("besluit")
+                .extracting(e -> ((ComposerException) e).getReason())
+                .isEqualTo(ComposerException.Reason.TEMPLATE_UNAVAILABLE);
+    }
+
+    /**
+     * A baseline mapping that cannot be evaluated is the form author's mistake, not the employee's,
+     * and the message should say which it is.
+     */
+    @Test
+    void saysSoWhenTheComposersOwnMappingFails() {
+        offering(configuration(offered("besluit", "Besluit", null)), "besluit");
+        when(jsonataMappingService.evaluate(any()))
+                .thenThrow(new RuntimeException("Unexpected token at position 7"));
+
+        assertThatThrownBy(() -> service.prepare(CONTEXT, null, "besluit"))
+                .isInstanceOf(ComposerException.class)
+                .extracting(e -> ((ComposerException) e).getReason())
+                .isEqualTo(ComposerException.Reason.MAPPING_FAILED);
+    }
+
     @Test
     void asksOnlyForTheFieldsTheMappingCouldNotFill() {
         offering(configuration(offered("besluit", "Besluit", null)), "besluit");

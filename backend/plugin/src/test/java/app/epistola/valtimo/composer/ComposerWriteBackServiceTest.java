@@ -18,9 +18,12 @@
 package app.epistola.valtimo.composer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -101,6 +104,102 @@ class ComposerWriteBackServiceTest {
         ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
         verify(valueResolverService).handleValues(eq(DOCUMENT_ID), captor.capture());
         return captor.getValue();
+    }
+
+    @Test
+    @DisplayName("a failure finding the rules does not fail the letter")
+    void neverThrows() {
+        // The contract this method documents, and the reason for it: by the time write-back runs
+        // the letter is with Epistola and cannot be unsent. Throwing here would fail the activity,
+        // and a retry would send a second letter. Reading the configuration can fail like anything
+        // else that touches a database.
+        when(resolver.forCaseDefinition(CASE_KEY)).thenThrow(new RuntimeException("database is gone"));
+
+        assertThatCode(() -> service.apply(
+                DOCUMENT_ID, letter(Map.of(), Map.of("decisionType", "gegrond")), "epistolaLetter"))
+                .doesNotThrowAnyException();
+
+        verify(valueResolverService, never()).handleValues(any(UUID.class), any());
+    }
+
+    @Test
+    @DisplayName("only the composer that produced this letter decides where its values go")
+    void usesTheRulesOfTheComposerTheLetterCameFrom() {
+        // A case type may carry several composers — the demo has three. Applying all of their rules
+        // to whichever letter was generated means a rule written for one letter is evaluated
+        // against another, and `$letter.x` is not nothing just because it came from the wrong
+        // letter. The letter arrives on a named process variable, and a composer declares the key
+        // it writes to, so there is no need to guess.
+        when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(
+                composerWriting("pv:epistolaLetter", Map.of("pv:uitBrief", "$inputs.decisionType")),
+                composerWriting("pv:andereBrief", Map.of("pv:uitAndereBrief", "$inputs.decisionType"))));
+
+        service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("decisionType", "gegrond")), "epistolaLetter");
+
+        assertThat(written())
+                .containsEntry("pv:uitBrief", "gegrond")
+                .describedAs("the other composer's rule is not this letter's business")
+                .doesNotContainKey("pv:uitAndereBrief");
+    }
+
+    @Test
+    @DisplayName("a letter whose variable matches no composer writes nothing")
+    void writesNothingWhenNoComposerClaimsTheVariable() {
+        // Writing from a composer that did not produce this letter is worse than writing nothing,
+        // so the mismatch is reported rather than papered over by falling back to every composer.
+        when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(
+                composerWriting("pv:andereBrief", Map.of("pv:uitAndereBrief", "$inputs.decisionType"))));
+
+        service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("decisionType", "gegrond")), "epistolaLetter");
+
+        verify(valueResolverService, never()).handleValues(any(UUID.class), any());
+    }
+
+    private static LetterComposerConfiguration composerWriting(String componentKey, Map<String, String> writeBack) {
+        return new LetterComposerConfiguration(
+                componentKey, null, UUID.randomUUID(), "gemeente", null,
+                List.of(new LetterComposerConfiguration.OfferedTemplate("gemeente", "besluit", "Besluit", null)),
+                false,
+                writeBack);
+    }
+
+    @Test
+    @DisplayName("one destination Valtimo refuses does not cost the others")
+    void salvagesTheWritesThatCanBeMade() {
+        // resolve() already promises that one bad expression does not cost the others. The write
+        // did not keep that promise: every destination went in one handleValues call, so a single
+        // path the case schema refuses threw and took every other value with it — silently, since
+        // the failure is logged and swallowed by design.
+        declaring(Map.of(
+                "doc:/besluit/type", "$inputs.decisionType",
+                "doc:/niet/bestaand", "$inputs.motivation"));
+        org.mockito.Mockito.doThrow(new RuntimeException("case refuses /niet/bestaand"))
+                .when(valueResolverService)
+                .handleValues(eq(DOCUMENT_ID), argThat(values -> values != null && values.size() > 1));
+
+        service.apply(DOCUMENT_ID, letter(
+                Map.of(),
+                Map.of("decisionType", "gegrond", "motivation", "omdat het kan")));
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(valueResolverService, atLeastOnce()).handleValues(eq(DOCUMENT_ID), captor.capture());
+        Map<String, Object> salvaged = new java.util.LinkedHashMap<>();
+        captor.getAllValues().stream().filter(v -> v.size() == 1).forEach(salvaged::putAll);
+        assertThat(salvaged)
+                .describedAs("the value that could be written still reaches the case")
+                .containsEntry("doc:/besluit/type", "gegrond");
+    }
+
+    @Test
+    @DisplayName("a destination with no resolver prefix is refused before it can fail a write")
+    void refusesADestinationWithoutAPrefix() {
+        // `besluit` names nothing Valtimo can resolve. Letting it through means the whole write
+        // fails at runtime, far from the form that declared it.
+        declaring(Map.of("besluit", "$inputs.decisionType"));
+
+        service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("decisionType", "gegrond")));
+
+        verify(valueResolverService, never()).handleValues(any(UUID.class), any());
     }
 
     @Test

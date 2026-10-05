@@ -149,9 +149,32 @@ public record ComposedLetter(
                 schemaVersion,
                 catalogId,
                 templateId,
-                data instanceof Map<?, ?> dataMap ? (Map<String, Object>) dataMap : Map.of(),
-                inputs instanceof Map<?, ?> inputsMap ? Map.copyOf((Map<String, Object>) inputsMap) : Map.of(),
-                writeBack instanceof Map<?, ?> writeBackMap ? Map.copyOf((Map<String, Object>) writeBackMap) : Map.of());
+                copyOf(data),
+                copyOf(inputs),
+                copyOf(writeBack));
+    }
+
+    /**
+     * An unmodifiable snapshot that tolerates a null value.
+     *
+     * <p>Two things this fixes, both of which bit. {@code Map.copyOf} rejects a null value, so a
+     * letter with a field someone cleared could not be read at all — and it failed inside the
+     * generate action, where the only symptom is an activity throwing {@code NullPointerException}
+     * with no message. And the map handed in belongs to the process variable: keeping a reference
+     * to it would let a later activity change what this letter says it sent, after it was sent.
+     *
+     * <p>A null value is kept rather than dropped: "this field was cleared" and "this field was
+     * never offered" are different things, and a write-back rule reading the first should see
+     * nothing rather than see a stale value.
+     */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> copyOf(Object value) {
+        if (!(value instanceof Map<?, ?> map)) {
+            return Map.of();
+        }
+        Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
+        ((Map<String, Object>) map).forEach(snapshot::put);
+        return java.util.Collections.unmodifiableMap(snapshot);
     }
 
     /**

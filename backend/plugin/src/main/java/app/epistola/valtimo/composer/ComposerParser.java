@@ -170,17 +170,33 @@ public final class ComposerParser {
             var entry = fields.next();
             String destination = entry.getKey() == null ? null : entry.getKey().trim();
             String expression = text(entry.getValue());
-            if (destination == null || destination.isEmpty() || expression == null) {
+            if (destination == null || destination.isEmpty() || expression == null
+                    || !hasResolverPrefix(destination)) {
                 dropped++;
                 continue;
             }
             writeBack.put(destination, expression);
         }
         if (dropped > 0) {
-            log.warn("Letter composer '{}' declares {} write-back rule(s) with no destination or no "
-                    + "expression; they are ignored", componentKey, dropped);
+            log.warn("Letter composer '{}' declares {} write-back rule(s) that are ignored: a rule "
+                    + "needs a destination with a resolver prefix (doc:/… or pv:…) and an "
+                    + "expression", componentKey, dropped);
         }
         return Map.copyOf(writeBack);
+    }
+
+    /**
+     * Whether a destination names something Valtimo could resolve, as far as shape can tell.
+     *
+     * <p>Only that there is a non-empty prefix and something after it — `doc:/x`, `pv:y`. Which
+     * prefixes actually exist is per installation (whatever {@code ValueResolverFactory} beans are
+     * registered), so checking against a fixed list here would reject destinations an installation
+     * can serve. What this does catch is the authoring mistake with no prefix at all, which would
+     * otherwise surface as a failed write at generate time, far from the form that declared it.
+     */
+    private static boolean hasResolverPrefix(String destination) {
+        int colon = destination.indexOf(':');
+        return colon > 0 && colon < destination.length() - 1;
     }
 
     private static String text(JsonNode node) {

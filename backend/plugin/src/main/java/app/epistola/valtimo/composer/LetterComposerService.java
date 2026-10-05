@@ -139,8 +139,30 @@ public class LetterComposerService {
         LetterComposerConfiguration configuration = resolved.configuration();
         var offered = resolved.letter();
 
-        Map<String, Object> data = resolveData(ctx, configuration, offered);
-        TemplateDetails template = templateDetails(configuration, offered.catalogId(), templateId);
+        // Both of these reach outside this service, and both failed as unhandled server errors
+        // before: the first on the author's own JSONata, the second on whatever Epistola says.
+        // An employee opening a task is the first person to meet either, so each says which it is.
+        Map<String, Object> data;
+        try {
+            data = resolveData(ctx, configuration, offered);
+        } catch (ComposerException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                    "The letter composer's mapping could not be evaluated for '" + templateId
+                            + "': " + e.getMessage(), e);
+        }
+
+        TemplateDetails template;
+        try {
+            template = templateDetails(configuration, offered.catalogId(), templateId);
+        } catch (ComposerException e) {
+            throw e;
+        } catch (RuntimeException e) {
+            throw new ComposerException(ComposerException.Reason.TEMPLATE_UNAVAILABLE,
+                    "Epistola could not describe template '" + templateId + "' in catalog '"
+                            + offered.catalogId() + "': " + e.getMessage(), e);
+        }
 
         MissingFieldSelector.Selection selection = MissingFieldSelector.select(
                 template.fields(), data, !configuration.askOptionalFields());
