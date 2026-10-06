@@ -36,7 +36,7 @@ public final class EpistolaProcessVariables {
      * class rather than trusting the next person to remember.
      */
     public static final java.util.Set<String> GENERATING_ACTION_KEYS =
-            java.util.Set.of("epistola-generate-document", "epistola-generate-composed-document");
+            java.util.Set.of("epistola-generate-document", "epistola-generate-dynamic-document");
 
     private EpistolaProcessVariables() {}
 

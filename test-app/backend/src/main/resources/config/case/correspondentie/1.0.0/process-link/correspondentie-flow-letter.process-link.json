@@ -18,7 +18,7 @@
     "activityType": "bpmn:ServiceTask:start",
     "processLinkType": "plugin",
     "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
-    "pluginActionDefinitionKey": "epistola-generate-composed-document",
+    "pluginActionDefinitionKey": "epistola-generate-dynamic-document",
     "actionProperties": {
       "letterVariable": "epistolaFlowLetter",
       "resultProcessVariable": "epistolaResult"

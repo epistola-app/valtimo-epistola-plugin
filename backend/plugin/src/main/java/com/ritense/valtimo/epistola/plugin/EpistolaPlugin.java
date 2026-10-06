@@ -24,7 +24,7 @@ import app.epistola.valtimo.domain.DocumentStorageTarget;
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
-import app.epistola.valtimo.composer.ComposedLetter;
+import app.epistola.valtimo.domain.DynamicDocument;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
@@ -422,9 +422,9 @@ public class EpistolaPlugin {
      * @param resultProcessVariable The process variable to store the rich result object in
      */
     @PluginAction(
-            key = "epistola-generate-composed-document",
-            title = "Generate chosen letter",
-            description = "Render the letter the employee chose in a letter composer. The template, catalog and data all come from the process variable the composer wrote, so this action needs no template, catalog or mapping of its own.",
+            key = "epistola-generate-dynamic-document",
+            title = "Generate Dynamic Document",
+            description = "The catalog, template and data are chosen while the process runs and read from a process variable, rather than configured here — unlike Generate Document, where the author pins the template. A letter composer is one way to prepare that variable; a process that sets it itself is another.",
             activityTypes = {ActivityTypeWithEventName.SERVICE_TASK_START, ActivityTypeWithEventName.TASK_START}
     )
     public void generateComposedDocument(
@@ -439,7 +439,7 @@ public class EpistolaPlugin {
                 : letterVariable;
         validateProcessVariableName("resultProcessVariable", resultProcessVariable);
 
-        ComposedLetter letter = ComposedLetter.from(
+        DynamicDocument letter = DynamicDocument.from(
                 execution.getVariable(variableName), variableName, objectMapper);
 
         var scalarEvalContext = buildEvalCtx(execution, null);
@@ -470,7 +470,10 @@ public class EpistolaPlugin {
         // Only now: submitAndRecord throws if Epistola refused the request, so reaching this line
         // means the letter is sent and irreversible. Writing before it would update the case for a
         // letter that never went out; writing after an exception is impossible, which is the point.
-        applyWriteBack(execution, letter, variableName);
+        // The raw value, not the parsed document: write-back reads the composer's own view of the
+        // same variable — what a person typed, and where the composer says it belongs — and this
+        // action has no business knowing about either.
+        applyWriteBack(execution, execution.getVariable(variableName), variableName);
     }
 
     /**
@@ -489,7 +492,7 @@ public class EpistolaPlugin {
      * cannot be made is recorded beside the result and the process carries on with a letter that
      * was genuinely sent.
      */
-    private void applyWriteBack(DelegateExecution execution, ComposedLetter letter, String letterVariable) {
+    private void applyWriteBack(DelegateExecution execution, Object letter, String letterVariable) {
         if (writeBackService == null) {
             return;
         }

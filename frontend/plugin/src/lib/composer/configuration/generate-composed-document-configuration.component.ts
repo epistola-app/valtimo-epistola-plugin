@@ -50,7 +50,7 @@ export function isGenerateComposedDocumentConfigValid(
  * action from generate-document rather than a mode of it.
  */
 @Component({
-  selector: 'epistola-generate-composed-document-configuration',
+  selector: 'epistola-generate-dynamic-document-configuration',
   templateUrl: './generate-composed-document-configuration.component.html',
   standalone: true,
   imports: [CommonModule, PluginTranslatePipeModule, FormModule, InputModule],

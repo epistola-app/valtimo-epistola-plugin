@@ -240,11 +240,42 @@ public class EpistolaPluginAutoConfiguration {
             JsonataMappingService jsonataMappingService,
             com.ritense.document.service.DocumentService documentService,
             FormioFormGenerator formioFormGenerator,
+            java.util.List<app.epistola.valtimo.service.generation.GenerationSubjectSource>
+                    generationSubjectSources,
             ObjectMapper objectMapper
     ) {
         return new RetryFormService(pluginService, epistolaService, runtimeService,
                 taskService, processLinkService, jsonataMappingService, documentService,
-                formioFormGenerator, objectMapper);
+                formioFormGenerator, generationSubjectSources, objectMapper);
+    }
+
+    /**
+     * Where a generation activity's template and data come from, one bean per kind of activity.
+     *
+     * <p>Injected as a list so adding a source is adding a bean: the retry form picks the one whose
+     * {@code supports} matches the activity's action, and nothing else has to be edited (ADR 0007).
+     */
+    @Bean
+    @ConditionalOnMissingBean(
+            app.epistola.valtimo.service.generation.ProcessLinkGenerationSource.class)
+    public app.epistola.valtimo.service.generation.ProcessLinkGenerationSource
+            processLinkGenerationSource(
+            JsonataMappingService jsonataMappingService,
+            RuntimeService runtimeService,
+            com.ritense.document.service.DocumentService documentService,
+            ObjectMapper objectMapper
+    ) {
+        return new app.epistola.valtimo.service.generation.ProcessLinkGenerationSource(
+                jsonataMappingService, runtimeService, documentService, objectMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(
+            app.epistola.valtimo.service.generation.DynamicDocumentGenerationSource.class)
+    public app.epistola.valtimo.service.generation.DynamicDocumentGenerationSource
+            dynamicDocumentGenerationSource(RuntimeService runtimeService, ObjectMapper objectMapper) {
+        return new app.epistola.valtimo.service.generation.DynamicDocumentGenerationSource(
+                runtimeService, objectMapper);
     }
 
     @Bean

@@ -25,6 +25,9 @@ import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import app.epistola.valtimo.service.generation.GenerationSubject;
+import app.epistola.valtimo.service.generation.GenerationSubjectException;
+import app.epistola.valtimo.service.generation.GenerationSubjectSource;
 import com.ritense.plugin.domain.PluginProcessLink;
 import com.ritense.plugin.service.PluginService;
 import com.ritense.processlink.domain.ProcessLink;
@@ -59,6 +62,8 @@ public class RetryFormService {
     private final JsonataMappingService jsonataMappingService;
     private final com.ritense.document.service.DocumentService documentService;
     private final FormioFormGenerator formioFormGenerator;
+    private final java.util.List<app.epistola.valtimo.service.generation.GenerationSubjectSource>
+            generationSubjectSources;
     private final ObjectMapper objectMapper;
 
     /**
@@ -77,33 +82,21 @@ public class RetryFormService {
         PluginProcessLink originalLink = resolveSourceProcessLink(
                 processDefinitionId, processInstanceId, sourceActivityId);
 
-        ObjectNode actionProperties = originalLink.getActionProperties();
-        String configuredTemplateId = actionProperties.path("templateId").asText(null);
-        if (configuredTemplateId == null || configuredTemplateId.isBlank()) {
-            throw new RetryFormException(RetryFormException.Reason.MISSING_TEMPLATE,
-                    "No templateId found in process link action properties for activity '"
-                            + originalLink.getActivityId() + "'");
-        }
-
-        var actionConfig = GenerateDocumentActionConfigurationRegistry.parse(actionProperties);
-        String catalogId = actionConfig.catalogId();
-        String templateId = actionConfig.templateId();
-        String dataMapping = actionConfig.dataMapping();
-
         String effectiveDocumentId = resolveDocumentId(documentId, processInstance);
-        var evalCtx = app.epistola.valtimo.mapping.EvaluationContext.builder()
-                .expression(dataMapping)
-                .documentResolver(this::loadDocumentContent)
-                .processVariableResolver(key -> runtimeService.getVariable(processInstanceId, key))
-                .documentId(effectiveDocumentId)
-                .build();
-        Map<String, Object> resolvedData = jsonataMappingService.evaluate(evalCtx);
+
+        // What that activity was rendering, however it knew: a process link carries its own
+        // template and mapping, a dynamic document was told by whoever set the variable. Asking a
+        // source rather than reading action properties here is what lets this one service cover
+        // both — see ADR 0007.
+        GenerationSubject subject = subjectOf(originalLink, processInstanceId, effectiveDocumentId);
+        String templateId = subject.templateId();
+        Map<String, Object> resolvedData = subject.data();
 
         EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
                 originalLink.getPluginConfigurationId());
-        String effectiveCatalogId = catalogId;
         TemplateDetails template = epistolaService.getTemplateDetails(
-                plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(), effectiveCatalogId, templateId);
+                plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(),
+                subject.catalogId(), templateId);
 
         ObjectNode form = formioFormGenerator.generateForm(template.fields(), resolvedData);
 
@@ -122,6 +115,31 @@ public class RetryFormService {
                     "Process instance not found: " + processInstanceId);
         }
         return processInstance;
+    }
+
+    /**
+     * Ask the source that understands this activity what it was rendering.
+     *
+     * <p>Its own exceptions are translated here rather than thrown through, so a caller of the
+     * retry form keeps getting {@link RetryFormException} and the reasons it already knows.
+     */
+    private GenerationSubject subjectOf(PluginProcessLink link, String processInstanceId, String documentId) {
+        String actionKey = link.getPluginActionDefinitionKey();
+        GenerationSubjectSource source = generationSubjectSources.stream()
+                .filter(candidate -> candidate.supports(actionKey))
+                .findFirst()
+                .orElseThrow(() -> new RetryFormException(RetryFormException.Reason.MISSING_TEMPLATE,
+                        "Activity '" + link.getActivityId() + "' runs '" + actionKey
+                                + "', which this plugin cannot rebuild a form for"));
+        try {
+            return source.resolve(link, processInstanceId, documentId);
+        } catch (GenerationSubjectException e) {
+            RetryFormException.Reason reason = switch (e.getReason()) {
+                case NO_TEMPLATE, UNREADABLE_DOCUMENT -> RetryFormException.Reason.MISSING_TEMPLATE;
+                case MAPPING_FAILED -> RetryFormException.Reason.MAPPING_FAILED;
+            };
+            throw new RetryFormException(reason, e.getMessage(), e);
+        }
     }
 
     private PluginProcessLink resolveSourceProcessLink(
@@ -223,10 +241,17 @@ public class RetryFormService {
             LINK_NOT_FOUND,
             AMBIGUOUS_ACTIVITY,
             MISSING_TEMPLATE,
-            NO_DOCUMENT_ID
+            NO_DOCUMENT_ID,
+            /** The mapping behind the failed generation could not be evaluated now either. */
+            MAPPING_FAILED
         }
 
         private final Reason reason;
+
+        public RetryFormException(Reason reason, String message, Throwable cause) {
+            super(message, cause);
+            this.reason = reason;
+        }
 
         public RetryFormException(Reason reason, String message) {
             super(message);

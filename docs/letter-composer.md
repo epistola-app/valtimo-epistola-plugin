@@ -30,14 +30,14 @@ Nothing else in the plugin depends on the composer, so it is kept together and s
 What it borrows, it borrows narrowly: the Epistola API, the JSONata mapping service, the Form.io
 form generator, and the start-form gate it shares with the document preview. Its generation step is
 an action on the plugin class, because Valtimo scans that class for actions, but the behaviour
-lives in the composer's own `ComposedLetter`.
+lives in the composer's own `DynamicDocument`.
 
 **Everything outside the module that knows it exists** — the whole list, so it stays short:
 
 | Where                                                                                           | Why                                                                                                                                                                                          |
 | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `EpistolaPluginAutoConfiguration` `@Import`s `EpistolaComposerConfiguration`                    | One line of wiring; the off switch lives inside the imported class                                                                                                                           |
-| `EpistolaPlugin` imports `ComposedLetter`                                                       | Valtimo scans the plugin class for `@PluginAction`s, so the action must be declared there. It reads the letter and delegates; no composer logic lives in it                                  |
+| `EpistolaPlugin` imports `DynamicDocument`                                                      | Valtimo scans the plugin class for `@PluginAction`s, so the action must be declared there. It reads the letter and delegates; no composer logic lives in it                                  |
 | `EpistolaRegistrationService` calls `registerEpistolaComposerComponents`                        | One entry point for all four Form.io components                                                                                                                                              |
 | `epistola.specification.ts` names the action's configurator and spreads `COMPOSER_TRANSLATIONS` | Valtimo consumes one specification object, so the composer's half is composed into it rather than written there — see `composer/composer.translations.ts`, and the spec that guards the seam |
 | `components/task-id-carrier.spec.ts` covers the composer too                                    | That suite is about Formio's serializer dropping schema equal to the default, which is a cross-cutting trap; it runs real formiojs with a harness not worth duplicating per component        |
@@ -218,13 +218,61 @@ The ordinary case: somewhere in the process an employee has to choose a letter.
 ```
 UserTask  choose-letter          → form "kies-brief"            (the composer)
                                     ↓  pv:epistolaLetter
-ServiceTask generate-chosen-letter → action "Generate chosen letter"
+ServiceTask generate-chosen-letter → action "Generate Dynamic Document"
 ```
 
 Demo: `correspondentie-letter-composer`. To build one: drop the component on the task's form, set
 its **Property name** to `pv:epistolaLetter`, choose the Epistola connection and the letters to
-offer, then add a service task with the **Generate chosen letter** action reading the same
+offer, then add a service task with the **Generate Dynamic Document** action reading the same
 variable. The action needs no template, catalog or mapping of its own — the letter carries them.
+
+### Without a composer at all
+
+The generate action renders a **document object**; a composer is one way to produce one, not the
+only way. Anything that can set a process variable can prepare a document — an earlier service task,
+an integration, an API caller starting the process — and the action renders it without knowing where
+it came from.
+
+The whole contract is three fields:
+
+```json
+{
+  "catalogId": "gemeente",
+  "templateId": "besluit-bezwaar",
+  "data": { "naam": "Jansen" }
+}
+```
+
+`schemaVersion` may be omitted (absent means 1). A JSON _string_ works as well as an object, since
+the engine hands back whichever the writer stored. From JVM code, build it rather than copying this
+literal — `DynamicDocument.of(catalogId, templateId, data)` is the same contract, kept
+in step with the reader by a round-trip test:
+
+```java
+execution.setVariable("epistolaLetter",
+        DynamicDocument.of("gemeente", "besluit-bezwaar", Map.of("naam", "Jansen")));
+```
+
+Everything else behaves as it does for a composed letter: the filename defaults to the template's
+id, the environment comes from the plugin configuration, and the rich result variable and the
+`jobPath` correlation locator are written the same way, so the async catch-event pattern works
+unchanged.
+
+A letter composer writes more than this onto the same variable — what the employee typed, and where
+those values also belong in the case — and `ComposedLetter` is that richer reading of it. Two types
+over one wire shape, because the extra fields were doing the explaining: a document a process
+prepared has no inputs and no write-back, and one type carrying them said otherwise every time
+someone read it.
+
+Two things such a document does **not** get, both by design rather than omission:
+
+- **No write-back.** The rules live on a composer, so a document no composer produced has nobody to
+  say where its values belong. Nothing is written and nothing is logged as wrong.
+- **No check that the template was meant to be offered.** `requireOffering` guards the browser-facing
+  prepare and preview endpoints; a BPMN action runs with the engine identity and trusts the process,
+  as the plugin's other actions do. A process can therefore render any template in any catalog its
+  plugin configuration can reach — which is the point of this shape, and worth knowing before using
+  it.
 
 ### A letter inside a form flow
 
@@ -478,14 +526,14 @@ also accepts the envelope that feature will use:
 { "schemaVersion": 1, "letters": [{ "templateId": "…", "catalogId": "…", "data": {} }] }
 ```
 
-Nothing writes it. `ComposedLetter.allFrom` reads both shapes, and `from` refuses more than one
+Nothing writes it. `DynamicDocument.allFrom` reads both shapes, and `from` refuses more than one
 letter with a sentence saying to offer a composer per letter — so the unbuilt behaviour fails
 loudly instead of generating the first and dropping the rest. When multi-letter lands it is a
 behaviour change, not a migration.
 
 ## Wiring the process
 
-One service task generates whatever was chosen, with the **`epistola-generate-composed-document`**
+One service task generates whatever was chosen, with the **`epistola-generate-dynamic-document`**
 action:
 
 ```json
@@ -717,7 +765,7 @@ the promise the composer makes. The rest are open.
   `componentKey` — and a generate task per key, which is how a task sends more than one letter
   today. What is not possible is letting the employee decide _how many_ go out: "pick two of these
   five and send both" needs the selection to be a list, the value to become `{ "letters": [ … ] }`
-  (which `ComposedLetter` refuses today, since it requires a template at the top level), and the
+  (which `DynamicDocument` refuses today, since it requires a template at the top level), and the
   generate step to loop or the process to fan out.
 
   If you do put several on one form, note that a composer left unchosen sets no variable at all,

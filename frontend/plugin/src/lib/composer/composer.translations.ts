@@ -24,7 +24,7 @@
  * should not leave its strings behind in a file that describes the rest of the plugin. The
  * specification spreads these into `pluginTranslations`, which is the one shape Valtimo consumes.
  *
- * <p>Includes the labels for the `epistola-generate-composed-document` action: it is declared on
+ * <p>Includes the labels for the `epistola-generate-dynamic-document` action: it is declared on
  * the plugin class because Valtimo scans that class for actions, but it exists only to render what
  * a composer chose.
  */
@@ -87,10 +87,13 @@ export const COMPOSER_TRANSLATIONS = {
     letterSetConnectionsFailed: 'De Epistola-verbindingen konden niet worden geladen.',
     letterSetCatalogsFailed: 'De catalogi van deze verbinding konden niet worden geladen.',
     letterSetTemplatesFailed: 'De sjablonen van deze catalogus konden niet worden geladen.',
-    'epistola-generate-composed-document': 'Genereer Gekozen Brief',
-    composedLetterVariable: 'Briefvariabele',
+    letterSetTemplateMissing:
+      'Deze brieven staan nog in deze component, maar bestaan niet meer in de catalogus. Een medewerker die er een kiest, krijgt een foutmelding.',
+    letterSetTemplateMissingDrop: 'Verwijderen uit de set',
+    'epistola-generate-dynamic-document': 'Genereer Dynamisch Document',
+    composedLetterVariable: 'Documentvariabele',
     composedLetterVariableTooltip:
-      'Naam van de procesvariabele waarin de briefkiezer de gekozen brief heeft gezet. Standaard epistolaLetter. De variabele bevat de catalogus, het sjabloon en de gegevens, dus deze actie heeft zelf geen sjabloon of mapping nodig.',
+      'Naam van de procesvariabele met het te genereren document. Standaard epistolaLetter. De variabele bevat de catalogus, het sjabloon en de gegevens, dus deze actie heeft zelf geen sjabloon of mapping nodig. Meestal gezet door een briefkiezer, maar een proces mag hem ook zelf vullen.',
     composedFilename: 'Bestandsnaam (optioneel)',
     composedFilenameTooltip:
       'JSONata-expressie voor de bestandsnaam. Leeg laten om de naam van het gekozen sjabloon te gebruiken.',
@@ -149,12 +152,15 @@ export const COMPOSER_TRANSLATIONS = {
     letterSetConnectionsFailed: 'Could not load the Epistola connections.',
     letterSetCatalogsFailed: 'Could not load the catalogs of this connection.',
     letterSetTemplatesFailed: 'Could not load the templates of this catalog.',
-    'epistola-generate-composed-document': 'Generate Chosen Letter',
-    composedLetterVariable: 'Letter variable',
+    letterSetTemplateMissing:
+      'These letters are still configured here but no longer exist in the catalog. An employee who picks one gets an error.',
+    letterSetTemplateMissingDrop: 'Remove from the set',
+    'epistola-generate-dynamic-document': 'Generate Dynamic Document',
+    composedLetterVariable: 'Document variable',
     composedLetterVariableTooltip:
-      'Name of the process variable the letter composer wrote the chosen letter to. Defaults to epistolaLetter. It holds the catalog, the template and the data, so this action needs no template or mapping of its own.',
+      'Name of the process variable holding the document to render. Defaults to epistolaLetter. It holds the catalog, the template and the data, so this action needs no template or mapping of its own. Usually written by a letter composer, but a process may set it itself.',
     composedFilename: 'Filename (optional)',
     composedFilenameTooltip:
-      "JSONata expression for the filename. Leave empty to use the chosen template's name.",
+      "JSONata expression for the filename. Leave empty to use the template's name.",
   },
 } as const;

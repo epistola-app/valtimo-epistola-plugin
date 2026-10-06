@@ -15,8 +15,11 @@
  *
  * SPDX-License-Identifier: EUPL-1.2
  */
-package app.epistola.valtimo.composer;
+package app.epistola.valtimo.domain;
 
+import app.epistola.valtimo.composer.ComposedLetter;
+import app.epistola.valtimo.composer.ComposerException;
+import app.epistola.valtimo.composer.ComposerSchema;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -26,7 +29,7 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class ComposedLetterTest {
+class DynamicDocumentTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -50,9 +53,9 @@ class ComposedLetterTest {
         raw.put("data", Map.of("naam", "Jansen"));
         raw.put("inputs", inputs);
 
-        ComposedLetter letter = ComposedLetter.from(raw, "epistolaLetter", objectMapper);
+        DynamicDocument letter = DynamicDocument.from(raw, "epistolaLetter", objectMapper);
 
-        assertThat(letter.inputs())
+        assertThat(ComposedLetter.from(raw, "epistolaLetter", objectMapper).inputs())
                 .describedAs("a cleared field is still part of what was typed")
                 .containsEntry("decisionType", "gegrond")
                 .containsEntry("motivation", null);
@@ -67,7 +70,7 @@ class ComposedLetterTest {
         raw.put("templateId", "besluit");
         raw.put("data", data);
 
-        ComposedLetter letter = ComposedLetter.from(raw, "epistolaLetter", objectMapper);
+        DynamicDocument letter = DynamicDocument.from(raw, "epistolaLetter", objectMapper);
 
         assertThat(letter.data()).containsEntry("naam", null);
     }
@@ -85,7 +88,7 @@ class ComposedLetterTest {
         raw.put("templateId", "besluit");
         raw.put("data", data);
 
-        ComposedLetter letter = ComposedLetter.from(raw, "epistolaLetter", objectMapper);
+        DynamicDocument letter = DynamicDocument.from(raw, "epistolaLetter", objectMapper);
         data.put("naam", "iemand anders");
 
         assertThat(letter.data())
@@ -93,9 +96,52 @@ class ComposedLetterTest {
                 .containsEntry("naam", "Jansen");
     }
 
+    /**
+     * What a process builds and what the action reads are the same thing, and this is where that
+     * is kept true. A round trip rather than two assertions: if either side drifts, the document a
+     * process prepared stops being renderable, and the only place that shows up is a failed
+     * activity in someone else's system.
+     */
+    @Test
+    void aPreparedDocumentIsReadBackAsOneLetter() {
+        Map<String, Object> prepared = DynamicDocument.of(
+                "gemeente", "besluit-bezwaar", Map.of("naam", "Jansen"));
+
+        DynamicDocument letter = DynamicDocument.from(prepared, "epistolaLetter", objectMapper);
+
+        assertThat(letter.catalogId()).isEqualTo("gemeente");
+        assertThat(letter.templateId()).isEqualTo("besluit-bezwaar");
+        assertThat(letter.data()).containsEntry("naam", "Jansen");
+        assertThat(letter.schemaVersion()).isEqualTo(ComposerSchema.CURRENT);
+        ComposedLetter asComposer = ComposedLetter.from(prepared, "epistolaLetter", objectMapper);
+        assertThat(asComposer.inputs())
+                .describedAs("a document a process prepared has no typed input")
+                .isEmpty();
+        assertThat(asComposer.writeBack())
+                .describedAs("and nothing says where its values belong")
+                .isEmpty();
+    }
+
+    @Test
+    void refusesAPreparedDocumentThatNamesNoTemplate() {
+        assertThatThrownBy(() -> DynamicDocument.of("gemeente", " ", Map.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("catalog and a template");
+    }
+
+    @Test
+    void preparesADocumentWithNoDataAtAll() {
+        // A template that needs nothing is a real template; null should not be a different case
+        // from empty for a caller assembling this by hand.
+        assertThat(DynamicDocument.from(
+                DynamicDocument.of("gemeente", "besluit", null),
+                "epistolaLetter", objectMapper).data())
+                .isEmpty();
+    }
+
     @Test
     void readsTheLetterAnObjectVariableHolds() {
-        ComposedLetter letter = ComposedLetter.from(
+        DynamicDocument letter = DynamicDocument.from(
                 Map.of("catalogId", "gemeente", "templateId", "besluit", "data", Map.of("naam", "Jansen")),
                 "epistolaLetter",
                 objectMapper);
@@ -108,7 +154,7 @@ class ComposedLetterTest {
     @Test
     void readsTheLetterAStringVariableHolds() {
         // A process may write the letter as JSON; Operaton hands back exactly what was stored.
-        ComposedLetter letter = ComposedLetter.from(
+        DynamicDocument letter = DynamicDocument.from(
                 "{\"catalogId\":\"gemeente\",\"templateId\":\"besluit\",\"data\":{\"naam\":\"Jansen\"}}",
                 "epistolaLetter",
                 objectMapper);
@@ -119,7 +165,7 @@ class ComposedLetterTest {
 
     @Test
     void acceptsALetterWithoutData() {
-        ComposedLetter letter = ComposedLetter.from(
+        DynamicDocument letter = DynamicDocument.from(
                 Map.of("catalogId", "gemeente", "templateId", "besluit"), "epistolaLetter", objectMapper);
 
         assertThat(letter.data()).isEmpty();
@@ -128,14 +174,14 @@ class ComposedLetterTest {
     @Test
     void failsLoudlyWhenTheVariableIsEmpty() {
         // Generating nothing would leave a process that looks like it sent a letter.
-        assertThatThrownBy(() -> ComposedLetter.from(null, "epistolaLetter", objectMapper))
+        assertThatThrownBy(() -> DynamicDocument.from(null, "epistolaLetter", objectMapper))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("epistolaLetter");
     }
 
     @Test
     void failsWhenTheLetterNamesNoTemplate() {
-        assertThatThrownBy(() -> ComposedLetter.from(
+        assertThatThrownBy(() -> DynamicDocument.from(
                 Map.of("data", Map.of("naam", "Jansen")), "epistolaLetter", objectMapper))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("names no catalog and template");
@@ -143,10 +189,10 @@ class ComposedLetterTest {
 
     @Test
     void failsOnAValueThatIsNotALetterAtAll() {
-        assertThatThrownBy(() -> ComposedLetter.from(42, "epistolaLetter", objectMapper))
+        assertThatThrownBy(() -> DynamicDocument.from(42, "epistolaLetter", objectMapper))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("not a composed letter");
-        assertThatThrownBy(() -> ComposedLetter.from("not json", "epistolaLetter", objectMapper))
+        assertThatThrownBy(() -> DynamicDocument.from("not json", "epistolaLetter", objectMapper))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("valid JSON");
     }
@@ -155,7 +201,7 @@ class ComposedLetterTest {
     void readsALetterThatPredatesTheSchemaVersion() {
         // A process instance composed before the field existed may still be waiting for its
         // generate task; an upgrade must not strand it.
-        ComposedLetter letter = ComposedLetter.from(
+        DynamicDocument letter = DynamicDocument.from(
                 Map.of("catalogId", "gemeente", "templateId", "besluit"),
                 "epistolaLetter",
                 objectMapper);
@@ -165,7 +211,7 @@ class ComposedLetterTest {
 
     @Test
     void readsTheVersionTheComposerStamped() {
-        ComposedLetter letter = ComposedLetter.from(
+        DynamicDocument letter = DynamicDocument.from(
                 Map.of("schemaVersion", 1, "catalogId", "gemeente", "templateId", "besluit"),
                 "epistolaLetter",
                 objectMapper);
@@ -177,7 +223,7 @@ class ComposedLetterTest {
     void refusesALetterWrittenByALaterPlugin() {
         // Generating the wrong letter is worse than not generating one: what a later schema means
         // by these fields is exactly what this plugin cannot know.
-        assertThatThrownBy(() -> ComposedLetter.from(
+        assertThatThrownBy(() -> DynamicDocument.from(
                 Map.of("schemaVersion", 99, "catalogId", "gemeente", "templateId", "besluit"),
                 "epistolaLetter",
                 objectMapper))
@@ -188,7 +234,7 @@ class ComposedLetterTest {
 
     @Test
     void refusesALetterWhoseVersionIsNotAVersion() {
-        assertThatThrownBy(() -> ComposedLetter.from(
+        assertThatThrownBy(() -> DynamicDocument.from(
                 "{\"schemaVersion\":\"tweede\",\"catalogId\":\"gemeente\",\"templateId\":\"besluit\"}",
                 "epistolaLetter",
                 objectMapper))
@@ -201,7 +247,7 @@ class ComposedLetterTest {
         // Nothing writes this yet — letting an employee choose how many letters go out is unbuilt
         // — but reading it is what keeps the shape open, so that feature is a behaviour change
         // rather than a breaking one.
-        var letters = ComposedLetter.allFrom(
+        var letters = DynamicDocument.allFrom(
                 Map.of("schemaVersion", 1, "letters", List.of(
                         Map.of("catalogId", "gemeente", "templateId", "besluit", "data", Map.of("a", 1)),
                         Map.of("catalogId", "landelijk", "templateId", "aanmaning"))),
@@ -216,7 +262,7 @@ class ComposedLetterTest {
 
     @Test
     void readsASingleLetterAsAListOfOne() {
-        var letters = ComposedLetter.allFrom(
+        var letters = DynamicDocument.allFrom(
                 Map.of("catalogId", "gemeente", "templateId", "besluit"), "epistolaLetter", objectMapper);
 
         assertThat(letters).hasSize(1);
@@ -226,7 +272,7 @@ class ComposedLetterTest {
     void refusesMoreThanOneLetterWithASentenceRatherThanDroppingTheRest() {
         // The shape is readable, the behaviour is not built. Generating the first and silently
         // discarding the others would be the worst of both.
-        assertThatThrownBy(() -> ComposedLetter.from(
+        assertThatThrownBy(() -> DynamicDocument.from(
                 Map.of("letters", List.of(
                         Map.of("catalogId", "gemeente", "templateId", "besluit"),
                         Map.of("catalogId", "gemeente", "templateId", "aanmaning"))),
@@ -239,7 +285,7 @@ class ComposedLetterTest {
 
     @Test
     void readsOneLetterFromTheEnvelopeShape() {
-        ComposedLetter letter = ComposedLetter.from(
+        DynamicDocument letter = DynamicDocument.from(
                 Map.of("letters", List.of(Map.of("catalogId", "gemeente", "templateId", "besluit"))),
                 "epistolaLetter",
                 objectMapper);
@@ -249,7 +295,7 @@ class ComposedLetterTest {
 
     @Test
     void refusesAnEmptyEnvelope() {
-        assertThatThrownBy(() -> ComposedLetter.from(
+        assertThatThrownBy(() -> DynamicDocument.from(
                 Map.of("letters", List.of()), "epistolaLetter", objectMapper))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("names no letters");

@@ -151,6 +151,28 @@ export interface LetterSet {
           </tr>
         </tbody>
       </table>
+      <div
+        *ngIf="missingTemplates.length"
+        class="letter-missing"
+        data-testid="epistola-letter-set-missing"
+      >
+        <p>{{ 'letterSetTemplateMissing' | pluginTranslate: pluginId | async }}</p>
+        <ul>
+          <li *ngFor="let template of missingTemplates">
+            <strong>{{ template.label || template.templateId }}</strong>
+            <code>{{ template.templateId }}</code>
+            <button
+              type="button"
+              class="letter-missing__drop"
+              [attr.data-testid]="'epistola-letter-set-drop-' + template.templateId"
+              [disabled]="disabled"
+              (click)="toggleTemplate(template.templateId, false)"
+            >
+              {{ 'letterSetTemplateMissingDrop' | pluginTranslate: pluginId | async }}
+            </button>
+          </li>
+        </ul>
+      </div>
       <div *ngIf="error" class="field-error" data-testid="epistola-letter-set-error">
         {{ error }}
       </div>
@@ -177,6 +199,30 @@ export interface LetterSet {
       .field-note {
         color: #6c757d;
         font-size: 0.85rem;
+      }
+      .letter-missing {
+        margin-top: 8px;
+        padding: 8px 12px;
+        border-left: 3px solid #f1c21b;
+        background: #fcf4d6;
+        font-size: 0.875rem;
+      }
+      .letter-missing ul {
+        margin: 4px 0 0;
+        padding-left: 18px;
+      }
+      .letter-missing code {
+        margin-left: 6px;
+        opacity: 0.75;
+      }
+      .letter-missing__drop {
+        margin-left: 8px;
+        background: none;
+        border: none;
+        padding: 0;
+        color: #0f62fe;
+        cursor: pointer;
+        text-decoration: underline;
       }
       .field-error {
         color: #dc3545;
@@ -215,6 +261,14 @@ export class EpistolaLetterSetBuilderComponent
   loadingCatalogs = false;
   loadingTemplates = false;
   error: string | null = null;
+  /**
+   * Whether {@link templates} is an answer from Epistola rather than an absence of one.
+   *
+   * <p>Without it, "which stored letters are missing" cannot tell a catalog that no longer has a
+   * letter from a catalog that could not be read — and telling an author every letter is gone
+   * because Epistola was briefly unreachable is worse than saying nothing.
+   */
+  private templatesLoaded = false;
 
   /** The plugin whose translations this widget uses; constant, but templates need it bound. */
   readonly pluginId = 'epistola';
@@ -309,6 +363,22 @@ export class EpistolaLetterSetBuilderComponent
     });
   }
 
+  /**
+   * Letters this composer offers that the catalog no longer has.
+   *
+   * <p>The table above is drawn from what Epistola returns now, so a stored letter that has been
+   * removed is not drawn at all: the configuration looks healthy while one of its letters is dead,
+   * and the author finds out only when an employee opens the task and the composer refuses it.
+   * These rows are that difference, shown where it can still be fixed.
+   */
+  get missingTemplates(): OfferedTemplate[] {
+    if (!this.templatesLoaded || this.loadingTemplates) {
+      return [];
+    }
+    const available = new Set(this.templates.map((template) => template.id));
+    return (this.value?.templates ?? []).filter((template) => !available.has(template.templateId));
+  }
+
   private templateName(templateId: string): string {
     return this.templates.find((template) => template.id === templateId)?.name || templateId;
   }
@@ -361,11 +431,13 @@ export class EpistolaLetterSetBuilderComponent
       this.composerApi.getTemplates(pluginConfigurationId, catalogId).subscribe({
         next: (templates) => {
           this.templates = templates;
+          this.templatesLoaded = true;
           this.loadingTemplates = false;
           this.cdr.markForCheck();
         },
         error: () => {
           this.loadingTemplates = false;
+          this.templatesLoaded = false;
           this.error = this.pluginTranslationService.instant(
             'letterSetTemplatesFailed',
             this.pluginId,

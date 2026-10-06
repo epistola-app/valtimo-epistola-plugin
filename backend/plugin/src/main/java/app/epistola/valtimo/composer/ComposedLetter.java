@@ -17,164 +17,63 @@
  */
 package app.epistola.valtimo.composer;
 
+import app.epistola.valtimo.domain.DynamicDocument;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
- * What a letter composer put on a process variable, read back at generation time.
+ * A letter a composer put on a process variable: the document, and what only a composer knows.
  *
- * <p>The composer resolves the data while the employee is looking at it, so generation renders
- * exactly what was previewed and needs no template, mapping or catalog of its own (ADR 0006). This
- * record is that contract, and the one place that knows its shape.
+ * <p>The same variable value read two ways. {@link DynamicDocument} is what it takes to render —
+ * which the generate action and the retry form need, and which any process can write. This adds the
+ * two things that exist only because a person filled a form: what they typed, and where the
+ * composer says those values also belong in the case.
  *
- * <p>It carries the schema version the composer wrote it with, because it outlives that composer:
- * a process instance can sit in the database for months, and the plugin that generates the letter
- * may not be the one that composed it. See {@link ComposerSchema} for which way that is tolerated.
+ * <p>Two types rather than one with optional fields, because the optional fields were doing the
+ * explaining: a document a process prepared has no inputs and no write-back, and a type called
+ * {@code DynamicDocument} that carried them said otherwise every time someone read it.
  *
- * @param schemaVersion The version it was written with; 1 for anything predating the field
- * @param catalogId  The catalog the chosen template lives in
- * @param templateId The chosen template
- * @param data       Everything the letter is rendered with
- * @param inputs     Only what the employee typed, kept apart from {@code data} so a write-back
- *                   rule can distinguish a value a person supplied from one the mapping produced
- * @param writeBack  Where values from this letter also belong in the case: a value-resolver key
- *                   (such as {@code doc:/aanvrager/telefoon}) to the value resolved when the letter
- *                   was composed. Empty when the composer declared none, which is the ordinary
- *                   case. The <em>values</em> are the browser's; the <em>destinations</em> are only
- *                   honoured where the composer's stored configuration also names them — see
- *                   {@link #writeBackLimitedTo}.
+ * @param document  what is being rendered
+ * @param inputs    only what the employee typed, kept apart from the document's data so a
+ *                  write-back rule can tell a value a person supplied from one the mapping produced
+ * @param writeBack where values from this letter also belong in the case: a value-resolver key
+ *                  (such as {@code doc:/aanvrager/telefoon}) to the value resolved when the letter
+ *                  was composed. Empty when the composer declared none, which is the ordinary case.
+ *                  The <em>values</em> are the browser's; the <em>destinations</em> are only
+ *                  honoured where the composer's stored configuration also names them — see
+ *                  {@link #writeBackLimitedTo}.
  */
 public record ComposedLetter(
-        int schemaVersion,
-        String catalogId,
-        String templateId,
-        Map<String, Object> data,
+        DynamicDocument document,
         Map<String, Object> inputs,
         Map<String, Object> writeBack
 ) {
 
     /**
-     * Read a composed letter from a process variable.
+     * Read a composed letter from what a process variable holds.
      *
-     * <p>Operaton hands back what the value resolver stored — a Map for an object variable, or the
-     * raw JSON when a process wrote a string — so both are accepted. Anything else, or a letter
-     * missing its template, is a configuration error worth failing loudly: silently generating
-     * nothing would leave a process that looks like it sent a letter.
-     *
-     * @throws IllegalArgumentException when the variable does not hold a usable letter
+     * <p>Anything {@link DynamicDocument#from} accepts is accepted here; a value that carries no
+     * {@code inputs} or {@code writeBack} simply has none, which is what a document prepared by a
+     * process looks like through this lens.
      */
     @SuppressWarnings("unchecked")
     public static ComposedLetter from(Object raw, String variableName, ObjectMapper objectMapper) {
-        List<ComposedLetter> letters = allFrom(raw, variableName, objectMapper);
-        if (letters.size() > 1) {
-            throw new IllegalArgumentException(
-                    "The variable '" + variableName + "' holds " + letters.size() + " letters, and this "
-                            + "plugin generates one. Offer a composer per letter, each with its own pv: "
-                            + "key and its own generate task.");
-        }
-        return letters.get(0);
+        DynamicDocument document = DynamicDocument.from(raw, variableName, objectMapper);
+        Map<String, Object> value = raw instanceof Map<?, ?> map
+                ? (Map<String, Object>) map
+                : objectMapper.convertValue(
+                        objectMapper.convertValue(raw, Object.class), Map.class);
+        return new ComposedLetter(document, copyOf(value.get("inputs")), copyOf(value.get("writeBack")));
     }
 
-    /**
-     * Every letter on the variable.
-     *
-     * <p>Two shapes are accepted: a letter on its own, which is what a composer writes today, and
-     * an envelope carrying a {@code letters} array. The array form is not produced by anything yet
-     * — letting an employee choose *how many* letters go out is unbuilt — but it is what that will
-     * look like, and reading it here is what keeps the shape open. {@link #from} refuses more than
-     * one, so the unbuilt behaviour fails with a sentence rather than by generating the first
-     * letter and dropping the rest.
-     */
-    @SuppressWarnings("unchecked")
-    public static List<ComposedLetter> allFrom(Object raw, String variableName, ObjectMapper objectMapper) {
-        Map<String, Object> value;
-        if (raw instanceof Map<?, ?> map) {
-            value = (Map<String, Object>) map;
-        } else if (raw instanceof String json && !json.isBlank()) {
-            try {
-                value = objectMapper.readValue(json, Map.class);
-            } catch (Exception e) {
-                throw new IllegalArgumentException(
-                        "Process variable '" + variableName + "' does not hold valid JSON for a composed letter", e);
-            }
-        } else if (raw == null) {
-            throw new IllegalArgumentException(
-                    "No composed letter on process variable '" + variableName
-                            + "'. A letter composer writes it when the form is submitted.");
-        } else {
-            throw new IllegalArgumentException(
-                    "Process variable '" + variableName + "' holds a "
-                            + raw.getClass().getSimpleName() + ", not a composed letter");
-        }
-
-        // Before anything is read out of it: a letter from a later plugin may not mean what this
-        // one would take it to mean, and generating the wrong letter is worse than not generating.
-        int schemaVersion = ComposerSchema.readable(
-                intOrNull(value.get(ComposerSchema.FIELD)),
-                "The composed letter on '" + variableName + "'");
-
-        if (value.get("letters") instanceof List<?> letters) {
-            if (letters.isEmpty()) {
-                throw new IllegalArgumentException(
-                        "The variable '" + variableName + "' names no letters");
-            }
-            return letters.stream()
-                    .map(entry -> one(entry, schemaVersion, variableName))
-                    .toList();
-        }
-        return List.of(one(value, schemaVersion, variableName));
-    }
-
-    @SuppressWarnings("unchecked")
-    private static ComposedLetter one(Object entry, int schemaVersion, String variableName) {
-        if (!(entry instanceof Map<?, ?> map)) {
-            throw new IllegalArgumentException(
-                    "The variable '" + variableName + "' holds something that is not a letter");
-        }
-        Map<String, Object> value = (Map<String, Object>) map;
-
-        String templateId = text(value.get("templateId"));
-        String catalogId = text(value.get("catalogId"));
-        if (templateId == null || catalogId == null) {
-            throw new IllegalArgumentException(
-                    "The composed letter on '" + variableName + "' names no catalog and template");
-        }
-
-        Object data = value.get("data");
-        Object inputs = value.get("inputs");
-        Object writeBack = value.get("writeBack");
-        return new ComposedLetter(
-                schemaVersion,
-                catalogId,
-                templateId,
-                copyOf(data),
-                copyOf(inputs),
-                copyOf(writeBack));
-    }
-
-    /**
-     * An unmodifiable snapshot that tolerates a null value.
-     *
-     * <p>Two things this fixes, both of which bit. {@code Map.copyOf} rejects a null value, so a
-     * letter with a field someone cleared could not be read at all — and it failed inside the
-     * generate action, where the only symptom is an activity throwing {@code NullPointerException}
-     * with no message. And the map handed in belongs to the process variable: keeping a reference
-     * to it would let a later activity change what this letter says it sent, after it was sent.
-     *
-     * <p>A null value is kept rather than dropped: "this field was cleared" and "this field was
-     * never offered" are different things, and a write-back rule reading the first should see
-     * nothing rather than see a stale value.
-     */
-    @SuppressWarnings("unchecked")
-    private static Map<String, Object> copyOf(Object value) {
-        if (!(value instanceof Map<?, ?> map)) {
-            return Map.of();
-        }
-        Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
-        ((Map<String, Object>) map).forEach(snapshot::put);
-        return java.util.Collections.unmodifiableMap(snapshot);
+    /** The data the letter renders with, which is the document's. */
+    public Map<String, Object> data() {
+        return document.data();
     }
 
     /**
@@ -183,56 +82,38 @@ public record ComposedLetter(
      *
      * <p>This is the one place the distinction matters. The letter's values are computed in the
      * browser — that is deliberate, and it is what makes what was previewed the thing that gets
-     * generated — but it means the <em>keys</em> on this map arrived from the browser too. A
-     * crafted submission could otherwise name any case path at all, and writing to an arbitrary
-     * {@code doc:} path is a different matter from rendering a letter with odd data: one is a
-     * document nobody asked for, the other is a silent edit to the case.
-     *
-     * <p>So the form definition stays the authority on <em>where</em> data may go, and the browser
-     * decides only <em>what</em>. An entry whose destination is not in {@code allowed} is dropped
-     * rather than refused: a letter that Epistola has already accepted must not fail here, and a
-     * dropped destination is reported on the result variable by the caller.
-     *
-     * @param allowed the destinations the composer's stored {@code writeBack} map declares
+     * sent — but a destination is where a value lands in the case, and that may only come from the
+     * stored form.
      */
-    public Map<String, Object> writeBackLimitedTo(java.util.Set<String> allowed) {
+    public Map<String, Object> writeBackLimitedTo(Set<String> allowed) {
         if (writeBack.isEmpty() || allowed.isEmpty()) {
             return Map.of();
         }
-        Map<String, Object> permitted = new java.util.LinkedHashMap<>();
+        Map<String, Object> permitted = new LinkedHashMap<>();
         writeBack.forEach((destination, value) -> {
             if (allowed.contains(destination)) {
                 permitted.put(destination, value);
             }
         });
-        return java.util.Collections.unmodifiableMap(permitted);
+        return Collections.unmodifiableMap(permitted);
     }
 
-    /** The destinations this letter asks for that {@code allowed} does not name. */
-    public java.util.List<String> writeBackRefused(java.util.Set<String> allowed) {
-        return writeBack.keySet().stream().filter(destination -> !allowed.contains(destination)).sorted().toList();
+    /** The destinations this letter named that its composer does not, worth saying out loud. */
+    public List<String> writeBackRefused(Set<String> allowed) {
+        return writeBack.keySet().stream()
+                .filter(destination -> !allowed.contains(destination))
+                .sorted()
+                .toList();
     }
 
-    /** Operaton hands numbers back as Integer, Long or (from JSON) whatever Jackson chose. */
-    private static Integer intOrNull(Object value) {
-        if (value instanceof Number number) {
-            return number.intValue();
+    /** An unmodifiable snapshot that tolerates a null value; see {@link DynamicDocument}. */
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> copyOf(Object value) {
+        if (!(value instanceof Map<?, ?> map)) {
+            return Map.of();
         }
-        if (value instanceof String string && !string.isBlank()) {
-            try {
-                return Integer.valueOf(string.trim());
-            } catch (NumberFormatException e) {
-                throw new IllegalArgumentException(
-                        "A composed letter declares a non-numeric " + ComposerSchema.FIELD + ": " + string, e);
-            }
-        }
-        return null;
-    }
-
-    private static String text(Object value) {
-        if (!(value instanceof String string) || string.isBlank()) {
-            return null;
-        }
-        return string;
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        ((Map<String, Object>) map).forEach(snapshot::put);
+        return Collections.unmodifiableMap(snapshot);
     }
 }

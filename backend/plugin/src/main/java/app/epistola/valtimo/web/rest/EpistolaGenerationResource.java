@@ -276,6 +276,10 @@ public class EpistolaGenerationResource {
             return switch (e.getReason()) {
                 case PROCESS_NOT_FOUND, LINK_NOT_FOUND -> ResponseEntity.notFound().build();
                 case AMBIGUOUS_ACTIVITY, MISSING_TEMPLATE, NO_DOCUMENT_ID -> ResponseEntity.badRequest().build();
+                // Not the caller's request being wrong but this environment's: the mapping behind
+                // the failed generation cannot be evaluated now either, which is the form author's
+                // to fix. Same shape the composer uses for its own unusable configuration.
+                case MAPPING_FAILED -> ResponseEntity.unprocessableEntity().build();
             };
         }
     }

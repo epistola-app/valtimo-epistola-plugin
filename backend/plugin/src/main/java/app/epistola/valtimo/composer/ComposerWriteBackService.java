@@ -122,7 +122,7 @@ public class ComposerWriteBackService {
         // A caller that has already read the letter passes it as it is. The generate action does
         // exactly that, and handing its parsed letter to the raw-value branch is how this silently
         // wrote nothing: `from` is for a value that arrived on a submission and rejects anything
-        // that is not one — including, absurdly, a ComposedLetter.
+        // that is not one — including, absurdly, a letter that had already been read.
         if (submittedLetter instanceof ComposedLetter composed) {
             apply(documentId, composed, letterVariable);
             return;
@@ -152,15 +152,16 @@ public class ComposerWriteBackService {
      * @param documentId the case document the letter was composed for
      * @param letter     the letter as it was sent to Epistola
      */
-    public void apply(UUID documentId, ComposedLetter letter) {
-        apply(documentId, letter, null);
-    }
-
     /**
-     * Apply the write-back for a letter that has already been read, using the rules of the composer
-     * that wrote {@code letterVariable}.
+     * Apply the write-back for a letter that has already been read.
+     *
+     * <p>Package-private on purpose. Callers hand over the raw variable value and let this service
+     * read its own view of it — the generate action renders a {@link app.epistola.valtimo.domain
+     * .DynamicDocument} and has no business knowing what a composer added to the same variable.
+     * Exposing a {@code ComposedLetter} overload also made {@code any()} ambiguous at a call site
+     * that meant the other one, which is a small thing that costs an afternoon.
      */
-    public void apply(UUID documentId, ComposedLetter letter, String letterVariable) {
+    void apply(UUID documentId, ComposedLetter letter, String letterVariable) {
         if (documentId == null || letter == null) {
             return;
         }
