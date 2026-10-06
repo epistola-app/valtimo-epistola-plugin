@@ -90,6 +90,11 @@ export const COMPOSER_TRANSLATIONS = {
     letterSetTemplateMissing:
       'Deze brieven staan nog in deze component, maar bestaan niet meer in de catalogus. Een medewerker die er een kiest, krijgt een foutmelding.',
     letterSetTemplateMissingDrop: 'Verwijderen uit de set',
+    letterSetConfigure: 'Instellen',
+    letterSetConfigureClose: 'Sluiten',
+    letterSetTemplateMapping: 'Eigen mapping voor deze brief',
+    letterSetTemplateMappingTooltip:
+      'Optioneel. JSONata die over de basismapping heen wordt gelegd, alleen voor deze brief. Laat leeg als de basismapping volstaat.',
     'epistola-generate-dynamic-document': 'Genereer Dynamisch Document',
     composedLetterVariable: 'Documentvariabele',
     composedLetterVariableTooltip:
@@ -155,6 +160,11 @@ export const COMPOSER_TRANSLATIONS = {
     letterSetTemplateMissing:
       'These letters are still configured here but no longer exist in the catalog. An employee who picks one gets an error.',
     letterSetTemplateMissingDrop: 'Remove from the set',
+    letterSetConfigure: 'Configure',
+    letterSetConfigureClose: 'Close',
+    letterSetTemplateMapping: 'Mapping for this letter only',
+    letterSetTemplateMappingTooltip:
+      'Optional. JSONata merged over the baseline mapping, for this letter alone. Leave empty when the baseline is enough.',
     'epistola-generate-dynamic-document': 'Generate Dynamic Document',
     composedLetterVariable: 'Document variable',
     composedLetterVariableTooltip:

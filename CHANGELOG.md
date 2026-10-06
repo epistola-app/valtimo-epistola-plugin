@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A letter can be configured on its own.** Each offered letter in the composer's settings gets a
+  **Configure** button opening a panel for that letter alone, and the first setting to live there is
+  its **mapping fragment** — JSONata merged over the baseline for that letter only (#155).
+
+  The backend has read `templates[].dataMapping` and merged it since the composer was built; what
+  was missing was anywhere to author it. One panel opens at a time, because the fields are identical
+  between letters and two open panels invite editing the wrong one, and a fragment cleared to blank
+  is dropped rather than stored, so a letter that was never configured does not look as though it
+  was.
+
+  This is the surface #172 asked for: variant (#151), per-property rendering (#161) and which fields
+  are asked for (#164) all belong in the same panel and now have somewhere to go.
+
+### Added
+
 - **A failed dynamic document can be retried.** `epistola-retry-form` rebuilt a failed generation's
   form from the process link's own template and mapping, so it covered `epistola-generate-document`
   only — a composed letter that failed had no retry path and the employee composed it again from

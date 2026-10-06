@@ -63,6 +63,75 @@ describe('EpistolaLetterSetBuilderComponent', () => {
     return { component, service };
   }
 
+  describe('configuring one letter on its own', () => {
+    function offering(...templateIds: string[]) {
+      const { component, service } = createComponent({
+        pluginConfigurationId: 'config-1',
+        catalogId: 'gemeente',
+        templates: templateIds.map((templateId) => ({ templateId, label: templateId })),
+      });
+      component.ngOnChanges();
+      return { component, service };
+    }
+
+    it('opens for one letter at a time', () => {
+      // One panel open at a time, because the settings are per letter and two open panels invite
+      // editing the wrong one — the fields look identical.
+      const { component } = offering('besluit', 'herinnering');
+
+      component.toggleSettings('besluit');
+      expect(component.isSettingsOpen('besluit')).toBe(true);
+
+      component.toggleSettings('herinnering');
+      expect(component.isSettingsOpen('herinnering')).toBe(true);
+      expect(component.isSettingsOpen('besluit')).toBe(false);
+
+      component.toggleSettings('herinnering');
+      expect(component.isSettingsOpen('herinnering')).toBe(false);
+    });
+
+    it('stores a mapping fragment against the letter it was written for', () => {
+      const { component } = offering('besluit', 'herinnering');
+
+      component.setTemplateMapping('besluit', '{ "aanhef": "Geachte heer" }');
+
+      const stored = component.value?.templates ?? [];
+      expect(stored.find((t: any) => t.templateId === 'besluit')?.dataMapping).toBe(
+        '{ "aanhef": "Geachte heer" }',
+      );
+      expect(stored.find((t: any) => t.templateId === 'herinnering')?.dataMapping).toBeUndefined();
+    });
+
+    it('drops a fragment that was cleared rather than storing an empty one', () => {
+      // An empty string would be a fragment that merges nothing over the baseline, which is the
+      // same as having none — but it would also make every saved letter look configured.
+      const { component } = offering('besluit');
+      component.setTemplateMapping('besluit', '{ "aanhef": "Geachte heer" }');
+
+      component.setTemplateMapping('besluit', '   ');
+
+      expect(component.value?.templates[0].dataMapping).toBeUndefined();
+    });
+
+    it('keeps the label when a fragment is written, and the other way round', () => {
+      const { component } = offering('besluit');
+
+      component.setTemplateMapping('besluit', '{ "x": 1 }');
+      component.setLabel('besluit', 'Besluit op bezwaar');
+
+      const stored = component.value?.templates[0];
+      expect(stored.label).toBe('Besluit op bezwaar');
+      expect(stored.dataMapping).toBe('{ "x": 1 }');
+    });
+
+    it('is not offered for a letter that is not ticked', () => {
+      const { component } = offering('besluit');
+
+      expect(component.canConfigure('besluit')).toBe(true);
+      expect(component.canConfigure('herinnering')).toBe(false);
+    });
+  });
+
   describe('a letter that is no longer in the catalog', () => {
     /**
      * The table is drawn from what Epistola returns now, ticking the letters this composer stores.

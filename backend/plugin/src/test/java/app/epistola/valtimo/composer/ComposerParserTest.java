@@ -64,6 +64,35 @@ class ComposerParserTest {
      * have their own idea of "no rules" (absent key, null map, empty map), and a composer that
      * silently stopped working because it saves nothing would be a bad way to find that out.
      */
+    /**
+     * A letter's own mapping fragment survives the round trip from the builder.
+     *
+     * <p>The backend has read `templates[].dataMapping` since the composer was built and merges it
+     * over the baseline, but until now nothing authored it (#155) — so nothing proved the shape the
+     * builder writes is the shape the parser reads. That is the whole risk of a field only one side
+     * has ever produced.
+     */
+    @Test
+    void readsTheMappingFragmentABuilderStoresForOneLetter() {
+        var found = parse("""
+                {"components":[{"type":"epistola-letter-composer","key":"pv:brief",
+                  "pluginConfigurationId":"%s","catalogId":"gemeente",
+                  "templates":[
+                    {"templateId":"besluit","label":"Besluit","dataMapping":"{ \\"aanhef\\": \\"Geachte\\" }"},
+                    {"templateId":"herinnering","label":"Herinnering"}]}]}
+                """.formatted(PLUGIN_CONFIGURATION_ID));
+
+        assertThat(found).singleElement().satisfies(c -> {
+            assertThat(c.templates()).hasSize(2);
+            assertThat(c.templates().get(0).dataMapping())
+                    .describedAs("the letter that was configured keeps its fragment")
+                    .isEqualTo("{ \"aanhef\": \"Geachte\" }");
+            assertThat(c.templates().get(1).dataMapping())
+                    .describedAs("and one that was not has none, rather than an empty string")
+                    .isNull();
+        });
+    }
+
     @Test
     void aComposerThatSavesNothingIsStillAComposer() {
         for (String writeBack : new String[] {"", ",\"writeBack\":{}", ",\"writeBack\":null"}) {
