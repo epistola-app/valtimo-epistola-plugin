@@ -39,7 +39,7 @@ import { of, throwError } from 'rxjs';
 import { EpistolaLetterSetBuilderComponent } from './letter-set-builder.component';
 
 describe('EpistolaLetterSetBuilderComponent', () => {
-  function createComponent(initial: any = null) {
+  function createComponent(initial: any = null, overrides: any = {}) {
     const service = {
       getConfigurations: jest.fn(() =>
         of([{ id: 'config-1', title: 'Epistola productie', tenantId: 'gemeente' }]),
@@ -51,6 +51,7 @@ describe('EpistolaLetterSetBuilderComponent', () => {
           { id: 'herinnering', name: 'Herinnering', catalogId: 'gemeente' },
         ]),
       ),
+      ...overrides,
     };
     const cdr = { markForCheck: jest.fn() };
     const translations = { instant: jest.fn((key: string) => key) };
@@ -199,7 +200,15 @@ describe('EpistolaLetterSetBuilderComponent', () => {
   });
 
   it('loads the catalogs of the chosen connection', () => {
-    const { component, service } = createComponent();
+    // Two catalogs, so nothing is chosen for the author and the cleared state is observable.
+    const { component, service } = createComponent(null, {
+      getCatalogs: jest.fn(() =>
+        of([
+          { id: 'gemeente', name: 'Gemeente', type: 'default' },
+          { id: 'provincie', name: 'Provincie', type: 'default' },
+        ]),
+      ),
+    });
 
     component.onConfigurationSelected('config-1');
 
@@ -213,11 +222,21 @@ describe('EpistolaLetterSetBuilderComponent', () => {
 
   it('clears the catalog and letters when the connection changes', () => {
     // Those ids mean nothing in another connection, so keeping them would fail only at runtime.
-    const { component } = createComponent({
-      pluginConfigurationId: 'config-1',
-      catalogId: 'gemeente',
-      templates: [{ templateId: 'besluit', label: 'Besluit' }],
-    });
+    const { component } = createComponent(
+      {
+        pluginConfigurationId: 'config-1',
+        catalogId: 'gemeente',
+        templates: [{ templateId: 'besluit', label: 'Besluit' }],
+      },
+      {
+        getCatalogs: jest.fn(() =>
+          of([
+            { id: 'gemeente', name: 'Gemeente', type: 'default' },
+            { id: 'provincie', name: 'Provincie', type: 'default' },
+          ]),
+        ),
+      },
+    );
 
     component.onConfigurationSelected('config-2');
 
@@ -225,6 +244,55 @@ describe('EpistolaLetterSetBuilderComponent', () => {
       pluginConfigurationId: 'config-2',
       catalogId: null,
       templates: [],
+    });
+  });
+
+  /**
+   * A normal install has one connection and one catalog, so the author met two dropdowns holding
+   * one entry each before reaching a real decision. What matters is that the choice is *emitted*:
+   * a selection showing in the UI without being stored is this widget's classic silent failure.
+   */
+  describe('choosing when there is nothing to choose between', () => {
+    it('takes the only connection and the only catalog, and stores both', () => {
+      const { component, service } = createComponent();
+
+      component.ngOnChanges();
+
+      expect(component.value).toEqual({
+        pluginConfigurationId: 'config-1',
+        catalogId: 'gemeente',
+        templates: [],
+      });
+      expect(service.getTemplates).toHaveBeenCalledWith('config-1', 'gemeente');
+    });
+
+    it('leaves the choice to the author when there is more than one', () => {
+      const { component } = createComponent(null, {
+        getConfigurations: jest.fn(() =>
+          of([
+            { id: 'config-1', title: 'Productie', tenantId: 'gemeente' },
+            { id: 'config-2', title: 'Acceptatie', tenantId: 'gemeente' },
+          ]),
+        ),
+      });
+
+      component.ngOnChanges();
+
+      expect(component.value).toBeNull();
+    });
+
+    it('never overwrites a connection the form already names', () => {
+      // Including one whose connection has since gone: the author should see that, not have it
+      // quietly corrected to whichever connection happens to be the only one left.
+      const { component } = createComponent({
+        pluginConfigurationId: 'config-removed',
+        catalogId: 'gemeente',
+        templates: [],
+      });
+
+      component.ngOnChanges();
+
+      expect(component.value.pluginConfigurationId).toBe('config-removed');
     });
   });
 

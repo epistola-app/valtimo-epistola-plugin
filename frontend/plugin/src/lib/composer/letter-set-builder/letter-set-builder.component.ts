@@ -346,6 +346,15 @@ export class EpistolaLetterSetBuilderComponent
   private subscriptions: Subscription[] = [];
   private restored = false;
 
+  /**
+   * Whether Formio has set `value` yet, which it does after construction.
+   *
+   * The connections are loaded from the constructor, so without this a form that already names a
+   * connection could have it chosen for it — and *emitted* — before its own settings arrived,
+   * replacing a configured letter set with an empty one just by opening the panel.
+   */
+  private valueArrived = false;
+
   constructor(
     private readonly composerApi: EpistolaComposerApiService,
     private readonly cdr: ChangeDetectorRef,
@@ -355,16 +364,18 @@ export class EpistolaLetterSetBuilderComponent
   }
 
   ngOnChanges(): void {
+    this.valueArrived = true;
     // Formio sets the saved value after construction, so the cascade can only be restored once it
     // arrives — otherwise reopening the settings would show an empty catalog and no letters.
-    if (this.restored || !this.value?.pluginConfigurationId) {
-      return;
+    if (!this.restored && this.value?.pluginConfigurationId) {
+      this.restored = true;
+      this.loadCatalogs(this.value.pluginConfigurationId);
+      if (this.value.catalogId) {
+        this.loadTemplates(this.value.pluginConfigurationId, this.value.catalogId);
+      }
     }
-    this.restored = true;
-    this.loadCatalogs(this.value.pluginConfigurationId);
-    if (this.value.catalogId) {
-      this.loadTemplates(this.value.pluginConfigurationId, this.value.catalogId);
-    }
+    // Either order is possible: the connections may land before Formio sets the value or after.
+    this.selectTheOnlyConnection();
   }
 
   ngOnDestroy(): void {
@@ -506,6 +517,28 @@ export class EpistolaLetterSetBuilderComponent
     return this.templates.find((template) => template.id === templateId)?.name || templateId;
   }
 
+  /**
+   * Choose for the author when there is nothing to choose between.
+   *
+   * A normal install has one Epistola connection and one catalog, so the author met two dropdowns
+   * holding one entry each before reaching a real decision. Both go through the ordinary selection
+   * handler rather than assigning the field, so the choice is **emitted** and stored: a selection
+   * that shows in the UI without being saved is this widget's classic silent failure.
+   *
+   * Only ever when nothing is chosen yet. A stored choice is never overwritten — including one
+   * naming a connection that has since gone, which the author should see rather than have quietly
+   * corrected to whichever connection happens to be the only one left.
+   */
+  private selectTheOnlyConnection(): void {
+    if (
+      this.valueArrived &&
+      this.configurations.length === 1 &&
+      !this.value?.pluginConfigurationId
+    ) {
+      this.onConfigurationSelected(this.configurations[0].id);
+    }
+  }
+
   private loadConfigurations(): void {
     this.loadingConfigurations = true;
     this.subscriptions.push(
@@ -514,6 +547,7 @@ export class EpistolaLetterSetBuilderComponent
           this.configurations = configurations;
           this.loadingConfigurations = false;
           this.cdr.markForCheck();
+          this.selectTheOnlyConnection();
         },
         error: () => {
           this.loadingConfigurations = false;
@@ -535,6 +569,11 @@ export class EpistolaLetterSetBuilderComponent
           this.catalogs = catalogs;
           this.loadingCatalogs = false;
           this.cdr.markForCheck();
+          // Safe without the value guard: catalogs are only ever loaded once a connection is
+          // known, so by now the form's own settings have arrived.
+          if (catalogs.length === 1 && !this.value?.catalogId) {
+            this.onCatalogSelected(catalogs[0].id);
+          }
         },
         error: () => {
           this.loadingCatalogs = false;

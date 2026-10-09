@@ -155,6 +155,14 @@ data belongs in a case form, not in one letter.
 | **Also ask for optional fields** | Off by default: only fields the template marks required are asked for.                                                                                                                                                                           |
 | **Process to start**             | Normally left empty — see [Where it is used](#where-it-is-used). Fill it in only when the backend says two processes offer the same letter.                                                                                                      |
 
+Only the property name and the letters are decisions every author makes, so the mapping, the
+write-back, the optional-field toggle and the process key sit in a collapsed **Mapping and advanced
+settings** panel. Form.io reopens a collapsed panel when something inside it fails validation, so
+nothing can be refused behind a closed lid. And where there is nothing to choose between — one
+Epistola connection, one catalog, which is the normal install — it is chosen for the author, through
+the ordinary selection path so the choice is stored rather than only shown. A choice the form
+already names is never overwritten, including one naming a connection that has since gone.
+
 Stored, that half looks like this — under `epistola`, the one key this component claims on a form:
 
 ```json

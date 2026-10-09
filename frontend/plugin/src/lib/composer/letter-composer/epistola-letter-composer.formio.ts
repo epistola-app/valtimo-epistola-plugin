@@ -115,17 +115,6 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
         weight: 5,
       },
       {
-        type: 'textfield',
-        key: 'processDefinitionKey',
-        label: 'Process to start',
-        tooltip:
-          'Normally leave this empty — the composer works out which process it belongs to on its own. ' +
-          'Fill it in only if you are told the choice is ambiguous, which happens when two processes ' +
-          'offer the same letter through a component with the same property name. Use the process key, ' +
-          'such as correspondentie-ad-hoc-letter.',
-        weight: 7,
-      },
-      {
         type: 'epistola-letter-set-builder',
         key: 'epistola.letterSet',
         label: 'Which letters, from where',
@@ -135,30 +124,60 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
         validate: { required: true },
       },
       {
-        type: 'epistola-jsonata-mapping',
-        key: 'epistola.dataMapping',
-        label: 'Baseline mapping',
-        tooltip:
-          'One JSONata mapping for every offered letter, over $doc and $pv. Whatever it does not fill is asked of the employee.',
-        rows: 8,
+        // Only the property name and the letters are decisions every author makes. The rest have
+        // working defaults, and at the same visual weight the panel read as six decisions instead
+        // of two. Collapsed rather than removed: an author who needs the mapping finds it in the
+        // obvious place, one click away.
+        //
+        // Formio reopens a collapsed panel by itself when something inside it fails validation
+        // (Panel.js), so nothing can be refused behind a closed lid.
+        type: 'panel',
+        key: 'epistolaComposerAdvanced',
+        title: 'Mapping and advanced settings',
+        label: 'Mapping and advanced settings',
+        collapsible: true,
+        collapsed: true,
+        input: false,
         weight: 40,
-      },
-      {
-        type: 'epistola-write-back-builder',
-        key: 'epistola.writeBack',
-        label: 'Also save these values on the case',
-        tooltip:
-          "Optional. A letter's values stay with the letter unless you say otherwise. Add a rule per value that also belongs in the case: a doc: or pv: destination, and a JSONata expression over the letter ($data, $inputs). Applied when the letter is generated, so nothing is saved for a letter Epistola refused.",
-        weight: 45,
-      },
-      {
-        type: 'checkbox',
-        key: 'epistola.askOptionalFields',
-        label: 'Also ask for optional fields the mapping left empty',
-        tooltip:
-          'Off by default: only fields the template marks required are asked for. Turn on to offer every empty field.',
-        defaultValue: false,
-        weight: 50,
+        components: [
+          {
+            type: 'epistola-jsonata-mapping',
+            key: 'epistola.dataMapping',
+            label: 'Baseline mapping',
+            tooltip:
+              'One JSONata mapping for every offered letter, over $doc and $pv. Whatever it does not fill is asked of the employee.',
+            rows: 8,
+            weight: 10,
+          },
+          {
+            type: 'epistola-write-back-builder',
+            key: 'epistola.writeBack',
+            label: 'Also save these values on the case',
+            tooltip:
+              "Optional. A letter's values stay with the letter unless you say otherwise. Add a rule per value that also belongs in the case: a doc: or pv: destination, and a JSONata expression over the letter ($data, $inputs). Applied when the letter is generated, so nothing is saved for a letter Epistola refused.",
+            weight: 20,
+          },
+          {
+            type: 'checkbox',
+            key: 'epistola.askOptionalFields',
+            label: 'Also ask for optional fields the mapping left empty',
+            tooltip:
+              'Off by default: only fields the template marks required are asked for. Turn on to offer every empty field.',
+            defaultValue: false,
+            weight: 30,
+          },
+          {
+            type: 'textfield',
+            key: 'processDefinitionKey',
+            label: 'Process to start',
+            tooltip:
+              'Normally leave this empty — the composer works out which process it belongs to on its own. ' +
+              'Fill it in only if you are told the choice is ambiguous, which happens when two processes ' +
+              'offer the same letter through a component with the same property name. Use the process key, ' +
+              'such as correspondentie-ad-hoc-letter.',
+            weight: 40,
+          },
+        ],
       },
     ],
   }),

@@ -30,6 +30,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The composer's settings panel asks less.** Of its eight entries only two — the property name and
+  the letters on offer — are decisions every author makes; the rest had working defaults at the same
+  visual weight, so the panel read as six decisions instead of two. The baseline mapping, the
+  write-back rules, the optional-field toggle and the process key now sit in a collapsed **Mapping
+  and advanced settings** panel. Form.io reopens a collapsed panel when something inside it fails
+  validation, so nothing can be refused behind a closed lid.
+
+- **Where there is nothing to choose between, the composer chooses.** A normal install has one
+  Epistola connection, so the author opened a dropdown holding one entry before reaching a real
+  decision; the same applies to a single catalog. Both are now selected automatically, through the
+  ordinary selection path so the choice is **stored** and not merely shown — a selection that
+  appears in the UI without being saved is this widget's classic silent failure. A choice the form
+  already names is never overwritten, including one naming a connection that has since gone: the
+  author should see that rather than have it quietly corrected.
+
 - **Everything the letter composer stores on a form moved under one key, `epistola`** —
   `letterSet`, `dataMapping`, `writeBack`, `askOptionalFields` and `schemaVersion`. A Form.io
   component object is shared space: it holds Form.io's own properties (`key`, `label`, `validate`,
