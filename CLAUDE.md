@@ -138,6 +138,14 @@ docker/            # Docker compose for local dependencies
     constants in step. The version is written back in `getModifiedSchema`, like `prefill: false`
     and the hidden carriers — Form.io drops schema equal to the registered default, and losing it
     would make every saved component look like it predates the field.
+  - **One key on the form, not five**: everything the component stores lives under `epistola`
+    (`letterSet`, `dataMapping`, `writeBack`, `askOptionalFields`, `schemaVersion`). That object is
+    shared with Form.io's own properties and with any other custom component on the form, so the
+    plugin claims one namespace rather than five generic names. `prefill` stays outside it — it is
+    Form.io's property. The parser still reads the settings flat when the namespace is absent, for
+    hand-written forms. The **letter on the process variable keeps a plain `schemaVersion`**:
+    nothing shares that variable, and a process may write one by hand (`ComposerSchema.FIELD` vs
+    `COMPONENT_FIELD`).
   - **A catalog belongs to the letter, not the set**: `letterSet.catalogId` is only the default,
     and `templates[].catalogId` overrides it. Use `configuration.catalogFor(templateId)` or the
     offered letter's own `catalogId()` — never `configuration.catalogId()`, which is the default.

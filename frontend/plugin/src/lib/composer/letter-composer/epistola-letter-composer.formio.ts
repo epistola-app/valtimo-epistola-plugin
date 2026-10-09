@@ -29,7 +29,11 @@ import {
   ValtimoFormioComponentConstructor,
   withPrefilledCarriers,
 } from '../../components/valtimo-formio-adapter';
-import { COMPOSER_SCHEMA_FIELD, COMPOSER_SCHEMA_VERSION } from '../composer-schema';
+import {
+  COMPOSER_COMPONENT_NAMESPACE,
+  COMPOSER_COMPONENT_SCHEMA_FIELD,
+  COMPOSER_SCHEMA_VERSION,
+} from '../composer-schema';
 
 export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-letter-composer',
@@ -44,7 +48,7 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   // settings widget, or as a bare `templates` array in a hand-written form. Nothing else about the
   // configuration is forwarded: the mappings and the catalog stay server-side, where the backend
   // reads them from this form definition itself (ADR 0006).
-  fieldOptions: ['label', 'placeholder', 'templates', 'letterSet', 'processDefinitionKey'],
+  fieldOptions: ['label', 'placeholder', 'templates', 'epistola', 'processDefinitionKey'],
   // Embed the hidden carriers so dropping the component is enough. Valtimo prefills them
   // server-side through the epistola: value resolvers, and the component reads them back: the task
   // id on a task form, the case id on a start form opened against an existing dossier.
@@ -59,7 +63,7 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
     prefill: false,
     // Stamped so a later plugin can tell what this component was authored against, and an earlier
     // one refuses it rather than misreading it. Kept in the saved form by withComposerDefaults.
-    [COMPOSER_SCHEMA_FIELD]: COMPOSER_SCHEMA_VERSION,
+    [COMPOSER_COMPONENT_NAMESPACE]: { [COMPOSER_COMPONENT_SCHEMA_FIELD]: COMPOSER_SCHEMA_VERSION },
     // The drop payload's label. Formio honours a schema `label`, but never a schema `key`: it
     // always recomputes the key from the palette title (`camelCase(builderInfo.title)`), which is
     // why the property name below is validated rather than defaulted.
@@ -75,10 +79,10 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
         html:
           '<div style="border-left:4px solid #f1c21b;background:#fcf4d6;padding:.5rem .75rem;' +
           'margin-bottom:1rem">' +
-          '<strong>Alpha.</strong> The letter composer works, but how it stores its settings ' +
-          'and the chosen letter may still change between releases. A change is stamped with a ' +
-          'schema version, so an older plugin refuses a newer form rather than misreading it — ' +
-          'but a form built now may need revisiting. See docs/letter-composer.md.' +
+          '<strong>Alpha.</strong> This component works and is safe to use, but the way it ' +
+          'saves its settings may still change. If that happens, a form you build now keeps ' +
+          'working — you may just need to reopen these settings once after an update and check ' +
+          'them. Your letters and your case data are never at risk.' +
           '</div>',
         weight: -10,
         input: false,
@@ -113,14 +117,17 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
       {
         type: 'textfield',
         key: 'processDefinitionKey',
-        label: 'Process to start (only if ambiguous)',
+        label: 'Process to start',
         tooltip:
-          'Leave empty. The same composer works on a user task and on a start form, and which it is follows from where it is opened. Fill this in only when two processes offer the same letter from a composer with the same property name, and the backend asks you to say which. Stored as a key, not a version-pinned id, so a redeployment does not break the form.',
+          'Normally leave this empty — the composer works out which process it belongs to on its own. ' +
+          'Fill it in only if you are told the choice is ambiguous, which happens when two processes ' +
+          'offer the same letter through a component with the same property name. Use the process key, ' +
+          'such as correspondentie-ad-hoc-letter.',
         weight: 7,
       },
       {
         type: 'epistola-letter-set-builder',
-        key: 'letterSet',
+        key: 'epistola.letterSet',
         label: 'Which letters, from where',
         tooltip:
           'Pick the Epistola connection and catalog, then tick the letters this form offers. Adding a letter later is one more tick.',
@@ -129,7 +136,7 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
       },
       {
         type: 'epistola-jsonata-mapping',
-        key: 'dataMapping',
+        key: 'epistola.dataMapping',
         label: 'Baseline mapping',
         tooltip:
           'One JSONata mapping for every offered letter, over $doc and $pv. Whatever it does not fill is asked of the employee.',
@@ -138,7 +145,7 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
       },
       {
         type: 'epistola-write-back-builder',
-        key: 'writeBack',
+        key: 'epistola.writeBack',
         label: 'Also save these values on the case',
         tooltip:
           "Optional. A letter's values stay with the letter unless you say otherwise. Add a rule per value that also belongs in the case: a doc: or pv: destination, and a JSONata expression over the letter ($data, $inputs). Applied when the letter is generated, so nothing is saved for a letter Epistola refused.",
@@ -146,7 +153,7 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
       },
       {
         type: 'checkbox',
-        key: 'askOptionalFields',
+        key: 'epistola.askOptionalFields',
         label: 'Also ask for optional fields the mapping left empty',
         tooltip:
           'Off by default: only fields the template marks required are asked for. Turn on to offer every empty field.',
@@ -191,8 +198,15 @@ function withComposerDefaults(
       const modified = super.getModifiedSchema(schema, defaultSchema, recursion);
       if (!recursion) {
         modified.prefill = false;
-        modified[COMPOSER_SCHEMA_FIELD] =
-          (schema ?? {})[COMPOSER_SCHEMA_FIELD] ?? COMPOSER_SCHEMA_VERSION;
+        // The namespace is re-added whole: Form.io drops schema equal to the registered
+        // default, and a version that went missing would make every saved component look as
+        // though it predates the field.
+        const authored = (schema ?? {})[COMPOSER_COMPONENT_NAMESPACE] ?? {};
+        modified[COMPOSER_COMPONENT_NAMESPACE] = {
+          ...(modified[COMPOSER_COMPONENT_NAMESPACE] ?? {}),
+          [COMPOSER_COMPONENT_SCHEMA_FIELD]:
+            authored[COMPOSER_COMPONENT_SCHEMA_FIELD] ?? COMPOSER_SCHEMA_VERSION,
+        };
       }
       return modified;
     }

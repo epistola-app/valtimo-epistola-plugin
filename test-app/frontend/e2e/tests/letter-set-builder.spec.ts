@@ -51,8 +51,9 @@ async function adminToken(request: APIRequestContext): Promise<string> {
  * A form holding one composer, offering one letter of the demo catalog.
  *
  * `formDefinition` goes over the wire as a **string**, and the composer's settings nest under
- * `letterSet` — the shape `ComposerParser` reads. Both are easy to get wrong and fail silently:
- * the widget renders either way and simply offers nothing.
+ * `epistola.letterSet` — the one key this component claims, and the shape both the editForm and
+ * `ComposerParser` read. Both are easy to get wrong and fail silently: the widget renders either
+ * way and simply offers nothing.
  */
 async function createFixtureForm(
   request: APIRequestContext,
@@ -67,11 +68,13 @@ async function createFixtureForm(
         key: 'pv:epistolaLetter',
         label: 'Brief',
         input: true,
-        schemaVersion: 1,
-        letterSet: {
-          pluginConfigurationId,
-          catalogId: 'municipality-demo',
-          templates: [{ templateId: OFFERED, label: 'Besluit' }],
+        epistola: {
+          schemaVersion: 1,
+          letterSet: {
+            pluginConfigurationId,
+            catalogId: 'municipality-demo',
+            templates: [{ templateId: OFFERED, label: 'Besluit' }],
+          },
         },
       },
     ],

@@ -22,6 +22,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   This is the surface #172 asked for: variant (#151), per-property rendering (#161) and which fields
   are asked for (#164) all belong in the same panel and now have somewhere to go.
 
+  The demo shows one: `bevestigingsbrief-vergunning` is a permit confirmation offered by a case
+  whose baseline mapping is objection-shaped, so the baseline fills none of it. Its fragment maps
+  the same person the case already knows into the names that letter uses (`applicant` rather than
+  `objector`), leaving only what the case genuinely cannot know — the BSN, the property, the
+  activities — to the employee.
+
+### Changed
+
+- **Everything the letter composer stores on a form moved under one key, `epistola`** —
+  `letterSet`, `dataMapping`, `writeBack`, `askOptionalFields` and `schemaVersion`. A Form.io
+  component object is shared space: it holds Form.io's own properties (`key`, `label`, `validate`,
+  `prefill`) and whatever other custom components put there, and `dataMapping` or `schemaVersion`
+  are names anyone could reasonably claim. One namespace is claimed instead of five generic names.
+
+  `prefill` stays outside the namespace because it is Form.io's own property, and the **letter on
+  the process variable keeps a plain `schemaVersion`**: nothing shares that variable, and a process
+  may write one by hand, so a name nobody has to look up is worth more there than a namespace
+  nothing would collide with. The two constants are now distinct (`ComposerSchema.FIELD` for the
+  letter, `COMPONENT_FIELD` under `COMPONENT_NAMESPACE` for the component).
+
+  The composer is alpha and unreleased, so no migration is provided: a form saved from an earlier
+  build of this branch must have its settings re-entered. Forms written by hand keep working — the
+  parser reads the settings flat when the namespace is absent. Verified through the running builder:
+  the nested settings load, save and come back filled, including a per-letter fragment.
+
 ### Added
 
 - **A failed dynamic document can be retried.** `epistola-retry-form` rebuilt a failed generation's

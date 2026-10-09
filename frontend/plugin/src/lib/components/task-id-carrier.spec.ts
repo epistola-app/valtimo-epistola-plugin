@@ -369,7 +369,7 @@ describe('letter composer opts out of Valtimo prefill', () => {
       paletteDropPayloadFor('epistola-letter-composer'),
     );
 
-    expect(schema.schemaVersion).toBe(1);
+    expect(schema.epistola?.schemaVersion).toBe(1);
   });
 
   it('keeps the version a stored form already declares rather than restamping it', () => {
@@ -378,10 +378,31 @@ describe('letter composer opts out of Valtimo prefill', () => {
     const schema = persistedSchemaOf('epistola-letter-composer', {
       type: 'epistola-letter-composer',
       key: 'pv:epistolaLetter',
-      schemaVersion: 1,
+      epistola: { schemaVersion: 1 },
     });
 
-    expect(schema.schemaVersion).toBe(1);
+    expect(schema.epistola?.schemaVersion).toBe(1);
+  });
+
+  /**
+   * The version is stamped into the same object the settings live in, so stamping it must not be
+   * what loses them. Writing the namespace back as a whole object is the part that could.
+   */
+  it('stamps the version without dropping the settings beside it', () => {
+    const schema = persistedSchemaOf('epistola-letter-composer', {
+      type: 'epistola-letter-composer',
+      key: 'pv:epistolaLetter',
+      epistola: {
+        letterSet: { catalogId: 'gemeente', templates: [{ templateId: 'besluit' }] },
+        dataMapping: '{ "naam": $doc.naam }',
+        writeBack: { 'doc:/besluit/type': '$data.type' },
+      },
+    });
+
+    expect(schema.epistola?.schemaVersion).toBe(1);
+    expect(schema.epistola?.letterSet?.templates).toHaveLength(1);
+    expect(schema.epistola?.dataMapping).toBe('{ "naam": $doc.naam }');
+    expect(schema.epistola?.writeBack).toEqual({ 'doc:/besluit/type': '$data.type' });
   });
 
   it('carries both prefilled ids as well', () => {

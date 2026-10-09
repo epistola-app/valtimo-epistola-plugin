@@ -46,13 +46,15 @@ class ComposerParserTest {
         }
     }
 
+    /** A composer as the builder saves one: everything this plugin owns under its one key. */
     private String composer(String extra) {
         return """
                 {"components":[
                   {"type":"epistola-letter-composer","key":"pv:epistolaLetter",
-                   "pluginConfigurationId":"%s","catalogId":"gemeente",
-                   "dataMapping":"{\\"naam\\": $doc.naam}",
-                   "templates":[{"templateId":"besluit","label":"Besluit"},{"templateId":"herinnering"}]%s}
+                   "epistola":{
+                     "pluginConfigurationId":"%s","catalogId":"gemeente",
+                     "dataMapping":"{\\"naam\\": $doc.naam}",
+                     "templates":[{"templateId":"besluit","label":"Besluit"},{"templateId":"herinnering"}]%s}}
                 ]}
                 """.formatted(PLUGIN_CONFIGURATION_ID, extra);
     }
@@ -172,15 +174,26 @@ class ComposerParserTest {
     }
 
     @Test
-    void readsTheSettingsWidgetsNestedShapeAndTheHandWrittenFlatOne() {
-        var nested = parse("""
+    void readsTheNamespacedShapeTheSettingsWidgetsNestedOneAndTheHandWrittenFlatOne() {
+        // What the builder saves: the settings widget's object, inside the one key this plugin owns.
+        var namespaced = parse("""
+                {"components":[{"type":"epistola-letter-composer","key":"pv:brief",
+                  "epistola":{"letterSet":{"pluginConfigurationId":"%s","catalogId":"gemeente",
+                    "templates":[{"templateId":"besluit"}]}}}]}
+                """.formatted(PLUGIN_CONFIGURATION_ID));
+
+        // The same settings written by hand, with neither the namespace nor the widget's object.
+        var handWritten = parse("""
                 {"components":[{"type":"epistola-letter-composer","key":"pv:brief",
                   "letterSet":{"pluginConfigurationId":"%s","catalogId":"gemeente",
                     "templates":[{"templateId":"besluit"}]}}]}
                 """.formatted(PLUGIN_CONFIGURATION_ID));
 
-        assertThat(nested).singleElement()
+        assertThat(namespaced).singleElement()
                 .satisfies(c -> assertThat(c.offers("besluit")).isTrue());
+        assertThat(handWritten).singleElement()
+                .satisfies(c -> assertThat(c.offers("besluit")).isTrue());
+        // And the namespace without the widget's object, which is how the helper above writes one.
         assertThat(parse(composer("")).get(0).offers("besluit")).isTrue();
     }
 

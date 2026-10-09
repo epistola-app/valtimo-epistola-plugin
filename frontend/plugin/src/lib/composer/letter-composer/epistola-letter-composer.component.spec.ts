@@ -278,14 +278,16 @@ describe('EpistolaLetterComposerComponent', () => {
   it('offers the letters the settings widget stored', () => {
     const { component } = createComponent();
     component.templates = [];
-    component.letterSet = { templates: [{ templateId: 'besluit', label: 'Besluit' }] };
+    component.epistola = {
+      letterSet: { templates: [{ templateId: 'besluit', label: 'Besluit' }] },
+    };
 
     expect(component.offeredTemplates).toEqual([{ templateId: 'besluit', label: 'Besluit' }]);
   });
 
   it('still offers the letters of a hand-written form', () => {
     const { component } = createComponent();
-    component.letterSet = undefined;
+    component.epistola = undefined;
 
     expect(component.offeredTemplates.map((option) => option.templateId)).toEqual([
       'besluit',

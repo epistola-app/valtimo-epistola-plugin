@@ -251,7 +251,8 @@ export class EpistolaLetterComposerComponent
   /** Letters on offer, as a hand-written form may carry them. */
   @Input() templates: ComposerTemplateOption[] = [];
   /** Letters on offer, as the settings widget stores them. */
-  @Input() letterSet?: { templates?: ComposerTemplateOption[] };
+  /** Everything this component owns on the form, under the one key it claims. */
+  @Input() epistola?: { letterSet?: { templates?: ComposerTemplateOption[] } };
   @Input() label?: string;
   @Input() placeholder?: string;
   /** Set by the Formio wrapper from the server-prefilled carrier field. */
@@ -293,7 +294,8 @@ export class EpistolaLetterComposerComponent
 
   /** What the picker offers, whichever shape the form stores it in. */
   get offeredTemplates(): ComposerTemplateOption[] {
-    return this.letterSet?.templates?.length ? this.letterSet.templates : this.templates;
+    const offered = this.epistola?.letterSet?.templates;
+    return offered?.length ? offered : this.templates;
   }
   /**
    * Formio options for the generated form.

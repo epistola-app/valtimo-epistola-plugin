@@ -147,17 +147,19 @@ class ComposerConfigurationResolverTest {
         when(formDefinitionRepository.findById(FORM_ID)).thenReturn(Optional.of(form));
     }
 
+    /** A composer as the builder saves one: its settings under the one key this plugin owns. */
     private String composerJson(String extraProperties) {
         return """
                 {"components":[
                   {"type":"panel","components":[
                     {"type":"epistola-letter-composer","key":"pv:epistolaLetter",
-                     "pluginConfigurationId":"%s","catalogId":"gemeente",
-                     "dataMapping":"{\\"naam\\": $doc.naam}",
-                     "templates":[
-                       {"templateId":"besluit","label":"Besluit"},
-                       {"templateId":"herinnering","dataMapping":"{\\"termijn\\": 14}"}
-                     ]%s}
+                     "epistola":{
+                       "pluginConfigurationId":"%s","catalogId":"gemeente",
+                       "dataMapping":"{\\"naam\\": $doc.naam}",
+                       "templates":[
+                         {"templateId":"besluit","label":"Besluit"},
+                         {"templateId":"herinnering","dataMapping":"{\\"termijn\\": 14}"}
+                       ]%s}}
                   ]}
                 ]}
                 """.formatted(PLUGIN_CONFIGURATION_ID, extraProperties);

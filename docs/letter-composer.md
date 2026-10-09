@@ -155,14 +155,15 @@ data belongs in a case form, not in one letter.
 | **Also ask for optional fields** | Off by default: only fields the template marks required are asked for.                                                                                                                                                                           |
 | **Process to start**             | Normally left empty — see [Where it is used](#where-it-is-used). Fill it in only when the backend says two processes offer the same letter.                                                                                                      |
 
-Stored, that half looks like this — a form written by hand may also carry the three keys directly
-on the component:
+Stored, that half looks like this — under `epistola`, the one key this component claims on a form:
 
 ```json
-"letterSet": {
-  "pluginConfigurationId": "…",
-  "catalogId": "municipality-demo",
-  "templates": [{ "templateId": "besluit-bezwaar", "label": "Besluit op bezwaar" }]
+"epistola": {
+  "letterSet": {
+    "pluginConfigurationId": "…",
+    "catalogId": "municipality-demo",
+    "templates": [{ "templateId": "besluit-bezwaar", "label": "Besluit op bezwaar" }]
+  }
 }
 ```
 
@@ -454,20 +455,29 @@ deployable as config-as-code, editable in the builder:
 {
   "type": "epistola-letter-composer",
   "key": "pv:epistolaLetter",
-  "schemaVersion": 1,
   "prefill": false,
-  "askOptionalFields": false,
-  "dataMapping": "<baseline JSONata>",
-  "letterSet": {
-    "pluginConfigurationId": "…",
-    "catalogId": "municipality-demo",
-    "templates": [{ "templateId": "besluit", "label": "…", "dataMapping": "<fragment>" }]
+  "epistola": {
+    "schemaVersion": 1,
+    "askOptionalFields": false,
+    "dataMapping": "<baseline JSONata>",
+    "letterSet": {
+      "pluginConfigurationId": "…",
+      "catalogId": "municipality-demo",
+      "templates": [{ "templateId": "besluit", "label": "…", "dataMapping": "<fragment>" }]
+    }
   }
 }
 ```
 
-`schemaVersion` and `prefill` are written back on every save, because Form.io drops schema equal to
-the registered default and losing either is silent.
+**Everything this component owns lives under `epistola`.** That component object is not ours: it
+holds Form.io's own properties — `key`, `label`, `validate`, `prefill` — and whatever another
+custom component on the same form puts there. `dataMapping` and `schemaVersion` are names anyone
+could reasonably claim, so one key is claimed instead of five. `prefill` stays outside it, because
+it is Form.io's own property and Form.io is the one that reads it.
+
+`epistola.schemaVersion` and `prefill` are written back on every save, because Form.io drops schema
+equal to the registered default and losing either is silent. The namespace is rewritten as a whole
+object, so stamping the version must not drop the settings beside it — pinned by a unit test.
 
 **A catalog is a property of the letter, not of the set.** `letterSet.catalogId` is the default; a
 letter may carry its own `catalogId`, which is what lets one picker offer letters from more than
@@ -481,8 +491,10 @@ optional, because a template id is unique within a catalog and a composer usuall
 a composer offering two can hold the same id twice, and the backend refuses to guess between them
 rather than rendering whichever happened to be configured first.
 
-A form written before the widget existed carries `pluginConfigurationId`, `catalogId` and
-`templates` directly on the component instead of under `letterSet`; both shapes are read.
+A form written by hand may leave out either level: the settings directly on the component instead
+of under `epistola`, and `pluginConfigurationId`, `catalogId` and `templates` directly instead of
+under `letterSet`. All of those shapes are read — the namespace when it is there, the component
+itself when it is not.
 
 **2. The chosen letter**, on the process variable the component's `pv:` key names:
 
@@ -720,7 +732,7 @@ the promise the composer makes. The rest are open.
 
   The design is settled and written up in
   [ADR 0006](adr/0006-letter-composer-configuration.md#write-back-is-a-map-from-case-path-to-expression-evaluated-after-the-letter-is-composed):
-  a `writeBack` map on the component, keyed by the **destination** and valued with a JSONata
+  an `epistola.writeBack` map on the component, keyed by the **destination** and valued with a JSONata
   expression over `$inputs` / `$data` / `$doc` / `$pv`. It is evaluated when the letter is composed
   and the _result_ rides on the letter variable next to `data`, so the write uses what the employee
   approved even when the applying task runs long afterwards. The **generate action applies it**, once
