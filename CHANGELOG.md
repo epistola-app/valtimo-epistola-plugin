@@ -47,6 +47,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the builder by naming one picker `brief` and another `pv:brief`: different keys to Form.io's own
   uniqueness check, the same key once the prefix is applied.
 
+- **When a letter is split into steps is now the form's decision.** The composer shows a letter's
+  generated inputs as steps once there are more than six of them; six was a constant, and how much
+  belongs on one screen is a judgement about the letter rather than a universal. A **Split into
+  steps above this many fields** setting sits with the advanced settings; empty keeps the default.
+
+  Read tolerantly on purpose: a blank field, a string from a form saved as text, a zero, a negative
+  or a fraction all fall back to the default. A presentation setting is never worth breaking the
+  letter over. Note the count treats a repeatable group as one field however large it is, so filling
+  a few fields from the mapping can cross the boundary in one step — which is exactly how the demo's
+  permit letter lost its steps before this was configurable.
+
 - **The composer's settings panel asks less.** Of its eight entries only two — the property name and
   the letters on offer — are decisions every author makes; the rest had working defaults at the same
   visual weight, so the panel read as six decisions instead of two. The baseline mapping, the

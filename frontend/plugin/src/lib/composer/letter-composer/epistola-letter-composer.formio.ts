@@ -166,6 +166,17 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
             weight: 20,
           },
           {
+            type: 'number',
+            key: 'epistola.stepAfter',
+            label: 'Split into steps above this many fields',
+            tooltip:
+              'Leave empty for the default of 6. A letter that asks for more than this many fields ' +
+              'is shown as steps instead of one long column, one step per section of the letter. ' +
+              'Raise it to keep more on one screen, or set it very high to never split.',
+            validate: { min: 1, integer: true },
+            weight: 25,
+          },
+          {
             type: 'checkbox',
             key: 'epistola.askOptionalFields',
             label: 'Also ask for optional fields the mapping left empty',

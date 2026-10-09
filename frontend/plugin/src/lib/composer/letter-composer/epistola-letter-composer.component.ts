@@ -252,7 +252,10 @@ export class EpistolaLetterComposerComponent
   @Input() templates: ComposerTemplateOption[] = [];
   /** Letters on offer, as the settings widget stores them. */
   /** Everything this component owns on the form, under the one key it claims. */
-  @Input() epistola?: { letterSet?: { templates?: ComposerTemplateOption[] } };
+  @Input() epistola?: {
+    letterSet?: { templates?: ComposerTemplateOption[] };
+    stepAfter?: number | string;
+  };
   @Input() label?: string;
   @Input() placeholder?: string;
   /** Set by the Formio wrapper from the server-prefilled carrier field. */
@@ -472,6 +475,7 @@ export class EpistolaLetterComposerComponent
         this.formDefinition = sectionForm(
           withValidationMessages(prepared.form, this.validationMessages),
           (step) => this.translate('composerSection').replace('{step}', String(step)),
+          this.stepAfter,
         );
         this.complete = prepared.complete;
         this.requiredInputKeys = requiredKeys(prepared.form);
@@ -628,6 +632,19 @@ export class EpistolaLetterComposerComponent
    * language, so nothing downstream needs to know which one that is. See
    * [composer-messages.ts](./composer-messages.ts).
    */
+  /**
+   * How many fields this composer tolerates before stepping, or `undefined` for the default.
+   *
+   * Read tolerantly: Formio's number field hands back a string on a form that was saved as text,
+   * and an author can leave it blank. Anything that is not a positive whole number falls back to
+   * the default rather than producing a form with no steps or a step per field — a presentation
+   * setting is never worth breaking the letter over.
+   */
+  private get stepAfter(): number | undefined {
+    const configured = Number(this.epistola?.stepAfter);
+    return Number.isInteger(configured) && configured > 0 ? configured : undefined;
+  }
+
   private get validationMessages(): ValidationMessages {
     return {
       required: this.translate('composerValidationRequired'),
