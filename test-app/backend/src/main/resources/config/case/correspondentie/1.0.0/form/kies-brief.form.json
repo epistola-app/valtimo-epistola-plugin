@@ -36,7 +36,7 @@
             {
               "templateId": "bevestigingsbrief-vergunning",
               "label": "Bevestiging omgevingsvergunning",
-              "dataMapping": "{\n  \"applicant\": {\n    \"firstName\": $doc.objector.firstName,\n    \"lastName\": $doc.objector.lastName,\n    \"address\": {\n      \"street\": $doc.objector.address.street,\n      \"houseNumber\": $doc.objector.address.houseNumber,\n      \"postalCode\": $doc.objector.address.postalCode,\n      \"city\": $doc.objector.address.city\n    }\n  }\n}"
+              "dataMapping": "{\n  \"applicant\": {\n    \"firstName\": $doc.objector.firstName,\n    \"lastName\": $doc.objector.lastName\n  }\n}"
             }
           ]
         },
