@@ -30,6 +30,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The author names the letter; the composer owns the `pv:` prefix.** The settings field used to
+  reject anything but a `pv:` key, explaining a Valtimo storage concept an author should not need to
+  learn — and a composer arrives from the palette keyed after the palette title, so that rejection
+  was the first thing they met. There is no case where the key could be anything else: the only
+  thing that reads a composed letter is the generate action, which reads a process variable, and
+  `pv:` is what makes Valtimo store a submitted value as one. A constant is not a decision, so the
+  field now takes a name (`epistolaLetter`) and the prefix is applied on save, at the one point
+  every saved component passes through. Typing `pv:epistolaLetter` still works, and a name a process
+  variable could never carry is still refused — with a message about the name, not about prefixes.
+
+- **Two letter pickers answering to one name are now refused** (422, `AMBIGUOUS_COMPOSER`) instead
+  of resolved by document order. They write the same process variable, so only one could survive a
+  submit anyway, while their mappings and write-back rules differ — taking the first applied one
+  picker's rules to the other's letter. Reachable from a hand-written form, and newly reachable from
+  the builder by naming one picker `brief` and another `pv:brief`: different keys to Form.io's own
+  uniqueness check, the same key once the prefix is applied.
+
 - **The composer's settings panel asks less.** Of its eight entries only two — the property name and
   the letters on offer — are decisions every author makes; the rest had working defaults at the same
   visual weight, so the panel read as six decisions instead of two. The baseline mapping, the

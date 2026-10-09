@@ -90,21 +90,29 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
       {
         type: 'textfield',
         key: 'key',
-        label: 'Property name',
+        label: 'Name for the chosen letter',
         tooltip:
-          'Where the chosen letter is stored. Use a pv: key (for example pv:epistolaLetter) so the generate task can read it with $pv.',
+          'A name for the process variable the chosen letter is stored in, such as epistolaLetter. ' +
+          'The generate task reads it by this name. Use a different name for each letter picker on ' +
+          'the same form.',
         weight: 0,
         // A composer dropped from the palette arrives keyed `epistolaLetterComposer`, because
         // Formio derives the key from the palette title and ignores both a schema key and an
-        // editForm defaultValue. Without a `pv:` prefix Valtimo stores the chosen letter in the
-        // submission data instead of as a process variable, and the generate task then fails with
-        // "no letter was composed" — a runtime failure, one step later, for a mistake made here.
-        // So the author is made to type it.
+        // editForm defaultValue. So the author types this field either way.
+        //
+        // What they no longer have to type is the `pv:` prefix. There is no case where it could be
+        // anything else: the only thing that reads a composed letter is the generate action, which
+        // reads a *process variable* (runtimeService.getVariable), and `pv:` is what makes Valtimo
+        // store the submitted value as one. Any other spelling leaves the letter in submission data
+        // or on the document, where the action cannot see it, and the failure lands one step later
+        // at the generate task rather than here. A constant is not a decision, so this component
+        // owns it — see withComposerDefaults, which prefixes the key on save. An author who does
+        // type `pv:` is still right, and keeps working.
         validate: {
           required: true,
-          pattern: '^pv:[A-Za-z_][A-Za-z0-9_]*$',
+          pattern: '^(pv:)?[A-Za-z_][A-Za-z0-9_]*$',
           customMessage:
-            'The property name must be a pv: key, for example pv:epistolaLetter — that is what makes the chosen letter a process variable the generate task can read.',
+            'Use a name that starts with a letter or underscore and contains only letters, numbers and underscores — for example epistolaLetter.',
         },
       },
       {
@@ -183,6 +191,25 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   }),
 };
 
+/**
+ * The key a composer is stored under, given whatever the author typed.
+ *
+ * A usable name becomes a `pv:` key; a key that already carries the prefix is left alone. Anything
+ * else — empty, missing, or containing characters a process variable cannot — is handed back
+ * untouched, so the editForm's own `required` and pattern rules refuse it with a message the author
+ * can act on, rather than it being prefixed into a process variable nobody meant.
+ *
+ * Note this also prefixes the name Formio derives from the palette title, which is what a composer
+ * arrives with. That is deliberate: it makes "drop it and press Save" produce a letter picker that
+ * works, just one named after the palette entry.
+ */
+export function composerKeyOf(key: unknown): any {
+  if (typeof key !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+    return key;
+  }
+  return `pv:${key}`;
+}
+
 export function registerEpistolaLetterComposerComponent(injector: Injector): void {
   registerEpistolaFormioComponent(
     EPISTOLA_LETTER_COMPOSER_OPTIONS,
@@ -198,7 +225,7 @@ export function registerEpistolaLetterComposerComponent(injector: Injector): voi
 }
 
 /**
- * Keep `prefill: false` and the schema version in the saved form.
+ * Keep `prefill: false`, the schema version and the key's `pv:` prefix in the saved form.
  *
  * Form.io drops schema that equals the registered default, exactly as it does with the hidden
  * carriers. Without this a form saved from the builder loses `prefill: false` and starts failing
@@ -208,6 +235,10 @@ export function registerEpistolaLetterComposerComponent(injector: Injector): voi
  *
  * The version is deliberately *not* forced onto a component that carries an older one: a form
  * authored against an earlier schema stays authored against it until someone changes it.
+ *
+ * The key is prefixed here because this is the one point every saved component passes through. The
+ * editForm accepts a bare name, so without this a form could store a composer whose letter never
+ * becomes a process variable — the exact failure the author used to be made to prevent by hand.
  */
 function withComposerDefaults(
   BaseComponent: ValtimoFormioComponentConstructor,
@@ -217,6 +248,7 @@ function withComposerDefaults(
       const modified = super.getModifiedSchema(schema, defaultSchema, recursion);
       if (!recursion) {
         modified.prefill = false;
+        modified.key = composerKeyOf(modified.key ?? (schema ?? {}).key);
         // The namespace is re-added whole: Form.io drops schema equal to the registered
         // default, and a version that went missing would make every saved component look as
         // though it predates the field.

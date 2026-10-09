@@ -405,6 +405,42 @@ describe('letter composer opts out of Valtimo prefill', () => {
     expect(schema.epistola?.writeBack).toEqual({ 'doc:/besluit/type': '$data.type' });
   });
 
+  /**
+   * The author types a name; `pv:` is not theirs to get wrong. There is no case where it could be
+   * anything else — the generate action reads a process variable, and only `pv:` makes Valtimo
+   * store the submitted letter as one — so a constant stopped being presented as a decision.
+   */
+  describe('the pv: prefix on the stored key', () => {
+    it('prefixes a name the author typed', () => {
+      const schema = persistedSchemaOf('epistola-letter-composer', {
+        type: 'epistola-letter-composer',
+        key: 'besluitBrief',
+      });
+
+      expect(schema.key).toBe('pv:besluitBrief');
+    });
+
+    it('leaves a key that already carries it alone', () => {
+      const schema = persistedSchemaOf('epistola-letter-composer', {
+        type: 'epistola-letter-composer',
+        key: 'pv:epistolaLetter',
+      });
+
+      expect(schema.key).toBe('pv:epistolaLetter');
+    });
+
+    it('does not prefix something a process variable could never be named', () => {
+      // Refusing it in the editForm tells the author what to fix; prefixing it would bury the
+      // mistake in a process variable nobody meant.
+      const schema = persistedSchemaOf('epistola-letter-composer', {
+        type: 'epistola-letter-composer',
+        key: 'doc:/besluit/brief',
+      });
+
+      expect(schema.key).toBe('doc:/besluit/brief');
+    });
+  });
+
   it('carries both prefilled ids as well', () => {
     const schema = persistedSchemaOf(
       'epistola-letter-composer',

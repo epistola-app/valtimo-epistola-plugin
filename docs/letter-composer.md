@@ -147,13 +147,26 @@ data belongs in a case form, not in one letter.
 
 ## Configuring the component
 
-| Setting                          | Meaning                                                                                                                                                                                                                                          |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Property name** (`key`)        | Where the chosen letter is stored. Use a `pv:` key, e.g. `pv:epistolaLetter`, so the generate task can read it with `$pv`.                                                                                                                       |
-| **Which letters, from where**    | Pick the Epistola connection and catalog, then tick the letters to offer and name each one as the employee should see it. The three cascade: changing the connection clears the catalog and the ticks, because those ids mean nothing elsewhere. |
-| **Baseline mapping**             | One JSONata mapping over `$doc`/`$pv` for every offered letter. Whatever it does not fill is asked of the employee.                                                                                                                              |
-| **Also ask for optional fields** | Off by default: only fields the template marks required are asked for.                                                                                                                                                                           |
-| **Process to start**             | Normally left empty — see [Where it is used](#where-it-is-used). Fill it in only when the backend says two processes offer the same letter.                                                                                                      |
+| Setting                                | Meaning                                                                                                                                                                                                                                           |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Name for the chosen letter** (`key`) | A name for the process variable the letter is stored in, e.g. `epistolaLetter`. The `pv:` prefix is added on save, so the author types a name rather than a key; typing `pv:epistolaLetter` also works. Each picker on a form needs its own name. |
+| **Which letters, from where**          | Pick the Epistola connection and catalog, then tick the letters to offer and name each one as the employee should see it. The three cascade: changing the connection clears the catalog and the ticks, because those ids mean nothing elsewhere.  |
+| **Baseline mapping**                   | One JSONata mapping over `$doc`/`$pv` for every offered letter. Whatever it does not fill is asked of the employee.                                                                                                                               |
+| **Also ask for optional fields**       | Off by default: only fields the template marks required are asked for.                                                                                                                                                                            |
+| **Process to start**                   | Normally left empty — see [Where it is used](#where-it-is-used). Fill it in only when the backend says two processes offer the same letter.                                                                                                       |
+
+**The `pv:` prefix is the component's, not the author's.** There is no case where the key could be
+anything else: the only thing that reads a composed letter is the generate action, which reads a
+_process variable_, and `pv:` is what makes Valtimo store a submitted value as one. Any other
+spelling leaves the letter in submission data or on the document, where the action cannot see it,
+and the failure lands one step later at the generate task rather than in the settings. So the author
+names the letter and the component prefixes it on save (`withComposerDefaults`), which is the one
+point every saved component passes through.
+
+Two pickers answering to one name — reachable by naming one `brief` and another `pv:brief`, which
+are different keys to Form.io's own uniqueness check and the same key once stored — is **refused**
+rather than resolved by document order: they would write the same variable, while their mappings and
+write-back rules differ.
 
 Only the property name and the letters are decisions every author makes, so the mapping, the
 write-back, the optional-field toggle and the process key sit in a collapsed **Mapping and advanced
@@ -230,10 +243,10 @@ UserTask  choose-letter          → form "kies-brief"            (the composer)
 ServiceTask generate-chosen-letter → action "Generate Dynamic Document"
 ```
 
-Demo: `correspondentie-letter-composer`. To build one: drop the component on the task's form, set
-its **Property name** to `pv:epistolaLetter`, choose the Epistola connection and the letters to
-offer, then add a service task with the **Generate Dynamic Document** action reading the same
-variable. The action needs no template, catalog or mapping of its own — the letter carries them.
+Demo: `correspondentie-letter-composer`. To build one: drop the component on the task's form, name
+the chosen letter `epistolaLetter`, choose the Epistola connection and the letters to offer, then
+add a service task with the **Generate Dynamic Document** action reading the same variable. The
+action needs no template, catalog or mapping of its own — the letter carries them.
 
 ### Without a composer at all
 
