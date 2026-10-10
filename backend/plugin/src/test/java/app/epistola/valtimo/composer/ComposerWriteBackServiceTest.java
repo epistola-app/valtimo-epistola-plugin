@@ -19,6 +19,7 @@ package app.epistola.valtimo.composer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -108,17 +109,19 @@ class ComposerWriteBackServiceTest {
     }
 
     @Test
-    @DisplayName("a failure finding the rules does not fail the letter")
-    void neverThrows() {
-        // The contract this method documents, and the reason for it: by the time write-back runs
-        // the letter is with Epistola and cannot be unsent. Throwing here would fail the activity,
-        // and a retry would send a second letter. Reading the configuration can fail like anything
-        // else that touches a database.
+    @DisplayName("a failure finding the rules blocks the submission")
+    void failingRuleLookupBlocks() {
+        // Write-back runs inside the submission's transaction, so this rolls the submission back
+        // rather than leaving a case worker believing their decision was recorded. Without the
+        // configuration there is no way to know whether this letter had values to save, so
+        // carrying on would be a guess. (It swallowed this until write-back moved to submission
+        // time, where the letter was already irreversible and a retry would have sent a second.)
         when(resolver.forCaseDefinition(CASE_KEY)).thenThrow(new RuntimeException("database is gone"));
 
-        assertThatCode(() -> service.apply(
-                DOCUMENT_ID, letter(Map.of(), Map.of("decisionType", "gegrond")), "epistolaLetter"))
-                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> service.applyFromSubmission(
+                DOCUMENT_ID, Map.of("epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond")))))
+                .isInstanceOf(ComposerWriteBackException.class)
+                .hasMessageContaining("configuration could not be read");
 
         verify(valueResolverService, never()).handleValues(any(UUID.class), any());
     }
@@ -431,27 +434,57 @@ class ComposerWriteBackServiceTest {
     }
 
     @Test
-    @DisplayName("one broken rule does not cost the others")
+    @DisplayName("a rule that cannot be evaluated blocks the submission, and is named")
     void oneBrokenRule() {
+        // It used to let the others through, which is the silent failure moving to submission time
+        // was meant to end: a broken rule means a value the employee approved never arrives, and
+        // nothing said so. The destination is named — the author's own text, not case data.
         declaring(Map.of(
                 "doc:/goed", "$inputs.veld",
                 "doc:/stuk", "this is ( not jsonata"));
 
-        service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("veld", "waarde")));
+        assertThatThrownBy(() -> service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("veld", "waarde"))))
+                .isInstanceOf(ComposerWriteBackException.class)
+                .hasMessageContaining("doc:/stuk")
+                .hasMessageContaining("could not be evaluated");
 
-        assertThat(written()).containsExactly(Map.entry("doc:/goed", "waarde"));
+        verify(valueResolverService, never()).handleValues(any(UUID.class), any());
     }
 
     @Test
-    @DisplayName("a failing write is logged, never thrown")
+    @DisplayName("a failing write blocks the submission, naming the destination and no values")
     void failingWrite() {
-        // The submission has already succeeded by the time this runs. Throwing would lose a form
-        // the employee has finished, to save a correction.
         declaring(Map.of("doc:/x", "$inputs.veld"));
-        org.mockito.Mockito.doThrow(new RuntimeException("database is on fire"))
+        org.mockito.Mockito.doThrow(new RuntimeException("case rejected 'waarde' for /x"))
                 .when(valueResolverService).handleValues(any(UUID.class), any());
 
-        service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("veld", "waarde")));
+        assertThatThrownBy(() -> service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("veld", "waarde"))))
+                .isInstanceOf(ComposerWriteBackException.class)
+                .hasMessageContaining("doc:/x")
+                // A letter's data is case data, and the downstream complaint quotes the value it
+                // rejected. So neither the message nor an attached cause carries it: the detail
+                // goes to DEBUG, where reading it is a deliberate act.
+                .hasMessageNotContaining("waarde")
+                .hasNoCause();
+    }
+
+    @Test
+    @DisplayName("when a batch fails, the destination at fault is the one named")
+    void namesTheDestinationAtFault() {
+        // A batch failure says only that something in the set was unacceptable. An operator needs
+        // to know which one, and an author needs it to fix the rule — so each is tried alone, to
+        // identify rather than to salvage: the transaction is about to roll back either way.
+        declaring(Map.of("doc:/goed", "$inputs.veld", "doc:/stuk", "$inputs.veld"));
+        org.mockito.Mockito.doThrow(new RuntimeException("schema says no"))
+                .when(valueResolverService).handleValues(any(UUID.class), argThat(
+                        (Map<String, Object> values) -> values != null && values.size() > 1));
+        org.mockito.Mockito.doThrow(new RuntimeException("schema says no"))
+                .when(valueResolverService).handleValues(any(UUID.class), eq(Map.of("doc:/stuk", "waarde")));
+
+        assertThatThrownBy(() -> service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("veld", "waarde"))))
+                .isInstanceOf(ComposerWriteBackException.class)
+                .hasMessageContaining("doc:/stuk")
+                .hasMessageNotContaining("doc:/goed");
     }
 
     @Test

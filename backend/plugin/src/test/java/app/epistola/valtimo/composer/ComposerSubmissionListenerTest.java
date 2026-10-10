@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.composer;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -96,14 +97,17 @@ class ComposerSubmissionListenerTest {
     }
 
     @Test
-    @DisplayName("a write-back that fails does not fail the submission")
-    void survivesAFailingWriteBack() {
-        // The service promises not to throw; this is the belt to that braces. The task is already
-        // completed by the time this runs, so throwing could not undo it and would only surface as
-        // an error on a submission that in fact succeeded.
-        doThrow(new RuntimeException("case is locked"))
+    @DisplayName("a write-back that fails fails the submission")
+    void propagatesAFailingWriteBack() {
+        // Spring dispatches this event synchronously, inside the submission's transaction, so
+        // raising it rolls the submission back: measured against the running app, the submit call
+        // answers 400, the task stays open and the case is untouched. Swallowing it would leave a
+        // case worker believing the case records a decision it does not.
+        doThrow(new ComposerWriteBackException("destination doc:/besluit/type was refused"))
                 .when(writeBackService).applyFromSubmission(any(), any());
 
-        listener.onTaskCompleted(event(CASE.toString(), Map.of("epistolaLetter", Map.of("x", 1))));
+        assertThatThrownBy(() -> listener.onTaskCompleted(
+                event(CASE.toString(), Map.of("epistolaLetter", Map.of("x", 1)))))
+                .isInstanceOf(ComposerWriteBackException.class);
     }
 }

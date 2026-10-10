@@ -268,11 +268,26 @@ Two things the implementation taught that the reasoning did not:
   same variable — the demo's task form and its ad-hoc start form both use `pv:epistolaLetter` — and
   a submission carries one value for it. Applying per composer saved the same values twice, which is
   one case version per composer. Caught by reading the log of a real submission, not by a test.
-- **A failed write still cannot be reported to the employee.** The event arrives _after_ the task
-  has completed, so throwing would report a failure for a submission that succeeded, and a retry
-  would complete a second task. The listener therefore contains the failure and logs it, exactly as
-  the generate action used to — so that half of the motivation for moving is not delivered, and
-  needs a mechanism that is not an exception (#179).
+- **A failed write _can_ be reported to the employee, and now blocks the submission.** This was
+  first written up the other way round — "the event arrives after the task completed, so throwing
+  would report a failure for a submission that succeeded" — which was wrong, and measuring it showed
+  why. Spring publishes the event synchronously, on the submission's thread and inside its
+  transaction, so "after the task completed" is not "after it was committed". Throwing rolls the
+  submission back: measured, the submit call answers 400, the task stays open and the case is
+  untouched. A write-back problem therefore blocks the submission, which is how an ordinary form
+  behaves when it carries a `doc:` field the case schema refuses.
+
+  Consequently the batch-then-isolate **salvage** was dropped: keeping the writes that worked is
+  incoherent when the transaction is about to roll back. Each destination is still retried alone on
+  a batch failure, but to _identify_ the one at fault — a batch failure says only that something in
+  the set was unacceptable, and an author needs the destination.
+
+- **Log destinations, never values.** A letter's data is case data, and the downstream complaint
+  quotes the value it rejected: Valtimo's own message reads
+  `Failed to handle values … Values: {/besluit/x=gegrond}`. Attached as a cause, that reaches every
+  log that prints the exception's stack trace — which, for a failure propagating out of a web
+  request, is all of them. So the exception that travels carries no cause, and the detail goes to
+  `DEBUG`.
 
 **Still open:** a start form that creates a case completes no task, so that shape is not covered by
 this trigger and needs `JsonSchemaDocumentCreatedEvent` or a process-start listener; and a form flow

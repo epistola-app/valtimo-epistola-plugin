@@ -42,12 +42,12 @@ import org.springframework.context.event.EventListener;
  * business key that is not a case id, or no variables, and there is nothing to do. Only then is the
  * case's configuration consulted.
  *
- * <p><b>What this still does not buy.</b> Moving write-back here closes the window in which a
- * redeployed form could change the rules under a letter already composed, and it stops a case
- * waiting on an asynchronous render for values the employee already approved. It does <em>not</em>
- * let a failed write be reported to that employee: the event arrives after the task has completed,
- * so throwing would report a failure for a submission that succeeded. Telling someone needs a
- * mechanism that is not an exception — see #179.
+ * <p><b>Why this can block the submission.</b> The event is published synchronously, on the
+ * submission's own thread and inside its transaction. "After the task completed" is therefore not
+ * "after the task was committed": throwing from here rolls the submission back — measured, the
+ * submit call answers 400, the task stays open and the case is left untouched. So a write-back
+ * problem fails the submission, which is how an ordinary Valtimo form behaves when a {@code doc:}
+ * field its schema will not accept is submitted.
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -65,16 +65,12 @@ public class ComposerSubmissionListener {
         if (variables == null || variables.isEmpty()) {
             return;
         }
-        try {
-            writeBackService.applyFromSubmission(documentId, variables);
-        } catch (RuntimeException e) {
-            // The service promises not to throw; this is the belt to that braces. Spring dispatches
-            // this event synchronously from the submission, and the task is *already* completed by
-            // the time it arrives — so an exception here would report a failure for a submission
-            // that in fact succeeded, and a retry would complete a second task.
-            log.error("Letter composer write-back failed for case {} on task completion: {}",
-                    documentId, e.getMessage(), e);
-        }
+        // Nothing is caught here. Spring dispatches this event synchronously, inside the
+        // submission's transaction, so a failure rolls the submission back: measured, the submit
+        // call answers 400, the task stays open and the case is untouched. Telling the employee
+        // their letter's values could not be saved is the point — swallowing it would leave them
+        // believing the case records a decision it does not.
+        writeBackService.applyFromSubmission(documentId, variables);
     }
 
     /**

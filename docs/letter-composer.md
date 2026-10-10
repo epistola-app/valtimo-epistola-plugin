@@ -780,10 +780,21 @@ the promise the composer makes. The rest are open.
   [ADR 0006](adr/0006-letter-composer-configuration.md). So the platform's submission _signal_ is
   used instead of its submission _payload_.
 
-  A write that fails is logged rather than thrown: the task has already completed by the time the
-  event arrives, so an exception would report a failure for a submission that in fact succeeded, and
-  a retry would complete a second task. Telling the employee needs a mechanism that is not an
-  exception — see #179. Keying by
+  **A write-back problem blocks the submission.** The event is published synchronously, inside the
+  submission's transaction, so a failure rolls the whole submission back: the submit call answers
+  400, the task stays open and the case is left untouched. That is how an ordinary form behaves when
+  it carries a `doc:` field the case schema will not accept, and it is the point — a value a case
+  worker approved either reaches the case or the submission does not happen. A rule that cannot be
+  _evaluated_ blocks too: the value it was meant to save would otherwise never arrive, silently.
+  A rule that resolves to _nothing_ is not a problem and writes nothing, as above.
+
+  **What is logged names destinations, never values.** A letter's data is case data — names,
+  identifiers, addresses, the text of a decision. The error names the destination at fault and the
+  kind of failure; when a batch fails, each destination is retried alone to _identify_ the culprit
+  rather than to salvage the rest, since the transaction is rolling back either way. The downstream
+  complaint does quote the value it rejected (Valtimo's own message reads
+  `Failed to handle values … Values: {/besluit/x=gegrond}`), so it is **not** attached to the
+  exception that travels — it goes to `DEBUG`, where reading it is a deliberate act. Keying by
   destination is what keeps one writer per case path and lets a destination be computed from several
   inputs. The same map also makes the preview more faithful rather than less — applied to a copy of
   `$doc`/`$pv` before the baseline mapping runs, it shows the letter as it will be _once saved_.

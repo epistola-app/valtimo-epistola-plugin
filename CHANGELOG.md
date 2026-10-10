@@ -23,11 +23,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the platform's submission _signal_ is used instead of its submission _payload_. The rules, the
   JSONata evaluation and the write through `ValueResolverService` are unchanged.
 
-  Two consequences worth knowing. **A letter whose rendering later fails has still written to the
-  case** — deliberate, and nearly true before: the old placement only protected against Epistola
-  refusing the _request_, not against a rendering failure. And **a failed write still cannot be
-  reported to the employee**, because the event arrives after the task has completed; it is logged,
-  as before (#179).
+  **A write-back problem now blocks the submission.** The event is published synchronously, inside
+  the submission's transaction, so a failure rolls the whole submission back: the submit call
+  answers 400, the task stays open and the case is left untouched. A value a case worker approved
+  either reaches the case or the submission does not happen — which is how an ordinary form behaves
+  when it carries a `doc:` field the case schema refuses. A rule that cannot be _evaluated_ blocks
+  too, since the value it was meant to save would otherwise never arrive and nothing would say so;
+  a rule that resolves to _nothing_ still writes nothing, as before.
+
+  **Failures name destinations, never values.** A letter's data is case data, and the downstream
+  complaint quotes the value it rejected, so that detail is not attached to the exception that
+  travels — it goes to `DEBUG`. On a batch failure each destination is retried alone to _identify_
+  the one at fault rather than to salvage the others, which would be incoherent with a transaction
+  about to roll back.
+
+  One other consequence: **a letter whose rendering later fails has still written to the case** —
+  deliberate, and nearly true before, since the old placement only protected against Epistola
+  refusing the _request_, not against a rendering failure.
 
   Not covered by this trigger: a start form that creates a new case completes no task. The ad-hoc
   composer on a start form of an _existing_ case is unaffected.
