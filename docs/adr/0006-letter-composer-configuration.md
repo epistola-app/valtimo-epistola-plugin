@@ -196,6 +196,71 @@ form", which was written about per-letter input keys and applies just as much he
 to a process-scoped context. Valtimo's own process-variable resolver finds the instance by business
 key when all it has is a document id, so a `pv:` destination works wherever a `doc:` one does.
 
+#### Amended again, and measured (2026-10-10)
+
+The amendment above reasoned its way to "applying it at form submission is not possible". That
+holds, and is now **measured** rather than asserted — but it is narrower than it sounds, and one
+route it did not consider is open. Recorded here in full so nobody re-derives it a third time; this
+session did it a second time by not reading this far.
+
+**What the heading two sections up still claims is wrong.** "The map is evaluated when the letter is
+composed, and the result travels with it" was never corrected by the 2026-10-02 amendment, which
+addressed where destinations come from and left the timing claim standing. The rules are evaluated
+**at generate time, from the stored form**. `docs/letter-composer.md` said the same thing and has
+been corrected.
+
+**The form-field route is dead, and here is the evidence.** A hidden child of the composer, keyed
+`doc:/besluit/spikeNative` and left `persistent` (Form.io's default), was added to the deployed
+demo form and a real submission was driven through the browser:
+
+| Check                                           | Outcome                                    |
+| ----------------------------------------------- | ------------------------------------------ |
+| Deployed form carries the prefixed child        | yes — confirmed through the management API |
+| Field instantiated anywhere in the DOM          | **no**                                     |
+| Value present in the case document after submit | **no** — `besluit` absent entirely         |
+
+Form.io does not instantiate a custom component's `components` children. The prefilled task-id and
+document-id carriers work _despite_ this: Valtimo fills them by walking the form-definition JSON and
+the component reads them back out of `root.form`, never from a rendered component — which is also
+why they are `persistent: false`. So `persistent` was never the obstacle, and two ideas fall
+together: letting Valtimo write the composer's inputs natively by naming them with destinations, and
+triggering the plugin's own resolver with a hidden `epistola:writeBack` carrier.
+
+**`ValueResolverFactory` does have a write side** — `handleValues(UUID, Map)`,
+`handleValues(String, VariableScope, Map)`, `preProcessValuesForNewCase`,
+`preProcessValuesForNewDocument` — and the plugin already registers the `epistola:` prefix for
+reading. It is unusable here for exactly the reason above: Valtimo routes to it from a _submitted
+field_, and the composer cannot produce one.
+
+**`ExternalDataSubmittedEvent` does not fire for a composer form.** It is published by
+`DefaultFormSubmissionService` and consumed by `objecten-api`, which made it look like the natural
+hook. A probe that logged a registration marker and a catch-all listener — so the negative comes
+from a probe known to be alive — saw it zero times across a full composer task-form submission.
+
+**What does fire on submit**, from the same probe: `TaskCompletedEvent` (once),
+`JsonSchemaDocumentCreatedEvent`, `JsonSchemaDocumentModifiedEvent`,
+`JsonSchemaDocumentSnapshotCapturedEvent`, `TaskEvent`, `OperatonTaskEvent`.
+
+**So submission-time write-back is possible after all — as a listener, not as a field.**
+`TaskCompletedEvent` lives in the `contract` module, so it is public API, and carries
+`getBusinessKey()` — the case document id for a dossier process — plus `getVariables()`, which holds
+the letter. Nothing else about write-back would change: the rules, the JSONata evaluation, the
+destination guard and the write through `ValueResolverService` all stay exactly as they are. Only
+the call site moves out of the generate action.
+
+**Why that is worth doing**, beyond consistency with every other form: the window this ADR worried
+about closes (rules cannot change between composing and generating if they are applied at
+submission), and a failed write can be reported to the person still looking at the form instead of
+being swallowed because the letter has become irreversible. Note too that the protection the current
+placement buys is thinner than this ADR assumed — `submitAndRecord` throws when Epistola refuses the
+_request_, not when rendering fails, so a letter that fails to render has already written to the
+case today.
+
+**Still open, and the reason this is not yet decided:** a start form has no task, so that shape needs
+`JsonSchemaDocumentCreatedEvent` or a process-start listener; a form flow was not tested, though it
+completes a task and `FormFlowStepCompletedEvent` exists; and a listener on every task completion in
+the installation has to cheaply decide whether a composer was involved.
+
 #### The generate action applies it, after Epistola accepts the letter
 
 A plain Valtimo task form offers no completion hook a plugin can write from, and the composer's

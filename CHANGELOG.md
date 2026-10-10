@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The destinations that resolved to nothing are also named in the log now. A rule that quietly found
   nothing and one that worked used to look identical from outside — the harder half of #179.
 
+- **Recorded what Valtimo offers for writing back at form submission, and what it does not.**
+  [ADR 0006](docs/adr/0006-letter-composer-configuration.md) now carries the measurements: a hidden
+  prefixed child of a Form.io component is never instantiated and never submitted (so neither the
+  composer's inputs nor a trigger carrier can ride Valtimo's native write path),
+  `ExternalDataSubmittedEvent` does not fire for a composer form, and `TaskCompletedEvent` does —
+  carrying the case document id and the process variables, which is everything write-back needs.
+  Submission-time write-back is therefore possible as a listener rather than as a form field.
+
 - **Corrected what the documentation claims about when write-back is evaluated.** It said the rules
   are evaluated when the letter is composed, with the result riding on the letter variable — the
   design [ADR 0006](docs/adr/0006-letter-composer-configuration.md) decided. What shipped resolves
