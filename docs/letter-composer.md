@@ -755,19 +755,43 @@ the promise the composer makes. The rest are open.
   The design is settled and written up in
   [ADR 0006](adr/0006-letter-composer-configuration.md#write-back-is-a-map-from-case-path-to-expression-evaluated-after-the-letter-is-composed):
   an `epistola.writeBack` map on the component, keyed by the **destination** and valued with a JSONata
-  expression over `$inputs` / `$data` / `$doc` / `$pv`. It is evaluated when the letter is composed
-  and the _result_ rides on the letter variable next to `data`, so the write uses what the employee
-  approved even when the applying task runs long afterwards. The **generate action applies it**, once
-  Epistola has accepted the letter — one composer produces one letter which one generate task
-  renders, so there is nothing to coordinate and nothing an author can forget to wire. A refused
-  submission throws as it does today, so nothing is written for a letter that was never sent; a
-  write that fails _after_ acceptance is recorded on the result variable rather than thrown,
-  because the letter is irreversible by then and failing the activity would make a retry generate a
-  duplicate. Keying by destination is what keeps one writer per case
-  path and lets a destination be computed from several inputs; an expression yielding nothing
-  writes nothing, so a value the employee never supplied never clobbers the case. The same map also
-  makes the preview more faithful rather than less — applied to a copy of `$doc`/`$pv` before the
-  baseline mapping runs, it shows the letter as it will be _once saved_.
+  expression over `$inputs` / `$data` / `$doc` / `$pv`.
+
+  The rules are **evaluated when the letter is generated, from the stored form**, and the
+  **generate action applies them** once Epistola has accepted the letter — one composer produces
+  one letter which one generate task renders, so there is nothing to coordinate and nothing an
+  author can forget to wire. What the employee approved still reaches the case even if the generate
+  task runs long afterwards, because `$data` and `$inputs` are read from the letter as it was sent;
+  only `$doc` and `$pv` see the case as it is at generation time.
+
+  Nothing about a write-back ever crosses the wire. An earlier design had the browser compute the
+  values and send them, with the stored form allowed to veto the destinations — hence the veto this
+  document used to describe. What shipped resolves the rules server-side instead, which is stronger:
+  a crafted letter has nothing to craft with, because both the destinations and the values come from
+  the form.
+
+  A refused submission throws as it does today, so nothing is written for a letter that was never
+  sent; a write that fails _after_ acceptance is logged rather than thrown, because the letter is
+  irreversible by then and failing the activity would make a retry generate a duplicate. Keying by
+  destination is what keeps one writer per case path and lets a destination be computed from several
+  inputs. The same map also makes the preview more faithful rather than less — applied to a copy of
+  `$doc`/`$pv` before the baseline mapping runs, it shows the letter as it will be _once saved_.
+
+  **Nothing, null, and the difference between them.** An expression that finds nothing writes
+  nothing, so a value the employee never supplied never clobbers the case — and the destinations
+  that resolved to nothing are named in the log, because a rule that quietly found nothing used to
+  be indistinguishable from one that worked. An explicit **`null` is a value, and it is written**:
+  JSONata keeps the two apart (a missing path leaves the key out of the result, `null` puts it in),
+  so `null` is how a rule says _clear this field_ and nothing else has to be configured to allow it.
+  A conditional spells it out:
+
+  ```
+  $inputs.telefoon ? $inputs.telefoon : null
+  ```
+
+  That also means a `null` the letter itself carries — a contract may declare a field nullable — is
+  written rather than skipped, which is the letter saying the value is empty. Empty string and
+  `false` were always written, being neither missing nor null.
 
 - **Labels come from the contract.** A field with no `title` is labelled by humanizing its property
   name, so an English property name shows an English label in a Dutch form. The fix belongs in the

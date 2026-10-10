@@ -267,10 +267,49 @@ class ComposerWriteBackServiceTest {
     }
 
     @Test
+    @DisplayName("an explicit null is written, so a field can be deliberately cleared")
+    void writesAnExplicitNull() {
+        // JSONata keeps "nothing" and null apart: a missing path leaves the key out, null puts it
+        // in. That is the whole mechanism — writing null needs no setting of its own, and the
+        // counterpart is `yieldsNothing` above.
+        declaring(Map.of("doc:/aanvrager/telefoon", "null"));
+
+        service.apply(DOCUMENT_ID, letter(Map.of(), Map.of()));
+
+        assertThat(written()).containsEntry("doc:/aanvrager/telefoon", null);
+    }
+
+    @Test
+    @DisplayName("a rule may choose between a value and clearing the field")
+    void clearsConditionally() {
+        declaring(Map.of("doc:/aanvrager/telefoon", "$inputs.telefoon ? $inputs.telefoon : null"));
+
+        service.apply(DOCUMENT_ID, letter(Map.of(), Map.of()));
+
+        assertThat(written()).containsEntry("doc:/aanvrager/telefoon", null);
+    }
+
+    @Test
+    @DisplayName("a null the letter itself carries is written, not skipped")
+    void writesANullFromTheLetter() {
+        // The edge this changed: a contract may declare a field nullable, and a letter that says
+        // the value is empty is saying something. Previously indistinguishable from a rule that
+        // found nothing.
+        declaring(Map.of("doc:/aanvrager/telefoon", "$data.telefoon"));
+        Map<String, Object> data = new java.util.LinkedHashMap<>();
+        data.put("telefoon", null);
+
+        service.apply(DOCUMENT_ID, letter(data, Map.of()));
+
+        assertThat(written()).containsEntry("doc:/aanvrager/telefoon", null);
+    }
+
+    @Test
     @DisplayName("a destination the form does not declare is not written")
     void ignoresAnUndeclaredDestination() {
-        // The property this design exists for. The letter is assembled in the browser, so a
-        // crafted one can name any path it likes; the form stays the authority on where data goes.
+        // The property this design exists for, and it now holds for a stronger reason than a veto:
+        // every destination and every value comes from the stored form's rules, so a `writeBack`
+        // key on the letter is not read at all. A crafted letter has nothing to craft with.
         declaring(Map.of("doc:/toegestaan", "$inputs.veld"));
 
         Map<String, Object> crafted = new java.util.LinkedHashMap<>(

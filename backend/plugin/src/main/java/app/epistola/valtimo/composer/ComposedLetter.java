@@ -22,44 +22,41 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 /**
  * A letter a composer put on a process variable: the document, and what only a composer knows.
  *
  * <p>The same variable value read two ways. {@link DynamicDocument} is what it takes to render —
  * which the generate action and the retry form need, and which any process can write. This adds the
- * two things that exist only because a person filled a form: what they typed, and where the
- * composer says those values also belong in the case.
+ * one thing that exists only because a person filled a form: what they typed.
  *
- * <p>Two types rather than one with optional fields, because the optional fields were doing the
- * explaining: a document a process prepared has no inputs and no write-back, and a type called
+ * <p>Two types rather than one with an optional field, because the optional field was doing the
+ * explaining: a document a process prepared has no inputs, and a type called
  * {@code DynamicDocument} that carried them said otherwise every time someone read it.
  *
- * @param document  what is being rendered
- * @param inputs    only what the employee typed, kept apart from the document's data so a
- *                  write-back rule can tell a value a person supplied from one the mapping produced
- * @param writeBack where values from this letter also belong in the case: a value-resolver key
- *                  (such as {@code doc:/aanvrager/telefoon}) to the value resolved when the letter
- *                  was composed. Empty when the composer declared none, which is the ordinary case.
- *                  The <em>values</em> are the browser's; the <em>destinations</em> are only
- *                  honoured where the composer's stored configuration also names them — see
- *                  {@link #writeBackLimitedTo}.
+ * <p>Write-back is deliberately <em>not</em> here. An earlier design had the browser compute the
+ * values and send them, with the stored form allowed to veto the destinations; what shipped instead
+ * resolves the rules server-side when the letter is generated, so no write-back value ever crosses
+ * the wire and there is nothing to veto. What the employee approved still reaches the case, because
+ * the rules read it from this letter's {@code data} and {@code inputs} — only {@code $doc} and
+ * {@code $pv} see the case as it is at generation time.
+ *
+ * @param document what is being rendered
+ * @param inputs   only what the employee typed, kept apart from the document's data so a
+ *                 write-back rule can tell a value a person supplied from one the mapping produced
  */
 public record ComposedLetter(
         DynamicDocument document,
-        Map<String, Object> inputs,
-        Map<String, Object> writeBack
+        Map<String, Object> inputs
 ) {
 
     /**
      * Read a composed letter from what a process variable holds.
      *
      * <p>Anything {@link DynamicDocument#from} accepts is accepted here; a value that carries no
-     * {@code inputs} or {@code writeBack} simply has none, which is what a document prepared by a
-     * process looks like through this lens.
+     * {@code inputs} simply has none, which is what a document prepared by a process looks like
+     * through this lens.
      */
     @SuppressWarnings("unchecked")
     public static ComposedLetter from(Object raw, String variableName, ObjectMapper objectMapper) {
@@ -68,42 +65,12 @@ public record ComposedLetter(
                 ? (Map<String, Object>) map
                 : objectMapper.convertValue(
                         objectMapper.convertValue(raw, Object.class), Map.class);
-        return new ComposedLetter(document, copyOf(value.get("inputs")), copyOf(value.get("writeBack")));
+        return new ComposedLetter(document, copyOf(value.get("inputs")));
     }
 
     /** The data the letter renders with, which is the document's. */
     public Map<String, Object> data() {
         return document.data();
-    }
-
-    /**
-     * The write-back entries whose destination the composer's own configuration names, and no
-     * others.
-     *
-     * <p>This is the one place the distinction matters. The letter's values are computed in the
-     * browser — that is deliberate, and it is what makes what was previewed the thing that gets
-     * sent — but a destination is where a value lands in the case, and that may only come from the
-     * stored form.
-     */
-    public Map<String, Object> writeBackLimitedTo(Set<String> allowed) {
-        if (writeBack.isEmpty() || allowed.isEmpty()) {
-            return Map.of();
-        }
-        Map<String, Object> permitted = new LinkedHashMap<>();
-        writeBack.forEach((destination, value) -> {
-            if (allowed.contains(destination)) {
-                permitted.put(destination, value);
-            }
-        });
-        return Collections.unmodifiableMap(permitted);
-    }
-
-    /** The destinations this letter named that its composer does not, worth saying out loud. */
-    public List<String> writeBackRefused(Set<String> allowed) {
-        return writeBack.keySet().stream()
-                .filter(destination -> !allowed.contains(destination))
-                .sorted()
-                .toList();
     }
 
     /** An unmodifiable snapshot that tolerates a null value; see {@link DynamicDocument}. */

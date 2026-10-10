@@ -298,13 +298,24 @@ public class ComposerWriteBackService {
     /**
      * The value for each destination, from the rule that names it.
      *
-     * <p>A rule yielding nothing contributes nothing, which is what makes "only write what was
-     * actually supplied" the default instead of clobbering good case data with nulls. A rule that
+     * <p>A rule that finds <em>nothing</em> contributes nothing, which is what makes "only write
+     * what was actually supplied" the default instead of clobbering good case data. A rule that
      * fails to evaluate is dropped with a warning rather than failing the rest: one bad expression
      * should not cost the others.
+     *
+     * <p><b>An explicit {@code null} is a value, and it is written.</b> JSONata keeps the two
+     * apart — a missing path leaves the key out of the result, while {@code null} puts it in — so
+     * {@code null} is how a rule says "clear this field", and nothing else has to be configured to
+     * allow it. Only the key's presence is tested here; the old guard also rejected null and so
+     * collapsed the distinction, leaving no way to express a deliberate clear. Empty string and
+     * {@code false} were always written, being neither missing nor null.
+     *
+     * <p>Whatever found nothing is named in the log. A rule that quietly resolved to nothing and
+     * one that worked used to look identical from outside, which is the harder half of #179.
      */
     private Map<String, Object> resolve(Map<String, String> rules, ComposedLetter letter, UUID documentId) {
         Map<String, Object> resolved = new LinkedHashMap<>();
+        List<String> nothing = new ArrayList<>();
         rules.forEach((destination, expression) -> {
             try {
                 Map<String, Object> result = jsonataMappingService.evaluate(EvaluationContext.builder()
@@ -329,14 +340,22 @@ public class ComposerWriteBackService {
                                 "letter", letter.data(),
                                 "inputs", letter.inputs()))
                         .build());
-                if (result.containsKey("value") && result.get("value") != null) {
+                if (result.containsKey("value")) {
                     resolved.put(destination, result.get("value"));
+                } else {
+                    nothing.add(destination);
                 }
             } catch (RuntimeException e) {
                 log.warn("Letter composer write-back rule for '{}' on case {} could not be evaluated: {}",
                         destination, documentId, e.getMessage());
             }
         });
+        if (!nothing.isEmpty()) {
+            // Said out loud rather than left to a reader comparing the case with the rules: a rule
+            // whose expression found nothing is indistinguishable from one that worked.
+            log.info("Letter composer write-back on case {}: {} resolved to nothing, so the case "
+                    + "keeps what it had", documentId, nothing);
+        }
         return resolved;
     }
 

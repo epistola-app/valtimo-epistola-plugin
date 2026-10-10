@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A write-back rule can now clear a case field, and a rule that found nothing says so.** JSONata
+  already distinguished "found nothing" from an explicit `null` — a missing path leaves the key out
+  of the result, `null` puts it in — but the guard tested both and so collapsed them, leaving no way
+  to express a deliberate clear. Only the key's presence is tested now: `null` means _clear this
+  field_, and nothing else has to be configured to allow it. An absent value still writes nothing,
+  which is what keeps a value the employee never supplied from clobbering the case. Empty string and
+  `false` were always written, being neither missing nor null.
+
+  The destinations that resolved to nothing are also named in the log now. A rule that quietly found
+  nothing and one that worked used to look identical from outside — the harder half of #179.
+
+- **Corrected what the documentation claims about when write-back is evaluated.** It said the rules
+  are evaluated when the letter is composed, with the result riding on the letter variable — the
+  design [ADR 0006](docs/adr/0006-letter-composer-configuration.md) decided. What shipped resolves
+  them server-side when the letter is generated, which is stronger in one respect (no write-back
+  value ever crosses the wire, so a crafted letter has nothing to craft with) and weaker in another
+  (rules changed between composing and generating take effect). The unfinished machinery for the
+  documented design — `ComposedLetter.writeBack`, `writeBackLimitedTo`, `writeBackRefused` and
+  `LetterComposerConfiguration.writeBackDestinations` — had no callers and no tests, and is removed
+  rather than left looking live.
+
 ### Added
 
 - **A letter can be configured on its own.** Each offered letter in the composer's settings gets a
