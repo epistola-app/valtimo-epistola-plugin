@@ -241,7 +241,7 @@ from a probe known to be alive — saw it zero times across a full composer task
 `JsonSchemaDocumentCreatedEvent`, `JsonSchemaDocumentModifiedEvent`,
 `JsonSchemaDocumentSnapshotCapturedEvent`, `TaskEvent`, `OperatonTaskEvent`.
 
-**So submission-time write-back is possible after all — as a listener, not as a field.**
+**Decided and implemented (2026-10-10): write-back moves to form submission, as a listener.**
 `TaskCompletedEvent` lives in the `contract` module, so it is public API, and carries
 `getBusinessKey()` — the case document id for a dossier process — plus `getVariables()`, which holds
 the letter. Nothing else about write-back would change: the rules, the JSONata evaluation, the
@@ -256,10 +256,27 @@ placement buys is thinner than this ADR assumed — `submitAndRecord` throws whe
 _request_, not when rendering fails, so a letter that fails to render has already written to the
 case today.
 
-**Still open, and the reason this is not yet decided:** a start form has no task, so that shape needs
-`JsonSchemaDocumentCreatedEvent` or a process-start listener; a form flow was not tested, though it
-completes a task and `FormFlowStepCompletedEvent` exists; and a listener on every task completion in
-the installation has to cheaply decide whether a composer was involved.
+What it took: `ComposerSubmissionListener` translates the event into a case id and the submitted
+variables, and `ComposerWriteBackService.applyFromSubmission` asks the case's own configuration which
+variables hold a letter — each composer declares the `pv:` key it writes, so no value is inspected
+for a letter-ish shape. The generate action no longer applies anything and no longer holds a
+write-back collaborator at all, which is what keeps a retry from re-rendering and re-writing.
+
+Two things the implementation taught that the reasoning did not:
+
+- **Apply once per variable, not per composer.** A case type may hold several composers writing the
+  same variable — the demo's task form and its ad-hoc start form both use `pv:epistolaLetter` — and
+  a submission carries one value for it. Applying per composer saved the same values twice, which is
+  one case version per composer. Caught by reading the log of a real submission, not by a test.
+- **A failed write still cannot be reported to the employee.** The event arrives _after_ the task
+  has completed, so throwing would report a failure for a submission that succeeded, and a retry
+  would complete a second task. The listener therefore contains the failure and logs it, exactly as
+  the generate action used to — so that half of the motivation for moving is not delivered, and
+  needs a mechanism that is not an exception (#179).
+
+**Still open:** a start form that creates a case completes no task, so that shape is not covered by
+this trigger and needs `JsonSchemaDocumentCreatedEvent` or a process-start listener; and a form flow
+is untested, though it completes a task and `FormFlowStepCompletedEvent` exists as a fallback.
 
 #### The generate action applies it, after Epistola accepts the letter
 

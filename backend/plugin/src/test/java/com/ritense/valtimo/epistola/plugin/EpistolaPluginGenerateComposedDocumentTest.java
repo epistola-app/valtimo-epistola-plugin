@@ -67,7 +67,6 @@ class EpistolaPluginGenerateComposedDocumentTest {
     private JsonataMappingService jsonataMappingService;
     private EpistolaResultCollectorRunner resultCollectorRunner;
     private DelegateExecution execution;
-    private app.epistola.valtimo.composer.ComposerWriteBackService writeBackService;
 
     @BeforeEach
     void setUp() {
@@ -75,7 +74,6 @@ class EpistolaPluginGenerateComposedDocumentTest {
         jsonataMappingService = mock(JsonataMappingService.class);
         resultCollectorRunner = mock(EpistolaResultCollectorRunner.class);
         execution = mock(DelegateExecution.class);
-        writeBackService = mock(app.epistola.valtimo.composer.ComposerWriteBackService.class);
         when(epistolaService.submitGenerationJob(anyString(), anyString(), anyString(), anyString(),
                 anyString(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(GenerationJobResult.builder().requestId("req-1").status("PENDING").build());
@@ -89,8 +87,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
                 jsonataMappingService,
                 mock(DocumentService.class),
                 resultCollectorRunner,
-                strategies,
-                writeBackService);
+                strategies);
         ReflectionTestUtils.setField(plugin, "baseUrl", BASE_URL);
         ReflectionTestUtils.setField(plugin, "apiKey", API_KEY);
         ReflectionTestUtils.setField(plugin, "tenantId", TENANT_ID);
@@ -107,77 +104,6 @@ class EpistolaPluginGenerateComposedDocumentTest {
                 "catalogId", "gemeente",
                 "templateId", "besluit-bezwaar",
                 "data", Map.of("naam", "Jansen"));
-    }
-
-    @org.junit.jupiter.api.Nested
-    class WriteBack {
-
-        private static final java.util.UUID CASE = java.util.UUID.randomUUID();
-
-        @Test
-        void putsTheLettersValuesIntoTheCaseItWasSentFor() {
-            // The case is found from the process instance's business key, not from anything the
-            // letter claims — the letter is assembled in the browser.
-            composerWrote(letter());
-            when(execution.getBusinessKey()).thenReturn(CASE.toString());
-
-            plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
-
-            verify(writeBackService).apply(eq(CASE), any(), org.mockito.ArgumentMatchers.anyString());
-        }
-
-        @Test
-        void onlyOnceTheLetterIsSent() {
-            // Epistola refusing the request means nothing was sent, so nothing belongs in the case.
-            // Writing first would update a case for a letter that never went out.
-            composerWrote(letter());
-            when(execution.getBusinessKey()).thenReturn(CASE.toString());
-            when(epistolaService.submitGenerationJob(anyString(), anyString(), anyString(), anyString(),
-                    anyString(), any(), any(), any(), any(), any(), any(), any(), any()))
-                    .thenThrow(new RuntimeException("Epistola said no"));
-
-            org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () ->
-                    plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR));
-
-            verify(writeBackService, org.mockito.Mockito.never()).apply(any(), any(), org.mockito.ArgumentMatchers.anyString());
-        }
-
-        @Test
-        void nothingToWriteBackToWithoutACase() {
-            // A process not started for a dossier has nowhere to write. Not an error: it still
-            // rendered a letter, which is all such a process can want.
-            composerWrote(letter());
-            when(execution.getBusinessKey()).thenReturn(null);
-
-            plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
-
-            verify(writeBackService, org.mockito.Mockito.never()).apply(any(), any(), org.mockito.ArgumentMatchers.anyString());
-        }
-
-        @Test
-        void aFailedWriteDoesNotFailTheActivity() {
-            // The letter is irreversible by now. Throwing would claim it had not been sent, and
-            // retrying the activity would generate a duplicate.
-            composerWrote(letter());
-            when(execution.getBusinessKey()).thenReturn(CASE.toString());
-            org.mockito.Mockito.doThrow(new RuntimeException("case is locked"))
-                    .when(writeBackService).apply(any(), any(), org.mockito.ArgumentMatchers.anyString());
-
-            plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
-
-            verify(writeBackService).apply(eq(CASE), any(), org.mockito.ArgumentMatchers.anyString());
-        }
-
-        @Test
-        void aBusinessKeyThatIsNotADocumentIdIsIgnored() {
-            // A process started with some other business key is not a dossier process.
-            composerWrote(letter());
-            when(execution.getBusinessKey()).thenReturn("not-a-uuid");
-
-            plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
-
-            verify(writeBackService, org.mockito.Mockito.never()).apply(any(), any(), org.mockito.ArgumentMatchers.anyString());
-        }
     }
 
     /**

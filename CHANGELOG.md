@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **A letter's values now reach the case when the form is submitted, not after Epistola accepts the
+  letter.** That is the moment every other form writes to a case, and it closes the window in which
+  a form redeployed between composing and generating would apply rules the employee never saw. It
+  also separates two concerns that were tangled: recording what a case worker decided, and rendering
+  a PDF. A case no longer waits on an asynchronous render for values that were approved at submit.
+
+  The trigger is Valtimo's own `TaskCompletedEvent`, which carries the case document id and the
+  process variables. A composer cannot do what an ordinary form does — carry a `doc:`-keyed field in
+  its submission — because its own field is already keyed `pv:` and a Form.io component can add
+  neither a top-level sibling nor a submitted child; that was measured rather than assumed, and is
+  recorded with everything else in [ADR 0006](docs/adr/0006-letter-composer-configuration.md). So
+  the platform's submission _signal_ is used instead of its submission _payload_. The rules, the
+  JSONata evaluation and the write through `ValueResolverService` are unchanged.
+
+  Two consequences worth knowing. **A letter whose rendering later fails has still written to the
+  case** — deliberate, and nearly true before: the old placement only protected against Epistola
+  refusing the _request_, not against a rendering failure. And **a failed write still cannot be
+  reported to the employee**, because the event arrives after the task has completed; it is logged,
+  as before (#179).
+
+  Not covered by this trigger: a start form that creates a new case completes no task. The ad-hoc
+  composer on a start form of an _existing_ case is unaffected.
+
 ### Fixed
 
 - **A write-back rule can now clear a case field, and a rule that found nothing says so.** JSONata

@@ -757,22 +757,33 @@ the promise the composer makes. The rest are open.
   an `epistola.writeBack` map on the component, keyed by the **destination** and valued with a JSONata
   expression over `$inputs` / `$data` / `$doc` / `$pv`.
 
-  The rules are **evaluated when the letter is generated, from the stored form**, and the
-  **generate action applies them** once Epistola has accepted the letter — one composer produces
-  one letter which one generate task renders, so there is nothing to coordinate and nothing an
-  author can forget to wire. What the employee approved still reaches the case even if the generate
-  task runs long afterwards, because `$data` and `$inputs` are read from the letter as it was sent;
-  only `$doc` and `$pv` see the case as it is at generation time.
+  The rules are **evaluated when the form is submitted, from the stored form** — the same moment
+  every other form writes to the case, and before the letter has been sent anywhere. A composer's
+  values therefore reach the case whether or not the rendering that follows succeeds, which is the
+  right division: generating a PDF is a separate concern from recording what the employee decided.
+
+  The trigger is Valtimo's own `TaskCompletedEvent`, which carries the case document id and the
+  process variables — so `ComposerSubmissionListener` needs nothing from the browser, and the rules
+  cannot change between composing and writing. `$doc` and `$pv` see the case as it is at submission,
+  which is also what an author would assume.
 
   Nothing about a write-back ever crosses the wire. An earlier design had the browser compute the
   values and send them, with the stored form allowed to veto the destinations — hence the veto this
-  document used to describe. What shipped resolves the rules server-side instead, which is stronger:
-  a crafted letter has nothing to craft with, because both the destinations and the values come from
+  document used to describe. The rules are resolved server-side instead, which is stronger: a
+  crafted letter has nothing to craft with, because both the destinations and the values come from
   the form.
 
-  A refused submission throws as it does today, so nothing is written for a letter that was never
-  sent; a write that fails _after_ acceptance is logged rather than thrown, because the letter is
-  irreversible by then and failing the activity would make a retry generate a duplicate. Keying by
+  **Why an event and not a form field.** Every other form writes by carrying a `doc:`-keyed field in
+  its submission, and a composer cannot: its own field is already keyed `pv:` so the letter reaches
+  the generate task, and a Form.io component can add neither a top-level sibling nor a submitted
+  child of its own — measured, not assumed, in
+  [ADR 0006](adr/0006-letter-composer-configuration.md). So the platform's submission _signal_ is
+  used instead of its submission _payload_.
+
+  A write that fails is logged rather than thrown: the task has already completed by the time the
+  event arrives, so an exception would report a failure for a submission that in fact succeeded, and
+  a retry would complete a second task. Telling the employee needs a mechanism that is not an
+  exception — see #179. Keying by
   destination is what keeps one writer per case path and lets a destination be computed from several
   inputs. The same map also makes the preview more faithful rather than less — applied to a copy of
   `$doc`/`$pv` before the baseline mapping runs, it shows the letter as it will be _once saved_.

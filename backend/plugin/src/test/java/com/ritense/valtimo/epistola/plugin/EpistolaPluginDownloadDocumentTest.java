@@ -87,8 +87,7 @@ class EpistolaPluginDownloadDocumentTest {
                 mock(JsonataMappingService.class),
                 mock(DocumentService.class),
                 mock(EpistolaResultCollectorRunner.class),
-                strategies,
-                mock(app.epistola.valtimo.composer.ComposerWriteBackService.class));
+                strategies);
         ReflectionTestUtils.setField(plugin, "baseUrl", BASE_URL);
         ReflectionTestUtils.setField(plugin, "apiKey", API_KEY);
         ReflectionTestUtils.setField(plugin, "tenantId", TENANT_ID);

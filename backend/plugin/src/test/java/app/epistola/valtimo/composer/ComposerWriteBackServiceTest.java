@@ -42,6 +42,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -264,6 +265,84 @@ class ComposerWriteBackServiceTest {
         service.apply(DOCUMENT_ID, letter(Map.of(), Map.of()));
 
         verify(valueResolverService, never()).handleValues(any(UUID.class), any());
+    }
+
+    /**
+     * The submission entry point: which of a task's variables held a letter is answered by the
+     * configuration, not by inspecting values for a letter-ish shape.
+     */
+    @Nested
+    class FromSubmission {
+
+        @Test
+        @DisplayName("applies the rules of the composer whose variable the submission carried")
+        void appliesForTheComposersOwnVariable() {
+            declaring(Map.of("doc:/besluit/type", "$inputs.decisionType"));
+
+            service.applyFromSubmission(DOCUMENT_ID, Map.of(
+                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))));
+
+            assertThat(written()).containsEntry("doc:/besluit/type", "gegrond");
+        }
+
+        @Test
+        @DisplayName("two composers writing one variable save the case once, not twice")
+        void writesOncePerVariableNotPerComposer() {
+            // The demo's task form and its ad-hoc start form both use `pv:epistolaLetter`, and a
+            // submission carries one value for it. Applying per composer saved the same values
+            // twice, which is one case version per composer.
+            var rules = Map.of("doc:/besluit/type", "$inputs.decisionType");
+            var offered = List.of(
+                    new LetterComposerConfiguration.OfferedTemplate("gemeente", "besluit", "Besluit", null));
+            when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(
+                    new LetterComposerConfiguration("pv:epistolaLetter", null, UUID.randomUUID(),
+                            "gemeente", null, offered, false, rules),
+                    new LetterComposerConfiguration("pv:epistolaLetter", null, UUID.randomUUID(),
+                            "gemeente", null, offered, false, rules)));
+
+            service.applyFromSubmission(DOCUMENT_ID, Map.of(
+                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))));
+
+            verify(valueResolverService, org.mockito.Mockito.times(1)).handleValues(any(UUID.class), any());
+        }
+
+        @Test
+        @DisplayName("a composer whose letter the submission did not carry is skipped")
+        void skipsAComposerWithNoLetter() {
+            // Another form on the same case type, not the one just submitted.
+            declaring(Map.of("doc:/besluit/type", "$inputs.decisionType"));
+
+            service.applyFromSubmission(DOCUMENT_ID, Map.of("ietsAnders", "x"));
+
+            verify(valueResolverService, never()).handleValues(any(UUID.class), any());
+        }
+
+        @Test
+        @DisplayName("nothing to do without a case or without variables")
+        void needsBoth() {
+            declaring(Map.of("doc:/besluit/type", "$inputs.decisionType"));
+
+            service.applyFromSubmission(null, Map.of("epistolaLetter", letter(Map.of(), Map.of())));
+            service.applyFromSubmission(DOCUMENT_ID, Map.of());
+            service.applyFromSubmission(DOCUMENT_ID, null);
+
+            verify(valueResolverService, never()).handleValues(any(UUID.class), any());
+        }
+
+        @Test
+        @DisplayName("a composer that names no pv: key has no variable to look for")
+        void ignoresAComposerWithoutAProcessVariableKey() {
+            // Its letter never reaches a process variable, so no submission can carry one.
+            when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(new LetterComposerConfiguration(
+                    "brief", null, UUID.randomUUID(), "gemeente", null,
+                    List.of(new LetterComposerConfiguration.OfferedTemplate("gemeente", "besluit", "Besluit", null)),
+                    false,
+                    Map.of("doc:/besluit/type", "$inputs.decisionType"))));
+
+            service.applyFromSubmission(DOCUMENT_ID, Map.of("brief", letter(Map.of(), Map.of("decisionType", "x"))));
+
+            verify(valueResolverService, never()).handleValues(any(UUID.class), any());
+        }
     }
 
     @Test

@@ -25,8 +25,10 @@ import com.ritense.document.service.DocumentService;
 import com.ritense.valueresolver.ValueResolverService;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -103,6 +105,72 @@ public class ComposerWriteBackService {
      * @param documentId      the case document the form was submitted against
      * @param submittedLetter the composer's value, as it arrived on the submission
      */
+    /**
+     * Apply the write-back of every composer on this case whose letter the submission carried.
+     *
+     * <p>This is the entry point for <b>form submission</b>, which is when a letter's values should
+     * reach the case: the same moment every other form writes, and the moment the employee who
+     * typed them is still there to be told if a write fails. See
+     * <a href="../../../../../../../docs/adr/0006-letter-composer-configuration.md">ADR 0006</a>
+     * for why it is not the generate action any more, and what was measured to get here.
+     *
+     * <p>Which variables hold a letter is answered by the <b>configuration</b>, not by inspecting
+     * values for a letter-ish shape: each composer on the case declares the {@code pv:} key it
+     * writes, which is the variable name to look for. A composer whose letter is absent was not on
+     * the form that was just submitted, and one that declares no rules costs nothing to skip.
+     *
+     * <p>Never throws, for the same reason the overloads below do not: a submission that has already
+     * created a case and completed a task cannot be undone by failing afterwards.
+     */
+    public void applyFromSubmission(UUID documentId, Map<String, Object> variables) {
+        if (documentId == null || variables == null || variables.isEmpty()) {
+            return;
+        }
+        try {
+            String caseDefinitionKey = caseDefinitionKeyOf(documentId);
+            if (caseDefinitionKey == null) {
+                return;
+            }
+            // By variable, not by composer: two composers on a case type may write the same one —
+            // the demo's task form and its ad-hoc start form both use `pv:epistolaLetter` — and a
+            // submission carries one value for it either way. Applying per composer wrote that
+            // value once per composer, which is the same case saved twice. `apply` already narrows
+            // to the composer that claims the variable, so one call per variable is the whole job.
+            Set<String> letterVariables = new LinkedHashSet<>();
+            for (LetterComposerConfiguration composer : configurationResolver.forCaseDefinition(caseDefinitionKey)) {
+                String variableName = letterVariableOf(composer);
+                if (variableName != null) {
+                    letterVariables.add(variableName);
+                }
+            }
+            for (String variableName : letterVariables) {
+                Object letter = variables.get(variableName);
+                if (letter != null) {
+                    apply(documentId, letter, variableName);
+                }
+            }
+        } catch (RuntimeException e) {
+            log.error("Letter composer write-back failed for case {} at submission: {}",
+                    documentId, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * The process variable a composer writes its letter to, or null when it names none.
+     *
+     * <p>A composer's Formio key <em>is</em> that destination — {@code pv:epistolaLetter} — because
+     * that is how the chosen letter reaches the process at all. The bare name is what the engine
+     * knows it by, and what {@link #apply(UUID, Object, String)} expects.
+     */
+    private static String letterVariableOf(LetterComposerConfiguration composer) {
+        String key = composer.componentKey();
+        if (key == null || !key.startsWith("pv:")) {
+            return null;
+        }
+        String name = key.substring("pv:".length());
+        return name.isBlank() ? null : name;
+    }
+
     public void apply(UUID documentId, Object submittedLetter) {
         apply(documentId, submittedLetter, null);
     }
