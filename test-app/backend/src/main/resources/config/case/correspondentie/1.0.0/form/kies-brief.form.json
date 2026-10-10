@@ -8,26 +8,6 @@
       "prefill": false,
       "label": "Welke brief wilt u versturen?",
       "placeholder": "— kies een brief —",
-      "letterSet": {
-        "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
-        "catalogId": "municipality-demo",
-        "templates": [
-          {
-            "templateId": "ontvangstbevestiging-bezwaar",
-            "label": "Ontvangstbevestiging bezwaarschrift"
-          },
-          {
-            "templateId": "besluit-bezwaar",
-            "label": "Besluit op bezwaar"
-          },
-          {
-            "templateId": "bevestigingsbrief-vergunning",
-            "label": "Bevestiging omgevingsvergunning"
-          }
-        ]
-      },
-      "dataMapping": "{\n  \"objector\": {\n    \"firstName\": $doc.objector.firstName,\n    \"lastName\": $doc.objector.lastName,\n    \"address\": {\n      \"street\": $doc.objector.address.street,\n      \"houseNumber\": $doc.objector.address.houseNumber,\n      \"postalCode\": $doc.objector.address.postalCode,\n      \"city\": $doc.objector.address.city\n    }\n  },\n  \"originalDecision\": {\n    \"reference\": $doc.originalDecision.reference,\n    \"date\": $doc.originalDecision.date,\n    \"subject\": $doc.originalDecision.subject\n  },\n  \"objection\": {\n    \"grounds\": $doc.objection.grounds,\n    \"receivedDate\": $doc.objection.receivedDate\n  }\n}",
-      "askOptionalFields": false,
       "components": [
         {
           "type": "hidden",
@@ -40,11 +20,34 @@
           }
         }
       ],
-      "schemaVersion": 1,
-      "writeBack": {
-        "doc:/besluit/type": "$inputs.decisionType",
-        "doc:/besluit/toelichting": "$inputs.motivation",
-        "pv:besluitType": "$inputs.decisionType"
+      "epistola": {
+        "letterSet": {
+          "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+          "catalogId": "municipality-demo",
+          "templates": [
+            {
+              "templateId": "ontvangstbevestiging-bezwaar",
+              "label": "Ontvangstbevestiging bezwaarschrift"
+            },
+            {
+              "templateId": "besluit-bezwaar",
+              "label": "Besluit op bezwaar"
+            },
+            {
+              "templateId": "bevestigingsbrief-vergunning",
+              "label": "Bevestiging omgevingsvergunning",
+              "dataMapping": "{\n  \"applicant\": {\n    \"firstName\": $doc.objector.firstName,\n    \"lastName\": $doc.objector.lastName\n  }\n}"
+            }
+          ]
+        },
+        "dataMapping": "{\n  \"objector\": {\n    \"firstName\": $doc.objector.firstName,\n    \"lastName\": $doc.objector.lastName,\n    \"address\": {\n      \"street\": $doc.objector.address.street,\n      \"houseNumber\": $doc.objector.address.houseNumber,\n      \"postalCode\": $doc.objector.address.postalCode,\n      \"city\": $doc.objector.address.city\n    }\n  },\n  \"originalDecision\": {\n    \"reference\": $doc.originalDecision.reference,\n    \"date\": $doc.originalDecision.date,\n    \"subject\": $doc.originalDecision.subject\n  },\n  \"objection\": {\n    \"grounds\": $doc.objection.grounds,\n    \"receivedDate\": $doc.objection.receivedDate\n  }\n}",
+        "writeBack": {
+          "doc:/besluit/type": "$inputs.decisionType",
+          "doc:/besluit/toelichting": "$inputs.motivation",
+          "pv:besluitType": "$inputs.decisionType"
+        },
+        "askOptionalFields": false,
+        "schemaVersion": 1
       }
     },
     {

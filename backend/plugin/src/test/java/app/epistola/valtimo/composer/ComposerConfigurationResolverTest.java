@@ -147,17 +147,19 @@ class ComposerConfigurationResolverTest {
         when(formDefinitionRepository.findById(FORM_ID)).thenReturn(Optional.of(form));
     }
 
+    /** A composer as the builder saves one: its settings under the one key this plugin owns. */
     private String composerJson(String extraProperties) {
         return """
                 {"components":[
                   {"type":"panel","components":[
                     {"type":"epistola-letter-composer","key":"pv:epistolaLetter",
-                     "pluginConfigurationId":"%s","catalogId":"gemeente",
-                     "dataMapping":"{\\"naam\\": $doc.naam}",
-                     "templates":[
-                       {"templateId":"besluit","label":"Besluit"},
-                       {"templateId":"herinnering","dataMapping":"{\\"termijn\\": 14}"}
-                     ]%s}
+                     "epistola":{
+                       "pluginConfigurationId":"%s","catalogId":"gemeente",
+                       "dataMapping":"{\\"naam\\": $doc.naam}",
+                       "templates":[
+                         {"templateId":"besluit","label":"Besluit"},
+                         {"templateId":"herinnering","dataMapping":"{\\"termijn\\": 14}"}
+                       ]%s}}
                   ]}
                 ]}
                 """.formatted(PLUGIN_CONFIGURATION_ID, extraProperties);
@@ -221,6 +223,56 @@ class ComposerConfigurationResolverTest {
                 .isInstanceOf(ComposerException.class)
                 .extracting(e -> ((ComposerException) e).getReason())
                 .isEqualTo(ComposerException.Reason.NO_COMPOSER);
+    }
+
+    /**
+     * Two composers answering to one name is refused rather than resolved by document order.
+     *
+     * <p>They would write the same process variable, so only one could survive a submit anyway,
+     * while their mappings and write-back rules differ — taking the first would apply one
+     * composer's rules to the other's letter. Reachable from a hand-written form, and from the
+     * builder by naming one picker {@code brief} and another {@code pv:brief}: different keys to
+     * Formio's own uniqueness check, the same key once the prefix is applied on save.
+     */
+    @Test
+    void requireOffering_refusesTwoComposersAnsweringToOneName() {
+        formOnTask("""
+                {"components":[
+                  {"type":"epistola-letter-composer","key":"pv:brief",
+                   "epistola":{"pluginConfigurationId":"%s","catalogId":"gemeente",
+                     "templates":[{"templateId":"besluit","label":"Besluit"}]}},
+                  {"type":"epistola-letter-composer","key":"pv:brief",
+                   "epistola":{"pluginConfigurationId":"%s","catalogId":"landelijk",
+                     "templates":[{"templateId":"besluit","label":"Ander besluit"}]}}
+                ]}
+                """.formatted(PLUGIN_CONFIGURATION_ID, PLUGIN_CONFIGURATION_ID));
+
+        assertThatThrownBy(() ->
+                resolver.requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:brief", null, "besluit"))
+                .isInstanceOf(ComposerException.class)
+                .hasMessageContaining("its own name")
+                .extracting(e -> ((ComposerException) e).getReason())
+                .isEqualTo(ComposerException.Reason.AMBIGUOUS_COMPOSER);
+    }
+
+    /** One composer with that name is still found when another on the form has a different one. */
+    @Test
+    void requireOffering_picksTheNamedComposerWhenAnotherIsPresent() {
+        formOnTask("""
+                {"components":[
+                  {"type":"epistola-letter-composer","key":"pv:brief",
+                   "epistola":{"pluginConfigurationId":"%s","catalogId":"gemeente",
+                     "templates":[{"templateId":"besluit","label":"Besluit"}]}},
+                  {"type":"epistola-letter-composer","key":"pv:tweedeBrief",
+                   "epistola":{"pluginConfigurationId":"%s","catalogId":"landelijk",
+                     "templates":[{"templateId":"besluit","label":"Ander besluit"}]}}
+                ]}
+                """.formatted(PLUGIN_CONFIGURATION_ID, PLUGIN_CONFIGURATION_ID));
+
+        assertThat(resolver
+                .requireOffering(PROCESS_DEFINITION_ID, ACTIVITY_ID, "pv:tweedeBrief", null, "besluit")
+                .catalogId())
+                .isEqualTo("landelijk");
     }
 
     @Test

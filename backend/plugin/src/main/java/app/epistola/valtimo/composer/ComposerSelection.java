@@ -63,6 +63,18 @@ final class ComposerSelection {
         // must fail the request that uses it, not quietly remove every composer on that form.
         candidates.forEach(LetterComposerConfiguration::requireReadable);
 
+        // Two composers answering to one name is not a choice this can make. They would write the
+        // same process variable, so only one of them could survive a submit anyway, while their
+        // mappings and write-back rules differ — taking the first would apply one composer's rules
+        // to the other's letter, by document order. Reachable from a hand-written form, and from
+        // the builder by naming one composer `brief` and another `pv:brief`, which are different
+        // keys to Formio's own uniqueness check and the same key once stored.
+        if (named && candidates.size() > 1) {
+            throw new ComposerException(ComposerException.Reason.AMBIGUOUS_COMPOSER,
+                    "More than one letter composer on " + location
+                            + ". Give each letter picker on a form its own name.");
+        }
+
         LetterComposerConfiguration offering = candidates.stream()
                 .filter(configuration -> configuration.offers(catalogId, templateId))
                 .findFirst()

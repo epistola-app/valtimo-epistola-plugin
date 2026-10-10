@@ -41,9 +41,14 @@ class BundledComposerFormTest {
                     assertThat(composer.path("key").asText())
                         .describedAs("key of %s", where)
                         .startsWith("pv:")
-                    // The bundled forms are what an author copies, so they carry the version a
-                    // builder-saved form carries — and a version this plugin can actually read.
-                    assertThat(composer.path("schemaVersion").asInt(0))
+                    // The bundled forms are what an author copies, so they carry what a
+                    // builder-saved form carries: the settings under the one key this plugin
+                    // claims, and a version it can actually read.
+                    val settings = composer.path(ComposerSchema.COMPONENT_NAMESPACE)
+                    assertThat(settings.isObject)
+                        .describedAs("settings namespace of %s", where)
+                        .isTrue()
+                    assertThat(settings.path(ComposerSchema.COMPONENT_FIELD).asInt(0))
                         .describedAs("schemaVersion of %s", where)
                         .isBetween(1, ComposerSchema.CURRENT)
                     true
@@ -74,7 +79,7 @@ class BundledComposerFormTest {
         resolver.getResources("classpath*:config/case/**/form/*.form.json").forEach { resource ->
             val form = resource.inputStream.use { mapper.readTree(it) }
             form.path("components").composers().forEach { composer ->
-                val writeBack = composer.path("writeBack")
+                val writeBack = composer.path(ComposerSchema.COMPONENT_NAMESPACE).path("writeBack")
                 if (!writeBack.isObject) return@forEach
                 writeBack.fields().forEach { (destination, expression) ->
                     val where = "$destination on ${composer.path("key").asText()} in ${resource.description}"

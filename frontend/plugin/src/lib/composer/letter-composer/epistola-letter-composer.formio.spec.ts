@@ -25,7 +25,7 @@ jest.mock('./epistola-letter-composer.component', () => ({
   EpistolaLetterComposerComponent: class {},
 }));
 
-import { EPISTOLA_LETTER_COMPOSER_OPTIONS } from './epistola-letter-composer.formio';
+import { composerKeyOf, EPISTOLA_LETTER_COMPOSER_OPTIONS } from './epistola-letter-composer.formio';
 
 describe('letter composer component schema', () => {
   it('excludes itself from Valtimo prefill', () => {
@@ -52,20 +52,36 @@ describe('property name', () => {
 
   /**
    * Formio derives a dropped component's key from the palette title — it ignores a schema `key`
-   * and an editForm `defaultValue` alike — so a composer arrives keyed `epistolaLetterComposer`.
-   * Without the `pv:` prefix Valtimo stores the chosen letter in the submission data rather than
-   * as a process variable, and the generate task fails one step later with "no letter was
-   * composed". The author has to be stopped here instead.
+   * and an editForm `defaultValue` alike — so the author types this field either way. What they no
+   * longer type is the `pv:` prefix: the component applies it on save (see `composerKeyOf`), since
+   * there is no case where the key could be anything else. A name is asked for, and refused only
+   * when a process variable could not carry it.
    */
-  it('is validated as a pv: key rather than defaulted', () => {
+  it('asks for a name, with or without the prefix, and refuses what cannot be one', () => {
     const field = keyField();
+    const pattern = new RegExp(field.validate.pattern);
 
     expect(field.defaultValue).toBeUndefined();
     expect(field.validate.required).toBe(true);
-    expect(new RegExp(field.validate.pattern).test('pv:epistolaLetter')).toBe(true);
-    expect(new RegExp(field.validate.pattern).test('epistolaLetterComposer')).toBe(false);
-    expect(new RegExp(field.validate.pattern).test('doc:/brief')).toBe(false);
-    expect(field.validate.customMessage).toContain('pv:');
+    expect(pattern.test('epistolaLetter')).toBe(true);
+    expect(pattern.test('pv:epistolaLetter')).toBe(true);
+    expect(pattern.test('doc:/brief')).toBe(false);
+    expect(pattern.test('two words')).toBe(false);
+    expect(pattern.test('1brief')).toBe(false);
+    // The message names what to fix, not the prefix the author no longer owns.
+    expect(field.validate.customMessage).not.toContain('pv:');
+  });
+
+  it('prefixes a name on save and leaves an already-prefixed key alone', () => {
+    expect(composerKeyOf('epistolaLetter')).toBe('pv:epistolaLetter');
+    expect(composerKeyOf('pv:epistolaLetter')).toBe('pv:epistolaLetter');
+  });
+
+  it('hands back anything a process variable could not be named, for the editForm to refuse', () => {
+    // Prefixing junk would bury a message the author can act on inside a variable nobody meant.
+    expect(composerKeyOf('doc:/brief')).toBe('doc:/brief');
+    expect(composerKeyOf('')).toBe('');
+    expect(composerKeyOf(undefined)).toBeUndefined();
   });
 
   /** Formio does honour a schema label, so the drop at least arrives named. */

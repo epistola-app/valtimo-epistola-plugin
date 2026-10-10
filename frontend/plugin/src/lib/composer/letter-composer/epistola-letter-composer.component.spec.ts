@@ -278,14 +278,16 @@ describe('EpistolaLetterComposerComponent', () => {
   it('offers the letters the settings widget stored', () => {
     const { component } = createComponent();
     component.templates = [];
-    component.letterSet = { templates: [{ templateId: 'besluit', label: 'Besluit' }] };
+    component.epistola = {
+      letterSet: { templates: [{ templateId: 'besluit', label: 'Besluit' }] },
+    };
 
     expect(component.offeredTemplates).toEqual([{ templateId: 'besluit', label: 'Besluit' }]);
   });
 
   it('still offers the letters of a hand-written form', () => {
     const { component } = createComponent();
-    component.letterSet = undefined;
+    component.epistola = undefined;
 
     expect(component.offeredTemplates.map((option) => option.templateId)).toEqual([
       'besluit',
@@ -531,6 +533,51 @@ describe('EpistolaLetterComposerComponent', () => {
 
       expect(component.formDefinition.display).toBe('form');
       expect(component.formOptions.buttonSettings.showNext).toBe(false);
+    });
+
+    /**
+     * How much is worth putting on one screen is a judgement about the letter, not a constant, so
+     * the form it is configured on gets to say. Blank means the default.
+     */
+    it('steps where the composer says to, not only at the default', () => {
+      const { component } = createComponent({ form: manyFields(8), complete: false });
+      component.epistola = { stepAfter: 20 };
+
+      component.onTemplateSelected('besluit');
+
+      // Eight fields would step at the default of six; this form said twenty.
+      expect(component.formDefinition.display).toBe('form');
+    });
+
+    it('steps sooner when the composer asks for it', () => {
+      const { component } = createComponent({ form: manyFields(4), complete: false });
+      component.epistola = { stepAfter: 2 };
+
+      component.onTemplateSelected('besluit');
+
+      expect(component.formDefinition.display).toBe('wizard');
+    });
+
+    it('falls back to the default rather than trusting a value it cannot use', () => {
+      // A presentation setting is never worth breaking the letter over: a blank field, a string
+      // from a form saved as text, a zero or a negative all mean "the default".
+      for (const stepAfter of [undefined, null, '', 'veel', 0, -3, 2.5] as any[]) {
+        const { component } = createComponent({ form: manyFields(8), complete: false });
+        component.epistola = { stepAfter };
+
+        component.onTemplateSelected('besluit');
+
+        expect(component.formDefinition.display).toBe('wizard');
+      }
+    });
+
+    it('takes a number Formio handed back as a string', () => {
+      const { component } = createComponent({ form: manyFields(8), complete: false });
+      component.epistola = { stepAfter: '20' };
+
+      component.onTemplateSelected('besluit');
+
+      expect(component.formDefinition.display).toBe('form');
     });
 
     it('still knows which fields are required once they are spread over steps', () => {

@@ -29,5 +29,24 @@
  */
 export const COMPOSER_SCHEMA_VERSION = 1;
 
-/** The field both structures carry, spelled as Epistola's own catalogs spell it. */
+/**
+ * The version field on a **composed letter**, which lives in a process variable of its own.
+ *
+ * Unprefixed, because nothing shares that variable — the letter is the whole value — and because a
+ * process may write one by hand, where a name nobody has to look up is worth more than a namespace
+ * nothing would collide with.
+ */
 export const COMPOSER_SCHEMA_FIELD = 'schemaVersion';
+
+/**
+ * The one key this component claims on a Form.io component, holding every setting it owns.
+ *
+ * One namespace rather than a prefix per setting: that object is shared with Form.io's own
+ * properties — `key`, `label`, `validate`, `prefill` — and with whatever another custom component
+ * puts there, and `dataMapping` or `schemaVersion` are names anyone could reasonably claim.
+ * Mirrors `ComposerSchema.COMPONENT_NAMESPACE`.
+ */
+export const COMPOSER_COMPONENT_NAMESPACE = 'epistola';
+
+/** Where the version sits inside that namespace. */
+export const COMPOSER_COMPONENT_SCHEMA_FIELD = 'schemaVersion';

@@ -50,8 +50,27 @@ public final class ComposerSchema {
      */
     public static final int CURRENT = 1;
 
-    /** The field both structures carry, and the one Epistola's own catalogs use. */
+    /**
+     * The version field on a <b>composed letter</b>, which lives in a process variable of its own.
+     *
+     * <p>Unprefixed, because nothing shares that variable: the letter is the whole value. It is
+     * also the public contract a process can write by hand, so a name nobody has to look up is
+     * worth more there than a namespace nothing would collide with.
+     */
     public static final String FIELD = "schemaVersion";
+
+    /**
+     * The version field on a <b>component's settings</b>, which live inside a Form.io component.
+     *
+     * <p>Prefixed, because that object is shared with Form.io's own properties — {@code key},
+     * {@code label}, {@code validate}, {@code prefill} — and with anything another custom component
+     * puts there. {@code schemaVersion} is a name anyone could reasonably claim, so this plugin
+     * claims its own.
+     */
+    public static final String COMPONENT_NAMESPACE = "epistola";
+
+    /** Where the version sits inside that namespace. */
+    public static final String COMPONENT_FIELD = "schemaVersion";
 
     private ComposerSchema() {
     }

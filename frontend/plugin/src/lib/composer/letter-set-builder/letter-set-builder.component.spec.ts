@@ -39,7 +39,7 @@ import { of, throwError } from 'rxjs';
 import { EpistolaLetterSetBuilderComponent } from './letter-set-builder.component';
 
 describe('EpistolaLetterSetBuilderComponent', () => {
-  function createComponent(initial: any = null) {
+  function createComponent(initial: any = null, overrides: any = {}) {
     const service = {
       getConfigurations: jest.fn(() =>
         of([{ id: 'config-1', title: 'Epistola productie', tenantId: 'gemeente' }]),
@@ -51,6 +51,7 @@ describe('EpistolaLetterSetBuilderComponent', () => {
           { id: 'herinnering', name: 'Herinnering', catalogId: 'gemeente' },
         ]),
       ),
+      ...overrides,
     };
     const cdr = { markForCheck: jest.fn() };
     const translations = { instant: jest.fn((key: string) => key) };
@@ -62,6 +63,75 @@ describe('EpistolaLetterSetBuilderComponent', () => {
     component.value = initial;
     return { component, service };
   }
+
+  describe('configuring one letter on its own', () => {
+    function offering(...templateIds: string[]) {
+      const { component, service } = createComponent({
+        pluginConfigurationId: 'config-1',
+        catalogId: 'gemeente',
+        templates: templateIds.map((templateId) => ({ templateId, label: templateId })),
+      });
+      component.ngOnChanges();
+      return { component, service };
+    }
+
+    it('opens for one letter at a time', () => {
+      // One panel open at a time, because the settings are per letter and two open panels invite
+      // editing the wrong one — the fields look identical.
+      const { component } = offering('besluit', 'herinnering');
+
+      component.toggleSettings('besluit');
+      expect(component.isSettingsOpen('besluit')).toBe(true);
+
+      component.toggleSettings('herinnering');
+      expect(component.isSettingsOpen('herinnering')).toBe(true);
+      expect(component.isSettingsOpen('besluit')).toBe(false);
+
+      component.toggleSettings('herinnering');
+      expect(component.isSettingsOpen('herinnering')).toBe(false);
+    });
+
+    it('stores a mapping fragment against the letter it was written for', () => {
+      const { component } = offering('besluit', 'herinnering');
+
+      component.setTemplateMapping('besluit', '{ "aanhef": "Geachte heer" }');
+
+      const stored = component.value?.templates ?? [];
+      expect(stored.find((t: any) => t.templateId === 'besluit')?.dataMapping).toBe(
+        '{ "aanhef": "Geachte heer" }',
+      );
+      expect(stored.find((t: any) => t.templateId === 'herinnering')?.dataMapping).toBeUndefined();
+    });
+
+    it('drops a fragment that was cleared rather than storing an empty one', () => {
+      // An empty string would be a fragment that merges nothing over the baseline, which is the
+      // same as having none — but it would also make every saved letter look configured.
+      const { component } = offering('besluit');
+      component.setTemplateMapping('besluit', '{ "aanhef": "Geachte heer" }');
+
+      component.setTemplateMapping('besluit', '   ');
+
+      expect(component.value?.templates[0].dataMapping).toBeUndefined();
+    });
+
+    it('keeps the label when a fragment is written, and the other way round', () => {
+      const { component } = offering('besluit');
+
+      component.setTemplateMapping('besluit', '{ "x": 1 }');
+      component.setLabel('besluit', 'Besluit op bezwaar');
+
+      const stored = component.value?.templates[0];
+      expect(stored.label).toBe('Besluit op bezwaar');
+      expect(stored.dataMapping).toBe('{ "x": 1 }');
+    });
+
+    it('is not offered for a letter that is not ticked', () => {
+      const { component } = offering('besluit');
+
+      expect(component.canConfigure('besluit')).toBe(true);
+      expect(component.canConfigure('herinnering')).toBe(false);
+    });
+  });
 
   describe('a letter that is no longer in the catalog', () => {
     /**
@@ -130,7 +200,15 @@ describe('EpistolaLetterSetBuilderComponent', () => {
   });
 
   it('loads the catalogs of the chosen connection', () => {
-    const { component, service } = createComponent();
+    // Two catalogs, so nothing is chosen for the author and the cleared state is observable.
+    const { component, service } = createComponent(null, {
+      getCatalogs: jest.fn(() =>
+        of([
+          { id: 'gemeente', name: 'Gemeente', type: 'default' },
+          { id: 'provincie', name: 'Provincie', type: 'default' },
+        ]),
+      ),
+    });
 
     component.onConfigurationSelected('config-1');
 
@@ -144,11 +222,21 @@ describe('EpistolaLetterSetBuilderComponent', () => {
 
   it('clears the catalog and letters when the connection changes', () => {
     // Those ids mean nothing in another connection, so keeping them would fail only at runtime.
-    const { component } = createComponent({
-      pluginConfigurationId: 'config-1',
-      catalogId: 'gemeente',
-      templates: [{ templateId: 'besluit', label: 'Besluit' }],
-    });
+    const { component } = createComponent(
+      {
+        pluginConfigurationId: 'config-1',
+        catalogId: 'gemeente',
+        templates: [{ templateId: 'besluit', label: 'Besluit' }],
+      },
+      {
+        getCatalogs: jest.fn(() =>
+          of([
+            { id: 'gemeente', name: 'Gemeente', type: 'default' },
+            { id: 'provincie', name: 'Provincie', type: 'default' },
+          ]),
+        ),
+      },
+    );
 
     component.onConfigurationSelected('config-2');
 
@@ -156,6 +244,55 @@ describe('EpistolaLetterSetBuilderComponent', () => {
       pluginConfigurationId: 'config-2',
       catalogId: null,
       templates: [],
+    });
+  });
+
+  /**
+   * A normal install has one connection and one catalog, so the author met two dropdowns holding
+   * one entry each before reaching a real decision. What matters is that the choice is *emitted*:
+   * a selection showing in the UI without being stored is this widget's classic silent failure.
+   */
+  describe('choosing when there is nothing to choose between', () => {
+    it('takes the only connection and the only catalog, and stores both', () => {
+      const { component, service } = createComponent();
+
+      component.ngOnChanges();
+
+      expect(component.value).toEqual({
+        pluginConfigurationId: 'config-1',
+        catalogId: 'gemeente',
+        templates: [],
+      });
+      expect(service.getTemplates).toHaveBeenCalledWith('config-1', 'gemeente');
+    });
+
+    it('leaves the choice to the author when there is more than one', () => {
+      const { component } = createComponent(null, {
+        getConfigurations: jest.fn(() =>
+          of([
+            { id: 'config-1', title: 'Productie', tenantId: 'gemeente' },
+            { id: 'config-2', title: 'Acceptatie', tenantId: 'gemeente' },
+          ]),
+        ),
+      });
+
+      component.ngOnChanges();
+
+      expect(component.value).toBeNull();
+    });
+
+    it('never overwrites a connection the form already names', () => {
+      // Including one whose connection has since gone: the author should see that, not have it
+      // quietly corrected to whichever connection happens to be the only one left.
+      const { component } = createComponent({
+        pluginConfigurationId: 'config-removed',
+        catalogId: 'gemeente',
+        templates: [],
+      });
+
+      component.ngOnChanges();
+
+      expect(component.value.pluginConfigurationId).toBe('config-removed');
     });
   });
 

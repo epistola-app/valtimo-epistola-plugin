@@ -360,7 +360,10 @@ public class EpistolaComposerResource {
                     .body(Map.of("error", e.getMessage()));
             // Not the caller's request being wrong but this environment's: the same shape the
             // catalog sync uses for a wire schema it cannot read — operator-actionable, not 502.
-            case UNSUPPORTED_SCHEMA, UNSUPPORTED_FIELD, TEMPLATE_UNAVAILABLE, MAPPING_FAILED ->
+            // Two composers sharing a name belongs here too: nothing about the request is wrong,
+            // the form needs editing.
+            case UNSUPPORTED_SCHEMA, UNSUPPORTED_FIELD, TEMPLATE_UNAVAILABLE, MAPPING_FAILED,
+                    AMBIGUOUS_COMPOSER ->
                     ResponseEntity.unprocessableEntity().body(Map.of("error", e.getMessage()));
             case RENDER_FAILED -> renderFailed(e);
         };

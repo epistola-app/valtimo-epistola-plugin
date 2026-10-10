@@ -29,7 +29,11 @@ import {
   ValtimoFormioComponentConstructor,
   withPrefilledCarriers,
 } from '../../components/valtimo-formio-adapter';
-import { COMPOSER_SCHEMA_FIELD, COMPOSER_SCHEMA_VERSION } from '../composer-schema';
+import {
+  COMPOSER_COMPONENT_NAMESPACE,
+  COMPOSER_COMPONENT_SCHEMA_FIELD,
+  COMPOSER_SCHEMA_VERSION,
+} from '../composer-schema';
 
 export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-letter-composer',
@@ -44,7 +48,7 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   // settings widget, or as a bare `templates` array in a hand-written form. Nothing else about the
   // configuration is forwarded: the mappings and the catalog stay server-side, where the backend
   // reads them from this form definition itself (ADR 0006).
-  fieldOptions: ['label', 'placeholder', 'templates', 'letterSet', 'processDefinitionKey'],
+  fieldOptions: ['label', 'placeholder', 'templates', 'epistola', 'processDefinitionKey'],
   // Embed the hidden carriers so dropping the component is enough. Valtimo prefills them
   // server-side through the epistola: value resolvers, and the component reads them back: the task
   // id on a task form, the case id on a start form opened against an existing dossier.
@@ -59,7 +63,7 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
     prefill: false,
     // Stamped so a later plugin can tell what this component was authored against, and an earlier
     // one refuses it rather than misreading it. Kept in the saved form by withComposerDefaults.
-    [COMPOSER_SCHEMA_FIELD]: COMPOSER_SCHEMA_VERSION,
+    [COMPOSER_COMPONENT_NAMESPACE]: { [COMPOSER_COMPONENT_SCHEMA_FIELD]: COMPOSER_SCHEMA_VERSION },
     // The drop payload's label. Formio honours a schema `label`, but never a schema `key`: it
     // always recomputes the key from the palette title (`camelCase(builderInfo.title)`), which is
     // why the property name below is validated rather than defaulted.
@@ -75,10 +79,10 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
         html:
           '<div style="border-left:4px solid #f1c21b;background:#fcf4d6;padding:.5rem .75rem;' +
           'margin-bottom:1rem">' +
-          '<strong>Alpha.</strong> The letter composer works, but how it stores its settings ' +
-          'and the chosen letter may still change between releases. A change is stamped with a ' +
-          'schema version, so an older plugin refuses a newer form rather than misreading it — ' +
-          'but a form built now may need revisiting. See docs/letter-composer.md.' +
+          '<strong>Alpha.</strong> This component works and is safe to use, but the way it ' +
+          'saves its settings may still change. If that happens, a form you build now keeps ' +
+          'working — you may just need to reopen these settings once after an update and check ' +
+          'them. Your letters and your case data are never at risk.' +
           '</div>',
         weight: -10,
         input: false,
@@ -86,21 +90,29 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
       {
         type: 'textfield',
         key: 'key',
-        label: 'Property name',
+        label: 'Name for the chosen letter',
         tooltip:
-          'Where the chosen letter is stored. Use a pv: key (for example pv:epistolaLetter) so the generate task can read it with $pv.',
+          'A name for the process variable the chosen letter is stored in, such as epistolaLetter. ' +
+          'The generate task reads it by this name. Use a different name for each letter picker on ' +
+          'the same form.',
         weight: 0,
         // A composer dropped from the palette arrives keyed `epistolaLetterComposer`, because
         // Formio derives the key from the palette title and ignores both a schema key and an
-        // editForm defaultValue. Without a `pv:` prefix Valtimo stores the chosen letter in the
-        // submission data instead of as a process variable, and the generate task then fails with
-        // "no letter was composed" — a runtime failure, one step later, for a mistake made here.
-        // So the author is made to type it.
+        // editForm defaultValue. So the author types this field either way.
+        //
+        // What they no longer have to type is the `pv:` prefix. There is no case where it could be
+        // anything else: the only thing that reads a composed letter is the generate action, which
+        // reads a *process variable* (runtimeService.getVariable), and `pv:` is what makes Valtimo
+        // store the submitted value as one. Any other spelling leaves the letter in submission data
+        // or on the document, where the action cannot see it, and the failure lands one step later
+        // at the generate task rather than here. A constant is not a decision, so this component
+        // owns it — see withComposerDefaults, which prefixes the key on save. An author who does
+        // type `pv:` is still right, and keeps working.
         validate: {
           required: true,
-          pattern: '^pv:[A-Za-z_][A-Za-z0-9_]*$',
+          pattern: '^(pv:)?[A-Za-z_][A-Za-z0-9_]*$',
           customMessage:
-            'The property name must be a pv: key, for example pv:epistolaLetter — that is what makes the chosen letter a process variable the generate task can read.',
+            'Use a name that starts with a letter or underscore and contains only letters, numbers and underscores — for example epistolaLetter.',
         },
       },
       {
@@ -111,16 +123,8 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
         weight: 5,
       },
       {
-        type: 'textfield',
-        key: 'processDefinitionKey',
-        label: 'Process to start (only if ambiguous)',
-        tooltip:
-          'Leave empty. The same composer works on a user task and on a start form, and which it is follows from where it is opened. Fill this in only when two processes offer the same letter from a composer with the same property name, and the backend asks you to say which. Stored as a key, not a version-pinned id, so a redeployment does not break the form.',
-        weight: 7,
-      },
-      {
         type: 'epistola-letter-set-builder',
-        key: 'letterSet',
+        key: 'epistola.letterSet',
         label: 'Which letters, from where',
         tooltip:
           'Pick the Epistola connection and catalog, then tick the letters this form offers. Adding a letter later is one more tick.',
@@ -128,34 +132,94 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
         validate: { required: true },
       },
       {
-        type: 'epistola-jsonata-mapping',
-        key: 'dataMapping',
-        label: 'Baseline mapping',
-        tooltip:
-          'One JSONata mapping for every offered letter, over $doc and $pv. Whatever it does not fill is asked of the employee.',
-        rows: 8,
+        // Only the property name and the letters are decisions every author makes. The rest have
+        // working defaults, and at the same visual weight the panel read as six decisions instead
+        // of two. Collapsed rather than removed: an author who needs the mapping finds it in the
+        // obvious place, one click away.
+        //
+        // Formio reopens a collapsed panel by itself when something inside it fails validation
+        // (Panel.js), so nothing can be refused behind a closed lid.
+        type: 'panel',
+        key: 'epistolaComposerAdvanced',
+        title: 'Mapping and advanced settings',
+        label: 'Mapping and advanced settings',
+        collapsible: true,
+        collapsed: true,
+        input: false,
         weight: 40,
-      },
-      {
-        type: 'epistola-write-back-builder',
-        key: 'writeBack',
-        label: 'Also save these values on the case',
-        tooltip:
-          "Optional. A letter's values stay with the letter unless you say otherwise. Add a rule per value that also belongs in the case: a doc: or pv: destination, and a JSONata expression over the letter ($data, $inputs). Applied when the letter is generated, so nothing is saved for a letter Epistola refused.",
-        weight: 45,
-      },
-      {
-        type: 'checkbox',
-        key: 'askOptionalFields',
-        label: 'Also ask for optional fields the mapping left empty',
-        tooltip:
-          'Off by default: only fields the template marks required are asked for. Turn on to offer every empty field.',
-        defaultValue: false,
-        weight: 50,
+        components: [
+          {
+            type: 'epistola-jsonata-mapping',
+            key: 'epistola.dataMapping',
+            label: 'Baseline mapping',
+            tooltip:
+              'One JSONata mapping for every offered letter, over $doc and $pv. Whatever it does not fill is asked of the employee.',
+            rows: 8,
+            weight: 10,
+          },
+          {
+            type: 'epistola-write-back-builder',
+            key: 'epistola.writeBack',
+            label: 'Also save these values on the case',
+            tooltip:
+              "Optional. A letter's values stay with the letter unless you say otherwise. Add a rule per value that also belongs in the case: a doc: or pv: destination, and a JSONata expression over the letter ($data, $inputs). Applied when the letter is generated, so nothing is saved for a letter Epistola refused.",
+            weight: 20,
+          },
+          {
+            type: 'number',
+            key: 'epistola.stepAfter',
+            label: 'Split into steps above this many fields',
+            tooltip:
+              'Leave empty for the default of 6. A letter that asks for more than this many fields ' +
+              'is shown as steps instead of one long column, one step per section of the letter. ' +
+              'Raise it to keep more on one screen, or set it very high to never split.',
+            validate: { min: 1, integer: true },
+            weight: 25,
+          },
+          {
+            type: 'checkbox',
+            key: 'epistola.askOptionalFields',
+            label: 'Also ask for optional fields the mapping left empty',
+            tooltip:
+              'Off by default: only fields the template marks required are asked for. Turn on to offer every empty field.',
+            defaultValue: false,
+            weight: 30,
+          },
+          {
+            type: 'textfield',
+            key: 'processDefinitionKey',
+            label: 'Process to start',
+            tooltip:
+              'Normally leave this empty — the composer works out which process it belongs to on its own. ' +
+              'Fill it in only if you are told the choice is ambiguous, which happens when two processes ' +
+              'offer the same letter through a component with the same property name. Use the process key, ' +
+              'such as correspondentie-ad-hoc-letter.',
+            weight: 40,
+          },
+        ],
       },
     ],
   }),
 };
+
+/**
+ * The key a composer is stored under, given whatever the author typed.
+ *
+ * A usable name becomes a `pv:` key; a key that already carries the prefix is left alone. Anything
+ * else — empty, missing, or containing characters a process variable cannot — is handed back
+ * untouched, so the editForm's own `required` and pattern rules refuse it with a message the author
+ * can act on, rather than it being prefixed into a process variable nobody meant.
+ *
+ * Note this also prefixes the name Formio derives from the palette title, which is what a composer
+ * arrives with. That is deliberate: it makes "drop it and press Save" produce a letter picker that
+ * works, just one named after the palette entry.
+ */
+export function composerKeyOf(key: unknown): any {
+  if (typeof key !== 'string' || !/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) {
+    return key;
+  }
+  return `pv:${key}`;
+}
 
 export function registerEpistolaLetterComposerComponent(injector: Injector): void {
   registerEpistolaFormioComponent(
@@ -172,7 +236,7 @@ export function registerEpistolaLetterComposerComponent(injector: Injector): voi
 }
 
 /**
- * Keep `prefill: false` and the schema version in the saved form.
+ * Keep `prefill: false`, the schema version and the key's `pv:` prefix in the saved form.
  *
  * Form.io drops schema that equals the registered default, exactly as it does with the hidden
  * carriers. Without this a form saved from the builder loses `prefill: false` and starts failing
@@ -182,6 +246,10 @@ export function registerEpistolaLetterComposerComponent(injector: Injector): voi
  *
  * The version is deliberately *not* forced onto a component that carries an older one: a form
  * authored against an earlier schema stays authored against it until someone changes it.
+ *
+ * The key is prefixed here because this is the one point every saved component passes through. The
+ * editForm accepts a bare name, so without this a form could store a composer whose letter never
+ * becomes a process variable — the exact failure the author used to be made to prevent by hand.
  */
 function withComposerDefaults(
   BaseComponent: ValtimoFormioComponentConstructor,
@@ -191,8 +259,16 @@ function withComposerDefaults(
       const modified = super.getModifiedSchema(schema, defaultSchema, recursion);
       if (!recursion) {
         modified.prefill = false;
-        modified[COMPOSER_SCHEMA_FIELD] =
-          (schema ?? {})[COMPOSER_SCHEMA_FIELD] ?? COMPOSER_SCHEMA_VERSION;
+        modified.key = composerKeyOf(modified.key ?? (schema ?? {}).key);
+        // The namespace is re-added whole: Form.io drops schema equal to the registered
+        // default, and a version that went missing would make every saved component look as
+        // though it predates the field.
+        const authored = (schema ?? {})[COMPOSER_COMPONENT_NAMESPACE] ?? {};
+        modified[COMPOSER_COMPONENT_NAMESPACE] = {
+          ...(modified[COMPOSER_COMPONENT_NAMESPACE] ?? {}),
+          [COMPOSER_COMPONENT_SCHEMA_FIELD]:
+            authored[COMPOSER_COMPONENT_SCHEMA_FIELD] ?? COMPOSER_SCHEMA_VERSION,
+        };
       }
       return modified;
     }

@@ -46,13 +46,15 @@ class ComposerParserTest {
         }
     }
 
+    /** A composer as the builder saves one: everything this plugin owns under its one key. */
     private String composer(String extra) {
         return """
                 {"components":[
                   {"type":"epistola-letter-composer","key":"pv:epistolaLetter",
-                   "pluginConfigurationId":"%s","catalogId":"gemeente",
-                   "dataMapping":"{\\"naam\\": $doc.naam}",
-                   "templates":[{"templateId":"besluit","label":"Besluit"},{"templateId":"herinnering"}]%s}
+                   "epistola":{
+                     "pluginConfigurationId":"%s","catalogId":"gemeente",
+                     "dataMapping":"{\\"naam\\": $doc.naam}",
+                     "templates":[{"templateId":"besluit","label":"Besluit"},{"templateId":"herinnering"}]%s}}
                 ]}
                 """.formatted(PLUGIN_CONFIGURATION_ID, extra);
     }
@@ -64,6 +66,35 @@ class ComposerParserTest {
      * have their own idea of "no rules" (absent key, null map, empty map), and a composer that
      * silently stopped working because it saves nothing would be a bad way to find that out.
      */
+    /**
+     * A letter's own mapping fragment survives the round trip from the builder.
+     *
+     * <p>The backend has read `templates[].dataMapping` since the composer was built and merges it
+     * over the baseline, but until now nothing authored it (#155) — so nothing proved the shape the
+     * builder writes is the shape the parser reads. That is the whole risk of a field only one side
+     * has ever produced.
+     */
+    @Test
+    void readsTheMappingFragmentABuilderStoresForOneLetter() {
+        var found = parse("""
+                {"components":[{"type":"epistola-letter-composer","key":"pv:brief",
+                  "pluginConfigurationId":"%s","catalogId":"gemeente",
+                  "templates":[
+                    {"templateId":"besluit","label":"Besluit","dataMapping":"{ \\"aanhef\\": \\"Geachte\\" }"},
+                    {"templateId":"herinnering","label":"Herinnering"}]}]}
+                """.formatted(PLUGIN_CONFIGURATION_ID));
+
+        assertThat(found).singleElement().satisfies(c -> {
+            assertThat(c.templates()).hasSize(2);
+            assertThat(c.templates().get(0).dataMapping())
+                    .describedAs("the letter that was configured keeps its fragment")
+                    .isEqualTo("{ \"aanhef\": \"Geachte\" }");
+            assertThat(c.templates().get(1).dataMapping())
+                    .describedAs("and one that was not has none, rather than an empty string")
+                    .isNull();
+        });
+    }
+
     @Test
     void aComposerThatSavesNothingIsStillAComposer() {
         for (String writeBack : new String[] {"", ",\"writeBack\":{}", ",\"writeBack\":null"}) {
@@ -143,15 +174,26 @@ class ComposerParserTest {
     }
 
     @Test
-    void readsTheSettingsWidgetsNestedShapeAndTheHandWrittenFlatOne() {
-        var nested = parse("""
+    void readsTheNamespacedShapeTheSettingsWidgetsNestedOneAndTheHandWrittenFlatOne() {
+        // What the builder saves: the settings widget's object, inside the one key this plugin owns.
+        var namespaced = parse("""
+                {"components":[{"type":"epistola-letter-composer","key":"pv:brief",
+                  "epistola":{"letterSet":{"pluginConfigurationId":"%s","catalogId":"gemeente",
+                    "templates":[{"templateId":"besluit"}]}}}]}
+                """.formatted(PLUGIN_CONFIGURATION_ID));
+
+        // The same settings written by hand, with neither the namespace nor the widget's object.
+        var handWritten = parse("""
                 {"components":[{"type":"epistola-letter-composer","key":"pv:brief",
                   "letterSet":{"pluginConfigurationId":"%s","catalogId":"gemeente",
                     "templates":[{"templateId":"besluit"}]}}]}
                 """.formatted(PLUGIN_CONFIGURATION_ID));
 
-        assertThat(nested).singleElement()
+        assertThat(namespaced).singleElement()
                 .satisfies(c -> assertThat(c.offers("besluit")).isTrue());
+        assertThat(handWritten).singleElement()
+                .satisfies(c -> assertThat(c.offers("besluit")).isTrue());
+        // And the namespace without the widget's object, which is how the helper above writes one.
         assertThat(parse(composer("")).get(0).offers("besluit")).isTrue();
     }
 

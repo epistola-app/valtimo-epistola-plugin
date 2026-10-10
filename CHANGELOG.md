@@ -9,6 +9,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A letter can be configured on its own.** Each offered letter in the composer's settings gets a
+  **Configure** button opening a panel for that letter alone, and the first setting to live there is
+  its **mapping fragment** — JSONata merged over the baseline for that letter only (#155).
+
+  The backend has read `templates[].dataMapping` and merged it since the composer was built; what
+  was missing was anywhere to author it. One panel opens at a time, because the fields are identical
+  between letters and two open panels invite editing the wrong one, and a fragment cleared to blank
+  is dropped rather than stored, so a letter that was never configured does not look as though it
+  was.
+
+  This is the surface #172 asked for: variant (#151), per-property rendering (#161) and which fields
+  are asked for (#164) all belong in the same panel and now have somewhere to go.
+
+  The demo shows one: `bevestigingsbrief-vergunning` is a permit confirmation offered by a case
+  whose baseline mapping is objection-shaped, so the baseline fills none of it. Its fragment maps
+  the same person the case already knows into the names that letter uses (`applicant` rather than
+  `objector`), leaving only what the case genuinely cannot know — the BSN, the property, the
+  activities — to the employee.
+
+### Changed
+
+- **The author names the letter; the composer owns the `pv:` prefix.** The settings field used to
+  reject anything but a `pv:` key, explaining a Valtimo storage concept an author should not need to
+  learn — and a composer arrives from the palette keyed after the palette title, so that rejection
+  was the first thing they met. There is no case where the key could be anything else: the only
+  thing that reads a composed letter is the generate action, which reads a process variable, and
+  `pv:` is what makes Valtimo store a submitted value as one. A constant is not a decision, so the
+  field now takes a name (`epistolaLetter`) and the prefix is applied on save, at the one point
+  every saved component passes through. Typing `pv:epistolaLetter` still works, and a name a process
+  variable could never carry is still refused — with a message about the name, not about prefixes.
+
+- **Two letter pickers answering to one name are now refused** (422, `AMBIGUOUS_COMPOSER`) instead
+  of resolved by document order. They write the same process variable, so only one could survive a
+  submit anyway, while their mappings and write-back rules differ — taking the first applied one
+  picker's rules to the other's letter. Reachable from a hand-written form, and newly reachable from
+  the builder by naming one picker `brief` and another `pv:brief`: different keys to Form.io's own
+  uniqueness check, the same key once the prefix is applied.
+
+- **When a letter is split into steps is now the form's decision.** The composer shows a letter's
+  generated inputs as steps once there are more than six of them; six was a constant, and how much
+  belongs on one screen is a judgement about the letter rather than a universal. A **Split into
+  steps above this many fields** setting sits with the advanced settings; empty keeps the default.
+
+  Read tolerantly on purpose: a blank field, a string from a form saved as text, a zero, a negative
+  or a fraction all fall back to the default. A presentation setting is never worth breaking the
+  letter over. Note the count treats a repeatable group as one field however large it is, so filling
+  a few fields from the mapping can cross the boundary in one step — which is exactly how the demo's
+  permit letter lost its steps before this was configurable.
+
+- **The composer's settings panel asks less.** Of its eight entries only two — the property name and
+  the letters on offer — are decisions every author makes; the rest had working defaults at the same
+  visual weight, so the panel read as six decisions instead of two. The baseline mapping, the
+  write-back rules, the optional-field toggle and the process key now sit in a collapsed **Mapping
+  and advanced settings** panel. Form.io reopens a collapsed panel when something inside it fails
+  validation, so nothing can be refused behind a closed lid.
+
+- **Where there is nothing to choose between, the composer chooses.** A normal install has one
+  Epistola connection, so the author opened a dropdown holding one entry before reaching a real
+  decision; the same applies to a single catalog. Both are now selected automatically, through the
+  ordinary selection path so the choice is **stored** and not merely shown — a selection that
+  appears in the UI without being saved is this widget's classic silent failure. A choice the form
+  already names is never overwritten, including one naming a connection that has since gone: the
+  author should see that rather than have it quietly corrected.
+
+- **Everything the letter composer stores on a form moved under one key, `epistola`** —
+  `letterSet`, `dataMapping`, `writeBack`, `askOptionalFields` and `schemaVersion`. A Form.io
+  component object is shared space: it holds Form.io's own properties (`key`, `label`, `validate`,
+  `prefill`) and whatever other custom components put there, and `dataMapping` or `schemaVersion`
+  are names anyone could reasonably claim. One namespace is claimed instead of five generic names.
+
+  `prefill` stays outside the namespace because it is Form.io's own property, and the **letter on
+  the process variable keeps a plain `schemaVersion`**: nothing shares that variable, and a process
+  may write one by hand, so a name nobody has to look up is worth more there than a namespace
+  nothing would collide with. The two constants are now distinct (`ComposerSchema.FIELD` for the
+  letter, `COMPONENT_FIELD` under `COMPONENT_NAMESPACE` for the component).
+
+  The composer is alpha and unreleased, so no migration is provided: a form saved from an earlier
+  build of this branch must have its settings re-entered. Forms written by hand keep working — the
+  parser reads the settings flat when the namespace is absent. Verified through the running builder:
+  the nested settings load, save and come back filled, including a per-letter fragment.
+
+### Added
+
 - **A failed dynamic document can be retried.** `epistola-retry-form` rebuilt a failed generation's
   form from the process link's own template and mapping, so it covered `epistola-generate-document`
   only — a composed letter that failed had no retry path and the employee composed it again from

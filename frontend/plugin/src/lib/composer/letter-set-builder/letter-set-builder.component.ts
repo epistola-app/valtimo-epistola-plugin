@@ -124,31 +124,79 @@ export interface LetterSet {
       </div>
       <table *ngIf="!loadingTemplates && templates.length" class="letter-table">
         <tbody>
-          <tr *ngFor="let template of templates">
-            <td class="letter-tick">
-              <input
-                type="checkbox"
-                [attr.data-testid]="'epistola-letter-set-offer-' + template.id"
-                [checked]="isOffered(template.id)"
-                (change)="toggleTemplate(template.id, $any($event.target).checked)"
-                [disabled]="disabled"
-              />
-            </td>
-            <td class="letter-name">{{ template.name || template.id }}</td>
-            <td class="letter-label">
-              <input
-                type="text"
-                class="field-input"
-                [placeholder]="
-                  ('letterSetLabelPlaceholder' | pluginTranslate: pluginId | async) || ''
-                "
-                [attr.data-testid]="'epistola-letter-set-label-' + template.id"
-                [disabled]="disabled || !isOffered(template.id)"
-                [ngModel]="labelOf(template.id)"
-                (ngModelChange)="setLabel(template.id, $event)"
-              />
-            </td>
-          </tr>
+          <!--
+            Both rows repeat together, so the settings panel stays inside the scope of the letter it
+            belongs to. ngFor on the <tr> alone would repeat only that row, and the panel below it
+            would reach for a template variable that is not in scope.
+          -->
+          <ng-container *ngFor="let template of templates">
+            <tr>
+              <td class="letter-tick">
+                <input
+                  type="checkbox"
+                  [attr.data-testid]="'epistola-letter-set-offer-' + template.id"
+                  [checked]="isOffered(template.id)"
+                  (change)="toggleTemplate(template.id, $any($event.target).checked)"
+                  [disabled]="disabled"
+                />
+              </td>
+              <td class="letter-name">{{ template.name || template.id }}</td>
+              <td class="letter-label">
+                <input
+                  type="text"
+                  class="field-input"
+                  [placeholder]="
+                    ('letterSetLabelPlaceholder' | pluginTranslate: pluginId | async) || ''
+                  "
+                  [attr.data-testid]="'epistola-letter-set-label-' + template.id"
+                  [disabled]="disabled || !isOffered(template.id)"
+                  [ngModel]="labelOf(template.id)"
+                  (ngModelChange)="setLabel(template.id, $event)"
+                />
+              </td>
+              <td class="letter-settings-cell">
+                <button
+                  *ngIf="canConfigure(template.id)"
+                  type="button"
+                  class="letter-settings__toggle"
+                  [attr.data-testid]="'epistola-letter-set-configure-' + template.id"
+                  [attr.aria-expanded]="isSettingsOpen(template.id)"
+                  [disabled]="disabled"
+                  (click)="toggleSettings(template.id)"
+                >
+                  {{
+                    (isSettingsOpen(template.id) ? 'letterSetConfigureClose' : 'letterSetConfigure')
+                      | pluginTranslate: pluginId
+                      | async
+                  }}
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="isSettingsOpen(template.id)" class="letter-settings-row">
+              <td colspan="4">
+                <div
+                  class="letter-settings"
+                  [attr.data-testid]="'epistola-letter-set-settings-' + template.id"
+                >
+                  <label class="field-label" [attr.for]="'mapping-' + template.id">
+                    {{ 'letterSetTemplateMapping' | pluginTranslate: pluginId | async }}
+                  </label>
+                  <p class="field-note">
+                    {{ 'letterSetTemplateMappingTooltip' | pluginTranslate: pluginId | async }}
+                  </p>
+                  <textarea
+                    class="field-input letter-settings__mapping"
+                    rows="4"
+                    [id]="'mapping-' + template.id"
+                    [attr.data-testid]="'epistola-letter-set-mapping-' + template.id"
+                    [disabled]="disabled"
+                    [ngModel]="mappingOf(template.id)"
+                    (ngModelChange)="setTemplateMapping(template.id, $event)"
+                  ></textarea>
+                </div>
+              </td>
+            </tr>
+          </ng-container>
         </tbody>
       </table>
       <div
@@ -199,6 +247,28 @@ export interface LetterSet {
       .field-note {
         color: #6c757d;
         font-size: 0.85rem;
+      }
+      .letter-settings-cell {
+        text-align: right;
+        white-space: nowrap;
+      }
+      .letter-settings__toggle {
+        background: none;
+        border: none;
+        padding: 0;
+        color: #0f62fe;
+        cursor: pointer;
+        text-decoration: underline;
+        font-size: 0.875rem;
+      }
+      .letter-settings {
+        padding: 8px 12px 12px;
+        background: #f4f4f4;
+      }
+      .letter-settings__mapping {
+        width: 100%;
+        font-family: monospace;
+        font-size: 0.8125rem;
       }
       .letter-missing {
         margin-top: 8px;
@@ -276,6 +346,15 @@ export class EpistolaLetterSetBuilderComponent
   private subscriptions: Subscription[] = [];
   private restored = false;
 
+  /**
+   * Whether Formio has set `value` yet, which it does after construction.
+   *
+   * The connections are loaded from the constructor, so without this a form that already names a
+   * connection could have it chosen for it — and *emitted* — before its own settings arrived,
+   * replacing a configured letter set with an empty one just by opening the panel.
+   */
+  private valueArrived = false;
+
   constructor(
     private readonly composerApi: EpistolaComposerApiService,
     private readonly cdr: ChangeDetectorRef,
@@ -285,16 +364,18 @@ export class EpistolaLetterSetBuilderComponent
   }
 
   ngOnChanges(): void {
+    this.valueArrived = true;
     // Formio sets the saved value after construction, so the cascade can only be restored once it
     // arrives — otherwise reopening the settings would show an empty catalog and no letters.
-    if (this.restored || !this.value?.pluginConfigurationId) {
-      return;
+    if (!this.restored && this.value?.pluginConfigurationId) {
+      this.restored = true;
+      this.loadCatalogs(this.value.pluginConfigurationId);
+      if (this.value.catalogId) {
+        this.loadTemplates(this.value.pluginConfigurationId, this.value.catalogId);
+      }
     }
-    this.restored = true;
-    this.loadCatalogs(this.value.pluginConfigurationId);
-    if (this.value.catalogId) {
-      this.loadTemplates(this.value.pluginConfigurationId, this.value.catalogId);
-    }
+    // Either order is possible: the connections may land before Formio sets the value or after.
+    this.selectTheOnlyConnection();
   }
 
   ngOnDestroy(): void {
@@ -371,6 +452,59 @@ export class EpistolaLetterSetBuilderComponent
    * and the author finds out only when an employee opens the task and the composer refuses it.
    * These rows are that difference, shown where it can still be fixed.
    */
+  /**
+   * The letter whose settings are open, if any.
+   *
+   * <p>One at a time: the settings are per letter and the fields look identical, so two open panels
+   * are an invitation to edit the wrong one.
+   */
+  private openSettingsFor: string | null = null;
+
+  /** Whether this letter can be configured — only one that is actually offered. */
+  canConfigure(templateId: string): boolean {
+    return this.isOffered(templateId);
+  }
+
+  isSettingsOpen(templateId: string): boolean {
+    return this.openSettingsFor === templateId;
+  }
+
+  toggleSettings(templateId: string): void {
+    this.openSettingsFor = this.openSettingsFor === templateId ? null : templateId;
+    this.cdr.markForCheck();
+  }
+
+  /** The fragment merged over the baseline mapping for this letter, as stored. */
+  mappingOf(templateId: string): string {
+    return (
+      (this.value?.templates ?? []).find((template) => template.templateId === templateId)
+        ?.dataMapping ?? ''
+    );
+  }
+
+  /**
+   * Store this letter's mapping fragment, or drop it when it is cleared.
+   *
+   * <p>Blank is dropped rather than stored: an empty fragment merges nothing over the baseline,
+   * which is the same as having none, and storing one would make every saved letter look
+   * configured.
+   */
+  setTemplateMapping(templateId: string, dataMapping: string): void {
+    const trimmed = dataMapping?.trim();
+    const next = (this.value?.templates ?? []).map((template) => {
+      if (template.templateId !== templateId) {
+        return template;
+      }
+      const { dataMapping: _dropped, ...rest } = template;
+      return trimmed ? { ...rest, dataMapping: trimmed } : rest;
+    });
+    this.emit({
+      pluginConfigurationId: this.value?.pluginConfigurationId ?? null,
+      catalogId: this.value?.catalogId ?? null,
+      templates: next,
+    });
+  }
+
   get missingTemplates(): OfferedTemplate[] {
     if (!this.templatesLoaded || this.loadingTemplates) {
       return [];
@@ -383,6 +517,28 @@ export class EpistolaLetterSetBuilderComponent
     return this.templates.find((template) => template.id === templateId)?.name || templateId;
   }
 
+  /**
+   * Choose for the author when there is nothing to choose between.
+   *
+   * A normal install has one Epistola connection and one catalog, so the author met two dropdowns
+   * holding one entry each before reaching a real decision. Both go through the ordinary selection
+   * handler rather than assigning the field, so the choice is **emitted** and stored: a selection
+   * that shows in the UI without being saved is this widget's classic silent failure.
+   *
+   * Only ever when nothing is chosen yet. A stored choice is never overwritten — including one
+   * naming a connection that has since gone, which the author should see rather than have quietly
+   * corrected to whichever connection happens to be the only one left.
+   */
+  private selectTheOnlyConnection(): void {
+    if (
+      this.valueArrived &&
+      this.configurations.length === 1 &&
+      !this.value?.pluginConfigurationId
+    ) {
+      this.onConfigurationSelected(this.configurations[0].id);
+    }
+  }
+
   private loadConfigurations(): void {
     this.loadingConfigurations = true;
     this.subscriptions.push(
@@ -391,6 +547,7 @@ export class EpistolaLetterSetBuilderComponent
           this.configurations = configurations;
           this.loadingConfigurations = false;
           this.cdr.markForCheck();
+          this.selectTheOnlyConnection();
         },
         error: () => {
           this.loadingConfigurations = false;
@@ -412,6 +569,11 @@ export class EpistolaLetterSetBuilderComponent
           this.catalogs = catalogs;
           this.loadingCatalogs = false;
           this.cdr.markForCheck();
+          // Safe without the value guard: catalogs are only ever loaded once a connection is
+          // known, so by now the form's own settings have arrived.
+          if (catalogs.length === 1 && !this.value?.catalogId) {
+            this.onCatalogSelected(catalogs[0].id);
+          }
         },
         error: () => {
           this.loadingCatalogs = false;

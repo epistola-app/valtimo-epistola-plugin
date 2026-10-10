@@ -147,22 +147,45 @@ data belongs in a case form, not in one letter.
 
 ## Configuring the component
 
-| Setting                          | Meaning                                                                                                                                                                                                                                          |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Property name** (`key`)        | Where the chosen letter is stored. Use a `pv:` key, e.g. `pv:epistolaLetter`, so the generate task can read it with `$pv`.                                                                                                                       |
-| **Which letters, from where**    | Pick the Epistola connection and catalog, then tick the letters to offer and name each one as the employee should see it. The three cascade: changing the connection clears the catalog and the ticks, because those ids mean nothing elsewhere. |
-| **Baseline mapping**             | One JSONata mapping over `$doc`/`$pv` for every offered letter. Whatever it does not fill is asked of the employee.                                                                                                                              |
-| **Also ask for optional fields** | Off by default: only fields the template marks required are asked for.                                                                                                                                                                           |
-| **Process to start**             | Normally left empty — see [Where it is used](#where-it-is-used). Fill it in only when the backend says two processes offer the same letter.                                                                                                      |
+| Setting                                     | Meaning                                                                                                                                                                                                                                           |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Name for the chosen letter** (`key`)      | A name for the process variable the letter is stored in, e.g. `epistolaLetter`. The `pv:` prefix is added on save, so the author types a name rather than a key; typing `pv:epistolaLetter` also works. Each picker on a form needs its own name. |
+| **Which letters, from where**               | Pick the Epistola connection and catalog, then tick the letters to offer and name each one as the employee should see it. The three cascade: changing the connection clears the catalog and the ticks, because those ids mean nothing elsewhere.  |
+| **Baseline mapping**                        | One JSONata mapping over `$doc`/`$pv` for every offered letter. Whatever it does not fill is asked of the employee.                                                                                                                               |
+| **Split into steps above this many fields** | Empty for the default of 6. A letter asking for more than this many fields is shown as steps, one per section of the letter, rather than one long column. Raise it to keep more on one screen; set it very high to never split.                   |
+| **Also ask for optional fields**            | Off by default: only fields the template marks required are asked for.                                                                                                                                                                            |
+| **Process to start**                        | Normally left empty — see [Where it is used](#where-it-is-used). Fill it in only when the backend says two processes offer the same letter.                                                                                                       |
 
-Stored, that half looks like this — a form written by hand may also carry the three keys directly
-on the component:
+**The `pv:` prefix is the component's, not the author's.** There is no case where the key could be
+anything else: the only thing that reads a composed letter is the generate action, which reads a
+_process variable_, and `pv:` is what makes Valtimo store a submitted value as one. Any other
+spelling leaves the letter in submission data or on the document, where the action cannot see it,
+and the failure lands one step later at the generate task rather than in the settings. So the author
+names the letter and the component prefixes it on save (`withComposerDefaults`), which is the one
+point every saved component passes through.
+
+Two pickers answering to one name — reachable by naming one `brief` and another `pv:brief`, which
+are different keys to Form.io's own uniqueness check and the same key once stored — is **refused**
+rather than resolved by document order: they would write the same variable, while their mappings and
+write-back rules differ.
+
+Only the property name and the letters are decisions every author makes, so the mapping, the
+write-back, the optional-field toggle and the process key sit in a collapsed **Mapping and advanced
+settings** panel. Form.io reopens a collapsed panel when something inside it fails validation, so
+nothing can be refused behind a closed lid. And where there is nothing to choose between — one
+Epistola connection, one catalog, which is the normal install — it is chosen for the author, through
+the ordinary selection path so the choice is stored rather than only shown. A choice the form
+already names is never overwritten, including one naming a connection that has since gone.
+
+Stored, that half looks like this — under `epistola`, the one key this component claims on a form:
 
 ```json
-"letterSet": {
-  "pluginConfigurationId": "…",
-  "catalogId": "municipality-demo",
-  "templates": [{ "templateId": "besluit-bezwaar", "label": "Besluit op bezwaar" }]
+"epistola": {
+  "letterSet": {
+    "pluginConfigurationId": "…",
+    "catalogId": "municipality-demo",
+    "templates": [{ "templateId": "besluit-bezwaar", "label": "Besluit op bezwaar" }]
+  }
 }
 ```
 
@@ -221,10 +244,10 @@ UserTask  choose-letter          → form "kies-brief"            (the composer)
 ServiceTask generate-chosen-letter → action "Generate Dynamic Document"
 ```
 
-Demo: `correspondentie-letter-composer`. To build one: drop the component on the task's form, set
-its **Property name** to `pv:epistolaLetter`, choose the Epistola connection and the letters to
-offer, then add a service task with the **Generate Dynamic Document** action reading the same
-variable. The action needs no template, catalog or mapping of its own — the letter carries them.
+Demo: `correspondentie-letter-composer`. To build one: drop the component on the task's form, name
+the chosen letter `epistolaLetter`, choose the Epistola connection and the letters to offer, then
+add a service task with the **Generate Dynamic Document** action reading the same variable. The
+action needs no template, catalog or mapping of its own — the letter carries them.
 
 ### Without a composer at all
 
@@ -454,20 +477,29 @@ deployable as config-as-code, editable in the builder:
 {
   "type": "epistola-letter-composer",
   "key": "pv:epistolaLetter",
-  "schemaVersion": 1,
   "prefill": false,
-  "askOptionalFields": false,
-  "dataMapping": "<baseline JSONata>",
-  "letterSet": {
-    "pluginConfigurationId": "…",
-    "catalogId": "municipality-demo",
-    "templates": [{ "templateId": "besluit", "label": "…", "dataMapping": "<fragment>" }]
+  "epistola": {
+    "schemaVersion": 1,
+    "askOptionalFields": false,
+    "dataMapping": "<baseline JSONata>",
+    "letterSet": {
+      "pluginConfigurationId": "…",
+      "catalogId": "municipality-demo",
+      "templates": [{ "templateId": "besluit", "label": "…", "dataMapping": "<fragment>" }]
+    }
   }
 }
 ```
 
-`schemaVersion` and `prefill` are written back on every save, because Form.io drops schema equal to
-the registered default and losing either is silent.
+**Everything this component owns lives under `epistola`.** That component object is not ours: it
+holds Form.io's own properties — `key`, `label`, `validate`, `prefill` — and whatever another
+custom component on the same form puts there. `dataMapping` and `schemaVersion` are names anyone
+could reasonably claim, so one key is claimed instead of five. `prefill` stays outside it, because
+it is Form.io's own property and Form.io is the one that reads it.
+
+`epistola.schemaVersion` and `prefill` are written back on every save, because Form.io drops schema
+equal to the registered default and losing either is silent. The namespace is rewritten as a whole
+object, so stamping the version must not drop the settings beside it — pinned by a unit test.
 
 **A catalog is a property of the letter, not of the set.** `letterSet.catalogId` is the default; a
 letter may carry its own `catalogId`, which is what lets one picker offer letters from more than
@@ -481,8 +513,10 @@ optional, because a template id is unique within a catalog and a composer usuall
 a composer offering two can hold the same id twice, and the backend refuses to guess between them
 rather than rendering whichever happened to be configured first.
 
-A form written before the widget existed carries `pluginConfigurationId`, `catalogId` and
-`templates` directly on the component instead of under `letterSet`; both shapes are read.
+A form written by hand may leave out either level: the settings directly on the component instead
+of under `epistola`, and `pluginConfigurationId`, `catalogId` and `templates` directly instead of
+under `letterSet`. All of those shapes are read — the namespace when it is there, the component
+itself when it is not.
 
 **2. The chosen letter**, on the process variable the component's `pv:` key names:
 
@@ -720,7 +754,7 @@ the promise the composer makes. The rest are open.
 
   The design is settled and written up in
   [ADR 0006](adr/0006-letter-composer-configuration.md#write-back-is-a-map-from-case-path-to-expression-evaluated-after-the-letter-is-composed):
-  a `writeBack` map on the component, keyed by the **destination** and valued with a JSONata
+  an `epistola.writeBack` map on the component, keyed by the **destination** and valued with a JSONata
   expression over `$inputs` / `$data` / `$doc` / `$pv`. It is evaluated when the letter is composed
   and the _result_ rides on the letter variable next to `data`, so the write uses what the employee
   approved even when the applying task runs long afterwards. The **generate action applies it**, once

@@ -27,6 +27,8 @@ public class ComposerException extends RuntimeException {
         TEMPLATE_NOT_OFFERED,
         /** The composer is configured incompletely (no plugin configuration, catalog or mapping). */
         MISSING_CONTEXT,
+        /** Two composers on the form answer to the same name, so whose settings apply is a guess. */
+        AMBIGUOUS_COMPOSER,
         /** Epistola refused to render the letter with this data. */
         RENDER_FAILED,
         /** Written by a newer plugin than this one, so reading it could mean misreading it. */
