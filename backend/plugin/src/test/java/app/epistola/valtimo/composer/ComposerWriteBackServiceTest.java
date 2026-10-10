@@ -19,6 +19,7 @@ package app.epistola.valtimo.composer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -42,6 +43,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -107,17 +109,19 @@ class ComposerWriteBackServiceTest {
     }
 
     @Test
-    @DisplayName("a failure finding the rules does not fail the letter")
-    void neverThrows() {
-        // The contract this method documents, and the reason for it: by the time write-back runs
-        // the letter is with Epistola and cannot be unsent. Throwing here would fail the activity,
-        // and a retry would send a second letter. Reading the configuration can fail like anything
-        // else that touches a database.
+    @DisplayName("a failure finding the rules blocks the submission")
+    void failingRuleLookupBlocks() {
+        // Write-back runs inside the submission's transaction, so this rolls the submission back
+        // rather than leaving a case worker believing their decision was recorded. Without the
+        // configuration there is no way to know whether this letter had values to save, so
+        // carrying on would be a guess. (It swallowed this until write-back moved to submission
+        // time, where the letter was already irreversible and a retry would have sent a second.)
         when(resolver.forCaseDefinition(CASE_KEY)).thenThrow(new RuntimeException("database is gone"));
 
-        assertThatCode(() -> service.apply(
-                DOCUMENT_ID, letter(Map.of(), Map.of("decisionType", "gegrond")), "epistolaLetter"))
-                .doesNotThrowAnyException();
+        assertThatThrownBy(() -> service.applyFromSubmission(
+                DOCUMENT_ID, Map.of("epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond")))))
+                .isInstanceOf(ComposerWriteBackException.class)
+                .hasMessageContaining("configuration could not be read");
 
         verify(valueResolverService, never()).handleValues(any(UUID.class), any());
     }
@@ -266,11 +270,128 @@ class ComposerWriteBackServiceTest {
         verify(valueResolverService, never()).handleValues(any(UUID.class), any());
     }
 
+    /**
+     * The submission entry point: which of a task's variables held a letter is answered by the
+     * configuration, not by inspecting values for a letter-ish shape.
+     */
+    @Nested
+    class FromSubmission {
+
+        @Test
+        @DisplayName("applies the rules of the composer whose variable the submission carried")
+        void appliesForTheComposersOwnVariable() {
+            declaring(Map.of("doc:/besluit/type", "$inputs.decisionType"));
+
+            service.applyFromSubmission(DOCUMENT_ID, Map.of(
+                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))));
+
+            assertThat(written()).containsEntry("doc:/besluit/type", "gegrond");
+        }
+
+        @Test
+        @DisplayName("two composers writing one variable save the case once, not twice")
+        void writesOncePerVariableNotPerComposer() {
+            // The demo's task form and its ad-hoc start form both use `pv:epistolaLetter`, and a
+            // submission carries one value for it. Applying per composer saved the same values
+            // twice, which is one case version per composer.
+            var rules = Map.of("doc:/besluit/type", "$inputs.decisionType");
+            var offered = List.of(
+                    new LetterComposerConfiguration.OfferedTemplate("gemeente", "besluit", "Besluit", null));
+            when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(
+                    new LetterComposerConfiguration("pv:epistolaLetter", null, UUID.randomUUID(),
+                            "gemeente", null, offered, false, rules),
+                    new LetterComposerConfiguration("pv:epistolaLetter", null, UUID.randomUUID(),
+                            "gemeente", null, offered, false, rules)));
+
+            service.applyFromSubmission(DOCUMENT_ID, Map.of(
+                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))));
+
+            verify(valueResolverService, org.mockito.Mockito.times(1)).handleValues(any(UUID.class), any());
+        }
+
+        @Test
+        @DisplayName("a composer whose letter the submission did not carry is skipped")
+        void skipsAComposerWithNoLetter() {
+            // Another form on the same case type, not the one just submitted.
+            declaring(Map.of("doc:/besluit/type", "$inputs.decisionType"));
+
+            service.applyFromSubmission(DOCUMENT_ID, Map.of("ietsAnders", "x"));
+
+            verify(valueResolverService, never()).handleValues(any(UUID.class), any());
+        }
+
+        @Test
+        @DisplayName("nothing to do without a case or without variables")
+        void needsBoth() {
+            declaring(Map.of("doc:/besluit/type", "$inputs.decisionType"));
+
+            service.applyFromSubmission(null, Map.of("epistolaLetter", letter(Map.of(), Map.of())));
+            service.applyFromSubmission(DOCUMENT_ID, Map.of());
+            service.applyFromSubmission(DOCUMENT_ID, null);
+
+            verify(valueResolverService, never()).handleValues(any(UUID.class), any());
+        }
+
+        @Test
+        @DisplayName("a composer that names no pv: key has no variable to look for")
+        void ignoresAComposerWithoutAProcessVariableKey() {
+            // Its letter never reaches a process variable, so no submission can carry one.
+            when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(new LetterComposerConfiguration(
+                    "brief", null, UUID.randomUUID(), "gemeente", null,
+                    List.of(new LetterComposerConfiguration.OfferedTemplate("gemeente", "besluit", "Besluit", null)),
+                    false,
+                    Map.of("doc:/besluit/type", "$inputs.decisionType"))));
+
+            service.applyFromSubmission(DOCUMENT_ID, Map.of("brief", letter(Map.of(), Map.of("decisionType", "x"))));
+
+            verify(valueResolverService, never()).handleValues(any(UUID.class), any());
+        }
+    }
+
+    @Test
+    @DisplayName("an explicit null is written, so a field can be deliberately cleared")
+    void writesAnExplicitNull() {
+        // JSONata keeps "nothing" and null apart: a missing path leaves the key out, null puts it
+        // in. That is the whole mechanism — writing null needs no setting of its own, and the
+        // counterpart is `yieldsNothing` above.
+        declaring(Map.of("doc:/aanvrager/telefoon", "null"));
+
+        service.apply(DOCUMENT_ID, letter(Map.of(), Map.of()));
+
+        assertThat(written()).containsEntry("doc:/aanvrager/telefoon", null);
+    }
+
+    @Test
+    @DisplayName("a rule may choose between a value and clearing the field")
+    void clearsConditionally() {
+        declaring(Map.of("doc:/aanvrager/telefoon", "$inputs.telefoon ? $inputs.telefoon : null"));
+
+        service.apply(DOCUMENT_ID, letter(Map.of(), Map.of()));
+
+        assertThat(written()).containsEntry("doc:/aanvrager/telefoon", null);
+    }
+
+    @Test
+    @DisplayName("a null the letter itself carries is written, not skipped")
+    void writesANullFromTheLetter() {
+        // The edge this changed: a contract may declare a field nullable, and a letter that says
+        // the value is empty is saying something. Previously indistinguishable from a rule that
+        // found nothing.
+        declaring(Map.of("doc:/aanvrager/telefoon", "$data.telefoon"));
+        Map<String, Object> data = new java.util.LinkedHashMap<>();
+        data.put("telefoon", null);
+
+        service.apply(DOCUMENT_ID, letter(data, Map.of()));
+
+        assertThat(written()).containsEntry("doc:/aanvrager/telefoon", null);
+    }
+
     @Test
     @DisplayName("a destination the form does not declare is not written")
     void ignoresAnUndeclaredDestination() {
-        // The property this design exists for. The letter is assembled in the browser, so a
-        // crafted one can name any path it likes; the form stays the authority on where data goes.
+        // The property this design exists for, and it now holds for a stronger reason than a veto:
+        // every destination and every value comes from the stored form's rules, so a `writeBack`
+        // key on the letter is not read at all. A crafted letter has nothing to craft with.
         declaring(Map.of("doc:/toegestaan", "$inputs.veld"));
 
         Map<String, Object> crafted = new java.util.LinkedHashMap<>(
@@ -313,27 +434,57 @@ class ComposerWriteBackServiceTest {
     }
 
     @Test
-    @DisplayName("one broken rule does not cost the others")
+    @DisplayName("a rule that cannot be evaluated blocks the submission, and is named")
     void oneBrokenRule() {
+        // It used to let the others through, which is the silent failure moving to submission time
+        // was meant to end: a broken rule means a value the employee approved never arrives, and
+        // nothing said so. The destination is named — the author's own text, not case data.
         declaring(Map.of(
                 "doc:/goed", "$inputs.veld",
                 "doc:/stuk", "this is ( not jsonata"));
 
-        service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("veld", "waarde")));
+        assertThatThrownBy(() -> service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("veld", "waarde"))))
+                .isInstanceOf(ComposerWriteBackException.class)
+                .hasMessageContaining("doc:/stuk")
+                .hasMessageContaining("could not be evaluated");
 
-        assertThat(written()).containsExactly(Map.entry("doc:/goed", "waarde"));
+        verify(valueResolverService, never()).handleValues(any(UUID.class), any());
     }
 
     @Test
-    @DisplayName("a failing write is logged, never thrown")
+    @DisplayName("a failing write blocks the submission, naming the destination and no values")
     void failingWrite() {
-        // The submission has already succeeded by the time this runs. Throwing would lose a form
-        // the employee has finished, to save a correction.
         declaring(Map.of("doc:/x", "$inputs.veld"));
-        org.mockito.Mockito.doThrow(new RuntimeException("database is on fire"))
+        org.mockito.Mockito.doThrow(new RuntimeException("case rejected 'waarde' for /x"))
                 .when(valueResolverService).handleValues(any(UUID.class), any());
 
-        service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("veld", "waarde")));
+        assertThatThrownBy(() -> service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("veld", "waarde"))))
+                .isInstanceOf(ComposerWriteBackException.class)
+                .hasMessageContaining("doc:/x")
+                // A letter's data is case data, and the downstream complaint quotes the value it
+                // rejected. So neither the message nor an attached cause carries it: the detail
+                // goes to DEBUG, where reading it is a deliberate act.
+                .hasMessageNotContaining("waarde")
+                .hasNoCause();
+    }
+
+    @Test
+    @DisplayName("when a batch fails, the destination at fault is the one named")
+    void namesTheDestinationAtFault() {
+        // A batch failure says only that something in the set was unacceptable. An operator needs
+        // to know which one, and an author needs it to fix the rule — so each is tried alone, to
+        // identify rather than to salvage: the transaction is about to roll back either way.
+        declaring(Map.of("doc:/goed", "$inputs.veld", "doc:/stuk", "$inputs.veld"));
+        org.mockito.Mockito.doThrow(new RuntimeException("schema says no"))
+                .when(valueResolverService).handleValues(any(UUID.class), argThat(
+                        (Map<String, Object> values) -> values != null && values.size() > 1));
+        org.mockito.Mockito.doThrow(new RuntimeException("schema says no"))
+                .when(valueResolverService).handleValues(any(UUID.class), eq(Map.of("doc:/stuk", "waarde")));
+
+        assertThatThrownBy(() -> service.apply(DOCUMENT_ID, letter(Map.of(), Map.of("veld", "waarde"))))
+                .isInstanceOf(ComposerWriteBackException.class)
+                .hasMessageContaining("doc:/stuk")
+                .hasMessageNotContaining("doc:/goed");
     }
 
     @Test

@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **A letter's values now reach the case when the form is submitted, not after Epistola accepts the
+  letter.** That is the moment every other form writes to a case, and it closes the window in which
+  a form redeployed between composing and generating would apply rules the employee never saw. It
+  also separates two concerns that were tangled: recording what a case worker decided, and rendering
+  a PDF. A case no longer waits on an asynchronous render for values that were approved at submit.
+
+  The trigger is Valtimo's own `TaskCompletedEvent`, which carries the case document id and the
+  process variables. A composer cannot do what an ordinary form does — carry a `doc:`-keyed field in
+  its submission — because its own field is already keyed `pv:` and a Form.io component can add
+  neither a top-level sibling nor a submitted child; that was measured rather than assumed, and is
+  recorded with everything else in [ADR 0006](docs/adr/0006-letter-composer-configuration.md). So
+  the platform's submission _signal_ is used instead of its submission _payload_. The rules, the
+  JSONata evaluation and the write through `ValueResolverService` are unchanged.
+
+  **A write-back problem now blocks the submission.** The event is published synchronously, inside
+  the submission's transaction, so a failure rolls the whole submission back: the submit call
+  answers 400, the task stays open and the case is left untouched. A value a case worker approved
+  either reaches the case or the submission does not happen — which is how an ordinary form behaves
+  when it carries a `doc:` field the case schema refuses. A rule that cannot be _evaluated_ blocks
+  too, since the value it was meant to save would otherwise never arrive and nothing would say so;
+  a rule that resolves to _nothing_ still writes nothing, as before.
+
+  **Failures name destinations, never values.** A letter's data is case data, and the downstream
+  complaint quotes the value it rejected, so that detail is not attached to the exception that
+  travels — it goes to `DEBUG`. On a batch failure each destination is retried alone to _identify_
+  the one at fault rather than to salvage the others, which would be incoherent with a transaction
+  about to roll back.
+
+  One other consequence: **a letter whose rendering later fails has still written to the case** —
+  deliberate, and nearly true before, since the old placement only protected against Epistola
+  refusing the _request_, not against a rendering failure.
+
+  Not covered by this trigger: a start form that creates a new case completes no task. The ad-hoc
+  composer on a start form of an _existing_ case is unaffected.
+
+### Fixed
+
+- **A write-back rule can now clear a case field, and a rule that found nothing says so.** JSONata
+  already distinguished "found nothing" from an explicit `null` — a missing path leaves the key out
+  of the result, `null` puts it in — but the guard tested both and so collapsed them, leaving no way
+  to express a deliberate clear. Only the key's presence is tested now: `null` means _clear this
+  field_, and nothing else has to be configured to allow it. An absent value still writes nothing,
+  which is what keeps a value the employee never supplied from clobbering the case. Empty string and
+  `false` were always written, being neither missing nor null.
+
+  The destinations that resolved to nothing are also named in the log now. A rule that quietly found
+  nothing and one that worked used to look identical from outside — the harder half of #179.
+
+- **Recorded what Valtimo offers for writing back at form submission, and what it does not.**
+  [ADR 0006](docs/adr/0006-letter-composer-configuration.md) now carries the measurements: a hidden
+  prefixed child of a Form.io component is never instantiated and never submitted (so neither the
+  composer's inputs nor a trigger carrier can ride Valtimo's native write path),
+  `ExternalDataSubmittedEvent` does not fire for a composer form, and `TaskCompletedEvent` does —
+  carrying the case document id and the process variables, which is everything write-back needs.
+  Submission-time write-back is therefore possible as a listener rather than as a form field.
+
+- **Corrected what the documentation claims about when write-back is evaluated.** It said the rules
+  are evaluated when the letter is composed, with the result riding on the letter variable — the
+  design [ADR 0006](docs/adr/0006-letter-composer-configuration.md) decided. What shipped resolves
+  them server-side when the letter is generated, which is stronger in one respect (no write-back
+  value ever crosses the wire, so a crafted letter has nothing to craft with) and weaker in another
+  (rules changed between composing and generating take effect). The unfinished machinery for the
+  documented design — `ComposedLetter.writeBack`, `writeBackLimitedTo`, `writeBackRefused` and
+  `LetterComposerConfiguration.writeBackDestinations` — had no callers and no tests, and is removed
+  rather than left looking live.
+
 ### Added
 
 - **A letter can be configured on its own.** Each offered letter in the composer's settings gets a
