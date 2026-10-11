@@ -41,11 +41,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   worth waking anyone. A failure the plugin does not recognise — the case or its forms being
   unreadable — stays `ERROR`, because nothing else in that path logs it.
 
-  **Failures name destinations, never values.** A letter's data is case data, and the downstream
-  complaint quotes the value it rejected, so that detail is not attached to the exception that
-  travels — it goes to `DEBUG`. On a batch failure each destination is retried alone to _identify_
-  the one at fault rather than to salvage the others, which would be incoherent with a transaction
-  about to roll back.
+  **Failures name destinations and classes, never values.** A letter's values are personal data, and
+  the downstream complaint quotes the value it rejected — Valtimo's reads
+  `Failed to handle values … Values: {/besluit/x=gegrond}` — so it is neither attached to the
+  exception that travels nor logged at any level, `DEBUG` included. What is logged is the
+  destination plus the outer and root cause classes, which is where the useful distinction usually
+  sits. On a batch failure each destination is retried alone to _identify_ the one at fault rather
+  than to salvage the others, which would be incoherent with a transaction about to roll back.
+
+### Fixed
+
+- **Stopped logging personal data.** `EpistolaServiceImpl` logged every value of a generation
+  request (`Template data: {…}`) at `DEBUG` — names, identifiers, addresses, the text of a decision
+  — and `DEBUG` is enabled in the test-app and on plenty of real installations. It logs the data's
+  **keys** now. [CLAUDE.md](CLAUDE.md#never-log-personal-data) records the rule and the two vectors
+  that are easy to miss: a downstream `e.getMessage()`, and a cause attached to an exception that
+  propagates out of a web request.
 
   One other consequence: **a letter whose rendering later fails has still written to the case** —
   deliberate, and nearly true before, since the old placement only protected against Epistola

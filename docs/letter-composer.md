@@ -802,7 +802,11 @@ the promise the composer makes. The rest are open.
   rather than to salvage the rest, since the transaction is rolling back either way. The downstream
   complaint does quote the value it rejected (Valtimo's own message reads
   `Failed to handle values … Values: {/besluit/x=gegrond}`), so it is **not** attached to the
-  exception that travels — it goes to `DEBUG`, where reading it is a deliberate act. Keying by
+  exception that travels and **not** logged at any level, `DEBUG` included — see
+  [Never log personal data](../CLAUDE.md#never-log-personal-data). What is logged instead is the
+  destination plus the outer and root cause classes, which is where the useful distinction usually
+  sits: a schema rejection and an exhausted optimistic retry are both a `RuntimeException` outside
+  and differ underneath. Keying by
   destination is what keeps one writer per case path and lets a destination be computed from several
   inputs. The same map also makes the preview more faithful rather than less — applied to a copy of
   `$doc`/`$pv` before the baseline mapping runs, it shows the letter as it will be _once saved_.

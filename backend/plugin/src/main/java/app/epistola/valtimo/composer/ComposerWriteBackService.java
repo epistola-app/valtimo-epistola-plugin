@@ -160,8 +160,7 @@ public class ComposerWriteBackService {
             // author can fix, while this branch is reached only by something unexpected — reading
             // the case or its forms failed. Nothing else in this path will have logged it.
             log.error("Letter composer write-back could not run for case {} ({})",
-                    documentId, e.getClass().getSimpleName());
-            log.debug("Letter composer write-back setup failure detail for case {}", documentId, e);
+                    documentId, describe(e));
             throw new ComposerWriteBackException(
                     "The letter's values could not be saved on the case: its configuration could "
                             + "not be read. The submission was not completed.");
@@ -219,9 +218,7 @@ public class ComposerWriteBackService {
             // until the move to submission time, when nothing could be done about it anyway — is
             // the silent failure the move was meant to end.
             log.warn("Letter composer write-back could not read the letter on case {} ({})",
-                    documentId, e.getClass().getSimpleName());
-            log.debug("Letter composer write-back letter detail for case {} — may quote case data",
-                    documentId, e);
+                    documentId, describe(e));
             throw new ComposerWriteBackException(
                     "The letter's values could not be saved on the case: the composed letter could "
                             + "not be read. The submission was not completed.");
@@ -327,6 +324,31 @@ public class ComposerWriteBackService {
     }
 
     /**
+     * Name a failure without quoting what it was carrying.
+     *
+     * <p>The class alone is often uninformative — Valtimo wraps a refused write in a plain
+     * {@code RuntimeException} — so the <b>root</b> cause's class is named too, which is where the
+     * useful distinction usually sits: a schema rejection and an exhausted optimistic retry are
+     * both a {@code RuntimeException} on the outside and different underneath.
+     *
+     * <p>Classes only. A message would do better, and cannot be used: the downstream complaint
+     * quotes the value it rejected — Valtimo's reads {@code Failed to handle values … Values:
+     * {/besluit/x=gegrond}} — and a letter's values are case data.
+     */
+    private static String describe(Throwable cause) {
+        if (cause == null) {
+            return "unknown cause";
+        }
+        Throwable root = cause;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        return root == cause
+                ? cause.getClass().getSimpleName()
+                : cause.getClass().getSimpleName() + " caused by " + root.getClass().getSimpleName();
+    }
+
+    /**
      * The failure to raise when a destination would not accept its value.
      *
      * <p>Names the destinations and the kind of failure, and <b>deliberately does not carry the
@@ -351,11 +373,7 @@ public class ComposerWriteBackService {
         // declare — a form to fix, not an incident — and ERROR on a path any misconfigured form can
         // reach is how an operator learns to ignore ERROR.
         log.warn("Letter composer write-back could not write {} to case {} ({})",
-                what, documentId, cause == null ? "unknown cause" : cause.getClass().getSimpleName());
-        if (cause != null) {
-            log.debug("Letter composer write-back failure detail for case {} — may quote case data",
-                    documentId, cause);
-        }
+                what, documentId, describe(cause));
         return new ComposerWriteBackException(
                 "The letter's values could not be saved on the case: " + what
                         + " was refused. The submission was not completed.");
@@ -478,9 +496,7 @@ public class ComposerWriteBackService {
                 // this moved to submission time to end. The expression is named — it is the
                 // author's own text, not case data — and the cause is attached rather than quoted.
                 log.warn("Letter composer write-back rule for '{}' on case {} could not be "
-                        + "evaluated ({})", destination, documentId, e.getClass().getSimpleName());
-                log.debug("Letter composer write-back rule failure detail for '{}' on case {} — "
-                        + "may quote case data", destination, documentId, e);
+                        + "evaluated ({})", destination, documentId, describe(e));
                 throw new ComposerWriteBackException(
                         "The letter's values could not be saved on the case: the rule for "
                                 + destination + " could not be evaluated. The submission was not "
@@ -519,8 +535,7 @@ public class ComposerWriteBackService {
             // Returning null for a document that genuinely is not there stays as it was; nothing
             // can be written to a case that does not exist.
             log.warn("Letter composer write-back could not read case {} ({})",
-                    documentId, e.getClass().getSimpleName());
-            log.debug("Letter composer write-back case-read detail for case {}", documentId, e);
+                    documentId, describe(e));
             throw new ComposerWriteBackException(
                     "The letter's values could not be saved on the case: the case could not be "
                             + "read. The submission was not completed.");

@@ -325,7 +325,9 @@ public class EpistolaServiceImpl implements EpistolaService {
     ) {
         log.debug("Submitting document generation request: tenantId={}, templateId={}, variantId={}, attributes={}, format={}, filename={}, routingKey={}",
                 tenantId, templateId, variantId, variantAttributes, format, filename, routingKey);
-        log.debug("Template data: {}", data);
+        // Never the data itself: it is a letter's contents — names, identifiers, addresses, the
+        // text of a decision. The keys say what was sent, which is what a log is for here.
+        log.debug("Template data keys: {}", data == null ? "none" : data.keySet());
 
         try {
             GenerationApi generationApi = apiClientFactory.createGenerationApi(baseUrl, apiKey);
