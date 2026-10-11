@@ -87,6 +87,18 @@ public class EpistolaComposerConfiguration {
      * <p>Declared beside the service it drives, so switching the composer module off removes the
      * listener with it rather than leaving one that would find no configuration.
      */
+    /**
+     * The start-form half of write-back; see the aspect for why a second trigger is needed.
+     */
+    @Bean
+    @ConditionalOnMissingBean(ComposerStartFormWriteBackAspect.class)
+    public ComposerStartFormWriteBackAspect composerStartFormWriteBackAspect(
+            ComposerWriteBackService composerWriteBackService,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper
+    ) {
+        return new ComposerStartFormWriteBackAspect(composerWriteBackService, objectMapper);
+    }
+
     @Bean
     @ConditionalOnMissingBean(ComposerSubmissionListener.class)
     public ComposerSubmissionListener composerSubmissionListener(

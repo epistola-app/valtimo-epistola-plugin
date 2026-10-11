@@ -62,6 +62,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deliberate, and nearly true before, since the old placement only protected against Epistola
   refusing the _request_, not against a rendering failure.
 
+  **Where it applies: every shape.** Two triggers, disjoint so nothing writes twice. A task form and
+  a form-flow step complete a task, and Valtimo's `TaskCompletedEvent` carries both the case id and
+  the letter. A **start form** completes nothing, so it is intercepted at
+  `FormSubmissionService.handleSubmission` — the service every regular submission passes through,
+  dispatching to all three of Valtimo's shapes, inside the submission's transaction. A start form
+  that _creates_ a case is covered too, taking the new id from the result. A submission carrying a
+  task instance id is left to the event, which is what keeps the two apart.
+
+  `ProcessStartedEvent` was tried first and reverted: it is published before Valtimo writes the
+  submitted `pv:` values, so the letter does not exist yet.
+
+  **All four shapes are now demonstrated**, the last by a new demo: `direct-brief`, a second process
+  that may create a `correspondentie` case, whose start form carries a composer. That shape has no
+  case to read from, which has two consequences an author meets nowhere else — it must name the
+  process it starts, and it has no baseline mapping, because a mapping would consume the letter's
+  fields against an empty `$doc` instead of asking for them. Guarded by
+  `letter-composer-new-case.spec.ts`, which fails when the write-back rule is removed.
+
+  **Each composer now has its own `pv:` key in the demo.** Write-back rules are found by variable
+  name, so two composers writing the same variable have their rules merged — the task form and the
+  ad-hoc start form both used `pv:epistolaLetter`, so an ad-hoc letter inherited a `pv:besluitType`
+  rule from an unrelated form, which cannot resolve on a case running more than one process. The
+  ad-hoc composer and its generate task now use `epistolaAdhocLetter`.
+
+### Fixed
+
+- **Stopped logging personal data.** `EpistolaServiceImpl` logged every value of a generation
+  request (`Template data: {…}`) at `DEBUG` — names, identifiers, addresses, the text of a decision
+  — and `DEBUG` is enabled in the test-app and on plenty of real installations. It logs the data's
+  **keys** now. [CLAUDE.md](CLAUDE.md#never-log-personal-data) records the rule and the two vectors
+  that are easy to miss: a downstream `e.getMessage()`, and a cause attached to an exception that
+  propagates out of a web request.
+
+  One other consequence: **a letter whose rendering later fails has still written to the case** —
+  deliberate, and nearly true before, since the old placement only protected against Epistola
+  refusing the _request_, not against a rendering failure.
+
   **Where it applies.** A task form and a form-flow step both complete a task, so both are covered,
   and the demo now exercises both — `kies-brief` with three rules and `kies-brief-flow` with two,
   each verified end to end. A composer on a **start form** is not covered: starting a process

@@ -789,24 +789,43 @@ the promise the composer makes. The rest are open.
   cannot be read, and a case that cannot be read all block. A rule that resolves to _nothing_ is not
   a failure and writes nothing, as above.
 
-  **Where it applies, and where it does not.** Write-back runs when a **task completes**, which
-  covers a composer on a task form and a composer in a form-flow step — both verified end to end in
-  the demo. It does **not** run for a composer on a **start form**: starting a process completes no
-  task. `ProcessStartedEvent` looks like the answer and is not — measured, it is published _before_
-  Valtimo writes the submitted `pv:` values, so the instance has no variables at all and the letter
-  does not exist yet.
+  **Where it applies.** Two triggers, between them covering every shape, and disjoint so that
+  nothing writes twice:
 
-  So an ad-hoc letter composed on a start form cannot save values back to the case today, and the
-  demo's `kies-brief-adhoc` deliberately declares **no** rules rather than declaring rules that
-  would never apply. If a start form needs write-back, the composer belongs on a task form instead,
-  or the process needs an explicit step for it.
+  | Shape                     | Demo               | Trigger                                              |
+  | ------------------------- | ------------------ | ---------------------------------------------------- |
+  | Task form                 | `kies-brief`       | `TaskCompletedEvent`                                 |
+  | Form-flow step            | `kies-brief-flow`  | `TaskCompletedEvent` — a step completes a task       |
+  | Start form, existing case | `kies-brief-adhoc` | `FormSubmissionService.handleSubmission`             |
+  | Start form, new case      | `direct-brief`     | the same, with the new case id taken from the result |
 
-  | Shape                     | Demo               | Write-back                 |
-  | ------------------------- | ------------------ | -------------------------- |
-  | Task form                 | `kies-brief`       | yes — 3 rules, verified    |
-  | Form-flow step            | `kies-brief-flow`  | yes — 2 rules, verified    |
-  | Start form, existing case | `kies-brief-adhoc` | **no** — no task completes |
-  | Start form, new case      | —                  | **no** — same reason       |
+  A start form completes no task, so the event cannot see it; `ProcessStartedEvent` looks like the
+  answer and is not, because it is published _before_ Valtimo writes the submitted `pv:` values and
+  the letter does not exist yet. What does work is the service every regular submission passes
+  through — one method, dispatching to all three of Valtimo's shapes, inside the submission's
+  transaction. A submission that carries a `taskInstanceId` is left to the event, which is what
+  keeps the two from both firing.
+
+  The letter there comes from the **submission** rather than the engine, since a start form hands
+  back no process instance id. It is the same letter the variable would hold, and the rules still
+  come only from the stored form. It is converted to a `Map` first: that is the kind of value a
+  process variable holds, and handing over the submission's `JsonNode` fails with _"the composed
+  letter could not be read"_.
+
+  **A composer on the form that creates the case** is the one shape with no case to read from, and
+  the demo's `direct-brief` shows what follows. It must name the **process it starts** — nothing can
+  derive it, and without that the component stays inert on purpose, which is the one setting
+  normally left empty. It has **no baseline mapping**, because there is no `$doc` yet: left in
+  place, a mapping consumes the letter's fields against an empty case instead of asking for them.
+  So everything comes from the employee, and write-back rules read `$inputs`. The case the values
+  land on is the one that submission created.
+
+  **Give each composer its own `pv:` key.** Two composers writing the same variable have their
+  write-back rules **merged**, because the rules are found by variable name. The demo's task form and
+  ad-hoc start form shared `pv:epistolaLetter` until this was built, which meant an ad-hoc letter
+  inherited a `pv:besluitType` rule from a form it has nothing to do with — and that destination
+  cannot resolve on a case running more than one process, so the submission was refused. The ad-hoc
+  composer now uses `pv:epistolaAdhocLetter`, as the flow already used its own name.
 
   **It is logged as a warning, not an error.** The submission rolled back, so nothing is
   inconsistent, and the caller has already been told with a 400. The usual cause is a form to fix —

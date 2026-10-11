@@ -289,16 +289,31 @@ Two things the implementation taught that the reasoning did not:
   request, is all of them. So the exception that travels carries no cause, and the detail goes to
   `DEBUG`.
 
-**Both other shapes were then measured.** A **form-flow step** completes a task, so it is covered —
-verified end to end with rules on the demo's `kies-brief-flow`. A **start form** is not, and cannot
-be from this trigger: starting a process completes no task. `ProcessStartedEvent` was implemented
-for it and reverted, because it is published _before_ Valtimo writes the submitted `pv:` values —
-measured, the instance has no variables at all at that point, so the letter does not exist yet.
+**Both other shapes were then measured, and both are now covered.** A **form-flow step** completes a
+task, so the event reaches it — verified with rules on the demo's `kies-brief-flow`. A **start form**
+completes nothing, and two attempts missed before one worked:
 
-That leaves a real limitation rather than an open question: a composer on a start form cannot write
-back. The demo's `kies-brief-adhoc` therefore declares no rules, rather than declaring rules that
-would silently never apply. Supporting it needs a hook that fires after a start form's values are
-written — nothing in the events observed so far does — or an explicit process step.
+- `ProcessStartedEvent` carries the case document id, so it looked right. It is published _before_
+  Valtimo writes the submitted `pv:` values — measured, the instance has no variables at all — so
+  the letter does not exist yet. Implemented and reverted.
+- `FormSubmissionService.handleSubmission` is the service every regular submission passes through:
+  one method dispatching to all three of Valtimo's shapes, inside the submission's transaction.
+  Intercepted after it returns, it covers a start form on an existing case and one that creates a
+  case, the latter taking the new id from `FormSubmissionResultSucceeded.documentId()`. The letter
+  comes from the submission rather than the engine, because a start form hands back no process
+  instance id; it is the same letter the variable would hold, converted to a `Map` because that is
+  the kind of value a process variable holds.
+
+The two triggers are kept **disjoint** by the task instance id: a submission that completed a task
+is left to the event. Both firing would write the same values twice, which is one case version per
+trigger.
+
+**A composer needs its own `pv:` key, and the demo did not have one.** Rules are found by variable
+name, so two composers writing the same variable have their rules **merged**. The demo's task form
+and ad-hoc start form both used `pv:epistolaLetter`, so an ad-hoc letter inherited a `pv:besluitType`
+rule from an unrelated form — and a `pv:` destination cannot resolve on a case running more than one
+process, so the submission was refused. Found only by making the start-form path work. The ad-hoc
+composer now uses `pv:epistolaAdhocLetter`.
 
 #### The generate action applies it, after Epistola accepts the letter
 
