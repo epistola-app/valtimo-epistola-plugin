@@ -156,6 +156,9 @@ public class ComposerWriteBackService {
             // Reading the case or its forms touches a database and can fail like anything else.
             // Blocking the submission is still right: without the configuration there is no way to
             // know whether this letter had values to save.
+            // The one that stays ERROR: the two failures above are shapes we understand and an
+            // author can fix, while this branch is reached only by something unexpected — reading
+            // the case or its forms failed. Nothing else in this path will have logged it.
             log.error("Letter composer write-back could not run for case {} ({})",
                     documentId, e.getClass().getSimpleName());
             log.debug("Letter composer write-back setup failure detail for case {}", documentId, e);
@@ -337,7 +340,11 @@ public class ComposerWriteBackService {
         String what = destinations.size() == 1
                 ? "destination " + destinations.get(0)
                 : "destinations " + destinations;
-        log.error("Letter composer write-back could not write {} to case {} ({})",
+        // WARN, not ERROR. The submission rolled back, so nothing is inconsistent, and the caller
+        // has been told with a 400. The usual cause is a destination the case schema does not
+        // declare — a form to fix, not an incident — and ERROR on a path any misconfigured form can
+        // reach is how an operator learns to ignore ERROR.
+        log.warn("Letter composer write-back could not write {} to case {} ({})",
                 what, documentId, cause == null ? "unknown cause" : cause.getClass().getSimpleName());
         if (cause != null) {
             log.debug("Letter composer write-back failure detail for case {} — may quote case data",
@@ -464,7 +471,7 @@ public class ComposerWriteBackService {
                 // never arrives. That used to be logged and skipped, which is the silent failure
                 // this moved to submission time to end. The expression is named — it is the
                 // author's own text, not case data — and the cause is attached rather than quoted.
-                log.error("Letter composer write-back rule for '{}' on case {} could not be "
+                log.warn("Letter composer write-back rule for '{}' on case {} could not be "
                         + "evaluated ({})", destination, documentId, e.getClass().getSimpleName());
                 log.debug("Letter composer write-back rule failure detail for '{}' on case {} — "
                         + "may quote case data", destination, documentId, e);

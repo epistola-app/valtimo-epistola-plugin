@@ -788,6 +788,13 @@ the promise the composer makes. The rest are open.
   _evaluated_ blocks too: the value it was meant to save would otherwise never arrive, silently.
   A rule that resolves to _nothing_ is not a problem and writes nothing, as above.
 
+  **It is logged as a warning, not an error.** The submission rolled back, so nothing is
+  inconsistent, and the caller has already been told with a 400. The usual cause is a form to fix —
+  a destination the case schema does not declare, a broken expression — which is worth noticing and
+  not worth waking anyone; `ERROR` on a path any misconfigured form can reach is how an operator
+  learns to ignore `ERROR`. The one exception is a failure this plugin does not recognise, such as
+  the case or its forms being unreadable: nothing else in that path logs it, so it stays `ERROR`.
+
   **What is logged names destinations, never values.** A letter's data is case data — names,
   identifiers, addresses, the text of a decision. The error names the destination at fault and the
   kind of failure; when a batch fails, each destination is retried alone to _identify_ the culprit

@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   too, since the value it was meant to save would otherwise never arrive and nothing would say so;
   a rule that resolves to _nothing_ still writes nothing, as before.
 
+  **Logged as a warning, not an error.** The submission rolled back, so nothing is inconsistent and
+  the caller already has a 400. The usual cause is a form to fix, which is worth noticing and not
+  worth waking anyone. A failure the plugin does not recognise — the case or its forms being
+  unreadable — stays `ERROR`, because nothing else in that path logs it.
+
   **Failures name destinations, never values.** A letter's data is case data, and the downstream
   complaint quotes the value it rejected, so that detail is not attached to the exception that
   travels — it goes to `DEBUG`. On a batch failure each destination is retried alone to _identify_
