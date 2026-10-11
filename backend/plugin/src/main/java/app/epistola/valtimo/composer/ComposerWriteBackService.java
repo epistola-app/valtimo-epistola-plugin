@@ -211,14 +211,20 @@ public class ComposerWriteBackService {
 
         ComposedLetter letter;
         try {
-            // Reading the letter before looking for rules: cheap, and it keeps every path that can
-            // throw inside the overload that guarantees it does not. Looking for rules first used
-            // to short-circuit a letter nobody writes back, and bought a hole in that guarantee.
             letter = ComposedLetter.from(submittedLetter, "epistola:" + SUBMITTED_KEY, objectMapper);
         } catch (RuntimeException e) {
-            log.warn("Letter composer write-back skipped for case {}: the submitted letter could not "
-                    + "be read ({})", documentId, e.getMessage());
-            return;
+            // Blocks, like every other write-back failure. This variable is one a composer declared
+            // it writes, so a value that is not a readable letter means the rules have nothing to
+            // read and the employee's values are lost. Skipping with a warning — which this did
+            // until the move to submission time, when nothing could be done about it anyway — is
+            // the silent failure the move was meant to end.
+            log.warn("Letter composer write-back could not read the letter on case {} ({})",
+                    documentId, e.getClass().getSimpleName());
+            log.debug("Letter composer write-back letter detail for case {} — may quote case data",
+                    documentId, e);
+            throw new ComposerWriteBackException(
+                    "The letter's values could not be saved on the case: the composed letter could "
+                            + "not be read. The submission was not completed.");
         }
 
         apply(documentId, letter, letterVariable);
@@ -507,8 +513,17 @@ public class ComposerWriteBackService {
             var document = documentService.findBy(JsonSchemaDocumentId.existingId(documentId));
             return document.map(found -> found.definitionId().name()).orElse(null);
         } catch (RuntimeException e) {
-            log.debug("Could not read case {} for letter composer write-back: {}", documentId, e.getMessage());
-            return null;
+            // Raised rather than swallowed: a case that cannot be read is not the same as a case
+            // with no composers, and treating them alike meant an infrastructure failure skipped
+            // write-back while the submission succeeded — at DEBUG, so invisible by default.
+            // Returning null for a document that genuinely is not there stays as it was; nothing
+            // can be written to a case that does not exist.
+            log.warn("Letter composer write-back could not read case {} ({})",
+                    documentId, e.getClass().getSimpleName());
+            log.debug("Letter composer write-back case-read detail for case {}", documentId, e);
+            throw new ComposerWriteBackException(
+                    "The letter's values could not be saved on the case: the case could not be "
+                            + "read. The submission was not completed.");
         }
     }
 

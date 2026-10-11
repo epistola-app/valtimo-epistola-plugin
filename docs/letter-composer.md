@@ -784,9 +784,10 @@ the promise the composer makes. The rest are open.
   submission's transaction, so a failure rolls the whole submission back: the submit call answers
   400, the task stays open and the case is left untouched. That is how an ordinary form behaves when
   it carries a `doc:` field the case schema will not accept, and it is the point — a value a case
-  worker approved either reaches the case or the submission does not happen. A rule that cannot be
-  _evaluated_ blocks too: the value it was meant to save would otherwise never arrive, silently.
-  A rule that resolves to _nothing_ is not a problem and writes nothing, as above.
+  worker approved either reaches the case or the submission does not happen — and that holds without
+  exceptions. A rule that cannot be _evaluated_, a write the case refuses, a composed letter that
+  cannot be read, and a case that cannot be read all block. A rule that resolves to _nothing_ is not
+  a failure and writes nothing, as above.
 
   **It is logged as a warning, not an error.** The submission rolled back, so nothing is
   inconsistent, and the caller has already been told with a 400. The usual cause is a form to fix —

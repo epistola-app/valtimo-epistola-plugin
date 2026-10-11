@@ -27,9 +27,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the submission's transaction, so a failure rolls the whole submission back: the submit call
   answers 400, the task stays open and the case is left untouched. A value a case worker approved
   either reaches the case or the submission does not happen — which is how an ordinary form behaves
-  when it carries a `doc:` field the case schema refuses. A rule that cannot be _evaluated_ blocks
-  too, since the value it was meant to save would otherwise never arrive and nothing would say so;
-  a rule that resolves to _nothing_ still writes nothing, as before.
+  when it carries a `doc:` field the case schema refuses.
+
+  Everything that can stop a letter's values arriving blocks, with no exceptions: a rule that cannot
+  be _evaluated_, a write the case refuses, a composed letter that cannot be read, and a case that
+  cannot be read. The last two used to be skipped — one with a warning, one at `DEBUG` — which left
+  an infrastructure failure looking exactly like a case with no composers. A rule that resolves to
+  _nothing_ still writes nothing, as before: that is a value the employee did not supply, not a
+  failure.
 
   **Logged as a warning, not an error.** The submission rolled back, so nothing is inconsistent and
   the caller already has a 400. The usual cause is a form to fix, which is worth noticing and not

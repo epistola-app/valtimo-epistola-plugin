@@ -424,11 +424,35 @@ class ComposerWriteBackServiceTest {
     }
 
     @Test
-    @DisplayName("an unreadable letter is skipped, not thrown")
+    @DisplayName("an unreadable letter blocks the submission")
     void unreadableLetter() {
+        // The variable is one a composer declared it writes, so a value that is not a readable
+        // letter means the rules have nothing to read and the employee's values are lost. Skipped
+        // with a warning until write-back moved to submission time, where there is now something
+        // to be done about it.
         declaring(Map.of("doc:/x", "$inputs.veld"));
 
-        service.apply(DOCUMENT_ID, "not a letter at all");
+        assertThatThrownBy(() -> service.apply(DOCUMENT_ID, "not a letter at all"))
+                .isInstanceOf(ComposerWriteBackException.class)
+                .hasMessageContaining("could not be read")
+                .hasNoCause();
+
+        verify(valueResolverService, never()).handleValues(any(UUID.class), any());
+    }
+
+    @Test
+    @DisplayName("a case that cannot be read blocks the submission")
+    void unreadableCase() {
+        // Not the same as a case with no composers, which is what swallowing this made it look
+        // like — an infrastructure failure skipped write-back while the submission succeeded, and
+        // at DEBUG, so invisibly.
+        org.mockito.Mockito.doThrow(new RuntimeException("database is gone"))
+                .when(documentService).findBy(any());
+
+        assertThatThrownBy(() -> service.applyFromSubmission(
+                DOCUMENT_ID, Map.of("epistolaLetter", letter(Map.of(), Map.of()))))
+                .isInstanceOf(ComposerWriteBackException.class)
+                .hasMessageContaining("case could not be read");
 
         verify(valueResolverService, never()).handleValues(any(UUID.class), any());
     }
