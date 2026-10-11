@@ -789,6 +789,25 @@ the promise the composer makes. The rest are open.
   cannot be read, and a case that cannot be read all block. A rule that resolves to _nothing_ is not
   a failure and writes nothing, as above.
 
+  **Where it applies, and where it does not.** Write-back runs when a **task completes**, which
+  covers a composer on a task form and a composer in a form-flow step — both verified end to end in
+  the demo. It does **not** run for a composer on a **start form**: starting a process completes no
+  task. `ProcessStartedEvent` looks like the answer and is not — measured, it is published _before_
+  Valtimo writes the submitted `pv:` values, so the instance has no variables at all and the letter
+  does not exist yet.
+
+  So an ad-hoc letter composed on a start form cannot save values back to the case today, and the
+  demo's `kies-brief-adhoc` deliberately declares **no** rules rather than declaring rules that
+  would never apply. If a start form needs write-back, the composer belongs on a task form instead,
+  or the process needs an explicit step for it.
+
+  | Shape                     | Demo               | Write-back                 |
+  | ------------------------- | ------------------ | -------------------------- |
+  | Task form                 | `kies-brief`       | yes — 3 rules, verified    |
+  | Form-flow step            | `kies-brief-flow`  | yes — 2 rules, verified    |
+  | Start form, existing case | `kies-brief-adhoc` | **no** — no task completes |
+  | Start form, new case      | —                  | **no** — same reason       |
+
   **It is logged as a warning, not an error.** The submission rolled back, so nothing is
   inconsistent, and the caller has already been told with a 400. The usual cause is a form to fix —
   a destination the case schema does not declare, a broken expression — which is worth noticing and

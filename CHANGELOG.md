@@ -62,8 +62,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   deliberate, and nearly true before, since the old placement only protected against Epistola
   refusing the _request_, not against a rendering failure.
 
-  Not covered by this trigger: a start form that creates a new case completes no task. The ad-hoc
-  composer on a start form of an _existing_ case is unaffected.
+  **Where it applies.** A task form and a form-flow step both complete a task, so both are covered,
+  and the demo now exercises both — `kies-brief` with three rules and `kies-brief-flow` with two,
+  each verified end to end. A composer on a **start form** is not covered: starting a process
+  completes no task, and `ProcessStartedEvent` is published before Valtimo writes the submitted
+  `pv:` values, so the letter does not exist yet — measured, after implementing it that way and
+  reverting. `kies-brief-adhoc` therefore declares no rules, rather than rules that would silently
+  never apply.
 
 ### Fixed
 

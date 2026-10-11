@@ -48,7 +48,11 @@
         },
         "dataMapping": "{\n  \"objector\": {\n    \"firstName\": $doc.objector.firstName,\n    \"lastName\": $doc.objector.lastName,\n    \"address\": {\n      \"street\": $doc.objector.address.street,\n      \"houseNumber\": $doc.objector.address.houseNumber,\n      \"postalCode\": $doc.objector.address.postalCode,\n      \"city\": $doc.objector.address.city\n    }\n  },\n  \"originalDecision\": {\n    \"reference\": $doc.originalDecision.reference,\n    \"date\": $doc.originalDecision.date,\n    \"subject\": $doc.originalDecision.subject\n  },\n  \"objection\": {\n    \"grounds\": $doc.objection.grounds,\n    \"receivedDate\": $doc.objection.receivedDate\n  }\n}",
         "askOptionalFields": false,
-        "schemaVersion": 1
+        "schemaVersion": 1,
+        "writeBack": {
+          "doc:/besluit/type": "$inputs.decisionType",
+          "doc:/besluit/toelichting": "$inputs.motivation"
+        }
       }
     },
     {

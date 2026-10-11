@@ -445,8 +445,9 @@ public class ComposerWriteBackService {
      *
      * <p>A rule that finds <em>nothing</em> contributes nothing, which is what makes "only write
      * what was actually supplied" the default instead of clobbering good case data. A rule that
-     * fails to evaluate is dropped with a warning rather than failing the rest: one bad expression
-     * should not cost the others.
+     * <em>fails to evaluate</em> is a different matter and raises: the value it was meant to save
+     * would otherwise never arrive and nothing would say so. (It was dropped with a warning while
+     * write-back ran after the letter was sent, where there was nothing to be done about it.)
      *
      * <p><b>An explicit {@code null} is a value, and it is written.</b> JSONata keeps the two
      * apart — a missing path leaves the key out of the result, while {@code null} puts it in — so

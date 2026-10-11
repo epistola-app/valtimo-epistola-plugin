@@ -289,9 +289,16 @@ Two things the implementation taught that the reasoning did not:
   request, is all of them. So the exception that travels carries no cause, and the detail goes to
   `DEBUG`.
 
-**Still open:** a start form that creates a case completes no task, so that shape is not covered by
-this trigger and needs `JsonSchemaDocumentCreatedEvent` or a process-start listener; and a form flow
-is untested, though it completes a task and `FormFlowStepCompletedEvent` exists as a fallback.
+**Both other shapes were then measured.** A **form-flow step** completes a task, so it is covered —
+verified end to end with rules on the demo's `kies-brief-flow`. A **start form** is not, and cannot
+be from this trigger: starting a process completes no task. `ProcessStartedEvent` was implemented
+for it and reverted, because it is published _before_ Valtimo writes the submitted `pv:` values —
+measured, the instance has no variables at all at that point, so the letter does not exist yet.
+
+That leaves a real limitation rather than an open question: a composer on a start form cannot write
+back. The demo's `kies-brief-adhoc` therefore declares no rules, rather than declaring rules that
+would silently never apply. Supporting it needs a hook that fires after a start form's values are
+written — nothing in the events observed so far does — or an explicit process step.
 
 #### The generate action applies it, after Epistola accepts the letter
 

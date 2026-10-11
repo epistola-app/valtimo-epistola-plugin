@@ -42,6 +42,13 @@ import org.springframework.context.event.EventListener;
  * business key that is not a case id, or no variables, and there is nothing to do. Only then is the
  * case's configuration consulted.
  *
+ * <p><b>A composer on a start form is not covered</b>, and cannot be from here: starting a process
+ * completes no task. {@code ProcessStartedEvent} looked like the answer and is not — measured, it
+ * is published <em>before</em> Valtimo writes the submitted {@code pv:} values, so the instance has
+ * no variables at all and the letter does not exist yet. A task form and a form-flow step are both
+ * covered, because both complete a task. See the limitation in
+ * <a href="../../../../../../../docs/letter-composer.md">docs/letter-composer.md</a>.
+ *
  * <p><b>Why this can block the submission.</b> The event is published synchronously, on the
  * submission's own thread and inside its transaction. "After the task completed" is therefore not
  * "after the task was committed": throwing from here rolls the submission back — measured, the
