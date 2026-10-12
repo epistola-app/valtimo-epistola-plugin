@@ -243,6 +243,15 @@ class RichTextConverterTest {
         }
 
         @Test
+        void dropsAnEmptyDocumentAsMuchAsEmptyText() {
+            var result = converter.normalize(
+                    Map.of("leeg", Map.of("type", "doc", "content", List.of(Map.of("type", "paragraph")))),
+                    List.of(richText("leeg", "leeg", RichTextKind.BLOCK)));
+
+            assertThat(result).doesNotContainKey("leeg");
+        }
+
+        @Test
         void namesTheFieldButNeverTheValueWhenAFormatFails() {
             RichTextFormat broken = new RichTextFormat() {
                 @Override
@@ -322,6 +331,36 @@ class RichTextConverterTest {
                                 .doesNotContain("Jansen", "123456782"));
                 assertThat(logs.at(ch.qos.logback.classic.Level.DEBUG)).hasSize(1);
             }
+        }
+
+        @Test
+        void yieldsNothingForMarkupAroundNothing_soARequiredFieldIsReportedMissing() {
+            var result = mapping.evaluate("{ \"a\": $richText($doc.leeg, \"html\") }",
+                    Map.of("leeg", "<p><br></p>"), Map.of(), Map.of());
+
+            assertThat(result).doesNotContainKey("a");
+        }
+
+        @Test
+        void neverPutsTheValueInTheFailureOfANamedFormat() {
+            RichTextFormat broken = new RichTextFormat() {
+                @Override
+                public String id() {
+                    return "broken";
+                }
+
+                @Override
+                public Map<String, Object> toProseMirror(Object value, RichTextLosses losses) {
+                    throw new IllegalStateException("cannot parse " + value);
+                }
+            };
+            var withBroken = new RichTextConverter(List.of(new PlainTextFormat(), broken), "plain");
+
+            assertThatThrownBy(() -> withBroken.toDocument("BSN 123456782", "broken", RichTextKind.BLOCK))
+                    .isInstanceOf(RichTextConversionException.class)
+                    .hasMessageContaining("'broken'")
+                    .hasMessageNotContaining("123456782")
+                    .hasNoCause();
         }
 
         @Test

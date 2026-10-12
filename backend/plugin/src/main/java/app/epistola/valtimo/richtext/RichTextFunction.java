@@ -73,6 +73,10 @@ public class RichTextFunction implements EpistolaExpressionFunction {
         }
         RichTextLosses losses = new RichTextLosses();
         Map<String, Object> document = converter.toDocument(value, format, RichTextKind.BLOCK, losses);
+        if (ProseMirrorSanitizer.isBlank(document)) {
+            // Markup around nothing is nothing, so a required field reports it missing.
+            return null;
+        }
         if (!losses.isEmpty()) {
             // Kinds and counts only, never the text. A warning when a letter is being generated —
             // that is when it costs something — and debug while previewing, which repeats per change.

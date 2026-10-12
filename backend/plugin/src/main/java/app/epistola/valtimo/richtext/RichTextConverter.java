@@ -100,7 +100,23 @@ public class RichTextConverter {
             throw new IllegalArgumentException("Unknown rich-text format '" + formatId
                     + "'. Known formats: " + formatIds());
         }
-        return ProseMirrorSanitizer.sanitize(format.toProseMirror(value, losses), kind, losses);
+        return read(value, format, kind, losses, "A value");
+    }
+
+    /**
+     * A value read in a format and narrowed to the schema. A format's failure is raised again
+     * <b>without its cause</b>: the cause's message may quote the value, which is the case's own
+     * text, and a cause travels into every log that prints the stack (CLAUDE.md, "Never log
+     * personal data"). Its class name still says what broke; {@code subject} says where.
+     */
+    private static Map<String, Object> read(
+            Object value, RichTextFormat format, RichTextKind kind, RichTextLosses losses, String subject) {
+        try {
+            return ProseMirrorSanitizer.sanitize(format.toProseMirror(value, losses), kind, losses);
+        } catch (RuntimeException e) {
+            throw new RichTextConversionException(subject + " could not be read as '" + format.id()
+                    + "' (" + e.getClass().getName() + ")");
+        }
     }
 
     /**
@@ -187,11 +203,9 @@ public class RichTextConverter {
                     }
                 }
             } else if (kind != null) {
-                if (value instanceof String text && text.isBlank()) {
-                    out.remove(field.name());
-                } else if (value != null) {
-                    Object converted = convert(field, value, kind, losses);
-                    if (value instanceof String && ProseMirrorSanitizer.isBlank(converted)) {
+                if (value != null) {
+                    Object converted = convertPresent(field, value, kind, losses);
+                    if (converted == null) {
                         out.remove(field.name());
                     } else {
                         out.put(field.name(), converted);
@@ -232,13 +246,20 @@ public class RichTextConverter {
         return converted.isEmpty() ? null : converted;
     }
 
-    /** An item of a rich-text list, or null when it holds nothing and should be left out. */
+    /**
+     * A value as a document, or null when it holds nothing and should be left out: blank text,
+     * markup around nothing (the {@code <p><br></p>} an emptied editor leaves) or an empty document,
+     * whichever way it arrived. An empty document would claim a value is there, and let a required
+     * field pass empty.
+     */
     private Object convertPresent(TemplateField field, Object value, RichTextKind kind, RichTextLosses losses) {
         if (value == null || (value instanceof String text && text.isBlank())) {
             return null;
         }
         Object converted = convert(field, value, kind, losses);
-        return value instanceof String && ProseMirrorSanitizer.isBlank(converted) ? null : converted;
+        return ProseMirrorSanitizer.isDocument(converted) && ProseMirrorSanitizer.isBlank(converted)
+                ? null
+                : converted;
     }
 
     private Object convert(TemplateField field, Object value, RichTextKind kind, RichTextLosses losses) {
@@ -248,14 +269,6 @@ public class RichTextConverter {
         if (!(value instanceof String || value instanceof Number || value instanceof Boolean)) {
             return value;
         }
-        try {
-            return ProseMirrorSanitizer.sanitize(
-                    defaultFormat.toProseMirror(String.valueOf(value), losses), kind, losses);
-        } catch (RuntimeException e) {
-            // Raised without the cause: a format's message may quote the value, which is the case's
-            // own text (CLAUDE.md, "Never log personal data"). The class name still says what broke.
-            throw new RichTextConversionException("Rich-text field '" + field.path()
-                    + "' could not be read as '" + defaultFormat.id() + "' (" + e.getClass().getName() + ")");
-        }
+        return read(String.valueOf(value), defaultFormat, kind, losses, "Rich-text field '" + field.path() + "'");
     }
 }
