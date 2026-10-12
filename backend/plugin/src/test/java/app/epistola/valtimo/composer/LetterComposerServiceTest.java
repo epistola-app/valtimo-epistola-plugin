@@ -84,7 +84,7 @@ class LetterComposerServiceTest {
                 pluginService,
                 epistolaService,
                 jsonataMappingService,
-                new FormioFormGenerator(new ObjectMapper()),
+                app.epistola.valtimo.richtext.RichTextFixtures.generator(new ObjectMapper(), "plain"),
                 mock(com.ritense.document.service.DocumentService.class),
                 mock(RuntimeService.class),
                 new ObjectMapper());

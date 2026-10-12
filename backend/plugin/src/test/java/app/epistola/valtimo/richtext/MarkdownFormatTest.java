@@ -46,7 +46,7 @@ class MarkdownFormatTest {
     }
 
     private Map<String, Object> convert(String markdown, RichTextKind kind) {
-        return assertValid(ProseMirrorSanitizer.sanitize(format.toProseMirror(markdown), kind), kind);
+        return assertValid(ProseMirrorSanitizer.sanitize(format.toProseMirror(markdown, new RichTextLosses()), kind), kind);
     }
 
     @Test

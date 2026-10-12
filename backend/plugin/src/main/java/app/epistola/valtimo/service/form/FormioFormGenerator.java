@@ -18,8 +18,8 @@
 package app.epistola.valtimo.service.form;
 
 import app.epistola.valtimo.domain.TemplateField;
-import app.epistola.valtimo.richtext.PlainTextFormat;
 import app.epistola.valtimo.richtext.RichTextConverter;
+import app.epistola.valtimo.richtext.RichTextEditors;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -60,15 +60,13 @@ public class FormioFormGenerator {
 
     private final ObjectMapper objectMapper;
     private final RichTextConverter richText;
+    private final RichTextEditors richTextEditors;
 
-    /** A generator that reads and asks for rich text as plain text. */
-    public FormioFormGenerator(ObjectMapper objectMapper) {
-        this(objectMapper, new RichTextConverter(List.of(new PlainTextFormat()), PlainTextFormat.ID));
-    }
-
-    public FormioFormGenerator(ObjectMapper objectMapper, RichTextConverter richText) {
+    public FormioFormGenerator(
+            ObjectMapper objectMapper, RichTextConverter richText, RichTextEditors richTextEditors) {
         this.objectMapper = objectMapper;
         this.richText = richText;
+        this.richTextEditors = richTextEditors;
     }
 
     /**
@@ -104,7 +102,7 @@ public class FormioFormGenerator {
     }
 
     private ObjectNode buildScalarComponent(TemplateField field, Object value) {
-        TemplateField.RichTextKind richTextKind = RichTextConverter.kindOf(field);
+        TemplateField.RichTextKind richTextKind = field.richTextKind();
         if (richTextKind != null) {
             return buildRichTextComponent(field, value, richTextKind);
         }
@@ -170,7 +168,8 @@ public class FormioFormGenerator {
      */
     private ObjectNode buildRichTextComponent(
             TemplateField field, Object value, TemplateField.RichTextKind kind) {
-        ObjectNode component = objectMapper.valueToTree(richText.editorFor(kind));
+        ObjectNode component = objectMapper.valueToTree(
+                richTextEditors.component(richText.defaultFormatId(), kind));
         component.put("key", field.path());
         component.put("label", labelOf(field));
         component.put("input", true);
@@ -183,7 +182,7 @@ public class FormioFormGenerator {
         }
         // A list of documents: one editor per item, counted the way a list of scalars is.
         TemplateField.Constraints constraints = field.hints() != null ? field.hints().constraints() : null;
-        boolean list = RichTextConverter.isArray(field);
+        boolean list = field.takesList();
         if (list) {
             component.put("multiple", true);
         }
@@ -367,7 +366,7 @@ public class FormioFormGenerator {
      * child fields to map, only repeated values.
      */
     private boolean isPrimitiveArray(TemplateField field) {
-        return "array".equalsIgnoreCase(field.type());
+        return field.takesList();
     }
 
     private ObjectNode buildObjectComponent(TemplateField field, Map<String, Object> data) {

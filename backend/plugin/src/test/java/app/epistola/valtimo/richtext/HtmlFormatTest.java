@@ -51,7 +51,7 @@ class HtmlFormatTest {
     }
 
     private Map<String, Object> convert(String html, RichTextKind kind) {
-        return assertValid(ProseMirrorSanitizer.sanitize(format.toProseMirror(html), kind), kind);
+        return assertValid(ProseMirrorSanitizer.sanitize(format.toProseMirror(html, new RichTextLosses()), kind), kind);
     }
 
     @Test
@@ -196,23 +196,4 @@ class HtmlFormatTest {
                 .isEqualTo(doc(p(text("oranje", color("#e6994c")), text(" "), text("wit", color("#ffffff")))));
     }
 
-    @Test
-    void offersAToolbarOfOnlyWhatEpistolaRenders() {
-        Map<String, Object> block = format.editor(RichTextKind.BLOCK);
-        Map<String, Object> inline = format.editor(RichTextKind.INLINE);
-
-        assertThat(block).containsEntry("type", "textarea").containsEntry("editor", "ckeditor");
-        // Only buttons Form.io's CKEditor build has: an unknown one is a console warning, not a button.
-        assertThat(block.get("wysiwyg")).isEqualTo(Map.of(
-                "toolbar", List.of("bold", "italic", "|", "fontColor", "|", "bulletedList", "numberedList",
-                        "outdent", "indent", "|", "link", "|", "undo", "redo"),
-                // Hidden buttons are not enough: a loaded plugin still takes its content from a
-                // paste, and Autoformat makes "# " a heading. Checked in a browser.
-                "removePlugins", HtmlFormat.UNRENDERABLE_CKEDITOR_PLUGINS));
-        assertThat(HtmlFormat.UNRENDERABLE_CKEDITOR_PLUGINS)
-                .contains("Heading", "Table", "Image", "MediaEmbed", "BlockQuote")
-                .doesNotContain("Font", "List", "Link", "Autoformat", "Indent");
-        assertThat(String.valueOf(inline.get("wysiwyg"))).doesNotContain("List", "indent");
-        assertThat(List.of(block, inline)).allSatisfy(editor -> assertThat(editor).containsEntry("isUploadEnabled", false));
-    }
 }

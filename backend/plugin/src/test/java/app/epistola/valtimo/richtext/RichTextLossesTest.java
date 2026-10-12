@@ -99,7 +99,7 @@ class RichTextLossesTest {
                 p(text("x", Map.of("type", "code")), Map.of("type", "image", "attrs", Map.of("src", "x"))));
 
         RichTextLosses losses = new RichTextLosses();
-        ProseMirrorSanitizer.sanitize(new ProseMirrorFormat(new ObjectMapper()).toProseMirror(document), RichTextKind.BLOCK, losses);
+        ProseMirrorSanitizer.sanitize(new ProseMirrorFormat(new ObjectMapper()).toProseMirror(document, new RichTextLosses()), RichTextKind.BLOCK, losses);
 
         assertThat(losses.counts()).isEqualTo(Map.of("heading", 1, "table", 1, "code", 1, "image", 1));
     }

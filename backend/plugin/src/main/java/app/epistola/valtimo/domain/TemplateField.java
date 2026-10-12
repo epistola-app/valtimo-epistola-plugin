@@ -176,6 +176,20 @@ public record TemplateField(
         }
     }
 
+    /** The rich text this field holds, or null when it holds none. */
+    public RichTextKind richTextKind() {
+        return hints != null ? hints.richText() : null;
+    }
+
+    /**
+     * Whether the field holds a list of values — scalars, or rich-text documents — rather than one.
+     * Such a field reaches here as SCALAR typed {@code array}: it has no child fields, only
+     * repeated values.
+     */
+    public boolean takesList() {
+        return fieldType == FieldType.SCALAR && "array".equalsIgnoreCase(type);
+    }
+
     public enum FieldType {
         SCALAR,
         OBJECT,
@@ -183,35 +197,13 @@ public record TemplateField(
     }
 
     /**
-     * The two shapes of Epistola rich text, each published as a JSON Schema that a template's data
-     * contract references by its canonical URL. The URL is the marker: the contract keeps these
-     * references un-inlined when it serves a template's schema, so a field is rich text exactly
-     * when its {@code $ref} is one of them.
+     * The two shapes of Epistola rich text. Which schema stands for which is the analyzer's
+     * business (it reads contracts); the domain only says what a field holds.
      */
     public enum RichTextKind {
         /** One paragraph of text and hard breaks, spliced into a sentence of the template. */
-        INLINE("https://epistola.app/schemas/richtext-inline-v1.json"),
+        INLINE,
         /** Paragraphs and (nested) bullet and ordered lists. */
-        BLOCK("https://epistola.app/schemas/richtext-block-v1.json");
-
-        private final String schemaUrl;
-
-        RichTextKind(String schemaUrl) {
-            this.schemaUrl = schemaUrl;
-        }
-
-        public String schemaUrl() {
-            return schemaUrl;
-        }
-
-        /** The kind a {@code $ref} names, or null when it names neither rich-text schema. */
-        public static RichTextKind fromSchemaRef(String reference) {
-            for (RichTextKind kind : values()) {
-                if (kind.schemaUrl.equals(reference)) {
-                    return kind;
-                }
-            }
-            return null;
-        }
+        BLOCK
     }
 }

@@ -29,6 +29,13 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import static app.epistola.valtimo.richtext.Nodes.children;
+import static app.epistola.valtimo.richtext.Nodes.contentOf;
+import static app.epistola.valtimo.richtext.Nodes.hardBreak;
+import static app.epistola.valtimo.richtext.Nodes.paragraph;
+import static app.epistola.valtimo.richtext.Nodes.text;
+import static app.epistola.valtimo.richtext.Nodes.typeOf;
+
 /**
  * Shapes any ProseMirror-like document into one Epistola accepts for a field of a given kind.
  *
@@ -76,7 +83,7 @@ public final class ProseMirrorSanitizer {
         if (map.get("text") instanceof String text && !text.isBlank()) {
             return false;
         }
-        return content(map).stream().allMatch(ProseMirrorSanitizer::isBlank);
+        return children(map).stream().allMatch(ProseMirrorSanitizer::isBlank);
     }
 
     /**
@@ -134,15 +141,15 @@ public final class ProseMirrorSanitizer {
             }
             String type = typeOf(node);
             switch (type) {
-                case "paragraph" -> out.add(paragraph(inline(content(node), depth), paragraphAttrs(node)));
+                case "paragraph" -> out.add(paragraph(inline(children(node), depth), paragraphAttrs(node)));
                 // Not in the schema, but their text is: kept as a paragraph rather than lost.
                 case "heading" -> {
                     losses.lost("heading");
-                    out.add(paragraph(inline(content(node), depth), null));
+                    out.add(paragraph(inline(children(node), depth), null));
                 }
                 case "code_block", "codeBlock" -> {
                     losses.lost("code block");
-                    out.add(paragraph(inline(content(node), depth), null));
+                    out.add(paragraph(inline(children(node), depth), null));
                 }
                 case "bullet_list", "bulletList", "ordered_list", "orderedList" -> {
                     Map<String, Object> list = list(node, depth);
@@ -166,7 +173,7 @@ public final class ProseMirrorSanitizer {
                 default -> {
                     // doc, blockquote, a table, anything else holding blocks: keep what it holds.
                     recordUnsupported(type);
-                    List<?> children = content(node);
+                    List<?> children = children(node);
                     if (!children.isEmpty()) {
                         for (Object child : children) {
                             if (child instanceof Map<?, ?> childNode) {
@@ -199,7 +206,7 @@ public final class ProseMirrorSanitizer {
         private Map<String, Object> list(Map<?, ?> node, int depth) {
             boolean ordered = typeOf(node).startsWith("ordered");
             List<Map<String, Object>> items = new ArrayList<>();
-            for (Object child : content(node)) {
+            for (Object child : children(node)) {
                 if (!(child instanceof Map<?, ?> childNode)) {
                     continue;
                 }
@@ -241,7 +248,7 @@ public final class ProseMirrorSanitizer {
 
         private Map<String, Object> listItem(Map<?, ?> node, int depth) {
             List<Map<String, Object>> blocks = new ArrayList<>();
-            for (Object child : content(node)) {
+            for (Object child : children(node)) {
                 if (child instanceof Map<?, ?> childNode) {
                     collectBlocks(childNode, blocks, depth + 1);
                 }
@@ -304,7 +311,7 @@ public final class ProseMirrorSanitizer {
                     case "hard_break", "hardBreak" -> out.add(hardBreak());
                     default -> {
                         recordUnsupported(typeOf(node));
-                        List<?> children = content(node);
+                        List<?> children = children(node);
                         if (!children.isEmpty()) {
                             collectInline(children, out, depth + 1);
                         } else if (node.get("text") instanceof String text && !text.isEmpty()) {
@@ -418,17 +425,6 @@ public final class ProseMirrorSanitizer {
                 : null;
     }
 
-    private static Map<String, Object> paragraph(List<Map<String, Object>> inline, Map<String, Object> attrs) {
-        Map<String, Object> paragraph = new LinkedHashMap<>();
-        paragraph.put("type", "paragraph");
-        if (attrs != null) {
-            paragraph.put("attrs", attrs);
-        }
-        if (!inline.isEmpty()) {
-            paragraph.put("content", new ArrayList<>(inline));
-        }
-        return paragraph;
-    }
 
     /** Adjacent text with the same marks is one node, as ProseMirror itself would store it. */
     private static void appendText(List<Map<String, Object>> out, String text, List<Map<String, Object>> marks) {
@@ -443,21 +439,7 @@ public final class ProseMirrorSanitizer {
         out.add(text(text, marks));
     }
 
-    private static Map<String, Object> text(String text, List<Map<String, Object>> marks) {
-        Map<String, Object> node = new LinkedHashMap<>();
-        node.put("type", "text");
-        node.put("text", text);
-        if (!marks.isEmpty()) {
-            node.put("marks", marks);
-        }
-        return node;
-    }
 
-    private static Map<String, Object> hardBreak() {
-        Map<String, Object> node = new LinkedHashMap<>();
-        node.put("type", "hard_break");
-        return node;
-    }
 
     // --- Documents ----------------------------------------------------------------------------
 
@@ -531,22 +513,7 @@ public final class ProseMirrorSanitizer {
 
     // --- Helpers ------------------------------------------------------------------------------
 
-    private static String typeOf(Map<?, ?> node) {
-        return node.get("type") instanceof String type ? type : "";
-    }
 
-    private static List<?> content(Map<?, ?> node) {
-        return node.get("content") instanceof List<?> list ? list : List.of();
-    }
 
-    @SuppressWarnings("unchecked")
-    private static List<Map<String, Object>> contentOf(Map<String, Object> node) {
-        Object content = node.get("content");
-        if (content instanceof List<?> list) {
-            return (List<Map<String, Object>>) list;
-        }
-        List<Map<String, Object>> fresh = new ArrayList<>();
-        node.put("content", fresh);
-        return fresh;
-    }
+
 }

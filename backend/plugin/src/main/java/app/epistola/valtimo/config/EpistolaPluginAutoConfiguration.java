@@ -44,12 +44,15 @@ import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
 import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.download.DocumentStorageStrategy;
+import app.epistola.valtimo.richtext.CkEditorHtmlEditor;
 import app.epistola.valtimo.richtext.HtmlFormat;
 import app.epistola.valtimo.richtext.MarkdownFormat;
 import app.epistola.valtimo.richtext.PlainTextFormat;
 import app.epistola.valtimo.richtext.ProseMirrorFormat;
 import app.epistola.valtimo.richtext.RichTextConverter;
 import app.epistola.valtimo.richtext.RichTextFormat;
+import app.epistola.valtimo.richtext.RichTextEditor;
+import app.epistola.valtimo.richtext.RichTextEditors;
 import app.epistola.valtimo.richtext.RichTextFunction;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
@@ -193,6 +196,18 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(CkEditorHtmlEditor.class)
+    public CkEditorHtmlEditor ckEditorHtmlEditor() {
+        return new CkEditorHtmlEditor();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(RichTextEditors.class)
+    public RichTextEditors richTextEditors(List<RichTextEditor> editors) {
+        return new RichTextEditors(editors);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(RichTextFunction.class)
     public RichTextFunction richTextFunction(RichTextConverter richTextConverter) {
         return new RichTextFunction(richTextConverter);
@@ -245,8 +260,9 @@ public class EpistolaPluginAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(FormioFormGenerator.class)
-    public FormioFormGenerator formioFormGenerator(ObjectMapper objectMapper, RichTextConverter richTextConverter) {
-        return new FormioFormGenerator(objectMapper, richTextConverter);
+    public FormioFormGenerator formioFormGenerator(
+            ObjectMapper objectMapper, RichTextConverter richTextConverter, RichTextEditors richTextEditors) {
+        return new FormioFormGenerator(objectMapper, richTextConverter, richTextEditors);
     }
 
     @Bean

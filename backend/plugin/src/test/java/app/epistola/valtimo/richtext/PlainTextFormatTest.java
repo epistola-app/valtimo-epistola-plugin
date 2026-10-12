@@ -34,7 +34,7 @@ class PlainTextFormatTest {
     private final PlainTextFormat format = new PlainTextFormat();
 
     private Map<String, Object> convert(String text, RichTextKind kind) {
-        return assertValid(ProseMirrorSanitizer.sanitize(format.toProseMirror(text), kind), kind);
+        return assertValid(ProseMirrorSanitizer.sanitize(format.toProseMirror(text, new RichTextLosses()), kind), kind);
     }
 
     @Test

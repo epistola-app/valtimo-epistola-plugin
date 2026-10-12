@@ -17,7 +17,6 @@
  */
 package app.epistola.valtimo.richtext;
 
-import app.epistola.valtimo.domain.TemplateField;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Element;
 import org.jsoup.nodes.Node;
@@ -33,6 +32,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static app.epistola.valtimo.richtext.Nodes.node;
 
 /**
  * HTML, as a Form.io WYSIWYG text area (CKEditor or Quill) writes it and as Valtimo case documents
@@ -67,28 +68,11 @@ public class HtmlFormat implements RichTextFormat {
     /** CKEditor's colour picker writes {@code hsl(30, 75%, 60%)}; CSS also allows spaces and a slash. */
     private static final Pattern HSL = Pattern.compile(
             "hsla?\\(\\s*([\\d.]+)(?:deg)?[\\s,]+([\\d.]+)%[\\s,]+([\\d.]+)%\\s*(?:[,/]\\s*[\\d.]+%?\\s*)?\\)");
-    /**
-     * The plugins of Form.io's CKEditor build whose content Epistola cannot render. Hiding their
-     * buttons is not enough: a loaded plugin still accepts its content from a paste, and
-     * Autoformat turns "# " into a heading and "> " into a quote. Removed, they leave the editor
-     * schema, so a paste is reduced to paragraphs as it arrives. {@code Font} stays because it
-     * carries the colour picker; the background colour it also accepts is dropped on conversion.
-     * A name a host's build lacks is ignored by CKEditor.
-     */
-    static final List<String> UNRENDERABLE_CKEDITOR_PLUGINS = List.of(
-            "Heading", "BlockQuote", "Table", "TableToolbar", "Image", "ImageCaption", "ImageStyle",
-            "ImageToolbar", "ImageUpload", "ImageResize", "EasyImage", "CKFinder", "CKFinderUploadAdapter",
-            "MediaEmbed", "Alignment", "IndentBlock", "FontFamily", "FontSize", "FontBackgroundColor");
     private static final Pattern QUILL_INDENT = Pattern.compile("ql-indent-(\\d{1,2})");
 
     @Override
     public String id() {
         return ID;
-    }
-
-    @Override
-    public Map<String, Object> toProseMirror(Object value) {
-        return toProseMirror(value, new RichTextLosses());
     }
 
     @Override
@@ -102,38 +86,6 @@ public class HtmlFormat implements RichTextFormat {
     @Override
     public Object fromProseMirror(Map<String, Object> doc) {
         return ProseMirrorText.toHtml(doc);
-    }
-
-    /**
-     * Form.io's text area in WYSIWYG mode, with CKEditor, limited to what Epistola renders: only
-     * its buttons on the toolbar, and the plugins for anything else removed, so headings, tables,
-     * images or media cannot arrive by paste or autoformat either.
-     *
-     * <p>CKEditor rather than Quill because only CKEditor's toolbar can be narrowed. Form.io 4
-     * deep-merges a component's Quill settings into its default Quill toolbar, index by index, so a
-     * shorter toolbar keeps every default button beyond it (headings, fonts, images, video), while
-     * CKEditor has no default toolbar to merge into. Form.io's CKEditor build has no underline,
-     * strikethrough, sub- or superscript; those still convert when they arrive in HTML from
-     * elsewhere, Quill included.
-     */
-    @Override
-    public Map<String, Object> editor(TemplateField.RichTextKind kind) {
-        List<String> toolbar = new ArrayList<>(List.of("bold", "italic", "|", "fontColor"));
-        if (kind == TemplateField.RichTextKind.BLOCK) {
-            toolbar.addAll(List.of("|", "bulletedList", "numberedList", "outdent", "indent"));
-        }
-        toolbar.addAll(List.of("|", "link", "|", "undo", "redo"));
-
-        Map<String, Object> component = new LinkedHashMap<>();
-        component.put("type", "textarea");
-        component.put("editor", "ckeditor");
-        Map<String, Object> wysiwyg = new LinkedHashMap<>();
-        wysiwyg.put("toolbar", toolbar);
-        wysiwyg.put("removePlugins", UNRENDERABLE_CKEDITOR_PLUGINS);
-        component.put("wysiwyg", wysiwyg);
-        component.put("isUploadEnabled", false);
-        component.put("rows", kind == TemplateField.RichTextKind.INLINE ? 2 : 6);
-        return component;
     }
 
     /** One walk over a parsed fragment. Not reusable: it carries the state of the walk. */
@@ -320,17 +272,17 @@ public class HtmlFormat implements RichTextFormat {
         private List<Map<String, Object>> marksOf(Element element) {
             List<Map<String, Object>> marks = new ArrayList<>();
             switch (element.normalName()) {
-                case "strong", "b" -> marks.add(mark("strong"));
-                case "em", "i" -> marks.add(mark("em"));
-                case "u", "ins" -> marks.add(mark("underline"));
-                case "s", "strike", "del" -> marks.add(mark("strikethrough"));
-                case "sub" -> marks.add(mark("subscript"));
-                case "sup" -> marks.add(mark("superscript"));
+                case "strong", "b" -> marks.add(node("strong"));
+                case "em", "i" -> marks.add(node("em"));
+                case "u", "ins" -> marks.add(node("underline"));
+                case "s", "strike", "del" -> marks.add(node("strikethrough"));
+                case "sub" -> marks.add(node("subscript"));
+                case "sup" -> marks.add(node("superscript"));
                 case "a" -> {
                     if (element.hasAttr("href")) {
                         String href = element.attr("href");
                         if (ProseMirrorSanitizer.isAllowedHref(href)) {
-                            Map<String, Object> link = mark("link");
+                            Map<String, Object> link = node("link");
                             Map<String, Object> attrs = new LinkedHashMap<>();
                             attrs.put("href", href.trim());
                             if (element.hasAttr("title")) {
@@ -388,27 +340,27 @@ public class HtmlFormat implements RichTextFormat {
                     }
                     case "font-weight" -> {
                         if (value.equals("bold") || value.equals("bolder") || value.matches("[6-9]00")) {
-                            marks.add(mark("strong"));
+                            marks.add(node("strong"));
                         }
                     }
                     case "font-style" -> {
                         if (value.equals("italic") || value.equals("oblique")) {
-                            marks.add(mark("em"));
+                            marks.add(node("em"));
                         }
                     }
                     case "text-decoration", "text-decoration-line" -> {
                         if (value.contains("underline")) {
-                            marks.add(mark("underline"));
+                            marks.add(node("underline"));
                         }
                         if (value.contains("line-through")) {
-                            marks.add(mark("strikethrough"));
+                            marks.add(node("strikethrough"));
                         }
                     }
                     case "vertical-align" -> {
                         if (value.equals("sub")) {
-                            marks.add(mark("subscript"));
+                            marks.add(node("subscript"));
                         } else if (value.equals("super")) {
-                            marks.add(mark("superscript"));
+                            marks.add(node("superscript"));
                         }
                     }
                     default -> {
@@ -439,7 +391,7 @@ public class HtmlFormat implements RichTextFormat {
                 // A named colour, or a notation the schema cannot take: the text keeps its default.
                 losses.lost("colour");
             } else {
-                Map<String, Object> mark = mark("textStyle");
+                Map<String, Object> mark = node("textStyle");
                 mark.put("attrs", new LinkedHashMap<>(Map.of("color", color)));
                 marks.add(mark);
             }
@@ -475,10 +427,6 @@ public class HtmlFormat implements RichTextFormat {
             return matcher.find() ? Math.min(Integer.parseInt(matcher.group(1)), 16) : 0;
         }
 
-        private static Map<String, Object> mark(String type) {
-            Map<String, Object> mark = new LinkedHashMap<>();
-            mark.put("type", type);
-            return mark;
-        }
+
     }
 }

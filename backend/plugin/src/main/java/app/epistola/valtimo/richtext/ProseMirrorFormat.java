@@ -44,7 +44,7 @@ public class ProseMirrorFormat implements RichTextFormat {
 
     @Override
     @SuppressWarnings("unchecked")
-    public Map<String, Object> toProseMirror(Object value) {
+    public Map<String, Object> toProseMirror(Object value, RichTextLosses losses) {
         if (value instanceof Map<?, ?> map) {
             return (Map<String, Object>) map;
         }
@@ -59,8 +59,13 @@ public class ProseMirrorFormat implements RichTextFormat {
         return Map.of("type", "doc");
     }
 
+    /** As JSON text: an editor shows text, and an object would read as "[object Object]". */
     @Override
     public Object fromProseMirror(Map<String, Object> doc) {
-        return doc;
+        try {
+            return objectMapper.writeValueAsString(doc);
+        } catch (Exception e) {
+            return null;
+        }
     }
 }

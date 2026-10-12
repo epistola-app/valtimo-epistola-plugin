@@ -20,9 +20,7 @@ package app.epistola.valtimo.service.form;
 import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateField.FieldType;
 import app.epistola.valtimo.domain.TemplateField.RichTextKind;
-import app.epistola.valtimo.richtext.HtmlFormat;
-import app.epistola.valtimo.richtext.PlainTextFormat;
-import app.epistola.valtimo.richtext.RichTextConverter;
+import app.epistola.valtimo.richtext.RichTextFixtures;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -49,8 +47,7 @@ class FormioFormGeneratorRichTextTest {
 
     @Test
     void asksForHtmlWithTheWysiwygEditor() {
-        var generator = new FormioFormGenerator(objectMapper,
-                new RichTextConverter(List.of(new PlainTextFormat(), new HtmlFormat()), "html"));
+        var generator = RichTextFixtures.generator(objectMapper, "html");
 
         JsonNode component = component(generator, richText(true, RichTextKind.BLOCK), Map.of());
 
@@ -65,7 +62,7 @@ class FormioFormGeneratorRichTextTest {
 
     @Test
     void asksForPlainTextWithAPlainTextArea_byDefault() {
-        JsonNode component = component(new FormioFormGenerator(objectMapper), richText(false, RichTextKind.INLINE), Map.of());
+        JsonNode component = component(RichTextFixtures.generator(objectMapper, "plain"), richText(false, RichTextKind.INLINE), Map.of());
 
         assertThat(component.get("type").asText()).isEqualTo("textarea");
         assertThat(component.has("editor")).isFalse();
@@ -74,8 +71,7 @@ class FormioFormGeneratorRichTextTest {
 
     @Test
     void showsADocumentThatWasRenderedInTheEditorsFormat_notAsJson() {
-        var generator = new FormioFormGenerator(objectMapper,
-                new RichTextConverter(List.of(new PlainTextFormat(), new HtmlFormat()), "html"));
+        var generator = RichTextFixtures.generator(objectMapper, "html");
         Map<String, Object> document = Map.of("type", "doc", "content", List.of(Map.of("type", "paragraph",
                 "content", List.of(Map.of("type", "text", "text", "vet", "marks", List.of(Map.of("type", "strong")))))));
 
@@ -89,8 +85,7 @@ class FormioFormGeneratorRichTextTest {
         var field = new TemplateField("alineas", "alineas", "array", FieldType.SCALAR, true, null, List.of(),
                 false, null, false, new TemplateField.FieldHints(null, null, null, null,
                 new TemplateField.Constraints(null, null, null, null, null, 1, 3), null, RichTextKind.BLOCK));
-        var generator = new FormioFormGenerator(objectMapper,
-                new RichTextConverter(List.of(new PlainTextFormat(), new HtmlFormat()), "html"));
+        var generator = RichTextFixtures.generator(objectMapper, "html");
         Map<String, Object> rendered = Map.of("type", "doc", "content",
                 List.of(Map.of("type", "paragraph", "content", List.of(Map.of("type", "text", "text", "eerder")))));
 
@@ -106,7 +101,7 @@ class FormioFormGeneratorRichTextTest {
 
     @Test
     void showsTextAlreadyInTheCasesFormatAsItIs() {
-        JsonNode component = component(new FormioFormGenerator(objectMapper), richText(false, RichTextKind.BLOCK),
+        JsonNode component = component(RichTextFixtures.generator(objectMapper, "plain"), richText(false, RichTextKind.BLOCK),
                 Map.of("toelichting", "al getypt"));
 
         assertThat(component.get("defaultValue").asText()).isEqualTo("al getypt");

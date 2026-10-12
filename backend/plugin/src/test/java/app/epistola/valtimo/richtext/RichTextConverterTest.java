@@ -86,7 +86,7 @@ class RichTextConverterTest {
                 }
 
                 @Override
-                public Map<String, Object> toProseMirror(Object value) {
+                public Map<String, Object> toProseMirror(Object value, RichTextLosses losses) {
                     return doc(p(text(String.valueOf(value).toUpperCase())));
                 }
             };
@@ -244,7 +244,7 @@ class RichTextConverterTest {
                 }
 
                 @Override
-                public Map<String, Object> toProseMirror(Object value) {
+                public Map<String, Object> toProseMirror(Object value, RichTextLosses losses) {
                     throw new IllegalStateException("cannot parse " + value);
                 }
             };

@@ -37,6 +37,14 @@ import java.util.Set;
 public final class JsonSchemaMappingAnalyzer {
 
     private static final int MAX_DEPTH = 32;
+    /**
+     * Epistola's rich-text schemas by their canonical URL. The URL is the marker: the contract
+     * keeps these references un-inlined when it serves a template's schema, so a field is rich text
+     * exactly when its {@code $ref} is one of them. A later schema version is a new URL, added here.
+     */
+    private static final Map<String, TemplateField.RichTextKind> RICH_TEXT_SCHEMAS = Map.of(
+            "https://epistola.app/schemas/richtext-inline-v1.json", TemplateField.RichTextKind.INLINE,
+            "https://epistola.app/schemas/richtext-block-v1.json", TemplateField.RichTextKind.BLOCK);
     private static final Set<String> CONDITIONAL_KEYWORDS = Set.of(
             "if", "then", "else", "dependentSchemas", "dependentRequired"
     );
@@ -241,7 +249,7 @@ public final class JsonSchemaMappingAnalyzer {
      */
     private TemplateField.RichTextKind richTextKind(Map<String, Object> schema) {
         return schema.get("$ref") instanceof String reference
-                ? TemplateField.RichTextKind.fromSchemaRef(reference)
+                ? RICH_TEXT_SCHEMAS.get(reference)
                 : null;
     }
 
@@ -490,7 +498,7 @@ public final class JsonSchemaMappingAnalyzer {
 
         Object referenceValue = working.get("$ref");
         if (referenceValue instanceof String reference) {
-            if (TemplateField.RichTextKind.fromSchemaRef(reference) != null) {
+            if (RICH_TEXT_SCHEMAS.containsKey(reference)) {
                 // Not resolved, and not complex: the reference itself is the meaning. It stays on
                 // the returned schema so the field can be recognised, see richTextKind.
                 return new ResolvedSchema(

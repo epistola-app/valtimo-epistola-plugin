@@ -138,16 +138,8 @@ public class RichTextConverter {
     }
 
     /**
-     * The editor a person types a rich-text value into: the default format's own, so what they type
-     * is in the case's format (ADR 0008, question 3).
-     */
-    public Map<String, Object> editorFor(RichTextKind kind) {
-        return new LinkedHashMap<>(defaultFormat.editor(kind));
-    }
-
-    /**
-     * A value as the editor shows it. A document is written back out in the default format, or
-     * dropped when that format cannot express one; anything else is already in that format.
+     * A value as an editor for the default format shows it. A document is written back out in that
+     * format, or dropped when the format cannot express one; anything else is already in it.
      */
     public Object toEditorValue(Object value, RichTextKind kind) {
         if (value instanceof List<?> items) {
@@ -164,15 +156,11 @@ public class RichTextConverter {
     }
 
     /** Whether a field is rich text, or holds one somewhere below it. */
-    public static boolean holdsRichText(TemplateField field) {
-        if (kindOf(field) != null) {
+    static boolean holdsRichText(TemplateField field) {
+        if (field.richTextKind() != null) {
             return true;
         }
         return field.children() != null && field.children().stream().anyMatch(RichTextConverter::holdsRichText);
-    }
-
-    public static RichTextKind kindOf(TemplateField field) {
-        return field.hints() != null ? field.hints().richText() : null;
     }
 
     @SuppressWarnings("unchecked")
@@ -187,9 +175,9 @@ public class RichTextConverter {
                 continue;
             }
             Object value = out.get(field.name());
-            RichTextKind kind = kindOf(field);
+            RichTextKind kind = field.richTextKind();
             RichTextLosses losses = new RichTextLosses();
-            if (kind != null && isArray(field)) {
+            if (kind != null && field.takesList()) {
                 if (value != null) {
                     List<Object> converted = convertList(field, value, kind, losses);
                     if (converted == null) {
@@ -251,11 +239,6 @@ public class RichTextConverter {
         }
         Object converted = convert(field, value, kind, losses);
         return value instanceof String && ProseMirrorSanitizer.isBlank(converted) ? null : converted;
-    }
-
-    /** A field holding a list of rich-text documents rather than one. */
-    public static boolean isArray(TemplateField field) {
-        return "array".equalsIgnoreCase(field.type());
     }
 
     private Object convert(TemplateField field, Object value, RichTextKind kind, RichTextLosses losses) {

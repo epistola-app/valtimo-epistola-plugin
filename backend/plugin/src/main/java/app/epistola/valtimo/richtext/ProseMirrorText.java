@@ -22,6 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import static app.epistola.valtimo.richtext.Nodes.childNodes;
+import static app.epistola.valtimo.richtext.Nodes.marksOf;
+
 /**
  * Writes a sanitized ProseMirror document back out as plain text, HTML or markdown: the reverse
  * direction of the shipped formats, used to show an existing document in a format's editor.
@@ -41,7 +44,7 @@ final class ProseMirrorText {
 
     static String toPlainText(Map<String, Object> doc) {
         List<String> blocks = new ArrayList<>();
-        for (Map<String, Object> block : content(doc)) {
+        for (Map<String, Object> block : childNodes(doc)) {
             String text = plainBlock(block, "");
             if (!text.isEmpty()) {
                 blocks.add(text);
@@ -53,7 +56,7 @@ final class ProseMirrorText {
     private static String plainBlock(Map<String, Object> block, String indent) {
         if ("paragraph".equals(block.get("type"))) {
             StringBuilder out = new StringBuilder();
-            for (Map<String, Object> node : content(block)) {
+            for (Map<String, Object> node : childNodes(block)) {
                 if ("hard_break".equals(node.get("type"))) {
                     out.append('\n').append(indent);
                 } else if (node.get("text") instanceof String text) {
@@ -65,11 +68,11 @@ final class ProseMirrorText {
         boolean ordered = "ordered_list".equals(block.get("type"));
         int number = start(block);
         List<String> lines = new ArrayList<>();
-        for (Map<String, Object> item : content(block)) {
+        for (Map<String, Object> item : childNodes(block)) {
             String marker = ordered ? (number++) + ". " : "- ";
             String nested = indent + " ".repeat(marker.length());
             List<String> parts = new ArrayList<>();
-            for (Map<String, Object> child : content(item)) {
+            for (Map<String, Object> child : childNodes(item)) {
                 parts.add(plainBlock(child, nested));
             }
             String first = parts.isEmpty() ? "" : parts.get(0);
@@ -86,7 +89,7 @@ final class ProseMirrorText {
 
     static String toHtml(Map<String, Object> doc) {
         StringBuilder out = new StringBuilder();
-        for (Map<String, Object> block : content(doc)) {
+        for (Map<String, Object> block : childNodes(doc)) {
             htmlBlock(block, out);
         }
         return out.toString();
@@ -96,16 +99,16 @@ final class ProseMirrorText {
         String type = String.valueOf(block.get("type"));
         if (type.equals("paragraph")) {
             out.append("<p>");
-            htmlInline(content(block), out);
+            htmlInline(childNodes(block), out);
             out.append("</p>");
             return;
         }
         boolean ordered = type.equals("ordered_list");
         int start = start(block);
         out.append(ordered ? (start > 1 ? "<ol start=\"" + start + "\">" : "<ol>") : "<ul>");
-        for (Map<String, Object> item : content(block)) {
+        for (Map<String, Object> item : childNodes(block)) {
             out.append("<li>");
-            for (Map<String, Object> child : content(item)) {
+            for (Map<String, Object> child : childNodes(item)) {
                 htmlBlock(child, out);
             }
             out.append("</li>");
@@ -116,7 +119,7 @@ final class ProseMirrorText {
     private static void htmlInline(List<Map<String, Object>> nodes, StringBuilder out) {
         List<Map<String, Object>> active = new ArrayList<>();
         for (Map<String, Object> node : nodes) {
-            List<Map<String, Object>> marks = marks(node);
+            List<Map<String, Object>> marks = marksOf(node);
             int keep = commonPrefix(active, marks);
             for (int i = active.size() - 1; i >= keep; i--) {
                 out.append(htmlClose(active.remove(i)));
@@ -175,7 +178,7 @@ final class ProseMirrorText {
 
     static String toMarkdown(Map<String, Object> doc) {
         List<String> blocks = new ArrayList<>();
-        for (Map<String, Object> block : content(doc)) {
+        for (Map<String, Object> block : childNodes(doc)) {
             String text = markdownBlock(block, "");
             if (!text.isEmpty()) {
                 blocks.add(text);
@@ -186,16 +189,16 @@ final class ProseMirrorText {
 
     private static String markdownBlock(Map<String, Object> block, String indent) {
         if ("paragraph".equals(block.get("type"))) {
-            return markdownInline(content(block), indent);
+            return markdownInline(childNodes(block), indent);
         }
         boolean ordered = "ordered_list".equals(block.get("type"));
         int number = start(block);
         List<String> lines = new ArrayList<>();
-        for (Map<String, Object> item : content(block)) {
+        for (Map<String, Object> item : childNodes(block)) {
             String marker = ordered ? (number++) + ". " : "- ";
             String nested = indent + " ".repeat(marker.length());
             StringBuilder line = new StringBuilder(indent).append(marker);
-            List<Map<String, Object>> children = content(item);
+            List<Map<String, Object>> children = childNodes(item);
             for (int i = 0; i < children.size(); i++) {
                 Map<String, Object> child = children.get(i);
                 String text = markdownBlock(child, nested);
@@ -236,7 +239,7 @@ final class ProseMirrorText {
                 pendingSpace += text;
                 continue;
             }
-            List<Map<String, Object>> marks = marks(node).stream().filter(ProseMirrorText::inMarkdown).toList();
+            List<Map<String, Object>> marks = marksOf(node).stream().filter(ProseMirrorText::inMarkdown).toList();
             int at = text.indexOf(core);
             String leading = text.substring(0, at);
             String trailing = text.substring(at + core.length());
@@ -311,13 +314,6 @@ final class ProseMirrorText {
                 : 1;
     }
 
-    @SuppressWarnings("unchecked")
-    private static List<Map<String, Object>> content(Map<String, Object> node) {
-        return node.get("content") instanceof List<?> list ? (List<Map<String, Object>>) list : List.of();
-    }
 
-    @SuppressWarnings("unchecked")
-    private static List<Map<String, Object>> marks(Map<String, Object> node) {
-        return node.get("marks") instanceof List<?> list ? (List<Map<String, Object>>) list : List.of();
-    }
+
 }

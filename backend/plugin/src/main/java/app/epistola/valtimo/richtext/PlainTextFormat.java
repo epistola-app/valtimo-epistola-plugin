@@ -22,6 +22,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static app.epistola.valtimo.richtext.Nodes.node;
+
 /**
  * Text with no markup: a blank line separates paragraphs, a single line break stays a line break.
  *
@@ -39,7 +41,7 @@ public class PlainTextFormat implements RichTextFormat {
     }
 
     @Override
-    public Map<String, Object> toProseMirror(Object value) {
+    public Map<String, Object> toProseMirror(Object value, RichTextLosses losses) {
         List<Map<String, Object>> paragraphs = new ArrayList<>();
         String text = value == null ? "" : String.valueOf(value).replace("\r\n", "\n").replace('\r', '\n');
         for (String block : text.split("\n[ \t]*\n+")) {
@@ -74,9 +76,5 @@ public class PlainTextFormat implements RichTextFormat {
         return ProseMirrorText.toPlainText(doc);
     }
 
-    private static Map<String, Object> node(String type) {
-        Map<String, Object> node = new LinkedHashMap<>();
-        node.put("type", type);
-        return node;
-    }
+
 }

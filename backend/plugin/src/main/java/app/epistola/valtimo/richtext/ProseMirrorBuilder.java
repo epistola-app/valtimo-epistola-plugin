@@ -24,6 +24,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static app.epistola.valtimo.richtext.Nodes.contentOf;
+import static app.epistola.valtimo.richtext.Nodes.node;
+
 /**
  * Builds a ProseMirror document from a stream of events — text, breaks, block boundaries, lists —
  * which is the shape both a markup parser and a line-based one naturally produce.
@@ -234,14 +237,6 @@ final class ProseMirrorBuilder {
         return text.substring(start);
     }
 
-    private static Map<String, Object> node(String type) {
-        Map<String, Object> node = new LinkedHashMap<>();
-        node.put("type", type);
-        return node;
-    }
 
-    @SuppressWarnings("unchecked")
-    private static List<Map<String, Object>> contentOf(Map<String, Object> node) {
-        return (List<Map<String, Object>>) node.computeIfAbsent("content", key -> new ArrayList<>());
-    }
+
 }

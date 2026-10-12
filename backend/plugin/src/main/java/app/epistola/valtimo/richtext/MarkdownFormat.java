@@ -49,6 +49,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import static app.epistola.valtimo.richtext.Nodes.node;
+
 /**
  * Markdown, parsed with commonmark-java to the CommonMark specification plus GFM strikethrough.
  *
@@ -69,11 +71,6 @@ public class MarkdownFormat implements RichTextFormat {
     @Override
     public String id() {
         return ID;
-    }
-
-    @Override
-    public Map<String, Object> toProseMirror(Object value) {
-        return toProseMirror(value, new RichTextLosses());
     }
 
     @Override
@@ -200,18 +197,18 @@ public class MarkdownFormat implements RichTextFormat {
 
         @Override
         public void visit(Emphasis emphasis) {
-            withMark(emphasis, mark("em"));
+            withMark(emphasis, node("em"));
         }
 
         @Override
         public void visit(StrongEmphasis strong) {
-            withMark(strong, mark("strong"));
+            withMark(strong, node("strong"));
         }
 
         @Override
         public void visit(CustomNode node) {
             if (node instanceof Strikethrough) {
-                withMark(node, mark("strikethrough"));
+                withMark(node, node("strikethrough"));
             } else {
                 visitChildren(node);
             }
@@ -225,7 +222,7 @@ public class MarkdownFormat implements RichTextFormat {
                 visitChildren(link);
                 return;
             }
-            Map<String, Object> mark = mark("link");
+            Map<String, Object> mark = node("link");
             Map<String, Object> attrs = new LinkedHashMap<>();
             attrs.put("href", href);
             if (link.getTitle() != null && !link.getTitle().isEmpty()) {
@@ -264,10 +261,6 @@ public class MarkdownFormat implements RichTextFormat {
             marks = outer;
         }
 
-        private static Map<String, Object> mark(String type) {
-            Map<String, Object> mark = new LinkedHashMap<>();
-            mark.put("type", type);
-            return mark;
-        }
+
     }
 }
