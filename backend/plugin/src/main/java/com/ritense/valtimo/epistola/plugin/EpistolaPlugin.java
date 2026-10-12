@@ -316,10 +316,11 @@ public class EpistolaPlugin {
         String editedDataJson = rawEditedData instanceof String s ? s : null;
         boolean isRetry = editedDataJson != null && !editedDataJson.isBlank();
 
-        log.debug("generate-document retry check: variable='{}', exists={}, isRetry={}, type={}, value={}",
+        // Never the value: it is the letter's data as a person corrected it — names, identifiers,
+        // the text of a decision (CLAUDE.md, "Never log personal data").
+        log.debug("generate-document retry check: variable='{}', exists={}, isRetry={}, type={}",
                 EpistolaProcessVariables.EDITED_DATA, rawEditedData != null, isRetry,
-                rawEditedData != null ? rawEditedData.getClass().getSimpleName() : "null",
-                editedDataJson != null ? editedDataJson.substring(0, Math.min(200, editedDataJson.length())) : "null");
+                rawEditedData != null ? rawEditedData.getClass().getSimpleName() : "null");
 
         Map<String, Object> resolvedData;
         if (isRetry) {
