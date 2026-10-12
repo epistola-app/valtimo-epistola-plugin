@@ -326,6 +326,15 @@ Two smaller choices:
   (`$doc.alineas.$richText($, "html")`). JSONata collapses a one-item list into its item, which
   would make the field fail only for cases with exactly one, so a list field takes a single value
   as a list of one.
+- **What is lost is reported, by kind.** Readers and the sanitizer record what they flatten or
+  drop in a `RichTextLosses` (kinds and counts, never text). A generated letter logs it at `WARN`
+  with the field path and template; a preview logs it at `DEBUG`, since the composer previews on
+  every change. This is what makes the accepted mismatch below observable.
+- **Author-built forms are not restricted.** A CKEditor text area an author builds offers more than
+  Epistola renders. The mismatch costs formatting, not correctness, because the sanitizer still
+  narrows everything. It is visible in the preview and reported in the log. A palette component that
+  enforces the editor configuration was considered and deferred: the gap narrows as Epistola's
+  schema grows (headings first), so revisit it when a schema version with headings is published.
 - **It is not composer-specific.** A regular Valtimo form with a WYSIWYG text area writes HTML to
   the case. A generate-document mapping then reads it with `$richText(…, "html")`, or by the
   default format, and the conversion step handles it like any other value.

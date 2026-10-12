@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.BiConsumer;
 
 /**
  * Translates rich text between the format a case keeps it in and the ProseMirror document Epistola
@@ -86,15 +87,20 @@ public class RichTextConverter {
      * @throws IllegalArgumentException when no format has that id
      */
     public Map<String, Object> toDocument(Object value, String formatId, RichTextKind kind) {
+        return toDocument(value, formatId, kind, new RichTextLosses());
+    }
+
+    /** The same, recording in {@code losses} what the document could not carry. */
+    public Map<String, Object> toDocument(Object value, String formatId, RichTextKind kind, RichTextLosses losses) {
         if (ProseMirrorSanitizer.isDocument(value)) {
-            return ProseMirrorSanitizer.sanitize(value, kind);
+            return ProseMirrorSanitizer.sanitize(value, kind, losses);
         }
         RichTextFormat format = formatId == null ? defaultFormat : formats.get(formatId);
         if (format == null) {
             throw new IllegalArgumentException("Unknown rich-text format '" + formatId
                     + "'. Known formats: " + formatIds());
         }
-        return ProseMirrorSanitizer.sanitize(format.toProseMirror(value), kind);
+        return ProseMirrorSanitizer.sanitize(format.toProseMirror(value, losses), kind, losses);
     }
 
     /**
@@ -113,10 +119,22 @@ public class RichTextConverter {
      * @throws RichTextConversionException when a format fails on a value
      */
     public Map<String, Object> normalize(Map<String, Object> data, List<TemplateField> fields) {
+        return normalize(data, fields, (path, losses) -> { });
+    }
+
+    /**
+     * The same, telling {@code report} for each field whose value lost something on the way — a
+     * heading flattened, an image left out — by its path and what was lost, never the text.
+     */
+    public Map<String, Object> normalize(
+            Map<String, Object> data,
+            List<TemplateField> fields,
+            BiConsumer<String, RichTextLosses> report
+    ) {
         if (data == null || fields == null || fields.stream().noneMatch(RichTextConverter::holdsRichText)) {
             return data;
         }
-        return normalizeObject(data, fields);
+        return normalizeObject(data, fields, report);
     }
 
     /**
@@ -158,7 +176,11 @@ public class RichTextConverter {
     }
 
     @SuppressWarnings("unchecked")
-    private Map<String, Object> normalizeObject(Map<String, Object> data, List<TemplateField> fields) {
+    private Map<String, Object> normalizeObject(
+            Map<String, Object> data,
+            List<TemplateField> fields,
+            BiConsumer<String, RichTextLosses> report
+    ) {
         Map<String, Object> out = new LinkedHashMap<>(data);
         for (TemplateField field : fields) {
             if (!holdsRichText(field) || !out.containsKey(field.name())) {
@@ -166,9 +188,10 @@ public class RichTextConverter {
             }
             Object value = out.get(field.name());
             RichTextKind kind = kindOf(field);
+            RichTextLosses losses = new RichTextLosses();
             if (kind != null && isArray(field)) {
                 if (value != null) {
-                    List<Object> converted = convertList(field, value, kind);
+                    List<Object> converted = convertList(field, value, kind, losses);
                     if (converted == null) {
                         out.remove(field.name());
                     } else {
@@ -179,7 +202,7 @@ public class RichTextConverter {
                 if (value instanceof String text && text.isBlank()) {
                     out.remove(field.name());
                 } else if (value != null) {
-                    Object converted = convert(field, value, kind);
+                    Object converted = convert(field, value, kind, losses);
                     if (value instanceof String && ProseMirrorSanitizer.isBlank(converted)) {
                         out.remove(field.name());
                     } else {
@@ -187,15 +210,18 @@ public class RichTextConverter {
                     }
                 }
             } else if (field.fieldType() == TemplateField.FieldType.OBJECT && value instanceof Map<?, ?> nested) {
-                out.put(field.name(), normalizeObject((Map<String, Object>) nested, field.children()));
+                out.put(field.name(), normalizeObject((Map<String, Object>) nested, field.children(), report));
             } else if (field.fieldType() == TemplateField.FieldType.ARRAY && value instanceof List<?> items) {
                 List<Object> normalized = new ArrayList<>(items.size());
                 for (Object item : items) {
                     normalized.add(item instanceof Map<?, ?> row
-                            ? normalizeObject((Map<String, Object>) row, field.children())
+                            ? normalizeObject((Map<String, Object>) row, field.children(), report)
                             : item);
                 }
                 out.put(field.name(), normalized);
+            }
+            if (!losses.isEmpty()) {
+                report.accept(field.path(), losses);
             }
         }
         return out;
@@ -206,11 +232,11 @@ public class RichTextConverter {
      * value is a list of one: JSONata collapses a one-item list into its item, so a mapping over a
      * case list hands a lone value over whenever the case has just one.
      */
-    private List<Object> convertList(TemplateField field, Object value, RichTextKind kind) {
+    private List<Object> convertList(TemplateField field, Object value, RichTextKind kind, RichTextLosses losses) {
         List<?> items = value instanceof List<?> list ? list : List.of(value);
         List<Object> converted = new ArrayList<>(items.size());
         for (Object item : items) {
-            Object document = convertPresent(field, item, kind);
+            Object document = convertPresent(field, item, kind, losses);
             if (document != null) {
                 converted.add(document);
             }
@@ -219,11 +245,11 @@ public class RichTextConverter {
     }
 
     /** An item of a rich-text list, or null when it holds nothing and should be left out. */
-    private Object convertPresent(TemplateField field, Object value, RichTextKind kind) {
+    private Object convertPresent(TemplateField field, Object value, RichTextKind kind, RichTextLosses losses) {
         if (value == null || (value instanceof String text && text.isBlank())) {
             return null;
         }
-        Object converted = convert(field, value, kind);
+        Object converted = convert(field, value, kind, losses);
         return value instanceof String && ProseMirrorSanitizer.isBlank(converted) ? null : converted;
     }
 
@@ -232,15 +258,16 @@ public class RichTextConverter {
         return "array".equalsIgnoreCase(field.type());
     }
 
-    private Object convert(TemplateField field, Object value, RichTextKind kind) {
+    private Object convert(TemplateField field, Object value, RichTextKind kind, RichTextLosses losses) {
         if (ProseMirrorSanitizer.isDocument(value)) {
-            return ProseMirrorSanitizer.sanitize(value, kind);
+            return ProseMirrorSanitizer.sanitize(value, kind, losses);
         }
         if (!(value instanceof String || value instanceof Number || value instanceof Boolean)) {
             return value;
         }
         try {
-            return ProseMirrorSanitizer.sanitize(defaultFormat.toProseMirror(String.valueOf(value)), kind);
+            return ProseMirrorSanitizer.sanitize(
+                    defaultFormat.toProseMirror(String.valueOf(value), losses), kind, losses);
         } catch (RuntimeException e) {
             // Raised without the cause: a format's message may quote the value, which is the case's
             // own text (CLAUDE.md, "Never log personal data"). The class name still says what broke.

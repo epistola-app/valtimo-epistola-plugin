@@ -26,9 +26,12 @@ import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateField.FieldType;
 import app.epistola.valtimo.domain.TemplateField.RichTextKind;
+import app.epistola.valtimo.richtext.CapturedLogs;
+import app.epistola.valtimo.richtext.HtmlFormat;
 import app.epistola.valtimo.richtext.MarkdownFormat;
 import app.epistola.valtimo.richtext.PlainTextFormat;
 import app.epistola.valtimo.richtext.RichTextConverter;
+import ch.qos.logback.classic.Level;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -66,6 +69,18 @@ class EpistolaServiceImplRichTextTest {
                     new TemplateField.FieldHints(null, null, null, null, null, null, RichTextKind.BLOCK)),
             new TemplateField("naam", "naam", "string", FieldType.SCALAR, true, null, List.of())));
     private RuntimeException templateFailure;
+
+    /** The same service, reading strings as HTML. */
+    private EpistolaServiceImpl htmlService() {
+        var html = new RichTextConverter(List.of(new PlainTextFormat(), new HtmlFormat()), "html");
+        return new EpistolaServiceImpl(factory, 0, html) {
+            @Override
+            public TemplateDetails getTemplateDetails(
+                    String baseUrl, String apiKey, String tenantId, String catalogId, String templateId) {
+                return template;
+            }
+        };
+    }
 
     private final EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 0, converter) {
         @Override
@@ -110,6 +125,39 @@ class EpistolaServiceImplRichTextTest {
     @Test
     void convertsThemTheSameWayWhenPreviewing() {
         assertThat(previewed()).isEqualTo(CONVERTED);
+    }
+
+    @Test
+    void warnsWhatALetterLost_namingTheFieldAndTemplateButNeverTheText() {
+        Map<String, Object> html = Map.of("toelichting", "<h1>Jansen, BSN 123456782</h1><p>tekst</p>", "naam", "x");
+        ArgumentCaptor<GenerateDocumentRequest> request = ArgumentCaptor.forClass(GenerateDocumentRequest.class);
+        when(generationApi.generateDocument(eq(TENANT), request.capture())).thenThrow(new IllegalStateException("stop"));
+
+        try (var logs = CapturedLogs.of(EpistolaServiceImpl.class)) {
+            assertThatThrownBy(() -> htmlService().submitGenerationJob("http://x", "key", TENANT, "catalog", "besluit",
+                    null, null, null, html, FileFormat.PDF, "besluit.pdf", null, null));
+
+            assertThat(logs.at(Level.WARN)).anySatisfy(event -> assertThat(event.getFormattedMessage())
+                    .contains("'toelichting'", "'besluit'", "heading \u00D71")
+                    .doesNotContain("Jansen", "123456782", "tekst"));
+        }
+    }
+
+    @Test
+    void onlyDebugsItForAPreview_whichTheComposerRepeatsOnEveryChange() {
+        Map<String, Object> html = Map.of("toelichting", "<h1>Kop</h1>", "naam", "x");
+        when(generationApi.previewDocument(eq(TENANT), org.mockito.ArgumentMatchers.any()))
+                .thenThrow(new IllegalStateException("stop"));
+
+        try (var logs = CapturedLogs.of(EpistolaServiceImpl.class)) {
+            assertThatThrownBy(() -> htmlService().previewDocument("http://x", "key", TENANT, "catalog", "besluit",
+                    null, null, html));
+
+            assertThat(logs.events()).noneMatch(event -> event.getLevel() == Level.WARN
+                    && event.getFormattedMessage().contains("lost what Epistola cannot render"));
+            assertThat(logs.at(Level.DEBUG)).anySatisfy(event -> assertThat(event.getFormattedMessage())
+                    .contains("heading \u00D71"));
+        }
     }
 
     @Test

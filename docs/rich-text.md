@@ -165,6 +165,30 @@ Valtimo overrides `Formio.cdn`. An installation where WYSIWYG fields already wor
 A value that is already a document, such as a retry form prefilled with what was rendered, is
 written back out in the default format, so the editor shows text rather than JSON.
 
+## When something is lost
+
+Whatever does not survive is reported in the log, by kind and count, never by its text:
+
+```
+WARN  Rich text for field 'besluit.toelichting' of template 'besluit' lost what Epistola cannot render: heading ×1, table ×1
+```
+
+It is a **warning when a letter is generated**: the form offers more than the letter shows, and
+narrowing the editor (see [In your own forms](#in-your-own-forms)) fixes it. For a **preview** it is
+logged at `DEBUG`, because the composer previews on every change and would otherwise repeat the
+same warning many times. `$richText` reports the same way, naming the format it read.
+
+The kinds a report can name: `heading`, `table`, `image`, `media`, `block quote`, `code block`,
+`code`, `horizontal rule`, `alignment`, `font`, `background colour`, `indentation`, `colour` (a
+notation the schema cannot take), `link` (one that would run something or points nowhere),
+`script or style`, `embedded content`, `form control`, `list style`, `paragraphs or lists in an
+inline field`, and the name of any other node or mark a ProseMirror document carries that the
+schema lacks.
+
+A format of an installation's own reports what it skips by overriding
+`toProseMirror(value, RichTextLosses)`. What the sanitizer narrows afterwards is reported
+regardless.
+
 ## Where it happens
 
 Conversion runs in `EpistolaServiceImpl`, just before a generation or preview request is sent.

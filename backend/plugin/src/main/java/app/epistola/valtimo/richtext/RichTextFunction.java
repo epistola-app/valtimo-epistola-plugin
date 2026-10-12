@@ -20,6 +20,7 @@ package app.epistola.valtimo.richtext;
 import app.epistola.valtimo.domain.TemplateField.RichTextKind;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionContext;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.Map;
 
@@ -33,6 +34,7 @@ import java.util.Map;
  * document, and a field that takes inline rich text narrows it to one paragraph when the data is
  * sent.
  */
+@Slf4j
 public class RichTextFunction implements EpistolaExpressionFunction {
 
     private final RichTextConverter converter;
@@ -69,6 +71,18 @@ public class RichTextFunction implements EpistolaExpressionFunction {
         if (value == null || (value instanceof String text && text.isBlank())) {
             return null;
         }
-        return converter.toDocument(value, format, RichTextKind.BLOCK);
+        RichTextLosses losses = new RichTextLosses();
+        Map<String, Object> document = converter.toDocument(value, format, RichTextKind.BLOCK, losses);
+        if (!losses.isEmpty()) {
+            // Kinds and counts only, never the text. A warning when a letter is being generated —
+            // that is when it costs something — and debug while previewing, which repeats per change.
+            String formatId = format != null ? format : converter.defaultFormatId();
+            if (ctx != null && ctx.getExecution() != null) {
+                log.warn("$richText read a value as '{}' and lost what Epistola cannot render: {}", formatId, losses);
+            } else {
+                log.debug("$richText read a value as '{}' and lost what Epistola cannot render: {}", formatId, losses);
+            }
+        }
+        return document;
     }
 }

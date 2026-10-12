@@ -202,6 +202,25 @@ class RichTextConverterTest {
         }
 
         @Test
+        void reportsWhatAFieldLostByItsPath_andNothingForAFieldThatLostNothing() {
+            var html = new RichTextConverter(shipped(), "html");
+            Map<String, RichTextLosses> reported = new LinkedHashMap<>();
+
+            html.normalize(Map.of(
+                    "besluit", Map.of("toelichting", "<h1>Kop</h1><img src=x>"),
+                    "schoon", "<p>niets mis</p>",
+                    "alineas", List.of("<h2>a</h2>", "<h2>b</h2>")), List.of(
+                    new TemplateField("besluit", "besluit", "object", FieldType.OBJECT, false, null,
+                            List.of(richText("toelichting", "besluit.toelichting", RichTextKind.BLOCK))),
+                    richText("schoon", "schoon", RichTextKind.BLOCK),
+                    richTextList("alineas", RichTextKind.BLOCK)), reported::put);
+
+            assertThat(reported).containsOnlyKeys("besluit.toelichting", "alineas");
+            assertThat(reported.get("besluit.toelichting").counts()).isEqualTo(Map.of("heading", 1, "image", 1));
+            assertThat(reported.get("alineas").counts()).isEqualTo(Map.of("heading", 2));
+        }
+
+        @Test
         void returnsDataWithoutRichTextFieldsAsItCame() {
             Map<String, Object> data = Map.of("naam", "x");
 
@@ -274,6 +293,27 @@ class RichTextConverterTest {
                 assertThat(two).as(expression)
                         .containsEntry("alineas", List.of(doc(p(text("x", Docs.EM))), doc(p(text("y")))));
                 assertThat(one).as(expression).containsEntry("alineas", List.of(doc(p(text("x", Docs.EM)))));
+            }
+        }
+
+        @Test
+        void warnsWhatItLostWhenALetterIsGenerated_andOnlyDebugsForAPreview() {
+            var function = new RichTextFunction(converter);
+            var generating = org.mockito.Mockito.mock(app.epistola.valtimo.expression.ExpressionContext.class);
+            org.mockito.Mockito.when(generating.getExecution())
+                    .thenReturn(org.mockito.Mockito.mock(org.operaton.bpm.engine.delegate.DelegateExecution.class));
+            var previewing = org.mockito.Mockito.mock(app.epistola.valtimo.expression.ExpressionContext.class);
+
+            try (var logs = CapturedLogs.of(RichTextFunction.class)) {
+                function.execute(generating, "<h1>Jansen, BSN 123456782</h1>", "html");
+                function.execute(previewing, "<h1>Jansen</h1>", "html");
+                function.execute(generating, "<p>niets verloren</p>", "html");
+
+                assertThat(logs.at(ch.qos.logback.classic.Level.WARN)).singleElement()
+                        .satisfies(event -> assertThat(event.getFormattedMessage())
+                                .contains("'html'", "heading \u00D71")
+                                .doesNotContain("Jansen", "123456782"));
+                assertThat(logs.at(ch.qos.logback.classic.Level.DEBUG)).hasSize(1);
             }
         }
 

@@ -86,8 +86,13 @@ public class HtmlFormat implements RichTextFormat {
 
     @Override
     public Map<String, Object> toProseMirror(Object value) {
+        return toProseMirror(value, new RichTextLosses());
+    }
+
+    @Override
+    public Map<String, Object> toProseMirror(Object value, RichTextLosses losses) {
         String html = value == null ? "" : String.valueOf(value);
-        return new Conversion(HtmlTokenizer.tokenize(html)).run();
+        return new Conversion(HtmlTokenizer.tokenize(html), losses).run();
     }
 
     @Override
@@ -134,6 +139,7 @@ public class HtmlFormat implements RichTextFormat {
         }
 
         private final List<Token> tokens;
+        private final RichTextLosses losses;
         private final ProseMirrorBuilder builder = new ProseMirrorBuilder();
         private final Deque<Open> open = new ArrayDeque<>();
         /** Per open Quill list container: the ordered flag of each level it has opened. */
@@ -141,8 +147,9 @@ public class HtmlFormat implements RichTextFormat {
         private String skipping;
         private int preformatted;
 
-        Conversion(List<Token> tokens) {
+        Conversion(List<Token> tokens, RichTextLosses losses) {
             this.tokens = tokens;
+            this.losses = losses;
         }
 
         Map<String, Object> run() {
@@ -169,11 +176,13 @@ public class HtmlFormat implements RichTextFormat {
         private void start(StartTag tag, int index) {
             String name = tag.name();
             if (SKIPPED.contains(name)) {
+                recordSkipped(name);
                 if (!tag.selfClosing() && !VOID.contains(name)) {
                     skipping = name;
                 }
                 return;
             }
+            recordUnrenderable(tag);
             if (name.equals("br")) {
                 builder.hardBreak();
                 return;
@@ -207,7 +216,7 @@ public class HtmlFormat implements RichTextFormat {
                 }
             }
             if (!VOID.contains(name) && !tag.selfClosing()) {
-                open.push(new Open(name, marksOf(tag), quillList, name.equals("ol")));
+                open.push(new Open(name, marksOf(tag, losses), quillList, name.equals("ol")));
             }
         }
 
@@ -337,6 +346,45 @@ public class HtmlFormat implements RichTextFormat {
             return null;
         }
 
+        /** What a skipped element was, for the report; page furniture with no content is not. */
+        private void recordSkipped(String name) {
+            switch (name) {
+                case "script", "style" -> losses.lost("script or style");
+                case "iframe", "object", "svg", "math" -> losses.lost("embedded content");
+                case "select", "button", "textarea" -> losses.lost("form control");
+                default -> {
+                    // head, title, template, noscript: never content someone wrote
+                }
+            }
+        }
+
+        /** Elements whose text is kept but whose form the schema cannot carry. */
+        private void recordUnrenderable(StartTag tag) {
+            switch (tag.name()) {
+                case "h1", "h2", "h3", "h4", "h5", "h6" -> losses.lost("heading");
+                case "table" -> losses.lost("table");
+                case "blockquote" -> losses.lost("block quote");
+                case "hr" -> losses.lost("horizontal rule");
+                case "img" -> losses.lost("image");
+                case "video", "audio" -> losses.lost("media");
+                default -> {
+                }
+            }
+            String classes = tag.attributes().get("class");
+            if (classes != null) {
+                // Quill keeps these as classes rather than styles.
+                if (classes.contains("ql-align-")) {
+                    losses.lost("alignment");
+                }
+                if (classes.contains("ql-size-") || classes.contains("ql-font-")) {
+                    losses.lost("font");
+                }
+                if (!tag.name().equals("li") && quillIndent(tag) > 0) {
+                    losses.lost("indentation");
+                }
+            }
+        }
+
         private List<Map<String, Object>> currentMarks() {
             List<Map<String, Object>> marks = new ArrayList<>();
             Set<String> types = new java.util.HashSet<>();
@@ -355,7 +403,7 @@ public class HtmlFormat implements RichTextFormat {
             return marks;
         }
 
-        private static List<Map<String, Object>> marksOf(StartTag tag) {
+        private static List<Map<String, Object>> marksOf(StartTag tag, RichTextLosses losses) {
             List<Map<String, Object>> marks = new ArrayList<>();
             switch (tag.name()) {
                 case "strong", "b" -> marks.add(mark("strong"));
@@ -366,6 +414,9 @@ public class HtmlFormat implements RichTextFormat {
                 case "sup" -> marks.add(mark("superscript"));
                 case "a" -> {
                     String href = tag.attributes().get("href");
+                    if (href != null && !ProseMirrorSanitizer.isAllowedHref(href)) {
+                        losses.lost("link");
+                    }
                     if (href != null && ProseMirrorSanitizer.isAllowedHref(href)) {
                         Map<String, Object> link = mark("link");
                         Map<String, Object> attrs = new LinkedHashMap<>();
@@ -378,18 +429,23 @@ public class HtmlFormat implements RichTextFormat {
                         marks.add(link);
                     }
                 }
-                case "font" -> addColor(marks, tag.attributes().get("color"));
+                case "font" -> {
+                    addColor(marks, tag.attributes().get("color"), losses);
+                    if (tag.attributes().containsKey("face") || tag.attributes().containsKey("size")) {
+                        losses.lost("font");
+                    }
+                }
                 default -> {
                 }
             }
             String style = tag.attributes().get("style");
             if (style != null) {
-                styleMarks(style, marks);
+                styleMarks(style, marks, losses);
             }
             return marks;
         }
 
-        private static void styleMarks(String style, List<Map<String, Object>> marks) {
+        private static void styleMarks(String style, List<Map<String, Object>> marks, RichTextLosses losses) {
             for (String declaration : style.split(";")) {
                 int colon = declaration.indexOf(':');
                 if (colon < 0) {
@@ -398,7 +454,23 @@ public class HtmlFormat implements RichTextFormat {
                 String property = declaration.substring(0, colon).trim().toLowerCase(Locale.ROOT);
                 String value = declaration.substring(colon + 1).trim().toLowerCase(Locale.ROOT);
                 switch (property) {
-                    case "color" -> addColor(marks, value);
+                    case "color" -> addColor(marks, value, losses);
+                    case "text-align" -> {
+                        if (!value.equals("left") && !value.equals("start")) {
+                            losses.lost("alignment");
+                        }
+                    }
+                    case "font-size", "font-family", "font" -> losses.lost("font");
+                    case "background", "background-color" -> {
+                        if (!value.equals("transparent") && !value.equals("none")) {
+                            losses.lost("background colour");
+                        }
+                    }
+                    case "margin-left", "padding-left", "text-indent" -> {
+                        if (!value.matches("0(\\.0+)?[a-z%]*")) {
+                            losses.lost("indentation");
+                        }
+                    }
                     case "font-weight" -> {
                         if (value.equals("bold") || value.equals("bolder") || value.matches("[6-9]00")) {
                             marks.add(mark("strong"));
@@ -431,7 +503,7 @@ public class HtmlFormat implements RichTextFormat {
         }
 
         /** A colour as {@code #rgb} or {@code #rrggbb}, the only forms the schema takes. */
-        private static void addColor(List<Map<String, Object>> marks, String value) {
+        private static void addColor(List<Map<String, Object>> marks, String value, RichTextLosses losses) {
             if (value == null) {
                 return;
             }
@@ -451,7 +523,10 @@ public class HtmlFormat implements RichTextFormat {
                 color = hslToHex(Double.parseDouble(hsl.group(1)), Double.parseDouble(hsl.group(2)),
                         Double.parseDouble(hsl.group(3)));
             }
-            if (color != null) {
+            if (color == null) {
+                // A named colour, or a notation the schema cannot take: the text keeps its default.
+                losses.lost("colour");
+            } else {
                 Map<String, Object> mark = mark("textStyle");
                 mark.put("attrs", new LinkedHashMap<>(Map.of("color", color)));
                 marks.add(mark);

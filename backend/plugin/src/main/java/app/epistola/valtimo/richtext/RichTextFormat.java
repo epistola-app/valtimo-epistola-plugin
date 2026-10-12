@@ -54,6 +54,17 @@ public interface RichTextFormat {
     Map<String, Object> toProseMirror(Object value);
 
     /**
+     * The same, recording what the format reads but the document cannot hold — a heading, an
+     * image — so it can be reported. Optional: a format that does not override this reports
+     * nothing of its own, and the sanitizer still reports what it narrows.
+     *
+     * @param losses where to record what did not survive; kinds only, never content
+     */
+    default Map<String, Object> toProseMirror(Object value, RichTextLosses losses) {
+        return toProseMirror(value);
+    }
+
+    /**
      * The reverse: a ProseMirror document as a value in this format, used to show an existing
      * document in this format's editor (the retry form prefills with what was rendered).
      *

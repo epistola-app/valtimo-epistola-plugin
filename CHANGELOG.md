@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     plain text area otherwise. A list of rich text gets one editor per item. What the employee types stays in the case's format, so write-back does not change
     a field's format.
 
+  - **What does not survive is reported.** A generated letter logs a warning naming the field, the
+    template and the kinds lost (`heading ×1, table ×1`), never the text; a preview logs it at
+    debug.
+
   No new dependencies: the HTML and markdown readers are small ones of the plugin's own.
 
 - **The letter composer's configurator now says which generate tasks read the letter it stores.**

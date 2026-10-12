@@ -122,7 +122,7 @@ public class EpistolaServiceImpl implements EpistolaService {
      */
     private Map<String, Object> withRichText(
             String baseUrl, String apiKey, String tenantId, String catalogId, String templateId,
-            Map<String, Object> data
+            Map<String, Object> data, boolean generating
     ) {
         if (richTextConverter == null || data == null || data.isEmpty()) {
             return data;
@@ -135,7 +135,18 @@ public class EpistolaServiceImpl implements EpistolaService {
                     templateId, Failures.describe(e));
             return data;
         }
-        return richTextConverter.normalize(data, fields);
+        // Field paths and kinds of content, never the text. A warning when a letter is generated —
+        // the author should know their form offers more than the letter shows — and debug for a
+        // preview, which the composer repeats on every change.
+        return richTextConverter.normalize(data, fields, (path, losses) -> {
+            if (generating) {
+                log.warn("Rich text for field '{}' of template '{}' lost what Epistola cannot render: {}",
+                        path, templateId, losses);
+            } else {
+                log.debug("Rich text for field '{}' of template '{}' lost what Epistola cannot render: {}",
+                        path, templateId, losses);
+            }
+        });
     }
 
     /**
@@ -372,7 +383,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         // Never the data itself: it is a letter's contents — names, identifiers, addresses, the
         // text of a decision. The keys say what was sent, which is what a log is for here.
         log.debug("Template data keys: {}", data == null ? "none" : data.keySet());
-        Map<String, Object> templateData = withRichText(baseUrl, apiKey, tenantId, catalogId, templateId, data);
+        Map<String, Object> templateData = withRichText(baseUrl, apiKey, tenantId, catalogId, templateId, data, true);
 
         try {
             GenerationApi generationApi = apiClientFactory.createGenerationApi(baseUrl, apiKey);
@@ -528,7 +539,7 @@ public class EpistolaServiceImpl implements EpistolaService {
             Map<String, Object> data
     ) {
         log.debug("Previewing document for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
-        Map<String, Object> templateData = withRichText(baseUrl, apiKey, tenantId, catalogId, templateId, data);
+        Map<String, Object> templateData = withRichText(baseUrl, apiKey, tenantId, catalogId, templateId, data, false);
         try {
             var request = new PreviewDocumentRequest(
                     catalogId,

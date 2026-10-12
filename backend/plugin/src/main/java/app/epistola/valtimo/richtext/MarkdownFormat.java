@@ -55,8 +55,13 @@ public class MarkdownFormat implements RichTextFormat {
 
     @Override
     public Map<String, Object> toProseMirror(Object value) {
+        return toProseMirror(value, new RichTextLosses());
+    }
+
+    @Override
+    public Map<String, Object> toProseMirror(Object value, RichTextLosses losses) {
         String text = value == null ? "" : String.valueOf(value);
-        return new Conversion(text.replace("\u0000", "")).run();
+        return new Conversion(text.replace("\u0000", ""), losses).run();
     }
 
     @Override
@@ -75,15 +80,18 @@ public class MarkdownFormat implements RichTextFormat {
         private static final char HARD_BREAK = '\u0000';
 
         private final String[] lines;
+        private final RichTextLosses losses;
         private final ProseMirrorBuilder builder = new ProseMirrorBuilder();
         private final Deque<Level> lists = new ArrayDeque<>();
         private final List<String> paragraph = new ArrayList<>();
         private final List<String> code = new ArrayList<>();
         private String fence;
         private boolean blankBefore;
+        private boolean inQuote;
 
-        Conversion(String text) {
+        Conversion(String text, RichTextLosses losses) {
             this.lines = text.replace("\r\n", "\n").replace('\r', '\n').split("\n", -1);
+            this.losses = losses;
         }
 
         Map<String, Object> run() {
@@ -113,6 +121,10 @@ public class MarkdownFormat implements RichTextFormat {
             }
             String line = raw;
             Matcher quote = BLOCK_QUOTE.matcher(line);
+            if (quote.matches() && !inQuote) {
+                losses.lost("block quote");
+            }
+            inQuote = quote.matches();
             while (quote.matches()) {
                 line = quote.group(1);
                 quote = BLOCK_QUOTE.matcher(line);
@@ -125,12 +137,14 @@ public class MarkdownFormat implements RichTextFormat {
             Matcher fenceStart = FENCE.matcher(line);
             if (fenceStart.matches()) {
                 flushParagraph();
+                losses.lost("code block");
                 fence = fenceStart.group(1);
                 blankBefore = false;
                 return;
             }
             if (THEMATIC_BREAK.matcher(line).matches()) {
                 flushParagraph();
+                losses.lost("horizontal rule");
                 blankBefore = false;
                 return;
             }
@@ -138,6 +152,7 @@ public class MarkdownFormat implements RichTextFormat {
             Matcher heading = HEADING.matcher(line);
             if (heading.matches()) {
                 flushParagraph();
+                losses.lost("heading");
                 closeListsDeeperThan(indent);
                 paragraph.add(heading.group(1) == null ? "" : heading.group(1));
                 flushParagraph();
@@ -255,11 +270,14 @@ public class MarkdownFormat implements RichTextFormat {
                     if (close < 0) {
                         text.append("`".repeat(run));
                     } else {
+                        losses.lost("code");
                         emit(text, marks);
                         builder.text(s.substring(i + run, close).replace('\n', ' ').strip(), marks);
                         close += run;
                     }
                     i = close < 0 ? i + run : close;
+                } else if (c == '!' && i + 1 < n && s.charAt(i + 1) == '[') {
+                    i = image(s, i, text, marks);
                 } else if (c == '[') {
                     i = link(s, i, text, marks);
                 } else if (c == '<') {
@@ -293,8 +311,26 @@ public class MarkdownFormat implements RichTextFormat {
             }
             emit(text, marks);
             String label = s.substring(i + 1, closeBracket);
-            inline(label, ProseMirrorSanitizer.isAllowedHref(url) ? with(marks, link(url)) : marks);
+            boolean allowed = ProseMirrorSanitizer.isAllowedHref(url);
+            if (!allowed) {
+                losses.lost("link");
+            }
+            inline(label, allowed ? with(marks, link(url)) : marks);
             return closeParen + 1;
+        }
+
+        /** {@code ![alt](src)}: the schema has no images, so only its description is kept. */
+        private int image(String s, int i, StringBuilder text, List<Map<String, Object>> marks) {
+            int closeBracket = matching(s, i + 1, '[', ']');
+            if (closeBracket < 0 || closeBracket + 1 >= s.length() || s.charAt(closeBracket + 1) != '('
+                    || matching(s, closeBracket + 1, '(', ')') < 0) {
+                text.append('!');
+                return i + 1;
+            }
+            losses.lost("image");
+            emit(text, marks);
+            inline(s.substring(i + 2, closeBracket), marks);
+            return matching(s, closeBracket + 1, '(', ')') + 1;
         }
 
         /** {@code <https://…>} and {@code <name@example.com>}. */
