@@ -44,13 +44,28 @@ lives in the composer's own `DynamicDocument`.
 
 Nothing else imports it, and the library's public API exports none of it.
 
-**One asymmetry to know about:** `epistola.composer.enabled=false` removes the backend beans and
-endpoints, but the frontend registers the composer's components unconditionally. Disabling it
-server-side therefore leaves the palette entry and the process-link action type visible, and a form
-built with them fails on the first call. The plugin-wide `EPISTOLA_ENABLED` does hide everything;
-there is no composer-only equivalent, because a frontend flag has to be threaded through all the
-places listed in [embedding.md](embedding.md). Disable the composer on environments where nobody
-authors forms, or disable the plugin.
+**Switching it off takes two settings**, one per layer, as it does for the plugin as a whole:
+
+| Setting                           | Layer    | Effect                                |
+| --------------------------------- | -------- | ------------------------------------- |
+| `epistola.composer.enabled=false` | Backend  | No composer beans, no endpoints       |
+| `EPISTOLA_FEATURES="-composer"`   | Frontend | The Form.io components never register |
+
+The frontend half is a **feature list rather than a flag per feature**: a space-separated value
+where `+name` turns something on and `-name` turns it off (`EPISTOLA_FEATURES="-composer -other"`;
+commas work too). A `window['env']` key has to be added to five `config.js` copies and the Helm
+ConfigMap, and only the image path is env-driven — which is how `epistolaEnabled` came to do nothing
+in both compose and Helm — so the key is paid for once and every later feature rides along. Anything
+not mentioned keeps its default, so an installation that says nothing behaves as before, and an
+unknown name is ignored with a console warning rather than deciding whether the app renders.
+
+Registration is the chokepoint for the frontend half: Form.io's component registry is global, so
+components that never register are absent from the palette, from the builder's edit forms and from
+any form that renders one. Before this, disabling the composer server-side left the palette entry
+and the process-link action type visible, and a form built with them failed on the first call.
+
+Set both per environment. The plugin-wide `EPISTOLA_ENABLED=false` still hides everything,
+composer included.
 
 ## How it works
 

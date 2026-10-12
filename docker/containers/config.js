@@ -21,6 +21,7 @@
   window['env']['whiteListedDomain'] = 'localhost:4200';
   window['env']['openZaakCatalogusId'] = '';
   window['env']['epistolaEnabled'] = true;
+  window['env']['epistolaFeatures'] = '';
   window['env']['embeddingEnabled'] = false;
   window['env']['embeddingAllowedParentOrigins'] = '';
 })(this);
