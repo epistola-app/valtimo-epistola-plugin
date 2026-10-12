@@ -6,6 +6,7 @@ package com.ritense.valtimo.epistola.documents
 import com.ritense.resource.service.ResourceService
 import com.ritense.resource.service.TemporaryResourceStorageService
 import com.ritense.resource.service.request.RawFileUploadRequest
+import com.ritense.valtimo.contract.annotation.ProcessBean
 import com.ritense.valtimo.contract.document.event.DocumentRelatedFileSubmittedEvent
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.operaton.bpm.engine.delegate.DelegateExecution
@@ -31,9 +32,16 @@ private val logger = KotlinLogging.logger {}
  * ```
  * camunda:delegateExpression="${storeGeneratedLetter}"
  * ```
+ *
+ * [ProcessBean] is required, not decoration: Valtimo's `OperatonWhitelistedBeansPlugin` builds the
+ * engine's bean map from `getBeansWithAnnotation(ProcessBean::class)`, so a plain `@Component` is
+ * invisible to an expression. Without it the process reaches this task and fails with
+ * `Cannot resolve identifier 'storeGeneratedLetter'` — measured, after the letter had already been
+ * downloaded.
  * with input parameters `resourceIdVariable` (where the download action put the temporary resource
  * id) and, optionally, `fileName`.
  */
+@ProcessBean
 @Component("storeGeneratedLetter")
 class StoreGeneratedLetterDelegate(
     private val temporaryResourceStorageService: TemporaryResourceStorageService,

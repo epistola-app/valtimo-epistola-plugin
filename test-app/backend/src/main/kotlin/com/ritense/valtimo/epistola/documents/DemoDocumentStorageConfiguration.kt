@@ -51,4 +51,11 @@ class DemoDocumentStorageConfiguration {
 
     @Bean
     fun demoResourceResource(resourceService: ResourceService): ResourceResource = DemoResourceResource(resourceService)
+
+    /**
+     * Valtimo's own resource security does not permit the `/download` path its own case UI calls, so
+     * without this a stored letter answers 403. See [DemoResourceSecurityConfigurer].
+     */
+    @Bean
+    fun demoResourceSecurityConfigurer(): DemoResourceSecurityConfigurer = DemoResourceSecurityConfigurer()
 }
