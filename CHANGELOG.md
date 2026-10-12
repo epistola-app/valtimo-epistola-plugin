@@ -28,6 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   outside. A check that cried wolf would cost more than the silence it replaced. For the same
   reason a failed lookup shows nothing rather than claiming there is no reader.
 
+### Changed
+
+- **The security policy lives at the repository root and matches Epistola Suite's.** `SECURITY.md`
+  moved out of `.github/` (GitHub's Security tab still finds it) and now supports the two most
+  recent minor release lines instead of only the latest. Reports go straight to the private
+  reporting form, fixes are prepared in a draft advisory's private fork before a patched release,
+  and the scope names the published Maven and npm packages — the demo app, its images and chart are
+  out of scope. Suite vulnerabilities are pointed at the Suite's own form.
+
 ### Fixed
 
 - **Write-back now applies the rules of the form that was submitted, not of every composer on the
