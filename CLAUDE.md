@@ -155,13 +155,18 @@ docker/            # Docker compose for local dependencies
   a field whose `$ref` is Epistola's `richtext-{inline,block}-v1.json` URL takes a ProseMirror
   document, while the case keeps text in a format of its own. The plugin translates, and three rules
   hold it together:
-  - **Convert in one place only.** `EpistolaServiceImpl` converts just before submit and preview.
-    Converting elsewhere as well risks the preview and the letter differing.
+  - **Convert in one place only.** `RichTextEpistolaService`, a decorator around the Epistola
+    client, converts just before submit and preview. Converting elsewhere as well risks the
+    preview and the letter differing; keep the client itself free of it.
   - **Never guess a string's format.** It comes from `$richText(value, format)` or from
     `epistola.rich-text.default-format`.
   - **Send only what passes `ProseMirrorSanitizer`.** Each format's tests validate its output
-    against copies of Epistola's schemas in `src/test/resources/richtext/`; refresh those when the
-    pinned contract changes them.
+    against Epistola's own schemas, read from the `epistola-catalog` test dependency at the pinned
+    contract version.
+
+  Formats (`RichTextFormat`: parse, write back) and editors (`RichTextEditor`: the Form.io
+  component) are separate extension points. The default format is `html`, and it is configuration:
+  changing it reinterprets stored text.
 
   Parsing is jsoup (HTML) and commonmark-java (markdown), plain dependencies, deliberately not
   shaded (ADR 0008 says why). The plugin only walks their trees.

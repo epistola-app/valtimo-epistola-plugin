@@ -278,7 +278,7 @@ result schemas, and evaluation-scoped caching.
 
 A template field that references Epistola's rich-text schema takes a ProseMirror document, not
 text. A string mapped onto it is read in the installation's default format
-(`epistola.rich-text.default-format`, `plain` unless configured), so most mappings need nothing
+(`epistola.rich-text.default-format`, `html` unless configured), so most mappings need nothing
 special. A field kept in another format names it:
 
 ```jsonata

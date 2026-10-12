@@ -18,16 +18,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Four formats ship** — `plain`, `html` (what Valtimo's Form.io WYSIWYG writes, Quill or
     CKEditor), `markdown` and `prosemirror` — and an installation adds its own by declaring a
     `RichTextFormat` bean.
-  - **The format is said, never guessed.** `epistola.rich-text.default-format` (default `plain`,
-    which never invents formatting) applies to a string mapped straight onto a rich-text field; a
-    field in another format names it in the mapping with `$richText($doc.x, "markdown")`. A value
-    that is already a ProseMirror document passes through.
+  - **The format is said, never guessed.** `epistola.rich-text.default-format` (default `html`,
+    what Valtimo's WYSIWYG text areas write) applies to a string mapped straight onto a rich-text
+    field; a field in another format names it in the mapping, e.g. `$richText($doc.x, "plain")`
+    for a plain text area. Changing the default reinterprets stored text: treat it as a schema
+    change.
+  - **A ProseMirror document is now narrowed too.** A document mapped straight onto a rich-text
+    field used to be sent as it was; it now passes the same check as converted text, so nodes and
+    marks outside Epistola's schema are dropped instead of failing the letter.
   - **The output is always valid.** Whatever a format produces is narrowed to what Epistola's
     schema allows — a heading becomes a paragraph, an unknown mark or a `javascript:` link is
     dropped — and shaped to the field: an inline field gets one paragraph. Every converter is tested
     against Epistola's own schemas.
-  - **Conversion happens where data leaves for Epistola**, so generation, preview, the composer and
-    the retry form all send the same document. The template's contract is read to find the
+  - **Conversion happens where data leaves for Epistola**, in a decorator around the client, so
+    generation, preview, the composer and the retry form all send the same document. The
+    template's fields are read from its current contract and kept for a minute; a version not yet
+    deployed that changes a field's type is a known limitation (`docs/rich-text.md`). The template's contract is read to find the
     rich-text fields; if that read fails, the data goes as mapped and Epistola's own validation
     speaks.
   - **Any form can supply it**, not only the composer: a Valtimo form's WYSIWYG text area writes
@@ -84,6 +90,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   out of scope. Suite vulnerabilities are pointed at the Suite's own form.
 
 ### Fixed
+
+- **The retry check no longer logs the corrected data.** `generate-document` logged the first 200
+  characters of `epistolaEditedData` at debug: a letter's data as a person corrected it. It now logs
+  only whether the variable is there and its type.
 
 - **A Dutch amount is no longer read as English.** The composer and the retry form did not tell
   Form.io which language Valtimo is in, so a number field fell back to English separators and

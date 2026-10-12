@@ -42,10 +42,17 @@ field takes such a value as a list of one, so that needs no `[…]` around the e
 ```yaml
 epistola:
   rich-text:
-    default-format: html # plain (default) | html | markdown | prosemirror | your own
+    default-format: html # html (default) | plain | markdown | prosemirror | your own
 ```
 
-`plain` is the default because it is the one format that never invents formatting.
+`html` is the default: it is what Valtimo's WYSIWYG text areas write, and what the editors the
+plugin generates write. A value from an ordinary **plain text area** needs naming —
+`$richText($doc.x, "plain")` — because read as HTML its line breaks collapse into spaces and a
+`<` followed by a letter starts a tag.
+
+**The format is configuration.** Changing the default reinterprets text already stored on cases
+and on composed letters waiting to be generated, so treat it like a schema change. It is meant to
+become selectable per form or component later; until then it is one setting for the installation.
 
 ## The formats
 
@@ -77,7 +84,7 @@ generate-document mapping, or the preview component, then hands that to the rich
 { "toelichting": $richText($doc.besluit.toelichting, "html") }
 ```
 
-With `default-format: html` the plain mapping `$doc.besluit.toelichting` does the same.
+With the default format (`html`) the plain mapping `$doc.besluit.toelichting` does the same.
 
 What the form builder offers by default is more than Epistola renders: headings, tables, images,
 media. The conversion drops those, keeping the text. To offer only what survives, give the text
@@ -191,12 +198,21 @@ regardless.
 
 ## Where it happens
 
-Conversion runs in `EpistolaServiceImpl`, just before a generation or preview request is sent.
-Every path goes through it: the generate action, the preview component, the composer and the retry
-form. The preview and the letter therefore cannot differ.
+Conversion runs in `RichTextEpistolaService`, a decorator around the Epistola client
+(`EpistolaServiceImpl`), just before a generation or preview request is sent. Every path goes
+through it: the generate action, the preview component, the composer and the retry form. The
+preview and the letter therefore cannot differ, and the client itself stays a client.
 
-To know which fields are rich text, the service reads the template's contract first. If that read
-fails, the data is sent as mapped, and Epistola's own validation reports what it cannot render.
+To know which fields are rich text, the decorator reads the template's contract first and keeps
+its fields for a minute, since the composer previews on every change. If that read fails, the data
+is sent as mapped, and Epistola's own validation reports what it cannot render.
+
+**Known limitation: the contract read is the template's current one.** Epistola renders the
+version deployed to the environment, and the contract read here is the template's latest. If a
+newer, not yet deployed version makes a field rich text (or stops doing so), the conversion follows
+the newer contract and Epistola refuses the letter. The composer and the mapping builder read the
+contract the same way. Reading the field types of the rendered version is the fix, once the
+contract offers it per environment.
 
 ## Adding a format
 
@@ -208,8 +224,9 @@ RichTextFormat quillDeltaFormat() {
     return new RichTextFormat() {
         public String id() { return "quill-delta"; }
 
-        public Map<String, Object> toProseMirror(Object value) {
-            // turn the value into {"type": "doc", "content": [...]}
+        public Map<String, Object> toProseMirror(Object value, RichTextLosses losses) {
+            // turn the value into {"type": "doc", "content": [...]};
+            // record what it cannot keep with losses.lost("…") — kinds, never content
         }
     };
 }
@@ -217,10 +234,12 @@ RichTextFormat quillDeltaFormat() {
 
 Its id then works as `$richText(value, "quill-delta")` and as the default format. A format does not
 have to produce a valid document, because the result is narrowed afterwards. It should keep as
-much of the meaning as the schema can carry. Two optional methods complete it:
+much of the meaning as the schema can carry. `fromProseMirror`, optional, writes a document back in
+the format, to show one in an editor.
 
-- `fromProseMirror` writes a document back in the format, used to show one in an editor;
-- `editor` supplies the Form.io component a person types the format into.
+How a person types the format is a separate extension point, `RichTextEditor`: a bean naming the
+format it writes and the Form.io component for it. A format without one gets a plain text area;
+`html` has `CkEditorHtmlEditor`.
 
 **Never log the value.** It is the case's own text, and so personal data.
 

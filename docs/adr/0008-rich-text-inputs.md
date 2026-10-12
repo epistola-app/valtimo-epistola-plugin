@@ -228,6 +228,7 @@ These follow from the problem, whichever option wins:
    1. an object shaped `{"type":"doc", …}` is ProseMirror;
    2. otherwise `$richText(value, "<format>")` in the mapping decides;
    3. otherwise the configured default applies, `plain` unless an installation says differently.
+      (Built with `html` as the default instead; see [As built](#as-built-2026-10-12).)
 
    Nothing guesses between kinds of strings.
 
@@ -249,8 +250,7 @@ already is. Then `markdown`.
 
 - **Formatting is lost.** A rich-text value loses whatever its case format can express and Epistola's
   subset cannot. This is documented per format, in the table above.
-- **A new setting**, `epistola.rich-text.default-format`, defaulting to `plain`, the one format that
-  never invents formatting.
+- **A new setting**, `epistola.rich-text.default-format`, defaulting to `html` (see As built).
 - **One new JSONata function**, `$richText(value, format)`. The mapping builder lists the
   registered formats as its second argument.
 - **A converter is a public extension point.** Its interface is supported API from then on, so it
@@ -263,24 +263,49 @@ already is. Then `markdown`.
 
 ## As built (2026-10-12)
 
-The recommendation was built as written, with five differences worth knowing.
+The recommendation was built as written, with the differences below worth knowing, several of them
+from an architecture review of the first version.
 
 **Conversion happens where data leaves for Epistola, not while composing.**
-`EpistolaServiceImpl.submitGenerationJob` and `previewDocument` convert the data's rich-text fields
-just before the request is sent. Every path reaches Epistola through those two methods: the
+`RichTextEpistolaService`, a decorator around the Epistola client, converts the data's rich-text
+fields in `submitGenerationJob` and `previewDocument`, just before the request is sent. (A first
+version did this inside `EpistolaServiceImpl`; review moved it out, so the client is only a client
+and replacing it cannot silently drop the conversion.) Every path reaches Epistola through those two methods: the
 generate action, the preview component, the composer and the retry form. Converting there, rather
 than at each caller, is what guarantees the preview and the letter cannot convert differently. The
 composer's `data` snapshot therefore keeps the case's format, which keeps it readable as stored.
 
 The price is one extra call: which fields are rich text is only known from the template's contract,
-so the service reads it before sending. When that read fails, the data goes as mapped. Epistola
+so it is read before sending, and kept for a minute per template because the composer previews on
+every change. When that read fails, the data goes as mapped. Epistola
 validates it regardless and refuses what it cannot render with a message of its own, so the
 fallback costs a clearer error at worst, never a wrong letter.
 
 **The default format is a Spring property**, `epistola.rich-text.default-format`, not a plugin
 configuration field. The format a case keeps text in is a property of the installation's forms,
 not of an Epistola connection, and a property needs no configurator UI, translations or migration.
-A per-configuration override can be added later without changing the meaning of the property.
+
+**It defaults to `html`, not `plain`.** Review found that the format is decided in two places:
+per mapping (`$richText`) and globally for the generated editors and their round trip. With a
+`plain` default, a retry form showed a formatted letter as plain text, and resubmitting it lost the
+formatting. The decision: the format is **configuration**, meant to become selectable per form or
+component later, and `html` is the default, which is what Valtimo's WYSIWYG text areas and the
+generated editors write. With that, editor and conversion agree, and a rendered document
+round-trips. Two consequences are accepted and documented:
+
+- A plain text area's value needs `$richText(x, "plain")`, or its line breaks collapse.
+- Changing the default reinterprets stored text, like a schema change.
+
+**Formats and editors are separate extension points.** A first version put the Form.io editor on
+`RichTextFormat`, which then had four reasons to change. `RichTextFormat` now parses and writes
+back. `RichTextEditor` names a format and the component for it, with `CkEditorHtmlEditor` for HTML
+and a plain text area for any format without one.
+
+**Known limitation: the contract read is the template's current one.** Epistola renders the
+version deployed to the environment. A newer, undeployed version that changes a field's rich-text
+type makes the conversion follow the newer contract, and Epistola refuses the letter. The composer
+and mapping builder read the contract the same way. The fix is reading field types per environment,
+once the contract offers that; until then it is documented in `docs/rich-text.md`.
 
 **Parsing uses jsoup and commonmark-java, as plain dependencies.** A first version carried its own
 HTML tokenizer and markdown parser to avoid dependencies. They worked on what editors write, but

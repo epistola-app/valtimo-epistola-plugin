@@ -471,8 +471,9 @@ schema (`richtext-inline-v1` or `richtext-block-v1`) is recognised by that refer
 any other input. What the employee gets depends on the format the installation keeps text in,
 `epistola.rich-text.default-format`:
 
-- `html` gives Form.io's WYSIWYG text area (CKEditor), with a toolbar of only what Epistola renders;
-- `plain` (the default) and `markdown` give a plain text area.
+- `html` (the default) gives Form.io's WYSIWYG text area (CKEditor), with a toolbar of only what
+  Epistola renders;
+- `plain` and `markdown` give a plain text area.
 
 What is typed is kept in that format, in `inputs` and on any write-back destination. It is converted
 to Epistola's document only on its way to Epistola, the same way for the preview and the letter.
