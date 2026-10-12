@@ -20,6 +20,7 @@ import app.epistola.valtimo.service.form.FormioFormGenerator;
 
 import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateField.FieldType;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -87,6 +88,20 @@ class FormioFormGeneratorTest {
 
             ObjectNode component = (ObjectNode) form.get("components").get(0);
             assertEquals("number", component.get("type").asText());
+            // A whole number: Formio drops anything typed after the separator.
+            assertEquals(0, component.get("decimalLimit").asInt());
+        }
+
+        @Test
+        void numberField_keepsItsDecimals() {
+            TemplateField field = new TemplateField(
+                    "amount", "amount", "number",
+                    FieldType.SCALAR, false, null, List.of());
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertFalse(component.has("decimalLimit"));
         }
 
         @Test
@@ -543,8 +558,9 @@ class FormioFormGeneratorTest {
         }
 
         @Test
-        void dateFormat_keepsATextfieldWithAnExplicitPlaceholder() {
-            // Formio's date picker emits a full ISO timestamp, which "format": "date" rejects.
+        void dateFormat_isATextfieldWithACalendarThatStoresTheDateAsText() {
+            // Formio's datetime component stores a full ISO timestamp, which "format": "date"
+            // rejects. A calendar on a text field with saveAs text stores exactly yyyy-MM-dd.
             TemplateField field = scalar("datum", "string",
                     new TemplateField.FieldHints(null, "date", null, null));
 
@@ -552,7 +568,67 @@ class FormioFormGeneratorTest {
                     .get("components").get(0);
 
             assertEquals("textfield", component.get("type").asText());
-            assertEquals("YYYY-MM-DD", component.get("placeholder").asText());
+            JsonNode widget = component.get("widget");
+            assertEquals("calendar", widget.get("type").asText());
+            assertEquals("text", widget.get("saveAs").asText());
+            assertEquals("yyyy-MM-dd", widget.get("dateFormat").asText());
+            assertEquals("dd-MM-yyyy", widget.get("format").asText());
+            assertFalse(widget.get("enableTime").asBoolean());
+            // The picker says how a date is written; a format shape on top of it is noise.
+            assertFalse(component.has("placeholder"));
+        }
+
+        @Test
+        void dateFormat_keepsAPrefilledDateAsItIs() {
+            TemplateField field = scalar("datum", "string",
+                    new TemplateField.FieldHints(null, "date", null, null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(
+                    List.of(field), Map.of("datum", "2026-03-01")).get("components").get(0);
+
+            assertEquals("2026-03-01", component.get("defaultValue").asText());
+        }
+
+        @Test
+        void dateFormatArray_isOneRepeatingCalendar() {
+            TemplateField field = scalar("data", "array",
+                    new TemplateField.FieldHints(null, "date", null, null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertTrue(component.get("multiple").asBoolean());
+            assertEquals("calendar", component.get("widget").get("type").asText());
+        }
+
+        @Test
+        void dateFormatEnum_staysASelectWithoutACalendar() {
+            // The schema names the dates that are allowed; a calendar would offer every other one.
+            TemplateField field = scalar("ingang", "string",
+                    new TemplateField.FieldHints(null, "date", List.of("2026-01-01", "2026-07-01"), null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("select", component.get("type").asText());
+            assertFalse(component.has("widget"));
+        }
+
+        @Test
+        void dateTimeFormat_isADatetimeComponentOnA24HourClock() {
+            // Its stored ISO timestamp is exactly what "format": "date-time" asks for.
+            TemplateField field = scalar("moment", "string",
+                    new TemplateField.FieldHints(null, "date-time", null, null));
+
+            ObjectNode component = (ObjectNode) generator.generateForm(List.of(field), Map.of())
+                    .get("components").get(0);
+
+            assertEquals("datetime", component.get("type").asText());
+            assertTrue(component.get("enableDate").asBoolean());
+            assertTrue(component.get("enableTime").asBoolean());
+            assertFalse(component.get("timePicker").get("showMeridian").asBoolean());
+            assertEquals("dd-MM-yyyy HH:mm", component.get("format").asText());
+            assertFalse(component.has("placeholder"));
         }
 
         @Test

@@ -34,8 +34,9 @@ import java.util.Map;
  * Each TemplateField is converted to the appropriate Formio component type:
  * <ul>
  *   <li>SCALAR with schema {@code enum}/{@code const} → select of exactly those values</li>
- *   <li>SCALAR string → textfield (email format → email; date formats keep an explicit placeholder)</li>
- *   <li>SCALAR number/integer → number</li>
+ *   <li>SCALAR string → textfield (email format → email; date → textfield with a calendar that
+ *       stores {@code yyyy-MM-dd}; date-time → datetime)</li>
+ *   <li>SCALAR number/integer → number (integer without decimals)</li>
  *   <li>SCALAR boolean → checkbox</li>
  *   <li>OBJECT → fieldset with nested components</li>
  *   <li>SCALAR typed {@code array} (array of scalars) → one input with {@code multiple}</li>
@@ -45,6 +46,12 @@ import java.util.Map;
  */
 @RequiredArgsConstructor
 public class FormioFormGenerator {
+
+    /** How a {@code "format": "date"} value is stored: what the schema accepts. */
+    private static final String DATE_VALUE_FORMAT = "yyyy-MM-dd";
+    /** How a date is shown and typed. */
+    private static final String DATE_DISPLAY_FORMAT = "dd-MM-yyyy";
+    private static final String DATE_TIME_DISPLAY_FORMAT = "dd-MM-yyyy HH:mm";
 
     private final ObjectMapper objectMapper;
 
@@ -92,6 +99,10 @@ public class FormioFormGenerator {
         component.put("label", labelOf(field));
         component.put("input", true);
 
+        if (!constrained) {
+            applyInputShape(component, field, hints);
+        }
+
         if (constrained) {
             // The schema constrains this field to a set of values, so offer exactly those rather
             // than a free-text box the backend would reject on submit.
@@ -115,9 +126,8 @@ public class FormioFormGenerator {
             component.put("placeholder", placeholder);
         }
 
-        // The example again, named rather than inferred from the placeholder, because a placeholder
-        // may be a format shape ("YYYY-MM-DD") instead — a description of how a value is written,
-        // which is not an example of one and should not be offered as if it were.
+        // The example again, named rather than inferred from the placeholder, so that the
+        // validation message offering it does not depend on what the placeholder happens to hold.
         if (hints != null && hints.example() != null) {
             component.put("epistolaExample", hints.example());
         }
@@ -250,28 +260,48 @@ public class FormioFormGenerator {
     }
 
     /**
-     * A date is rendered as a text field with an explicit placeholder rather than Formio's date
-     * picker: the picker emits a full ISO timestamp, which a schema with {@code "format": "date"}
-     * rejects.
+     * Shape the input to the value the schema expects, beyond what the component type says.
+     *
+     * <p>A {@code "format": "date"} field is a text field with a calendar attached rather than
+     * Formio's {@code datetime} component, which always stores a full ISO timestamp — and a schema
+     * asking for a date rejects one. The calendar widget with {@code saveAs: text} keeps the stored
+     * value exactly {@code yyyy-MM-dd}, while the employee picks or types a day as they would write
+     * it. A date-time has no such problem: the {@code datetime} component's timestamp is what the
+     * schema asks for.
+     */
+    private void applyInputShape(ObjectNode component, TemplateField field, TemplateField.FieldHints hints) {
+        if ("integer".equalsIgnoreCase(field.type())) {
+            component.put("decimalLimit", 0);
+            component.put("requireDecimal", false);
+        }
+        String format = hints != null ? hints.format() : null;
+        if ("date".equals(format)) {
+            ObjectNode widget = component.putObject("widget");
+            widget.put("type", "calendar");
+            widget.put("saveAs", "text");
+            widget.put("dateFormat", DATE_VALUE_FORMAT);
+            widget.put("format", DATE_DISPLAY_FORMAT);
+            widget.put("enableDate", true);
+            widget.put("enableTime", false);
+            widget.put("allowInput", true);
+            widget.put("altInput", true);
+        } else if ("date-time".equals(format)) {
+            component.put("format", DATE_TIME_DISPLAY_FORMAT);
+            component.put("enableDate", true);
+            component.put("enableTime", true);
+            component.put("allowInput", true);
+            // The datetime component builds its own calendar from these, so a 24-hour clock is
+            // asked for here rather than on a widget it would overwrite.
+            component.putObject("timePicker").put("showMeridian", false);
+        }
+    }
+
+    /**
+     * An authored example, the only placeholder worth showing: a date or date-time already says
+     * how it is written through its picker.
      */
     private String placeholderFor(TemplateField.FieldHints hints) {
-        if (hints == null) {
-            return null;
-        }
-        // An authored example beats a shape: it is a value for this field, in the letter's own
-        // vocabulary, and the employee can read it straight back into the box. The format shapes
-        // below only say how a value is written.
-        if (hints.example() != null) {
-            return hints.example();
-        }
-        if (hints.format() == null) {
-            return null;
-        }
-        return switch (hints.format()) {
-            case "date" -> "YYYY-MM-DD";
-            case "date-time" -> "YYYY-MM-DDTHH:MM:SSZ";
-            default -> null;
-        };
+        return hints != null ? hints.example() : null;
     }
 
     /**
@@ -341,6 +371,9 @@ public class FormioFormGenerator {
     private String mapScalarType(String jsonSchemaType, TemplateField.FieldHints hints) {
         if (hints != null && "email".equals(hints.format())) {
             return "email";
+        }
+        if (hints != null && "date-time".equals(hints.format())) {
+            return "datetime";
         }
         if (jsonSchemaType == null) {
             return "textfield";

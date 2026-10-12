@@ -28,6 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   outside. A check that cried wolf would cost more than the silence it replaced. For the same
   reason a failed lookup shows nothing rather than claiming there is no reader.
 
+- **Date fields get a calendar.** In the letter composer and the retry form, a contract field with
+  `"format": "date"` is a text field with a date picker: it shows and accepts `dd-MM-yyyy` and still
+  stores exactly `yyyy-MM-dd`, the value the contract asks for. A `"format": "date-time"` field is a
+  date-time picker on a 24-hour clock. Both used to be plain text fields with a format placeholder.
+  An `integer` field no longer accepts decimals.
+
 ### Changed
 
 - **The security policy lives at the repository root and matches Epistola Suite's.** `SECURITY.md`

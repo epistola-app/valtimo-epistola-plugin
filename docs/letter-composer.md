@@ -409,15 +409,15 @@ Two limits apply to all three:
 The inputs are generated from the template's data contract, so what the contract says decides what
 the employee sees:
 
-| In the contract      | Generated input                                                                                                                                                                                                                |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `enum` / `const`     | `select` of exactly those values                                                                                                                                                                                               |
-| `string`             | text field — `format: email` gives an email field; `format: date`/`date-time` give a text field with an explicit placeholder, because Formio's date picker emits a full ISO timestamp that a `"format": "date"` schema rejects |
-| `number` / `integer` | number field                                                                                                                                                                                                                   |
-| `boolean`            | checkbox                                                                                                                                                                                                                       |
-| `array` of scalars   | one input with `multiple`                                                                                                                                                                                                      |
-| `array` of objects   | datagrid, one column per item field                                                                                                                                                                                            |
-| `object`             | fieldset, one input per property, nested                                                                                                                                                                                       |
+| In the contract      | Generated input                                                                                                                                                                                                                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `enum` / `const`     | `select` of exactly those values                                                                                                                                                                                                                                                      |
+| `string`             | text field — `format: email` gives an email field; `format: date` a text field with a calendar that shows `dd-MM-yyyy` and stores `yyyy-MM-dd` (Formio's `datetime` component would store a full timestamp, which `"format": "date"` rejects); `format: date-time` a date-time picker |
+| `number` / `integer` | number field; an `integer` takes no decimals                                                                                                                                                                                                                                          |
+| `boolean`            | checkbox                                                                                                                                                                                                                                                                              |
+| `array` of scalars   | one input with `multiple`                                                                                                                                                                                                                                                             |
+| `array` of objects   | datagrid, one column per item field                                                                                                                                                                                                                                                   |
+| `object`             | fieldset, one input per property, nested                                                                                                                                                                                                                                              |
 
 **The contract's rules reach the input.** `required` and `enum` do the obvious thing, and
 `minLength`, `maxLength`, `pattern`, `minimum`, `maximum`, `minItems` and `maxItems` are carried
@@ -663,16 +663,17 @@ See also [authorization.md](authorization.md).
 
 Generated inputs follow the template's data contract:
 
-| In the contract                    | Input                                                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `enum` / `const`                   | a select of exactly those values                                                                                          |
-| `title`                            | the field's label (beats a humanized property name)                                                                       |
-| `description`                      | the tooltip                                                                                                               |
-| `default`                          | prefills an empty field                                                                                                   |
-| `"format": "email"`                | an email component                                                                                                        |
-| `"format": "date"` / `"date-time"` | a text field with an explicit placeholder — Formio's date picker emits a full timestamp, which `"format": "date"` rejects |
-| array of scalars                   | one repeating input                                                                                                       |
-| array of objects                   | a datagrid                                                                                                                |
+| In the contract         | Input                                                                                                          |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `enum` / `const`        | a select of exactly those values                                                                               |
+| `title`                 | the field's label (beats a humanized property name)                                                            |
+| `description`           | the tooltip                                                                                                    |
+| `default`               | prefills an empty field                                                                                        |
+| `"format": "email"`     | an email component                                                                                             |
+| `"format": "date"`      | a calendar that stores `yyyy-MM-dd` — not Formio's `datetime`, whose full timestamp `"format": "date"` rejects |
+| `"format": "date-time"` | a date-time picker on a 24-hour clock                                                                          |
+| array of scalars        | one repeating input                                                                                            |
+| array of objects        | a datagrid                                                                                                     |
 
 So the first place to fix "this should be a dropdown" is the template's contract in Epistola, where
 every integration benefits — not just Valtimo.
