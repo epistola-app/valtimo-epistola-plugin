@@ -63,6 +63,13 @@ class RichTextConverterTest {
     class Configuration {
 
         @Test
+        void readsAndAsksForHtmlUnlessConfiguredOtherwise() {
+            // What Valtimo's WYSIWYG text areas and the generated editors write.
+            assertThat(new app.epistola.valtimo.config.EpistolaProperties().getRichText().getDefaultFormat())
+                    .isEqualTo(HtmlFormat.ID);
+        }
+
+        @Test
         void refusesADefaultNoFormatHas() {
             assertThatThrownBy(() -> new RichTextConverter(shipped(), "rtf"))
                     .isInstanceOf(IllegalStateException.class)

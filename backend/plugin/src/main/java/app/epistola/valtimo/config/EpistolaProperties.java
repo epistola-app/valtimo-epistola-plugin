@@ -48,14 +48,16 @@ public class EpistolaProperties {
     public static class RichText {
 
         /**
-         * The format a case keeps rich text in, used to read a string mapped onto an Epistola
+         * The format rich text is typed and kept in, used to read a string mapped onto an Epistola
          * rich-text field and to pick the editor a person types one in. One of the shipped formats
-         * ({@code plain}, {@code html}, {@code markdown}, {@code prosemirror}) or the id of an
-         * installation's own {@code RichTextFormat} bean. A field in another format names it in the
-         * mapping instead: {@code $richText($doc.x, "markdown")}. Defaults to {@code plain}, the one
-         * format that never invents formatting. See ADR 0008.
+         * ({@code html}, {@code plain}, {@code markdown}, {@code prosemirror}) or the id of an
+         * installation's own {@code RichTextFormat} bean. Defaults to {@code html}: what Valtimo's
+         * WYSIWYG text areas write, and what the generated editors write. A field in another
+         * format names it in the mapping instead — {@code $richText($doc.x, "plain")} for a plain
+         * text area, whose line breaks HTML would collapse. Changing it reinterprets text already
+         * stored, so treat it like a schema change. See ADR 0008.
          */
-        private String defaultFormat = "plain";
+        private String defaultFormat = "html";
     }
 
     @Data
