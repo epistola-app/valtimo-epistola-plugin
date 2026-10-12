@@ -90,13 +90,6 @@ spring:
     exclude:
       - org.springframework.boot.actuate.autoconfigure.metrics.web.tomcat.TomcatMetricsAutoConfiguration
       - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
-      # Valtimo's local resource module is a placeholder: LocalResourceService.store throws
-      # NotImplementedError and LocalResource's download endpoint answers 204, so a case worker
-      # clicking a file gets nothing. The demo replaces both (see DemoDocumentStorageConfiguration)
-      # and has to exclude this, because its @ConditionalOnMissingBean names the concrete
-      # LocalResourceService / LocalResource classes rather than the interfaces — another
-      # implementation does not satisfy it, and both beans would map the same request paths.
-      - com.ritense.resource.autoconfigure.LocalResourceAutoConfiguration
   rabbitmq:
     ssl.enabled: true
     host: ${SPRING_RABBITMQ_HOST}

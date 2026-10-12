@@ -20,13 +20,28 @@
 
 package com.ritense.valtimo
 
+import com.ritense.resource.autoconfigure.LocalResourceAutoConfiguration
 import io.github.oshai.kotlinlogging.KotlinLogging
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.core.env.Environment
 import java.net.InetAddress
 
-@SpringBootApplication
+/**
+ * Excludes Valtimo's local resource module, which the demo replaces.
+ *
+ * `LocalResourceService.store` throws `NotImplementedError` and `LocalResource`'s download endpoint
+ * answers 204, so a case worker clicking a file gets nothing; the demo stores files itself (see
+ * `DemoDocumentStorageConfiguration`) and has to keep Valtimo's beans out, because their
+ * `@ConditionalOnMissingBean` names their own concrete classes and both would map the same request
+ * paths.
+ *
+ * Here rather than in `spring.autoconfigure.exclude`, where it was first put and silently lost: a
+ * profile-specific list *replaces* the base one, so activating `authentik` — which has its own
+ * exclusions — brought the placeholder back and the context failed with two `ResourceService`
+ * beans. An annotation cannot be dropped by a profile.
+ */
+@SpringBootApplication(exclude = [LocalResourceAutoConfiguration::class])
 class Application
 
 fun main(args: Array<String>) {
