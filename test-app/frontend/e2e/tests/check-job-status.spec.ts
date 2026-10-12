@@ -42,7 +42,10 @@ test.describe('Check Job Status action configuration', () => {
       /Controleer Taakstatus|Check Job Status/i,
       /Download Document/i,
       /Genereer Document|Generate Document/i,
-      /Genereer Gekozen Brief|Generate Chosen Letter/i,
+      // Renamed in #181, when the action stopped being about a composed letter and became one that
+      // renders any document a process prepared. This assertion kept the old label and failed the
+      // nightly browser run for five nights — the suites do not run on pull requests.
+      /Genereer Dynamisch Document|Generate Dynamic Document/i,
     ]) {
       await expect(processLinks.actionTile(action)).toBeVisible({ timeout: 15_000 });
     }
