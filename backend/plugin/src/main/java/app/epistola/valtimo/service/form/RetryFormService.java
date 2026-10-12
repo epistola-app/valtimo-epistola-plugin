@@ -18,6 +18,7 @@
 package app.epistola.valtimo.service.form;
 
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfigurationRegistry;
+import app.epistola.valtimo.logging.Failures;
 import app.epistola.valtimo.service.EpistolaService;
 
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
@@ -275,7 +276,7 @@ public class RetryFormService {
             log.warn("Document not found: {}", documentId);
             return Map.of();
         } catch (Exception e) {
-            log.warn("Failed to load document content for {}: {}", documentId, e.getMessage());
+            log.warn("Failed to load document content for {} ({})", documentId, Failures.describe(e));
             return Map.of();
         }
     }

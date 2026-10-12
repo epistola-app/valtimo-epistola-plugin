@@ -26,6 +26,7 @@ import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
 import app.epistola.valtimo.domain.DynamicDocument;
 import app.epistola.valtimo.domain.GenerationJobDetail;
+import app.epistola.valtimo.logging.Failures;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
@@ -745,7 +746,7 @@ public class EpistolaPlugin {
             log.warn("Document not found: {}", documentId);
             return Map.of();
         } catch (Exception e) {
-            log.warn("Failed to load document content for {}: {}", documentId, e.getMessage());
+            log.warn("Failed to load document content for {} ({})", documentId, Failures.describe(e));
             return Map.of();
         }
     }

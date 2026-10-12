@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.composer;
 
+import app.epistola.valtimo.logging.Failures;
 import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -160,7 +161,7 @@ public class ComposerWriteBackService {
             // author can fix, while this branch is reached only by something unexpected — reading
             // the case or its forms failed. Nothing else in this path will have logged it.
             log.error("Letter composer write-back could not run for case {} ({})",
-                    documentId, describe(e));
+                    documentId, Failures.describe(e));
             throw new ComposerWriteBackException(
                     "The letter's values could not be saved on the case: its configuration could "
                             + "not be read. The submission was not completed.");
@@ -218,7 +219,7 @@ public class ComposerWriteBackService {
             // until the move to submission time, when nothing could be done about it anyway — is
             // the silent failure the move was meant to end.
             log.warn("Letter composer write-back could not read the letter on case {} ({})",
-                    documentId, describe(e));
+                    documentId, Failures.describe(e));
             throw new ComposerWriteBackException(
                     "The letter's values could not be saved on the case: the composed letter could "
                             + "not be read. The submission was not completed.");
@@ -335,18 +336,6 @@ public class ComposerWriteBackService {
      * quotes the value it rejected — Valtimo's reads {@code Failed to handle values … Values:
      * {/besluit/x=gegrond}} — and a letter's values are case data.
      */
-    private static String describe(Throwable cause) {
-        if (cause == null) {
-            return "unknown cause";
-        }
-        Throwable root = cause;
-        while (root.getCause() != null && root.getCause() != root) {
-            root = root.getCause();
-        }
-        return root == cause
-                ? cause.getClass().getSimpleName()
-                : cause.getClass().getSimpleName() + " caused by " + root.getClass().getSimpleName();
-    }
 
     /**
      * The failure to raise when a destination would not accept its value.
@@ -373,7 +362,7 @@ public class ComposerWriteBackService {
         // declare — a form to fix, not an incident — and ERROR on a path any misconfigured form can
         // reach is how an operator learns to ignore ERROR.
         log.warn("Letter composer write-back could not write {} to case {} ({})",
-                what, documentId, describe(cause));
+                what, documentId, Failures.describe(cause));
         return new ComposerWriteBackException(
                 "The letter's values could not be saved on the case: " + what
                         + " was refused. The submission was not completed.");
@@ -497,7 +486,7 @@ public class ComposerWriteBackService {
                 // this moved to submission time to end. The expression is named — it is the
                 // author's own text, not case data — and the cause is attached rather than quoted.
                 log.warn("Letter composer write-back rule for '{}' on case {} could not be "
-                        + "evaluated ({})", destination, documentId, describe(e));
+                        + "evaluated ({})", destination, documentId, Failures.describe(e));
                 throw new ComposerWriteBackException(
                         "The letter's values could not be saved on the case: the rule for "
                                 + destination + " could not be evaluated. The submission was not "
@@ -536,7 +525,7 @@ public class ComposerWriteBackService {
             // Returning null for a document that genuinely is not there stays as it was; nothing
             // can be written to a case that does not exist.
             log.warn("Letter composer write-back could not read case {} ({})",
-                    documentId, describe(e));
+                    documentId, Failures.describe(e));
             throw new ComposerWriteBackException(
                     "The letter's values could not be saved on the case: the case could not be "
                             + "read. The submission was not completed.");

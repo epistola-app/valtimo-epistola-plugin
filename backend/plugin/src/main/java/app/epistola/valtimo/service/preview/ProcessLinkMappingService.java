@@ -18,6 +18,7 @@
 package app.epistola.valtimo.service.preview;
 
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfigurationRegistry;
+import app.epistola.valtimo.logging.Failures;
 import com.ritense.plugin.domain.PluginProcessLink;
 import com.ritense.processlink.service.ProcessLinkService;
 import lombok.RequiredArgsConstructor;
@@ -77,8 +78,8 @@ public class ProcessLinkMappingService {
 
             return GenerateDocumentActionConfigurationRegistry.parse(link.getActionProperties()).dataMapping();
         } catch (Exception e) {
-            log.warn("Failed to resolve dataMapping for {}/{}: {}",
-                    processDefinitionKey, activityId, e.getMessage());
+            log.warn("Failed to resolve dataMapping for {}/{} ({})",
+                    processDefinitionKey, activityId, Failures.describe(e));
             return "";
         }
     }

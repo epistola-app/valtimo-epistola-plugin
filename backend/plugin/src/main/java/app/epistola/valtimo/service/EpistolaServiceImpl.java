@@ -29,6 +29,7 @@ import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
+import app.epistola.valtimo.logging.Failures;
 import app.epistola.valtimo.schema.JsonSchemaMappingAnalyzer;
 import app.epistola.client.api.AttributesApi;
 import app.epistola.client.api.CatalogsApi;
@@ -358,7 +359,7 @@ public class EpistolaServiceImpl implements EpistolaService {
                     .status(response.getStatus().getValue())
                     .build();
         } catch (Exception e) {
-            log.error("Failed to submit document generation request: {}", e.getMessage());
+            log.error("Failed to submit document generation request ({})", Failures.describe(e));
             throw new EpistolaApiException("Failed to submit document generation request", e);
         }
     }
@@ -507,11 +508,11 @@ public class EpistolaServiceImpl implements EpistolaService {
         } catch (EpistolaApiException e) {
             throw e;
         } catch (RestClientResponseException e) {
-            log.debug("Preview API error for tenant {}: {} {}", tenantId, e.getStatusCode(), e.getResponseBodyAsString());
+            log.debug("Preview API error for tenant {}: {}", tenantId, e.getStatusCode());
             throw toApiException("Failed to preview document", e);
         } catch (Exception e) {
-            log.debug("Failed to preview document for tenant {}: {}", tenantId, e.getMessage());
-            throw new EpistolaApiException("Failed to preview document: " + e.getMessage(), e);
+            log.debug("Failed to preview document for tenant {} ({})", tenantId, Failures.describe(e));
+            throw new EpistolaApiException("Failed to preview document", e);
         }
     }
 

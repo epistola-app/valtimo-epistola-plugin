@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.composer;
 
+import app.epistola.valtimo.logging.Failures;
 import com.ritense.form.domain.FormIoFormDefinition;
 import com.ritense.form.domain.FormProcessLink;
 import com.ritense.form.repository.FormDefinitionRepository;
@@ -285,7 +286,7 @@ public class ComposerConfigurationResolver {
             } catch (RuntimeException e) {
                 log.warn("Could not read form '{}' on case type '{}' while looking for letter "
                                 + "composers; its composers are ignored: {}",
-                        form.getName(), caseDefinitionKey, e.getMessage());
+                        form.getName(), caseDefinitionKey, Failures.describe(e));
             }
         }
         return configurations;

@@ -19,6 +19,7 @@ package app.epistola.valtimo.composer;
 
 import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateField;
+import app.epistola.valtimo.logging.Failures;
 import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.mapping.MapMerge;
@@ -149,6 +150,10 @@ public class LetterComposerService {
             throw e;
         } catch (RuntimeException e) {
             throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                    // Shown to the employee composing the letter, who is authorized on this
+                    // case: a JSONata failure quotes the data it was evaluating, and that data is
+                    // the case's own. It must not reach a log — EpistolaComposerResource logs the
+                    // reason and the failure's type, never this message.
                     "The letter composer's mapping could not be evaluated for '" + templateId
                             + "': " + e.getMessage(), e);
         }
@@ -337,7 +342,8 @@ public class LetterComposerService {
             }
             return objectMapper.convertValue(document.get().content().asJson(), Map.class);
         } catch (Exception e) {
-            log.warn("Could not load case document {} while composing a letter: {}", documentId, e.getMessage());
+            log.warn("Could not load case document {} while composing a letter ({})", documentId,
+                    Failures.describe(e));
             return Map.of();
         }
     }
