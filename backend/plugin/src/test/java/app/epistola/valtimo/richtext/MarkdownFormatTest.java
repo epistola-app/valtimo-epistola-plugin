@@ -66,7 +66,7 @@ class MarkdownFormatTest {
         assertThat(convert("**vet** *schuin* _ook schuin_ __ook vet__ ~~weg~~ ***beide***"))
                 .isEqualTo(doc(p(text("vet", STRONG), text(" "), text("schuin", EM), text(" "),
                         text("ook schuin", EM), text(" "), text("ook vet", STRONG), text(" "),
-                        text("weg", STRIKE), text(" "), text("beide", STRONG, EM))));
+                        text("weg", STRIKE), text(" "), text("beide", EM, STRONG))));
     }
 
     @Test
@@ -84,7 +84,8 @@ class MarkdownFormatTest {
     @Test
     void readsLinks() {
         assertThat(convert("[site](https://epistola.app \"titel\") <https://x.nl> <a@b.nl> [kwaad](javascript:x)"))
-                .isEqualTo(doc(p(text("site", link("https://epistola.app")), text(" "),
+                .isEqualTo(doc(p(text("site", Map.of("type", "link",
+                                "attrs", Map.of("href", "https://epistola.app", "title", "titel"))), text(" "),
                         text("https://x.nl", link("https://x.nl")), text(" "),
                         text("a@b.nl", link("mailto:a@b.nl")), text(" kwaad"))));
     }
@@ -122,6 +123,23 @@ class MarkdownFormatTest {
         assertThat(convert(markdown)).isEqualTo(doc(
                 p(text("Besluit")), p(text("geciteerd")), p(text("code hier")),
                 p(text("regel *1*"), BREAK, text("regel 2"))));
+    }
+
+    @Test
+    void readsWhatTheFullSpecAllows_setextHeadingsAndReferenceLinks() {
+        String markdown = "Besluit\n=======\n\nZie [de site][site] en *nadruk met `code`*.\n\n[site]: https://epistola.app";
+
+        assertThat(convert(markdown)).isEqualTo(doc(
+                p(text("Besluit")),
+                p(text("Zie "), text("de site", link("https://epistola.app")), text(" en "),
+                        text("nadruk met code", EM), text("."))));
+    }
+
+    @Test
+    void appliesCommonMarksEmphasisRules() {
+        // Intraword underscores are not emphasis; intraword asterisks are.
+        assertThat(convert("snake_case_naam en be**na**druk"))
+                .isEqualTo(doc(p(text("snake_case_naam en be"), text("na", STRONG), text("druk"))));
     }
 
     @Test

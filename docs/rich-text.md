@@ -53,7 +53,7 @@ epistola:
 | ------------- | --------------------------------------------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `plain`       | text; a blank line separates paragraphs                   | paragraphs, line breaks                                                          | — (there is no formatting to lose)                                                             |
 | `html`        | what Quill (1 and 2) and CKEditor write, and similar HTML | everything the schema allows, as elements or as inline `style`                   | headings and table cells (become paragraphs), images, scripts, other styles                    |
-| `markdown`    | the common CommonMark subset                              | paragraphs, hard breaks, nested lists, `**strong**`, `*em*`, `~~strike~~`, links | underline, sub/superscript and colour (no syntax); headings, quotes and code become paragraphs |
+| `markdown`    | CommonMark, plus GFM strikethrough                        | paragraphs, hard breaks, nested lists, `**strong**`, `*em*`, `~~strike~~`, links | underline, sub/superscript and colour (no syntax); headings, quotes and code become paragraphs |
 | `prosemirror` | a document, as an object or JSON text                     | everything the schema allows                                                     | nodes and marks outside the schema                                                             |
 
 Whatever a format produces is checked against Epistola's schema, and whatever the schema does not

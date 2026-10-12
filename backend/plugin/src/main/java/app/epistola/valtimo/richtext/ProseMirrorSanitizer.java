@@ -51,6 +51,14 @@ public final class ProseMirrorSanitizer {
     private static final Set<String> LIST_STYLES = Set.of("disc", "circle", "square", "dash");
     private static final Set<String> LIST_TYPES =
             Set.of("decimal", "lower-alpha", "upper-alpha", "lower-roman", "upper-roman");
+    /**
+     * The order Epistola's editor keeps marks in: prosemirror-schema-basic's (link, em, strong),
+     * then its own, with the data-only {@code textStyle} last. ProseMirror sorts a node's marks by
+     * schema rank, so writing them in that order makes the same formatting the same document,
+     * however the source happened to nest it ({@code <b><i>} or {@code <i><b>}).
+     */
+    private static final List<String> MARK_ORDER = List.of(
+            "link", "em", "strong", "underline", "strikethrough", "subscript", "superscript", "textStyle");
 
     private ProseMirrorSanitizer() {
     }
@@ -330,6 +338,7 @@ public final class ProseMirrorSanitizer {
                     marks.add(sanitized);
                 }
             }
+            marks.sort(java.util.Comparator.comparingInt(mark -> MARK_ORDER.indexOf(mark.get("type"))));
             return marks;
         }
 

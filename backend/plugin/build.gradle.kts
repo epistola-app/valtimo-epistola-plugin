@@ -68,6 +68,14 @@ dependencies {
     // Left unshaded: a stable Jackson module whose version the host's Spring Boot BOM manages.
     implementation(libs.jackson.dataformat.yaml)
 
+    // Rich text (ADR 0008): parsing HTML and markdown. Both pure Java with no dependencies of their
+    // own. Deliberately not shaded: shading is for a clash we have seen (json-schema-validator), and
+    // a shaded copy would hide these from the host's vulnerability scanning and patching. jsoup is
+    // already on Valtimo's classpath through Tika, and resolves to this version there.
+    implementation(libs.jsoup)
+    implementation(libs.commonmark)
+    implementation(libs.commonmark.ext.strikethrough)
+
     // Valtimo dependencies (compileOnly - provided by implementing application)
     compileOnly(libs.valtimo.core)
     compileOnly(libs.valtimo.contract)

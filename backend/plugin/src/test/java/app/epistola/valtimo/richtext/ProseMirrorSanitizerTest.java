@@ -68,8 +68,9 @@ class ProseMirrorSanitizerTest {
                         Map.of("type", "listItem", "content", List.of(paragraph(text("y"))))))),
                 RichTextKind.BLOCK);
 
+        // In the editor's mark order (em before strong), whatever order they came in.
         assertThat(result).isEqualTo(doc(
-                paragraph(text("x", Map.of("type", "strong"), Map.of("type", "em"), Map.of("type", "strikethrough")),
+                paragraph(text("x", Map.of("type", "em"), Map.of("type", "strong"), Map.of("type", "strikethrough")),
                         Map.of("type", "hard_break")),
                 Map.of("type", "bullet_list", "content", List.of(
                         Map.of("type", "list_item", "content", List.of(paragraph(text("y"))))))));

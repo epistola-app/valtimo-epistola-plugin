@@ -163,7 +163,8 @@ docker/            # Docker compose for local dependencies
     against copies of Epistola's schemas in `src/test/resources/richtext/`; refresh those when the
     pinned contract changes them.
 
-  The HTML and markdown readers are the plugin's own, so it carries no parser dependency.
+  Parsing is jsoup (HTML) and commonmark-java (markdown), plain dependencies, deliberately not
+  shaded (ADR 0008 says why). The plugin only walks their trees.
 
 - **Feature toggle**: The plugin can be disabled per environment from a single build artifact.
   - **Backend**: `epistola.enabled=false` (Spring property, defaults to `true`). Disables auto-configuration — no beans, no endpoints, no result collector, and no catch-event auto-wiring (the engine SPI is never registered). Verified by `EpistolaCatchEventAutoWiringConfigTest`.

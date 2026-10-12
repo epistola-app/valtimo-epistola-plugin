@@ -44,7 +44,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     template and the kinds lost (`heading ×1, table ×1`), never the text; a preview logs it at
     debug.
 
-  No new dependencies: the HTML and markdown readers are small ones of the plugin's own.
+  HTML is parsed with jsoup and markdown with commonmark-java, both new dependencies (pure Java,
+  none of their own). They are not shaded. jsoup is already on Valtimo's classpath through Tika,
+  which now resolves to the plugin's version.
 
 - **The letter composer's configurator now says which generate tasks read the letter it stores.**
   A composer puts its chosen letter on a process variable and one generate task reads one variable;

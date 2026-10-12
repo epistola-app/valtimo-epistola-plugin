@@ -106,7 +106,7 @@ class HtmlFormatTest {
                 + "alles</span> <font color=\"#00F\">blauw</font> <span style=\"vertical-align: super\">hoog</span></p>";
 
         assertThat(convert(html)).isEqualTo(doc(p(
-                text("alles", STRONG, EM, UNDERLINE, STRIKE), text(" "), text("blauw", color("#00f")),
+                text("alles", EM, STRONG, UNDERLINE, STRIKE), text(" "), text("blauw", color("#00f")),
                 text(" "), text("hoog", SUP))));
     }
 
@@ -137,8 +137,9 @@ class HtmlFormatTest {
 
     @Test
     void resolvesCharacterReferences() {
-        assertThat(convert("<p>&lt;geen tag&gt; &amp; &eacute;&#233;&#xE9; &euro; &onbekend; a &lt b</p>"))
-                .isEqualTo(doc(p(text("<geen tag> & ééé € &onbekend; a &lt b"))));
+        // HTML5 rules: "&lt" without its semicolon is one of the legacy references browsers resolve.
+        assertThat(convert("<p>&lt;geen tag&gt; &amp; &eacute;&#233;&#xE9; &euro; &onbekend; a &lt b &hearts;</p>"))
+                .isEqualTo(doc(p(text("<geen tag> & ééé € &onbekend; a < b \u2665"))));
     }
 
     @Test
@@ -148,6 +149,22 @@ class HtmlFormatTest {
         Map<String, Object> result = convert(html);
 
         assertThat(result.get("content")).asList().hasSizeGreaterThanOrEqualTo(2);
+    }
+
+    @Test
+    void readsWhatWordPastes() {
+        // Office markup: conditional comments, namespaced tags, an unclosed paragraph, mso styles.
+        String html = "<!--[if gte mso 9]><xml><o:OfficeDocumentSettings/></xml><![endif]-->"
+                + "<p class=MsoNormal><b><span style='mso-bidi-font-weight:normal'>Geachte heer</span></b>,<o:p></o:p>"
+                + "<p class=MsoNormal>tweede alinea";
+
+        assertThat(convert(html)).isEqualTo(doc(p(text("Geachte heer", STRONG), text(",")), p(text("tweede alinea"))));
+    }
+
+    @Test
+    void readsMisnestedTagsTheWayABrowserDoes() {
+        assertThat(convert("<p><b>vet <i>beide</b> schuin</i></p>"))
+                .isEqualTo(doc(p(text("vet ", STRONG), text("beide", EM, STRONG), text(" schuin", EM))));
     }
 
     @Test

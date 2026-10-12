@@ -18,10 +18,10 @@
 package app.epistola.valtimo.richtext;
 
 import app.epistola.valtimo.domain.TemplateField;
-import app.epistola.valtimo.richtext.HtmlTokenizer.EndTag;
-import app.epistola.valtimo.richtext.HtmlTokenizer.StartTag;
-import app.epistola.valtimo.richtext.HtmlTokenizer.Text;
-import app.epistola.valtimo.richtext.HtmlTokenizer.Token;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Node;
+import org.jsoup.nodes.TextNode;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -38,11 +38,16 @@ import java.util.regex.Pattern;
  * HTML, as a Form.io WYSIWYG text area (CKEditor or Quill) writes it and as Valtimo case documents
  * filled by one already hold.
  *
+ * <p>Parsed with jsoup, which follows the HTML5 parsing rules — the ones that decide what pasted
+ * Word or Outlook markup, unclosed paragraphs and misnested tags mean — and knows every named
+ * character reference. This class only walks the result.
+ *
  * <p>What the schema can carry is kept: paragraphs, line breaks, nested lists, bold, italic,
  * underline, strikethrough, sub- and superscript, links and text colour — whether written as
- * elements or as inline {@code style}. Everything else keeps its text and loses its form: a heading
- * or a table cell becomes a paragraph; images, scripts and styles are dropped. Quill 2's flat lists
- * ({@code <ol><li data-list="bullet" class="ql-indent-1">}) are rebuilt into nested ones.
+ * elements or as inline {@code style}. Everything else keeps its text and loses its form, and is
+ * recorded as lost: a heading or a table cell becomes a paragraph; images, scripts and styles are
+ * dropped. Quill's flat lists ({@code <ol><li data-list="bullet" class="ql-indent-1">}) are rebuilt
+ * into nested ones.
  */
 public class HtmlFormat implements RichTextFormat {
 
@@ -53,12 +58,9 @@ public class HtmlFormat implements RichTextFormat {
             "header", "footer", "main", "nav", "aside", "address", "figure", "figcaption", "table", "thead",
             "tbody", "tfoot", "tr", "td", "th", "caption", "dl", "dt", "dd", "hr", "center", "form",
             "fieldset", "legend", "details", "summary");
-    private static final Set<String> VOID = Set.of(
-            "br", "img", "hr", "input", "meta", "link", "wbr", "col", "area", "base", "embed", "source",
-            "track", "param");
     private static final Set<String> SKIPPED = Set.of(
-            "script", "style", "head", "title", "template", "noscript", "iframe", "object", "svg", "math",
-            "select", "button", "textarea");
+            "script", "style", "head", "title", "template", "noscript", "iframe", "object", "embed", "svg",
+            "math", "select", "button", "textarea", "input");
     private static final Pattern RGB = Pattern.compile(
             "rgba?\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*(?:,\\s*[\\d.]+\\s*)?\\)");
     private static final Pattern HEX = Pattern.compile("#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})");
@@ -92,7 +94,9 @@ public class HtmlFormat implements RichTextFormat {
     @Override
     public Map<String, Object> toProseMirror(Object value, RichTextLosses losses) {
         String html = value == null ? "" : String.valueOf(value);
-        return new Conversion(HtmlTokenizer.tokenize(html), losses).run();
+        Conversion conversion = new Conversion(losses);
+        conversion.children(Jsoup.parseBodyFragment(html).body(), List.of());
+        return conversion.builder.build();
     }
 
     @Override
@@ -132,140 +136,75 @@ public class HtmlFormat implements RichTextFormat {
         return component;
     }
 
-    /** One pass over the tokens. Not reusable: it carries the state of the walk. */
+    /** One walk over a parsed fragment. Not reusable: it carries the state of the walk. */
     private static final class Conversion {
 
-        private record Open(String name, List<Map<String, Object>> marks, boolean quillList, boolean ordered) {
-        }
-
-        private final List<Token> tokens;
         private final RichTextLosses losses;
         private final ProseMirrorBuilder builder = new ProseMirrorBuilder();
-        private final Deque<Open> open = new ArrayDeque<>();
-        /** Per open Quill list container: the ordered flag of each level it has opened. */
-        private final Deque<Deque<Boolean>> quillLevels = new ArrayDeque<>();
-        private String skipping;
         private int preformatted;
 
-        Conversion(List<Token> tokens, RichTextLosses losses) {
-            this.tokens = tokens;
+        Conversion(RichTextLosses losses) {
             this.losses = losses;
         }
 
-        Map<String, Object> run() {
-            for (int i = 0; i < tokens.size(); i++) {
-                Token token = tokens.get(i);
-                if (skipping != null) {
-                    if (token instanceof EndTag end && end.name().equals(skipping)) {
-                        skipping = null;
-                    }
-                    continue;
+        void children(Element parent, List<Map<String, Object>> marks) {
+            for (Node child : parent.childNodes()) {
+                if (child instanceof TextNode text) {
+                    text(text.getWholeText(), marks);
+                } else if (child instanceof Element element) {
+                    element(element, marks);
                 }
-                switch (token) {
-                    case StartTag start -> start(start, i);
-                    case EndTag end -> end(end.name());
-                    case Text text -> text(text.text());
-                }
+                // Comments, and the data of a script or style, are not text of the letter.
             }
-            while (!quillLevels.isEmpty()) {
-                closeQuillList();
-            }
-            return builder.build();
         }
 
-        private void start(StartTag tag, int index) {
-            String name = tag.name();
+        private void element(Element element, List<Map<String, Object>> outer) {
+            String name = element.normalName();
             if (SKIPPED.contains(name)) {
                 recordSkipped(name);
-                if (!tag.selfClosing() && !VOID.contains(name)) {
-                    skipping = name;
-                }
                 return;
             }
-            recordUnrenderable(tag);
+            recordUnrenderable(element);
             if (name.equals("br")) {
                 builder.hardBreak();
                 return;
             }
-            if (BLOCKS.contains(name)) {
+            List<Map<String, Object>> marks = withMarks(outer, element);
+            boolean block = BLOCKS.contains(name);
+            if (block) {
                 builder.endBlock();
-                if (name.equals("pre")) {
-                    preformatted++;
-                }
             }
-            boolean quillList = false;
-            switch (name) {
-                case "ul", "ol" -> {
-                    quillList = isFlatQuillList(index);
-                    if (quillList) {
-                        builder.endBlock();
-                        quillLevels.push(new ArrayDeque<>());
-                    } else {
-                        builder.openList(name.equals("ol"), startOf(tag));
-                    }
-                }
-                case "li" -> {
-                    Open container = innermostList();
-                    if (container != null && container.quillList()) {
-                        quillItem(tag, container.ordered());
-                    } else {
-                        builder.openItem();
-                    }
-                }
-                default -> {
-                }
-            }
-            if (!VOID.contains(name) && !tag.selfClosing()) {
-                open.push(new Open(name, marksOf(tag, losses), quillList, name.equals("ol")));
-            }
-        }
-
-        private void end(String name) {
-            if (VOID.contains(name)) {
-                return;
-            }
-            // Pop to the matching element, tolerating ones left unclosed inside it. An end tag
-            // with no matching start is ignored, as a browser would.
-            if (open.stream().noneMatch(element -> element.name().equals(name))) {
-                return;
-            }
-            Open element;
-            do {
-                element = open.pop();
-            } while (!element.name().equals(name));
-
-            if (BLOCKS.contains(name)) {
-                builder.endBlock();
-                if (name.equals("pre")) {
-                    preformatted = Math.max(0, preformatted - 1);
-                }
+            if (name.equals("pre")) {
+                preformatted++;
             }
             switch (name) {
                 case "ul", "ol" -> {
-                    if (element.quillList()) {
-                        closeQuillList();
+                    if (isFlatQuillList(element)) {
+                        quillList(element, marks);
                     } else {
+                        builder.openList(name.equals("ol"), startOf(element));
+                        children(element, marks);
                         builder.closeList();
                     }
                 }
                 case "li" -> {
-                    Open container = innermostList();
-                    if (container == null || !container.quillList()) {
-                        builder.closeItem();
-                    } else {
-                        // A Quill item stays open: the next, deeper item nests inside it.
-                        builder.endBlock();
-                    }
+                    builder.openItem();
+                    children(element, marks);
+                    builder.closeItem();
                 }
-                default -> {
-                }
+                default -> children(element, marks);
+            }
+            if (name.equals("pre")) {
+                preformatted--;
+            }
+            if (block) {
+                builder.endBlock();
             }
         }
 
-        private void text(String raw) {
+        private void text(String raw, List<Map<String, Object>> marks) {
             // U+FEFF is Quill's cursor placeholder, never part of what was written.
             String text = raw.replace("﻿", "");
-            List<Map<String, Object>> marks = currentMarks();
             if (preformatted > 0) {
                 String[] lines = text.split("\r?\n", -1);
                 for (int i = 0; i < lines.length; i++) {
@@ -282,76 +221,54 @@ public class HtmlFormat implements RichTextFormat {
         /**
          * Quill writes a list flat, giving each item its depth as a {@code ql-indent-N} class —
          * and Quill 2 also its type, as {@code data-list}, inside one {@code <ol>} for every list.
-         * Rebuild the nesting: close levels deeper than this item, switch type at its level if it
-         * differs, open levels down to it, then start the item.
+         * Rebuild the nesting: close levels deeper than an item, switch type at its level if it
+         * differs, open levels down to it, then start the item. An item stays open after its text,
+         * because the next, deeper item nests inside it.
          */
-        private void quillItem(StartTag tag, boolean containerOrdered) {
-            Deque<Boolean> levels = quillLevels.peek();
-            String type = tag.attributes().get("data-list");
-            boolean ordered = type == null ? containerOrdered : "ordered".equals(type);
-            int depth = 1 + quillIndent(tag);
-            while (levels.size() > depth) {
-                builder.closeList();
-                levels.pop();
+        private void quillList(Element container, List<Map<String, Object>> marks) {
+            Deque<Boolean> levels = new ArrayDeque<>();
+            boolean containerOrdered = container.normalName().equals("ol");
+            for (Node child : container.childNodes()) {
+                if (!(child instanceof Element item) || !item.normalName().equals("li")) {
+                    continue;
+                }
+                String type = item.attr("data-list");
+                boolean ordered = type.isEmpty() ? containerOrdered : type.equals("ordered");
+                int depth = 1 + quillIndent(item);
+                while (levels.size() > depth) {
+                    builder.closeList();
+                    levels.pop();
+                }
+                if (levels.size() == depth && levels.peek() != ordered) {
+                    builder.closeList();
+                    levels.pop();
+                }
+                while (levels.size() < depth) {
+                    builder.openList(ordered, null);
+                    levels.push(ordered);
+                }
+                builder.openItem();
+                children(item, withMarks(marks, item));
+                builder.endBlock();
             }
-            if (levels.size() == depth && levels.peek() != ordered) {
-                builder.closeList();
-                levels.pop();
-            }
-            while (levels.size() < depth) {
-                builder.openList(ordered, null);
-                levels.push(ordered);
-            }
-            builder.openItem();
-        }
-
-        private void closeQuillList() {
-            Deque<Boolean> levels = quillLevels.pop();
             while (!levels.isEmpty()) {
                 builder.closeList();
                 levels.pop();
             }
         }
 
-        /**
-         * Whether the list starting at {@code index} is one of Quill's flat ones: an item of its
-         * own (not of a list nested in it) carries {@code data-list} or a {@code ql-indent-N}.
-         */
-        private boolean isFlatQuillList(int index) {
-            int depth = 0;
-            for (int i = index + 1; i < tokens.size(); i++) {
-                Token token = tokens.get(i);
-                if (token instanceof StartTag start) {
-                    if (start.name().equals("ul") || start.name().equals("ol")) {
-                        depth++;
-                    } else if (depth == 0 && start.name().equals("li")
-                            && (start.attributes().containsKey("data-list") || quillIndent(start) > 0)) {
-                        return true;
-                    }
-                } else if (token instanceof EndTag end && (end.name().equals("ul") || end.name().equals("ol"))) {
-                    if (depth-- == 0) {
-                        return false;
-                    }
-                }
-            }
-            return false;
-        }
-
-        private Open innermostList() {
-            for (Open element : open) {
-                if (element.name().equals("ul") || element.name().equals("ol")) {
-                    return element;
-                }
-            }
-            return null;
+        /** Whether one of a list's own items carries Quill's {@code data-list} or indent class. */
+        private static boolean isFlatQuillList(Element list) {
+            return list.children().stream().anyMatch(item -> item.normalName().equals("li")
+                    && (item.hasAttr("data-list") || quillIndent(item) > 0));
         }
 
         /** What a skipped element was, for the report; page furniture with no content is not. */
         private void recordSkipped(String name) {
             switch (name) {
                 case "script", "style" -> losses.lost("script or style");
-                case "iframe", "object", "svg", "math" -> losses.lost("embedded content");
-                case "select", "button", "textarea" -> losses.lost("form control");
+                case "iframe", "object", "embed", "svg", "math" -> losses.lost("embedded content");
+                case "select", "button", "textarea", "input" -> losses.lost("form control");
                 default -> {
                     // head, title, template, noscript: never content someone wrote
                 }
@@ -359,8 +276,8 @@ public class HtmlFormat implements RichTextFormat {
         }
 
         /** Elements whose text is kept but whose form the schema cannot carry. */
-        private void recordUnrenderable(StartTag tag) {
-            switch (tag.name()) {
+        private void recordUnrenderable(Element element) {
+            switch (element.normalName()) {
                 case "h1", "h2", "h3", "h4", "h5", "h6" -> losses.lost("heading");
                 case "table" -> losses.lost("table");
                 case "blockquote" -> losses.lost("block quote");
@@ -370,42 +287,39 @@ public class HtmlFormat implements RichTextFormat {
                 default -> {
                 }
             }
-            String classes = tag.attributes().get("class");
-            if (classes != null) {
-                // Quill keeps these as classes rather than styles.
-                if (classes.contains("ql-align-")) {
-                    losses.lost("alignment");
-                }
-                if (classes.contains("ql-size-") || classes.contains("ql-font-")) {
-                    losses.lost("font");
-                }
-                if (!tag.name().equals("li") && quillIndent(tag) > 0) {
-                    losses.lost("indentation");
-                }
+            String classes = element.className();
+            // Quill keeps these as classes rather than styles.
+            if (classes.contains("ql-align-")) {
+                losses.lost("alignment");
+            }
+            if (classes.contains("ql-size-") || classes.contains("ql-font-")) {
+                losses.lost("font");
+            }
+            if (!element.normalName().equals("li") && quillIndent(element) > 0) {
+                losses.lost("indentation");
             }
         }
 
-        private List<Map<String, Object>> currentMarks() {
-            List<Map<String, Object>> marks = new ArrayList<>();
-            Set<String> types = new java.util.HashSet<>();
-            // Outermost first, so an inner element's colour or link does not get overridden.
-            var iterator = open.descendingIterator();
-            while (iterator.hasNext()) {
-                for (Map<String, Object> mark : iterator.next().marks()) {
-                    String type = (String) mark.get("type");
-                    if (!types.add(type)) {
-                        // The innermost of two links or colours is the one that applies.
-                        marks.removeIf(existing -> existing.get("type").equals(type));
-                    }
-                    marks.add(mark);
-                }
+        /**
+         * The marks in force inside {@code element}: those around it, plus its own. Of two links or
+         * two colours the innermost applies, as it does in a browser.
+         */
+        private List<Map<String, Object>> withMarks(List<Map<String, Object>> outer, Element element) {
+            List<Map<String, Object>> own = marksOf(element);
+            if (own.isEmpty()) {
+                return outer;
+            }
+            List<Map<String, Object>> marks = new ArrayList<>(outer);
+            for (Map<String, Object> mark : own) {
+                marks.removeIf(existing -> existing.get("type").equals(mark.get("type")));
+                marks.add(mark);
             }
             return marks;
         }
 
-        private static List<Map<String, Object>> marksOf(StartTag tag, RichTextLosses losses) {
+        private List<Map<String, Object>> marksOf(Element element) {
             List<Map<String, Object>> marks = new ArrayList<>();
-            switch (tag.name()) {
+            switch (element.normalName()) {
                 case "strong", "b" -> marks.add(mark("strong"));
                 case "em", "i" -> marks.add(mark("em"));
                 case "u", "ins" -> marks.add(mark("underline"));
@@ -413,39 +327,40 @@ public class HtmlFormat implements RichTextFormat {
                 case "sub" -> marks.add(mark("subscript"));
                 case "sup" -> marks.add(mark("superscript"));
                 case "a" -> {
-                    String href = tag.attributes().get("href");
-                    if (href != null && !ProseMirrorSanitizer.isAllowedHref(href)) {
-                        losses.lost("link");
-                    }
-                    if (href != null && ProseMirrorSanitizer.isAllowedHref(href)) {
-                        Map<String, Object> link = mark("link");
-                        Map<String, Object> attrs = new LinkedHashMap<>();
-                        attrs.put("href", href.trim());
-                        String title = tag.attributes().get("title");
-                        if (title != null) {
-                            attrs.put("title", title);
+                    if (element.hasAttr("href")) {
+                        String href = element.attr("href");
+                        if (ProseMirrorSanitizer.isAllowedHref(href)) {
+                            Map<String, Object> link = mark("link");
+                            Map<String, Object> attrs = new LinkedHashMap<>();
+                            attrs.put("href", href.trim());
+                            if (element.hasAttr("title")) {
+                                attrs.put("title", element.attr("title"));
+                            }
+                            link.put("attrs", attrs);
+                            marks.add(link);
+                        } else {
+                            losses.lost("link");
                         }
-                        link.put("attrs", attrs);
-                        marks.add(link);
                     }
                 }
                 case "font" -> {
-                    addColor(marks, tag.attributes().get("color"), losses);
-                    if (tag.attributes().containsKey("face") || tag.attributes().containsKey("size")) {
+                    if (element.hasAttr("color")) {
+                        addColor(marks, element.attr("color"));
+                    }
+                    if (element.hasAttr("face") || element.hasAttr("size")) {
                         losses.lost("font");
                     }
                 }
                 default -> {
                 }
             }
-            String style = tag.attributes().get("style");
-            if (style != null) {
-                styleMarks(style, marks, losses);
+            if (element.hasAttr("style")) {
+                styleMarks(element.attr("style"), marks);
             }
             return marks;
         }
 
-        private static void styleMarks(String style, List<Map<String, Object>> marks, RichTextLosses losses) {
+        private void styleMarks(String style, List<Map<String, Object>> marks) {
             for (String declaration : style.split(";")) {
                 int colon = declaration.indexOf(':');
                 if (colon < 0) {
@@ -454,7 +369,7 @@ public class HtmlFormat implements RichTextFormat {
                 String property = declaration.substring(0, colon).trim().toLowerCase(Locale.ROOT);
                 String value = declaration.substring(colon + 1).trim().toLowerCase(Locale.ROOT);
                 switch (property) {
-                    case "color" -> addColor(marks, value, losses);
+                    case "color" -> addColor(marks, value);
                     case "text-align" -> {
                         if (!value.equals("left") && !value.equals("start")) {
                             losses.lost("alignment");
@@ -503,10 +418,7 @@ public class HtmlFormat implements RichTextFormat {
         }
 
         /** A colour as {@code #rgb} or {@code #rrggbb}, the only forms the schema takes. */
-        private static void addColor(List<Map<String, Object>> marks, String value, RichTextLosses losses) {
-            if (value == null) {
-                return;
-            }
+        private void addColor(List<Map<String, Object>> marks, String value) {
             String color = null;
             Matcher hex = HEX.matcher(value.trim());
             Matcher rgb = RGB.matcher(value.trim());
@@ -547,24 +459,19 @@ public class HtmlFormat implements RichTextFormat {
             return out.toString();
         }
 
-        private static Integer startOf(StartTag tag) {
-            String start = tag.attributes().get("start");
-            if (start == null) {
+        private static Integer startOf(Element list) {
+            if (!list.hasAttr("start")) {
                 return null;
             }
             try {
-                return Integer.parseInt(start.trim());
+                return Integer.parseInt(list.attr("start").trim());
             } catch (NumberFormatException e) {
                 return null;
             }
         }
 
-        private static int quillIndent(StartTag tag) {
-            String classes = tag.attributes().get("class");
-            if (classes == null) {
-                return 0;
-            }
-            Matcher matcher = QUILL_INDENT.matcher(classes);
+        private static int quillIndent(Element element) {
+            Matcher matcher = QUILL_INDENT.matcher(element.className());
             return matcher.find() ? Math.min(Integer.parseInt(matcher.group(1)), 16) : 0;
         }
 

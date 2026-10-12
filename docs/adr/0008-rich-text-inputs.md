@@ -255,7 +255,7 @@ already is. Then `markdown`.
   registered formats as its second argument.
 - **A converter is a public extension point.** Its interface is supported API from then on, so it
   needs to be versioned with the same care as the plugin's other public surface.
-- **No new dependencies.** The HTML and markdown readers are the plugin's own, see below.
+- **Two new dependencies**, jsoup and commonmark-java (with its strikethrough extension), see below.
 - **Nothing about content is logged.** Converters log nothing; a failing one surfaces as a
   `RichTextConversionException` naming the field and the format, raised without its cause, whose
   message might quote the text.
@@ -282,16 +282,21 @@ configuration field. The format a case keeps text in is a property of the instal
 not of an Epistola connection, and a property needs no configurator UI, translations or migration.
 A per-configuration override can be added later without changing the meaning of the property.
 
-**No dependencies were added.** jsoup is on Valtimo's classpath through Tika, but only
-transitively, and commonmark-java is not there at all. The plugin carries its own small readers
-instead:
+**Parsing uses jsoup and commonmark-java, as plain dependencies.** A first version carried its own
+HTML tokenizer and markdown parser to avoid dependencies. They worked on what editors write, but
+parsing is where hand-written code is weakest. Markdown has CommonMark's emphasis rules, setext
+headings and reference links. Pasted HTML has HTML5's implicit closing and misnesting, and 2,231
+named character references. Both libraries implement their specifications, are pure Java without
+dependencies of their own, and replaced about 800 lines. What stays is plugin logic: walking the
+parsed tree into a document, rebuilding Quill's flat lists (Quill 2's `<li data-list>` and older
+Quill's `ql-indent-N`), mapping inline styles to marks, and recording losses.
 
-- `HtmlTokenizer`/`HtmlFormat` read what an editor writes. That includes both of Quill's flat-list
-  shapes: Quill 2's `<li data-list>` in one `<ol>`, and older Quill's `ql-indent-N`.
-- `MarkdownFormat` reads the CommonMark subset that maps onto the schema.
-
-Neither aims at full conformance. Both are tolerant by construction, and anything they get wrong is
-still narrowed by `ProseMirrorSanitizer` to a valid document.
+They are **not shaded**. Shading in this build exists for a clash that happened:
+`json-schema-validator`'s 1.x and 2.x share a package, and Valtimo failed to start. These have no
+such clash. commonmark-java is not on Valtimo's classpath at all, and jsoup is there only through
+Tika, which resolves to our version: a minor bump in a library that keeps its API stable. A shaded
+copy would also hide them from the host's vulnerability scanning and patching. If jsoup ever does
+clash, shading it then is a local change.
 
 **The HTML editor is CKEditor, because Quill's toolbar cannot be narrowed.** Tried in a browser
 against Form.io 4.19.5: a component's Quill settings are deep-merged into Form.io's default toolbar,
