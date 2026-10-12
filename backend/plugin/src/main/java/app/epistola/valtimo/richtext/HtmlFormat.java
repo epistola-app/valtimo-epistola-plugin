@@ -65,6 +65,18 @@ public class HtmlFormat implements RichTextFormat {
     /** CKEditor's colour picker writes {@code hsl(30, 75%, 60%)}; CSS also allows spaces and a slash. */
     private static final Pattern HSL = Pattern.compile(
             "hsla?\\(\\s*([\\d.]+)(?:deg)?[\\s,]+([\\d.]+)%[\\s,]+([\\d.]+)%\\s*(?:[,/]\\s*[\\d.]+%?\\s*)?\\)");
+    /**
+     * The plugins of Form.io's CKEditor build whose content Epistola cannot render. Hiding their
+     * buttons is not enough: a loaded plugin still accepts its content from a paste, and
+     * Autoformat turns "# " into a heading and "> " into a quote. Removed, they leave the editor
+     * schema, so a paste is reduced to paragraphs as it arrives. {@code Font} stays because it
+     * carries the colour picker; the background colour it also accepts is dropped on conversion.
+     * A name a host's build lacks is ignored by CKEditor.
+     */
+    static final List<String> UNRENDERABLE_CKEDITOR_PLUGINS = List.of(
+            "Heading", "BlockQuote", "Table", "TableToolbar", "Image", "ImageCaption", "ImageStyle",
+            "ImageToolbar", "ImageUpload", "ImageResize", "EasyImage", "CKFinder", "CKFinderUploadAdapter",
+            "MediaEmbed", "Alignment", "IndentBlock", "FontFamily", "FontSize", "FontBackgroundColor");
     private static final Pattern QUILL_INDENT = Pattern.compile("ql-indent-(\\d{1,2})");
 
     @Override
@@ -84,8 +96,9 @@ public class HtmlFormat implements RichTextFormat {
     }
 
     /**
-     * Form.io's text area in WYSIWYG mode, with CKEditor, showing only buttons for what Epistola
-     * renders: no headings, tables, images or media, which the conversion would drop.
+     * Form.io's text area in WYSIWYG mode, with CKEditor, limited to what Epistola renders: only
+     * its buttons on the toolbar, and the plugins for anything else removed, so headings, tables,
+     * images or media cannot arrive by paste or autoformat either.
      *
      * <p>CKEditor rather than Quill because only CKEditor's toolbar can be narrowed. Form.io 4
      * deep-merges a component's Quill settings into its default Quill toolbar, index by index, so a
@@ -105,7 +118,10 @@ public class HtmlFormat implements RichTextFormat {
         Map<String, Object> component = new LinkedHashMap<>();
         component.put("type", "textarea");
         component.put("editor", "ckeditor");
-        component.put("wysiwyg", Map.of("toolbar", toolbar));
+        Map<String, Object> wysiwyg = new LinkedHashMap<>();
+        wysiwyg.put("toolbar", toolbar);
+        wysiwyg.put("removePlugins", UNRENDERABLE_CKEDITOR_PLUGINS);
+        component.put("wysiwyg", wysiwyg);
         component.put("isUploadEnabled", false);
         component.put("rows", kind == TemplateField.RichTextKind.INLINE ? 2 : 6);
         return component;

@@ -35,7 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     default format). `docs/rich-text.md` gives the editor configuration that offers only what
     Epistola renders.
   - **The composer and retry form ask for a rich-text field** with the default format's editor:
-    Form.io's WYSIWYG text area (CKEditor, with only the buttons Epistola renders) for `html`, a
+    Form.io's WYSIWYG text area (CKEditor, limited to what Epistola renders: its toolbar, and no
+    headings, tables or images by paste or autoformat either) for `html`, a
     plain text area otherwise. A list of rich text gets one editor per item. What the employee types stays in the case's format, so write-back does not change
     a field's format.
 

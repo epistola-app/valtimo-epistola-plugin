@@ -105,10 +105,38 @@ area this editor configuration (in the builder's JSON for the component):
       "|",
       "undo",
       "redo"
+    ],
+    "removePlugins": [
+      "Heading",
+      "BlockQuote",
+      "Table",
+      "TableToolbar",
+      "Image",
+      "ImageCaption",
+      "ImageStyle",
+      "ImageToolbar",
+      "ImageUpload",
+      "ImageResize",
+      "EasyImage",
+      "CKFinder",
+      "CKFinderUploadAdapter",
+      "MediaEmbed",
+      "Alignment",
+      "IndentBlock",
+      "FontFamily",
+      "FontSize",
+      "FontBackgroundColor"
     ]
   }
 }
 ```
+
+**Both keys matter.** The toolbar only hides buttons: a loaded plugin still accepts its content from
+a paste, and CKEditor's autoformat turns `# ` into a heading and `> ` into a quote.
+`removePlugins` takes those features out of the editor, so a paste arrives as paragraphs and
+`# ` stays text, while `- ` still starts a list. `Font` stays, because it carries the colour picker;
+the background colour it also accepts is dropped on conversion. CKEditor ignores a name its build
+lacks.
 
 Leave out the list buttons for a field that takes inline rich text, and add `"multiple": true` for
 one that takes a list.
@@ -118,7 +146,7 @@ one that takes a list.
 When the composer or a retry form asks for a rich-text field, it generates the editor itself,
 matching the default format, so what a person types is already in the case's format:
 
-- `html` gives the CKEditor text area above.
+- `html` gives the CKEditor text area above, with the same toolbar and removed plugins.
 - `plain` and `markdown` give a plain text area.
 
 A field that takes a **list** of rich text gets one editor per item, with "add another".

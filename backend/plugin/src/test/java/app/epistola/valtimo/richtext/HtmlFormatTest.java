@@ -186,9 +186,15 @@ class HtmlFormatTest {
 
         assertThat(block).containsEntry("type", "textarea").containsEntry("editor", "ckeditor");
         // Only buttons Form.io's CKEditor build has: an unknown one is a console warning, not a button.
-        assertThat(block.get("wysiwyg")).isEqualTo(Map.of("toolbar", List.of(
-                "bold", "italic", "|", "fontColor", "|", "bulletedList", "numberedList", "outdent", "indent",
-                "|", "link", "|", "undo", "redo")));
+        assertThat(block.get("wysiwyg")).isEqualTo(Map.of(
+                "toolbar", List.of("bold", "italic", "|", "fontColor", "|", "bulletedList", "numberedList",
+                        "outdent", "indent", "|", "link", "|", "undo", "redo"),
+                // Hidden buttons are not enough: a loaded plugin still takes its content from a
+                // paste, and Autoformat makes "# " a heading. Checked in a browser.
+                "removePlugins", HtmlFormat.UNRENDERABLE_CKEDITOR_PLUGINS));
+        assertThat(HtmlFormat.UNRENDERABLE_CKEDITOR_PLUGINS)
+                .contains("Heading", "Table", "Image", "MediaEmbed", "BlockQuote")
+                .doesNotContain("Font", "List", "Link", "Autoformat", "Indent");
         assertThat(String.valueOf(inline.get("wysiwyg"))).doesNotContain("List", "indent");
         assertThat(List.of(block, inline)).allSatisfy(editor -> assertThat(editor).containsEntry("isUploadEnabled", false));
     }

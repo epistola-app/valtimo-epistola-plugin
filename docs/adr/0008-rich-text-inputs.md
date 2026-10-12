@@ -299,6 +299,11 @@ index by index, so a toolbar of eight buttons still showed headings, fonts, back
 alignment, images, video and formulas. All of those are content the conversion would drop.
 CKEditor has no default toolbar to merge into, so its toolbar is exactly what the component lists.
 
+A toolbar only hides buttons, though. A loaded plugin still accepts its content from a paste, and
+autoformat turns `# ` into a heading. So the editor also removes the plugins for content Epistola
+cannot render (`removePlugins`). In the browser, a pasted heading, table and image then arrived as
+paragraphs, and `# ` stayed text. CKEditor ignores a removed name its build lacks.
+
 Its Form.io build lacks underline, strikethrough and sub- or superscript, so the editor offers
 bold, italic, colour, lists, indentation and links. Those four marks still convert when they arrive
 in HTML from elsewhere. Its colour picker writes `hsl(…)`, which the HTML reader converts to the
