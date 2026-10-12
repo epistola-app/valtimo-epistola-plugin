@@ -30,7 +30,6 @@ import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.valtimo.logging.Failures;
-import app.epistola.valtimo.richtext.RichTextConverter;
 import app.epistola.valtimo.schema.JsonSchemaMappingAnalyzer;
 import app.epistola.client.api.AttributesApi;
 import app.epistola.client.api.CatalogsApi;
@@ -91,62 +90,9 @@ public class EpistolaServiceImpl implements EpistolaService {
         this(apiClientFactory, 2);
     }
 
-    /**
-     * Converts rich-text fields to Epistola's document format on the way out; null sends data
-     * exactly as mapped.
-     */
-    private final RichTextConverter richTextConverter;
-
     public EpistolaServiceImpl(EpistolaApiClientFactory apiClientFactory, int maxReadRetries) {
-        this(apiClientFactory, maxReadRetries, null);
-    }
-
-    public EpistolaServiceImpl(
-            EpistolaApiClientFactory apiClientFactory,
-            int maxReadRetries,
-            RichTextConverter richTextConverter
-    ) {
         this.apiClientFactory = apiClientFactory;
         this.maxReadRetries = maxReadRetries;
-        this.richTextConverter = richTextConverter;
-    }
-
-    /**
-     * The data with its rich-text fields converted from the case's format (ADR 0008).
-     *
-     * <p>Done here because this is the one place every letter passes on its way to Epistola —
-     * generation, the composer, preview and retry — so the preview and the generated letter cannot
-     * convert differently. Which fields are rich text is only known from the template's contract,
-     * so it is read first; when that read fails the data goes as mapped, because Epistola validates
-     * it regardless and refuses what it cannot render with a message of its own.
-     */
-    private Map<String, Object> withRichText(
-            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId,
-            Map<String, Object> data, boolean generating
-    ) {
-        if (richTextConverter == null || data == null || data.isEmpty()) {
-            return data;
-        }
-        List<TemplateField> fields;
-        try {
-            fields = getTemplateDetails(baseUrl, apiKey, tenantId, catalogId, templateId).fields();
-        } catch (RuntimeException e) {
-            log.warn("Could not read template {} to convert its rich-text fields; sending the data as mapped ({})",
-                    templateId, Failures.describe(e));
-            return data;
-        }
-        // Field paths and kinds of content, never the text. A warning when a letter is generated —
-        // the author should know their form offers more than the letter shows — and debug for a
-        // preview, which the composer repeats on every change.
-        return richTextConverter.normalize(data, fields, (path, losses) -> {
-            if (generating) {
-                log.warn("Rich text for field '{}' of template '{}' lost what Epistola cannot render: {}",
-                        path, templateId, losses);
-            } else {
-                log.debug("Rich text for field '{}' of template '{}' lost what Epistola cannot render: {}",
-                        path, templateId, losses);
-            }
-        });
     }
 
     /**
@@ -383,7 +329,6 @@ public class EpistolaServiceImpl implements EpistolaService {
         // Never the data itself: it is a letter's contents — names, identifiers, addresses, the
         // text of a decision. The keys say what was sent, which is what a log is for here.
         log.debug("Template data keys: {}", data == null ? "none" : data.keySet());
-        Map<String, Object> templateData = withRichText(baseUrl, apiKey, tenantId, catalogId, templateId, data, true);
 
         try {
             GenerationApi generationApi = apiClientFactory.createGenerationApi(baseUrl, apiKey);
@@ -394,7 +339,7 @@ public class EpistolaServiceImpl implements EpistolaService {
             GenerateDocumentRequest request = new GenerateDocumentRequest(
                     catalogId,
                     templateId,
-                    templateData,
+                    data,
                     variantId,          // nullable - omit when using attribute-based selection
                     variantAttributes,  // nullable - for attribute-based variant selection
                     null,               // versionId - not used when environmentId is specified
@@ -539,12 +484,11 @@ public class EpistolaServiceImpl implements EpistolaService {
             Map<String, Object> data
     ) {
         log.debug("Previewing document for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
-        Map<String, Object> templateData = withRichText(baseUrl, apiKey, tenantId, catalogId, templateId, data, false);
         try {
             var request = new PreviewDocumentRequest(
                     catalogId,
                     templateId,
-                    templateData,
+                    data,
                     variantId,
                     null,           // attributes — the plugin selects a variant explicitly or by default
                     null,           // versionId — resolved from environmentId, or latest published

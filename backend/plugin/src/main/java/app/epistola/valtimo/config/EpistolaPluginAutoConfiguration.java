@@ -53,6 +53,7 @@ import app.epistola.valtimo.richtext.RichTextConverter;
 import app.epistola.valtimo.richtext.RichTextFormat;
 import app.epistola.valtimo.richtext.RichTextEditor;
 import app.epistola.valtimo.richtext.RichTextEditors;
+import app.epistola.valtimo.richtext.RichTextEpistolaService;
 import app.epistola.valtimo.richtext.RichTextFunction;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
@@ -159,8 +160,11 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaProperties properties,
             RichTextConverter richTextConverter
     ) {
-        return new EpistolaServiceImpl(
-                apiClientFactory, properties.getClient().getMaxReadRetries(), richTextConverter);
+        // The client, with rich-text conversion around it (ADR 0008): every letter and preview
+        // reaches Epistola through this bean, so converting here covers every caller.
+        return new RichTextEpistolaService(
+                new EpistolaServiceImpl(apiClientFactory, properties.getClient().getMaxReadRetries()),
+                richTextConverter);
     }
 
     // Rich text (ADR 0008): one bean per format, so an installation adds its own format by
