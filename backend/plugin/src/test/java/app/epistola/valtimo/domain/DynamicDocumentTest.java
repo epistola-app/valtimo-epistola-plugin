@@ -117,9 +117,6 @@ class DynamicDocumentTest {
         assertThat(asComposer.inputs())
                 .describedAs("a document a process prepared has no typed input")
                 .isEmpty();
-        assertThat(asComposer.writeBack())
-                .describedAs("and nothing says where its values belong")
-                .isEmpty();
     }
 
     @Test

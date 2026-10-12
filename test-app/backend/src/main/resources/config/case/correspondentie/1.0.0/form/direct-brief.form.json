@@ -1,0 +1,209 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "key": "objector",
+      "type": "fieldset",
+      "label": "Bezwaarmaker",
+      "components": [
+        {
+          "key": "objector.firstName",
+          "type": "textfield",
+          "input": true,
+          "label": "Voornaam",
+          "defaultValue": "Pieter",
+          "validate": {
+            "required": true
+          }
+        },
+        {
+          "key": "objector.lastName",
+          "type": "textfield",
+          "input": true,
+          "label": "Achternaam",
+          "defaultValue": "Bakker",
+          "validate": {
+            "required": true
+          }
+        },
+        {
+          "key": "objector.address.street",
+          "type": "textfield",
+          "input": true,
+          "label": "Straat",
+          "defaultValue": "Prinsengracht",
+          "validate": {
+            "required": true
+          }
+        },
+        {
+          "key": "objector.address.houseNumber",
+          "type": "textfield",
+          "input": true,
+          "label": "Huisnummer",
+          "defaultValue": "263",
+          "validate": {
+            "required": true
+          }
+        },
+        {
+          "key": "objector.address.postalCode",
+          "type": "textfield",
+          "input": true,
+          "label": "Postcode",
+          "defaultValue": "1016GV",
+          "validate": {
+            "required": true,
+            "pattern": "^[0-9]{4}[A-Z]{2}$"
+          }
+        },
+        {
+          "key": "objector.address.city",
+          "type": "textfield",
+          "input": true,
+          "label": "Woonplaats",
+          "defaultValue": "Amsterdam",
+          "validate": {
+            "required": true
+          }
+        }
+      ]
+    },
+    {
+      "key": "originalDecision",
+      "type": "fieldset",
+      "label": "Oorspronkelijk Besluit",
+      "components": [
+        {
+          "key": "originalDecision.reference",
+          "type": "textfield",
+          "input": true,
+          "label": "Kenmerk",
+          "defaultValue": "BZ-2026-00142",
+          "validate": {
+            "required": true
+          }
+        },
+        {
+          "key": "originalDecision.date",
+          "type": "datetime",
+          "input": true,
+          "label": "Datum besluit",
+          "format": "yyyy-MM-dd",
+          "enableDate": true,
+          "enableTime": false,
+          "defaultValue": "2026-02-15T00:00:00Z",
+          "validate": {
+            "required": true
+          }
+        },
+        {
+          "key": "originalDecision.subject",
+          "type": "textfield",
+          "input": true,
+          "label": "Onderwerp",
+          "defaultValue": "Afwijzing omgevingsvergunning dakkapel",
+          "validate": {
+            "required": true
+          }
+        }
+      ]
+    },
+    {
+      "key": "objection",
+      "type": "fieldset",
+      "label": "Bezwaar",
+      "components": [
+        {
+          "key": "objection.grounds",
+          "type": "textarea",
+          "input": true,
+          "label": "Gronden van het bezwaar",
+          "rows": 5,
+          "defaultValue": "Het besluit is onvoldoende gemotiveerd. De dakkapel voldoet aan het bestemmingsplan en de welstandsnota. Vergelijkbare vergunningen zijn in de buurt wel verleend.",
+          "validate": {
+            "required": true
+          }
+        },
+        {
+          "key": "objection.receivedDate",
+          "type": "datetime",
+          "input": true,
+          "label": "Datum ontvangst",
+          "format": "yyyy-MM-dd",
+          "enableDate": true,
+          "enableTime": false,
+          "defaultValue": "2026-03-10T00:00:00Z",
+          "validate": {
+            "required": true
+          }
+        }
+      ]
+    },
+    {
+      "type": "epistola-letter-composer",
+      "key": "pv:epistolaDirectLetter",
+      "input": true,
+      "prefill": false,
+      "label": "Brief bij dit nieuwe dossier",
+      "placeholder": "— kies een brief —",
+      "components": [
+        {
+          "type": "hidden",
+          "key": "epistolaTaskId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola:taskId"
+          }
+        },
+        {
+          "type": "hidden",
+          "key": "epistolaDocumentId",
+          "input": true,
+          "label": "Epistola Document Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola:documentId"
+          }
+        }
+      ],
+      "epistola": {
+        "letterSet": {
+          "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+          "catalogId": "municipality-demo",
+          "templates": [
+            {
+              "templateId": "ontvangstbevestiging-bezwaar",
+              "label": "Ontvangstbevestiging bezwaarschrift"
+            },
+            {
+              "templateId": "besluit-bezwaar",
+              "label": "Besluit op bezwaar"
+            },
+            {
+              "templateId": "bevestigingsbrief-vergunning",
+              "label": "Bevestiging omgevingsvergunning"
+            }
+          ]
+        },
+        "askOptionalFields": false,
+        "schemaVersion": 1,
+        "writeBack": {
+          "doc:/besluit/toelichting": "$inputs.decision"
+        }
+      },
+      "processDefinitionKey": "correspondentie-direct-brief"
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Start correspondentie",
+      "action": "submit",
+      "theme": "primary",
+      "disableOnInvalid": true
+    }
+  ]
+}

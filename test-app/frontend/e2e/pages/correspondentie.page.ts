@@ -15,15 +15,29 @@ import { expect, type Page } from '@playwright/test';
 /**
  * Create a dossier through the composer process's start form, and land on its detail page.
  *
- * The case has one process that creates dossiers, so this opens its start form directly. With two,
- * Valtimo shows a process picker whose tiles reload the app instead of opening the form — which is
- * why each demo flow has exactly one such process.
+ * Two processes create dossiers on this case — the one these flows use, and `direct-brief`, which
+ * demonstrates a composer on the form that creates the case — so Valtimo asks which. The picker is
+ * skipped when it does not appear, which keeps this working either way.
  */
 export async function createDossier(page: Page): Promise<void> {
   await page.goto('/cases/correspondentie');
   await page.getByRole('navigation', { name: /Side navigation/i }).waitFor({ timeout: 20_000 });
   // An empty case list shows the button twice (header and empty state).
   await page.getByRole('button', { name: 'Creëer Nieuw Dossier' }).first().click();
+
+  // Carbon renders each tile twice, so the visible one has to be picked rather than the first match.
+  const tile = page.locator('cds-clickable-tile').filter({ hasText: 'Brief kiezen en genereren' });
+  for (let i = 0; i < (await tile.count()); i++) {
+    if (
+      await tile
+        .nth(i)
+        .isVisible()
+        .catch(() => false)
+    ) {
+      await tile.nth(i).click();
+      break;
+    }
+  }
 
   // The start form ships with valid defaults for the whole schema, so nothing has to be typed.
   await page.locator('input[name="data[objector.firstName]"]').waitFor({ timeout: 20_000 });

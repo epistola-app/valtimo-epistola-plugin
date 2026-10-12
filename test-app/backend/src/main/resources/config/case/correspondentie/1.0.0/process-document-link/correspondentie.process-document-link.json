@@ -16,5 +16,10 @@
     "canInitializeDocument": false,
     "startableByUser": true,
     "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "correspondentie-direct-brief",
+    "canInitializeDocument": true,
+    "startableByUser": true
   }
 ]

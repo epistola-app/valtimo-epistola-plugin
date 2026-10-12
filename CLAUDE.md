@@ -157,6 +157,49 @@ docker/            # Docker compose for local dependencies
   - **Frontend**: `EPISTOLA_ENABLED=false` (container env var, substituted into `assets/config.js` via the Dockerfile entrypoint, defaults to `true`). The plugin library reads `window['env']['epistolaEnabled']` at runtime via the exported `isEpistolaEnabled()` helper. `EpistolaPluginModule.forRoot()` stays unconditional in the host's `imports`; its `ENVIRONMENT_INITIALIZER` short-circuits when disabled, the `/epistola` route guard redirects to `/`, and `epistolaPluginSpecification.pluginId` stops matching the backend `epistola` definition. Keep `PLUGINS_TOKEN` static (`useValue`) in host apps; do not push optional-loading conditionals into installer-facing app-module wiring.
   - Set both flags `false` per environment to fully hide the plugin (no admin menu, no admin page, no plugin picker entry, no process-link action types). On environments where the plugin was previously active, remove existing plugin configurations and process links **before** disabling — otherwise stored references remain in the database and will surface stale entries that fail on API calls if the plugin is re-enabled.
 
+## Interception of Valtimo internals must be compile-checked
+
+Where the plugin hooks a Valtimo method — an aspect's pointcut, a bean it decorates — the pointcut
+is a **string**, so nothing in the compiler looks at it. A renamed method, an added parameter or two
+swapped ones stop it matching and the feature silently stops happening. Browser suites would notice,
+and they run nightly rather than on a pull request.
+
+So pair every such hook with a test that does both of these:
+
+- **A stub that `implements` the interface**, which makes the signature compile-checked: a bump that
+  changes it fails the build instead of going quiet.
+- **A call through the Spring proxy**, which exercises the pointcut and its `args(…)` binding for
+  real, rather than calling the advice as a plain method.
+
+`ComposerStartFormWriteBackPointcutTest` is the worked example, and each of the three breakages was
+verified by making it. `TaskCompletedEvent` is covered by accident: tests construct it, so a changed
+accessor already fails to compile.
+
+## Never log personal data
+
+A letter's values, a case document's content, a form submission and a template's data are **personal
+data** — names, identifiers like a BSN, addresses, the text of a decision about someone. None of it
+belongs in a log, at any level. `DEBUG` is not an exemption: it is enabled in the test-app and on
+plenty of real installations.
+
+What to log instead: **keys, destinations, counts, ids and class names.** `Template data keys: [naam,
+adres]` answers what a log is for; `Template data: {naam=Jansen}` is a disclosure. `ComposerWriteBackService`
+is the worked example — it names the destination at fault and the failure's class, and nothing else.
+
+Two vectors that are easy to miss:
+
+- **`e.getMessage()` from a downstream library.** Valtimo's refused write reads `Failed to handle
+values … Values: {/besluit/x=gegrond}` — the value is in the message. So a message from outside
+  this plugin is not safe to log just because our own format is.
+- **An attached cause.** `new SomeException(msg, cause)` puts that message into every log that
+  prints the stack trace, which for anything propagating out of a web request is all of them. Where
+  a failure carries data, raise it **without** the cause and name the root cause's class instead
+  (`ComposerWriteBackService.describe`).
+
+The cost is real: a class name diagnoses less than a message, and transient-versus-permanent can
+become invisible. Prefer losing that to leaking, and recover it with redaction only if the
+redaction fails closed.
+
 ## Valtimo compatibility
 
 This plugin pins a single Valtimo version (the `valtimo` key in `gradle/libs.versions.toml`, with the frontend `@valtimo/*` packages matched), but it is meant to work across a _range_ of Valtimo versions. Which versions each release supports is recorded in [COMPATIBILITY.md](COMPATIBILITY.md); the `update-valtimo` skill (`.claude/skills/update-valtimo/`) drives version bumps and the changelog-impact review.

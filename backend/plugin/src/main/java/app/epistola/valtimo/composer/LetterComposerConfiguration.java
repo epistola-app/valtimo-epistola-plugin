@@ -67,19 +67,6 @@ public record LetterComposerConfiguration(
     }
 
     /**
-     * The destinations this composer is allowed to write to.
-     *
-     * <p>The authority for <em>where</em> a letter's values may land in the case. The values
-     * themselves are computed in the browser — that is what makes the previewed letter the
-     * generated one — so the keys on a submitted letter arrived from the browser too, and are only
-     * honoured where they appear here. See
-     * {@link ComposedLetter#writeBackLimitedTo(java.util.Set)}.
-     */
-    public java.util.Set<String> writeBackDestinations() {
-        return writeBack == null ? java.util.Set.of() : java.util.Set.copyOf(writeBack.keySet());
-    }
-
-    /**
      * Refuse a component this plugin may not understand.
      *
      * @throws ComposerException when it was written for a later schema than this plugin reads

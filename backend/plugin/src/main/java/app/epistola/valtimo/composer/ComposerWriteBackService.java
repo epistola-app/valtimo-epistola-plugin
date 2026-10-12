@@ -25,8 +25,10 @@ import com.ritense.document.service.DocumentService;
 import com.ritense.valueresolver.ValueResolverService;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -103,6 +105,84 @@ public class ComposerWriteBackService {
      * @param documentId      the case document the form was submitted against
      * @param submittedLetter the composer's value, as it arrived on the submission
      */
+    /**
+     * Apply the write-back of every composer on this case whose letter the submission carried.
+     *
+     * <p>This is the entry point for <b>form submission</b>, which is when a letter's values should
+     * reach the case: the same moment every other form writes, and the moment the employee who
+     * typed them is still there to be told if a write fails. See
+     * <a href="../../../../../../../docs/adr/0006-letter-composer-configuration.md">ADR 0006</a>
+     * for why it is not the generate action any more, and what was measured to get here.
+     *
+     * <p>Which variables hold a letter is answered by the <b>configuration</b>, not by inspecting
+     * values for a letter-ish shape: each composer on the case declares the {@code pv:} key it
+     * writes, which is the variable name to look for. A composer whose letter is absent was not on
+     * the form that was just submitted, and one that declares no rules costs nothing to skip.
+     *
+     * <p>Never throws, for the same reason the overloads below do not: a submission that has already
+     * created a case and completed a task cannot be undone by failing afterwards.
+     */
+    public void applyFromSubmission(UUID documentId, Map<String, Object> variables) {
+        if (documentId == null || variables == null || variables.isEmpty()) {
+            return;
+        }
+        try {
+            String caseDefinitionKey = caseDefinitionKeyOf(documentId);
+            if (caseDefinitionKey == null) {
+                return;
+            }
+            // By variable, not by composer: two composers on a case type may write the same one —
+            // the demo's task form and its ad-hoc start form both use `pv:epistolaLetter` — and a
+            // submission carries one value for it either way. Applying per composer wrote that
+            // value once per composer, which is the same case saved twice. `apply` already narrows
+            // to the composer that claims the variable, so one call per variable is the whole job.
+            Set<String> letterVariables = new LinkedHashSet<>();
+            for (LetterComposerConfiguration composer : configurationResolver.forCaseDefinition(caseDefinitionKey)) {
+                String variableName = letterVariableOf(composer);
+                if (variableName != null) {
+                    letterVariables.add(variableName);
+                }
+            }
+            for (String variableName : letterVariables) {
+                Object letter = variables.get(variableName);
+                if (letter != null) {
+                    apply(documentId, letter, variableName);
+                }
+            }
+        } catch (ComposerWriteBackException e) {
+            // Already named and logged where it happened; raised so the submission rolls back.
+            throw e;
+        } catch (RuntimeException e) {
+            // Reading the case or its forms touches a database and can fail like anything else.
+            // Blocking the submission is still right: without the configuration there is no way to
+            // know whether this letter had values to save.
+            // The one that stays ERROR: the two failures above are shapes we understand and an
+            // author can fix, while this branch is reached only by something unexpected — reading
+            // the case or its forms failed. Nothing else in this path will have logged it.
+            log.error("Letter composer write-back could not run for case {} ({})",
+                    documentId, describe(e));
+            throw new ComposerWriteBackException(
+                    "The letter's values could not be saved on the case: its configuration could "
+                            + "not be read. The submission was not completed.");
+        }
+    }
+
+    /**
+     * The process variable a composer writes its letter to, or null when it names none.
+     *
+     * <p>A composer's Formio key <em>is</em> that destination — {@code pv:epistolaLetter} — because
+     * that is how the chosen letter reaches the process at all. The bare name is what the engine
+     * knows it by, and what {@link #apply(UUID, Object, String)} expects.
+     */
+    private static String letterVariableOf(LetterComposerConfiguration composer) {
+        String key = composer.componentKey();
+        if (key == null || !key.startsWith("pv:")) {
+            return null;
+        }
+        String name = key.substring("pv:".length());
+        return name.isBlank() ? null : name;
+    }
+
     public void apply(UUID documentId, Object submittedLetter) {
         apply(documentId, submittedLetter, null);
     }
@@ -130,14 +210,18 @@ public class ComposerWriteBackService {
 
         ComposedLetter letter;
         try {
-            // Reading the letter before looking for rules: cheap, and it keeps every path that can
-            // throw inside the overload that guarantees it does not. Looking for rules first used
-            // to short-circuit a letter nobody writes back, and bought a hole in that guarantee.
             letter = ComposedLetter.from(submittedLetter, "epistola:" + SUBMITTED_KEY, objectMapper);
         } catch (RuntimeException e) {
-            log.warn("Letter composer write-back skipped for case {}: the submitted letter could not "
-                    + "be read ({})", documentId, e.getMessage());
-            return;
+            // Blocks, like every other write-back failure. This variable is one a composer declared
+            // it writes, so a value that is not a readable letter means the rules have nothing to
+            // read and the employee's values are lost. Skipping with a warning — which this did
+            // until the move to submission time, when nothing could be done about it anyway — is
+            // the silent failure the move was meant to end.
+            log.warn("Letter composer write-back could not read the letter on case {} ({})",
+                    documentId, describe(e));
+            throw new ComposerWriteBackException(
+                    "The letter's values could not be saved on the case: the composed letter could "
+                            + "not be read. The submission was not completed.");
         }
 
         apply(documentId, letter, letterVariable);
@@ -166,41 +250,41 @@ public class ComposerWriteBackService {
             return;
         }
 
-        // The whole method, because of what "never throws" is protecting: by the time this runs the
-        // letter is with Epistola and cannot be unsent, so throwing would fail the activity and a
-        // retry would send a second one. Reading the configuration touches a database and can fail
-        // like anything else; a lost write-back is the cheaper failure.
-        try {
-            Map<String, String> rules = rulesFor(documentId, letterVariable);
-            if (rules.isEmpty()) {
-                return;
-            }
-
-            Map<String, Object> resolved = resolve(rules, letter, documentId);
-            if (resolved.isEmpty()) {
-                log.debug("Letter composer write-back for case {} resolved no values", documentId);
-                return;
-            }
-
-            write(documentId, resolved);
-        } catch (RuntimeException e) {
-            log.error("Letter composer write-back failed for case {}: {}", documentId, e.getMessage(), e);
+        // Failures propagate. This runs inside the submission's transaction, so a write-back that
+        // cannot do its job rolls the submission back — the task stays open, the case is untouched,
+        // and the employee is told. The alternative is a case worker believing the case records a
+        // decision it does not. (Until 2026-10-10 this ran after Epistola had accepted the letter,
+        // where throwing would have made a retry send a second one, so it swallowed everything.)
+        Map<String, String> rules = rulesFor(documentId, letterVariable);
+        if (rules.isEmpty()) {
+            return;
         }
+
+        Map<String, Object> resolved = resolve(rules, letter, documentId);
+        if (resolved.isEmpty()) {
+            log.debug("Letter composer write-back for case {} resolved no values", documentId);
+            return;
+        }
+
+        write(documentId, resolved);
     }
 
     /**
-     * Write the resolved values, keeping whatever can be written.
+     * Write the resolved values, or fail the submission.
      *
-     * <p>In one call, because several {@code doc:} destinations then land in a single document
-     * save rather than one version of the case per rule. But one destination this case cannot
-     * accept — a path its schema does not declare, a resolver that refuses — fails that whole
-     * call, and every other value is lost with it. {@link #resolve} already holds the opposite
-     * principle for expressions ("one bad expression should not cost the others"); this is the
-     * same principle applied to the write.
+     * <p>In one call, because several {@code doc:} destinations then land in a single document save
+     * rather than one version of the case per rule.
      *
-     * <p>So on failure each destination is attempted on its own, which both salvages the good ones
-     * and names the bad one. Re-writing a value that already landed in the failed batch is
-     * harmless: writing the same value twice says the same thing.
+     * <p>If that call fails, each destination is attempted on its own — not to salvage the ones that
+     * work, which would be pointless when the transaction is about to roll back, but to <b>name the
+     * one at fault</b>. A batch failure says only that something in the set was unacceptable; an
+     * operator needs to know which destination, and an author needs it to fix the rule.
+     *
+     * <p>Then it throws. Write-back runs inside the submission's transaction, so this rolls the
+     * submission back: the task stays open and the case is untouched. A value a case worker approved
+     * either reaches the case or the submission does not happen.
+     *
+     * <p>Destinations are named; values never are. A letter's data is case data.
      */
     private void write(UUID documentId, Map<String, Object> resolved) {
         try {
@@ -210,28 +294,89 @@ public class ComposerWriteBackService {
             return;
         } catch (RuntimeException e) {
             if (resolved.size() == 1) {
-                log.error("Letter composer write-back could not write {} to case {}: {}",
-                        resolved.keySet(), documentId, e.getMessage(), e);
-                return;
+                throw refusing(List.copyOf(resolved.keySet()), documentId, e);
             }
-            log.warn("Letter composer write-back could not write {} value(s) to case {} in one go "
-                            + "({}); trying them one at a time", resolved.size(), documentId, e.getMessage());
+            log.warn("Letter composer write-back could not write {} value(s) to case {} in one go; "
+                    + "finding which destination is at fault", resolved.size(), documentId);
         }
 
         List<String> failed = new ArrayList<>();
-        List<String> written = new ArrayList<>();
-        resolved.forEach((destination, value) -> {
+        RuntimeException firstCause = null;
+        for (Map.Entry<String, Object> entry : resolved.entrySet()) {
             try {
-                valueResolverService.handleValues(documentId, Map.of(destination, value));
-                written.add(destination);
+                valueResolverService.handleValues(documentId, Map.of(entry.getKey(), entry.getValue()));
             } catch (RuntimeException e) {
-                failed.add(destination);
-                log.error("Letter composer write-back could not write '{}' to case {}: {}",
-                        destination, documentId, e.getMessage());
+                failed.add(entry.getKey());
+                if (firstCause == null) {
+                    firstCause = e;
+                }
             }
-        });
-        log.info("Letter composer write-back on case {}: wrote {}, could not write {}",
-                documentId, written, failed);
+        }
+        if (!failed.isEmpty()) {
+            throw refusing(failed, documentId, firstCause);
+        }
+        // The batch failed but every destination succeeded alone: the set was the problem, not any
+        // one of them — two rules writing overlapping paths of the same document, say. Worth saying
+        // out loud rather than passing silently, because nothing is wrong with the rules in
+        // isolation and that is confusing to debug.
+        log.warn("Letter composer write-back on case {} could not write {} together, though each "
+                + "destination was accepted on its own", documentId, resolved.keySet());
+    }
+
+    /**
+     * Name a failure without quoting what it was carrying.
+     *
+     * <p>The class alone is often uninformative — Valtimo wraps a refused write in a plain
+     * {@code RuntimeException} — so the <b>root</b> cause's class is named too, which is where the
+     * useful distinction usually sits: a schema rejection and an exhausted optimistic retry are
+     * both a {@code RuntimeException} on the outside and different underneath.
+     *
+     * <p>Classes only. A message would do better, and cannot be used: the downstream complaint
+     * quotes the value it rejected — Valtimo's reads {@code Failed to handle values … Values:
+     * {/besluit/x=gegrond}} — and a letter's values are case data.
+     */
+    private static String describe(Throwable cause) {
+        if (cause == null) {
+            return "unknown cause";
+        }
+        Throwable root = cause;
+        while (root.getCause() != null && root.getCause() != root) {
+            root = root.getCause();
+        }
+        return root == cause
+                ? cause.getClass().getSimpleName()
+                : cause.getClass().getSimpleName() + " caused by " + root.getClass().getSimpleName();
+    }
+
+    /**
+     * The failure to raise when a destination would not accept its value.
+     *
+     * <p>Names the destinations and the kind of failure, and <b>deliberately does not carry the
+     * cause</b>. A letter's data is case data — names, identifiers, addresses, the text of a
+     * decision — and the downstream complaint quotes the value it rejected: Valtimo's own message
+     * reads {@code Failed to handle values … Values: {/besluit/x=gegrond}}. Attached as a cause,
+     * that reaches every log that prints this exception's stack trace, which for a failure that
+     * propagates out of a web request is all of them.
+     *
+     * <p>So the detail goes to {@code DEBUG}, where reading it is a deliberate act, and the
+     * exception that travels carries only the destination. The destination is usually the whole
+     * diagnosis anyway — a path the case schema does not declare is the common case, and it is
+     * named exactly.
+     */
+    private static ComposerWriteBackException refusing(
+            List<String> destinations, UUID documentId, RuntimeException cause) {
+        String what = destinations.size() == 1
+                ? "destination " + destinations.get(0)
+                : "destinations " + destinations;
+        // WARN, not ERROR. The submission rolled back, so nothing is inconsistent, and the caller
+        // has been told with a 400. The usual cause is a destination the case schema does not
+        // declare — a form to fix, not an incident — and ERROR on a path any misconfigured form can
+        // reach is how an operator learns to ignore ERROR.
+        log.warn("Letter composer write-back could not write {} to case {} ({})",
+                what, documentId, describe(cause));
+        return new ComposerWriteBackException(
+                "The letter's values could not be saved on the case: " + what
+                        + " was refused. The submission was not completed.");
     }
 
     /**
@@ -298,13 +443,25 @@ public class ComposerWriteBackService {
     /**
      * The value for each destination, from the rule that names it.
      *
-     * <p>A rule yielding nothing contributes nothing, which is what makes "only write what was
-     * actually supplied" the default instead of clobbering good case data with nulls. A rule that
-     * fails to evaluate is dropped with a warning rather than failing the rest: one bad expression
-     * should not cost the others.
+     * <p>A rule that finds <em>nothing</em> contributes nothing, which is what makes "only write
+     * what was actually supplied" the default instead of clobbering good case data. A rule that
+     * <em>fails to evaluate</em> is a different matter and raises: the value it was meant to save
+     * would otherwise never arrive and nothing would say so. (It was dropped with a warning while
+     * write-back ran after the letter was sent, where there was nothing to be done about it.)
+     *
+     * <p><b>An explicit {@code null} is a value, and it is written.</b> JSONata keeps the two
+     * apart — a missing path leaves the key out of the result, while {@code null} puts it in — so
+     * {@code null} is how a rule says "clear this field", and nothing else has to be configured to
+     * allow it. Only the key's presence is tested here; the old guard also rejected null and so
+     * collapsed the distinction, leaving no way to express a deliberate clear. Empty string and
+     * {@code false} were always written, being neither missing nor null.
+     *
+     * <p>Whatever found nothing is named in the log. A rule that quietly resolved to nothing and
+     * one that worked used to look identical from outside, which is the harder half of #179.
      */
     private Map<String, Object> resolve(Map<String, String> rules, ComposedLetter letter, UUID documentId) {
         Map<String, Object> resolved = new LinkedHashMap<>();
+        List<String> nothing = new ArrayList<>();
         rules.forEach((destination, expression) -> {
             try {
                 Map<String, Object> result = jsonataMappingService.evaluate(EvaluationContext.builder()
@@ -329,14 +486,30 @@ public class ComposerWriteBackService {
                                 "letter", letter.data(),
                                 "inputs", letter.inputs()))
                         .build());
-                if (result.containsKey("value") && result.get("value") != null) {
+                if (result.containsKey("value")) {
                     resolved.put(destination, result.get("value"));
+                } else {
+                    nothing.add(destination);
                 }
             } catch (RuntimeException e) {
-                log.warn("Letter composer write-back rule for '{}' on case {} could not be evaluated: {}",
-                        destination, documentId, e.getMessage());
+                // A rule that cannot be evaluated is broken, and the value it was meant to save
+                // never arrives. That used to be logged and skipped, which is the silent failure
+                // this moved to submission time to end. The expression is named — it is the
+                // author's own text, not case data — and the cause is attached rather than quoted.
+                log.warn("Letter composer write-back rule for '{}' on case {} could not be "
+                        + "evaluated ({})", destination, documentId, describe(e));
+                throw new ComposerWriteBackException(
+                        "The letter's values could not be saved on the case: the rule for "
+                                + destination + " could not be evaluated. The submission was not "
+                                + "completed.");
             }
         });
+        if (!nothing.isEmpty()) {
+            // Said out loud rather than left to a reader comparing the case with the rules: a rule
+            // whose expression found nothing is indistinguishable from one that worked.
+            log.info("Letter composer write-back on case {}: {} resolved to nothing, so the case "
+                    + "keeps what it had", documentId, nothing);
+        }
         return resolved;
     }
 
@@ -357,8 +530,16 @@ public class ComposerWriteBackService {
             var document = documentService.findBy(JsonSchemaDocumentId.existingId(documentId));
             return document.map(found -> found.definitionId().name()).orElse(null);
         } catch (RuntimeException e) {
-            log.debug("Could not read case {} for letter composer write-back: {}", documentId, e.getMessage());
-            return null;
+            // Raised rather than swallowed: a case that cannot be read is not the same as a case
+            // with no composers, and treating them alike meant an infrastructure failure skipped
+            // write-back while the submission succeeded — at DEBUG, so invisible by default.
+            // Returning null for a document that genuinely is not there stays as it was; nothing
+            // can be written to a case that does not exist.
+            log.warn("Letter composer write-back could not read case {} ({})",
+                    documentId, describe(e));
+            throw new ComposerWriteBackException(
+                    "The letter's values could not be saved on the case: the case could not be "
+                            + "read. The submission was not completed.");
         }
     }
 

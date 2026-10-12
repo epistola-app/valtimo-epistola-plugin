@@ -755,19 +755,115 @@ the promise the composer makes. The rest are open.
   The design is settled and written up in
   [ADR 0006](adr/0006-letter-composer-configuration.md#write-back-is-a-map-from-case-path-to-expression-evaluated-after-the-letter-is-composed):
   an `epistola.writeBack` map on the component, keyed by the **destination** and valued with a JSONata
-  expression over `$inputs` / `$data` / `$doc` / `$pv`. It is evaluated when the letter is composed
-  and the _result_ rides on the letter variable next to `data`, so the write uses what the employee
-  approved even when the applying task runs long afterwards. The **generate action applies it**, once
-  Epistola has accepted the letter — one composer produces one letter which one generate task
-  renders, so there is nothing to coordinate and nothing an author can forget to wire. A refused
-  submission throws as it does today, so nothing is written for a letter that was never sent; a
-  write that fails _after_ acceptance is recorded on the result variable rather than thrown,
-  because the letter is irreversible by then and failing the activity would make a retry generate a
-  duplicate. Keying by destination is what keeps one writer per case
-  path and lets a destination be computed from several inputs; an expression yielding nothing
-  writes nothing, so a value the employee never supplied never clobbers the case. The same map also
-  makes the preview more faithful rather than less — applied to a copy of `$doc`/`$pv` before the
-  baseline mapping runs, it shows the letter as it will be _once saved_.
+  expression over `$inputs` / `$data` / `$doc` / `$pv`.
+
+  The rules are **evaluated when the form is submitted, from the stored form** — the same moment
+  every other form writes to the case, and before the letter has been sent anywhere. A composer's
+  values therefore reach the case whether or not the rendering that follows succeeds, which is the
+  right division: generating a PDF is a separate concern from recording what the employee decided.
+
+  The trigger is Valtimo's own `TaskCompletedEvent`, which carries the case document id and the
+  process variables — so `ComposerSubmissionListener` needs nothing from the browser, and the rules
+  cannot change between composing and writing. `$doc` and `$pv` see the case as it is at submission,
+  which is also what an author would assume.
+
+  Nothing about a write-back ever crosses the wire. An earlier design had the browser compute the
+  values and send them, with the stored form allowed to veto the destinations — hence the veto this
+  document used to describe. The rules are resolved server-side instead, which is stronger: a
+  crafted letter has nothing to craft with, because both the destinations and the values come from
+  the form.
+
+  **Why an event and not a form field.** Every other form writes by carrying a `doc:`-keyed field in
+  its submission, and a composer cannot: its own field is already keyed `pv:` so the letter reaches
+  the generate task, and a Form.io component can add neither a top-level sibling nor a submitted
+  child of its own — measured, not assumed, in
+  [ADR 0006](adr/0006-letter-composer-configuration.md). So the platform's submission _signal_ is
+  used instead of its submission _payload_.
+
+  **A write-back problem blocks the submission.** The event is published synchronously, inside the
+  submission's transaction, so a failure rolls the whole submission back: the submit call answers
+  400, the task stays open and the case is left untouched. That is how an ordinary form behaves when
+  it carries a `doc:` field the case schema will not accept, and it is the point — a value a case
+  worker approved either reaches the case or the submission does not happen — and that holds without
+  exceptions. A rule that cannot be _evaluated_, a write the case refuses, a composed letter that
+  cannot be read, and a case that cannot be read all block. A rule that resolves to _nothing_ is not
+  a failure and writes nothing, as above.
+
+  **Where it applies.** Two triggers, between them covering every shape, and disjoint so that
+  nothing writes twice:
+
+  | Shape                     | Demo               | Trigger                                              |
+  | ------------------------- | ------------------ | ---------------------------------------------------- |
+  | Task form                 | `kies-brief`       | `TaskCompletedEvent`                                 |
+  | Form-flow step            | `kies-brief-flow`  | `TaskCompletedEvent` — a step completes a task       |
+  | Start form, existing case | `kies-brief-adhoc` | `FormSubmissionService.handleSubmission`             |
+  | Start form, new case      | `direct-brief`     | the same, with the new case id taken from the result |
+
+  A start form completes no task, so the event cannot see it; `ProcessStartedEvent` looks like the
+  answer and is not, because it is published _before_ Valtimo writes the submitted `pv:` values and
+  the letter does not exist yet. What does work is the service every regular submission passes
+  through — one method, dispatching to all three of Valtimo's shapes, inside the submission's
+  transaction. A submission that carries a `taskInstanceId` is left to the event, which is what
+  keeps the two from both firing.
+
+  The letter there comes from the **submission** rather than the engine, since a start form hands
+  back no process instance id. It is the same letter the variable would hold, and the rules still
+  come only from the stored form. It is converted to a `Map` first: that is the kind of value a
+  process variable holds, and handing over the submission's `JsonNode` fails with _"the composed
+  letter could not be read"_.
+
+  **A composer on the form that creates the case** is the one shape with no case to read from, and
+  the demo's `direct-brief` shows what follows. It must name the **process it starts** — nothing can
+  derive it, and without that the component stays inert on purpose, which is the one setting
+  normally left empty. It has **no baseline mapping**, because there is no `$doc` yet: left in
+  place, a mapping consumes the letter's fields against an empty case instead of asking for them.
+  So everything comes from the employee, and write-back rules read `$inputs`. The case the values
+  land on is the one that submission created.
+
+  **Give each composer its own `pv:` key.** Two composers writing the same variable have their
+  write-back rules **merged**, because the rules are found by variable name. The demo's task form and
+  ad-hoc start form shared `pv:epistolaLetter` until this was built, which meant an ad-hoc letter
+  inherited a `pv:besluitType` rule from a form it has nothing to do with — and that destination
+  cannot resolve on a case running more than one process, so the submission was refused. The ad-hoc
+  composer now uses `pv:epistolaAdhocLetter`, as the flow already used its own name.
+
+  **It is logged as a warning, not an error.** The submission rolled back, so nothing is
+  inconsistent, and the caller has already been told with a 400. The usual cause is a form to fix —
+  a destination the case schema does not declare, a broken expression — which is worth noticing and
+  not worth waking anyone; `ERROR` on a path any misconfigured form can reach is how an operator
+  learns to ignore `ERROR`. The one exception is a failure this plugin does not recognise, such as
+  the case or its forms being unreadable: nothing else in that path logs it, so it stays `ERROR`.
+
+  **What is logged names destinations, never values.** A letter's data is case data — names,
+  identifiers, addresses, the text of a decision. The error names the destination at fault and the
+  kind of failure; when a batch fails, each destination is retried alone to _identify_ the culprit
+  rather than to salvage the rest, since the transaction is rolling back either way. The downstream
+  complaint does quote the value it rejected (Valtimo's own message reads
+  `Failed to handle values … Values: {/besluit/x=gegrond}`), so it is **not** attached to the
+  exception that travels and **not** logged at any level, `DEBUG` included — see
+  [Never log personal data](../CLAUDE.md#never-log-personal-data). What is logged instead is the
+  destination plus the outer and root cause classes, which is where the useful distinction usually
+  sits: a schema rejection and an exhausted optimistic retry are both a `RuntimeException` outside
+  and differ underneath. Keying by
+  destination is what keeps one writer per case path and lets a destination be computed from several
+  inputs. The same map also makes the preview more faithful rather than less — applied to a copy of
+  `$doc`/`$pv` before the baseline mapping runs, it shows the letter as it will be _once saved_.
+
+  **Nothing, null, and the difference between them.** An expression that finds nothing writes
+  nothing, so a value the employee never supplied never clobbers the case — and the destinations
+  that resolved to nothing are named in the log, because a rule that quietly found nothing used to
+  be indistinguishable from one that worked. An explicit **`null` is a value, and it is written**:
+  JSONata keeps the two apart (a missing path leaves the key out of the result, `null` puts it in),
+  so `null` is how a rule says _clear this field_ and nothing else has to be configured to allow it.
+  A conditional spells it out:
+
+  ```
+  $inputs.telefoon ? $inputs.telefoon : null
+  ```
+
+  That also means a `null` the letter itself carries — a contract may declare a field nullable — is
+  written rather than skipped, which is the letter saying the value is empty. Empty string and
+  `false` were always written, being neither missing nor null.
 
 - **Labels come from the contract.** A field with no `title` is labelled by humanizing its property
   name, so an English property name shows an English label in a Dutch form. The fix belongs in the

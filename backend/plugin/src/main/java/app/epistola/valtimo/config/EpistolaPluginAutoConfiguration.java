@@ -208,15 +208,11 @@ public class EpistolaPluginAutoConfiguration {
             JsonataMappingService jsonataMappingService,
             com.ritense.document.service.DocumentService documentService,
             EpistolaResultCollectorRunner resultCollectorRunner,
-            List<DocumentStorageStrategy> storageStrategies,
-            // Absent when the composer module is switched off, in which case the
-            // generate-composed-document action has no composers to honour anyway.
-            org.springframework.beans.factory.ObjectProvider<
-                    app.epistola.valtimo.composer.ComposerWriteBackService> writeBackService
+            List<DocumentStorageStrategy> storageStrategies
     ) {
         return new EpistolaPluginFactory(pluginService, epistolaService,
                 objectMapper, jsonataMappingService, documentService, resultCollectorRunner,
-                storageStrategies, writeBackService);
+                storageStrategies);
     }
 
     @Bean

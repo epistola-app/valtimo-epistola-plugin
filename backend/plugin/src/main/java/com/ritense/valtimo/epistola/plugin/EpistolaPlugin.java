@@ -76,7 +76,6 @@ public class EpistolaPlugin {
      * Applies a composed letter's write-back; null when the composer module is switched off
      * ({@code epistola.composer.enabled=false}), in which case there are no composers to honour.
      */
-    private final app.epistola.valtimo.composer.ComposerWriteBackService writeBackService;
 
     public EpistolaPlugin(
             EpistolaService epistolaService,
@@ -84,8 +83,7 @@ public class EpistolaPlugin {
             JsonataMappingService jsonataMappingService,
             com.ritense.document.service.DocumentService documentService,
             EpistolaResultCollectorRunner resultCollectorRunner,
-            Map<DocumentStorageTarget, DocumentStorageStrategy> storageStrategies,
-            app.epistola.valtimo.composer.ComposerWriteBackService writeBackService
+            Map<DocumentStorageTarget, DocumentStorageStrategy> storageStrategies
     ) {
         this.epistolaService = epistolaService;
         this.objectMapper = objectMapper;
@@ -93,7 +91,6 @@ public class EpistolaPlugin {
         this.documentService = documentService;
         this.resultCollectorRunner = resultCollectorRunner;
         this.storageStrategies = storageStrategies;
-        this.writeBackService = writeBackService;
     }
 
     /**
@@ -467,48 +464,10 @@ public class EpistolaPlugin {
                         resolvedCorrelationId,
                         resultProcessVariable));
 
-        // Only now: submitAndRecord throws if Epistola refused the request, so reaching this line
-        // means the letter is sent and irreversible. Writing before it would update the case for a
-        // letter that never went out; writing after an exception is impossible, which is the point.
-        // The raw value, not the parsed document: write-back reads the composer's own view of the
-        // same variable — what a person typed, and where the composer says it belongs — and this
-        // action has no business knowing about either.
-        applyWriteBack(execution, execution.getVariable(variableName), variableName);
-    }
-
-    /**
-     * Put the values this letter carries into the case, where its composer says they belong.
-     *
-     * <p>Folded into this action rather than given a task of its own: one composer produces one
-     * letter, which one generate task renders, so there is nothing to coordinate — and an author
-     * who had to remember a second task would eventually not, losing the data silently.
-     *
-     * <p>The rules come from the stored form, found through the case this process runs on, never
-     * from the letter: the letter is assembled in the browser, which is what makes the previewed
-     * letter the generated one, but it means a crafted one could otherwise name any case path.
-     *
-     * <p><b>Never throws.</b> Epistola has the letter by now. Failing here would claim something did
-     * not happen that did, and retrying the activity would generate a duplicate; so a write that
-     * cannot be made is recorded beside the result and the process carries on with a letter that
-     * was genuinely sent.
-     */
-    private void applyWriteBack(DelegateExecution execution, Object letter, String letterVariable) {
-        if (writeBackService == null) {
-            return;
-        }
-        String documentId = execution.getBusinessKey();
-        if (documentId == null || documentId.isBlank()) {
-            // A process not started for a case has nowhere to write back to. Not an error: the
-            // composer still rendered a letter, which is all a process without a dossier can want.
-            return;
-        }
-        try {
-            // Named, so only the composer that wrote this variable decides where its values go.
-            // A case type may carry several composers, and one letter is not the others' business.
-            writeBackService.apply(java.util.UUID.fromString(documentId), letter, letterVariable);
-        } catch (RuntimeException e) {
-            log.warn("Could not write letter values back to case {}: {}", documentId, e.getMessage());
-        }
+        // No write-back here. A composer's values reach the case when the *form* is submitted, which
+        // is where every other form writes and where the employee is still present to be told if a
+        // write fails — see ComposerSubmissionListener and ADR 0006. This action renders a document
+        // and nothing else, which is also what lets a retry re-render without writing twice.
     }
 
     /**
