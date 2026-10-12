@@ -31,9 +31,11 @@ import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent } from '@valtimo/components';
 import { FormioModule } from '@formio/angular';
+import { TranslateService } from '@ngx-translate/core';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime, switchMap } from 'rxjs/operators';
 import { EpistolaPluginService } from '../../services';
+import { formioLanguage, readerLocale, withLocaleDates } from '../../utils/formio-locale';
 
 @Component({
   standalone: true,
@@ -206,20 +208,39 @@ export class EpistolaRetryFormComponent
   private currentBlobUrl: string | null = null;
   private resolvedSourceActivityId?: string;
 
-  formOptions: any = {
-    noAlerts: true,
-    buttonSettings: { showCancel: false, showSubmit: false, showPrevious: false, showNext: false },
-  };
+  formOptions: any;
 
   constructor(
     private readonly epistolaPluginService: EpistolaPluginService,
     private readonly cdr: ChangeDetectorRef,
     private readonly sanitizer: DomSanitizer,
+    private readonly translateService: TranslateService,
   ) {
+    this.formOptions = {
+      noAlerts: true,
+      // Form.io takes a number's separators from this, and falls back to English without it.
+      language: this.language,
+      buttonSettings: {
+        showCancel: false,
+        showSubmit: false,
+        showPrevious: false,
+        showNext: false,
+      },
+    };
     // Debounce preview calls
     this.previewSubscription = this.previewSubject.pipe(debounceTime(1500)).subscribe((data) => {
       this.loadPreview(data);
     });
+  }
+
+  /** The language Valtimo is shown in, which decides how numbers and dates are written. */
+  private get language(): string {
+    return formioLanguage(this.locale);
+  }
+
+  /** The same, with its region, which decides the order a date is written in. */
+  private get locale(): string {
+    return readerLocale(this.translateService.currentLang || this.translateService.defaultLang);
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -329,7 +350,7 @@ export class EpistolaRetryFormComponent
       .getRetryForm(taskId, this.sourceActivityId)
       .subscribe({
         next: (form) => {
-          this.formDefinition = form;
+          this.formDefinition = withLocaleDates(form, this.locale);
           if (this.value) {
             try {
               this.submission = { data: JSON.parse(this.value) };

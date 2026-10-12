@@ -37,6 +37,10 @@ jest.mock('@formio/angular', () => ({
   FormioModule: class {},
 }));
 
+jest.mock('@ngx-translate/core', () => ({
+  TranslateService: class {},
+}));
+
 jest.mock('@valtimo/components', () => ({}));
 jest.mock('@valtimo/plugin', () => ({
   PluginTranslatePipeModule: class {},
@@ -69,7 +73,7 @@ describe('EpistolaLetterComposerComponent', () => {
     URL.revokeObjectURL = originalRevokeObjectUrl!;
   });
 
-  function createComponent(prepared: Record<string, unknown> = {}) {
+  function createComponent(prepared: Record<string, unknown> = {}, currentLang = 'nl') {
     const service = {
       composerPrepareStart: jest.fn(() =>
         of({
@@ -104,6 +108,7 @@ describe('EpistolaLetterComposerComponent', () => {
       cdr as any,
       sanitizer as any,
       { instant: jest.fn((key: string) => key) } as any,
+      { currentLang } as any,
     );
     component.templates = [
       { templateId: 'besluit', label: 'Besluit' },
@@ -595,6 +600,39 @@ describe('EpistolaLetterComposerComponent', () => {
 
       expect(component.awaitingRequired).toBe(true);
       expect(service.composerPreviewToBlob).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('in the reader’s locale', () => {
+    const dateField = {
+      type: 'textfield',
+      key: 'besluitdatum',
+      widget: { type: 'calendar', saveAs: 'text', dateFormat: 'yyyy-MM-dd', format: 'dd-MM-yyyy' },
+    };
+
+    it('hands Form.io Valtimo’s language, which decides a number’s separators', () => {
+      const { component } = createComponent({}, 'nl');
+
+      expect(component.formOptions.language).toBe('nl');
+    });
+
+    it('falls back to English when Valtimo reports no language', () => {
+      const { component } = createComponent({}, null as any);
+
+      expect(component.formOptions.language).toBe('en');
+    });
+
+    it('shows a date the way the locale writes it, and still stores it as ISO', () => {
+      const { component } = createComponent(
+        { form: { display: 'form', components: [dateField] } },
+        'en-US',
+      );
+
+      component.onTemplateSelected('besluit');
+
+      const widget = component.formDefinition.components[0].widget;
+      expect(widget.format).toBe('MM/dd/yyyy');
+      expect(widget.dateFormat).toBe('yyyy-MM-dd');
     });
   });
 

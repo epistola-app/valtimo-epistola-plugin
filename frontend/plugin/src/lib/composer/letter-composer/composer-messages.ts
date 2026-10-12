@@ -73,9 +73,8 @@ export interface ValidationMessages {
    *
    * A sentence saying what is wrong is worth less than one valid value, so where there is an
    * example it is shown whether or not the field also describes itself. It arrives as
-   * `epistolaExample`, which the generator sets only from the schema's `examples`/`example` — not
-   * from the placeholder, which may instead be a format shape (`YYYY-MM-DD`) and so an example of
-   * nothing.
+   * `epistolaExample`, which the generator sets only from the schema's `examples`/`example`, so
+   * that it is named for what it is rather than inferred from whatever the placeholder holds.
    */
   readonly exampleSuffix: string;
 }
