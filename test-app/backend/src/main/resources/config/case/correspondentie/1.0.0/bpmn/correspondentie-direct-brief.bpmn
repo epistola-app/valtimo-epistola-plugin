@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_direct_brief" targetNamespace="http://bpmn.io/schema/bpmn">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_direct_brief" targetNamespace="http://bpmn.io/schema/bpmn">
   <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
   <bpmn:process id="correspondentie-direct-brief" name="Nieuw dossier met brief" isExecutable="true">
     <bpmn:documentation>An ad-hoc letter on a dossier that is already open: no user task anywhere. The letter composer sits on this process's start form, so choosing and adjusting the letter happens in the Start dialog, and the process only generates what was chosen. The composer authorizes on the caller's permission to start this process plus read the case, not on a task — see ADR 0004 and docs/letter-composer.md.</bpmn:documentation>
@@ -17,6 +18,7 @@
     </bpmn:boundaryEvent>
     <bpmn:sequenceFlow id="Flow_boundary_err" sourceRef="boundary-generate-error" targetRef="end-error" />
     <bpmn:endEvent id="end-error">
+      <bpmn:incoming>Flow_generated_fail</bpmn:incoming>
       <bpmn:incoming>Flow_boundary_err</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="Flow_generate_wait" sourceRef="generate-direct-letter" targetRef="wait-for-generation" />
@@ -25,9 +27,45 @@
       <bpmn:outgoing>Flow_wait_end</bpmn:outgoing>
       <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_EpistolaDocumentGenerated" />
     </bpmn:intermediateCatchEvent>
-    <bpmn:sequenceFlow id="Flow_wait_end" sourceRef="wait-for-generation" targetRef="end-success" />
-    <bpmn:endEvent id="end-success">
+    <bpmn:sequenceFlow id="Flow_wait_end" sourceRef="wait-for-generation" targetRef="check-generated" />
+    <!-- The catch event fires for any terminal result, a refusal included, and a failed result
+         carries an error message rather than a document id. Without this gateway the download threw
+         "Not a valid Epistola document id: null" and the process died on the service task. Same
+         guard the objection case uses before its own downloads. -->
+    <bpmn:exclusiveGateway id="check-generated" name="Brief gegenereerd?">
       <bpmn:incoming>Flow_wait_end</bpmn:incoming>
+      <bpmn:outgoing>Flow_generated_ok</bpmn:outgoing>
+      <bpmn:outgoing>Flow_generated_fail</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_generated_ok" name="Ja" sourceRef="check-generated" targetRef="download-letter">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status == 'COMPLETED'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_generated_fail" name="Nee" sourceRef="check-generated" targetRef="end-error">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status != 'COMPLETED'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <!-- The letter exists in Epistola by this point. These two steps are what make it openable from
+         the dossier afterwards: the plugin's download action fetches the PDF into Valtimo's
+         temporary storage, and the demo's delegate copies it somewhere durable and relates it to
+         the case. Without them the process ends having produced a document nobody can see. -->
+    <bpmn:serviceTask id="download-letter" name="Haal de brief op" camunda:expression="${null}">
+      <bpmn:incoming>Flow_generated_ok</bpmn:incoming>
+      <bpmn:outgoing>Flow_download_store</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_download_store" sourceRef="download-letter" targetRef="store-letter" />
+    <bpmn:serviceTask id="store-letter" name="Bewaar de brief op het dossier" camunda:delegateExpression="${storeGeneratedLetter}">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="resourceIdVariable">directResourceId</camunda:inputParameter>
+          <camunda:inputParameter name="fileName">brief.pdf</camunda:inputParameter>
+          <camunda:inputParameter name="documentDefinitionName">correspondentie</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_download_store</bpmn:incoming>
+      <bpmn:outgoing>Flow_store_end</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_store_end" sourceRef="store-letter" targetRef="end-success" />
+    <bpmn:endEvent id="end-success">
+      <bpmn:incoming>Flow_store_end</bpmn:incoming>
     </bpmn:endEvent>
   </bpmn:process>
   <bpmn:error id="Error_EpistolaDocumentError" name="EpistolaDocumentError" />

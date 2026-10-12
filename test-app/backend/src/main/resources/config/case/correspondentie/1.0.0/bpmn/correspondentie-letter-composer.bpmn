@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_letter_composer" targetNamespace="http://bpmn.io/schema/bpmn">
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_letter_composer" targetNamespace="http://bpmn.io/schema/bpmn">
   <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
   <bpmn:process id="correspondentie-letter-composer" name="Brief kiezen en genereren" isExecutable="true">
     <bpmn:documentation>Demonstrates the letter composer. The employee picks one of several letters, fills in whatever the baseline mapping could not supply and previews it; a single generate task then renders whichever letter was chosen, because action configuration v2 reads the catalog and template from $pv.epistolaLetter. Adding a letter is one row in the form component — no extra service task, gateway branch or form field.</bpmn:documentation>
@@ -22,6 +23,7 @@
     </bpmn:boundaryEvent>
     <bpmn:sequenceFlow id="Flow_boundary_err" sourceRef="boundary-generate-error" targetRef="end-error" />
     <bpmn:endEvent id="end-error">
+      <bpmn:incoming>Flow_generated_fail</bpmn:incoming>
       <bpmn:incoming>Flow_boundary_err</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="Flow_generate_wait" sourceRef="generate-chosen-letter" targetRef="wait-for-generation" />
@@ -32,13 +34,28 @@
       <bpmn:outgoing>Flow_wait_end</bpmn:outgoing>
       <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_EpistolaDocumentGenerated" />
     </bpmn:intermediateCatchEvent>
-    <bpmn:sequenceFlow id="Flow_wait_end" sourceRef="wait-for-generation" targetRef="download-letter" />
+    <bpmn:sequenceFlow id="Flow_wait_end" sourceRef="wait-for-generation" targetRef="check-generated" />
+    <!-- The catch event fires for any terminal result, a refusal included, and a failed result
+         carries an error message rather than a document id. Without this gateway the download threw
+         "Not a valid Epistola document id: null" and the process died on the service task. Same
+         guard the objection case uses before its own downloads. -->
+    <bpmn:exclusiveGateway id="check-generated" name="Brief gegenereerd?">
+      <bpmn:incoming>Flow_wait_end</bpmn:incoming>
+      <bpmn:outgoing>Flow_generated_ok</bpmn:outgoing>
+      <bpmn:outgoing>Flow_generated_fail</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_generated_ok" name="Ja" sourceRef="check-generated" targetRef="download-letter">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status == 'COMPLETED'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_generated_fail" name="Nee" sourceRef="check-generated" targetRef="end-error">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status != 'COMPLETED'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
     <!-- The letter exists in Epistola by this point. These two steps are what make it openable from
          the dossier afterwards: the plugin's download action fetches the PDF into Valtimo's
          temporary storage, and the demo's own delegate copies it somewhere durable and relates it to
          the case. Without them the process ends having produced a document nobody can see. -->
     <bpmn:serviceTask id="download-letter" name="Haal de brief op" camunda:expression="${null}">
-      <bpmn:incoming>Flow_wait_end</bpmn:incoming>
+      <bpmn:incoming>Flow_generated_ok</bpmn:incoming>
       <bpmn:outgoing>Flow_download_store</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:sequenceFlow id="Flow_download_store" sourceRef="download-letter" targetRef="store-letter" />
