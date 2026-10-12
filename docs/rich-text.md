@@ -29,6 +29,16 @@ emphasis in another. It decides in this order:
 3. **Otherwise the default applies.** A string mapped straight onto a rich-text field is read in
    `epistola.rich-text.default-format`.
 
+A field that takes a **list** of rich text is converted item by item, and empty items are left out.
+`$richText` reads one value; to name the format of a list, map over it the JSONata way:
+
+```jsonata
+{ "alineas": $doc.alineas.$richText($, "html") }
+```
+
+JSONata hands over a lone value instead of a list when the case list has exactly one item. A list
+field takes such a value as a list of one, so that needs no `[…]` around the expression.
+
 ```yaml
 epistola:
   rich-text:
@@ -57,25 +67,72 @@ allow is narrowed rather than sent:
 Blank input is removed rather than sent as an empty document, so a required field cannot pass
 empty. That includes markup around nothing, like the `<p><br></p>` an emptied editor leaves.
 
-## Asking for it in a form
+## In your own forms
 
-When the letter composer or a retry form asks for a rich-text field, the editor matches the default
-format, so what a person types is already in the case's format:
+Rich text does not need the letter composer. Any Valtimo form can collect it with Form.io's own
+WYSIWYG text area, which writes HTML into the case document or a process variable. A
+generate-document mapping, or the preview component, then hands that to the rich-text field:
 
-- `html` gives Form.io's WYSIWYG text area (CKEditor). Its toolbar holds only what Epistola renders
-  and Form.io's CKEditor build offers: bold, italic, colour, lists, indentation and links.
-  There are no headings, fonts, images or alignment, because content the conversion would drop is
-  better never created.
+```jsonata
+{ "toelichting": $richText($doc.besluit.toelichting, "html") }
+```
+
+With `default-format: html` the plain mapping `$doc.besluit.toelichting` does the same.
+
+What the form builder offers by default is more than Epistola renders: headings, tables, images,
+media. The conversion drops those, keeping the text. To offer only what survives, give the text
+area this editor configuration (in the builder's JSON for the component):
+
+```json
+{
+  "type": "textarea",
+  "key": "besluit.toelichting",
+  "editor": "ckeditor",
+  "isUploadEnabled": false,
+  "wysiwyg": {
+    "toolbar": [
+      "bold",
+      "italic",
+      "|",
+      "fontColor",
+      "|",
+      "bulletedList",
+      "numberedList",
+      "outdent",
+      "indent",
+      "|",
+      "link",
+      "|",
+      "undo",
+      "redo"
+    ]
+  }
+}
+```
+
+Leave out the list buttons for a field that takes inline rich text, and add `"multiple": true` for
+one that takes a list.
+
+## In the letter composer and the retry form
+
+When the composer or a retry form asks for a rich-text field, it generates the editor itself,
+matching the default format, so what a person types is already in the case's format:
+
+- `html` gives the CKEditor text area above.
 - `plain` and `markdown` give a plain text area.
 
-CKEditor rather than Quill is a necessity, not a preference. Form.io 4 deep-merges a component's
-Quill settings into its own default toolbar, index by index, so a shorter toolbar can add buttons
-but never remove headings, fonts, images or video. CKEditor has no default toolbar to merge into.
-HTML that Quill wrote elsewhere still converts.
+A field that takes a **list** of rich text gets one editor per item, with "add another".
 
-Form.io loads CKEditor at runtime from its CDN (`cdn.form.io`) unless the host configures
-`Formio.cdn` otherwise. An installation whose content security policy forbids that should either
-serve it itself or keep `plain`/`markdown`.
+The HTML editor is CKEditor rather than Quill out of necessity, not preference. Form.io 4
+deep-merges a component's Quill settings into its own default toolbar, index by index, so a shorter
+toolbar can add buttons but never remove headings, fonts, images or video. CKEditor has no default
+toolbar to merge into. Form.io's CKEditor build has no underline, strikethrough or sub- and
+superscript buttons. Those marks still convert when they arrive in HTML from elsewhere, Quill
+included.
+
+The editor itself is Form.io's, not the plugin's. Form.io loads it from its CDN (`cdn.form.io`)
+exactly as it does for any WYSIWYG text area an author builds in Valtimo, and neither the plugin nor
+Valtimo overrides `Formio.cdn`. An installation where WYSIWYG fields already work needs nothing more.
 
 A value that is already a document, such as a retry form prefilled with what was rendered, is
 written back out in the default format, so the editor shows text rather than JSON.
@@ -117,7 +174,6 @@ much of the meaning as the schema can carry. Two optional methods complete it:
 
 ## Not (yet) supported
 
-- **An array of rich text** has no repeating editor. It stays a complete-value mapping.
 - A rich-text schema **inlined** into a contract, rather than referenced by its URL, is not
   recognised. The contract keeps these references as URLs, so this does not occur with Epistola's
   own schemas.

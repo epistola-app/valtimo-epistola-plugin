@@ -159,12 +159,12 @@ The editor should **emit the case's format**, so what the composer asks for and 
 the same thing, and an existing value can be loaded for editing without conversion. That makes the
 editor a consequence of question 2, not an independent choice:
 
-| Case format | Editor                                                                                                  | Notes                                                                                                                                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| HTML        | Form.io `textarea` with `editor: ckeditor` or `quill`, toolbar limited to the subset                    | Native to Valtimo, no frontend code. Loaded at runtime from `cdn.form.io` by default; we found no override in `@valtimo/*` 13.48. Quill 2 is in our lockfile via `formiojs`, so it could be served locally |
-| Markdown    | Form.io `textarea`, optionally with a preview; or a markdown WYSIWYG                                    | Plain textarea needs nothing; a WYSIWYG adds a dependency                                                                                                                                                  |
-| Plain text  | Form.io `textarea`                                                                                      | Trivial                                                                                                                                                                                                    |
-| Own format  | The installation's own Form.io component, picked through the per-input presentation override (ADR 0006) | The plugin cannot know the editor for a format it does not know; it only needs the component to emit that format                                                                                           |
+| Case format | Editor                                                                                                  | Notes                                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| HTML        | Form.io `textarea` with `editor: ckeditor` or `quill`, toolbar limited to the subset                    | Native to Valtimo, no frontend code. Form.io loads it from its own CDN, as for any WYSIWYG field in Valtimo      |
+| Markdown    | Form.io `textarea`, optionally with a preview; or a markdown WYSIWYG                                    | Plain textarea needs nothing; a WYSIWYG adds a dependency                                                        |
+| Plain text  | Form.io `textarea`                                                                                      | Trivial                                                                                                          |
+| Own format  | The installation's own Form.io component, picked through the per-input presentation override (ADR 0006) | The plugin cannot know the editor for a format it does not know; it only needs the component to emit that format |
 
 A limited toolbar matters for HTML. Content the converter would drop is better never created than
 silently lost.
@@ -215,8 +215,8 @@ These follow from the problem, whichever option wins:
    WYSIWYG fields and plain text, then `html` + `plain` with a configured default (2b) covers almost
    everyone, and the rest of the interface waits. If markdown or mixed formats show up, 2a's
    functions are needed from the start.
-2. **Can installations load an editor from `cdn.form.io`?** If a common CSP forbids it, the HTML
-   editor must be Quill served locally, or the markdown/plain textarea, and that shifts the default.
+2. **Do installations use Form.io's WYSIWYG editors today?** The editor is Form.io's, loaded the
+   way Form.io loads it for any Valtimo WYSIWYG field, so where those work this does too.
 
 ## Recommendation
 
@@ -315,4 +315,12 @@ Two smaller choices:
 - **Blank values are removed, not converted.** A blank string, or markup around nothing (an emptied
   Quill editor leaves `<p><br></p>`), is dropped from the data rather than turned into an empty
   document. Otherwise a required field would pass empty.
-- **Arrays of rich text stay a complete-value mapping.** No repeating editor exists for them yet.
+- **Arrays of rich text are lists of documents.** Each item is converted on its own, empty items
+  are left out, and the form asks for them with Form.io's `multiple` text area: one editor per item.
+  `$richText` stays one value in, one document out; a list is mapped the JSONata way
+  (`$doc.alineas.$richText($, "html")`). JSONata collapses a one-item list into its item, which
+  would make the field fail only for cases with exactly one, so a list field takes a single value
+  as a list of one.
+- **It is not composer-specific.** A regular Valtimo form with a WYSIWYG text area writes HTML to
+  the case. A generate-document mapping then reads it with `$richText(…, "html")`, or by the
+  default format, and the conversion step handles it like any other value.

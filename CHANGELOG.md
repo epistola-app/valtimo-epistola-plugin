@@ -30,9 +30,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     the retry form all send the same document. The template's contract is read to find the
     rich-text fields; if that read fails, the data goes as mapped and Epistola's own validation
     speaks.
-  - **The composer asks for a rich-text field** with the default format's editor: Form.io's WYSIWYG
-    text area (CKEditor, with only the buttons Epistola renders) for `html`, a plain text area
-    otherwise. What the employee types stays in the case's format, so write-back does not change
+  - **Any form can supply it**, not only the composer: a Valtimo form's WYSIWYG text area writes
+    HTML to the case, and the mapping reads it with `$richText($doc.x, "html")` (or by the
+    default format). `docs/rich-text.md` gives the editor configuration that offers only what
+    Epistola renders.
+  - **The composer and retry form ask for a rich-text field** with the default format's editor:
+    Form.io's WYSIWYG text area (CKEditor, with only the buttons Epistola renders) for `html`, a
+    plain text area otherwise. A list of rich text gets one editor per item. What the employee types stays in the case's format, so write-back does not change
     a field's format.
 
   No new dependencies: the HTML and markdown readers are small ones of the plugin's own.

@@ -471,7 +471,7 @@ schema (`richtext-inline-v1` or `richtext-block-v1`) is recognised by that refer
 any other input. What the employee gets depends on the format the installation keeps text in,
 `epistola.rich-text.default-format`:
 
-- `html` gives Form.io's WYSIWYG text area, with a toolbar of only what Epistola renders;
+- `html` gives Form.io's WYSIWYG text area (CKEditor), with a toolbar of only what Epistola renders;
 - `plain` (the default) and `markdown` give a plain text area.
 
 What is typed is kept in that format, in `inputs` and on any write-back destination. It is converted
@@ -911,8 +911,6 @@ the promise the composer makes. The rest are open.
   `template-data-invalid`, carrying a JSON Pointer per bad or absent field, so those pointers can be
   attached to the generated inputs the same way — that is the remaining half of
   [#150](https://github.com/epistola-app/valtimo-epistola-plugin/issues/150).
-- **An array of rich text has no editor.** A field holding a list of rich-text documents is still a
-  complete-value mapping, so the composer cannot ask for it; supply it from the baseline mapping.
 
 - **A per-template mapping fragment is not authorable in the settings widget.** The backend merges
   one and a hand-written form can set it; the widget captures template and label only.
