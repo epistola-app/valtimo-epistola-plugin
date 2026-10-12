@@ -52,6 +52,7 @@ public class EpistolaHttpSecurityConfigurer implements HttpSecurityConfigurer {
                     .requestMatchers("/api/v1/plugin/epistola/configurations/**").hasAuthority("ROLE_ADMIN")
                     .requestMatchers("/api/v1/plugin/epistola/process-variables").hasAuthority("ROLE_ADMIN")
                     .requestMatchers("/api/v1/plugin/epistola/variable-suggestions").hasAuthority("ROLE_ADMIN")
+                    .requestMatchers("/api/v1/plugin/epistola/letter-readers").hasAuthority("ROLE_ADMIN")
                     .requestMatchers("/api/v1/plugin/epistola/expression-functions").hasAuthority("ROLE_ADMIN")
                     .requestMatchers("/api/v1/plugin/epistola/validate-jsonata").hasAuthority("ROLE_ADMIN")
                     .requestMatchers("/api/v1/plugin/epistola/evaluate-mapping").hasAuthority("ROLE_ADMIN")
