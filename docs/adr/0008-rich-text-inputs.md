@@ -263,7 +263,7 @@ already is. Then `markdown`.
 
 ## As built (2026-10-12)
 
-The recommendation was built as written, with four differences worth knowing.
+The recommendation was built as written, with five differences worth knowing.
 
 **Conversion happens where data leaves for Epistola, not while composing.**
 `EpistolaServiceImpl.submitGenerationJob` and `previewDocument` convert the data's rich-text fields
@@ -292,6 +292,18 @@ instead:
 
 Neither aims at full conformance. Both are tolerant by construction, and anything they get wrong is
 still narrowed by `ProseMirrorSanitizer` to a valid document.
+
+**The HTML editor is CKEditor, because Quill's toolbar cannot be narrowed.** Tried in a browser
+against Form.io 4.19.5: a component's Quill settings are deep-merged into Form.io's default toolbar,
+index by index, so a toolbar of eight buttons still showed headings, fonts, background colour,
+alignment, images, video and formulas. All of those are content the conversion would drop.
+CKEditor has no default toolbar to merge into, so its toolbar is exactly what the component lists.
+
+Its Form.io build lacks underline, strikethrough and sub- or superscript, so the editor offers
+bold, italic, colour, lists, indentation and links. Those four marks still convert when they arrive
+in HTML from elsewhere. Its colour picker writes `hsl(…)`, which the HTML reader converts to the
+hex the schema requires. The whole chain was then checked end to end: text typed into the
+generated form, converted, and rendered by Epistola's preview.
 
 **The reverse direction exists for the shipped formats.** `fromProseMirror` writes a document back
 as text, HTML or markdown. It is used where a form shows a value that is already a document, such as

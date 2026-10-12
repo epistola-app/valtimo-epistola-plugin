@@ -35,7 +35,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * HTML, as a Form.io WYSIWYG text area (Quill or CKEditor) writes it and as Valtimo case documents
+ * HTML, as a Form.io WYSIWYG text area (CKEditor or Quill) writes it and as Valtimo case documents
  * filled by one already hold.
  *
  * <p>What the schema can carry is kept: paragraphs, line breaks, nested lists, bold, italic,
@@ -62,6 +62,9 @@ public class HtmlFormat implements RichTextFormat {
     private static final Pattern RGB = Pattern.compile(
             "rgba?\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*,\\s*(\\d{1,3})\\s*(?:,\\s*[\\d.]+\\s*)?\\)");
     private static final Pattern HEX = Pattern.compile("#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})");
+    /** CKEditor's colour picker writes {@code hsl(30, 75%, 60%)}; CSS also allows spaces and a slash. */
+    private static final Pattern HSL = Pattern.compile(
+            "hsla?\\(\\s*([\\d.]+)(?:deg)?[\\s,]+([\\d.]+)%[\\s,]+([\\d.]+)%\\s*(?:[,/]\\s*[\\d.]+%?\\s*)?\\)");
     private static final Pattern QUILL_INDENT = Pattern.compile("ql-indent-(\\d{1,2})");
 
     @Override
@@ -81,31 +84,28 @@ public class HtmlFormat implements RichTextFormat {
     }
 
     /**
-     * Form.io's text area in WYSIWYG mode, with Quill. The toolbar offers exactly what Epistola can
-     * render, so nobody formats text only to see it lost: no headings, fonts, sizes, background
-     * colours, alignment, images or code.
+     * Form.io's text area in WYSIWYG mode, with CKEditor, showing only buttons for what Epistola
+     * renders: no headings, tables, images or media, which the conversion would drop.
+     *
+     * <p>CKEditor rather than Quill because only CKEditor's toolbar can be narrowed. Form.io 4
+     * deep-merges a component's Quill settings into its default Quill toolbar, index by index, so a
+     * shorter toolbar keeps every default button beyond it (headings, fonts, images, video), while
+     * CKEditor has no default toolbar to merge into. Form.io's CKEditor build has no underline,
+     * strikethrough, sub- or superscript; those still convert when they arrive in HTML from
+     * elsewhere, Quill included.
      */
     @Override
     public Map<String, Object> editor(TemplateField.RichTextKind kind) {
-        List<Object> toolbar = new ArrayList<>();
-        toolbar.add(List.of("bold", "italic", "underline", "strike"));
-        toolbar.add(List.of(Map.of("script", "sub"), Map.of("script", "super")));
-        toolbar.add(List.of(Map.of("color", List.of())));
+        List<String> toolbar = new ArrayList<>(List.of("bold", "italic", "|", "fontColor"));
         if (kind == TemplateField.RichTextKind.BLOCK) {
-            toolbar.add(List.of(Map.of("list", "ordered"), Map.of("list", "bullet"),
-                    Map.of("indent", "-1"), Map.of("indent", "+1")));
+            toolbar.addAll(List.of("|", "bulletedList", "numberedList", "outdent", "indent"));
         }
-        toolbar.add(List.of("link"));
-        toolbar.add(List.of("clean"));
-
-        Map<String, Object> wysiwyg = new LinkedHashMap<>();
-        wysiwyg.put("theme", "snow");
-        wysiwyg.put("modules", Map.of("toolbar", toolbar));
+        toolbar.addAll(List.of("|", "link", "|", "undo", "redo"));
 
         Map<String, Object> component = new LinkedHashMap<>();
         component.put("type", "textarea");
-        component.put("editor", "quill");
-        component.put("wysiwyg", wysiwyg);
+        component.put("editor", "ckeditor");
+        component.put("wysiwyg", Map.of("toolbar", toolbar));
         component.put("isUploadEnabled", false);
         component.put("rows", kind == TemplateField.RichTextKind.INLINE ? 2 : 6);
         return component;
@@ -422,6 +422,7 @@ public class HtmlFormat implements RichTextFormat {
             String color = null;
             Matcher hex = HEX.matcher(value.trim());
             Matcher rgb = RGB.matcher(value.trim());
+            Matcher hsl = HSL.matcher(value.trim());
             if (hex.matches()) {
                 color = "#" + hex.group(1).toLowerCase(Locale.ROOT);
             } else if (rgb.matches()) {
@@ -430,12 +431,29 @@ public class HtmlFormat implements RichTextFormat {
                     out.append(String.format("%02x", Math.min(255, Integer.parseInt(rgb.group(group)))));
                 }
                 color = out.toString();
+            } else if (hsl.matches()) {
+                color = hslToHex(Double.parseDouble(hsl.group(1)), Double.parseDouble(hsl.group(2)),
+                        Double.parseDouble(hsl.group(3)));
             }
             if (color != null) {
                 Map<String, Object> mark = mark("textStyle");
                 mark.put("attrs", new LinkedHashMap<>(Map.of("color", color)));
                 marks.add(mark);
             }
+        }
+
+        /** The CSS Color 4 conversion from HSL to sRGB, rounded to the nearest channel value. */
+        private static String hslToHex(double hue, double saturation, double lightness) {
+            double s = Math.min(saturation, 100) / 100;
+            double l = Math.min(lightness, 100) / 100;
+            double a = s * Math.min(l, 1 - l);
+            StringBuilder out = new StringBuilder("#");
+            for (int n : new int[]{0, 8, 4}) {
+                double k = (n + (hue % 360) / 30) % 12;
+                double channel = l - a * Math.max(-1, Math.min(Math.min(k - 3, 9 - k), 1));
+                out.append(String.format("%02x", (int) Math.round(channel * 255)));
+            }
+            return out.toString();
         }
 
         private static Integer startOf(StartTag tag) {

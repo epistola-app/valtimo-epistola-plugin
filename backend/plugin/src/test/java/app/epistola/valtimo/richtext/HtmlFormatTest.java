@@ -172,13 +172,24 @@ class HtmlFormatTest {
     }
 
     @Test
+    void readsTheHslColoursCkEditorsPickerWrites() {
+        // Captured from Form.io's CKEditor: picking the seventh swatch of the colour grid.
+        assertThat(convert("<p><span style=\"color:hsl(30, 75%, 60%);\">oranje</span> "
+                + "<span style=\"color: hsl(0 0% 100% / 50%)\">wit</span></p>"))
+                .isEqualTo(doc(p(text("oranje", color("#e6994c")), text(" "), text("wit", color("#ffffff")))));
+    }
+
+    @Test
     void offersAToolbarOfOnlyWhatEpistolaRenders() {
         Map<String, Object> block = format.editor(RichTextKind.BLOCK);
         Map<String, Object> inline = format.editor(RichTextKind.INLINE);
 
-        assertThat(block).containsEntry("type", "textarea").containsEntry("editor", "quill");
-        assertThat(String.valueOf(block.get("wysiwyg"))).contains("list").doesNotContain("header", "image", "video");
-        assertThat(String.valueOf(inline.get("wysiwyg"))).doesNotContain("list");
+        assertThat(block).containsEntry("type", "textarea").containsEntry("editor", "ckeditor");
+        // Only buttons Form.io's CKEditor build has: an unknown one is a console warning, not a button.
+        assertThat(block.get("wysiwyg")).isEqualTo(Map.of("toolbar", List.of(
+                "bold", "italic", "|", "fontColor", "|", "bulletedList", "numberedList", "outdent", "indent",
+                "|", "link", "|", "undo", "redo")));
+        assertThat(String.valueOf(inline.get("wysiwyg"))).doesNotContain("List", "indent");
         assertThat(List.of(block, inline)).allSatisfy(editor -> assertThat(editor).containsEntry("isUploadEnabled", false));
     }
 }

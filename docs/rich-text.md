@@ -62,14 +62,20 @@ empty. That includes markup around nothing, like the `<p><br></p>` an emptied ed
 When the letter composer or a retry form asks for a rich-text field, the editor matches the default
 format, so what a person types is already in the case's format:
 
-- `html` gives Form.io's WYSIWYG text area (Quill), with a toolbar of only what Epistola renders.
+- `html` gives Form.io's WYSIWYG text area (CKEditor). Its toolbar holds only what Epistola renders
+  and Form.io's CKEditor build offers: bold, italic, colour, lists, indentation and links.
   There are no headings, fonts, images or alignment, because content the conversion would drop is
   better never created.
 - `plain` and `markdown` give a plain text area.
 
-Form.io loads Quill at runtime from its CDN (`cdn.form.io`) unless the host configures
+CKEditor rather than Quill is a necessity, not a preference. Form.io 4 deep-merges a component's
+Quill settings into its own default toolbar, index by index, so a shorter toolbar can add buttons
+but never remove headings, fonts, images or video. CKEditor has no default toolbar to merge into.
+HTML that Quill wrote elsewhere still converts.
+
+Form.io loads CKEditor at runtime from its CDN (`cdn.form.io`) unless the host configures
 `Formio.cdn` otherwise. An installation whose content security policy forbids that should either
-serve Quill itself or keep `plain`/`markdown`.
+serve it itself or keep `plain`/`markdown`.
 
 A value that is already a document, such as a retry form prefilled with what was rendered, is
 written back out in the default format, so the editor shows text rather than JSON.

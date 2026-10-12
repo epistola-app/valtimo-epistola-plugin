@@ -55,7 +55,7 @@ class FormioFormGeneratorRichTextTest {
         JsonNode component = component(generator, richText(true, RichTextKind.BLOCK), Map.of());
 
         assertThat(component.get("type").asText()).isEqualTo("textarea");
-        assertThat(component.get("editor").asText()).isEqualTo("quill");
+        assertThat(component.get("editor").asText()).isEqualTo("ckeditor");
         assertThat(component.get("key").asText()).isEqualTo("besluit.toelichting");
         assertThat(component.get("label").asText()).isEqualTo("Toelichting");
         assertThat(component.get("tooltip").asText()).isEqualTo("Waarom");

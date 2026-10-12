@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     rich-text fields; if that read fails, the data goes as mapped and Epistola's own validation
     speaks.
   - **The composer asks for a rich-text field** with the default format's editor: Form.io's WYSIWYG
-    text area (Quill, with a toolbar of only what Epistola renders) for `html`, a plain text area
+    text area (CKEditor, with only the buttons Epistola renders) for `html`, a plain text area
     otherwise. What the employee types stays in the case's format, so write-back does not change
     a field's format.
 
