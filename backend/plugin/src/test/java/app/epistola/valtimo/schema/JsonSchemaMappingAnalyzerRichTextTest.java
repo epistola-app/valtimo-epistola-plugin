@@ -97,13 +97,19 @@ class JsonSchemaMappingAnalyzerRichTextTest {
     }
 
     @Test
-    void mapsAnArrayOfRichTextAsOneValue_forNowWithoutAnEditor() {
+    void readsAnArrayOfRichTextAsAListOfDocuments_keepingTheArraysOwnRules() {
         Map<String, Object> schema = Map.of("type", "object",
-                "properties", Map.of("alineas", Map.of("type", "array", "items", Map.of("$ref", BLOCK))));
+                "properties", Map.of("alineas", Map.of("type", "array", "title", "Alinea's",
+                        "minItems", 1, "maxItems", 5, "items", Map.of("$ref", INLINE))));
 
         TemplateField field = analyzer.analyze(schema).fields().get(0);
 
-        assertThat(field.complex()).isTrue();
-        assertThat(field.complexityReason()).contains("rich text");
+        assertThat(field.complex()).isFalse();
+        assertThat(field.fieldType()).isEqualTo(TemplateField.FieldType.SCALAR);
+        assertThat(field.type()).isEqualTo("array");
+        assertThat(field.hints().richText()).isEqualTo(RichTextKind.INLINE);
+        assertThat(field.hints().title()).isEqualTo("Alinea's");
+        assertThat(field.hints().constraints().minItems()).isEqualTo(1);
+        assertThat(field.hints().constraints().maxItems()).isEqualTo(5);
     }
 }

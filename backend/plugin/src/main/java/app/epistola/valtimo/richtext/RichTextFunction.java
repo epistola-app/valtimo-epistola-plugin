@@ -58,7 +58,13 @@ public class RichTextFunction implements EpistolaExpressionFunction {
         return execute(ctx, value, null);
     }
 
-    /** The value in the named format; nothing for nothing, so an absent field stays absent. */
+    /**
+     * The value in the named format; nothing for nothing, so an absent field stays absent.
+     *
+     * <p>One value, one document. A list of rich text is mapped item by item the JSONata way —
+     * {@code $doc.alineas.$richText($, "html")} — and a list field takes care of the one-item list
+     * JSONata collapses into a single value (see {@link RichTextConverter#normalize}).
+     */
     public Map<String, Object> execute(ExpressionContext ctx, Object value, String format) {
         if (value == null || (value instanceof String text && text.isBlank())) {
             return null;

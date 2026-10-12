@@ -181,8 +181,21 @@ public class FormioFormGenerator {
         if (editorValue != null) {
             component.set("defaultValue", objectMapper.valueToTree(editorValue));
         }
-        if (field.required()) {
-            component.putObject("validate").put("required", true);
+        // A list of documents: one editor per item, counted the way a list of scalars is.
+        TemplateField.Constraints constraints = field.hints() != null ? field.hints().constraints() : null;
+        boolean list = RichTextConverter.isArray(field);
+        if (list) {
+            component.put("multiple", true);
+        }
+        if (field.required() || (list && constraints != null)) {
+            ObjectNode validate = component.putObject("validate");
+            if (field.required()) {
+                validate.put("required", true);
+            }
+            if (list && constraints != null) {
+                putIfPresent(validate, "minLength", constraints.minItems());
+                putIfPresent(validate, "maxLength", constraints.maxItems());
+            }
         }
         return component;
     }

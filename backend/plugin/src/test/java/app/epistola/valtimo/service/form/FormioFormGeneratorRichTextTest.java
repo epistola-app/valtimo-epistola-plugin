@@ -85,6 +85,26 @@ class FormioFormGeneratorRichTextTest {
     }
 
     @Test
+    void asksForAListWithOneEditorPerItem() {
+        var field = new TemplateField("alineas", "alineas", "array", FieldType.SCALAR, true, null, List.of(),
+                false, null, false, new TemplateField.FieldHints(null, null, null, null,
+                new TemplateField.Constraints(null, null, null, null, null, 1, 3), null, RichTextKind.BLOCK));
+        var generator = new FormioFormGenerator(objectMapper,
+                new RichTextConverter(List.of(new PlainTextFormat(), new HtmlFormat()), "html"));
+        Map<String, Object> rendered = Map.of("type", "doc", "content",
+                List.of(Map.of("type", "paragraph", "content", List.of(Map.of("type", "text", "text", "eerder")))));
+
+        JsonNode component = component(generator, field, Map.of("alineas", List.of(rendered, "<p>getypt</p>")));
+
+        assertThat(component.get("editor").asText()).isEqualTo("ckeditor");
+        assertThat(component.get("multiple").asBoolean()).isTrue();
+        assertThat(component.at("/validate/required").asBoolean()).isTrue();
+        assertThat(component.at("/validate/minLength").asInt()).isEqualTo(1);
+        assertThat(component.at("/validate/maxLength").asInt()).isEqualTo(3);
+        assertThat(component.get("defaultValue").toString()).isEqualTo("[\"<p>eerder</p>\",\"<p>getypt</p>\"]");
+    }
+
+    @Test
     void showsTextAlreadyInTheCasesFormatAsItIs() {
         JsonNode component = component(new FormioFormGenerator(objectMapper), richText(false, RichTextKind.BLOCK),
                 Map.of("toelichting", "al getypt"));

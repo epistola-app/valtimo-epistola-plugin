@@ -403,18 +403,30 @@ public final class JsonSchemaMappingAnalyzer {
                     arraySchema.nullable()
             );
         }
-        if (richTextKind(items.schema()) != null) {
-            // Each item is a document, not text, and there is no repeating editor for it yet: a
-            // repeated text box would send strings Epistola refuses.
-            return complexField(
+        TemplateField.RichTextKind itemKind = richTextKind(items.schema());
+        if (itemKind != null) {
+            // A list of documents is mapped and asked for like a list of scalars — one repeating
+            // editor — with each item converted on its own. The array's hints (title, minItems,
+            // maxItems) are kept; the kind is the items'.
+            return new TemplateField(
                     name,
                     path,
-                    complexType,
-                    TemplateField.FieldType.ARRAY,
+                    "array",
+                    TemplateField.FieldType.SCALAR,
                     required,
                     description,
-                    "Arrays of rich text must be mapped as a complete value.",
-                    arraySchema.nullable()
+                    Collections.emptyList(),
+                    false,
+                    null,
+                    arraySchema.nullable(),
+                    new TemplateField.FieldHints(
+                            hints != null ? hints.title() : null,
+                            null,
+                            null,
+                            hints != null ? hints.defaultValue() : null,
+                            hints != null ? hints.constraints() : null,
+                            null,
+                            itemKind)
             );
         }
         if (isArraySchema(items.schema())) {

@@ -102,6 +102,9 @@ public class RichTextConverter {
      * read from the default format where it is not a document already. Other fields, and data
      * without rich-text fields, are returned untouched.
      *
+     * <p>A field taking a list of rich text has each item converted, empty items left out; a single
+     * value given to it is taken as a list of one.
+     *
      * <p>A string with no text in it — blank, or markup around nothing, like the {@code <p><br></p>}
      * an emptied editor leaves — is removed rather than converted: it means "nothing here", and an
      * empty document would claim otherwise, letting a required field pass empty. A value that is neither text nor a document — a list, an
@@ -129,6 +132,13 @@ public class RichTextConverter {
      * dropped when that format cannot express one; anything else is already in that format.
      */
     public Object toEditorValue(Object value, RichTextKind kind) {
+        if (value instanceof List<?> items) {
+            List<Object> shown = new ArrayList<>(items.size());
+            for (Object item : items) {
+                shown.add(toEditorValue(item, kind));
+            }
+            return shown;
+        }
         if (!ProseMirrorSanitizer.isDocument(value)) {
             return value;
         }
@@ -156,7 +166,16 @@ public class RichTextConverter {
             }
             Object value = out.get(field.name());
             RichTextKind kind = kindOf(field);
-            if (kind != null) {
+            if (kind != null && isArray(field)) {
+                if (value != null) {
+                    List<Object> converted = convertList(field, value, kind);
+                    if (converted == null) {
+                        out.remove(field.name());
+                    } else {
+                        out.put(field.name(), converted);
+                    }
+                }
+            } else if (kind != null) {
                 if (value instanceof String text && text.isBlank()) {
                     out.remove(field.name());
                 } else if (value != null) {
@@ -180,6 +199,37 @@ public class RichTextConverter {
             }
         }
         return out;
+    }
+
+    /**
+     * A list field's value as a list of documents, or null when no item holds anything. A single
+     * value is a list of one: JSONata collapses a one-item list into its item, so a mapping over a
+     * case list hands a lone value over whenever the case has just one.
+     */
+    private List<Object> convertList(TemplateField field, Object value, RichTextKind kind) {
+        List<?> items = value instanceof List<?> list ? list : List.of(value);
+        List<Object> converted = new ArrayList<>(items.size());
+        for (Object item : items) {
+            Object document = convertPresent(field, item, kind);
+            if (document != null) {
+                converted.add(document);
+            }
+        }
+        return converted.isEmpty() ? null : converted;
+    }
+
+    /** An item of a rich-text list, or null when it holds nothing and should be left out. */
+    private Object convertPresent(TemplateField field, Object value, RichTextKind kind) {
+        if (value == null || (value instanceof String text && text.isBlank())) {
+            return null;
+        }
+        Object converted = convert(field, value, kind);
+        return value instanceof String && ProseMirrorSanitizer.isBlank(converted) ? null : converted;
+    }
+
+    /** A field holding a list of rich-text documents rather than one. */
+    public static boolean isArray(TemplateField field) {
+        return "array".equalsIgnoreCase(field.type());
     }
 
     private Object convert(TemplateField field, Object value, RichTextKind kind) {

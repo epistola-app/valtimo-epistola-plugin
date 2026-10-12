@@ -50,6 +50,11 @@ class RichTextConverterTest {
                 false, new TemplateField.FieldHints(null, null, null, null, null, null, kind));
     }
 
+    private static TemplateField richTextList(String name, RichTextKind kind) {
+        return new TemplateField(name, name, "array", FieldType.SCALAR, false, null, List.of(), false, null,
+                false, new TemplateField.FieldHints(null, null, null, null, null, null, kind));
+    }
+
     private static TemplateField scalar(String name, String path) {
         return new TemplateField(name, path, "string", FieldType.SCALAR, false, null, List.of());
     }
@@ -168,6 +173,35 @@ class RichTextConverterTest {
         }
 
         @Test
+        void convertsEachItemOfAList_leavingOutTheEmptyOnes() {
+            var result = converter.normalize(
+                    Map.of("alineas", java.util.Arrays.asList("**een**", " ", null, doc(p(text("twee")), p(text("drie"))))),
+                    List.of(richTextList("alineas", RichTextKind.INLINE)));
+
+            assertThat(result).containsEntry("alineas", List.of(
+                    doc(p(text("een", STRONG))), doc(p(text("twee"), BREAK, text("drie")))));
+        }
+
+        @Test
+        void takesASingleValueForAListFieldAsAListOfOne() {
+            // What JSONata hands over when a mapping over a case list meets a case with one item.
+            var result = converter.normalize(
+                    Map.of("een", doc(p(text("enige"))), "tekst", "*los*"),
+                    List.of(richTextList("een", RichTextKind.BLOCK), richTextList("tekst", RichTextKind.BLOCK)));
+
+            assertThat(result).containsEntry("een", List.of(doc(p(text("enige")))))
+                    .containsEntry("tekst", List.of(doc(p(text("los", Docs.EM)))));
+        }
+
+        @Test
+        void dropsAListWithNothingInIt() {
+            var result = converter.normalize(Map.of("alineas", List.of("", "  ")),
+                    List.of(richTextList("alineas", RichTextKind.BLOCK)));
+
+            assertThat(result).doesNotContainKey("alineas");
+        }
+
+        @Test
         void returnsDataWithoutRichTextFieldsAsItCame() {
             Map<String, Object> data = Map.of("naam", "x");
 
@@ -224,6 +258,23 @@ class RichTextConverterTest {
             assertThat(result).containsEntry("a", doc(p(text("x", STRONG))))
                     .containsEntry("b", doc(p(text("y", STRONG))))
                     .containsEntry("c", doc(p(text("**z**"))));
+        }
+
+        @Test
+        void mapsOverACaseListTheJsonataWay_evenWhenItHasOneItem() {
+            TemplateField alineas = richTextList("alineas", RichTextKind.BLOCK);
+            for (String expression : List.of(
+                    "{ \"alineas\": $doc.items.$richText($, \"markdown\") }",
+                    "{ \"alineas\": $map($doc.items, function($v) { $richText($v, \"markdown\") }) }")) {
+                var two = converter.normalize(mapping.evaluate(expression,
+                        Map.of("items", List.of("*x*", "y")), Map.of(), Map.of()), List.of(alineas));
+                var one = converter.normalize(mapping.evaluate(expression,
+                        Map.of("items", List.of("*x*")), Map.of(), Map.of()), List.of(alineas));
+
+                assertThat(two).as(expression)
+                        .containsEntry("alineas", List.of(doc(p(text("x", Docs.EM))), doc(p(text("y")))));
+                assertThat(one).as(expression).containsEntry("alineas", List.of(doc(p(text("x", Docs.EM)))));
+            }
         }
 
         @Test
