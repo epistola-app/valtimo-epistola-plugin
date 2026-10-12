@@ -167,10 +167,12 @@ The check result is cached in memory per backend node. The daily refresh uses `e
 
 A common deployment shape is to enable Epistola on test but keep it dark on production while shipping a single frontend artifact. Two flags control this:
 
-| Flag                                 | Layer    | Default | Effect when `false`                                                                                                   |
-| ------------------------------------ | -------- | ------- | --------------------------------------------------------------------------------------------------------------------- |
-| `epistola.enabled` (Spring property) | Backend  | `true`  | Auto-configuration short-circuits — no beans, REST resources, result collector, or Epistola API endpoints registered. |
-| `EPISTOLA_ENABLED` (container env)   | Frontend | `true`  | The plugin hides its frontend surfaces — no menu, route, plugin picker entry, or process-link action types.           |
+| Flag                                 | Layer    | Default | Effect when `false`                                                                                                                                                                          |
+| ------------------------------------ | -------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `epistola.enabled` (Spring property) | Backend  | `true`  | Auto-configuration short-circuits — no beans, REST resources, result collector, or Epistola API endpoints registered.                                                                        |
+| `EPISTOLA_ENABLED` (container env)   | Frontend | `true`  | The plugin hides its frontend surfaces — no menu, route, plugin picker entry, or process-link action types.                                                                                  |
+| `EPISTOLA_FEATURES` (container env)  | Frontend | all on  | Switches optional parts off one at a time: `"-composer"` keeps the plugin but never registers the letter composer's Form.io components. Space-separated, `+name`/`-name`, several per value. |
+| `epistola.composer.enabled` (Spring) | Backend  | `true`  | No letter-composer beans or endpoints. Pair it with `-composer` above, or the palette offers a composer the backend cannot serve.                                                            |
 
 Set both `false` per environment for a fully invisible plugin. The frontend flag is read at runtime from `window['env']['epistolaEnabled']`, populated by `envsubst` against `assets/config.template.js` at container start (the standard Valtimo runtime-config pattern). Same image, different env vars per environment.
 

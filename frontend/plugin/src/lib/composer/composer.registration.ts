@@ -17,6 +17,7 @@
  */
 
 import { Injector } from '@angular/core';
+import { isEpistolaComposerEnabled } from '../epistola-runtime-config';
 import { registerEpistolaLetterComposerComponent } from './letter-composer/epistola-letter-composer.formio';
 import { registerEpistolaLetterSetBuilderComponent } from './letter-set-builder/letter-set-builder.formio';
 import { registerEpistolaMappingFieldComponent } from './mapping-field/mapping-field.formio';
@@ -27,8 +28,17 @@ import { registerEpistolaWriteBackBuilderComponent } from './write-back-builder/
  *
  * <p>One entry point so the rest of the plugin knows the composer by a single name: the
  * registration service calls this, and everything else about the feature stays inside this folder.
+ *
+ * <p>Does nothing when the composer is switched off. Registration is the right chokepoint: Form.io
+ * keeps a global component registry, so a component that never registers is absent from the palette,
+ * from the builder's edit forms and from any form that renders one — there is no second place to
+ * remember. The backend flag of the same name removes the endpoints; without this half an author can
+ * configure a composer that has nowhere to call.
  */
 export function registerEpistolaComposerComponents(injector: Injector): void {
+  if (!isEpistolaComposerEnabled()) {
+    return;
+  }
   registerEpistolaMappingFieldComponent(injector);
   registerEpistolaLetterSetBuilderComponent(injector);
   registerEpistolaWriteBackBuilderComponent(injector);

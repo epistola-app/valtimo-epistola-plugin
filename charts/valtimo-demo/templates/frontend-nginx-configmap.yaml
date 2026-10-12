@@ -25,6 +25,7 @@ data:
       window['env']['whiteListedDomain'] = '{{ include "valtimo-demo.whitelistedDomain" . }}';
       window['env']['openZaakCatalogusId'] = '{{ .Values.frontend.env.openZaakCatalogusId }}';
       window['env']['epistolaEnabled'] = {{ .Values.frontend.env.epistolaEnabled }};
+      window['env']['epistolaFeatures'] = {{ .Values.frontend.env.epistolaFeatures }};
       window['env']['embeddingEnabled'] = {{ and .Values.frontend.embedding.enabled (include "valtimo-demo.frontend.allowedParentOrigins" . | trim | ne "") }};
       window['env']['embeddingAllowedParentOrigins'] = '{{ include "valtimo-demo.frontend.allowedParentOrigins" . }}';
     })(this);

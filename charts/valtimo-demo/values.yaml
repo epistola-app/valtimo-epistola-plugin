@@ -212,6 +212,7 @@ frontend:
     openZaakCatalogusId: ""
     # Set false to ship this image with the Epistola plugin hidden entirely.
     epistolaEnabled: true
+    epistolaFeatures: ""
 
   # Allow this app to be embedded in an <iframe> on a trusted host page, and
   # expose the postMessage bridge to it. Off by default; see docs/embedding.md.
