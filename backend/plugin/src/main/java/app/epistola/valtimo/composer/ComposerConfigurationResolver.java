@@ -248,19 +248,35 @@ public class ComposerConfigurationResolver {
      * composer on the start form of a new case has no case to narrow by, and naming the process is
      * the answer there.
      */
+    /**
+     * Every process definition associated with this case type, startable or not.
+     *
+     * <p>{@link #startableProcessesFor} narrows to the ones a caller may start, which is an
+     * authorization question. This is the whole set, for answering "where could this letter be
+     * rendered" — a generate task often sits in a process nobody starts by hand.
+     */
+    public List<String> processesOf(String caseDefinitionKey) {
+        return processesFor(caseDefinitionKey, null);
+    }
+
     private List<String> startableProcessesFor(String caseDefinitionKey) {
+        return processesFor(caseDefinitionKey, true);
+    }
+
+    private List<String> processesFor(String caseDefinitionKey, Boolean canInitializeDocument) {
         if (caseDefinitionKey == null || caseDefinitionKey.isBlank()) {
             return List.of();
         }
         try {
             var caseDefinition = activeCaseDefinitionService.getActiveCaseDefinition(caseDefinitionKey);
             return processDefinitionCaseDefinitionService
-                    .findProcessDefinitionCaseDefinitions(caseDefinition.getId(), true, null).stream()
+                    .findProcessDefinitionCaseDefinitions(
+                            caseDefinition.getId(), canInitializeDocument, null).stream()
                     .map(link -> link.getId().getProcessDefinitionId().getId())
                     .toList();
         } catch (RuntimeException e) {
-            log.debug("No startable processes for case definition '{}': {}",
-                    caseDefinitionKey, e.getMessage());
+            log.debug("No processes for case definition '{}' ({})",
+                    caseDefinitionKey, Failures.describe(e));
             return List.of();
         }
     }

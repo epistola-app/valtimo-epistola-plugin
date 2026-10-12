@@ -269,6 +269,7 @@ class TrainingHttpSecurityConfigurer(
                 "/api/v1/plugin/epistola/validate-jsonata",
                 "/api/v1/plugin/epistola/evaluate-mapping",
                 "/api/v1/plugin/epistola/process-link-mapping",
+                "/api/v1/plugin/epistola/letter-readers",
             )
     }
 }

@@ -102,6 +102,24 @@ public class EpistolaComposerConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(app.epistola.valtimo.composer.web.EpistolaComposerToolingResource.class)
+    public app.epistola.valtimo.composer.web.EpistolaComposerToolingResource epistolaComposerToolingResource(
+            LetterReaderService letterReaderService
+    ) {
+        return new app.epistola.valtimo.composer.web.EpistolaComposerToolingResource(letterReaderService);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(LetterReaderService.class)
+    public LetterReaderService letterReaderService(
+            ComposerConfigurationResolver composerConfigurationResolver,
+            com.ritense.processlink.service.ProcessLinkService processLinkService,
+            org.operaton.bpm.engine.RepositoryService repositoryService
+    ) {
+        return new LetterReaderService(composerConfigurationResolver, processLinkService, repositoryService);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(ComposerSubmissionListener.class)
     public ComposerSubmissionListener composerSubmissionListener(
             ComposerWriteBackService composerWriteBackService,

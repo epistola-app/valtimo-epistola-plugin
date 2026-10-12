@@ -80,6 +80,23 @@ class TraineeOwnershipInterceptor(
             )
         }
 
+        // Deliberately after processDefinitionId above: a request carrying both keeps the
+        // behaviour it had before this check existed.
+        //
+        // The composer configurator asks which generate tasks read a letter variable, scoped by a
+        // `caseDefinitionKey` *query* parameter rather than a path variable. Checked here for the
+        // same reason as everything else on this list: a trainee carries a real ROLE_ADMIN, so the
+        // HTTP gate on the endpoint says nothing about whose sandbox they are looking at. Read-only,
+        // so a shared case type is allowed — a trainee may look at the demo configuration they were
+        // given, just not at another trainee's clone.
+        request.getParameter("caseDefinitionKey")?.let { caseDefinitionKey ->
+            val readOnly = request.method.equals("GET", ignoreCase = true)
+            return allowOrForbid(
+                response,
+                ownershipChecks.isOwnCaseDefinition(traineeIdentity, caseDefinitionKey, allowShared = readOnly),
+            )
+        }
+
         // Every endpoint in Valtimo's case-definition management surface is path-scoped directly
         // by the case key — just under different variable names per endpoint (verified against
         // Valtimo 13.44.0 source: CaseDefinitionResource/CaseTabManagementResource/etc. call the
