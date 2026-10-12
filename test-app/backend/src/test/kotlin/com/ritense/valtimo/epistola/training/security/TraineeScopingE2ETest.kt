@@ -254,6 +254,33 @@ class TraineeScopingE2ETest {
     }
 
     @Test
+    fun `the composer configurator answers for a trainee's own case type, not another trainee's`() {
+        // The letter-readers endpoint is ROLE_ADMIN at the HTTP layer, like the rest of the
+        // configurator surface — and every trainee carries a real ROLE_ADMIN, so that gate says
+        // nothing about whose sandbox they are looking at. It is scoped by a `caseDefinitionKey`
+        // *query* parameter rather than a path variable, which is a shape the interceptor did not
+        // handle before.
+        //
+        // This is an E2E test on purpose: the failure mode is a path pattern missing from
+        // TrainingWebConfig, and a HandlerInterceptor that is never registered cannot be caught by
+        // testing the interceptor itself. Its own KDoc warns about exactly that.
+        // A dossier is provisioned on a trainee's first request, so both have to knock before their
+        // own case type exists to be owned.
+        status(get("/api/v1/case-definition?active=true"), alice)
+        status(get("/api/v1/case-definition?active=true"), bob)
+        val aliceKey = TraineeKeys.caseDefinitionKey(alice.identity)
+        val bobKey = TraineeKeys.caseDefinitionKey(bob.identity)
+        val endpoint = "/api/v1/plugin/epistola/letter-readers?letterVariable=pv:epistolaLetter&caseDefinitionKey="
+
+        assertThat(status(get(endpoint + aliceKey), alice)).isEqualTo(200)
+        assertThat(status(get(endpoint + bobKey), alice)).isEqualTo(403)
+        // A shared case type is readable: a trainee may look at the demo configuration they were
+        // given, just not at another trainee's clone.
+        assertThat(status(get(endpoint + SHARED_CASE), alice)).isEqualTo(200)
+        assertThat(status(get(endpoint + bobKey), admin)).isEqualTo(200)
+    }
+
+    @Test
     fun `the case list shows shared case types and the trainee's own dossier, never another trainee's`() {
         status(get("/api/v1/case-definition?active=true"), alice)
         status(get("/api/v1/case-definition?active=true"), bob)

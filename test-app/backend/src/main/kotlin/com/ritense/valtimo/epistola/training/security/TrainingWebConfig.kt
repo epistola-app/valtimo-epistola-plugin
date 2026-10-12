@@ -69,6 +69,7 @@ class TrainingWebConfig(
                 "/api/v1/plugin/epistola/admin/export/**",
                 "/api/v1/plugin/epistola/admin/pending/**",
                 "/api/v1/plugin/epistola/configurations/**",
+                "/api/v1/plugin/epistola/letter-readers",
             )
     }
 }
