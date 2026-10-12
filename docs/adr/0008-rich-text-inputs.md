@@ -107,20 +107,36 @@ The formats differ in how much survives:
 | Markdown    | paragraphs, lists, bold, italic, strike (GFM), links                 | underline, sub/superscript, colour; headings → paragraphs |
 | Plain text  | paragraphs (blank line) and hard breaks (newline)                    | all marks                                                 |
 
-**1b. Epistola converts.** Epistola would accept HTML or markdown and convert with its own schema. One
-implementation would serve every client, and the format would follow its own schema by construction.
-But the change is out of this repository's hands and turns several source formats into contract
-surface. It does not remove 1a's need for a seam, because the plugin would still have to say which
-format it is sending. It is worth raising upstream regardless.
+**1b. Epistola converts — rejected.** Epistola would accept HTML or markdown alongside ProseMirror
+and convert them itself. One implementation would serve every client. We reject it anyway:
+
+- **It weakens the contract.** One strictly validated, versioned format is a contract. Several input
+  formats each become contract surface, and every one of their edge cases becomes a compatibility
+  question across server versions, such as what a server does with a `<table>`.
+- **It can never be complete.** Customers keep their own formats, and some of them are
+  vendor-specific. Epistola would support HTML and markdown, then be asked for Quill Delta, then for
+  the next one. The knowledge of what a format means sits with the customer, so the extension point
+  must sit on the client side, where they can reach it.
+- **It is the right duplication.** Each client converts what _its_ ecosystem produces. This plugin's
+  HTML is Form.io CKEditor or Quill output, which a client for another platform never sees.
+
+The part that is worth sharing across clients is validity. Epistola already publishes the schemas. A
+**conformance corpus** of valid and invalid rich-text documents, published next to them, would let
+every client's converters test against the same cases without sharing code. That is a suggestion to
+Epistola, and nothing here waits on it.
 
 ### 2. How does the plugin know which format a value is in?
 
-**2a. The mapping says so, with a function per format.** For example
-`{"toelichting": $fromMarkdown($doc.besluit.toelichting)}`, alongside `$fromHtml`, `$fromPlain` and
-`$fromProseMirror`. This is explicit and visible where the value is chosen. It composes with any
-expression, and it is consistent with how mappings already work. The cost is that it is easy to
-forget, and a forgotten call means the raw string goes to Epistola and fails validation. The mapping
-builder can soften that by suggesting the function when the target is a rich-text field.
+**2a. The mapping says so, with one function that takes the format's id.** For example
+`{"toelichting": $richText($doc.besluit.toelichting, "markdown")}`. There is deliberately one
+function, not one per format (`$fromMarkdown`, …). A format an installation registers is then usable
+by its id without the plugin knowing it exists.
+
+- **For:** it is explicit and visible where the value is chosen. It composes with any expression, and
+  it is consistent with how mappings already work.
+- **Against:** it is easy to forget, and a forgotten call means the raw string goes to Epistola and
+  fails validation. The mapping builder can soften that by suggesting the function when the target
+  is a rich-text field.
 
 **2b. The format is configured per source.** One setting on the plugin configuration, overridable per
 process link and per composer (`richTextFormat: "markdown"`). Mappings stay as they are. But one
@@ -143,19 +159,29 @@ The editor should **emit the case's format**, so what the composer asks for and 
 the same thing, and an existing value can be loaded for editing without conversion. That makes the
 editor a consequence of question 2, not an independent choice:
 
-| Case format | Editor                                                                                    | Notes                                                                                                                                                                                                      |
-| ----------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| HTML        | Form.io `textarea` with `editor: ckeditor` or `quill`, toolbar limited to the subset      | Native to Valtimo, no frontend code. Loaded at runtime from `cdn.form.io` by default; we found no override in `@valtimo/*` 13.48. Quill 2 is in our lockfile via `formiojs`, so it could be served locally |
-| Markdown    | Form.io `textarea`, optionally with a preview; or a markdown WYSIWYG                      | Plain textarea needs nothing; a WYSIWYG adds a dependency                                                                                                                                                  |
-| Plain text  | Form.io `textarea`                                                                        | Trivial                                                                                                                                                                                                    |
-| ProseMirror | Epistola's `<epistola-rich-text-input mode=inline\|block>`, as a Form.io custom component | Identical to Epistola's own editor, lossless. `@epistola/editor` is `private` and unpublished today, so this needs an Epistola-side package first                                                          |
+| Case format | Editor                                                                                                  | Notes                                                                                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HTML        | Form.io `textarea` with `editor: ckeditor` or `quill`, toolbar limited to the subset                    | Native to Valtimo, no frontend code. Loaded at runtime from `cdn.form.io` by default; we found no override in `@valtimo/*` 13.48. Quill 2 is in our lockfile via `formiojs`, so it could be served locally |
+| Markdown    | Form.io `textarea`, optionally with a preview; or a markdown WYSIWYG                                    | Plain textarea needs nothing; a WYSIWYG adds a dependency                                                                                                                                                  |
+| Plain text  | Form.io `textarea`                                                                                      | Trivial                                                                                                                                                                                                    |
+| Own format  | The installation's own Form.io component, picked through the per-input presentation override (ADR 0006) | The plugin cannot know the editor for a format it does not know; it only needs the component to emit that format                                                                                           |
 
 A limited toolbar matters for HTML. Content the converter would drop is better never created than
 silently lost.
 
+**ProseMirror is deliberately missing from the table.** Epistola's editor
+(`<epistola-rich-text-input>`) is private today and may be published one day. Even then it helps
+only an installation that stores ProseMirror on the case, and that is the least likely choice:
+nothing else in a GZAC installation can read it. Two situations would make it worth adopting:
+
+- an installation that does store ProseMirror; or
+- an installation that stores HTML but wants Epistola's editing experience. That needs the reverse
+  conversion (`fromEpistola`, see question 4).
+
+Neither is a reason to wait. Conversion is the main path, not a stopgap until an editor arrives.
+
 A plugin-owned ProseMirror or TipTap editor was considered and rejected. It would be a second
-implementation of Epistola's schema to keep in step. Embedding Epistola's own element gives the same
-result without that.
+implementation of Epistola's schema to keep in step, for the same small audience.
 
 ### 4. What is stored and written back?
 
@@ -165,8 +191,9 @@ re-renders exactly. Conversion happens once, while composing, so the preview and
 same doc.
 
 `fromEpistola` (ProseMirror → case format) is therefore only needed if an editor emits a format other
-than the case's. Following question 3, that should not happen, so the reverse direction can stay
-optional per format rather than a requirement on every converter.
+than the case's. Following question 3, that should not happen, so the reverse direction stays
+optional per format rather than a requirement on every converter. Its one foreseeable use is
+Epistola's editor in front of an HTML case.
 
 ## Shared by every option
 
@@ -189,30 +216,47 @@ These follow from the problem, whichever option wins:
    functions are needed from the start.
 2. **Can installations load an editor from `cdn.form.io`?** If a common CSP forbids it, the HTML
    editor must be Quill served locally, or the markdown/plain textarea, and that shifts the default.
-3. **Will Epistola publish its rich-text input element, or accept other formats itself (1b)?** The
-   first makes the ProseMirror row of question 3 cheap. The second would shrink this plugin's part to
-   labelling the format.
 
-## Leaning (not a decision)
+## Recommendation
 
-- **1a**, the converter interface. It ships `prosemirror`, `plain`, `html` and `markdown`, and an
-  installation can add its own.
-- **Format resolution as combined above**: detect an object as ProseMirror; otherwise use a
-  `$fromX` function where the mapping names one, then the configured default.
-- **Editor emits the case's format** (question 3), starting with the Form.io `textarea` for HTML,
-  markdown and plain text. The ProseMirror editor follows when Epistola publishes its element.
-- Raise **1b** with Epistola in parallel. It does not block anything here.
+1. **Epistola keeps one format.** All conversion happens in the client, behind a `RichTextFormat`
+   extension point (1a). Rejecting 1b is the one choice in this ADR that is firm, not a leaning.
+2. **The plugin ships four formats:** `plain`, `html`, `markdown` and `prosemirror`. An installation
+   adds its own by registering one more bean. Each converter is tested against Epistola's schema.
+3. **The format of a value is resolved explicitly, in this order:**
+   1. an object shaped `{"type":"doc", …}` is ProseMirror;
+   2. otherwise `$richText(value, "<format>")` in the mapping decides;
+   3. otherwise the configured default applies, `plain` unless an installation says differently.
+
+   Nothing guesses between kinds of strings.
+
+4. **The editor emits the case's format.** The plugin generates it for its own formats:
+   - the Form.io WYSIWYG `textarea` for HTML, with its toolbar limited to Epistola's subset;
+   - a plain `textarea` for markdown and plain text.
+
+   An installation's own format brings its own component.
+
+5. **The case keeps its format.** Typed inputs and write-back are stored in the case's format, and
+   only the rendered snapshot is ProseMirror. The conversion runs once, while composing, so the
+   preview and the letter use the same document.
+6. **Suggest a conformance corpus to Epistola.** It is optional, and nothing here waits on it.
+
+**Order of work:** marker detection, the conversion seam and `plain` come first. On their own they
+lift the 422 and are useful. Then `html` with the WYSIWYG editor, which is where Valtimo case data
+already is. Then `markdown`.
 
 ## Consequences
 
-If the leaning is accepted:
+If the recommendation is accepted:
 
 - **Formatting is lost.** A rich-text value loses whatever its case format can express and Epistola's
   subset cannot. This is documented per format, in the table above.
 - **A new plugin setting.** The plugin configuration gains a default rich-text format. Its default
   needs choosing: `plain` is the safe one, because it never invents formatting.
-- **Four new JSONata functions.** These are `$fromHtml`, `$fromMarkdown`, `$fromPlain` and
-  `$fromProseMirror`, and the mapping builder's function list grows to match.
+- **One new JSONata function**, `$richText(value, format)`. The mapping builder lists the
+  registered formats as its second argument.
+- **A converter is a public extension point.** Its interface is supported API from then on, so it
+  needs to be versioned with the same care as the plugin's other public surface.
 - **New dependencies:** jsoup and commonmark-java on the backend. The default frontend path adds none.
 - **Shown, not logged.** A converter that drops content says so through counts, never content. Where
   a person should know, for example "the table in this field cannot be rendered", that message is
