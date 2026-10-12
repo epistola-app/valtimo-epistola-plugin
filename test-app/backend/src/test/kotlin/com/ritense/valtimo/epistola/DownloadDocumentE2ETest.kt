@@ -15,6 +15,7 @@ import com.ritense.document.service.DocumentService
 import com.ritense.plugin.domain.PluginConfiguration
 import com.ritense.plugin.service.PluginService
 import com.ritense.resource.service.ResourceService
+import com.ritense.resource.service.request.ByteArrayMultipartFile
 import com.ritense.resource.service.request.RawFileUploadRequest
 import com.ritense.resource.web.rest.ResourceResource
 import com.ritense.valtimo.Application
@@ -196,6 +197,19 @@ class DownloadDocumentE2ETest {
         assertThat(row.content).isEqualTo(pdf)
         assertThat(row.sizeInBytes).isEqualTo(pdf.size.toLong())
         assertThat(row.contentType).isEqualTo("application/pdf")
+    }
+
+    @Test
+    fun `the demo stores what a process generated, and refuses an upload`() {
+        // The interface declares multipart overloads, so they exist; implementing them would quietly
+        // turn the demo's table into a general file store. A person uploading in the UI never
+        // reaches here anyway — Valtimo posts that to the Zaken API, which this demo does not run —
+        // so the refusal states an intent rather than closing a hole.
+        val upload = ByteArrayMultipartFile("hello".toByteArray(), "notes.txt", MediaType.TEXT_PLAIN)
+
+        assertThat(runCatching { resourceService.store("case-1", upload) }.exceptionOrNull())
+            .isInstanceOf(UnsupportedOperationException::class.java)
+            .hasMessageContaining("only documents a process generated")
     }
 
     @Test

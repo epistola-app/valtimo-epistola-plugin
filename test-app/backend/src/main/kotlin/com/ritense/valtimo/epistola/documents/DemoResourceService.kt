@@ -12,6 +12,7 @@ import com.ritense.valtimo.contract.resource.FileStatus
 import com.ritense.valtimo.contract.resource.Resource
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.web.multipart.MultipartFile
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import java.net.URI
 import java.net.URL
 import java.time.LocalDateTime
@@ -83,35 +84,40 @@ class DemoResourceService(
             ).asResource()
     }
 
+    /**
+     * The multipart overloads refuse, on purpose.
+     *
+     * The interface declares them, so they have to exist; nothing calls them. A generated letter
+     * arrives as a [FileUploadRequest] from the delegate that copies it out of temporary storage,
+     * and a person uploading a file in the UI never reaches here at all — Valtimo posts that to
+     * `/v2/zaken-api/document/{id}/files`, the Zaken API, which this demo does not run.
+     *
+     * Implementing them would quietly turn the demo's table into a general file store. Keeping the
+     * demo to *what a process generated* is the intent, so it is stated here rather than left to
+     * whoever next reads the table and wonders what else can land in it.
+     */
     override fun store(
         documentDefinitionName: String,
         multipartFile: MultipartFile,
-    ): Resource = store(documentDefinitionName, multipartFile, FileStatus.PENDING)
+    ): Resource = refuseUpload()
 
     override fun store(
         documentDefinitionName: String,
         multipartFile: MultipartFile,
         fileStatus: FileStatus,
-    ): Resource {
-        val original = multipartFile.originalFilename ?: "document"
-        return repository
-            .save(
-                StoredDocument(
-                    id = UUID.randomUUID().toString(),
-                    fileName = original,
-                    contentType = multipartFile.contentType ?: "application/octet-stream",
-                    sizeInBytes = multipartFile.size,
-                    content = multipartFile.bytes,
-                    createdOn = LocalDateTime.now(),
-                ),
-            ).asResource()
-    }
+    ): Resource = refuseUpload()
 
     override fun store(
         key: String,
         name: String,
         multipartFile: MultipartFile,
-    ): Resource = store(key, multipartFile)
+    ): Resource = refuseUpload()
+
+    private fun refuseUpload(): Nothing =
+        throw UnsupportedOperationException(
+            "The demo keeps only documents a process generated. Uploading files needs the Documenten " +
+                "API or S3 configured, which this application does not run.",
+        )
 
     @Transactional(readOnly = true)
     override fun getResource(id: UUID): Resource = require(id).asResource()
@@ -159,10 +165,33 @@ class DemoResourceService(
         }
 
     /**
-     * The path the case UI already calls, so a stored letter is reachable without the UI knowing
-     * anything about this class: `GET /api/v1/resource/{id}/download`.
+     * The download URL, on **the origin the browser is already talking to**.
+     *
+     * This matters more than it looks. Valtimo's own `DownloadService` attaches the access token
+     * only when it recognises the URL as its own backend:
+     *
+     * ```js
+     * if (url.startsWith(endpointUri) || url.startsWith(window.location.origin) || url.startsWith('/api/'))
+     *   // if download url is on backend use angular to get the content so access token is used
+     * ```
+     *
+     * Anything else it treats as a pre-signed URL and navigates to directly, which carries no
+     * Authorization header. Built from `valtimo.app.hostname` this produced `http://localhost:8080/…`
+     * while the browser was on `:4200`, so the check failed, the browser navigated, and a case
+     * worker clicking their letter got a 403 with the file sitting in the table.
+     *
+     * Taking scheme and host from the current request keeps it on that same origin, whether the
+     * browser reaches the API directly or through the dev server's proxy. [baseUrl] stays as the
+     * fallback for callers with no request in scope, such as a BPMN job thread.
      */
-    private fun downloadUrl(id: UUID): URL = URI.create("${baseUrl.trimEnd('/')}/api/v1/resource/$id/download").toURL()
+    private fun downloadUrl(id: UUID): URL {
+        val origin =
+            runCatching { ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString() }
+                .getOrNull()
+                ?.takeIf { it.isNotBlank() }
+                ?: baseUrl
+        return URI.create("${origin.trimEnd('/')}/api/v1/resource/$id/download").toURL()
+    }
 
     private fun StoredDocument.asDto(): ResourceDTO =
         ResourceDTO(
