@@ -304,6 +304,24 @@ completes nothing, and two attempts missed before one worked:
   instance id; it is the same letter the variable would hold, converted to a `Map` because that is
   the kind of value a process variable holds.
 
+**Which composers' rules apply** (added 2026-10-12, after review of #188). Rules are found by the
+letter's process variable, so two forms storing their letter on one key had their rule sets merged
+and each applied the other's. Refusing that was the first attempt and was wrong — one generate task
+fed by two entry forms is a sound design — so the rules are scoped to the submitted form instead.
+
+The two triggers scope with what each has, and they are not equal. The aspect holds the process link
+it intercepted, so a start form is exact. The listener holds `TaskCompletedEvent`, which carries the
+process definition but not the form, and the runtime task is already deleted when it fires, so a
+task form is scoped to its process. `handleSubmission` _does_ know the form for task submissions
+too; they are routed to the event anyway because a form-flow step completes a task without reaching
+`handleSubmission`, and one trigger per shape is worth more than exactness. Exact scope for plain
+task forms would mean the aspect taking them and the listener skipping what the aspect already did —
+thread-local coordination between an aspect and an event listener, which is the kind of thing that
+breaks quietly on an upgrade.
+
+Where no scope is available, the case-wide lookup remains and is the only place two composers' rules
+can still collide: that case is refused, naming the key and both components.
+
 The two triggers are kept **disjoint** by the task instance id: a submission that completed a task
 is left to the event. Both firing would write the same values twice, which is one case version per
 trigger.
