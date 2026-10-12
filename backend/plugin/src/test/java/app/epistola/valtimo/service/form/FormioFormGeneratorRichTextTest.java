@@ -99,6 +99,31 @@ class FormioFormGeneratorRichTextTest {
         assertThat(component.get("defaultValue").toString()).isEqualTo("[\"<p>eerder</p>\",\"<p>getypt</p>\"]");
     }
 
+    /**
+     * The retry form's round trip: what was rendered is shown, taken back unchanged, and must
+     * convert to the same document — or a retry would lose the letter's formatting.
+     */
+    @Test
+    void aRenderedDocumentSurvivesTheRetryFormsRoundTrip() {
+        var converter = RichTextFixtures.converter("html");
+        Map<String, Object> rendered = Map.of("type", "doc", "content", List.of(
+                Map.of("type", "paragraph", "content", List.of(
+                        Map.of("type", "text", "text", "Geachte "),
+                        Map.of("type", "text", "text", "heer", "marks", List.of(Map.of("type", "strong"))),
+                        Map.of("type", "text", "text", " rood", "marks",
+                                List.of(Map.of("type", "textStyle", "attrs", Map.of("color", "#e60000")))))),
+                Map.of("type", "ordered_list", "attrs", Map.of("order", 3), "content", List.of(
+                        Map.of("type", "list_item", "content", List.of(Map.of("type", "paragraph", "content",
+                                List.of(Map.of("type", "text", "text", "drie")))))))));
+        TemplateField field = richText(false, RichTextKind.BLOCK);
+
+        JsonNode component = component(RichTextFixtures.generator(objectMapper, "html"), field,
+                Map.of("toelichting", rendered));
+        Map<String, Object> resubmitted = Map.of("toelichting", component.get("defaultValue").asText());
+
+        assertThat(converter.normalize(resubmitted, List.of(field)).get("toelichting")).isEqualTo(rendered);
+    }
+
     @Test
     void showsTextAlreadyInTheCasesFormatAsItIs() {
         JsonNode component = component(RichTextFixtures.generator(objectMapper, "plain"), richText(false, RichTextKind.BLOCK),

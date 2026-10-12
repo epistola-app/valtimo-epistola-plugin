@@ -84,7 +84,7 @@ class LetterComposerServiceTest {
                 pluginService,
                 epistolaService,
                 jsonataMappingService,
-                app.epistola.valtimo.richtext.RichTextFixtures.generator(new ObjectMapper(), "plain"),
+                app.epistola.valtimo.richtext.RichTextFixtures.generator(new ObjectMapper(), "html"),
                 mock(com.ritense.document.service.DocumentService.class),
                 mock(RuntimeService.class),
                 new ObjectMapper());
@@ -180,6 +180,25 @@ class LetterComposerServiceTest {
         assertThat(components.get(0).get("key").asText()).isEqualTo("motivatie");
         assertThat(letter.data()).containsEntry("naam", "Jansen");
         assertThat(letter.label()).isEqualTo("Besluit");
+        assertThat(letter.complete()).isFalse();
+    }
+
+    @Test
+    void asksForARichTextFieldInTheHtmlEditor_ratherThanRefusingTheLetter() {
+        offering(configuration(offered("besluit", "Besluit", null)), "besluit");
+        when(jsonataMappingService.evaluate(any())).thenReturn(Map.of("naam", "Jansen"));
+        templateRequires("besluit", required("naam"), new TemplateField(
+                "toelichting", "toelichting", "richtext-block", FieldType.SCALAR, true, null, List.of(),
+                false, null, false, new TemplateField.FieldHints(null, null, null, null, null, null,
+                        TemplateField.RichTextKind.BLOCK)));
+
+        PreparedLetter letter = service.prepare(CONTEXT, null, "besluit");
+
+        var components = letter.form().get("components");
+        assertThat(components).hasSize(1);
+        assertThat(components.get(0).get("key").asText()).isEqualTo("toelichting");
+        assertThat(components.get(0).get("editor").asText()).isEqualTo("ckeditor");
+        assertThat(components.get(0).at("/validate/required").asBoolean()).isTrue();
         assertThat(letter.complete()).isFalse();
     }
 
