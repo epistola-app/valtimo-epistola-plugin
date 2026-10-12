@@ -32,6 +32,8 @@ shadow = "9.6.1"
 [libraries]
 # Epistola
 epistola-client = { module = "app.epistola.contract:client-spring3-restclient", version.ref = "epistola-client" }
+# Test only: Epistola's own rich-text schemas, at the contract version the client is pinned to.
+epistola-catalog = { module = "app.epistola.contract:epistola-catalog", version.ref = "epistola-client" }
 
 # Valtimo
 valtimo-bom = { module = "com.ritense.valtimo:valtimo-dependency-versions", version.ref = "valtimo" }

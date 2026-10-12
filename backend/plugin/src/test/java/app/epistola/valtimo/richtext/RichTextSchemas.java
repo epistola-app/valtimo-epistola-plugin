@@ -31,12 +31,9 @@ import java.util.Map;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Epistola's own rich-text schemas, to hold every converter's output against.
- *
- * <p>The two files in {@code src/test/resources/richtext/} are verbatim copies of
- * {@code META-INF/epistola-catalog/schemas/richtext-{inline,block}-v1.json} from
- * {@code app.epistola.contract:epistola-catalog:1.4.0}, copied rather than depended on so the
- * plugin gains no dependency for a test. Refresh them when the pinned contract changes them.
+ * Epistola's own rich-text schemas, to hold every converter's output against: read from
+ * {@code app.epistola.contract:epistola-catalog} (a test dependency at the version the client is
+ * pinned to), so a contract bump re-tests the converters against the schemas it brings.
  */
 final class RichTextSchemas {
 
@@ -57,7 +54,10 @@ final class RichTextSchemas {
     }
 
     private static Schema load(String name) {
-        try (InputStream input = RichTextSchemas.class.getResourceAsStream("/richtext/" + name)) {
+        try (InputStream input = RichTextSchemas.class.getResourceAsStream("/META-INF/epistola-catalog/schemas/" + name)) {
+            if (input == null) {
+                throw new IllegalStateException(name + " is not on the test classpath; is epistola-catalog?");
+            }
             return REGISTRY.getSchema(input);
         } catch (Exception e) {
             throw new IllegalStateException("Could not load " + name, e);

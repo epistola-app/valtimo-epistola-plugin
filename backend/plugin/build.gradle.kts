@@ -115,6 +115,10 @@ dependencies {
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.valtimo.test.utils.common)
     testImplementation(libs.junit.jupiter)
+    // Epistola's own rich-text schemas, which every converter's output is validated against — read
+    // from the contract artifact rather than copied, so a contract bump re-tests against its schemas.
+    // Only its schema files are read, never its code, so none of its dependencies are wanted.
+    testImplementation(libs.epistola.catalog) { isTransitive = false }
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     // In-memory DB for the standalone Operaton engine used by the correlation integration test
     testImplementation("com.h2database:h2")
