@@ -157,6 +157,24 @@ docker/            # Docker compose for local dependencies
   - **Frontend**: `EPISTOLA_ENABLED=false` (container env var, substituted into `assets/config.js` via the Dockerfile entrypoint, defaults to `true`). The plugin library reads `window['env']['epistolaEnabled']` at runtime via the exported `isEpistolaEnabled()` helper. `EpistolaPluginModule.forRoot()` stays unconditional in the host's `imports`; its `ENVIRONMENT_INITIALIZER` short-circuits when disabled, the `/epistola` route guard redirects to `/`, and `epistolaPluginSpecification.pluginId` stops matching the backend `epistola` definition. Keep `PLUGINS_TOKEN` static (`useValue`) in host apps; do not push optional-loading conditionals into installer-facing app-module wiring.
   - Set both flags `false` per environment to fully hide the plugin (no admin menu, no admin page, no plugin picker entry, no process-link action types). On environments where the plugin was previously active, remove existing plugin configurations and process links **before** disabling — otherwise stored references remain in the database and will surface stale entries that fail on API calls if the plugin is re-enabled.
 
+## Interception of Valtimo internals must be compile-checked
+
+Where the plugin hooks a Valtimo method — an aspect's pointcut, a bean it decorates — the pointcut
+is a **string**, so nothing in the compiler looks at it. A renamed method, an added parameter or two
+swapped ones stop it matching and the feature silently stops happening. Browser suites would notice,
+and they run nightly rather than on a pull request.
+
+So pair every such hook with a test that does both of these:
+
+- **A stub that `implements` the interface**, which makes the signature compile-checked: a bump that
+  changes it fails the build instead of going quiet.
+- **A call through the Spring proxy**, which exercises the pointcut and its `args(…)` binding for
+  real, rather than calling the advice as a plain method.
+
+`ComposerStartFormWriteBackPointcutTest` is the worked example, and each of the three breakages was
+verified by making it. `TaskCompletedEvent` is covered by accident: tests construct it, so a changed
+accessor already fails to compile.
+
 ## Never log personal data
 
 A letter's values, a case document's content, a form submission and a template's data are **personal
