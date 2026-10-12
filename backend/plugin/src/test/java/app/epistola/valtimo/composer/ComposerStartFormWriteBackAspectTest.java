@@ -45,12 +45,15 @@ class ComposerStartFormWriteBackAspectTest {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private ComposerWriteBackService writeBackService;
+
+    private ComposerConfigurationResolver configurationResolver;
     private ComposerStartFormWriteBackAspect aspect;
 
     @BeforeEach
     void setUp() {
         writeBackService = mock(ComposerWriteBackService.class);
-        aspect = new ComposerStartFormWriteBackAspect(writeBackService, MAPPER);
+        configurationResolver = mock(ComposerConfigurationResolver.class);
+        aspect = new ComposerStartFormWriteBackAspect(writeBackService, configurationResolver, MAPPER);
     }
 
     private static JsonNode submission(String json) {
@@ -80,7 +83,7 @@ class ComposerStartFormWriteBackAspectTest {
                         // Handed over as a Map, which is the kind of value a process variable holds:
                         // DynamicDocument accepts nothing else but a JSON string, and a JsonNode
                         // failed with "the composed letter could not be read".
-                        && vars.get("epistolaLetter") instanceof Map));
+                        && vars.get("epistolaLetter") instanceof Map), any());
     }
 
     @Test
@@ -89,7 +92,7 @@ class ComposerStartFormWriteBackAspectTest {
         aspect.afterStartFormSubmission(new FormSubmissionResultSucceeded(CASE.toString()),
                 PROCESS_LINK, withLetter(), "correspondentie", null, null);
 
-        verify(writeBackService).applyFromSubmission(eq(CASE), any());
+        verify(writeBackService).applyFromSubmission(eq(CASE), any(), any());
     }
 
     @Test
@@ -99,7 +102,7 @@ class ComposerStartFormWriteBackAspectTest {
         aspect.afterStartFormSubmission(new FormSubmissionResultSucceeded(CASE.toString()),
                 PROCESS_LINK, withLetter(), "correspondentie", CASE.toString(), "task-1");
 
-        verify(writeBackService, never()).applyFromSubmission(any(), any());
+        verify(writeBackService, never()).applyFromSubmission(any(), any(), any());
     }
 
     @Test
@@ -110,7 +113,7 @@ class ComposerStartFormWriteBackAspectTest {
                         new com.ritense.valtimo.contract.result.OperationError.FromString("nee"))),
                 PROCESS_LINK, withLetter(), "correspondentie", CASE.toString(), null);
 
-        verify(writeBackService, never()).applyFromSubmission(any(), any());
+        verify(writeBackService, never()).applyFromSubmission(any(), any(), any());
     }
 
     @Test
@@ -120,7 +123,7 @@ class ComposerStartFormWriteBackAspectTest {
                 PROCESS_LINK, submission("{\"objector\": {\"firstName\": \"Jan\"}}"),
                 "correspondentie", CASE.toString(), null);
 
-        verify(writeBackService, never()).applyFromSubmission(any(), any());
+        verify(writeBackService, never()).applyFromSubmission(any(), any(), any());
     }
 
     @Test
@@ -130,6 +133,6 @@ class ComposerStartFormWriteBackAspectTest {
                 PROCESS_LINK, submission("{\"pv:iets\": \"een tekst\"}"),
                 "correspondentie", CASE.toString(), null);
 
-        verify(writeBackService, never()).applyFromSubmission(any(), any());
+        verify(writeBackService, never()).applyFromSubmission(any(), any(), any());
     }
 }

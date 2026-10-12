@@ -56,6 +56,7 @@ import org.aspectj.lang.annotation.Aspect;
 public class ComposerStartFormWriteBackAspect {
 
     private final ComposerWriteBackService writeBackService;
+    private final ComposerConfigurationResolver configurationResolver;
 
     /** To hand the letter over as the kind of value a process variable holds; see {@link #lettersIn}. */
     private final ObjectMapper objectMapper;
@@ -83,7 +84,10 @@ public class ComposerStartFormWriteBackAspect {
         if (letters.isEmpty()) {
             return;
         }
-        writeBackService.applyFromSubmission(caseId, letters);
+        // The one path that knows exactly which form was submitted, so scoping is exact here:
+        // only the composers on this link's form apply their rules.
+        writeBackService.applyFromSubmission(caseId, letters,
+                configurationResolver.forProcessLink(processLinkId));
     }
 
     /**

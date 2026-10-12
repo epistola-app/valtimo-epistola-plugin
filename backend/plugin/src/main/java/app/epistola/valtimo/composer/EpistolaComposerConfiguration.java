@@ -94,17 +94,20 @@ public class EpistolaComposerConfiguration {
     @ConditionalOnMissingBean(ComposerStartFormWriteBackAspect.class)
     public ComposerStartFormWriteBackAspect composerStartFormWriteBackAspect(
             ComposerWriteBackService composerWriteBackService,
+            ComposerConfigurationResolver composerConfigurationResolver,
             com.fasterxml.jackson.databind.ObjectMapper objectMapper
     ) {
-        return new ComposerStartFormWriteBackAspect(composerWriteBackService, objectMapper);
+        return new ComposerStartFormWriteBackAspect(
+                composerWriteBackService, composerConfigurationResolver, objectMapper);
     }
 
     @Bean
     @ConditionalOnMissingBean(ComposerSubmissionListener.class)
     public ComposerSubmissionListener composerSubmissionListener(
-            ComposerWriteBackService composerWriteBackService
+            ComposerWriteBackService composerWriteBackService,
+            ComposerConfigurationResolver composerConfigurationResolver
     ) {
-        return new ComposerSubmissionListener(composerWriteBackService);
+        return new ComposerSubmissionListener(composerWriteBackService, composerConfigurationResolver);
     }
 
     @Bean

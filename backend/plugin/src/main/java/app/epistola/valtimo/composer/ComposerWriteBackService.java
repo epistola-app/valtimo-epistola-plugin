@@ -123,7 +123,11 @@ public class ComposerWriteBackService {
      * <p>Never throws, for the same reason the overloads below do not: a submission that has already
      * created a case and completed a task cannot be undone by failing afterwards.
      */
-    public void applyFromSubmission(UUID documentId, Map<String, Object> variables) {
+    public void applyFromSubmission(
+            UUID documentId,
+            Map<String, Object> variables,
+            List<LetterComposerConfiguration> submitted
+    ) {
         if (documentId == null || variables == null || variables.isEmpty()) {
             return;
         }
@@ -138,7 +142,10 @@ public class ComposerWriteBackService {
             // value once per composer, which is the same case saved twice. `apply` already narrows
             // to the composer that claims the variable, so one call per variable is the whole job.
             Set<String> letterVariables = new LinkedHashSet<>();
-            for (LetterComposerConfiguration composer : configurationResolver.forCaseDefinition(caseDefinitionKey)) {
+            List<LetterComposerConfiguration> candidates = submitted != null && !submitted.isEmpty()
+                    ? submitted
+                    : configurationResolver.forCaseDefinition(caseDefinitionKey);
+            for (LetterComposerConfiguration composer : candidates) {
                 String variableName = letterVariableOf(composer);
                 if (variableName != null) {
                     letterVariables.add(variableName);
@@ -147,7 +154,7 @@ public class ComposerWriteBackService {
             for (String variableName : letterVariables) {
                 Object letter = variables.get(variableName);
                 if (letter != null) {
-                    apply(documentId, letter, variableName);
+                    apply(documentId, letter, variableName, submitted);
                 }
             }
         } catch (ComposerWriteBackException e) {
@@ -185,7 +192,7 @@ public class ComposerWriteBackService {
     }
 
     public void apply(UUID documentId, Object submittedLetter) {
-        apply(documentId, submittedLetter, null);
+        apply(documentId, submittedLetter, null, null);
     }
 
     /**
@@ -196,6 +203,15 @@ public class ComposerWriteBackService {
      *                       which is what this did before composers could be told apart
      */
     public void apply(UUID documentId, Object submittedLetter, String letterVariable) {
+        apply(documentId, submittedLetter, letterVariable, null);
+    }
+
+    void apply(
+            UUID documentId,
+            Object submittedLetter,
+            String letterVariable,
+            List<LetterComposerConfiguration> submitted
+    ) {
         if (documentId == null || submittedLetter == null) {
             return;
         }
@@ -205,7 +221,10 @@ public class ComposerWriteBackService {
         // wrote nothing: `from` is for a value that arrived on a submission and rejects anything
         // that is not one — including, absurdly, a letter that had already been read.
         if (submittedLetter instanceof ComposedLetter composed) {
-            apply(documentId, composed, letterVariable);
+            // Four arguments on purpose. With three, a ComposedLetter binds to the Object overload
+            // above — it is an Object — and this recurses until the stack goes. Overload resolution
+            // picks the widest applicable signature without a word of complaint.
+            apply(documentId, composed, letterVariable, submitted);
             return;
         }
 
@@ -225,18 +244,12 @@ public class ComposerWriteBackService {
                             + "not be read. The submission was not completed.");
         }
 
-        apply(documentId, letter, letterVariable);
+        // Four arguments, again: with three, this ComposedLetter binds to the Object overload
+        // and the scope is replaced by null, which silently widens the rules back to the whole
+        // case type. That is what made the scoped test fail.
+        apply(documentId, letter, letterVariable, submitted);
     }
 
-    /**
-     * Apply the write-back for a letter that has already been read.
-     *
-     * <p>This is the shape the generate action has: it parsed the letter to decide what to render,
-     * and the values written back must be the ones that were actually sent.
-     *
-     * @param documentId the case document the letter was composed for
-     * @param letter     the letter as it was sent to Epistola
-     */
     /**
      * Apply the write-back for a letter that has already been read.
      *
@@ -246,7 +259,12 @@ public class ComposerWriteBackService {
      * Exposing a {@code ComposedLetter} overload also made {@code any()} ambiguous at a call site
      * that meant the other one, which is a small thing that costs an afternoon.
      */
-    void apply(UUID documentId, ComposedLetter letter, String letterVariable) {
+    void apply(
+            UUID documentId,
+            ComposedLetter letter,
+            String letterVariable,
+            List<LetterComposerConfiguration> submitted
+    ) {
         if (documentId == null || letter == null) {
             return;
         }
@@ -256,7 +274,9 @@ public class ComposerWriteBackService {
         // and the employee is told. The alternative is a case worker believing the case records a
         // decision it does not. (Until 2026-10-10 this ran after Epistola had accepted the letter,
         // where throwing would have made a retry send a second one, so it swallowed everything.)
-        Map<String, String> rules = rulesFor(documentId, letterVariable);
+        // No form context on this path: the caller already holds the letter, so the rules come
+        // from the case type and the inherited-rules guard applies.
+        Map<String, String> rules = rulesFor(documentId, letterVariable, submitted);
         if (rules.isEmpty()) {
             return;
         }
@@ -420,14 +440,26 @@ public class ComposerWriteBackService {
         return composer.writeBack() == null ? Map.of() : composer.writeBack();
     }
 
-    private Map<String, String> rulesFor(UUID documentId, String letterVariable) {
+    private Map<String, String> rulesFor(
+            UUID documentId,
+            String letterVariable,
+            List<LetterComposerConfiguration> submitted
+    ) {
         String caseDefinitionKey = caseDefinitionKeyOf(documentId);
         if (caseDefinitionKey == null) {
             return Map.of();
         }
 
-        List<LetterComposerConfiguration> composers =
-                configurationResolver.forCaseDefinition(caseDefinitionKey);
+        // The composers on the form that was just submitted, when the caller could identify it.
+        // Scoping to them is what makes two forms sharing one letter key work: each applies its own
+        // rules to its own letter, which is a reasonable way to build one generate task fed by two
+        // entry forms. Falling back to the whole case type keeps write-back working where the form
+        // cannot be identified — and only there can two composers' rules still collide, which is
+        // what refuseIfRulesWouldBeInherited covers.
+        boolean scoped = submitted != null && !submitted.isEmpty();
+        List<LetterComposerConfiguration> composers = scoped
+                ? submitted
+                : configurationResolver.forCaseDefinition(caseDefinitionKey);
         if (letterVariable != null && !letterVariable.isBlank()) {
             List<LetterComposerConfiguration> claiming = composers.stream()
                     .filter(c -> writes(c, letterVariable))
@@ -444,7 +476,9 @@ public class ComposerWriteBackService {
                 }
                 return Map.of();
             }
-            refuseIfRulesWouldBeInherited(caseDefinitionKey, letterVariable, claiming);
+            if (!scoped) {
+                refuseIfRulesWouldBeInherited(caseDefinitionKey, letterVariable, claiming);
+            }
             composers = claiming;
         }
 

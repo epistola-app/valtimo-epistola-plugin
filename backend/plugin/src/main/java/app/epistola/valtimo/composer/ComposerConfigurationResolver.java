@@ -28,6 +28,7 @@ import com.ritense.case_.service.ActiveCaseDefinitionService;
 import com.ritense.formflow.service.FormFlowService;
 import com.ritense.processdocument.domain.ProcessDefinitionId;
 import com.ritense.processdocument.service.ProcessDefinitionCaseDefinitionService;
+import com.ritense.processlink.domain.ProcessLink;
 import com.ritense.valtimo.contract.case_.CaseDefinitionId;
 import com.ritense.processlink.domain.ActivityTypeWithEventName;
 import com.ritense.processlink.service.ProcessLinkService;
@@ -76,6 +77,56 @@ public class ComposerConfigurationResolver {
      * supplies about where configuration is read from, which is exactly what this resolver exists
      * to avoid.
      */
+    /**
+     * Every composer on the form this process link opens, or none when the link cannot be read.
+     *
+     * <p>Used to scope write-back to the form that was actually submitted. Two forms may store their
+     * letter on the same key — one generate task fed by two entry forms is a reasonable design — and
+     * rules are found by that key, so without scoping each form would apply the other's rules to its
+     * own letter.
+     *
+     * <p>Returns empty rather than throwing when the link is gone or of an unexpected type: the
+     * caller then falls back to the case-wide lookup, which is what happened before scoping existed.
+     * A write-back that still works is worth more than a precise failure here.
+     */
+    public List<LetterComposerConfiguration> forProcessLink(UUID processLinkId) {
+        if (processLinkId == null) {
+            return List.of();
+        }
+        try {
+            ProcessLink link = processLinkService.getProcessLink(processLinkId, ProcessLink.class);
+            if (link == null) {
+                return List.of();
+            }
+            return forLinks(link.getProcessDefinitionId(), List.of(link));
+        } catch (RuntimeException e) {
+            log.debug("No readable process link {} while scoping letter composers ({})",
+                    processLinkId, Failures.describe(e));
+            return List.of();
+        }
+    }
+
+    /**
+     * Every composer on every form of one process definition.
+     *
+     * <p>The scope available when a task has just completed: the event carries the process definition
+     * but the runtime task is already gone, so an activity cannot be resolved from it reliably. A
+     * process is still narrower than the case type, which is what separates two processes that share
+     * a letter key — the shape the demo hit.
+     */
+    public List<LetterComposerConfiguration> forProcessDefinition(String processDefinitionId) {
+        if (processDefinitionId == null || processDefinitionId.isBlank()) {
+            return List.of();
+        }
+        try {
+            return forLinks(processDefinitionId, processLinkService.getProcessLinks(processDefinitionId));
+        } catch (RuntimeException e) {
+            log.debug("No readable process links for {} while scoping letter composers ({})",
+                    processDefinitionId, Failures.describe(e));
+            return List.of();
+        }
+    }
+
     private List<LetterComposerConfiguration> forLinks(String processDefinitionId, List<?> links) {
         List<LetterComposerConfiguration> configurations = new ArrayList<>();
         for (Object link : links) {

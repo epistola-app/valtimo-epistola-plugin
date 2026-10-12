@@ -119,7 +119,7 @@ class ComposerWriteBackServiceTest {
         when(resolver.forCaseDefinition(CASE_KEY)).thenThrow(new RuntimeException("database is gone"));
 
         assertThatThrownBy(() -> service.applyFromSubmission(
-                DOCUMENT_ID, Map.of("epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond")))))
+                DOCUMENT_ID, Map.of("epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))), List.of()))
                 .isInstanceOf(ComposerWriteBackException.class)
                 .hasMessageContaining("configuration could not be read");
 
@@ -283,7 +283,7 @@ class ComposerWriteBackServiceTest {
             declaring(Map.of("doc:/besluit/type", "$inputs.decisionType"));
 
             service.applyFromSubmission(DOCUMENT_ID, Map.of(
-                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))));
+                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))), List.of());
 
             assertThat(written()).containsEntry("doc:/besluit/type", "gegrond");
         }
@@ -304,16 +304,43 @@ class ComposerWriteBackServiceTest {
                             "gemeente", null, offered, false, rules)));
 
             service.applyFromSubmission(DOCUMENT_ID, Map.of(
-                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))));
+                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))), List.of());
 
             verify(valueResolverService, org.mockito.Mockito.times(1)).handleValues(any(UUID.class), any());
         }
 
         @Test
+        @DisplayName("two forms sharing a letter key each apply only their own rules")
+        void scopesToTheSubmittedForm() {
+            // The shape that makes sharing a key reasonable: one generate task reading
+            // `epistolaLetter`, fed by two entry forms, each with its own write-back. Rules are found
+            // by the letter key, so without scoping each form would apply the other's rules to its
+            // own letter — and the caller is the only thing that knows which form was submitted.
+            var offered = List.of(
+                    new LetterComposerConfiguration.OfferedTemplate("gemeente", "besluit", "Besluit", null));
+            var submittedForm = new LetterComposerConfiguration("pv:epistolaLetter", null, UUID.randomUUID(),
+                    "gemeente", null, offered, false, Map.of("doc:/besluit/type", "$inputs.decisionType"));
+            var otherForm = new LetterComposerConfiguration("pv:epistolaLetter", null, UUID.randomUUID(),
+                    "gemeente", null, offered, false, Map.of("doc:/besluit/toelichting", "$inputs.decisionType"));
+            when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(submittedForm, otherForm));
+
+            service.applyFromSubmission(
+                    DOCUMENT_ID,
+                    Map.of("epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))),
+                    List.of(submittedForm));
+
+            assertThat(written())
+                    .containsEntry("doc:/besluit/type", "gegrond")
+                    .doesNotContainKey("doc:/besluit/toelichting");
+        }
+
+        @Test
         @DisplayName("two composers writing one variable with different rules is refused, not merged")
         void refusesWhenRulesWouldBeInherited() {
-            // The trap this closes: rules are collected per letter variable, so two composers that
-            // merely reused a name each inherit the other's. Measured on the demo — an ad-hoc
+            // The unscoped path only — when the caller cannot identify the submitted form, the
+            // rules of every composer claiming the variable are all that is left to go on, and
+            // applying the wrong form's rules is worse than refusing. Scoped callers never get here;
+            // see scopesToTheSubmittedForm. Measured on the demo — an ad-hoc
             // letter picked up a `pv:besluitType` rule from an unrelated task form, and a `pv:`
             // destination cannot resolve on a case running more than one process, so the write was
             // refused naming a destination the author never configured on the form they edited.
@@ -328,7 +355,7 @@ class ComposerWriteBackServiceTest {
                             Map.of("pv:besluitType", "$inputs.decisionType"))));
 
             assertThatThrownBy(() -> service.applyFromSubmission(DOCUMENT_ID, Map.of(
-                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond")))))
+                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))), List.of()))
                     .isInstanceOf(ComposerWriteBackException.class)
                     .hasMessageContaining("pv:epistolaLetter")
                     .hasMessageContaining("Give each composer its own key");
@@ -344,7 +371,7 @@ class ComposerWriteBackServiceTest {
                     "pv:besluitType", "$inputs.decisionType"));
 
             service.applyFromSubmission(DOCUMENT_ID, Map.of(
-                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))));
+                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))), List.of());
 
             assertThat(written()).containsEntry("doc:/besluit/type", "gegrond");
         }
@@ -355,7 +382,7 @@ class ComposerWriteBackServiceTest {
             // Another form on the same case type, not the one just submitted.
             declaring(Map.of("doc:/besluit/type", "$inputs.decisionType"));
 
-            service.applyFromSubmission(DOCUMENT_ID, Map.of("ietsAnders", "x"));
+            service.applyFromSubmission(DOCUMENT_ID, Map.of("ietsAnders", "x"), List.of());
 
             verify(valueResolverService, never()).handleValues(any(UUID.class), any());
         }
@@ -365,9 +392,9 @@ class ComposerWriteBackServiceTest {
         void needsBoth() {
             declaring(Map.of("doc:/besluit/type", "$inputs.decisionType"));
 
-            service.applyFromSubmission(null, Map.of("epistolaLetter", letter(Map.of(), Map.of())));
-            service.applyFromSubmission(DOCUMENT_ID, Map.of());
-            service.applyFromSubmission(DOCUMENT_ID, null);
+            service.applyFromSubmission(null, Map.of("epistolaLetter", letter(Map.of(), Map.of())), List.of());
+            service.applyFromSubmission(DOCUMENT_ID, Map.of(), List.of());
+            service.applyFromSubmission(DOCUMENT_ID, null, List.of());
 
             verify(valueResolverService, never()).handleValues(any(UUID.class), any());
         }
@@ -382,7 +409,7 @@ class ComposerWriteBackServiceTest {
                     false,
                     Map.of("doc:/besluit/type", "$inputs.decisionType"))));
 
-            service.applyFromSubmission(DOCUMENT_ID, Map.of("brief", letter(Map.of(), Map.of("decisionType", "x"))));
+            service.applyFromSubmission(DOCUMENT_ID, Map.of("brief", letter(Map.of(), Map.of("decisionType", "x"))), List.of());
 
             verify(valueResolverService, never()).handleValues(any(UUID.class), any());
         }
@@ -490,7 +517,7 @@ class ComposerWriteBackServiceTest {
                 .when(documentService).findBy(any());
 
         assertThatThrownBy(() -> service.applyFromSubmission(
-                DOCUMENT_ID, Map.of("epistolaLetter", letter(Map.of(), Map.of()))))
+                DOCUMENT_ID, Map.of("epistolaLetter", letter(Map.of(), Map.of())), List.of()))
                 .isInstanceOf(ComposerWriteBackException.class)
                 .hasMessageContaining("case could not be read");
 

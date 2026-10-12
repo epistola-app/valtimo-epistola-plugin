@@ -9,16 +9,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Two letter composers that store their letter on the same key are now refused rather than
-  quietly merged.** Write-back rules are collected per letter variable, which is right when one
-  generate task could have rendered any of those composers' letters, and wrong when two composers
-  merely reused a name: each then inherits the other's rules. Measured on the demo — an ad-hoc
-  letter picked up a `pv:besluitType` rule from an unrelated task form, and a `pv:` destination
-  cannot resolve on a case running more than one process, so the write failed naming a destination
-  the author never configured on the form they were editing. The submission is now refused with a
-  message naming the shared key and both components. Identical rule sets are left alone, because
-  merging them changes nothing and two composers feeding one generate task is a legitimate way to
-  build a "pick from either set" form.
+- **Write-back now applies the rules of the form that was submitted, not of every composer on the
+  case type.** Rules are found by the letter's process variable, so two forms storing their letter
+  on the same key had their rules merged and each applied the other's to its own letter. Measured on
+  the demo — an ad-hoc letter picked up a `pv:besluitType` rule from an unrelated task form, and a
+  `pv:` destination cannot resolve on a case running more than one process, so the write failed
+  naming a destination the author never configured on the form they were editing.
+
+  Sharing a key is a reasonable design — one generate task fed by two entry forms — so it is now
+  supported rather than refused: each form's composers supply their own rules. The start-form path
+  scopes exactly, by the submitted form's own process link; the task path scopes by process
+  definition, because the runtime task is already gone when the event fires and an activity cannot
+  be resolved from it reliably. Where neither is available the old case-wide lookup still applies,
+  and only there can two composers' rules still collide — that case is refused with a message naming
+  the shared key and both components, rather than quietly writing the wrong values.
 
 ### Fixed
 

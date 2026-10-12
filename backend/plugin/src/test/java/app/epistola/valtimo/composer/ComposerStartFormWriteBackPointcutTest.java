@@ -78,7 +78,7 @@ class ComposerStartFormWriteBackPointcutTest {
             submissions.handleSubmission(
                     PROCESS_LINK, formData, "correspondentie", CASE.toString(), null);
 
-            verify(writeBack).applyFromSubmission(eq(CASE), any());
+            verify(writeBack).applyFromSubmission(eq(CASE), any(), any());
         });
     }
 
@@ -102,7 +102,7 @@ class ComposerStartFormWriteBackPointcutTest {
 
         @Bean
         ComposerStartFormWriteBackAspect aspect(ComposerWriteBackService writeBackService) {
-            return new ComposerStartFormWriteBackAspect(writeBackService, new ObjectMapper());
+            return new ComposerStartFormWriteBackAspect(writeBackService, mock(ComposerConfigurationResolver.class), new ObjectMapper());
         }
 
         @Bean
