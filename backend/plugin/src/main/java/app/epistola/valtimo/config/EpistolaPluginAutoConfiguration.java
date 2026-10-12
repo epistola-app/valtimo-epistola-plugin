@@ -44,6 +44,13 @@ import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
 import app.epistola.valtimo.service.suggestion.VariableSuggestionService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.download.DocumentStorageStrategy;
+import app.epistola.valtimo.richtext.HtmlFormat;
+import app.epistola.valtimo.richtext.MarkdownFormat;
+import app.epistola.valtimo.richtext.PlainTextFormat;
+import app.epistola.valtimo.richtext.ProseMirrorFormat;
+import app.epistola.valtimo.richtext.RichTextConverter;
+import app.epistola.valtimo.richtext.RichTextFormat;
+import app.epistola.valtimo.richtext.RichTextFunction;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
 import app.epistola.valtimo.service.form.FormioFormGenerator;
@@ -144,8 +151,51 @@ public class EpistolaPluginAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(EpistolaService.class)
-    public EpistolaService epistolaService(EpistolaApiClientFactory apiClientFactory, EpistolaProperties properties) {
-        return new EpistolaServiceImpl(apiClientFactory, properties.getClient().getMaxReadRetries());
+    public EpistolaService epistolaService(
+            EpistolaApiClientFactory apiClientFactory,
+            EpistolaProperties properties,
+            RichTextConverter richTextConverter
+    ) {
+        return new EpistolaServiceImpl(
+                apiClientFactory, properties.getClient().getMaxReadRetries(), richTextConverter);
+    }
+
+    // Rich text (ADR 0008): one bean per format, so an installation adds its own format by
+    // declaring another RichTextFormat bean, and replaces a shipped one by declaring its class.
+    @Bean
+    @ConditionalOnMissingBean(PlainTextFormat.class)
+    public PlainTextFormat plainTextRichTextFormat() {
+        return new PlainTextFormat();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(HtmlFormat.class)
+    public HtmlFormat htmlRichTextFormat() {
+        return new HtmlFormat();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(MarkdownFormat.class)
+    public MarkdownFormat markdownRichTextFormat() {
+        return new MarkdownFormat();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(ProseMirrorFormat.class)
+    public ProseMirrorFormat proseMirrorRichTextFormat(ObjectMapper objectMapper) {
+        return new ProseMirrorFormat(objectMapper);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(RichTextConverter.class)
+    public RichTextConverter richTextConverter(List<RichTextFormat> formats, EpistolaProperties properties) {
+        return new RichTextConverter(formats, properties.getRichText().getDefaultFormat());
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(RichTextFunction.class)
+    public RichTextFunction richTextFunction(RichTextConverter richTextConverter) {
+        return new RichTextFunction(richTextConverter);
     }
 
     // Exposes the current user task's id to a form at server-side prefill time (prefix
@@ -195,8 +245,8 @@ public class EpistolaPluginAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean(FormioFormGenerator.class)
-    public FormioFormGenerator formioFormGenerator(ObjectMapper objectMapper) {
-        return new FormioFormGenerator(objectMapper);
+    public FormioFormGenerator formioFormGenerator(ObjectMapper objectMapper, RichTextConverter richTextConverter) {
+        return new FormioFormGenerator(objectMapper, richTextConverter);
     }
 
     @Bean

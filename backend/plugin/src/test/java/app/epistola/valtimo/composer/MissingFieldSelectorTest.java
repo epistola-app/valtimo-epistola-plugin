@@ -143,7 +143,7 @@ class MissingFieldSelectorTest {
     }
 
     /**
-     * A value with no parts to fill in — a rich-text body, a recursive structure, anything the
+     * A value with no parts to fill in — a recursive structure, a oneOf of shapes, anything the
      * analyzer marked as needing a complete-value mapping. It used to be dropped, which read as
      * "this letter needs no further input" right before Epistola refused to render it.
      */
@@ -220,12 +220,27 @@ class MissingFieldSelectorTest {
     }
 
     @Test
+    void asksForRichText_whichHasAnEditorRatherThanParts() {
+        // Epistola's rich-text $ref is recognised by the analyzer: a plain scalar, not complex, with
+        // a rich-text hint. It used to be reported here and refuse the letter (ADR 0008).
+        TemplateField richText = new TemplateField(
+                "body", "body", "richtext-block", FieldType.SCALAR, true, null, List.of(), false, null, false,
+                new TemplateField.FieldHints(null, null, null, null, null, null,
+                        TemplateField.RichTextKind.BLOCK));
+
+        var selection = MissingFieldSelector.select(List.of(richText), Map.of(), true);
+
+        assertThat(selection.unsupported()).isEmpty();
+        assertThat(namesOf(selection.askable())).containsExactly("body");
+    }
+
+    @Test
     void reportsAnExternalReferenceEvenThoughItInfersScalar() {
-        // What the analyzer produces for {"$ref": "https://…/rich-text.json"}: no type and no
+        // What the analyzer produces for {"$ref": "https://…/adres.json"}: no type and no
         // properties to infer from, so SCALAR — and left to the scalar branch it would become a
         // single-line text box for a value that is not text.
         TemplateField externalRef = new TemplateField(
-                "body", "body", "rich-text.json", FieldType.SCALAR, true, null, List.of(), true,
+                "body", "body", "adres.json", FieldType.SCALAR, true, null, List.of(), true,
                 "External JSON Schema references require a complete-value mapping.", false, null);
 
         var selection = MissingFieldSelector.select(List.of(externalRef), Map.of(), true);
@@ -237,7 +252,7 @@ class MissingFieldSelectorTest {
     @Test
     void asksForAnExternalReferenceNever_butOnlyWhenTheMappingLeftItEmpty() {
         TemplateField externalRef = new TemplateField(
-                "body", "body", "rich-text.json", FieldType.SCALAR, true, null, List.of(), true,
+                "body", "body", "adres.json", FieldType.SCALAR, true, null, List.of(), true,
                 "External JSON Schema references require a complete-value mapping.", false, null);
 
         var selection = MissingFieldSelector.select(

@@ -218,8 +218,8 @@ public class LetterComposerService {
     /**
      * Refuse a letter the composer cannot finish asking for.
      *
-     * <p>A required field with no parts to generate an input from — a rich-text body, a recursive
-     * structure, anything the analyzer said needs a complete-value mapping — used to be dropped,
+     * <p>A required field with no parts to generate an input from — a recursive structure, a
+     * {@code oneOf} of shapes, anything the analyzer said needs a complete-value mapping — used to be dropped,
      * which read as success: the composer announced the letter needed no further input and Epistola
      * then refused to render it for a field nobody was asked about. Saying so here puts the
      * complaint next to the cause, and names the way out: fill it from the mapping.

@@ -175,6 +175,11 @@ public final class JsonSchemaMappingAnalyzer {
                     name, path, required, description, fieldSchema, resolved, root, depth);
         }
 
+        TemplateField.RichTextKind richText = richTextKind(resolved.schema());
+        if (richText != null) {
+            return richTextField(name, path, required, description, fieldSchema, resolved, richText);
+        }
+
         return new TemplateField(
                 name,
                 path,
@@ -188,6 +193,60 @@ public final class JsonSchemaMappingAnalyzer {
                 resolved.nullable(),
                 hints(fieldSchema, resolved.schema())
         );
+    }
+
+    /**
+     * A rich-text field: one value, mapped with one expression like any scalar, whose value is a
+     * ProseMirror document rather than text. Not {@code complex} — there is nothing to decompose and
+     * nothing for Simple mode to refuse — but marked in its hints, so the generated input is an
+     * editor and the data reaching Epistola is converted from the case's format first.
+     */
+    private TemplateField richTextField(
+            String name,
+            String path,
+            boolean required,
+            String description,
+            Map<String, Object> fieldSchema,
+            ResolvedSchema resolved,
+            TemplateField.RichTextKind kind
+    ) {
+        TemplateField.FieldHints hints = hints(fieldSchema, resolved.schema());
+        return new TemplateField(
+                name,
+                path,
+                richTextTypeLabel(kind),
+                TemplateField.FieldType.SCALAR,
+                required,
+                description,
+                Collections.emptyList(),
+                false,
+                null,
+                resolved.nullable(),
+                new TemplateField.FieldHints(
+                        hints != null ? hints.title() : null,
+                        null,
+                        null,
+                        hints != null ? hints.defaultValue() : null,
+                        null,
+                        null,
+                        kind)
+        );
+    }
+
+    /**
+     * The rich-text kind a resolved schema stands for. Resolution keeps the canonical {@code $ref}
+     * on the schema it hands back — through a local {@code $ref} to a definition holding it, and
+     * through a {@code oneOf} with {@code null} — so this one lookup covers every way a contract
+     * may wrap it.
+     */
+    private TemplateField.RichTextKind richTextKind(Map<String, Object> schema) {
+        return schema.get("$ref") instanceof String reference
+                ? TemplateField.RichTextKind.fromSchemaRef(reference)
+                : null;
+    }
+
+    private String richTextTypeLabel(TemplateField.RichTextKind kind) {
+        return kind == TemplateField.RichTextKind.INLINE ? "richtext-inline" : "richtext-block";
     }
 
     /**
@@ -344,6 +403,20 @@ public final class JsonSchemaMappingAnalyzer {
                     arraySchema.nullable()
             );
         }
+        if (richTextKind(items.schema()) != null) {
+            // Each item is a document, not text, and there is no repeating editor for it yet: a
+            // repeated text box would send strings Epistola refuses.
+            return complexField(
+                    name,
+                    path,
+                    complexType,
+                    TemplateField.FieldType.ARRAY,
+                    required,
+                    description,
+                    "Arrays of rich text must be mapped as a complete value.",
+                    arraySchema.nullable()
+            );
+        }
         if (isArraySchema(items.schema())) {
             return complexField(
                     name,
@@ -405,6 +478,12 @@ public final class JsonSchemaMappingAnalyzer {
 
         Object referenceValue = working.get("$ref");
         if (referenceValue instanceof String reference) {
+            if (TemplateField.RichTextKind.fromSchemaRef(reference) != null) {
+                // Not resolved, and not complex: the reference itself is the meaning. It stays on
+                // the returned schema so the field can be recognised, see richTextKind.
+                return new ResolvedSchema(
+                        working, false, false, null, referenceLabel(reference), nextReferenceStack);
+            }
             if (!reference.startsWith("#/")) {
                 return complex(
                         working,

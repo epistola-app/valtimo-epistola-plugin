@@ -42,6 +42,21 @@ public class EpistolaProperties {
     private final CatchEventAutoWiring catchEventAutoWiring = new CatchEventAutoWiring();
     private final Client client = new Client();
     private final VersionCheck versionCheck = new VersionCheck();
+    private final RichText richText = new RichText();
+
+    @Data
+    public static class RichText {
+
+        /**
+         * The format a case keeps rich text in, used to read a string mapped onto an Epistola
+         * rich-text field and to pick the editor a person types one in. One of the shipped formats
+         * ({@code plain}, {@code html}, {@code markdown}, {@code prosemirror}) or the id of an
+         * installation's own {@code RichTextFormat} bean. A field in another format names it in the
+         * mapping instead: {@code $richText($doc.x, "markdown")}. Defaults to {@code plain}, the one
+         * format that never invents formatting. See ADR 0008.
+         */
+        private String defaultFormat = "plain";
+    }
 
     @Data
     public static class VersionCheck {

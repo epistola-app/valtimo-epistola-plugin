@@ -18,11 +18,12 @@
 package app.epistola.valtimo.service.form;
 
 import app.epistola.valtimo.domain.TemplateField;
+import app.epistola.valtimo.richtext.PlainTextFormat;
+import app.epistola.valtimo.richtext.RichTextConverter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import lombok.RequiredArgsConstructor;
 
 import java.util.Collection;
 import java.util.List;
@@ -42,9 +43,10 @@ import java.util.Map;
  *   <li>SCALAR typed {@code array} (array of scalars) → one input with {@code multiple}</li>
  *   <li>ARRAY → datagrid with item components and defaultValue; an object or array nested inside
  *       an item keeps its shape, with keys rebased to the row</li>
+ *   <li>Rich text → the editor of the configured rich-text format: a WYSIWYG text area for HTML,
+ *       a plain one for markdown and plain text (ADR 0008)</li>
  * </ul>
  */
-@RequiredArgsConstructor
 public class FormioFormGenerator {
 
     /** How a {@code "format": "date"} value is stored: what the schema accepts. */
@@ -57,6 +59,17 @@ public class FormioFormGenerator {
     private static final String DATE_TIME_DISPLAY_FORMAT = "dd-MM-yyyy HH:mm";
 
     private final ObjectMapper objectMapper;
+    private final RichTextConverter richText;
+
+    /** A generator that reads and asks for rich text as plain text. */
+    public FormioFormGenerator(ObjectMapper objectMapper) {
+        this(objectMapper, new RichTextConverter(List.of(new PlainTextFormat()), PlainTextFormat.ID));
+    }
+
+    public FormioFormGenerator(ObjectMapper objectMapper, RichTextConverter richText) {
+        this.objectMapper = objectMapper;
+        this.richText = richText;
+    }
 
     /**
      * Generate a complete Formio form definition from template fields and resolved data.
@@ -91,6 +104,10 @@ public class FormioFormGenerator {
     }
 
     private ObjectNode buildScalarComponent(TemplateField field, Object value) {
+        TemplateField.RichTextKind richTextKind = RichTextConverter.kindOf(field);
+        if (richTextKind != null) {
+            return buildRichTextComponent(field, value, richTextKind);
+        }
         ObjectNode component = objectMapper.createObjectNode();
         TemplateField.FieldHints hints = field.hints();
         List<Object> allowedValues = hints != null ? hints.allowedValues() : null;
@@ -142,6 +159,31 @@ public class FormioFormGenerator {
 
         applyValidation(component, field, hints, constrained);
 
+        return component;
+    }
+
+    /**
+     * An editor for a rich-text field, in the case's format: what the person types is what the case
+     * keeps, and the conversion to Epistola's document happens on the way out. A value that is
+     * already a document — what was rendered, shown again on a retry form — is written back into
+     * that format so the editor shows text rather than JSON.
+     */
+    private ObjectNode buildRichTextComponent(
+            TemplateField field, Object value, TemplateField.RichTextKind kind) {
+        ObjectNode component = objectMapper.valueToTree(richText.editorFor(kind));
+        component.put("key", field.path());
+        component.put("label", labelOf(field));
+        component.put("input", true);
+        if (field.description() != null && !field.description().isBlank()) {
+            component.put("tooltip", field.description());
+        }
+        Object editorValue = richText.toEditorValue(value, kind);
+        if (editorValue != null) {
+            component.set("defaultValue", objectMapper.valueToTree(editorValue));
+        }
+        if (field.required()) {
+            component.putObject("validate").put("required", true);
+        }
         return component;
     }
 

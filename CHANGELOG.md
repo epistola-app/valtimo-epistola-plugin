@@ -9,6 +9,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Epistola rich-text fields can be filled, in whatever format the case keeps text.** A template
+  field that references Epistola's rich-text schema (`richtext-inline-v1` / `richtext-block-v1`)
+  takes a ProseMirror document, and until now the plugin had no way to produce one: the composer
+  refused such a field with a 422, and a mapped string was rejected by Epistola. The format a case
+  keeps its text in is the installation's choice, so the plugin now translates
+  ([ADR 0008](docs/adr/0008-rich-text-inputs.md)):
+  - **Four formats ship** — `plain`, `html` (what Valtimo's Form.io WYSIWYG writes, Quill or
+    CKEditor), `markdown` and `prosemirror` — and an installation adds its own by declaring a
+    `RichTextFormat` bean.
+  - **The format is said, never guessed.** `epistola.rich-text.default-format` (default `plain`,
+    which never invents formatting) applies to a string mapped straight onto a rich-text field; a
+    field in another format names it in the mapping with `$richText($doc.x, "markdown")`. A value
+    that is already a ProseMirror document passes through.
+  - **The output is always valid.** Whatever a format produces is narrowed to what Epistola's
+    schema allows — a heading becomes a paragraph, an unknown mark or a `javascript:` link is
+    dropped — and shaped to the field: an inline field gets one paragraph. Every converter is tested
+    against Epistola's own schemas.
+  - **Conversion happens where data leaves for Epistola**, so generation, preview, the composer and
+    the retry form all send the same document. The template's contract is read to find the
+    rich-text fields; if that read fails, the data goes as mapped and Epistola's own validation
+    speaks.
+  - **The composer asks for a rich-text field** with the default format's editor: Form.io's WYSIWYG
+    text area (Quill, with a toolbar of only what Epistola renders) for `html`, a plain text area
+    otherwise. What the employee types stays in the case's format, so write-back does not change
+    a field's format.
+
+  No new dependencies: the HTML and markdown readers are small ones of the plugin's own.
+
 - **The letter composer's configurator now says which generate tasks read the letter it stores.**
   A composer puts its chosen letter on a process variable and one generate task reads one variable;
   nothing told the author whether those line up. When they do not — a renamed key, or a second
