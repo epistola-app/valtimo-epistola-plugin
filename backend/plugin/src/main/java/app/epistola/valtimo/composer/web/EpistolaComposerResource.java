@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.composer.web;
 
+import app.epistola.valtimo.logging.Failures;
 import app.epistola.valtimo.service.TemplateDataFindings;
 import app.epistola.valtimo.composer.ComposerException;
 import app.epistola.valtimo.composer.LetterComposerService;
@@ -352,7 +353,7 @@ public class EpistolaComposerResource {
      * preview endpoint uses, so the component can show a usable message either way.
      */
     private ResponseEntity<?> mapComposerError(ComposerException e) {
-        log.debug("Letter composer request failed ({}): {}", e.getReason(), e.getMessage());
+        log.debug("Letter composer request failed ({}: {})", e.getReason(), Failures.describe(e));
         return switch (e.getReason()) {
             case NO_COMPOSER -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("error", e.getMessage()));

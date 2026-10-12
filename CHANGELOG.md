@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Audited every log statement for personal data, and fixed the ones that carried it.** `CLAUDE.md`
+  states the rule — a letter's values, a case document's content, a form submission and a template's
+  data do not belong in a log at any level — and this is the pass that applied it beyond the two
+  leaks found with it. Ten log statements about a document, a letter, a submission, a preview or a
+  generation request passed a message from code this plugin does not own; they now name the
+  failure's type and its root cause's type (`Failures.describe`), which keeps the
+  transient-versus-permanent distinction a class name is actually good at. The worst of them was not
+  a message at all: the preview path logged Epistola's **raw error response body** at `DEBUG`, which
+  is whatever the server chose to echo back from the data we had just sent it.
+
+  Two things the audit settled rather than assumed. A **log is not a message shown to someone** — a
+  log crosses the case's authorization boundary, while an error shown to the employee composing the
+  letter, or recorded on the case as a process variable, stays inside it, so those keep their
+  message and three existing tests say why. And an exception's own message is not safe merely
+  because the plugin wrote it: `LetterComposerService` folded a JSONata failure's message into its
+  own, and a JSONata failure quotes the case data it was evaluating.
+
+  `LogStatementPersonalDataTest` guards it by shape — any log statement mentioning a
+  case-data subject and passing a message fails the build — and was verified by reintroducing a
+  fixed leak. `Failures.describe` also no longer hangs on a cause cycle: Java refuses
+  `x.initCause(x)`, but not a pair pointing at each other, and the unbounded walk inherited from
+  `ComposerWriteBackService` spun forever on one.
+
 ### Changed
 
 - **A letter's values now reach the case when the form is submitted, not after Epistola accepts the

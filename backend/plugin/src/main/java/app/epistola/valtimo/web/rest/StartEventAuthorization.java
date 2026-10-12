@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.web.rest;
 
+import app.epistola.valtimo.logging.Failures;
 import com.ritense.authorization.AuthorizationContext;
 import com.ritense.authorization.AuthorizationService;
 import com.ritense.authorization.request.AuthorizationResourceContext;
@@ -194,7 +195,8 @@ public class StartEventAuthorization {
         } catch (IllegalArgumentException e) {
             return null;
         } catch (Exception e) {
-            log.debug("Could not resolve document {} for a start-form request: {}", documentId, e.getMessage());
+            log.debug("Could not resolve document {} for a start-form request ({})", documentId,
+                    Failures.describe(e));
             return null;
         }
     }

@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.web.rest;
 
+import app.epistola.valtimo.logging.Failures;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.preview.PreviewService;
@@ -272,7 +273,7 @@ public class EpistolaGenerationResource {
             ObjectNode form = retryFormService.generateRetryForm(processInstanceId, documentId, sourceActivityId);
             return ResponseEntity.ok(form);
         } catch (RetryFormService.RetryFormException e) {
-            log.warn("Failed to generate retry form: {}", e.getMessage());
+            log.warn("Failed to generate retry form ({}: {})", e.getReason(), Failures.describe(e));
             return switch (e.getReason()) {
                 case PROCESS_NOT_FOUND, LINK_NOT_FOUND -> ResponseEntity.notFound().build();
                 case AMBIGUOUS_ACTIVITY, MISSING_TEMPLATE, NO_DOCUMENT_ID -> ResponseEntity.badRequest().build();
@@ -375,7 +376,7 @@ public class EpistolaGenerationResource {
 
     /** Shared by both preview endpoints so their status mapping cannot drift. */
     private ResponseEntity<?> mapPreviewError(PreviewService.PreviewException e) {
-        log.debug("Preview unavailable: {}", e.getMessage());
+        log.debug("Preview unavailable ({}: {})", e.getReason(), Failures.describe(e));
         return switch (e.getReason()) {
             case PROCESS_NOT_FOUND, LINK_NOT_FOUND -> ResponseEntity.notFound().build();
             case AMBIGUOUS_ACTIVITY, MISSING_TEMPLATE, MISSING_CONTEXT ->
@@ -492,7 +493,7 @@ public class EpistolaGenerationResource {
             }
             return Map.of();
         } catch (Exception e) {
-            log.warn("Failed to load document content for {}: {}", documentId, e.getMessage());
+            log.warn("Failed to load document content for {} ({})", documentId, Failures.describe(e));
             return Map.of();
         }
     }

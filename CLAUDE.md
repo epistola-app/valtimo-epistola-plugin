@@ -200,6 +200,23 @@ The cost is real: a class name diagnoses less than a message, and transient-vers
 become invisible. Prefer losing that to leaking, and recover it with redaction only if the
 redaction fails closed.
 
+**A log is not the same as a message shown to someone.** A log crosses the case's authorization
+boundary: it goes to operators, aggregators and anyone with access to the host, none of whom were
+granted anything on that case. A message shown to the employee composing the letter, or written
+onto the case as a process variable, does not — they are already authorized on exactly that data,
+and `"Epistola could not render template 'besluit': field 'bsn' is not a date"` is what makes the
+failure fixable. So a downstream message may be **shown or stored on the case**, and must not be
+**logged**. Three tests pin that intent (`recordsTheRefusalWhereTheProcessCanReadIt`,
+`saysSoWhenTheDocumentIsNoLongerOnTheVariable`, `epistolaApiFailure_throwsRenderFailed`) — they
+failed when an audit replaced those messages with a class name, which is how the boundary was found.
+
+`Failures.describe(Throwable)` (`app.epistola.valtimo.logging`) is the helper for the logging side,
+and `LogStatementPersonalDataTest` guards it: it scans the plugin's sources for a log statement that
+mentions a subject carrying case data **and** passes `e.getMessage()` or `getResponseBodyAsString()`.
+Scanned by shape rather than from a list of approved sites, because a list is the kind of thing that
+gets updated to make a build pass. A log about a catalog, a process definition or a bundled changelog
+is configuration and keeps its message.
+
 ## Valtimo compatibility
 
 This plugin pins a single Valtimo version (the `valtimo` key in `gradle/libs.versions.toml`, with the frontend `@valtimo/*` packages matched), but it is meant to work across a _range_ of Valtimo versions. Which versions each release supports is recorded in [COMPATIBILITY.md](COMPATIBILITY.md); the `update-valtimo` skill (`.claude/skills/update-valtimo/`) drives version bumps and the changelog-impact review.
