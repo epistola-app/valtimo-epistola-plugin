@@ -32,9 +32,32 @@
       <bpmn:outgoing>Flow_wait_end</bpmn:outgoing>
       <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_EpistolaDocumentGenerated" />
     </bpmn:intermediateCatchEvent>
-    <bpmn:sequenceFlow id="Flow_wait_end" sourceRef="wait-for-generation" targetRef="end-success" />
-    <bpmn:endEvent id="end-success">
+    <bpmn:sequenceFlow id="Flow_wait_end" sourceRef="wait-for-generation" targetRef="download-letter" />
+    <!-- The letter exists in Epistola by this point. These two steps are what make it openable from
+         the dossier afterwards: the plugin's download action fetches the PDF into Valtimo's
+         temporary storage, and the demo's own delegate copies it somewhere durable and relates it to
+         the case. Without them the process ends having produced a document nobody can see. -->
+    <bpmn:serviceTask id="download-letter" name="Haal de brief op" camunda:expression="${null}">
       <bpmn:incoming>Flow_wait_end</bpmn:incoming>
+      <bpmn:outgoing>Flow_download_store</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_download_store" sourceRef="download-letter" targetRef="store-letter" />
+    <bpmn:serviceTask id="store-letter" name="Bewaar de brief op het dossier" camunda:delegateExpression="${storeGeneratedLetter}">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <!-- Where the download action put the temporary resource id, and the name a case worker
+               sees in the dossier's file list. -->
+          <camunda:inputParameter name="resourceIdVariable">letterResourceId</camunda:inputParameter>
+          <camunda:inputParameter name="fileName">brief.pdf</camunda:inputParameter>
+          <camunda:inputParameter name="documentDefinitionName">correspondentie</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_download_store</bpmn:incoming>
+      <bpmn:outgoing>Flow_store_end</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_store_end" sourceRef="store-letter" targetRef="end-success" />
+    <bpmn:endEvent id="end-success">
+      <bpmn:incoming>Flow_store_end</bpmn:incoming>
     </bpmn:endEvent>
   </bpmn:process>
   <bpmn:error id="Error_EpistolaDocumentError" name="EpistolaDocumentError" />

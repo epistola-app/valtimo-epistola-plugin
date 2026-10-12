@@ -14,7 +14,13 @@ import com.ritense.document.domain.impl.request.NewDocumentRequest
 import com.ritense.document.service.DocumentService
 import com.ritense.plugin.domain.PluginConfiguration
 import com.ritense.plugin.service.PluginService
+import com.ritense.resource.service.ResourceService
+import com.ritense.resource.service.request.RawFileUploadRequest
+import com.ritense.resource.web.rest.ResourceResource
 import com.ritense.valtimo.Application
+import com.ritense.valtimo.epistola.documents.DemoResourceResource
+import com.ritense.valtimo.epistola.documents.DemoResourceService
+import com.ritense.valtimo.epistola.documents.StoredDocumentRepository
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin
 import com.ritense.valtimo.service.OperatonTaskService
 import com.ritense.valueresolver.ValueResolverService
@@ -38,6 +44,7 @@ import org.operaton.bpm.engine.delegate.DelegateExecution
 import org.operaton.bpm.engine.variable.value.BytesValue
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -47,6 +54,7 @@ import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.utility.DockerImageName
 import java.time.Duration
+import java.util.UUID
 
 /**
  * End-to-end test that boots the real test-app [Application] (full Valtimo) against Testcontainers
@@ -101,6 +109,15 @@ class DownloadDocumentE2ETest {
     @Autowired
     lateinit var engineTaskService: TaskService
 
+    @Autowired
+    lateinit var resourceService: ResourceService
+
+    @Autowired
+    lateinit var resourceResource: ResourceResource
+
+    @Autowired
+    lateinit var storedDocumentRepository: StoredDocumentRepository
+
     private var deploymentId: String? = null
 
     @BeforeEach
@@ -116,6 +133,79 @@ class DownloadDocumentE2ETest {
     @AfterEach
     fun undeploy() {
         deploymentId?.let { repositoryService.deleteDeployment(it, true) }
+    }
+
+    /**
+     * Where a downloaded letter can end up for good.
+     *
+     * The plugin's two targets both hand the file onwards — a process variable, or Valtimo's
+     * *temporary* storage, which this demo keeps for an hour. Right for handing a file to the next
+     * step, wrong for the letter that was sent. The demo adds a durable place, so a case worker can
+     * open it after the process has ended.
+     *
+     * These live here rather than in a test of their own because every interesting part is wiring
+     * that only a booted application shows, and this class already boots one.
+     */
+    @Test
+    fun `the demo's own storage is what the application uses, not Valtimo's placeholder`() {
+        // Asserted by name on purpose. Valtimo's LocalResourceService.store throws
+        // NotImplementedError and LocalResource answers 204 for every download, and its
+        // @ConditionalOnMissingBean names those concrete classes — so another implementation does
+        // not displace them, and application.yml excludes the auto-configuration instead. If that
+        // exclusion were ever lost, the failure would surface as a NotImplementedError from inside a
+        // store call, which reads like a broken test rather than a bean that lost a fight.
+        assertThat(resourceService).isInstanceOf(DemoResourceService::class.java)
+        assertThat(resourceResource).isInstanceOf(DemoResourceResource::class.java)
+    }
+
+    @Test
+    fun `a stored letter comes back through the path the case UI calls`() {
+        val pdf = "%PDF-1.7 a letter".toByteArray()
+
+        val stored =
+            resourceService.store(
+                "case-1",
+                RawFileUploadRequest("brief", "pdf", pdf.size.toLong(), "application/pdf", pdf),
+            )
+
+        // /api/v1/resource/{id}/download, whose mapping is inherited from ResourceResource — so
+        // serving it is all Valtimo's own UI needs.
+        val response = resourceResource.getContent(stored.id().toString())
+        assertThat(response.statusCode.value()).isEqualTo(200)
+        assertThat(response.body).isEqualTo(pdf)
+        assertThat(response.headers.contentType).isEqualTo(MediaType.APPLICATION_PDF)
+        assertThat(response.headers.getFirst("Content-Disposition"))
+            .describedAs("downloads as a file, rather than replacing the case the worker is looking at")
+            .contains("attachment")
+            .contains("brief.pdf")
+    }
+
+    @Test
+    fun `the bytes are in the database, which is the whole point of storing them`() {
+        val pdf = ByteArray(9000) { (it % 256).toByte() }
+
+        val stored =
+            resourceService.store(
+                "case-1",
+                RawFileUploadRequest("groot", "pdf", pdf.size.toLong(), "application/pdf", pdf),
+            )
+
+        // Read back from the row rather than from the instance that wrote it: a letter has to
+        // outlive the process that made it, which is exactly what temporary storage does not do.
+        val row = storedDocumentRepository.findById(stored.id().toString()).orElseThrow()
+        assertThat(row.content).isEqualTo(pdf)
+        assertThat(row.sizeInBytes).isEqualTo(pdf.size.toLong())
+        assertThat(row.contentType).isEqualTo("application/pdf")
+    }
+
+    @Test
+    fun `asking for a letter that is not there says so, instead of answering nothing`() {
+        // Valtimo's placeholder answers 204 for every id, which a browser cannot tell from an empty
+        // file. A letter that is missing should be an error.
+        val missing = UUID.randomUUID().toString()
+
+        assertThat(runCatching { resourceResource.getContent(missing) }.exceptionOrNull())
+            .isInstanceOf(NoSuchElementException::class.java)
     }
 
     @Test

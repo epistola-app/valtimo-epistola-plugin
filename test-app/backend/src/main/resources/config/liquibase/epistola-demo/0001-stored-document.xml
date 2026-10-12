@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ SPDX-FileCopyrightText: Epistola Nederland B.V.
+  ~
+  ~ SPDX-License-Identifier: EUPL-1.2
+  -->
+
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.6.xsd"
+    logicalFilePath="config/liquibase/epistola-demo/0001-stored-document.xml">
+
+    <!--
+      `logicalFilePath` pins this changeset's identity to a path rather than to where the file
+      happens to live, following Valtimo's own convention: moving the file later never re-runs it.
+    -->
+    <changeSet id="1" author="epistola">
+        <comment>A generated letter, kept so a case worker can open it after the process ends.</comment>
+        <createTable tableName="epistola_demo_document">
+            <column name="epistola_demo_document_id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="file_name" type="VARCHAR(512)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="content_type" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="size_in_bytes" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <!--
+              The bytes themselves. Fine for letters at demo scale and a poor idea at volume, which
+              is the honest reason this belongs to the demo and not to the plugin.
+            -->
+            <column name="content" type="BLOB">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on" type="datetime">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
