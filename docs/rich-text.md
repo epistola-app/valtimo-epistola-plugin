@@ -174,6 +174,11 @@ much of the meaning as the schema can carry. Two optional methods complete it:
 
 ## Not (yet) supported
 
+- **Headings.** Epistola's rich-text schemas do not allow them yet ("reserved for future versions"
+  in `richtext-block-v1.json`), and a document containing one would be refused as a whole. A
+  heading therefore keeps its text as a plain paragraph. When Epistola publishes a schema version
+  with headings, recognising its URL and letting `heading` nodes through is a small change in
+  `ProseMirrorSanitizer`, plus heading buttons in the editor's toolbar.
 - A rich-text schema **inlined** into a contract, rather than referenced by its URL, is not
   recognised. The contract keeps these references as URLs, so this does not occur with Epistola's
   own schemas.
