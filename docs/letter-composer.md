@@ -443,7 +443,9 @@ them means wiring Formio's i18n into the nested form's options, which is not don
 and merges them, so a contract that factors shapes out internally decomposes exactly as an inlined
 one would. An external `$ref` — a `https://…` URL — is different: this plugin does not fetch
 schemas, so all it ever sees is `{"$ref": "…"}`. With no `type` and no `properties` there is
-nothing to infer, and the analyzer marks the field as needing "a complete-value mapping".
+nothing to infer, and the analyzer marks the field as needing "a complete-value mapping". The one
+exception is Epistola's own rich-text schemas: their URL _is_ the meaning, so the analyzer
+recognises it and the field becomes rich text, below.
 
 **A value with no separate fields to fill in is refused, not faked.** If the baseline mapping
 leaves such a field empty and the template requires it, preparing the letter fails with a 422
@@ -464,23 +466,18 @@ That flag belongs to the mapping builder — "Simple mode must map this as one e
 ordinary array of objects carries it while decomposing into a data grid perfectly well. Rendering
 asks a different question.
 
-**Rich text is not supported.** How the contract carries it decides what happens:
+**Rich text is asked for with an editor.** A field whose schema references Epistola's rich-text
+schema (`richtext-inline-v1` or `richtext-block-v1`) is recognised by that reference and offered like
+any other input. What the employee gets depends on the format the installation keeps text in,
+`epistola.rich-text.default-format`:
 
-| How the contract carries it                       | What happens                                                                                                                        |
-| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| External `$ref` (a shared rich-text schema URL)   | Marked complex, so refused with the 422 above when it is required and unmapped                                                      |
-| Inlined — a plain object with ordinary properties | **Not detected.** Indistinguishable from any other object, so it renders as a fieldset asking for the document’s internal structure |
+- `html` gives Form.io's WYSIWYG text area, with a toolbar of only what Epistola renders;
+- `plain` (the default) and `markdown` give a plain text area.
 
-Nothing in this plugin reads a rich-text marker from a contract — not the composer, not the mapping
-builder, not the retry form — so the inlined case has nowhere to be caught. Supporting rich text
-properly means recognising the marker and offering an editor for it, which is its own change and
-not part of the composer. Until then, supply rich-text fields from the baseline mapping rather than
-offering a letter that asks for them.
-
-How to do that is proposed in [ADR 0008](adr/0008-rich-text-inputs.md): the contract does carry a
-marker (the canonical `$ref` URL survives inlining), and the open question is translating between
-whatever format a case keeps — HTML, markdown, plain text — and the ProseMirror subset Epistola
-accepts.
+What is typed is kept in that format, in `inputs` and on any write-back destination. It is converted
+to Epistola's document only on its way to Epistola, the same way for the preview and the letter.
+Formats, mappings and conversion are described in [Rich text](rich-text.md) and
+[ADR 0008](adr/0008-rich-text-inputs.md).
 
 ## What it stores
 
@@ -914,14 +911,8 @@ the promise the composer makes. The rest are open.
   `template-data-invalid`, carrying a JSON Pointer per bad or absent field, so those pointers can be
   attached to the generated inputs the same way — that is the remaining half of
   [#150](https://github.com/epistola-app/valtimo-epistola-plugin/issues/150).
-- **Rich text is unsupported**, and a rich-text object that looks like a plain object is not even
-  detectable here — see [What it can ask for](#what-it-can-ask-for).
-
-  _Direction: [ADR 0008](adr/0008-rich-text-inputs.md)._ Nothing in this plugin reads a rich-text
-  marker from a contract yet. Epistola does expose one — a `$ref` to its canonical rich-text schema
-  URL — so detection is the small part: the schema analyzer reads it into `FieldHints`. The open
-  question is the format translation the ADR sets out, and which editor that implies. Until it is
-  decided, supply rich-text fields from the baseline mapping.
+- **An array of rich text has no editor.** A field holding a list of rich-text documents is still a
+  complete-value mapping, so the composer cannot ask for it; supply it from the baseline mapping.
 
 - **A per-template mapping fragment is not authorable in the settings widget.** The backend merges
   one and a hand-written form can set it; the widget captures template and label only.

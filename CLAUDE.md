@@ -151,6 +151,20 @@ docker/            # Docker compose for local dependencies
     offered letter's own `catalogId()` — never `configuration.catalogId()`, which is the default.
   - See [docs/letter-composer.md](docs/letter-composer.md) and
     [ADR 0006](docs/adr/0006-letter-composer-configuration.md).
+- **Rich text** ([docs/rich-text.md](docs/rich-text.md), [ADR 0008](docs/adr/0008-rich-text-inputs.md)):
+  a field whose `$ref` is Epistola's `richtext-{inline,block}-v1.json` URL takes a ProseMirror
+  document, while the case keeps text in a format of its own. The plugin translates, and three rules
+  hold it together:
+  - **Convert in one place only.** `EpistolaServiceImpl` converts just before submit and preview.
+    Converting elsewhere as well risks the preview and the letter differing.
+  - **Never guess a string's format.** It comes from `$richText(value, format)` or from
+    `epistola.rich-text.default-format`.
+  - **Send only what passes `ProseMirrorSanitizer`.** Each format's tests validate its output
+    against copies of Epistola's schemas in `src/test/resources/richtext/`; refresh those when the
+    pinned contract changes them.
+
+  The HTML and markdown readers are the plugin's own, so it carries no parser dependency.
+
 - **Feature toggle**: The plugin can be disabled per environment from a single build artifact.
   - **Backend**: `epistola.enabled=false` (Spring property, defaults to `true`). Disables auto-configuration — no beans, no endpoints, no result collector, and no catch-event auto-wiring (the engine SPI is never registered). Verified by `EpistolaCatchEventAutoWiringConfigTest`.
   - **Catch-event auto-wiring sub-flag**: `epistola.catch-event-auto-wiring.enabled=false` (defaults to `true`, nested under `epistola.enabled`). Drops only the engine-SPI beans (`EpistolaProcessEnginePlugin` + `EpistolaCatchEventParseListener`) so correlation falls back to declarative `epistolaWaitFor` `camunda:inputParameter` mappings — an escape hatch if a future Operaton breaks the SPI, without disabling the whole plugin.
@@ -285,6 +299,7 @@ License headers on the Java backend are applied/gated by Spotless
 - **Admin page**: Health checks, plugin usage overview (with dangling catalog/template/variant reference detection), per-config classpath-catalog redeploy, running version + bundled CHANGELOG tab (`EpistolaAdminResource`)
 - **Variant selection**: 3 modes — default, explicit variantId, or attribute-based automatic selection
 - **Value resolution**: Data mappings are JSONata expressions evaluated with `$doc`, `$pv`, and `$case` context variables
+- **Rich text**: Epistola rich-text fields are filled from the case's own format (`plain`, `html`, `markdown`, `prosemirror`, or an installation's `RichTextFormat` bean), see [docs/rich-text.md](docs/rich-text.md)
 - **Security (PBAC)**: Three layers, see [Authorization](#authorization) below. User-task endpoints check `OperatonTask:VIEW`, admin endpoints check the custom `EpistolaAdministration:MANAGE` PBAC permission, and configurator endpoints stay HTTP-gated by `ROLE_ADMIN`.
 - **Configuration**: Spring Boot auto-configuration with feature toggles (`epistola.enabled`, `epistola.result-collector.enabled`, `epistola.retry-form.enabled`)
 

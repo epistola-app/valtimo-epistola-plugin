@@ -1,6 +1,6 @@
 # ADR 0008 — Rich-text values: whose format, and who translates
 
-- **Status:** Proposed
+- **Status:** Accepted — the recommendation, built as described under [As built](#as-built-2026-10-12)
 - **Date:** 2026-10-12
 - **Deciders:** Epistola plugin maintainers
 - **Related:** ADR 0006 (letter composer configuration), `JsonSchemaMappingAnalyzer`, `TemplateField.FieldHints`, `FormioFormGenerator`, `MissingFieldSelector`, `LetterComposerService`, `ComposerWriteBackService`, `JsonataMappingService`, `docs/letter-composer.md`
@@ -186,9 +186,10 @@ implementation of Epistola's schema to keep in step, for the same small audience
 ### 4. What is stored and written back?
 
 What the employee typed, in the **case's format**, on `inputs` and on any write-back destination.
-What was rendered, in **Epistola's format**, on `data`, the snapshot ADR 0006 keeps so a retry
-re-renders exactly. Conversion happens once, while composing, so the preview and the letter see the
-same doc.
+What is rendered is converted to **Epistola's format** on its way to Epistola, by the same code
+for the preview and for the letter, so both see the same document. (Proposed here was converting
+once while composing and keeping the document on `data`; see [As built](#as-built-2026-10-12) for
+why it moved.)
 
 `fromEpistola` (ProseMirror → case format) is therefore only needed if an editor emits a format other
 than the case's. Following question 3, that should not happen, so the reverse direction stays
@@ -236,9 +237,8 @@ These follow from the problem, whichever option wins:
 
    An installation's own format brings its own component.
 
-5. **The case keeps its format.** Typed inputs and write-back are stored in the case's format, and
-   only the rendered snapshot is ProseMirror. The conversion runs once, while composing, so the
-   preview and the letter use the same document.
+5. **The case keeps its format.** Typed inputs and write-back are stored in the case's format.
+   Conversion runs where data leaves for Epistola, the same way for the preview and the letter.
 6. **Suggest a conformance corpus to Epistola.** It is optional, and nothing here waits on it.
 
 **Order of work:** marker detection, the conversion seam and `plain` come first. On their own they
@@ -247,18 +247,60 @@ already is. Then `markdown`.
 
 ## Consequences
 
-If the recommendation is accepted:
-
 - **Formatting is lost.** A rich-text value loses whatever its case format can express and Epistola's
   subset cannot. This is documented per format, in the table above.
-- **A new plugin setting.** The plugin configuration gains a default rich-text format. Its default
-  needs choosing: `plain` is the safe one, because it never invents formatting.
+- **A new setting**, `epistola.rich-text.default-format`, defaulting to `plain`, the one format that
+  never invents formatting.
 - **One new JSONata function**, `$richText(value, format)`. The mapping builder lists the
   registered formats as its second argument.
 - **A converter is a public extension point.** Its interface is supported API from then on, so it
   needs to be versioned with the same care as the plugin's other public surface.
-- **New dependencies:** jsoup and commonmark-java on the backend. The default frontend path adds none.
-- **Shown, not logged.** A converter that drops content says so through counts, never content. Where
-  a person should know, for example "the table in this field cannot be rendered", that message is
-  shown to them, not logged.
+- **No new dependencies.** The HTML and markdown readers are the plugin's own, see below.
+- **Nothing about content is logged.** Converters log nothing; a failing one surfaces as a
+  `RichTextConversionException` naming the field and the format, raised without its cause, whose
+  message might quote the text.
 - `docs/letter-composer.md` drops "Rich text is not supported" and describes formats instead.
+
+## As built (2026-10-12)
+
+The recommendation was built as written, with four differences worth knowing.
+
+**Conversion happens where data leaves for Epistola, not while composing.**
+`EpistolaServiceImpl.submitGenerationJob` and `previewDocument` convert the data's rich-text fields
+just before the request is sent. Every path reaches Epistola through those two methods: the
+generate action, the preview component, the composer and the retry form. Converting there, rather
+than at each caller, is what guarantees the preview and the letter cannot convert differently. The
+composer's `data` snapshot therefore keeps the case's format, which keeps it readable as stored.
+
+The price is one extra call: which fields are rich text is only known from the template's contract,
+so the service reads it before sending. When that read fails, the data goes as mapped. Epistola
+validates it regardless and refuses what it cannot render with a message of its own, so the
+fallback costs a clearer error at worst, never a wrong letter.
+
+**The default format is a Spring property**, `epistola.rich-text.default-format`, not a plugin
+configuration field. The format a case keeps text in is a property of the installation's forms,
+not of an Epistola connection, and a property needs no configurator UI, translations or migration.
+A per-configuration override can be added later without changing the meaning of the property.
+
+**No dependencies were added.** jsoup is on Valtimo's classpath through Tika, but only
+transitively, and commonmark-java is not there at all. The plugin carries its own small readers
+instead:
+
+- `HtmlTokenizer`/`HtmlFormat` read what an editor writes. That includes both of Quill's flat-list
+  shapes: Quill 2's `<li data-list>` in one `<ol>`, and older Quill's `ql-indent-N`.
+- `MarkdownFormat` reads the CommonMark subset that maps onto the schema.
+
+Neither aims at full conformance. Both are tolerant by construction, and anything they get wrong is
+still narrowed by `ProseMirrorSanitizer` to a valid document.
+
+**The reverse direction exists for the shipped formats.** `fromProseMirror` writes a document back
+as text, HTML or markdown. It is used where a form shows a value that is already a document, such as
+a retry form prefilled with what was rendered, so the editor shows text rather than JSON. It stays
+optional on the interface.
+
+Two smaller choices:
+
+- **Blank values are removed, not converted.** A blank string, or markup around nothing (an emptied
+  Quill editor leaves `<p><br></p>`), is dropped from the data rather than turned into an empty
+  document. Otherwise a required field would pass empty.
+- **Arrays of rich text stay a complete-value mapping.** No repeating editor exists for them yet.
