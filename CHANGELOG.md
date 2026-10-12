@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Two letter composers that store their letter on the same key are now refused rather than
+  quietly merged.** Write-back rules are collected per letter variable, which is right when one
+  generate task could have rendered any of those composers' letters, and wrong when two composers
+  merely reused a name: each then inherits the other's rules. Measured on the demo — an ad-hoc
+  letter picked up a `pv:besluitType` rule from an unrelated task form, and a `pv:` destination
+  cannot resolve on a case running more than one process, so the write failed naming a destination
+  the author never configured on the form they were editing. The submission is now refused with a
+  message naming the shared key and both components. Identical rule sets are left alone, because
+  merging them changes nothing and two composers feeding one generate task is a legitimate way to
+  build a "pick from either set" form.
+
+### Fixed
+
 - **Audited every log statement for personal data, and fixed the ones that carried it.** `CLAUDE.md`
   states the rule — a letter's values, a case document's content, a form submission and a template's
   data do not belong in a log at any level — and this is the pass that applied it beyond the two

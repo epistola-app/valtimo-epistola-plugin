@@ -310,6 +310,46 @@ class ComposerWriteBackServiceTest {
         }
 
         @Test
+        @DisplayName("two composers writing one variable with different rules is refused, not merged")
+        void refusesWhenRulesWouldBeInherited() {
+            // The trap this closes: rules are collected per letter variable, so two composers that
+            // merely reused a name each inherit the other's. Measured on the demo — an ad-hoc
+            // letter picked up a `pv:besluitType` rule from an unrelated task form, and a `pv:`
+            // destination cannot resolve on a case running more than one process, so the write was
+            // refused naming a destination the author never configured on the form they edited.
+            var offered = List.of(
+                    new LetterComposerConfiguration.OfferedTemplate("gemeente", "besluit", "Besluit", null));
+            when(resolver.forCaseDefinition(CASE_KEY)).thenReturn(List.of(
+                    new LetterComposerConfiguration("pv:epistolaLetter", null, UUID.randomUUID(),
+                            "gemeente", null, offered, false,
+                            Map.of("doc:/besluit/type", "$inputs.decisionType")),
+                    new LetterComposerConfiguration("pv:epistolaLetter", null, UUID.randomUUID(),
+                            "gemeente", null, offered, false,
+                            Map.of("pv:besluitType", "$inputs.decisionType"))));
+
+            assertThatThrownBy(() -> service.applyFromSubmission(DOCUMENT_ID, Map.of(
+                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond")))))
+                    .isInstanceOf(ComposerWriteBackException.class)
+                    .hasMessageContaining("pv:epistolaLetter")
+                    .hasMessageContaining("Give each composer its own key");
+
+            verify(valueResolverService, never()).handleValues(any(UUID.class), any());
+        }
+
+        @Test
+        @DisplayName("one composer on a variable is never a conflict, however many rules it has")
+        void oneComposerIsFine() {
+            declaring(Map.of(
+                    "doc:/besluit/type", "$inputs.decisionType",
+                    "pv:besluitType", "$inputs.decisionType"));
+
+            service.applyFromSubmission(DOCUMENT_ID, Map.of(
+                    "epistolaLetter", letter(Map.of(), Map.of("decisionType", "gegrond"))));
+
+            assertThat(written()).containsEntry("doc:/besluit/type", "gegrond");
+        }
+
+        @Test
         @DisplayName("a composer whose letter the submission did not carry is skipped")
         void skipsAComposerWithNoLetter() {
             // Another form on the same case type, not the one just submitted.

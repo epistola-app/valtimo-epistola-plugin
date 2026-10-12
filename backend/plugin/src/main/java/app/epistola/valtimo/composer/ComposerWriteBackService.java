@@ -375,6 +375,51 @@ public class ComposerWriteBackService {
      * resolve: keying by destination makes one writer per case path the representable thing, and
      * the first rule found wins with a warning so the result is at least stable.
      */
+    /**
+     * Refuses when two composers write the same letter variable and do not agree on the rules.
+     *
+     * <p>Rules are collected per letter variable, so every composer writing it contributes — which
+     * is right when one generate task could have rendered any of their letters, and wrong when two
+     * composers simply reused a name. Then each silently inherits the other's rules: measured, an
+     * ad-hoc letter picked up a {@code pv:besluitType} rule from an unrelated task form, and a
+     * {@code pv:} destination cannot resolve on a case running more than one process, so the write
+     * was refused — naming a destination the author never configured on the form they were editing.
+     *
+     * <p>Refusing rather than warning follows the rest of this service: a value the employee
+     * approved either reaches the case or the submission does not happen. Identical rule sets are
+     * left alone, because merging them changes nothing and two composers feeding one generate task
+     * is a legitimate way to build a "pick from either set" form.
+     */
+    private static void refuseIfRulesWouldBeInherited(
+            String caseDefinitionKey,
+            String letterVariable,
+            List<LetterComposerConfiguration> claiming
+    ) {
+        if (claiming.size() < 2) {
+            return;
+        }
+        Map<String, String> first = rulesOf(claiming.get(0));
+        List<String> disagreeing = claiming.stream()
+                .filter(c -> !rulesOf(c).equals(first))
+                .map(LetterComposerConfiguration::componentKey)
+                .toList();
+        if (disagreeing.isEmpty()) {
+            return;
+        }
+        List<String> all = claiming.stream().map(LetterComposerConfiguration::componentKey).toList();
+        log.warn("Letter composer write-back on case type '{}': composers {} all write to '{}' with "
+                        + "different rules, so each would inherit the others'; refusing",
+                caseDefinitionKey, all, letterVariable);
+        throw new ComposerWriteBackException(
+                "The letter composers " + all + " all store their letter on '" + letterVariable
+                        + "' but declare different write-back rules, so each would apply the others' "
+                        + "rules to its own letter. Give each composer its own key.");
+    }
+
+    private static Map<String, String> rulesOf(LetterComposerConfiguration composer) {
+        return composer.writeBack() == null ? Map.of() : composer.writeBack();
+    }
+
     private Map<String, String> rulesFor(UUID documentId, String letterVariable) {
         String caseDefinitionKey = caseDefinitionKeyOf(documentId);
         if (caseDefinitionKey == null) {
@@ -399,6 +444,7 @@ public class ComposerWriteBackService {
                 }
                 return Map.of();
             }
+            refuseIfRulesWouldBeInherited(caseDefinitionKey, letterVariable, claiming);
             composers = claiming;
         }
 
