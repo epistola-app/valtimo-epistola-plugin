@@ -24,6 +24,7 @@ import {
   OnChanges,
   OnDestroy,
   Output,
+  SimpleChanges,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -31,7 +32,7 @@ import { FormioCustomComponent } from '@valtimo/components';
 import { PluginTranslatePipeModule, PluginTranslationService } from '@valtimo/plugin';
 import { Subscription } from 'rxjs';
 import { EpistolaComposerApiService } from '../composer-api.service';
-import { CatalogInfo, TemplateInfo } from '../../models';
+import { CatalogInfo, LetterReader, TemplateInfo } from '../../models';
 
 /** One letter on offer, as stored in the composer's settings. */
 export interface OfferedTemplate {
@@ -224,6 +225,29 @@ export interface LetterSet {
       <div *ngIf="error" class="field-error" data-testid="epistola-letter-set-error">
         {{ error }}
       </div>
+      <!--
+        What reads this letter. A statement, never a verdict: generating in another process is a
+        supported design, so "none found" is information for the author, not an error. Rendered only
+        once an answer has arrived, so a failed or skipped lookup shows nothing rather than claiming
+        there is no reader.
+      -->
+      <div
+        *ngIf="letterReaders as readers"
+        class="field-hint"
+        data-testid="epistola-letter-set-readers"
+      >
+        <ng-container *ngIf="readers.length; else noReaders">
+          {{ 'letterSetReadBy' | pluginTranslate: pluginId | async }}
+          <span *ngFor="let reader of readers; let last = last">
+            <strong>{{ reader.activityId }}</strong>
+            {{ 'letterSetReadByIn' | pluginTranslate: pluginId | async }}
+            {{ reader.processDefinitionName }}{{ last ? '' : ', ' }}
+          </span>
+        </ng-container>
+        <ng-template #noReaders>
+          {{ 'letterSetReadByNothing' | pluginTranslate: pluginId | async }}
+        </ng-template>
+      </div>
     </div>
   `,
   styles: [
@@ -298,6 +322,12 @@ export interface LetterSet {
         color: #dc3545;
         font-size: 0.85rem;
       }
+      /* Information, not a problem: deliberately quieter than .field-error. */
+      .field-hint {
+        color: #525252;
+        font-size: 0.85rem;
+        margin-top: 0.25rem;
+      }
       .letter-table {
         width: 100%;
         border-collapse: collapse;
@@ -323,6 +353,14 @@ export class EpistolaLetterSetBuilderComponent
   @Input() disabled = false;
   @Input() label?: string;
 
+  /**
+   * The key of the composer being edited, handed over by the Formio wrapper from `root.data.key`.
+   *
+   * Changes while the dialog is open — that is the point: rename the key and the list of generate
+   * tasks that read it goes empty in front of you.
+   */
+  @Input() composerKey = '';
+
   configurations: { id: string; title: string; tenantId: string | null }[] = [];
   catalogs: CatalogInfo[] = [];
   templates: TemplateInfo[] = [];
@@ -339,6 +377,11 @@ export class EpistolaLetterSetBuilderComponent
    * because Epistola was briefly unreachable is worse than saying nothing.
    */
   private templatesLoaded = false;
+
+  /** The generate tasks that read this composer's letter, or null while unknown. */
+  letterReaders: LetterReader[] | null = null;
+  /** The case type whose processes were searched, parsed from the builder's own URL. */
+  private caseDefinitionKey: string | null = null;
 
   /** The plugin whose translations this widget uses; constant, but templates need it bound. */
   readonly pluginId = 'epistola';
@@ -363,8 +406,13 @@ export class EpistolaLetterSetBuilderComponent
     this.loadConfigurations();
   }
 
-  ngOnChanges(): void {
+  ngOnChanges(changes?: SimpleChanges): void {
     this.valueArrived = true;
+    // Optional because Angular always passes it but a direct caller need not: the composer key is
+    // what this reacts to, and an unspecified change set means "something did", so it asks again.
+    if (!changes || changes['composerKey']) {
+      this.loadLetterReaders();
+    }
     // Formio sets the saved value after construction, so the cascade can only be restored once it
     // arrives — otherwise reopening the settings would show an empty catalog and no letters.
     if (!this.restored && this.value?.pluginConfigurationId) {
@@ -376,6 +424,55 @@ export class EpistolaLetterSetBuilderComponent
     }
     // Either order is possible: the connections may land before Formio sets the value or after.
     this.selectTheOnlyConnection();
+  }
+
+  /**
+   * Ask which generate tasks read this letter, and say so.
+   *
+   * Deliberately a statement and never a verdict: an empty answer means none were found on this
+   * case type, not that the configuration is wrong — generating in another process is a supported
+   * design. An author who renames the key sees the line go empty, which is the moment the mistake
+   * is made rather than hours later, when the only symptom is a letter that never arrived.
+   *
+   * Silent on failure. This is a hint beside a field; a broken lookup must not colour the panel red
+   * or block saving a composer that is otherwise fine.
+   */
+  private loadLetterReaders(): void {
+    this.letterReaders = null;
+    const caseDefinitionKey = this.resolveCaseDefinitionKey();
+    if (!caseDefinitionKey || !this.composerKey) {
+      return;
+    }
+    this.subscriptions.push(
+      this.composerApi.getLetterReaders(caseDefinitionKey, this.composerKey).subscribe({
+        next: (readers) => {
+          this.letterReaders = readers;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.letterReaders = null;
+          this.cdr.markForCheck();
+        },
+      }),
+    );
+  }
+
+  /**
+   * The case type being authored, taken from the form builder's own URL
+   * (`/case-management/case/{key}/version/{version}/forms/{id}`).
+   *
+   * There is no cleaner route here. The process-link configurator receives a case key through
+   * Valtimo's process-link context, but the form builder is a plain page and a form definition does
+   * not carry the case type it belongs to. Fails soft: no match means no hint, never an error.
+   */
+  private resolveCaseDefinitionKey(): string | null {
+    if (this.caseDefinitionKey) {
+      return this.caseDefinitionKey;
+    }
+    const path = typeof window === 'undefined' ? '' : (window.location?.pathname ?? '');
+    const match = /\/case-management\/case\/([^/]+)\//.exec(path);
+    this.caseDefinitionKey = match ? decodeURIComponent(match[1]) : null;
+    return this.caseDefinitionKey;
   }
 
   ngOnDestroy(): void {

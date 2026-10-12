@@ -252,6 +252,103 @@ describe('EpistolaLetterSetBuilderComponent', () => {
    * one entry each before reaching a real decision. What matters is that the choice is *emitted*:
    * a selection showing in the UI without being stored is this widget's classic silent failure.
    */
+  describe('what reads this letter', () => {
+    const FORM_BUILDER_URL = '/case-management/case/correspondentie/version/1.0.0/forms/abc';
+
+    function onBuilderPage(pathname: string = FORM_BUILDER_URL): void {
+      // The case type is taken from the form builder's own URL; there is no cleaner route in a
+      // plain page. These tests run in Jest's node environment, where there is no window at all —
+      // which is also why the component guards for its absence rather than assuming a browser.
+      (globalThis as any).window = { location: { pathname } };
+    }
+
+    afterEach(() => {
+      delete (globalThis as any).window;
+    });
+
+    function withReaders(readers: unknown, overrides: any = {}) {
+      onBuilderPage();
+      const { component, service } = createComponent(null, {
+        getLetterReaders: jest.fn(() => readers as any),
+        ...overrides,
+      });
+      component.composerKey = 'pv:epistolaLetter';
+      component.ngOnChanges({ composerKey: {} } as any);
+      return { component, service };
+    }
+
+    it('names the generate tasks that read it', () => {
+      const { component, service } = withReaders(
+        of([
+          {
+            processDefinitionKey: 'correspondentie-letter-composer',
+            processDefinitionName: 'Brief kiezen en genereren',
+            activityId: 'generate-chosen-letter',
+          },
+        ]),
+      );
+
+      expect(service.getLetterReaders).toHaveBeenCalledWith('correspondentie', 'pv:epistolaLetter');
+      expect(component.letterReaders).toHaveLength(1);
+      expect(component.letterReaders?.[0].activityId).toBe('generate-chosen-letter');
+    });
+
+    it('reports an empty answer, which is information rather than an error', () => {
+      // The case the hint exists for: a renamed key, or a second composer whose generate task was
+      // never configured. It must not be dressed up as a failure — generating in another process is
+      // a supported design.
+      const { component } = withReaders(of([]));
+
+      expect(component.letterReaders).toEqual([]);
+      expect(component.error).toBeNull();
+    });
+
+    it('stays silent when the lookup fails, rather than claiming nothing reads it', () => {
+      // An empty list and an unanswered question look the same on screen otherwise, and the second
+      // would accuse a working configuration.
+      const { component } = withReaders(throwError(() => new Error('boom')));
+
+      expect(component.letterReaders).toBeNull();
+      expect(component.error).toBeNull();
+    });
+
+    it('asks again when the author renames the key', () => {
+      const { component, service } = withReaders(of([]));
+
+      component.composerKey = 'pv:epistolaAdhocLetter';
+      component.ngOnChanges({ composerKey: {} } as any);
+
+      expect(service.getLetterReaders).toHaveBeenLastCalledWith(
+        'correspondentie',
+        'pv:epistolaAdhocLetter',
+      );
+    });
+
+    it('asks nothing without a key', () => {
+      const { component, service } = withReaders(of([]));
+      (service.getLetterReaders as jest.Mock).mockClear();
+
+      component.composerKey = '';
+      component.ngOnChanges({ composerKey: {} } as any);
+
+      expect(service.getLetterReaders).not.toHaveBeenCalled();
+      expect(component.letterReaders).toBeNull();
+    });
+
+    it('asks nothing away from a case page, where there is no case type to ask about', () => {
+      onBuilderPage('/plugins');
+      const { component, service } = createComponent(null, {
+        getLetterReaders: jest.fn(() => of([])),
+      });
+
+      component.composerKey = 'pv:epistolaLetter';
+      component.ngOnChanges({ composerKey: {} } as any);
+
+      expect(service.getLetterReaders).not.toHaveBeenCalled();
+      expect(component.letterReaders).toBeNull();
+    });
+  });
+
   describe('choosing when there is nothing to choose between', () => {
     it('takes the only connection and the only catalog, and stores both', () => {
       const { component, service } = createComponent();

@@ -20,7 +20,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ConfigService } from '@valtimo/shared';
-import { CatalogInfo, TemplateInfo } from '../models';
+import { CatalogInfo, LetterReader, TemplateInfo } from '../models';
 import { EpistolaPluginService } from '../services';
 
 /** One configured Epistola connection, as offered to an author. */
@@ -170,6 +170,19 @@ export class EpistolaComposerApiService {
   }
 
   /** The catalogs of a connection, as the settings widget offers them. */
+  /**
+   * Which generate tasks on this case type read a letter variable.
+   *
+   * A statement, not a verdict: an empty list means none were found on this case type, not that the
+   * configuration is wrong — generating in another process is a supported design. The configurator
+   * shows it beside the composer's key so a rename is visible immediately.
+   */
+  getLetterReaders(caseDefinitionKey: string, letterVariable: string): Observable<LetterReader[]> {
+    return this.http.get<LetterReader[]>(`${this.apiEndpoint}/letter-readers`, {
+      params: { caseDefinitionKey, letterVariable },
+    });
+  }
+
   getCatalogs(pluginConfigurationId: string): Observable<CatalogInfo[]> {
     return this.epistolaPluginService.getCatalogs(pluginConfigurationId);
   }

@@ -110,3 +110,14 @@ export interface CatalogInfo {
   name: string;
   type: string;
 }
+
+/**
+ * One generate task that reads a composer's letter, named as the author sees it in the modeller.
+ *
+ * Mirrors `LetterReaderService.LetterReader` on the backend.
+ */
+export interface LetterReader {
+  processDefinitionKey: string;
+  processDefinitionName: string;
+  activityId: string;
+}

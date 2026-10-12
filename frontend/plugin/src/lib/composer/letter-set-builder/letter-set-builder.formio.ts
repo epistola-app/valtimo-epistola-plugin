@@ -18,7 +18,10 @@
 import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo } from '@valtimo/components';
 import { EpistolaLetterSetBuilderComponent } from './letter-set-builder.component';
-import { registerEpistolaFormioComponent } from '../../components/valtimo-formio-adapter';
+import {
+  registerEpistolaFormioComponent,
+  ValtimoFormioComponentConstructor,
+} from '../../components/valtimo-formio-adapter';
 
 export const EPISTOLA_LETTER_SET_BUILDER_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-letter-set-builder',
@@ -28,7 +31,7 @@ export const EPISTOLA_LETTER_SET_BUILDER_OPTIONS: FormioCustomComponentInfo = {
   group: 'none',
   icon: 'list',
   emptyValue: null,
-  fieldOptions: ['label'],
+  fieldOptions: ['label', 'composerKey'],
 };
 
 export function registerEpistolaLetterSetBuilderComponent(injector: Injector): void {
@@ -36,5 +39,57 @@ export function registerEpistolaLetterSetBuilderComponent(injector: Injector): v
     EPISTOLA_LETTER_SET_BUILDER_OPTIONS,
     EpistolaLetterSetBuilderComponent,
     injector,
+    withComposerKey,
   );
+}
+
+/**
+ * Hands the builder the key of the component being edited, so it can say what reads this letter.
+ *
+ * The key lives in the edit dialog's own data — `root.data.key` is the composer's key, the same
+ * field the author types into — and it changes while the dialog is open, which is exactly when the
+ * hint earns its keep: rename the key and the line of generate tasks goes empty in front of you.
+ *
+ * Mirrors `withAvailableFields` in the override builder: set `this.component[...]` before
+ * `super.attach()` reads `fieldOptions`, then push later changes straight onto the Angular element,
+ * because Formio does not redraw this widget when a sibling field changes.
+ */
+function withComposerKey(
+  BaseComponent: ValtimoFormioComponentConstructor,
+): ValtimoFormioComponentConstructor {
+  class LetterSetBuilderWithComposerKey extends BaseComponent {
+    private _keyChangeHandler: (() => void) | null = null;
+
+    attach(element: HTMLElement) {
+      this.component.composerKey = this._composerKey();
+
+      const result = super.attach(element);
+
+      if (this.root?.on && !this._keyChangeHandler) {
+        this._keyChangeHandler = () => {
+          if (this._customAngularElement) {
+            this._customAngularElement['composerKey'] = this._composerKey();
+          }
+        };
+        this.root.on('change', this._keyChangeHandler);
+      }
+
+      return result;
+    }
+
+    detach() {
+      if (this._keyChangeHandler && this.root?.off) {
+        this.root.off('change', this._keyChangeHandler);
+        this._keyChangeHandler = null;
+      }
+      return super.detach();
+    }
+
+    private _composerKey(): string {
+      const key = this.root?.data?.key;
+      return typeof key === 'string' ? key : '';
+    }
+  }
+
+  return LetterSetBuilderWithComposerKey;
 }
