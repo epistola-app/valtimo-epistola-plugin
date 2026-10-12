@@ -45,12 +45,16 @@ class ComposerSubmissionListenerTest {
     private static final UUID CASE = UUID.randomUUID();
 
     private ComposerWriteBackService writeBackService;
+
+    private final ComposerConfigurationResolver configurationResolver =
+
+            mock(ComposerConfigurationResolver.class);
     private ComposerSubmissionListener listener;
 
     @BeforeEach
     void setUp() {
         writeBackService = mock(ComposerWriteBackService.class);
-        listener = new ComposerSubmissionListener(writeBackService);
+        listener = new ComposerSubmissionListener(writeBackService, configurationResolver);
     }
 
     private static TaskCompletedEvent event(String businessKey, Map<String, Object> variables) {
@@ -65,7 +69,7 @@ class ComposerSubmissionListenerTest {
     void appliesWriteBackForTheCase() {
         listener.onTaskCompleted(event(CASE.toString(), Map.of("epistolaLetter", Map.of("x", 1))));
 
-        verify(writeBackService).applyFromSubmission(eq(CASE), any());
+        verify(writeBackService).applyFromSubmission(eq(CASE), any(), any());
     }
 
     @Test
@@ -75,7 +79,7 @@ class ComposerSubmissionListenerTest {
         // started without one is not an error — it just has nowhere for a letter's values to go.
         listener.onTaskCompleted(event(null, Map.of("epistolaLetter", Map.of("x", 1))));
 
-        verify(writeBackService, never()).applyFromSubmission(any(), any());
+        verify(writeBackService, never()).applyFromSubmission(any(), any(), any());
     }
 
     @Test
@@ -83,7 +87,7 @@ class ComposerSubmissionListenerTest {
     void ignoresANonCaseBusinessKey() {
         listener.onTaskCompleted(event("order-4711", Map.of("epistolaLetter", Map.of("x", 1))));
 
-        verify(writeBackService, never()).applyFromSubmission(any(), any());
+        verify(writeBackService, never()).applyFromSubmission(any(), any(), any());
     }
 
     @Test
@@ -94,7 +98,7 @@ class ComposerSubmissionListenerTest {
         listener.onTaskCompleted(event(CASE.toString(), Map.of()));
         listener.onTaskCompleted(event(CASE.toString(), null));
 
-        verify(writeBackService, never()).applyFromSubmission(any(), any());
+        verify(writeBackService, never()).applyFromSubmission(any(), any(), any());
     }
 
     @Test
@@ -105,7 +109,7 @@ class ComposerSubmissionListenerTest {
         // answers 400, the task stays open and the case is untouched. Swallowing it would leave a
         // case worker believing the case records a decision it does not.
         doThrow(new ComposerWriteBackException("destination doc:/besluit/type was refused"))
-                .when(writeBackService).applyFromSubmission(any(), any());
+                .when(writeBackService).applyFromSubmission(any(), any(), any());
 
         assertThatThrownBy(() -> listener.onTaskCompleted(
                 event(CASE.toString(), Map.of("epistolaLetter", Map.of("x", 1)))))

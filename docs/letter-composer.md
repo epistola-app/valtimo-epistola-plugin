@@ -807,12 +807,28 @@ the promise the composer makes. The rest are open.
   **Where it applies.** Two triggers, between them covering every shape, and disjoint so that
   nothing writes twice:
 
-  | Shape                     | Demo               | Trigger                                              |
-  | ------------------------- | ------------------ | ---------------------------------------------------- |
-  | Task form                 | `kies-brief`       | `TaskCompletedEvent`                                 |
-  | Form-flow step            | `kies-brief-flow`  | `TaskCompletedEvent` — a step completes a task       |
-  | Start form, existing case | `kies-brief-adhoc` | `FormSubmissionService.handleSubmission`             |
-  | Start form, new case      | `direct-brief`     | the same, with the new case id taken from the result |
+  | Shape                     | Demo               | Trigger                                              | Rules scoped to |
+  | ------------------------- | ------------------ | ---------------------------------------------------- | --------------- |
+  | Task form                 | `kies-brief`       | `TaskCompletedEvent`                                 | the process     |
+  | Form-flow step            | `kies-brief-flow`  | `TaskCompletedEvent` — a step completes a task       | the process     |
+  | Start form, existing case | `kies-brief-adhoc` | `FormSubmissionService.handleSubmission`             | the form        |
+  | Start form, new case      | `direct-brief`     | the same, with the new case id taken from the result | the form        |
+
+  **Two forms may share a letter key**, and that is a reasonable design: one generate task reading
+  `epistolaLetter`, fed by two entry forms. Rules are found by that key, so they are scoped to the
+  form that was submitted — otherwise each form would apply the other's rules to its own letter. The
+  last column says how precisely, and the two differ for a reason worth knowing:
+  - A **start form** is scoped exactly, by the process link the aspect intercepted.
+  - A **task form** is scoped to its process. `handleSubmission` does know the form — it carries the
+    process link for task submissions too — but task submissions are deliberately left to the event,
+    because a form-flow step completes a task without ever reaching `handleSubmission`, and one
+    trigger covering both is worth more than exactness here. `TaskCompletedEvent` carries the process
+    definition and not the form, and the runtime task is already deleted by the time it fires, so an
+    activity cannot be resolved from it.
+
+  A process is narrower than a case type, which is what separates two processes sharing a key. What
+  stays ambiguous is two forms **in one process** sharing a key with different rules; the case-wide
+  fallback refuses that, naming the key and both components, rather than writing the wrong values.
 
   A start form completes no task, so the event cannot see it; `ProcessStartedEvent` looks like the
   answer and is not, because it is published _before_ Valtimo writes the submitted `pv:` values and

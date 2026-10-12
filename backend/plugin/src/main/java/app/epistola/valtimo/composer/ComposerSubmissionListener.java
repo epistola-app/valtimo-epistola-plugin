@@ -61,6 +61,7 @@ import org.springframework.context.event.EventListener;
 public class ComposerSubmissionListener {
 
     private final ComposerWriteBackService writeBackService;
+    private final ComposerConfigurationResolver configurationResolver;
 
     @EventListener
     public void onTaskCompleted(TaskCompletedEvent event) {
@@ -77,7 +78,12 @@ public class ComposerSubmissionListener {
         // call answers 400, the task stays open and the case is untouched. Telling the employee
         // their letter's values could not be saved is the point — swallowing it would leave them
         // believing the case records a decision it does not.
-        writeBackService.applyFromSubmission(documentId, variables);
+        // Scoped to the process this task belonged to, not the whole case type: two processes may
+        // store their letter on the same key, and rules are found by that key. The runtime task is
+        // already gone by the time this fires, so an activity cannot be resolved from it reliably —
+        // a process is as narrow as this path gets, and narrow enough for that collision.
+        writeBackService.applyFromSubmission(documentId, variables,
+                configurationResolver.forProcessDefinition(event.getProcessDefinitionId()));
     }
 
     /**
