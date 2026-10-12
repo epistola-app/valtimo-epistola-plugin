@@ -31,6 +31,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent } from '@valtimo/components';
 import { PluginTranslatePipeModule, PluginTranslationService } from '@valtimo/plugin';
 import { FormioModule } from '@formio/angular';
+import { TranslateService } from '@ngx-translate/core';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
 import { EpistolaComposerApiService } from '../composer-api.service';
@@ -44,6 +45,7 @@ import {
 import { readOpenDossierId } from './open-dossier';
 import { isRendered, PreviewRenderer } from './preview-renderer';
 import { isSectioned, sectionForm } from './composer-sections';
+import { formioLanguage, readerLocale, withLocaleDates } from '../../utils/formio-locale';
 import { withValidationMessages, type ValidationMessages } from './composer-messages';
 import {
   describeFindings,
@@ -312,6 +314,9 @@ export class EpistolaLetterComposerComponent
     const stepped = isSectioned(this.formDefinition);
     return {
       noAlerts: true,
+      // Valtimo's language, as Valtimo passes it to its own forms: Form.io takes a number's
+      // separators from it, and would otherwise read a Dutch `12,50` as 1250.
+      language: this.language,
       breadcrumbSettings: { clickable: true },
       buttonSettings: {
         showCancel: false,
@@ -359,6 +364,7 @@ export class EpistolaLetterComposerComponent
     private readonly cdr: ChangeDetectorRef,
     private readonly sanitizer: DomSanitizer,
     private readonly pluginTranslationService: PluginTranslationService,
+    private readonly translateService: TranslateService,
   ) {
     this.previews = new PreviewRenderer(this.sanitizer, () =>
       this.translate('composerPreviewFailed'),
@@ -473,7 +479,10 @@ export class EpistolaLetterComposerComponent
         this.catalogId = prepared.catalogId;
         this.resolvedProcessDefinitionKey = prepared.processDefinitionKey ?? null;
         this.formDefinition = sectionForm(
-          withValidationMessages(prepared.form, this.validationMessages),
+          withLocaleDates(
+            withValidationMessages(prepared.form, this.validationMessages),
+            this.locale,
+          ),
           (step) => this.translate('composerSection').replace('{step}', String(step)),
           this.stepAfter,
         );
@@ -643,6 +652,16 @@ export class EpistolaLetterComposerComponent
   private get stepAfter(): number | undefined {
     const configured = Number(this.epistola?.stepAfter);
     return Number.isInteger(configured) && configured > 0 ? configured : undefined;
+  }
+
+  /** The language Valtimo is shown in, which decides how numbers and dates are written. */
+  private get language(): string {
+    return formioLanguage(this.locale);
+  }
+
+  /** The same, with its region, which decides the order a date is written in. */
+  private get locale(): string {
+    return readerLocale(this.translateService.currentLang || this.translateService.defaultLang);
   }
 
   private get validationMessages(): ValidationMessages {

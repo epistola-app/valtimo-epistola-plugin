@@ -49,7 +49,10 @@ public class FormioFormGenerator {
 
     /** How a {@code "format": "date"} value is stored: what the schema accepts. */
     private static final String DATE_VALUE_FORMAT = "yyyy-MM-dd";
-    /** How a date is shown and typed. */
+    /**
+     * How a date is shown and typed when nothing knows the reader's locale. The plugin's own
+     * frontend replaces it with the locale's format; the stored value never changes.
+     */
     private static final String DATE_DISPLAY_FORMAT = "dd-MM-yyyy";
     private static final String DATE_TIME_DISPLAY_FORMAT = "dd-MM-yyyy HH:mm";
 

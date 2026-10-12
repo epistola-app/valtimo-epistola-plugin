@@ -28,11 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   outside. A check that cried wolf would cost more than the silence it replaced. For the same
   reason a failed lookup shows nothing rather than claiming there is no reader.
 
-- **Date fields get a calendar.** In the letter composer and the retry form, a contract field with
-  `"format": "date"` is a text field with a date picker: it shows and accepts `dd-MM-yyyy` and still
-  stores exactly `yyyy-MM-dd`, the value the contract asks for. A `"format": "date-time"` field is a
-  date-time picker on a 24-hour clock. Both used to be plain text fields with a format placeholder.
-  An `integer` field no longer accepts decimals.
+- **Date fields get a calendar, in the reader's locale.** In the letter composer and the retry
+  form, a contract field with `"format": "date"` is a text field with a date picker: it is shown
+  and typed the way Valtimo's language writes a date (`15-04-2026` in Dutch, `04/15/2026` in
+  English) and still stores exactly `2026-04-15`, the value the contract asks for. A
+  `"format": "date-time"` field is a date-time picker on the locale's clock. Both used to be plain
+  text fields with a format placeholder. An `integer` field no longer accepts decimals.
 
 ### Changed
 
@@ -44,6 +45,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   out of scope. Suite vulnerabilities are pointed at the Suite's own form.
 
 ### Fixed
+
+- **A Dutch amount is no longer read as English.** The composer and the retry form did not tell
+  Form.io which language Valtimo is in, so a number field fell back to English separators and
+  `12,50` was stored as `1250`. Both now pass Valtimo's current language, as Valtimo does for its
+  own forms. The plugin declares `@ngx-translate/core` as a peer dependency for it, which every
+  Valtimo frontend already has.
 
 - **Write-back now applies the rules of the form that was submitted, not of every composer on the
   case type.** Rules are found by the letter's process variable, so two forms storing their letter

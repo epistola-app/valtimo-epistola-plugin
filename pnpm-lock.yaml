@@ -122,6 +122,9 @@ importers:
       '@formio/angular':
         specifier: 7.0.0
         version: 7.0.0(c150ca8a43035968948abde96c21d2f9)
+      '@ngx-translate/core':
+        specifier: 16.0.4
+        version: 16.0.4(@angular/common@19.2.25(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))(rxjs@7.8.2))(@angular/core@19.2.25(rxjs@7.8.2)(zone.js@0.15.1))
       '@types/jest':
         specifier: ^30.0.0
         version: 30.0.0
