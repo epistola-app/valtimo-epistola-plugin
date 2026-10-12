@@ -477,6 +477,11 @@ properly means recognising the marker and offering an editor for it, which is it
 not part of the composer. Until then, supply rich-text fields from the baseline mapping rather than
 offering a letter that asks for them.
 
+How to do that is proposed in [ADR 0008](adr/0008-rich-text-inputs.md): the contract does carry a
+marker (the canonical `$ref` URL survives inlining), and the open question is translating between
+whatever format a case keeps — HTML, markdown, plain text — and the ProseMirror subset Epistola
+accepts.
+
 ## What it stores
 
 Three structures, in three places, with three lifecycles. Two of them outlive the code that wrote
@@ -912,12 +917,11 @@ the promise the composer makes. The rest are open.
 - **Rich text is unsupported**, and a rich-text object that looks like a plain object is not even
   detectable here — see [What it can ask for](#what-it-can-ask-for).
 
-  _Direction, and it starts elsewhere._ Nothing in this plugin reads a rich-text marker from a
-  contract, and whether Epistola exposes one is an Epistola-side question that has to be answered
-  first. Given a marker, the plugin side is small: the schema analyzer reads it into
-  `FieldHints`, and the generator renders an editor component instead of a fieldset. The
-  per-template presentation override ADR 0006 describes is where an author would pick one
-  otherwise. Until the marker exists, supply rich-text fields from the baseline mapping.
+  _Direction: [ADR 0008](adr/0008-rich-text-inputs.md)._ Nothing in this plugin reads a rich-text
+  marker from a contract yet. Epistola does expose one — a `$ref` to its canonical rich-text schema
+  URL — so detection is the small part: the schema analyzer reads it into `FieldHints`. The open
+  question is the format translation the ADR sets out, and which editor that implies. Until it is
+  decided, supply rich-text fields from the baseline mapping.
 
 - **A per-template mapping fragment is not authorable in the settings widget.** The backend merges
   one and a hand-written form can set it; the widget captures template and label only.
