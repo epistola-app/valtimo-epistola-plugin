@@ -74,14 +74,20 @@ export class ProcessLinkPage {
    *
    * `force` because bpmn-js draws overlapping shapes (labels, outlines) over the hit area, and
    * Playwright's actionability check reports the outline as the receiver.
+   *
+   * `force` skips the wait for visibility too, and `openProcess` only waits for the shape to be in
+   * the DOM: bpmn-js inserts a diagram before it lays it out, so on a slow runner the click can
+   * land on a shape with no box yet ("Element is not visible", nightly 2026-10-13). So wait for it
+   * to be drawn, and retry the click until the panel opens.
    */
   async openActivity(elementId: string): Promise<void> {
-    await this.page.locator(`[data-element-id="${elementId}"]`).first().click({ force: true });
-    await expect(
-      this.page.getByRole('heading', { name: /Processtap:|Process step:/i }),
-    ).toBeVisible({
-      timeout: 15_000,
-    });
+    const shape = this.page.locator(`[data-element-id="${elementId}"]`).first();
+    const panel = this.page.getByRole('heading', { name: /Processtap:|Process step:/i });
+    await expect(shape).toBeVisible({ timeout: 20_000 });
+    await expect(async () => {
+      await shape.click({ force: true, timeout: 5_000 });
+      await expect(panel).toBeVisible({ timeout: 5_000 });
+    }).toPass({ timeout: 30_000 });
   }
 
   /**

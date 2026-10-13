@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, type Page, test } from '@playwright/test';
 
 /**
  * The composer configurator says which generate tasks read the letter.
@@ -27,12 +27,34 @@ import { expect, test } from '@playwright/test';
  * with either of them broken.
  */
 test.describe('Letter composer — what reads this letter', () => {
-  const KIES_BRIEF = '49fb641d-eaae-4872-8835-d89b571189a4';
+  const CASE_FORMS = '/case-management/case/correspondentie/version/1.0.0/forms';
+
+  /**
+   * Open a case form in the builder by its name.
+   *
+   * A form's id is assigned when Valtimo deploys it, so it differs per database: an id copied from
+   * one installation opens nothing on a fresh one, and the builder spins until the test times out.
+   * The id is taken from the list the forms page loads for itself, which carries the page's own
+   * authentication.
+   */
+  async function openFormBuilder(page: Page, name: string): Promise<void> {
+    const list = page.waitForResponse(
+      (response) =>
+        /\/case-definition\/correspondentie\/version\/1\.0\.0\/form\b/.test(response.url()) &&
+        response.request().method() === 'GET' &&
+        response.ok(),
+    );
+    await page.goto(CASE_FORMS);
+    const forms: { content?: { id: string; name: string }[] } = await (await list).json();
+    const form = forms.content?.find((candidate) => candidate.name === name);
+    expect(form, `no form named ${name} on the case`).toBeDefined();
+    await page.goto(`${CASE_FORMS}/${form!.id}`);
+  }
 
   test('names the generate task on the composer being edited', async ({ page }) => {
     test.setTimeout(120_000);
 
-    await page.goto(`/case-management/case/correspondentie/version/1.0.0/forms/${KIES_BRIEF}`);
+    await openFormBuilder(page, 'kies-brief');
 
     // The builder mounts the saved form; the composer is one of its components.
     const composer = page.locator('[ref="component"]', { hasText: 'Brief' }).first();
@@ -56,7 +78,7 @@ test.describe('Letter composer — what reads this letter', () => {
     // above is not passing for some other reason: break only this call and the line disappears.
     await page.route('**/letter-readers*', (route) => route.fulfill({ status: 500, body: '{}' }));
 
-    await page.goto(`/case-management/case/correspondentie/version/1.0.0/forms/${KIES_BRIEF}`);
+    await openFormBuilder(page, 'kies-brief');
 
     const composer = page.locator('[ref="component"]', { hasText: 'Brief' }).first();
     await composer.waitFor({ timeout: 30_000 });
