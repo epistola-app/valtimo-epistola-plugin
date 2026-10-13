@@ -17,12 +17,9 @@
  */
 package app.epistola.valtimo.richtext;
 
-import app.epistola.client.api.GenerationApi;
 import app.epistola.client.api.TemplatesApi;
-import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.TemplateDto;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
-import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateField.FieldType;
@@ -33,9 +30,7 @@ import app.epistola.valtimo.service.EpistolaServiceImpl;
 import ch.qos.logback.classic.Level;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
-import java.io.ByteArrayInputStream;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -50,7 +45,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -58,10 +52,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Rich-text fields are converted where data leaves for Epistola, so generation and preview — and
- * through them the composer and the retry form — send the same document (ADR 0008).
+ * What a person typed into the plugin's own editors — the composer and the retry form — reaches
+ * Epistola as documents (ADR 0008).
  */
-class RichTextEpistolaServiceTest {
+class EditorRichTextTest {
 
     private static final String TENANT = "tenant";
     private static final Map<String, Object> DATA = Map.of("toelichting", "<p><b>vet</b></p>", "naam", "Jansen");
@@ -77,88 +71,63 @@ class RichTextEpistolaServiceTest {
     }
 
     @Nested
-    class AroundAMockedClient {
+    class WithAMockedClient {
 
         private final EpistolaService client = mock(EpistolaService.class);
         private final MutableClock clock = new MutableClock();
-        private final RichTextEpistolaService service =
-                new RichTextEpistolaService(client, RichTextFixtures.converter("html"), clock);
+        private final EditorRichText editorRichText =
+                new EditorRichText(client, RichTextFixtures.converter("html"), clock);
 
-        @SuppressWarnings("unchecked")
-        private Map<String, Object> submitted() {
-            ArgumentCaptor<Map<String, Object>> data = ArgumentCaptor.forClass(Map.class);
-            verify(client).submitGenerationJob(anyString(), anyString(), anyString(), anyString(), anyString(),
-                    any(), any(), any(), data.capture(), any(), any(), any(), any());
-            return data.getValue();
+        private Map<String, Object> convert(Map<String, Object> data, EditorRichText.Purpose purpose) {
+            return editorRichText.toDocuments("http://x", "key", TENANT, "catalog", "besluit", data, purpose);
         }
 
-        private void submit(Map<String, Object> data) {
-            service.submitGenerationJob("http://x", "key", TENANT, "catalog", "besluit", null, null, null,
-                    data, FileFormat.PDF, "besluit.pdf", null, null);
+        private Map<String, Object> convert(Map<String, Object> data) {
+            return convert(data, EditorRichText.Purpose.GENERATION);
         }
 
         @Test
-        void convertsRichTextFieldsWhenSubmitting_andLeavesTheRestAlone() {
+        void convertsTheRichTextFields_andLeavesTheRestAlone() {
             when(client.getTemplateDetails(any(), any(), any(), any(), any())).thenReturn(template());
 
-            submit(DATA);
-
-            assertThat(submitted()).isEqualTo(CONVERTED);
-        }
-
-        @Test
-        @SuppressWarnings("unchecked")
-        void convertsThemTheSameWayWhenPreviewing() {
-            when(client.getTemplateDetails(any(), any(), any(), any(), any())).thenReturn(template());
-            ArgumentCaptor<Map<String, Object>> data = ArgumentCaptor.forClass(Map.class);
-            when(client.previewDocument(any(), any(), any(), any(), any(), any(), any(), data.capture()))
-                    .thenReturn(new ByteArrayInputStream(new byte[]{1}));
-
-            service.previewDocument("http://x", "key", TENANT, "catalog", "besluit", null, null, DATA);
-
-            assertThat(data.getValue()).isEqualTo(CONVERTED);
+            assertThat(convert(DATA)).isEqualTo(CONVERTED);
         }
 
         @Test
         void readsTheContractOncePerMinute_notOncePerPreview() {
             when(client.getTemplateDetails(any(), any(), any(), any(), any())).thenReturn(template());
 
-            submit(DATA);
-            submit(DATA);
-            clock.advance(RichTextEpistolaService.FIELDS_TTL.minusSeconds(1));
-            submit(DATA);
+            convert(DATA);
+            convert(DATA);
+            clock.advance(EditorRichText.FIELDS_TTL.minusSeconds(1));
+            convert(DATA);
             verify(client, times(1)).getTemplateDetails(any(), any(), any(), any(), any());
 
             clock.advance(java.time.Duration.ofSeconds(2));
-            submit(DATA);
+            convert(DATA);
             verify(client, times(2)).getTemplateDetails(any(), any(), any(), any(), any());
         }
 
         @Test
-        void sendsTheDataAsMappedWhenTheContractCannotBeRead_andTriesAgainNextTime() {
+        void leavesTheDataAsTypedWhenTheContractCannotBeRead_andTriesAgainNextTime() {
             when(client.getTemplateDetails(any(), any(), any(), any(), any()))
                     .thenThrow(new EpistolaApiException("Template not found: besluit"))
                     .thenReturn(template());
 
-            submit(DATA);
-            submit(DATA);
-
-            ArgumentCaptor<Map<String, Object>> data = ArgumentCaptor.forClass(Map.class);
-            verify(client, times(2)).submitGenerationJob(any(), any(), any(), any(), any(), any(), any(), any(),
-                    data.capture(), any(), any(), any(), any());
-            assertThat(data.getAllValues()).containsExactly(DATA, CONVERTED);
+            assertThat(convert(DATA)).isEqualTo(DATA);
+            assertThat(convert(DATA)).isEqualTo(CONVERTED);
         }
 
         @Test
         void readsNoContractForALetterWithoutData() {
-            submit(Map.of());
+            convert(Map.of());
 
             verify(client, never()).getTemplateDetails(any(), any(), any(), any(), any());
         }
 
         @Test
-        void leavesAConversionFailureToTheCaller_beforeAnythingIsSent() {
-            var failing = new RichTextEpistolaService(client, new RichTextConverter(List.of(new RichTextFormat() {
+        void leavesAConversionFailureToTheCaller() {
+            var failing = new EditorRichText(client, new RichTextConverter(List.of(new RichTextFormat() {
                 @Override
                 public String id() {
                     return "broken";
@@ -171,20 +140,18 @@ class RichTextEpistolaServiceTest {
             }), "broken"), clock);
             when(client.getTemplateDetails(any(), any(), any(), any(), any())).thenReturn(template());
 
-            assertThatThrownBy(() -> failing.submitGenerationJob("http://x", "key", TENANT, "catalog", "besluit",
-                    null, null, null, DATA, FileFormat.PDF, "besluit.pdf", null, null))
+            assertThatThrownBy(() -> failing.toDocuments("http://x", "key", TENANT, "catalog", "besluit",
+                    DATA, EditorRichText.Purpose.GENERATION))
                     .isInstanceOf(RichTextConversionException.class)
                     .hasMessageContaining("'toelichting'");
-            verify(client, never()).submitGenerationJob(any(), any(), any(), any(), any(), any(), any(), any(),
-                    any(), any(), any(), any(), any());
         }
 
         @Test
         void warnsWhatALetterLost_namingTheFieldAndTemplateButNeverTheText() {
             when(client.getTemplateDetails(any(), any(), any(), any(), any())).thenReturn(template());
 
-            try (var logs = CapturedLogs.of(RichTextEpistolaService.class)) {
-                submit(Map.of("toelichting", "<h1>Jansen, BSN 123456782</h1><p>tekst</p>"));
+            try (var logs = CapturedLogs.of(EditorRichText.class)) {
+                convert(Map.of("toelichting", "<h1>Jansen, BSN 123456782</h1><p>tekst</p>"));
 
                 assertThat(logs.at(Level.WARN)).singleElement().satisfies(event -> assertThat(event.getFormattedMessage())
                         .contains("'toelichting'", "'besluit'", "heading ×1")
@@ -196,35 +163,24 @@ class RichTextEpistolaServiceTest {
         void onlyDebugsItForAPreview_whichTheComposerRepeatsOnEveryChange() {
             when(client.getTemplateDetails(any(), any(), any(), any(), any())).thenReturn(template());
 
-            try (var logs = CapturedLogs.of(RichTextEpistolaService.class)) {
-                service.previewDocument("http://x", "key", TENANT, "catalog", "besluit", null, null,
-                        Map.of("toelichting", "<h1>Kop</h1>"));
+            try (var logs = CapturedLogs.of(EditorRichText.class)) {
+                convert(Map.of("toelichting", "<h1>Kop</h1>"), EditorRichText.Purpose.PREVIEW);
 
                 assertThat(logs.at(Level.WARN)).isEmpty();
                 assertThat(logs.at(Level.DEBUG)).singleElement()
                         .satisfies(event -> assertThat(event.getFormattedMessage()).contains("heading ×1"));
             }
         }
-
-        @Test
-        void passesEverythingElseStraightThrough() {
-            service.getJobStatus("http://x", "key", TENANT, "req");
-            service.downloadDocument("http://x", "key", TENANT, "doc");
-
-            verify(client).getJobStatus("http://x", "key", TENANT, "req");
-            verify(client).downloadDocument("http://x", "key", TENANT, "doc");
-        }
     }
 
     /**
-     * The whole path at once, as wired: a contract carrying Epistola's rich-text {@code $ref},
-     * read by the real client and its schema analysis, converted, and handed to the generation API.
+     * The fields come from the real contract: Epistola's rich-text {@code $ref}, read by the real
+     * client and its schema analysis.
      */
     @Test
     void convertsFieldsTheRealContractMarksAsRichText() {
         EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
         TemplatesApi templatesApi = mock(TemplatesApi.class);
-        GenerationApi generationApi = mock(GenerationApi.class);
         TemplateDto contract = mock(TemplateDto.class);
         when(contract.getId()).thenReturn("besluit");
         when(contract.getName()).thenReturn("Besluit");
@@ -232,16 +188,11 @@ class RichTextEpistolaServiceTest {
                 "toelichting", Map.of("$ref", "https://epistola.app/schemas/richtext-block-v1.json"),
                 "naam", Map.of("type", "string"))));
         when(factory.createTemplatesApi(anyString(), anyString())).thenReturn(templatesApi);
-        when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
         when(templatesApi.getTemplate(TENANT, "catalog", "besluit")).thenReturn(contract);
-        ArgumentCaptor<GenerateDocumentRequest> request = ArgumentCaptor.forClass(GenerateDocumentRequest.class);
-        when(generationApi.generateDocument(eq(TENANT), request.capture())).thenThrow(new IllegalStateException("stop"));
-        var service = new RichTextEpistolaService(new EpistolaServiceImpl(factory, 0), RichTextFixtures.converter("html"));
+        var editorRichText = new EditorRichText(new EpistolaServiceImpl(factory, 0), RichTextFixtures.converter("html"));
 
-        assertThatThrownBy(() -> service.submitGenerationJob("http://x", "key", TENANT, "catalog", "besluit",
-                null, null, null, DATA, FileFormat.PDF, "besluit.pdf", null, null));
-
-        assertThat(request.getValue().getData()).isEqualTo(CONVERTED);
+        assertThat(editorRichText.toDocuments("http://x", "key", TENANT, "catalog", "besluit", DATA,
+                EditorRichText.Purpose.GENERATION)).isEqualTo(CONVERTED);
     }
 
     /** A clock a test moves by hand. */

@@ -53,7 +53,7 @@ import app.epistola.valtimo.richtext.RichTextConverter;
 import app.epistola.valtimo.richtext.RichTextFormat;
 import app.epistola.valtimo.richtext.RichTextEditor;
 import app.epistola.valtimo.richtext.RichTextEditors;
-import app.epistola.valtimo.richtext.RichTextEpistolaService;
+import app.epistola.valtimo.richtext.EditorRichText;
 import app.epistola.valtimo.richtext.RichTextFunction;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
@@ -157,14 +157,9 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(EpistolaService.class)
     public EpistolaService epistolaService(
             EpistolaApiClientFactory apiClientFactory,
-            EpistolaProperties properties,
-            RichTextConverter richTextConverter
+            EpistolaProperties properties
     ) {
-        // The client, with rich-text conversion around it (ADR 0008): every letter and preview
-        // reaches Epistola through this bean, so converting here covers every caller.
-        return new RichTextEpistolaService(
-                new EpistolaServiceImpl(apiClientFactory, properties.getClient().getMaxReadRetries()),
-                richTextConverter);
+        return new EpistolaServiceImpl(apiClientFactory, properties.getClient().getMaxReadRetries());
     }
 
     // Rich text (ADR 0008): one bean per format, so an installation adds its own format by
@@ -209,6 +204,12 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(RichTextEditors.class)
     public RichTextEditors richTextEditors(List<RichTextEditor> editors) {
         return new RichTextEditors(editors);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(EditorRichText.class)
+    public EditorRichText editorRichText(EpistolaService epistolaService, RichTextConverter richTextConverter) {
+        return new EditorRichText(epistolaService, richTextConverter);
     }
 
     @Bean
@@ -278,11 +279,12 @@ public class EpistolaPluginAutoConfiguration {
             JsonataMappingService jsonataMappingService,
             com.ritense.document.service.DocumentService documentService,
             EpistolaResultCollectorRunner resultCollectorRunner,
-            List<DocumentStorageStrategy> storageStrategies
+            List<DocumentStorageStrategy> storageStrategies,
+            EditorRichText editorRichText
     ) {
         return new EpistolaPluginFactory(pluginService, epistolaService,
                 objectMapper, jsonataMappingService, documentService, resultCollectorRunner,
-                storageStrategies);
+                storageStrategies, editorRichText);
     }
 
     @Bean
@@ -354,11 +356,12 @@ public class EpistolaPluginAutoConfiguration {
             RuntimeService runtimeService,
             JsonataMappingService jsonataMappingService,
             com.ritense.document.service.DocumentService documentService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            EditorRichText editorRichText
     ) {
         return new app.epistola.valtimo.service.preview.PreviewService(pluginService, epistolaService,
                 processLinkService, operatonRepositoryService, runtimeService,
-                jsonataMappingService, documentService, objectMapper);
+                jsonataMappingService, documentService, objectMapper, editorRichText);
     }
 
     @Bean

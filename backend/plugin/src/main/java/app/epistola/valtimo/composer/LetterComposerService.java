@@ -23,6 +23,7 @@ import app.epistola.valtimo.logging.Failures;
 import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.mapping.MapMerge;
+import app.epistola.valtimo.richtext.EditorRichText;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.form.FormioFormGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -62,6 +63,7 @@ public class LetterComposerService {
     private final com.ritense.document.service.DocumentService documentService;
     private final RuntimeService runtimeService;
     private final ObjectMapper objectMapper;
+    private final EditorRichText editorRichText;
 
     /**
      * Where the letter is being composed: all of it derived from the caller's task, never supplied
@@ -208,7 +210,10 @@ public class LetterComposerService {
                     templateId,
                     null,
                     plugin.getDefaultEnvironmentId(),
-                    data == null ? Map.of() : data);
+                    // What the employee typed is in the editor's format (ADR 0008).
+                    editorRichText.toDocuments(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(),
+                            resolved.letter().catalogId(), templateId, data == null ? Map.of() : data,
+                            EditorRichText.Purpose.PREVIEW));
         } catch (RuntimeException e) {
             throw new ComposerException(ComposerException.Reason.RENDER_FAILED,
                     "Epistola could not render template '" + templateId + "': " + e.getMessage(), e);

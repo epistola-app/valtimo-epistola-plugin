@@ -204,7 +204,21 @@ class LetterComposerE2ETest {
         assertThat(dataCaptor.firstValue)
             .describedAs("generation renders exactly what was composed, including the typed input")
             .containsEntry("decisionType", "gegrond")
-            .containsEntry("motivation", "De dakkapel voldoet aan de welstandscriteria.")
+            // `motivation` is rich text: what the composer's editor wrote is sent as a document.
+            .containsEntry(
+                "motivation",
+                mapOf(
+                    "type" to "doc",
+                    "content" to
+                        listOf(
+                            mapOf(
+                                "type" to "paragraph",
+                                "content" to
+                                    listOf(mapOf("type" to "text", "text" to "De dakkapel voldoet aan de welstandscriteria.")),
+                            ),
+                        ),
+                ),
+            )
         assertThat(dataCaptor.firstValue["objector"] as Map<String, Any>).containsEntry("lastName", "Jansen")
     }
 

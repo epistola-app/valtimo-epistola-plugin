@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.composer;
 
+import app.epistola.valtimo.richtext.EditorRichText;
 import app.epistola.valtimo.domain.DynamicDocument;
 import app.epistola.valtimo.composer.web.EpistolaComposerResource;
 import app.epistola.valtimo.mapping.JsonataMappingService;
@@ -155,10 +156,12 @@ public class EpistolaComposerConfiguration {
             FormioFormGenerator formioFormGenerator,
             DocumentService documentService,
             RuntimeService runtimeService,
-            ObjectMapper objectMapper
+            ObjectMapper objectMapper,
+            EditorRichText editorRichText
     ) {
         return new LetterComposerService(composerConfigurationResolver, pluginService, epistolaService,
-                jsonataMappingService, formioFormGenerator, documentService, runtimeService, objectMapper);
+                jsonataMappingService, formioFormGenerator, documentService, runtimeService, objectMapper,
+                editorRichText);
     }
 
     @Bean

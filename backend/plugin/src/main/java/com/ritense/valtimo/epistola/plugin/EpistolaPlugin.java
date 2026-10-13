@@ -33,6 +33,7 @@ import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
 import app.epistola.valtimo.service.download.DocumentStorageStrategy;
 
 import app.epistola.valtimo.service.EpistolaService;
+import app.epistola.valtimo.richtext.EditorRichText;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.annotation.*;
@@ -72,6 +73,7 @@ public class EpistolaPlugin {
     private final com.ritense.document.service.DocumentService documentService;
     private final EpistolaResultCollectorRunner resultCollectorRunner;
     private final Map<DocumentStorageTarget, DocumentStorageStrategy> storageStrategies;
+    private final EditorRichText editorRichText;
 
     /**
      * Applies a composed letter's write-back; null when the composer module is switched off
@@ -84,7 +86,8 @@ public class EpistolaPlugin {
             JsonataMappingService jsonataMappingService,
             com.ritense.document.service.DocumentService documentService,
             EpistolaResultCollectorRunner resultCollectorRunner,
-            Map<DocumentStorageTarget, DocumentStorageStrategy> storageStrategies
+            Map<DocumentStorageTarget, DocumentStorageStrategy> storageStrategies,
+            EditorRichText editorRichText
     ) {
         this.epistolaService = epistolaService;
         this.objectMapper = objectMapper;
@@ -92,6 +95,7 @@ public class EpistolaPlugin {
         this.documentService = documentService;
         this.resultCollectorRunner = resultCollectorRunner;
         this.storageStrategies = storageStrategies;
+        this.editorRichText = editorRichText;
     }
 
     /**
@@ -398,6 +402,9 @@ public class EpistolaPlugin {
                         resolvedAttributes,
                         effectiveEnvironmentId,
                         resolvedData,
+                        // A retry's data was typed into the retry form's editors; mapped data is
+                        // the author's, who says its format with $richText (ADR 0008).
+                        isRetry,
                         effectiveOutputFormat,
                         resolvedFilename,
                         resolvedCorrelationId,
@@ -461,6 +468,8 @@ public class EpistolaPlugin {
                         null,
                         defaultEnvironmentId,
                         letter.data(),
+                        // A composed letter holds what was typed into the composer's editors.
+                        true,
                         FileFormat.PDF,
                         resolvedFilename,
                         resolvedCorrelationId,
@@ -482,6 +491,8 @@ public class EpistolaPlugin {
      * @param variantAttributes  Attribute-based variant selection, or null
      * @param environmentId      Environment to render in
      * @param data               The template data
+     * @param typedInEditors     Whether the data was typed into the plugin's own editors (the
+     *                           composer, the retry form), whose rich text is converted on submit
      * @param outputFormat       The file format (PDF)
      * @param filename           Filename for the generated document
      * @param correlationId      Correlation id, or null
@@ -494,6 +505,7 @@ public class EpistolaPlugin {
             List<VariantSelectionAttribute> variantAttributes,
             String environmentId,
             Map<String, Object> data,
+            boolean typedInEditors,
             FileFormat outputFormat,
             String filename,
             String correlationId,
@@ -517,6 +529,12 @@ public class EpistolaPlugin {
         // Submit the document generation request
         GenerationJobResult result;
         try {
+            // Inside the try: a value its format cannot read is a failed submit like any other,
+            // recorded where the retry path reads it (ADR 0008).
+            Map<String, Object> data = request.typedInEditors()
+                    ? editorRichText.toDocuments(baseUrl, apiKey, tenantId, request.catalogId(),
+                            request.templateId(), request.data(), EditorRichText.Purpose.GENERATION)
+                    : request.data();
             result = epistolaService.submitGenerationJob(
                     baseUrl,
                     apiKey,
@@ -526,7 +544,7 @@ public class EpistolaPlugin {
                     request.variantId(),
                     request.variantAttributes(),
                     request.environmentId(),
-                    request.data(),
+                    data,
                     request.outputFormat(),
                     request.filename(),
                     request.correlationId(),

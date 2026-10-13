@@ -20,14 +20,22 @@ way, and not inside Epistola, is [ADR 0008](adr/0008-rich-text-inputs.md).
 ## Which format a value is in
 
 The plugin never guesses this from the text. `2 * 3 * 4` is arithmetic in one installation and
-emphasis in another. It decides in this order:
+emphasis in another. Whoever knows the format says it:
 
-1. **A document is a document.** An object shaped `{"type": "doc", …}` is used as it is, after
-   being narrowed to what the schema allows.
-2. **The mapping says so.** `$richText(value, "markdown")` reads `value` in the named format.
-   `$richText(value)` uses the default.
-3. **Otherwise the default applies.** A string mapped straight onto a rich-text field is read in
-   `epistola.rich-text.default-format`.
+- **A data mapping names it.** The author knows what the case keeps, so the mapping says so:
+  `$richText($doc.x, "html")`. `$richText(value)` without a format uses the default. A string
+  mapped onto a rich-text field _without_ `$richText` is sent as it is, and Epistola refuses it
+  ("string found, object expected"). The mapping builder warns about such a field.
+- **The plugin's own editors know it.** The letter composer and the retry form ask for a rich-text
+  field with the default format's editor, so what comes back is in that format, and the plugin
+  converts it. See [Where it happens](#where-it-happens). A composed letter arrives as one object,
+  the composer's baseline mapping merged with what was typed, so a text value in any of its
+  rich-text fields is read in the editor's format. A baseline mapping for a field the case keeps in
+  another format therefore still names it with `$richText`.
+
+A value that already is a document, an object shaped `{"type": "doc", …}`, needs no format. Through
+`$richText` or from an editor it is narrowed to what the schema allows; mapped as it is, it goes as
+it is, and Epistola validates it.
 
 A field that takes a **list** of rich text is converted item by item, and empty items are left out.
 `$richText` reads one value; to name the format of a list, map over it the JSONata way:
@@ -45,14 +53,16 @@ epistola:
     default-format: html # html (default) | plain | markdown | prosemirror | your own
 ```
 
-`html` is the default: it is what Valtimo's WYSIWYG text areas write, and what the editors the
-plugin generates write. A value from an ordinary **plain text area** needs naming —
-`$richText($doc.x, "plain")` — because read as HTML its line breaks collapse into spaces and a
-`<` followed by a letter starts a tag.
+The default decides two things: which editor the composer and the retry form show (and so the
+format of what they write back), and how `$richText(value)` without a format reads `value`. `html`
+is the default because it is what Valtimo's WYSIWYG text areas write. A value from an ordinary
+**plain text area** is named, `$richText($doc.x, "plain")`, because read as HTML its line breaks
+collapse into spaces and a `<` followed by a letter starts a tag.
 
-**The format is configuration.** Changing the default reinterprets text already stored on cases
-and on composed letters waiting to be generated, so treat it like a schema change. It is meant to
-become selectable per form or component later; until then it is one setting for the installation.
+**The format is configuration.** Changing the default changes what the editors write and how
+composed letters still waiting to be generated are read, so treat it like a schema change. It is
+meant to become selectable per form or component later; until then it is one setting for the
+installation.
 
 ## The formats
 
@@ -84,7 +94,8 @@ generate-document mapping, or the preview component, then hands that to the rich
 { "toelichting": $richText($doc.besluit.toelichting, "html") }
 ```
 
-With the default format (`html`) the plain mapping `$doc.besluit.toelichting` does the same.
+`$richText($doc.besluit.toelichting)` does the same with the default format (`html`). A bare
+`$doc.besluit.toelichting` does not: it sends the HTML as text, which Epistola refuses.
 
 What the form builder offers by default is more than Epistola renders: headings, tables, images,
 media. The conversion drops those, keeping the text. To offer only what survives, give the text
@@ -234,14 +245,19 @@ regardless.
 
 ## Where it happens
 
-Conversion runs in `RichTextEpistolaService`, a decorator around the Epistola client
-(`EpistolaServiceImpl`), just before a generation or preview request is sent. Every path goes
-through it: the generate action, the preview component, the composer and the retry form. The
-preview and the letter therefore cannot differ, and the client itself stays a client.
+Conversion happens where the format is known:
 
-To know which fields are rich text, the decorator reads the template's contract first and keeps
-its fields for a minute, since the composer previews on every change. If that read fails, the data
-is sent as mapped, and Epistola's own validation reports what it cannot render.
+- **A mapping** converts in `$richText`, while it is evaluated. Nothing converts mapped data later.
+- **What a person typed into the plugin's editors** is converted by `EditorRichText`, at the four
+  places that data leaves for Epistola: the composer's preview (`LetterComposerService.preview`),
+  the generation of a composed letter and of a retry (`EpistolaPlugin`, inside the submit so a
+  failure is recorded on the result variable like any other), and the retry form's preview, where
+  only the overrides it typed are converted (`PreviewService`). A preview and its letter go through
+  the same conversion, so they cannot differ.
+
+To know which fields are rich text, `EditorRichText` reads the template's contract and keeps its
+fields for a minute, since the composer previews on every change. If that read fails, the data is
+sent as typed, and Epistola's own validation reports what it cannot render.
 
 **Known limitation: the contract read is the template's current one.** Epistola renders the
 version deployed to the environment, and the contract read here is the template's latest. If a

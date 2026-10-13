@@ -23,6 +23,7 @@ import app.epistola.valtimo.domain.GenerationJobResult
 import app.epistola.valtimo.expression.ExpressionContext
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry
 import app.epistola.valtimo.mapping.JsonataMappingService
+import app.epistola.valtimo.richtext.EditorRichText
 import app.epistola.valtimo.service.EpistolaService
 import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner
 import app.epistola.valtimo.service.download.DocumentStorageStrategy
@@ -85,6 +86,8 @@ class GetCustomDataGenerationTest {
                 mock<DocumentService>(),
                 resultCollectorRunner,
                 EnumMap<DocumentStorageTarget, DocumentStorageStrategy>(DocumentStorageTarget::class.java),
+                // Mapped data only: nothing typed in an editor, so nothing to convert.
+                mock<EditorRichText>(),
             )
         ReflectionTestUtils.setField(plugin, "baseUrl", "https://api.epistola.app")
         ReflectionTestUtils.setField(plugin, "apiKey", "api-key")

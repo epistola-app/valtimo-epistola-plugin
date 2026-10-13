@@ -26,7 +26,8 @@ import app.epistola.valtimo.domain.TemplateField.FieldType;
 import app.epistola.valtimo.domain.TemplateField.RichTextKind;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.richtext.RichTextConverter;
-import app.epistola.valtimo.richtext.RichTextEpistolaService;
+import app.epistola.valtimo.domain.EpistolaProcessVariables;
+import app.epistola.valtimo.richtext.EditorRichText;
 import app.epistola.valtimo.richtext.RichTextFixtures;
 import app.epistola.valtimo.richtext.RichTextFormat;
 import app.epistola.valtimo.richtext.RichTextLosses;
@@ -52,15 +53,19 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * The generate action with rich text, through the conversion as it is wired: a mapping that yields
- * the HTML a case keeps reaches Epistola as a document, and a conversion that fails lands on the
- * process where its retry path can read it — naming the field, never the text.
+ * The generate actions with rich text (ADR 0008). What a person typed into the plugin's editors — a
+ * retry form's corrections, a composed letter — reaches Epistola as documents; what a mapping
+ * produced goes as mapped, because its author says the format with {@code $richText}. A conversion
+ * that fails lands on the process where its retry path can read it, naming the field, never the text.
  */
 class EpistolaPluginRichTextTest {
+
+    private static final String HTML = "<p>Jansen, BSN <b>123456782</b></p>";
 
     private EpistolaService client;
     private JsonataMappingService jsonataMappingService;
@@ -75,19 +80,22 @@ class EpistolaPluginRichTextTest {
                 "besluit", "Besluit", List.of(new TemplateField("toelichting", "toelichting", "richtext-block",
                         FieldType.SCALAR, true, null, List.of(), false, null, false,
                         new TemplateField.FieldHints(null, null, null, null, null, null, RichTextKind.BLOCK)))));
-        when(jsonataMappingService.evaluate(any()))
-                .thenReturn(Map.of("toelichting", "<p>Jansen, BSN <b>123456782</b></p>"));
+        when(jsonataMappingService.evaluate(any())).thenReturn(Map.of("toelichting", HTML));
         when(jsonataMappingService.evaluateScalar(any())).thenReturn("besluit.pdf");
+        when(client.submitGenerationJob(anyString(), anyString(), anyString(), anyString(), anyString(), any(),
+                any(), any(), any(), eq(FileFormat.PDF), anyString(), any(), any()))
+                .thenReturn(GenerationJobResult.builder().requestId("request-1").status("PENDING").build());
     }
 
     private EpistolaPlugin plugin(RichTextConverter converter) {
         EpistolaPlugin plugin = new EpistolaPlugin(
-                new RichTextEpistolaService(client, converter),
-                mock(ObjectMapper.class),
+                client,
+                new ObjectMapper(),
                 jsonataMappingService,
                 mock(DocumentService.class),
                 mock(EpistolaResultCollectorRunner.class),
-                new EnumMap<DocumentStorageTarget, DocumentStorageStrategy>(DocumentStorageTarget.class));
+                new EnumMap<DocumentStorageTarget, DocumentStorageStrategy>(DocumentStorageTarget.class),
+                new EditorRichText(client, converter));
         ReflectionTestUtils.setField(plugin, "baseUrl", "https://api.epistola.app");
         ReflectionTestUtils.setField(plugin, "apiKey", "api-key");
         ReflectionTestUtils.setField(plugin, "tenantId", "demo");
@@ -100,20 +108,51 @@ class EpistolaPluginRichTextTest {
                 "{\"toelichting\": $doc.toelichting}", "PDF", "besluit.pdf", null, "epistolaResult");
     }
 
-    @Test
+    private void retryWith(String editedDataJson) {
+        when(execution.getVariable(EpistolaProcessVariables.EDITED_DATA)).thenReturn(editedDataJson);
+    }
+
     @SuppressWarnings("unchecked")
-    void sendsTheCasesHtmlAsADocument() {
+    private Map<String, Object> submitted() {
         ArgumentCaptor<Map<String, Object>> data = ArgumentCaptor.forClass(Map.class);
-        when(client.submitGenerationJob(anyString(), anyString(), anyString(), anyString(), anyString(), any(),
-                any(), any(), data.capture(), eq(FileFormat.PDF), anyString(), any(), any()))
-                .thenReturn(GenerationJobResult.builder().requestId("request-1").status("PENDING").build());
+        verify(client).submitGenerationJob(anyString(), anyString(), anyString(), anyString(), anyString(), any(),
+                any(), any(), data.capture(), eq(FileFormat.PDF), anyString(), any(), any());
+        return data.getValue();
+    }
+
+    private static Map<String, Object> document() {
+        Map<String, Object> plain = Map.of("type", "text", "text", "Jansen, BSN ");
+        Map<String, Object> bold = Map.of("type", "text", "text", "123456782", "marks", List.of(Map.of("type", "strong")));
+        return Map.of("type", "doc", "content", List.of(Map.of("type", "paragraph", "content", List.of(plain, bold))));
+    }
+
+    @Test
+    void sendsMappedDataAsMapped_readingNoContract() {
+        generate(plugin(RichTextFixtures.converter("html")));
+
+        assertThat(submitted()).containsEntry("toelichting", HTML);
+        verify(client, never()).getTemplateDetails(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void convertsWhatARetryFormHadTyped() {
+        retryWith("{\"toelichting\": \"" + HTML + "\"}");
 
         generate(plugin(RichTextFixtures.converter("html")));
 
-        Map<String, Object> plain = Map.of("type", "text", "text", "Jansen, BSN ");
-        Map<String, Object> bold = Map.of("type", "text", "text", "123456782", "marks", List.of(Map.of("type", "strong")));
-        Map<String, Object> paragraph = Map.of("type", "paragraph", "content", List.of(plain, bold));
-        assertThat(data.getValue().get("toelichting")).isEqualTo(Map.of("type", "doc", "content", List.of(paragraph)));
+        assertThat(submitted()).containsEntry("toelichting", document());
+    }
+
+    @Test
+    void convertsAComposedLetter() {
+        when(execution.getVariable(EpistolaProcessVariables.COMPOSED_LETTER)).thenReturn(Map.of(
+                "catalogId", "catalog", "templateId", "besluit", "data", Map.of("toelichting", HTML)));
+
+        plugin(RichTextFixtures.converter("html")).generateComposedDocument(execution, null, null, null,
+                "epistolaResult");
+
+        assertThat(submitted()).containsEntry("toelichting", document());
+        verify(client, times(1)).getTemplateDetails(any(), any(), any(), eq("catalog"), eq("besluit"));
     }
 
     @Test
@@ -130,6 +169,7 @@ class EpistolaPluginRichTextTest {
                 throw new IllegalStateException("cannot parse " + value);
             }
         };
+        retryWith("{\"toelichting\": \"" + HTML + "\"}");
 
         assertThatThrownBy(() -> generate(plugin(new RichTextConverter(List.of(broken), "broken"))))
                 .isInstanceOf(RuntimeException.class);
