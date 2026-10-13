@@ -320,6 +320,7 @@ export class MappingBuilderComponent implements OnChanges {
       complex: templateField.complex,
       complexityReason: templateField.complexityReason,
       nullable: templateField.nullable,
+      richText: !!templateField.hints?.richText,
     };
   }
 }

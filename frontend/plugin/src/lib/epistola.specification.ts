@@ -170,6 +170,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       complexMappingField: 'Complex veld',
       complexMappingFieldHelp:
         'Koppel de volledige waarde met één JSONata-expressie. Gebruik Geavanceerd voor conditionele opbouw.',
+      richTextMappingHelp:
+        'Opgemaakte tekst: geef aan in welk formaat de zaak hem bewaart, bijvoorbeeld $richText($doc.toelichting, "html") (ook "markdown" of "plain"). Zonder wordt de tekst ongewijzigd verstuurd en weigert Epistola hem.',
       mappingSchemaPartial:
         'Dit schema bevat complexe velden. Deze worden als volledige waarden gekoppeld.',
       mappingSchemaUnsupported:
@@ -438,6 +440,8 @@ const epistolaPluginSpecification: PluginSpecification = {
       complexMappingField: 'Complex field',
       complexMappingFieldHelp:
         'Map the complete value with one JSONata expression. Use Advanced for conditional construction.',
+      richTextMappingHelp:
+        'Rich text: say which format the case keeps it in, for example $richText($doc.toelichting, "html") (or "markdown", "plain"). Without it the text is sent as it is, and Epistola refuses it.',
       mappingSchemaPartial:
         'This schema contains complex fields. They are mapped as complete values.',
       mappingSchemaUnsupported: 'This schema is too complex for the Simple mapper. Use Advanced.',

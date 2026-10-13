@@ -21,6 +21,7 @@ import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateField.FieldType;
 import app.epistola.valtimo.domain.TemplateField.RichTextKind;
 import app.epistola.valtimo.richtext.RichTextFixtures;
+import app.epistola.valtimo.richtext.RichTextValues;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -58,6 +59,9 @@ class FormioFormGeneratorRichTextTest {
         assertThat(component.get("tooltip").asText()).isEqualTo("Waarom");
         assertThat(component.at("/validate/required").asBoolean()).isTrue();
         assertThat(component.has("defaultValue")).isFalse();
+        // What the frontend tags the typed value with: the editor's format and the field's kind.
+        assertThat(component.at("/epistolaRichText/format").asText()).isEqualTo("html");
+        assertThat(component.at("/epistolaRichText/kind").asText()).isEqualTo("BLOCK");
     }
 
     @Test
@@ -67,6 +71,8 @@ class FormioFormGeneratorRichTextTest {
         assertThat(component.get("type").asText()).isEqualTo("textarea");
         assertThat(component.has("editor")).isFalse();
         assertThat(component.has("validate")).isFalse();
+        assertThat(component.at("/epistolaRichText/format").asText()).isEqualTo("plain");
+        assertThat(component.at("/epistolaRichText/kind").asText()).isEqualTo("INLINE");
     }
 
     @Test
@@ -100,8 +106,9 @@ class FormioFormGeneratorRichTextTest {
     }
 
     /**
-     * The retry form's round trip: what was rendered is shown, taken back unchanged, and must
-     * convert to the same document — or a retry would lose the letter's formatting.
+     * The retry form's round trip: what was rendered is shown, taken back unchanged and tagged the
+     * way the frontend tags it — from the component's own format and kind — and must convert to the
+     * same document, or a retry would lose the letter's formatting.
      */
     @Test
     void aRenderedDocumentSurvivesTheRetryFormsRoundTrip() {
@@ -119,9 +126,24 @@ class FormioFormGeneratorRichTextTest {
 
         JsonNode component = component(RichTextFixtures.generator(objectMapper, "html"), field,
                 Map.of("toelichting", rendered));
-        Map<String, Object> resubmitted = Map.of("toelichting", component.get("defaultValue").asText());
+        Map<String, Object> resubmitted = Map.of("toelichting", Map.of(RichTextValues.TAG, Map.of(
+                "format", component.at("/epistolaRichText/format").asText(),
+                "kind", component.at("/epistolaRichText/kind").asText(),
+                "value", component.get("defaultValue").asText())));
 
-        assertThat(converter.normalize(resubmitted, List.of(field)).get("toelichting")).isEqualTo(rendered);
+        assertThat(new RichTextValues(converter).toDocuments(resubmitted, "besluit", RichTextValues.Purpose.PREVIEW)
+                .get("toelichting")).isEqualTo(rendered);
+    }
+
+    @Test
+    void showsWhatAnEditorTaggedBeforeAsItWasTyped() {
+        Map<String, Object> tagged = Map.of(RichTextValues.TAG,
+                Map.of("format", "html", "kind", "BLOCK", "value", "<p>eerder getypt</p>"));
+
+        JsonNode component = component(RichTextFixtures.generator(objectMapper, "html"), richText(false, RichTextKind.BLOCK),
+                Map.of("toelichting", tagged));
+
+        assertThat(component.get("defaultValue").asText()).isEqualTo("<p>eerder getypt</p>");
     }
 
     @Test

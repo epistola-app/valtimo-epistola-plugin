@@ -22,6 +22,7 @@ import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionContext;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -29,10 +30,12 @@ import java.util.Map;
  * format — {@code plain}, {@code html}, {@code markdown}, {@code prosemirror}, or one an
  * installation registers — and hand Epistola a document.
  *
- * <p>Needed only where a field's format differs from the configured default; a string mapped
- * straight onto a rich-text field is read in the default format without it. The result is a block
- * document, and a field that takes inline rich text narrows it to one paragraph when the data is
- * sent.
+ * <p>How a mapping fills a rich-text field (ADR 0008): only its author knows the case's format, so
+ * the author says it here. A string mapped straight onto a rich-text field is sent as it is, and
+ * Epistola refuses it. Without a format, the configured default is read.
+ *
+ * <p>The result is a block document. A field that takes inline rich text accepts it while it holds
+ * one paragraph; {@code $richText(value, format, "inline")} narrows anything longer to one.
  */
 @Slf4j
 public class RichTextFunction implements EpistolaExpressionFunction {
@@ -52,7 +55,8 @@ public class RichTextFunction implements EpistolaExpressionFunction {
     public String description() {
         return "Read a value as rich text: $richText(value, format), where format is one of "
                 + converter.formatIds() + "; without a format, the default ('"
-                + converter.defaultFormatId() + "')";
+                + converter.defaultFormatId() + "'). $richText(value, format, \"inline\") narrows it to"
+                + " the one paragraph an inline field takes";
     }
 
     /** The value in the default format. */
@@ -63,16 +67,24 @@ public class RichTextFunction implements EpistolaExpressionFunction {
     /**
      * The value in the named format; nothing for nothing, so an absent field stays absent.
      *
-     * <p>One value, one document. A list of rich text is mapped item by item the JSONata way —
-     * {@code $doc.alineas.$richText($, "html")} — and a list field takes care of the one-item list
-     * JSONata collapses into a single value (see {@link RichTextConverter#normalize}).
+     * <p>One value, one document. A list of rich text is mapped item by item the JSONata way, inside
+     * an array constructor — {@code [$doc.alineas.$richText($, "html")]} — because JSONata collapses
+     * a one-item result into its item, and a list field refuses a single value.
      */
     public Map<String, Object> execute(ExpressionContext ctx, Object value, String format) {
+        return execute(ctx, value, format, null);
+    }
+
+    /**
+     * The same, as a document of the named kind: {@code "inline"} narrows it to the one paragraph an
+     * inline field takes, {@code "block"} (or nothing) keeps paragraphs and lists.
+     */
+    public Map<String, Object> execute(ExpressionContext ctx, Object value, String format, String kind) {
         if (value == null || (value instanceof String text && text.isBlank())) {
             return null;
         }
         RichTextLosses losses = new RichTextLosses();
-        Map<String, Object> document = converter.toDocument(value, format, RichTextKind.BLOCK, losses);
+        Map<String, Object> document = converter.toDocument(value, format, kindOf(kind), losses);
         if (ProseMirrorSanitizer.isBlank(document)) {
             // Markup around nothing is nothing, so a required field reports it missing.
             return null;
@@ -88,5 +100,16 @@ public class RichTextFunction implements EpistolaExpressionFunction {
             }
         }
         return document;
+    }
+
+    private static RichTextKind kindOf(String kind) {
+        if (kind == null || kind.isBlank()) {
+            return RichTextKind.BLOCK;
+        }
+        try {
+            return RichTextKind.valueOf(kind.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("$richText takes the kind 'inline' or 'block', not '" + kind + "'");
+        }
     }
 }

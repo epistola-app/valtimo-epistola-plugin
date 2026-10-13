@@ -18,33 +18,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Four formats ship** — `plain`, `html` (what Valtimo's Form.io WYSIWYG writes, Quill or
     CKEditor), `markdown` and `prosemirror` — and an installation adds its own by declaring a
     `RichTextFormat` bean.
-  - **The format is said, never guessed.** `epistola.rich-text.default-format` (default `html`,
-    what Valtimo's WYSIWYG text areas write) applies to a string mapped straight onto a rich-text
-    field; a field in another format names it in the mapping, e.g. `$richText($doc.x, "plain")`
-    for a plain text area. Changing the default reinterprets stored text: treat it as a schema
-    change.
-  - **A ProseMirror document is now narrowed too.** A document mapped straight onto a rich-text
-    field used to be sent as it was; it now passes the same check as converted text, so nodes and
-    marks outside Epistola's schema are dropped instead of failing the letter.
+  - **The format is said, never guessed.** A mapping names the case's format:
+    `$richText($doc.x, "html")`, or `"plain"` for a plain text area. A string mapped onto a
+    rich-text field without it is sent as it is, and Epistola refuses it; the mapping builder marks
+    such a field. `epistola.rich-text.default-format` (default `html`, what Valtimo's WYSIWYG text
+    areas write) is what the plugin's own editors write and what `$richText(value)` reads without a
+    format. Changing it changes what the editors write: treat it as a schema change.
+  - **A ProseMirror document is narrowed too**, through `$richText` or from an editor, so nodes
+    and marks outside Epistola's schema are dropped instead of failing the letter.
   - **The output is always valid.** Whatever a format produces is narrowed to what Epistola's
     schema allows — a heading becomes a paragraph, an unknown mark or a `javascript:` link is
-    dropped — and shaped to the field: an inline field gets one paragraph. Every converter is tested
-    against Epistola's own schemas.
-  - **Conversion happens where data leaves for Epistola**, in a decorator around the client, so
-    generation, preview, the composer and the retry form all send the same document. The
-    template's fields are read from its current contract and kept for a minute; a version not yet
-    deployed that changes a field's type is a known limitation (`docs/rich-text.md`). The template's contract is read to find the
-    rich-text fields; if that read fails, the data goes as mapped and Epistola's own validation
-    speaks.
+    dropped — and shaped to the field: what an editor wrote for an inline field gets one paragraph,
+    and a mapping asks for that with `$richText($doc.x, "html", "inline")`. A list is mapped inside
+    `[…]`, `[$doc.alineas.$richText($, "html")]`, so a one-item case list stays a list. Every
+    converter is tested against Epistola's own schemas.
+  - **A value says its own format.** A mapping converts in `$richText`. What a person types into
+    the composer or the retry form is submitted tagged with the editor's format,
+    `{"$richText": {"format": "html", "kind": "BLOCK", "value": "…"}}`, and the Epistola client
+    turns every tag into a document as it builds the generate and preview request, so the preview
+    and the letter convert the same way and no template contract is read to do it. A composer's
+    baseline mapping is a mapping like any other: a rich-text field it fills needs `$richText`. The
+    composer's stored letter is `schemaVersion` 2 for this; an older plugin refuses it rather than
+    send the tag to Epistola.
   - **Any form can supply it**, not only the composer: a Valtimo form's WYSIWYG text area writes
-    HTML to the case, and the mapping reads it with `$richText($doc.x, "html")` (or by the
-    default format). `docs/rich-text.md` gives the editor configuration that offers only what
+    HTML to the case, and the mapping reads it with `$richText($doc.x, "html")`.
+    `docs/rich-text.md` gives the editor configuration that offers only what
     Epistola renders.
   - **The composer and retry form ask for a rich-text field** with the default format's editor:
     Form.io's WYSIWYG text area (CKEditor, limited to what Epistola renders: its toolbar, and no
     headings, tables or images by paste or autoformat either) for `html`, a
-    plain text area otherwise. A list of rich text gets one editor per item. What the employee types stays in the case's format, so write-back does not change
-    a field's format.
+    plain text area otherwise. A list of rich text gets one editor per item. Write-back gives the
+    case what the employee typed, not the tag around it, so a field keeps its format.
 
   - **What does not survive is reported.** A generated letter logs a warning naming the field, the
     template and the kinds lost (`heading ×1, table ×1`), never the text; a preview logs it at

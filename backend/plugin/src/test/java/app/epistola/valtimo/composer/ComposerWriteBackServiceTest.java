@@ -31,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import app.epistola.valtimo.mapping.JsonataMappingService;
+import app.epistola.valtimo.richtext.RichTextValues;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import com.ritense.document.domain.impl.JsonSchemaDocument;
@@ -240,6 +241,28 @@ class ComposerWriteBackServiceTest {
         assertThat(written())
                 .containsEntry("doc:/uit-de-brief", "uit de mapping")
                 .containsEntry("doc:/uit-de-hand", "getypt");
+    }
+
+    @Test
+    @DisplayName("rich text reaches the case as it was typed, not wrapped in the editor's tag")
+    void writesRichTextAsTyped() {
+        // The case keeps the editor's HTML, which its own forms can show; the tag only tells the
+        // way out to Epistola which format that is (ADR 0008).
+        declaring(Map.of(
+                "doc:/besluit/toelichting", "$inputs.besluit.motivation",
+                "doc:/besluit/alineas", "$data.alineas"));
+        Map<String, Object> typed = Map.of(RichTextValues.TAG,
+                Map.of("format", "html", "kind", "BLOCK", "value", "<p>Het bezwaar is <b>gegrond</b></p>"));
+        Map<String, Object> item = Map.of(RichTextValues.TAG,
+                Map.of("format", "html", "kind", "BLOCK", "value", "<p>Een</p>"));
+
+        service.apply(DOCUMENT_ID, letter(
+                Map.of("besluit", Map.of("motivation", typed), "alineas", List.of(item)),
+                Map.of("besluit", Map.of("motivation", typed))));
+
+        assertThat(written())
+                .containsEntry("doc:/besluit/toelichting", "<p>Het bezwaar is <b>gegrond</b></p>")
+                .containsEntry("doc:/besluit/alineas", List.of("<p>Een</p>"));
     }
 
     @Test

@@ -155,6 +155,9 @@ class LetterComposerE2ETest {
         val motivation = prepared.form().path("components").single { it.path("key").asText() == "motivation" }
         assertThat(motivation.path("type").asText()).isEqualTo("textarea")
         assertThat(motivation.path("editor").asText()).isEqualTo("ckeditor")
+        // What the composer tags the typed value with, so the format is never guessed (ADR 0008).
+        assertThat(motivation.path("epistolaRichText").path("format").asText()).isEqualTo("html")
+        assertThat(motivation.path("epistolaRichText").path("kind").asText()).isEqualTo("BLOCK")
     }
 
     @Test
@@ -167,7 +170,7 @@ class LetterComposerE2ETest {
         val data = prepared.data().toMutableMap()
         data["decisionType"] = "gegrond"
         data["decision"] = "Het bezwaar is gegrond verklaard."
-        data["motivation"] = "De dakkapel voldoet aan de welstandscriteria."
+        data["motivation"] = typedMotivation()
         valueResolverService.handleValues(
             context.processInstanceId(),
             null,
@@ -204,7 +207,9 @@ class LetterComposerE2ETest {
         assertThat(dataCaptor.firstValue)
             .describedAs("generation renders exactly what was composed, including the typed input")
             .containsEntry("decisionType", "gegrond")
-            .containsEntry("motivation", "De dakkapel voldoet aan de welstandscriteria.")
+            // Still tagged: the client turns it into a document as it builds the request, and the
+            // client is what this test mocks (EpistolaServiceImplRichTextTest covers that step).
+            .containsEntry("motivation", typedMotivation())
         assertThat(dataCaptor.firstValue["objector"] as Map<String, Any>).containsEntry("lastName", "Jansen")
     }
 
@@ -230,7 +235,7 @@ class LetterComposerE2ETest {
             mapOf(
                 "decisionType" to "gegrond",
                 "decision" to "Het bezwaar is gegrond verklaard.",
-                "motivation" to "De dakkapel voldoet aan de welstandscriteria.",
+                "motivation" to typedMotivation(),
             )
         val data = prepared.data().toMutableMap().apply { putAll(typed) }
         valueResolverService.handleValues(
@@ -291,8 +296,20 @@ class LetterComposerE2ETest {
             .describedAs("a doc: destination reaches the case document")
             .isEqualTo("gegrond")
         assertThat(content.at("/besluit/toelichting").asText())
-            .isEqualTo("De dakkapel voldoet aan de welstandscriteria.")
+            .describedAs("rich text reaches the case as it was typed, without the editor's tag")
+            .isEqualTo("<p>De dakkapel voldoet aan de welstandscriteria.</p>")
     }
+
+    /** What the composer stores for the CKEditor field: the HTML, tagged with the editor's format. */
+    private fun typedMotivation(): Map<String, Any> =
+        mapOf(
+            "\$richText" to
+                mapOf(
+                    "format" to "html",
+                    "kind" to "BLOCK",
+                    "value" to "<p>De dakkapel voldoet aan de welstandscriteria.</p>",
+                ),
+        )
 
     private fun startCaseAndOpenChooseLetter(): ComposerContext {
         val document =

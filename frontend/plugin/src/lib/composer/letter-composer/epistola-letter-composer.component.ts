@@ -46,6 +46,7 @@ import { readOpenDossierId } from './open-dossier';
 import { isRendered, PreviewRenderer } from './preview-renderer';
 import { isSectioned, sectionForm } from './composer-sections';
 import { formioLanguage, readerLocale, withLocaleDates } from '../../utils/formio-locale';
+import { tagRichText } from '../../utils/rich-text-values';
 import { withValidationMessages, type ValidationMessages } from './composer-messages';
 import {
   describeFindings,
@@ -436,7 +437,8 @@ export class EpistolaLetterComposerComponent
     if (!event?.data || !this.selectedTemplateId) {
       return;
     }
-    const inputs = pruneEmpty(event.data);
+    // What an editor typed says which format it is in, so nothing has to guess later (ADR 0008).
+    const inputs = tagRichText(this.formDefinition, pruneEmpty(event.data));
     const data = mergeComposerData(this.mappedData, inputs);
     this.emit({
       schemaVersion: COMPOSER_SCHEMA_VERSION,

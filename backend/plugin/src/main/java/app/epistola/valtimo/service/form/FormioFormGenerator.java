@@ -20,6 +20,7 @@ package app.epistola.valtimo.service.form;
 import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.richtext.RichTextConverter;
 import app.epistola.valtimo.richtext.RichTextEditors;
+import app.epistola.valtimo.richtext.RichTextValues;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -57,6 +58,12 @@ public class FormioFormGenerator {
      */
     private static final String DATE_DISPLAY_FORMAT = "dd-MM-yyyy";
     private static final String DATE_TIME_DISPLAY_FORMAT = "dd-MM-yyyy HH:mm";
+
+    /**
+     * The property on a rich-text component naming the format its editor writes and the field's
+     * kind. Read by the frontend's {@code tagRichText}; keep the two in step.
+     */
+    public static final String RICH_TEXT_PROPERTY = "epistolaRichText";
 
     private final ObjectMapper objectMapper;
     private final RichTextConverter richText;
@@ -165,6 +172,11 @@ public class FormioFormGenerator {
      * keeps, and the conversion to Epistola's document happens on the way out. A value that is
      * already a document — what was rendered, shown again on a retry form — is written back into
      * that format so the editor shows text rather than JSON.
+     *
+     * <p>The component says which format its editor writes and which kind the field takes
+     * ({@value #RICH_TEXT_PROPERTY}). The plugin's frontend reads that to submit what was typed as a
+     * tagged value — see {@link RichTextValues} — so the format is stated by the editor that wrote
+     * it rather than worked out afterwards.
      */
     private ObjectNode buildRichTextComponent(
             TemplateField field, Object value, TemplateField.RichTextKind kind) {
@@ -173,10 +185,14 @@ public class FormioFormGenerator {
         component.put("key", field.path());
         component.put("label", labelOf(field));
         component.put("input", true);
+        ObjectNode richTextProperty = component.putObject(RICH_TEXT_PROPERTY);
+        richTextProperty.put("format", richText.defaultFormatId());
+        richTextProperty.put("kind", kind.name());
         if (field.description() != null && !field.description().isBlank()) {
             component.put("tooltip", field.description());
         }
-        Object editorValue = richText.toEditorValue(value, kind);
+        // A value an editor tagged before — a retry form's earlier correction — is shown as typed.
+        Object editorValue = richText.toEditorValue(RichTextValues.unwrap(value), kind);
         if (editorValue != null) {
             component.set("defaultValue", objectMapper.valueToTree(editorValue));
         }

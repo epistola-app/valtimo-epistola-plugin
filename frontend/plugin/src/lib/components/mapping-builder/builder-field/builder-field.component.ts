@@ -22,6 +22,7 @@ import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { BuilderField } from '../../../utils/jsonata-converter';
 import { SmartExpressionEditorComponent } from '../../smart-expression-editor/smart-expression-editor.component';
 import { ExpressionFunctionInfo } from '../../../models';
+import { needsRichTextHint } from '../../../utils/rich-text-mapping';
 
 @Component({
   selector: 'epistola-builder-field',
@@ -89,6 +90,13 @@ import { ExpressionFunctionInfo } from '../../../models';
           [attr.data-testid]="'epistola-mapping-field-complex-help-' + field.name"
         >
           {{ 'complexMappingFieldHelp' | pluginTranslate: 'epistola' | async }}
+        </div>
+        <div
+          *ngIf="needsRichText"
+          class="builder-field__rich-text-help"
+          [attr.data-testid]="'epistola-mapping-field-rich-text-help-' + field.name"
+        >
+          {{ 'richTextMappingHelp' | pluginTranslate: 'epistola' | async }}
         </div>
       </div>
 
@@ -175,6 +183,11 @@ import { ExpressionFunctionInfo } from '../../../models';
         font-size: 0.75rem;
         line-height: 1.35;
       }
+      .builder-field__rich-text-help {
+        color: #8e6a00;
+        font-size: 0.75rem;
+        line-height: 1.35;
+      }
       .builder-field__children {
         grid-column: 1 / -1;
         border-left: 2px solid #e0e0e0;
@@ -212,6 +225,10 @@ export class BuilderFieldComponent {
   @Output() valueChange = new EventEmitter<{ path: number[]; value: string }>();
   @Output() validityChange = new EventEmitter<{ path: number[]; valid: boolean }>();
   @Output() collapseToggle = new EventEmitter<number[]>();
+
+  get needsRichText(): boolean {
+    return needsRichTextHint(this.field);
+  }
 
   isChildCollapsed(childIndex: number): boolean {
     return this.collapsedPaths.has(this.path.concat(childIndex).join('.'));

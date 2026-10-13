@@ -85,6 +85,7 @@ import { registerEpistolaDocumentPreviewComponent } from './epistola-document-pr
 import { registerEpistolaDocumentComponent } from './epistola-document/epistola-document.formio';
 import { registerEpistolaRetryFormComponent } from './epistola-retry-form/epistola-retry-form.formio';
 import { registerEpistolaLetterComposerComponent } from '../composer/letter-composer/epistola-letter-composer.formio';
+import { COMPOSER_SCHEMA_VERSION } from '../composer/composer-schema';
 import {
   PREFILLED_TASK_ID_DATA_KEY,
   PREFILLED_TASK_ID_SOURCE_KEY,
@@ -369,7 +370,7 @@ describe('letter composer opts out of Valtimo prefill', () => {
       paletteDropPayloadFor('epistola-letter-composer'),
     );
 
-    expect(schema.epistola?.schemaVersion).toBe(1);
+    expect(schema.epistola?.schemaVersion).toBe(COMPOSER_SCHEMA_VERSION);
   });
 
   it('keeps the version a stored form already declares rather than restamping it', () => {
@@ -399,7 +400,7 @@ describe('letter composer opts out of Valtimo prefill', () => {
       },
     });
 
-    expect(schema.epistola?.schemaVersion).toBe(1);
+    expect(schema.epistola?.schemaVersion).toBe(COMPOSER_SCHEMA_VERSION);
     expect(schema.epistola?.letterSet?.templates).toHaveLength(1);
     expect(schema.epistola?.dataMapping).toBe('{ "naam": $doc.naam }');
     expect(schema.epistola?.writeBack).toEqual({ 'doc:/besluit/type': '$data.type' });

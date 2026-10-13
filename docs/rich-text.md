@@ -20,24 +20,35 @@ way, and not inside Epistola, is [ADR 0008](adr/0008-rich-text-inputs.md).
 ## Which format a value is in
 
 The plugin never guesses this from the text. `2 * 3 * 4` is arithmetic in one installation and
-emphasis in another. It decides in this order:
+emphasis in another. Whoever knows the format says it:
 
-1. **A document is a document.** An object shaped `{"type": "doc", …}` is used as it is, after
-   being narrowed to what the schema allows.
-2. **The mapping says so.** `$richText(value, "markdown")` reads `value` in the named format.
-   `$richText(value)` uses the default.
-3. **Otherwise the default applies.** A string mapped straight onto a rich-text field is read in
-   `epistola.rich-text.default-format`.
+- **A data mapping names it.** The author knows what the case keeps, so the mapping says so:
+  `$richText($doc.x, "html")`. `$richText(value)` without a format uses the default. A string
+  mapped onto a rich-text field _without_ `$richText` is sent as it is, and Epistola refuses it
+  ("string found, object expected"). The mapping builder warns about such a field.
+- **The plugin's own editors say it.** The letter composer and the retry form submit what was
+  typed into a rich-text editor as a _tagged value_ that names the editor's format,
+  `{"$richText": {"format": "html", "kind": "BLOCK", "value": "<p>…</p>"}}`, and the plugin
+  converts it when the data is sent. See [Where it happens](#where-it-happens). A composer's
+  baseline mapping is a mapping like any other: a rich-text field it fills needs `$richText`.
 
-A field that takes a **list** of rich text is converted item by item, and empty items are left out.
-`$richText` reads one value; to name the format of a list, map over it the JSONata way:
+A value that already is a document, an object shaped `{"type": "doc", …}`, needs no format. Through
+`$richText` it is narrowed to what the schema allows; mapped as it is, it goes as it is, and
+Epistola validates it.
+
+`$richText` gives a block document. An **inline** field accepts it while it holds one paragraph; to
+narrow anything longer to one, name the kind: `$richText($doc.aanhef, "html", "inline")`.
+
+A field that takes a **list** of rich text is mapped item by item, the JSONata way, inside an array
+constructor:
 
 ```jsonata
-{ "alineas": $doc.alineas.$richText($, "html") }
+{ "alineas": [$doc.alineas.$richText($, "html")] }
 ```
 
-JSONata hands over a lone value instead of a list when the case list has exactly one item. A list
-field takes such a value as a list of one, so that needs no `[…]` around the expression.
+The `[…]` matters: JSONata hands over a lone value instead of a list when the case list has
+exactly one item, and a list field refuses a single value. An editor that takes a list tags each
+item, and an item left empty is left out.
 
 ```yaml
 epistola:
@@ -45,14 +56,17 @@ epistola:
     default-format: html # html (default) | plain | markdown | prosemirror | your own
 ```
 
-`html` is the default: it is what Valtimo's WYSIWYG text areas write, and what the editors the
-plugin generates write. A value from an ordinary **plain text area** needs naming —
-`$richText($doc.x, "plain")` — because read as HTML its line breaks collapse into spaces and a
-`<` followed by a letter starts a tag.
+The default decides two things: which editor the composer and the retry form show (and so the
+format of what they write back), and how `$richText(value)` without a format reads `value`. `html`
+is the default because it is what Valtimo's WYSIWYG text areas write. A value from an ordinary
+**plain text area** is named, `$richText($doc.x, "plain")`, because read as HTML its line breaks
+collapse into spaces and a `<` followed by a letter starts a tag.
 
-**The format is configuration.** Changing the default reinterprets text already stored on cases
-and on composed letters waiting to be generated, so treat it like a schema change. It is meant to
-become selectable per form or component later; until then it is one setting for the installation.
+**The format is configuration.** Changing the default changes what the editors write and what
+`$richText(value)` reads, so treat it like a schema change. What an editor already submitted keeps
+the format it was typed in: the tag says it. It is
+meant to become selectable per form or component later; until then it is one setting for the
+installation.
 
 ## The formats
 
@@ -84,7 +98,8 @@ generate-document mapping, or the preview component, then hands that to the rich
 { "toelichting": $richText($doc.besluit.toelichting, "html") }
 ```
 
-With the default format (`html`) the plain mapping `$doc.besluit.toelichting` does the same.
+`$richText($doc.besluit.toelichting)` does the same with the default format (`html`). A bare
+`$doc.besluit.toelichting` does not: it sends the HTML as text, which Epistola refuses.
 
 What the form builder offers by default is more than Epistola renders: headings, tables, images,
 media. The conversion drops those, keeping the text. To offer only what survives, give the text
@@ -205,8 +220,14 @@ The editor itself is Form.io's, not the plugin's. Form.io loads it from its CDN 
 exactly as it does for any WYSIWYG text area an author builds in Valtimo, and neither the plugin nor
 Valtimo overrides `Formio.cdn`. An installation where WYSIWYG fields already work needs nothing more.
 
+Each generated editor carries the format it writes and the field's kind (`epistolaRichText` on the
+Form.io component). The composer and the retry form read that to tag what was typed, and the
+composer's write-back gives the case the typed text itself, not the tag, so the case's own forms
+can show it.
+
 A value that is already a document, such as a retry form prefilled with what was rendered, is
-written back out in the default format, so the editor shows text rather than JSON.
+written back out in the default format, so the editor shows text rather than JSON. A value tagged
+earlier, a retry form's previous correction, is shown as it was typed.
 
 ## When something is lost
 
@@ -234,21 +255,17 @@ regardless.
 
 ## Where it happens
 
-Conversion runs in `RichTextEpistolaService`, a decorator around the Epistola client
-(`EpistolaServiceImpl`), just before a generation or preview request is sent. Every path goes
-through it: the generate action, the preview component, the composer and the retry form. The
-preview and the letter therefore cannot differ, and the client itself stays a client.
+- **A mapping** converts in `$richText`, while it is evaluated. Nothing converts mapped data later.
+- **What a person typed into the plugin's editors** is tagged with its format in the browser
+  (`tagRichText`), and the Epistola client turns every tag into a document as it builds the
+  generate and preview requests (`RichTextValues`, called from `EpistolaServiceImpl`). Data
+  without tags passes unchanged. Every path to Epistola goes through those two requests, so a
+  preview and its letter convert the same way, and a new path needs nothing extra.
 
-To know which fields are rich text, the decorator reads the template's contract first and keeps
-its fields for a minute, since the composer previews on every change. If that read fails, the data
-is sent as mapped, and Epistola's own validation reports what it cannot render.
-
-**Known limitation: the contract read is the template's current one.** Epistola renders the
-version deployed to the environment, and the contract read here is the template's latest. If a
-newer, not yet deployed version makes a field rich text (or stops doing so), the conversion follows
-the newer contract and Epistola refuses the letter. The composer and the mapping builder read the
-contract the same way. Reading the field types of the rendered version is the fix, once the
-contract offers it per environment.
+Converting a tag needs nothing but the tag: no template contract is read, and no Epistola
+connection details are needed for it. A tag whose format the installation does not know, or whose
+format fails on the value, stops the request with a message naming the field and the format, never
+the text: beside the preview in the composer, on the result variable for a generate task.
 
 ## Adding a format
 

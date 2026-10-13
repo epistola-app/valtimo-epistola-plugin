@@ -30,6 +30,7 @@ import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
 import app.epistola.valtimo.logging.Failures;
+import app.epistola.valtimo.richtext.RichTextValues;
 import app.epistola.valtimo.schema.JsonSchemaMappingAnalyzer;
 import app.epistola.client.api.AttributesApi;
 import app.epistola.client.api.CatalogsApi;
@@ -86,13 +87,22 @@ public class EpistolaServiceImpl implements EpistolaService {
     /** Retry attempts (beyond the first try) for idempotent reads on a transient failure. */
     private final int maxReadRetries;
 
+    /** Turns the tagged rich text the plugin's editors submit into documents (ADR 0008). */
+    private final RichTextValues richTextValues;
+
     public EpistolaServiceImpl(EpistolaApiClientFactory apiClientFactory) {
         this(apiClientFactory, 2);
     }
 
     public EpistolaServiceImpl(EpistolaApiClientFactory apiClientFactory, int maxReadRetries) {
+        this(apiClientFactory, maxReadRetries, RichTextValues.withShippedFormats());
+    }
+
+    public EpistolaServiceImpl(
+            EpistolaApiClientFactory apiClientFactory, int maxReadRetries, RichTextValues richTextValues) {
         this.apiClientFactory = apiClientFactory;
         this.maxReadRetries = maxReadRetries;
+        this.richTextValues = richTextValues;
     }
 
     /**
@@ -329,6 +339,10 @@ public class EpistolaServiceImpl implements EpistolaService {
         // Never the data itself: it is a letter's contents — names, identifiers, addresses, the
         // text of a decision. The keys say what was sent, which is what a log is for here.
         log.debug("Template data keys: {}", data == null ? "none" : data.keySet());
+        // Outside the try: a value its own format cannot read is the caller's to report, with the
+        // field it names, not an API failure. The message names the field, never the text.
+        Map<String, Object> documents =
+                richTextValues.toDocuments(data, templateId, RichTextValues.Purpose.GENERATION);
 
         try {
             GenerationApi generationApi = apiClientFactory.createGenerationApi(baseUrl, apiKey);
@@ -339,7 +353,7 @@ public class EpistolaServiceImpl implements EpistolaService {
             GenerateDocumentRequest request = new GenerateDocumentRequest(
                     catalogId,
                     templateId,
-                    data,
+                    documents,
                     variantId,          // nullable - omit when using attribute-based selection
                     variantAttributes,  // nullable - for attribute-based variant selection
                     null,               // versionId - not used when environmentId is specified
@@ -484,11 +498,13 @@ public class EpistolaServiceImpl implements EpistolaService {
             Map<String, Object> data
     ) {
         log.debug("Previewing document for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
+        Map<String, Object> documents =
+                richTextValues.toDocuments(data, templateId, RichTextValues.Purpose.PREVIEW);
         try {
             var request = new PreviewDocumentRequest(
                     catalogId,
                     templateId,
-                    data,
+                    documents,
                     variantId,
                     null,           // attributes — the plugin selects a variant explicitly or by default
                     null,           // versionId — resolved from environmentId, or latest published

@@ -163,6 +163,37 @@ describe('EpistolaLetterComposerComponent', () => {
     });
   });
 
+  it('tags what was typed into a rich-text editor with its format, in the letter and the preview', () => {
+    const { component, service } = createComponent({
+      data: { naam: 'Jansen' },
+      form: {
+        display: 'form',
+        components: [
+          {
+            type: 'textarea',
+            editor: 'ckeditor',
+            key: 'motivatie',
+            epistolaRichText: { format: 'html', kind: 'BLOCK' },
+          },
+        ],
+      },
+    });
+    component.onTemplateSelected('besluit');
+    service.composerPreviewToBlob.mockClear();
+
+    component.onInputsChanged({ data: { motivatie: '<p>Omdat <b>dit</b></p>' } });
+    jest.advanceTimersByTime(1000);
+
+    const motivatie = {
+      $richText: { format: 'html', kind: 'BLOCK', value: '<p>Omdat <b>dit</b></p>' },
+    };
+    expect(component.value?.inputs).toEqual({ motivatie });
+    expect(component.value?.data).toEqual({ naam: 'Jansen', motivatie });
+    expect(service.composerPreviewToBlob).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { naam: 'Jansen', motivatie } }),
+    );
+  });
+
   it('previews what was typed, debounced', () => {
     const { component, service } = createComponent();
     component.onTemplateSelected('besluit');

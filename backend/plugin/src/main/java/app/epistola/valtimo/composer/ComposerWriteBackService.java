@@ -20,6 +20,7 @@ package app.epistola.valtimo.composer;
 import app.epistola.valtimo.logging.Failures;
 import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
+import app.epistola.valtimo.richtext.RichTextValues;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.document.domain.impl.JsonSchemaDocumentId;
 import com.ritense.document.service.DocumentService;
@@ -550,10 +551,13 @@ public class ComposerWriteBackService {
                         // no $form alias for $inputs: a form flow's `$form` already means one
                         // step's submission, and these are the composer's own generated fields
                         // rather than the Valtimo form around them.
+                        //
+                        // Rich text is bound as it was typed (ADR 0008): the case keeps the
+                        // editor's HTML, which its own forms can show, not the tag around it.
                         .extraBindings(Map.of(
-                                "data", letter.data(),
-                                "letter", letter.data(),
-                                "inputs", letter.inputs()))
+                                "data", RichTextValues.unwrapAll(letter.data()),
+                                "letter", RichTextValues.unwrapAll(letter.data()),
+                                "inputs", RichTextValues.unwrapAll(letter.inputs())))
                         .build());
                 if (result.containsKey("value")) {
                     resolved.put(destination, result.get("value"));

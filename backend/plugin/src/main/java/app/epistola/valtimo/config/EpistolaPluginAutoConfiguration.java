@@ -53,7 +53,7 @@ import app.epistola.valtimo.richtext.RichTextConverter;
 import app.epistola.valtimo.richtext.RichTextFormat;
 import app.epistola.valtimo.richtext.RichTextEditor;
 import app.epistola.valtimo.richtext.RichTextEditors;
-import app.epistola.valtimo.richtext.RichTextEpistolaService;
+import app.epistola.valtimo.richtext.RichTextValues;
 import app.epistola.valtimo.richtext.RichTextFunction;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
@@ -158,13 +158,9 @@ public class EpistolaPluginAutoConfiguration {
     public EpistolaService epistolaService(
             EpistolaApiClientFactory apiClientFactory,
             EpistolaProperties properties,
-            RichTextConverter richTextConverter
+            RichTextValues richTextValues
     ) {
-        // The client, with rich-text conversion around it (ADR 0008): every letter and preview
-        // reaches Epistola through this bean, so converting here covers every caller.
-        return new RichTextEpistolaService(
-                new EpistolaServiceImpl(apiClientFactory, properties.getClient().getMaxReadRetries()),
-                richTextConverter);
+        return new EpistolaServiceImpl(apiClientFactory, properties.getClient().getMaxReadRetries(), richTextValues);
     }
 
     // Rich text (ADR 0008): one bean per format, so an installation adds its own format by
@@ -209,6 +205,13 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(RichTextEditors.class)
     public RichTextEditors richTextEditors(List<RichTextEditor> editors) {
         return new RichTextEditors(editors);
+    }
+
+    // What the plugin's editors submit says its own format, and is converted as it is sent (ADR 0008).
+    @Bean
+    @ConditionalOnMissingBean(RichTextValues.class)
+    public RichTextValues richTextValues(RichTextConverter richTextConverter) {
+        return new RichTextValues(richTextConverter);
     }
 
     @Bean

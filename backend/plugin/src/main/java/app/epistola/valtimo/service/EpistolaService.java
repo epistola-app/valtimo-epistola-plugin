@@ -132,7 +132,10 @@ public interface EpistolaService {
      * @param variantId          The ID of the variant to use (nullable when using attribute selection)
      * @param variantAttributes  Attributes for automatic variant selection (nullable when using explicit variantId)
      * @param environmentId      The ID of the environment (optional)
-     * @param data               The data to populate the template with (already resolved values)
+     * @param data               The data to populate the template with (already resolved values).
+     *                           Rich text an editor tagged with its format ({@code RichTextValues})
+     *                           must be sent as a document; an implementation does that with
+     *                           {@code RichTextValues#toDocuments} before building the request.
      * @param format             The output format (PDF or HTML)
      * @param filename           The desired filename for the generated document
      * @param correlationId      Optional correlation ID for tracking
@@ -216,7 +219,8 @@ public interface EpistolaService {
      * @param templateId    The template to preview
      * @param variantId     The variant ID (optional)
      * @param environmentId The environment ID (optional)
-     * @param data          The data to render with
+     * @param data          The data to render with; tagged rich text is sent as a document, as
+     *                      for {@link #submitGenerationJob}
      * @return PDF bytes
      */
     java.io.InputStream previewDocument(
