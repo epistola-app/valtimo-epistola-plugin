@@ -50,11 +50,47 @@ test.describe('Letter composer — on the form that creates the case', () => {
     await expect(inputs).toBeVisible({ timeout: 40_000 });
 
     // Everything the letter needs is asked for, because a case that does not exist yet can supply
-    // nothing. One of those answers is what write-back saves.
+    // nothing — and with nothing supplied there is more than one screen of it, so the composer
+    // steps the form. Filling only the first step is what let this test pass while the letter was
+    // refused and the process took its error path: write-back happens at submission, so every
+    // assertion below held with no letter in existence.
+    // Formio's wizard navigation renders as tabs here, where the same component on a task form
+    // renders `.page-link` — so both are accepted. Matching only one is how this filled the first
+    // screen and silently left the rest: the snapshot showed tabs named Decision, Objector, Stap 3.
+    const steps = inputs.locator('[role="tab"], .page-link');
+    const stepCount = await steps.count();
+    for (let step = 0; step < Math.max(stepCount, 1); step++) {
+      if (stepCount) {
+        await steps.nth(step).click();
+        await page.waitForTimeout(500);
+      }
+      for (const field of await inputs
+        .locator('input[name^="data["]:visible, textarea[name^="data["]:visible')
+        .all()) {
+        await field.fill(valueFor(await field.getAttribute('placeholder')));
+        await field.blur();
+      }
+    }
+
+    // Typed last so it survives the stepping above: this is the answer write-back saves.
     const decision = inputs.locator('[name="data[decision]"]');
+    if (!(await decision.count()) && stepCount) {
+      const decisionStep = steps.filter({ hasText: /Decision|Besluit/i });
+      if (await decisionStep.count()) {
+        await decisionStep.first().click();
+        await page.waitForTimeout(500);
+      }
+    }
     await expect(decision).toBeVisible({ timeout: 30_000 });
     await decision.fill('Het bezwaar is gegrond verklaard.');
-    await page.waitForTimeout(2000);
+    await decision.blur();
+
+    // The letter renders before it is sent, which is the assertion this test was missing. A refused
+    // letter leaves the process on its error branch, and nothing else here would notice.
+    await expect(page.getByTestId('epistola-composer-preview-pdf')).toBeVisible({
+      timeout: 90_000,
+    });
+    await expect(page.getByTestId('epistola-composer-preview-error')).toBeHidden();
 
     await page
       .getByRole('button', { name: /Verstuur brief|Genereer|Start|Opslaan/ })
@@ -73,3 +109,19 @@ test.describe('Letter composer — on the form that creates the case', () => {
       .toContain('Het bezwaar is gegrond verklaard.');
   });
 });
+
+/**
+ * A value a field will actually accept, given the placeholder the composer shows.
+ *
+ * A placeholder is the contract's **example** where the field has one, and a **format hint** where
+ * it does not — `originalDecision.date` shows `YYYY-MM-DDTHH:MM:SSZ`, because that letter's contract
+ * gives no example for it. Typing the placeholder back works for the first kind and produces
+ * nonsense for the second: filling the hint literally made Epistola answer "Date: does not match
+ * the regex pattern", which is how the letter stayed unrendered with every field apparently filled.
+ */
+function valueFor(placeholder: string | null): string {
+  const hint = placeholder?.trim() ?? '';
+  if (/^Y{4}-M{2}-D{2}T/i.test(hint)) return '2026-02-15T10:00:00Z';
+  if (/^Y{4}-M{2}-D{2}$/i.test(hint)) return '2026-02-15';
+  return hint || 'proef';
+}
