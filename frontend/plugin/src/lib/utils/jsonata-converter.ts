@@ -40,6 +40,8 @@ export interface BuilderField {
   complex?: boolean;
   complexityReason?: string;
   nullable?: boolean;
+  /** The field takes rich text: its mapping names the case's format with `$richText`. */
+  richText?: boolean;
 }
 
 interface ObjectSourceEntry {

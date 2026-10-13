@@ -60,6 +60,13 @@ export interface TemplateField {
   complex?: boolean;
   complexityReason?: string;
   nullable?: boolean;
+  /** What the backend read from the field's schema; only what the frontend uses is typed here. */
+  hints?: TemplateFieldHints;
+}
+
+export interface TemplateFieldHints {
+  /** Set when the field takes one of Epistola's rich-text documents (a list of them included). */
+  richText?: 'INLINE' | 'BLOCK' | null;
 }
 
 /**

@@ -134,6 +134,7 @@ describe('MappingBuilderComponent', () => {
       complex: undefined,
       complexityReason: undefined,
       nullable: undefined,
+      richText: false,
     });
   });
 
@@ -184,5 +185,41 @@ describe('MappingBuilderComponent', () => {
       type: 'array<oneOf<person | organization>>',
     });
     expect(component.fields[0].children).toBeUndefined();
+  });
+
+  it('marks a field that takes rich text, from the hint the backend read in its schema', () => {
+    const component = new MappingBuilderComponent();
+    component.expression = '{"toelichting": $doc.toelichting}';
+    component.templateFields = [
+      {
+        name: 'toelichting',
+        path: 'toelichting',
+        type: 'richtext-block',
+        fieldType: 'SCALAR',
+        required: true,
+        hints: { richText: 'BLOCK' },
+      },
+      { name: 'naam', path: 'naam', type: 'string', fieldType: 'SCALAR', required: true },
+    ];
+
+    component.ngOnChanges({
+      expression: {
+        currentValue: component.expression,
+        previousValue: '',
+        firstChange: true,
+        isFirstChange: () => true,
+      },
+      templateFields: {
+        currentValue: component.templateFields,
+        previousValue: [],
+        firstChange: true,
+        isFirstChange: () => true,
+      },
+    });
+
+    expect(component.fields.find((f) => f.name === 'toelichting')).toMatchObject({
+      richText: true,
+    });
+    expect(component.fields.find((f) => f.name === 'naam')).toMatchObject({ richText: false });
   });
 });
