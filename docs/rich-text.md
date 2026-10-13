@@ -148,6 +148,31 @@ lacks.
 Leave out the list buttons for a field that takes inline rich text, and add `"multiple": true` for
 one that takes a list.
 
+### Lists without bullets in Valtimo
+
+In a Valtimo form, a list typed in CKEditor showed as indented text without bullets or numbers,
+including in Valtimo's own WYSIWYG text areas. The letter was unaffected; only the editor's display
+was. Valtimo 13.48 does not handle it, which is easy to doubt, so here is what was checked:
+
+- **The cause is Carbon's reset.** Valtimo loads Carbon globally
+  (`@valtimo/components/assets/css/carbon.scss`, which leaves `$css--reset` on), and its reset sets
+  `ol, ul { list-style: none }` and zeroes their padding. CKEditor draws lists with the browser's
+  default markers, and Form.io's own CSS adds only `.formio-component-textarea .ck.ck-editor ul
+{ margin-left: 10px }`, because it assumes Bootstrap, which keeps the markers.
+- **Valtimo restores markers in one place only:** its text widget, `.valtimo-widget-text__content
+ul { list-style: disc }` and so on, in `@valtimo/layout`. No rule in any published `@valtimo`
+  13.48 package, compiled components and `formio-carbon.scss` included, does so for CKEditor.
+- **In the running app** the editor's `ul` computed `list-style-type: none`, and the only rules
+  matching it were that reset and Form.io's margin. The same Form.io and CKEditor build on a page
+  without Valtimo's CSS shows bullets and nested circles.
+
+The plugin therefore restores them itself: at startup it adds a style element
+(`epistola-ckeditor-list-styles`, from `utils/ckeditor-list-styles.ts`) with Valtimo's text-widget
+rules scoped to `.ck-content`, CKEditor's content area, editable or read-only. Nothing outside an
+editor changes. It applies to every CKEditor in the host, Valtimo's own included, since they have the
+same defect, and it is skipped when the plugin is disabled (`EPISTOLA_ENABLED=false`). Remove it once
+Valtimo restores the markers itself.
+
 ### In the demo
 
 The test-app uses both paths on `besluit-bezwaar`, whose `motivation` is block rich text:

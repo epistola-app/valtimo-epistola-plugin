@@ -49,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **What does not survive is reported.** A generated letter logs a warning naming the field, the
     template and the kinds lost (`heading ×1, table ×1`), never the text; a preview logs it at
     debug.
+  - **Lists in CKEditor show their bullets again.** Valtimo's Carbon reset removes list markers
+    everywhere and restores them only in its text widget, so a list in any CKEditor in Valtimo,
+    Valtimo's own WYSIWYG text areas included, showed as indented text. The plugin adds the same
+    restore scoped to CKEditor's content (`.ck-content`). Display only: the letter was never
+    affected. The finding and how it was checked are in `docs/rich-text.md`.
   - **The demo shows both paths.** `besluit-bezwaar`'s `motivation` is now block rich text
     (municipality-demo catalog 1.4.0). The Bezwaar case asks for it in a plain Valtimo form with a
     limited CKEditor and maps it with `$richText($pv.motivation, "html")`; the Correspondentie

@@ -171,6 +171,12 @@ docker/            # Docker compose for local dependencies
   Parsing is jsoup (HTML) and commonmark-java (markdown), plain dependencies, deliberately not
   shaded (ADR 0008 says why). The plugin only walks their trees.
 
+  **A list without bullets in CKEditor is Valtimo's CSS, not the editor.** Carbon's global reset
+  (`ol, ul { list-style: none }`) removes the markers, Valtimo restores them only for its text
+  widget, and Form.io assumes Bootstrap kept them. The plugin re-adds them scoped to `.ck-content`
+  (`utils/ckeditor-list-styles.ts`); the evidence is in docs/rich-text.md. Check that file before
+  "fixing" list styling elsewhere.
+
 - **Feature toggle**: The plugin can be disabled per environment from a single build artifact.
   - **Backend**: `epistola.enabled=false` (Spring property, defaults to `true`). Disables auto-configuration — no beans, no endpoints, no result collector, and no catch-event auto-wiring (the engine SPI is never registered). Verified by `EpistolaCatchEventAutoWiringConfigTest`.
   - **Catch-event auto-wiring sub-flag**: `epistola.catch-event-auto-wiring.enabled=false` (defaults to `true`, nested under `epistola.enabled`). Drops only the engine-SPI beans (`EpistolaProcessEnginePlugin` + `EpistolaCatchEventParseListener`) so correlation falls back to declarative `epistolaWaitFor` `camunda:inputParameter` mappings — an escape hatch if a future Operaton breaks the SPI, without disabling the whole plugin.
