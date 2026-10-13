@@ -19,10 +19,10 @@
       <bpmn:outgoing>Flow_to_generate</bpmn:outgoing>
     </bpmn:startEvent>
 
-    <!-- Generate confirmation letter (also handles retry when epistolaEditedData is present) -->
+    <!-- Generate confirmation letter; after a correction it runs again, with the mapping, on the corrected case -->
     <bpmn:serviceTask id="generate-confirmation" name="Genereer Bevestigingsbrief" camunda:expression="${null}">
       <bpmn:incoming>Flow_to_generate</bpmn:incoming>
-      <bpmn:incoming>Flow_retry_to_generate</bpmn:incoming>
+      <bpmn:incoming>Flow_corrected_to_generate</bpmn:incoming>
       <bpmn:outgoing>Flow_to_wait</bpmn:outgoing>
     </bpmn:serviceTask>
 
@@ -57,18 +57,12 @@
       <bpmn:incoming>Flow_to_end</bpmn:incoming>
     </bpmn:endEvent>
 
-    <!-- Retry: edit data and loop back to generate.
-         The epistolaSourceActivityId input parameter tells the retry form which generate-document
-         activity to look up. Optional for processes with a single generate-document activity
-         (auto-discovered), required when there are multiple. -->
-    <bpmn:userTask id="retry-edit-data" name="Corrigeer Documentgegevens">
-      <bpmn:extensionElements>
-        <camunda:inputOutput>
-          <camunda:inputParameter name="epistolaSourceActivityId">generate-confirmation</camunda:inputParameter>
-        </camunda:inputOutput>
-      </bpmn:extensionElements>
+    <!-- A refused letter: show what Epistola refused, let the employee correct the case itself, and
+         generate again. The letter is built from the case by the same mapping, so the case and the
+         letter cannot disagree, and the correction is there for every later letter too. -->
+    <bpmn:userTask id="correct-case-data" name="Corrigeer Dossiergegevens">
       <bpmn:incoming>Flow_not_completed</bpmn:incoming>
-      <bpmn:outgoing>Flow_retry_to_generate</bpmn:outgoing>
+      <bpmn:outgoing>Flow_corrected_to_generate</bpmn:outgoing>
     </bpmn:userTask>
 
     <!-- Sequence flows -->
@@ -78,10 +72,14 @@
     <bpmn:sequenceFlow id="Flow_completed" name="Ja" sourceRef="check-status" targetRef="download-confirmation">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status == 'COMPLETED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_not_completed" name="Nee" sourceRef="check-status" targetRef="retry-edit-data">
+    <bpmn:sequenceFlow id="Flow_not_completed" name="Nee" sourceRef="check-status" targetRef="correct-case-data">
+      <bpmn:extensionElements>
+        <!-- The correction form shows this read-only: Epistola's own reason, naming the field. -->
+        <camunda:executionListener event="take" expression="${execution.setVariable('generationError', epistolaResult.errorMessage)}" />
+      </bpmn:extensionElements>
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status != 'COMPLETED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_retry_to_generate" sourceRef="retry-edit-data" targetRef="generate-confirmation" />
+    <bpmn:sequenceFlow id="Flow_corrected_to_generate" sourceRef="correct-case-data" targetRef="generate-confirmation" />
     <bpmn:sequenceFlow id="Flow_to_review" sourceRef="download-confirmation" targetRef="review-document" />
     <bpmn:sequenceFlow id="Flow_to_end" sourceRef="review-document" targetRef="end-success" />
 
@@ -141,7 +139,7 @@
           <dc:Bounds x="637" y="159" width="12" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNShape id="retry-edit-data_di" bpmnElement="retry-edit-data">
+      <bpmndi:BPMNShape id="correct-case-data_di" bpmnElement="correct-case-data">
         <dc:Bounds x="430" y="290" width="100" height="80" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="Flow_not_completed_di" bpmnElement="Flow_not_completed">
@@ -152,7 +150,7 @@
           <dc:Bounds x="586" y="243" width="19" height="14" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Flow_retry_to_generate_di" bpmnElement="Flow_retry_to_generate">
+      <bpmndi:BPMNEdge id="Flow_corrected_to_generate_di" bpmnElement="Flow_corrected_to_generate">
         <di:waypoint x="430" y="330" />
         <di:waypoint x="330" y="330" />
         <di:waypoint x="330" y="217" />

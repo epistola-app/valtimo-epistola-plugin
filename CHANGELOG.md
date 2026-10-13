@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Deprecated
+
+- **The retry form (`epistola-retry-form`, the auto-deployed `epistola-retry-document` form and
+  `GET /retry-form`) is deprecated, to be removed in a later release.** It corrects the letter
+  rather than the case: the edited values go into that one letter only, so the case keeps the wrong
+  value and the next letter fails the same way; every template field can be changed, including
+  values the case supplied correctly; and the generate action's mapping is skipped. Route a failed
+  generation to a task that shows Epistola's reason (`${epistolaResult.errorMessage}`) and corrects
+  the case with an ordinary form, then generate again — `docs/user-task-fallback.md` shows how. It
+  keeps working until it is removed, and logs a deprecation warning once per run when it is used.
+
+### Removed
+
+- **The plugin no longer deploys the `epistola-retry-document` form into every case**, and the
+  `epistola.retry-form.enabled` and `epistola.retry-form.case-filter` settings are gone, along with
+  the aspect on Valtimo's `FormDefinitionImporter` that did it. The form existed only for the now
+  deprecated retry form, and correcting the case needs no plugin form at all. **A case that still
+  uses the retry form ships the form itself**: `docs/user-task-fallback.md` has its JSON. Forms an
+  earlier version deployed stay in place; only case versions deployed after the upgrade need it.
+  `epistola.retry-form.enabled: true` logs a warning at startup saying it no longer does anything.
+
 ### Changed
 
 - **The letter composer fits a small dialog, and its preview can float.** A Valtimo task dialog is
@@ -25,6 +46,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **The previous letter stays on screen while the next renders**, dimmed, instead of the preview
     going blank on every edit and losing the employee's place in it.
   - A browser test walks it inside a real dialog (`letter-composer-preview-panel.spec.ts`).
+
+- **The `permit` demo corrects the case instead of the letter.** A refused confirmation letter now
+  leads to "Corrigeer dossiergegevens": the reason Epistola gave, and the applicant and location
+  fields of the case. Submitting it writes them to the case and generates again, with the mapping.
+  A browser test walks it (`permit-correct-case.spec.ts`): the reason Epistola gave is shown, and
+  the corrected case generates the letter.
 
 ### Added
 

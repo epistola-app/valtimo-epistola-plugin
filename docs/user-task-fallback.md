@@ -1,8 +1,82 @@
 # User Task Fallback for Failed Document Generation
 
+When Epistola refuses a letter — a required value missing, a value in the wrong shape — the process
+should let someone fix the cause and try again. The cause is almost always the **case**: the letter
+is built from it by the generate action's mapping, so a value missing from the letter is missing
+from the case.
+
+## Recommended: correct the case, then generate again
+
+Route the failure path to a user task that shows what Epistola refused and lets the employee correct
+the case with an ordinary case form, then loop back to the same `generate-document` task. It runs
+its mapping again, on the corrected case.
+
+```
+Start → Generate ◄──────────────────────────────┐
+           │                                      │
+           ▼                                      │
+        Wait → Status OK? ──No──► Correct the case (user task)
+                   │
+                  Yes
+                   ▼
+               Download → Review → End
+```
+
+- **The case and the letter cannot disagree.** The letter is built from the corrected case, and every
+  later letter gets the correction too.
+- **Only what the form offers can change**, through the form's own validation, and the change is
+  on the case like any other edit.
+- **No plugin component is needed**: Epistola's reason is already on the result variable
+  (`${epistolaResult.errorMessage}`), and the correction is a plain Valtimo form.
+
+The process copies the reason onto a variable the correction form can show:
+
+```xml
+<bpmn:sequenceFlow id="Flow_not_completed" sourceRef="check-status" targetRef="correct-case-data">
+  <bpmn:extensionElements>
+    <camunda:executionListener event="take"
+        expression="${execution.setVariable('generationError', epistolaResult.errorMessage)}" />
+  </bpmn:extensionElements>
+  <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status != 'COMPLETED'}</bpmn:conditionExpression>
+</bpmn:sequenceFlow>
+
+<bpmn:userTask id="correct-case-data" name="Corrigeer Dossiergegevens">
+  <bpmn:incoming>Flow_not_completed</bpmn:incoming>
+  <bpmn:outgoing>Flow_corrected_to_generate</bpmn:outgoing>
+</bpmn:userTask>
+
+<bpmn:sequenceFlow id="Flow_corrected_to_generate" sourceRef="correct-case-data" targetRef="generate-confirmation" />
+```
+
+The correction form shows `pv:generationError` read-only and the case fields the letter is built
+from, keyed by their case path (`applicant.bsn`), so submitting it writes them to the case.
+
+A letter that needs input the case does not hold is a different situation: use the
+[letter composer](letter-composer.md), which asks only for what is missing and can write it back to
+the case.
+
+### Example
+
+The `permit` case in the test-app: leave the BSN empty on its start form and the letter is refused.
+
+- BPMN: `test-app/backend/.../permit/1.0.0/bpmn/permit-confirmation.bpmn`
+- Correction form: `test-app/backend/.../permit/1.0.0/form/correct-permit-data.form.json`
+- Process links: `test-app/backend/.../permit/1.0.0/process-link/permit-confirmation.process-link.json`
+
+## Deprecated: the retry form
+
+> **Deprecated since 0.21.0, to be removed in a later release.** It keeps working until then. It
+> edits the letter rather than the case: the corrected values go into that one letter only, so the
+> case keeps the wrong value and the next letter fails the same way; every template field can be
+> changed, including values the case supplied correctly; and the mapping is skipped. Correct the
+> case instead, as above. Using it logs a deprecation warning once per run. The plugin no longer
+> deploys its form: a case that still uses it ships the form itself, see [The form](#the-form).
+
+The rest of this section describes how it works, for installations that still use it.
+
 When Epistola document generation fails (e.g., missing required data, template errors), the process can route to a user task that shows a dynamically generated form with all template fields prefilled. The user corrects the data and resubmits.
 
-## How It Works
+### How It Works
 
 ```
 Start → Generate Doc ◄──────────────────┐
@@ -23,9 +97,9 @@ Start → Generate Doc ◄──────────────────
 6. The BPMN loops back to `generate-document`, which detects the edited data and uses it directly (skipping the configured JSONata mapping)
 7. If generation succeeds, the process continues normally. If it fails again, the loop repeats.
 
-## Setup
+### Setup
 
-### 1. BPMN Process
+#### 1. BPMN Process
 
 Add a retry user task on the failure path that loops back to the original generate-document service task:
 
@@ -62,9 +136,10 @@ Add a retry user task on the failure path that loops back to the original genera
 <bpmn:sequenceFlow id="Flow_retry" sourceRef="retry-edit-data" targetRef="generate-confirmation" />
 ```
 
-### 2. Process Link
+#### 2. Process Link
 
-Add a process-link entry for the retry user task pointing to the built-in `epistola-retry-document` form:
+Add a process-link entry for the retry user task pointing to the `epistola-retry-document` form,
+which the case ships itself ([The form](#the-form)):
 
 ```json
 {
@@ -75,13 +150,11 @@ Add a process-link entry for the retry user task pointing to the built-in `epist
 }
 ```
 
-No custom form JSON is needed — the plugin auto-deploys the `epistola-retry-document` form for each case.
+#### 3. Component Registration
 
-### 3. Component Registration
+`EpistolaPluginModule` registers the retry and document components automatically. Beyond the form above, no component registration is needed.
 
-`EpistolaPluginModule` registers the retry and document components automatically. No per-process form JSON or additional component registration is needed.
-
-## How generate-document Detects a Retry
+### How generate-document Detects a Retry
 
 The `generate-document` action checks for a process variable named `epistolaEditedData`:
 
@@ -90,7 +163,7 @@ The `generate-document` action checks for a process variable named `epistolaEdit
 
 This means the same `generate-document` service task handles both initial generation and retries. No separate retry action is needed.
 
-## Source Activity Discovery
+### Source Activity Discovery
 
 The retry form needs to know which `generate-document` activity's configuration (template, data mapping) to use. This is resolved automatically:
 
@@ -113,7 +186,7 @@ The resolution priority is:
 2. `epistolaSourceActivityId` local variable on the active user task (BPMN input parameter)
 3. Auto-discovery from process links (single generate-document only)
 
-## Dynamic Form Generation
+### Dynamic Form Generation
 
 The retry form is generated dynamically by the backend endpoint `GET /api/v1/plugin/epistola/retry-form`. It:
 
@@ -135,18 +208,60 @@ Template fields are mapped to Formio components:
 
 Field keys use dot-notation paths (e.g., `applicant.address.street`) so Formio automatically nests the submission data.
 
-## Auto-Deployment
+### The form
 
-The `epistola-retry-document` form is auto-deployed for each case definition via an AOP aspect on `FormDefinitionImporter`. This is configurable:
+Until 0.21.0 the plugin deployed this form into every case (`epistola.retry-form.*`). That
+deployment is gone, and the settings do nothing; `epistola.retry-form.enabled: true` logs a warning
+saying so. A case that still uses the retry form adds it to its own forms, as
+`form/epistola-retry-document.form.json` in the case's configuration. A form deployed by an earlier
+version stays in place; this matters only for case versions deployed after the upgrade.
 
-```yaml
-epistola:
-  retry-form:
-    enabled: true # default: true
-    case-filter: "all" # "all", "none", or regex (e.g., "permit.*|subsidy.*")
+```json
+{
+  "display": "form",
+  "components": [
+    {
+      "key": "pv:epistolaResult.errorMessage",
+      "type": "textfield",
+      "input": true,
+      "label": "Error",
+      "disabled": true
+    },
+    {
+      "type": "epistola-retry-form",
+      "key": "pv:epistolaEditedData",
+      "input": true,
+      "label": "Document Data",
+      "components": [
+        {
+          "type": "hidden",
+          "key": "epistolaTaskId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola:taskId"
+          }
+        }
+      ]
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Retry Generation",
+      "action": "submit",
+      "theme": "primary",
+      "disableOnInvalid": true
+    }
+  ]
+}
 ```
 
-## Architecture
+The hidden `epistolaTaskId` field is the task-id carrier the component reads (see
+[formio-components.md](formio-components.md)); keep it.
+
+### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -173,17 +288,5 @@ epistola:
 │    ├── If present: use edited data, clear PV                 │
 │    └── If absent: resolve data mapping as usual              │
 │                                                              │
-│  EpistolaFormAutoDeployAspect                                │
-│    └── @After FormDefinitionImporter.import()                │
-│        → deploy epistola-retry-document for each case        │
-│                                                              │
 └─────────────────────────────────────────────────────────────┘
 ```
-
-## Example
-
-See the permit-confirmation process in the test-app:
-
-- BPMN: `test-app/backend/.../bpmn/permit-confirmation.bpmn`
-- Process-link: `test-app/backend/.../process-link/permit-confirmation.process-link.json`
-- Start form with optional BSN field to trigger failures: `test-app/backend/.../form/permit-start.form.json`

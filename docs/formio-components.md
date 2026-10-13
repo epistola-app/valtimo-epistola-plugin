@@ -15,21 +15,21 @@ step — see [form-flows.md](form-flows.md).
 
 ## Overview
 
-| Type (`type:`)                   | Purpose                                                              | Palette\* | Task-bound\*\*       | Backend call                                     |
-| -------------------------------- | -------------------------------------------------------------------- | --------- | -------------------- | ------------------------------------------------ |
-| `epistola-document-preview`      | Live "what would be generated" PDF preview (dry-run, no job)         | visible   | **by default**\*\*\* | `POST /preview` or `POST /preview/start`         |
-| `epistola-document`              | After-generation PDF: inline view and/or download button             | visible   | **yes**              | `GET /documents/download`                        |
-| `epistola-letter-composer`       | Pick a letter, fill in what the case cannot supply, preview it       | visible   | **yes**              | `POST /composer/prepare` + `/composer/preview`   |
-| `epistola-retry-form`            | Dynamic form to retry a failed generation (+ embedded preview)       | hidden    | **yes**              | `GET /retry-form` (+ `POST /preview`)            |
-| `epistola-override-builder`      | editForm widget: map form fields → input overrides                   | hidden    | no                   | — (builder UI)                                   |
-| `epistola-process-link-selector` | editForm widget: pick the generate-document process link             | hidden    | no                   | — (builder UI)                                   |
-| `epistola-letter-set-builder`    | editForm widget: pick connection, catalog and the letters on offer   | hidden    | no                   | `GET /configurations`, `/catalogs`, `/templates` |
-| `epistola-jsonata-mapping`       | editForm widget: the composer's baseline mapping, parsed as you type | hidden    | no                   | — (builder UI)                                   |
-| `epistola-write-back-builder`    | editForm widget: where a letter's values also belong in the case     | hidden    | no                   | — (builder UI)                                   |
+| Type (`type:`)                   | Purpose                                                               | Palette\* | Task-bound\*\*       | Backend call                                     |
+| -------------------------------- | --------------------------------------------------------------------- | --------- | -------------------- | ------------------------------------------------ |
+| `epistola-document-preview`      | Live "what would be generated" PDF preview (dry-run, no job)          | visible   | **by default**\*\*\* | `POST /preview` or `POST /preview/start`         |
+| `epistola-document`              | After-generation PDF: inline view and/or download button              | visible   | **yes**              | `GET /documents/download`                        |
+| `epistola-letter-composer`       | Pick a letter, fill in what the case cannot supply, preview it        | visible   | **yes**              | `POST /composer/prepare` + `/composer/preview`   |
+| `epistola-retry-form`            | **Deprecated.** Dynamic form to retry a failed generation (+ preview) | hidden    | **yes**              | `GET /retry-form` (+ `POST /preview`)            |
+| `epistola-override-builder`      | editForm widget: map form fields → input overrides                    | hidden    | no                   | — (builder UI)                                   |
+| `epistola-process-link-selector` | editForm widget: pick the generate-document process link              | hidden    | no                   | — (builder UI)                                   |
+| `epistola-letter-set-builder`    | editForm widget: pick connection, catalog and the letters on offer    | hidden    | no                   | `GET /configurations`, `/catalogs`, `/templates` |
+| `epistola-jsonata-mapping`       | editForm widget: the composer's baseline mapping, parsed as you type  | hidden    | no                   | — (builder UI)                                   |
+| `epistola-write-back-builder`    | editForm widget: where a letter's values also belong in the case      | hidden    | no                   | — (builder UI)                                   |
 
 \* **Palette** — `visible`: an author can drag it onto a form from the builder's component palette.
 `hidden`: kept out of the palette with `group: 'none'` in its `FormioCustomComponentInfo`, because it
-is either part of the plugin's own auto-deployed form or an editForm-only widget. Hidden
+is either deprecated and used only through a known form (the retry form) or an editForm-only widget. Hidden
 components still render wherever they already exist and inside other components' `editForm`s.
 
 \*\*\* **The preview is task-bound only in its default mode.** Its `previewContext` setting
@@ -126,9 +126,13 @@ named process variables on the caller's task (`documentVariable`/`tenantIdVariab
 `GET /documents/download` — the raw PDF id never crosses the wire. Three presentations via `display`:
 `inline`, `button`, or `both` (default). See [document-component.md](document-component.md).
 
-### `epistola-retry-form` — Retry a failed generation
+### `epistola-retry-form` — Retry a failed generation (deprecated)
 
-Part of the plugin's auto-deployed `epistola-retry-document` form (hidden from the palette). Fetches a
+> **Deprecated since 0.21.0.** It corrects the letter, not the case. Route a failed generation to a
+> task that corrects the case and generates again instead — see
+> [user-task-fallback.md](user-task-fallback.md). It keeps working until it is removed.
+
+Used by the `epistola-retry-document` form, which a case ships itself since 0.21.0 (hidden from the palette). Fetches a
 dynamically generated Formio form for correcting and resubmitting a failed generation (`GET /retry-form`)
 and shows an embedded live preview (`POST /preview`) of the corrected document.
 

@@ -79,8 +79,10 @@ Message Catch Event: "EpistolaDocumentGenerated"
   │
   │  Error boundary → Error End Event
   ▼
-Exclusive Gateway: epistolaStatus == "COMPLETED"?
-  ├─ No  → Error End Event
+Exclusive Gateway: epistolaResult.status == "COMPLETED"?
+  ├─ No  → User Task: "Corrigeer dossiergegevens" (shows epistolaResult.errorMessage,
+  │        corrects the case) → back to "Generate Confirmation Letter", which maps the
+  │        corrected case again. See user-task-fallback.md.
   ▼
 Service Task: "Download Confirmation Letter"
   │  Action: download-document

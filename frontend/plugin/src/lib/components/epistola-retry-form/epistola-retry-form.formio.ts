@@ -39,6 +39,10 @@ export const EPISTOLA_RETRY_FORM_OPTIONS: FormioCustomComponentInfo = {
   schema: { components: [PREFILLED_TASK_ID_CARRIER] },
 };
 
+/**
+ * @deprecated Registered so forms that still use the retry form keep working; see
+ * {@link EpistolaRetryFormComponent}.
+ */
 export function registerEpistolaRetryFormComponent(injector: Injector): void {
   registerEpistolaFormioComponent(
     EPISTOLA_RETRY_FORM_OPTIONS,

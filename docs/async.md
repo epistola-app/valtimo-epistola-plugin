@@ -71,7 +71,7 @@ Use when the process needs to wait for the result before continuing.
 -> [Message Catch Event: "EpistolaDocumentGenerated"]
 -> [Exclusive Gateway: epistolaResult.status == "COMPLETED"?]
    -> yes: [Service Task: download-document]
-   -> no:  [User Task: Corrigeer Documentgegevens]
+   -> no:  [User Task: Corrigeer Dossiergegevens] -> back to generate-document
 ```
 
 The catch event blocks until the collector correlates the message; the
