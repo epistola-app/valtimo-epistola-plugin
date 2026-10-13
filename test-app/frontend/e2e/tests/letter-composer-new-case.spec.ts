@@ -70,6 +70,15 @@ test.describe('Letter composer — on the form that creates the case', () => {
         await field.fill(valueFor(await field.getAttribute('placeholder')));
         await field.blur();
       }
+      // A rich-text field is a WYSIWYG text area: no textarea, no name, and an editor that loads
+      // after the step shows — so it is waited for rather than collected like the inputs above.
+      for (const area of await inputs.locator('.formio-component-textarea:visible').all()) {
+        if (await area.locator('textarea').count()) continue;
+        const editor = area.locator('.ck-editor__editable');
+        await editor.waitFor({ timeout: 30_000 });
+        await editor.fill('Voldoet aan de welstandscriteria.');
+        await editor.blur();
+      }
     }
 
     // Typed last so it survives the stepping above: this is the answer write-back saves.

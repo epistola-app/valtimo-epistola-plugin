@@ -4,6 +4,7 @@
 
 import { test, expect } from '@playwright/test';
 import { createDossier, startFromMenu } from '../pages/correspondentie.page';
+import { composerField } from '../pages/composer-field';
 
 /**
  * The composer on a step of a Valtimo **Form Flow**, rather than on a plain task form.
@@ -83,12 +84,12 @@ test.describe('Letter composer — on a form-flow step', () => {
     await select.selectOption('besluit-bezwaar');
     const inputs = page.getByTestId('epistola-composer-inputs');
     for (const field of DECISION_FIELDS) {
-      await expect(inputs.locator(`[name="data[${field}]"]`)).toBeVisible({ timeout: 30_000 });
+      await expect(composerField(inputs, field)).toBeVisible({ timeout: 30_000 });
     }
 
-    await inputs.locator('[name="data[decisionType]"]').fill('gegrond');
-    await inputs.locator('[name="data[decision]"]').fill('Het bezwaar is gegrond verklaard.');
-    await inputs.locator('[name="data[motivation]"]').fill('Gekozen in een form flow.');
+    await composerField(inputs, 'decisionType').fill('gegrond');
+    await composerField(inputs, 'decision').fill('Het bezwaar is gegrond verklaard.');
+    await composerField(inputs, 'motivation').fill('Gekozen in een form flow.');
     await expect(page.getByTestId('epistola-composer-preview-pdf')).toBeVisible({
       timeout: 60_000,
     });

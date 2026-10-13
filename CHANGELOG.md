@@ -49,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **What does not survive is reported.** A generated letter logs a warning naming the field, the
     template and the kinds lost (`heading ×1, table ×1`), never the text; a preview logs it at
     debug.
+  - **The demo shows both paths.** `besluit-bezwaar`'s `motivation` is now block rich text
+    (municipality-demo catalog 1.4.0). The Bezwaar case asks for it in a plain Valtimo form with a
+    limited CKEditor and maps it with `$richText($pv.motivation, "html")`; the Correspondentie
+    composer asks for it with the same editor, and the case shows the written-back HTML in a
+    read-only `formio` widget, because a `fields` widget would print the tags.
 
   HTML is parsed with jsoup and markdown with commonmark-java, both new dependencies (pure Java,
   none of their own). They are not shaded. jsoup is already on Valtimo's classpath through Tika,

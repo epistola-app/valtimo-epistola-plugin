@@ -4,6 +4,7 @@
 
 import { test, expect } from '@playwright/test';
 import { createDossier } from '../pages/correspondentie.page';
+import { composerField } from '../pages/composer-field';
 
 /**
  * The letter composer on the Correspondentie case.
@@ -54,11 +55,14 @@ test.describe('Letter composer — pick a letter, fill in what the case cannot s
     // The decision does: the case does not know the ruling.
     await select.selectOption('besluit-bezwaar');
     const inputs = page.getByTestId('epistola-composer-inputs');
-    await expect(inputs.locator('input, textarea')).toHaveCount(DECISION_FIELDS.length, {
-      timeout: 30_000,
-    });
+    await expect(inputs.locator('input, textarea, .ck-editor__editable')).toHaveCount(
+      DECISION_FIELDS.length,
+      {
+        timeout: 30_000,
+      },
+    );
     for (const field of DECISION_FIELDS) {
-      await expect(inputs.locator(`[name="data[${field}]"]`)).toBeVisible();
+      await expect(composerField(inputs, field)).toBeVisible();
     }
 
     // No preview yet: this letter's required fields are empty, and rendering it would return
@@ -67,9 +71,9 @@ test.describe('Letter composer — pick a letter, fill in what the case cannot s
     await expect(page.getByTestId('epistola-composer-preview-error')).toBeHidden();
 
     // Filling them in makes the letter renderable, and the preview appears (debounced).
-    await inputs.locator('[name="data[decisionType]"]').fill('gegrond');
-    await inputs.locator('[name="data[decision]"]').fill('Het bezwaar is gegrond verklaard.');
-    await inputs.locator('[name="data[motivation]"]').fill('Voldoet aan de welstandscriteria.');
+    await composerField(inputs, 'decisionType').fill('gegrond');
+    await composerField(inputs, 'decision').fill('Het bezwaar is gegrond verklaard.');
+    await composerField(inputs, 'motivation').fill('Voldoet aan de welstandscriteria.');
     await expect(page.getByTestId('epistola-composer-preview-pdf')).toBeVisible({
       timeout: 60_000,
     });

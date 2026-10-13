@@ -148,6 +148,17 @@ lacks.
 Leave out the list buttons for a field that takes inline rich text, and add `"multiple": true` for
 one that takes a list.
 
+### In the demo
+
+The test-app uses both paths on `besluit-bezwaar`, whose `motivation` is block rich text:
+
+- **Bezwaar** (`objection`): the _Beoordeel Bezwaar_ form asks for `pv:motivation` with the
+  configuration above, and `generate-decision` maps it with `$richText($pv.motivation, "html")`.
+- **Correspondentie**: the composer asks for it with the same editor and writes it back to
+  `besluit.toelichting`. The case shows that field in a read-only `formio` widget
+  (`besluit-toelichting.form.json`), since a `fields` widget has no display type for HTML and
+  would print the tags.
+
 ## In the letter composer and the retry form
 
 When the composer or a retry form asks for a rich-text field, it generates the editor itself,

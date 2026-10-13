@@ -142,6 +142,21 @@ class LetterComposerE2ETest {
         assertThat(prepared.complete()).isFalse()
     }
 
+    /**
+     * The bundled template's `motivation` is rich text, so the demo shows the editor end to end:
+     * read from the catalog's contract, asked with the default format's (`html`) WYSIWYG editor.
+     */
+    @Test
+    fun `a rich-text field is asked with the WYSIWYG editor`() {
+        val context = startCaseAndOpenChooseLetter()
+
+        val prepared = runWithoutAuthorization { letterComposerService.prepare(context, null, DECISION) }
+
+        val motivation = prepared.form().path("components").single { it.path("key").asText() == "motivation" }
+        assertThat(motivation.path("type").asText()).isEqualTo("textarea")
+        assertThat(motivation.path("editor").asText()).isEqualTo("ckeditor")
+    }
+
     @Test
     fun `one generate task renders whichever letter was chosen`() {
         val context = startCaseAndOpenChooseLetter()
