@@ -53,6 +53,22 @@
 
     <bpmn:serviceTask id="download-ack" name="Download Ontvangstbevestiging">
       <bpmn:incoming>Flow_ack_ok</bpmn:incoming>
+      <bpmn:outgoing>Flow_store-ack</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:sequenceFlow id="Flow_store-ack" sourceRef="download-ack" targetRef="store-ack" />
+    <!-- Durable storage is the demo application's, not the plugin's: see
+         DemoDocumentStorageConfiguration. A real installation stores through the Documenten API
+         instead, with the same download step before it. -->
+    <bpmn:serviceTask id="store-ack" name="Bewaar ontvangstbevestiging" camunda:delegateExpression="${storeGeneratedLetter}">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="resourceIdVariable">ackResourceId</camunda:inputParameter>
+          <camunda:inputParameter name="fileName">ontvangstbevestiging.pdf</camunda:inputParameter>
+          <camunda:inputParameter name="documentDefinitionName">objection</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_store-ack</bpmn:incoming>
       <bpmn:outgoing>Flow_to_assess</bpmn:outgoing>
     </bpmn:serviceTask>
 
@@ -84,6 +100,22 @@
 
     <bpmn:serviceTask id="download-decision" name="Download Besluit">
       <bpmn:incoming>Flow_decision_ok</bpmn:incoming>
+      <bpmn:outgoing>Flow_store-decision</bpmn:outgoing>
+    </bpmn:serviceTask>
+
+    <bpmn:sequenceFlow id="Flow_store-decision" sourceRef="download-decision" targetRef="store-decision" />
+    <!-- Durable storage is the demo application's, not the plugin's: see
+         DemoDocumentStorageConfiguration. A real installation stores through the Documenten API
+         instead, with the same download step before it. -->
+    <bpmn:serviceTask id="store-decision" name="Bewaar besluit" camunda:delegateExpression="${storeGeneratedLetter}">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="resourceIdVariable">decisionResourceId</camunda:inputParameter>
+          <camunda:inputParameter name="fileName">besluit.pdf</camunda:inputParameter>
+          <camunda:inputParameter name="documentDefinitionName">objection</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_store-decision</bpmn:incoming>
       <bpmn:outgoing>Flow_to_end</bpmn:outgoing>
     </bpmn:serviceTask>
 
@@ -112,7 +144,7 @@
     <bpmn:sequenceFlow id="Flow_ack_fail" name="Nee" sourceRef="check-ack-status" targetRef="end-error">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status != 'COMPLETED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_to_assess" sourceRef="download-ack" targetRef="assess-objection" />
+    <bpmn:sequenceFlow id="Flow_to_assess" sourceRef="store-ack" targetRef="assess-objection" />
 
     <!-- Phase 2/3 flows -->
     <bpmn:sequenceFlow id="Flow_to_gen_decision" sourceRef="assess-objection" targetRef="generate-decision" />
@@ -124,7 +156,7 @@
     <bpmn:sequenceFlow id="Flow_decision_fail" name="Nee" sourceRef="check-decision-status" targetRef="end-error">
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status != 'COMPLETED'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
-    <bpmn:sequenceFlow id="Flow_to_end" sourceRef="download-decision" targetRef="end-success" />
+    <bpmn:sequenceFlow id="Flow_to_end" sourceRef="store-decision" targetRef="end-success" />
 
   </bpmn:process>
 

@@ -72,6 +72,10 @@ dependencies {
     implementation(libs.valtimo.catalogi.api)
 
     implementation(libs.postgresql)
+    // The demo owns one table (a generated letter, kept so a case worker can open it later), so it
+    // needs JPA on its own compile classpath rather than only transitively at runtime. Version from
+    // the Valtimo BOM.
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.security:spring-security-config")
     implementation("org.springframework.security:spring-security-oauth2-jose")
     implementation("org.springframework.security:spring-security-oauth2-resource-server")

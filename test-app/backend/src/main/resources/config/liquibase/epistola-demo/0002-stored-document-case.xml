@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ SPDX-FileCopyrightText: Epistola Nederland B.V.
+  ~
+  ~ SPDX-License-Identifier: EUPL-1.2
+  -->
+
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.6.xsd"
+    logicalFilePath="config/liquibase/epistola-demo/0002-stored-document-case.xml">
+
+    <changeSet id="1" author="epistola">
+        <comment>Which case a letter belongs to, so retention can detach it before deleting it.</comment>
+        <!--
+          Nullable: rows written before this column existed have no case recorded, and a demo
+          database is not worth a backfill. Retention deletes those too — it just cannot detach
+          them, which leaves the case pointing at a file that no longer opens. Says so out loud in
+          StoredDocumentRetention rather than pretending the column was always there.
+        -->
+        <addColumn tableName="epistola_demo_document">
+            <column name="case_document_id" type="VARCHAR(36)"/>
+        </addColumn>
+        <createIndex tableName="epistola_demo_document" indexName="idx_epistola_demo_document_created_on">
+            <column name="created_on"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

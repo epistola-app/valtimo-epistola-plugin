@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ~ SPDX-FileCopyrightText: Epistola Nederland B.V.
+  ~
+  ~ SPDX-License-Identifier: EUPL-1.2
+  -->
+
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.6.xsd">
+
+    <!--
+      The demo application's own schema, on its own line.
+
+      Registered as a LiquibaseMasterChangeLogLocation bean, which Valtimo's LiquibaseRunner runs
+      once per location. Valtimo's own changelogs are separate runs; this file never includes or
+      modifies them, and its changesets are identified by this path, so neither can affect the
+      other. Nothing is added to Valtimo's files.
+
+      Why the demo owns this at all: the *plugin* stores nothing and needs no database changes to
+      install, which is a property worth keeping — an operator can drop the jar in and take it out
+      again. Durable document storage is a host concern, and a real installation points Valtimo at
+      the Documenten API or S3. The demo has neither, so it provides the smallest stand-in.
+    -->
+    <include file="epistola-demo/0001-stored-document.xml" relativeToChangelogFile="true"/>
+    <include file="epistola-demo/0002-stored-document-case.xml" relativeToChangelogFile="true"/>
+
+</databaseChangeLog>

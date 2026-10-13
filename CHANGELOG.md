@@ -9,6 +9,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A generated letter now stays on the dossier, and a case worker can open it** — in the demo
+  application, without the Documenten API or S3. The composer demo used to end having produced a PDF
+  nobody could see: the process reached `end-success` with nothing downloaded and nothing stored,
+  which is also why no browser test could tell a working generate path from a dead one.
+
+  Valtimo offers no durable file store without one of those. Its `local-resource` module looks like
+  one and is not — `store` throws `NotImplementedError`, the download endpoint answers `204` for
+  every id, and that path is not even in its permitted list — so the demo keeps its own: one table,
+  a `ResourceService`, and the REST bean behind `/api/v1/resource/{id}/download`, which is the path
+  Valtimo's own case UI already calls. The letter is related to the case document, so it appears
+  under **Documenten** like any other file.
+
+  **Demo-only, deliberately.** The plugin owns no schema and needs no database changes to install,
+  which is what lets an operator add and remove it freely; bytes in Postgres are fine for demo
+  letters and a poor idea at volume; and a real installation points Valtimo at the Documenten API or
+  S3, which applies its own authorization. The demo's download is authenticated but not case-scoped
+  — the resource id is the capability, as it is for Valtimo's own resource endpoints.
+
+  The schema is its own Liquibase line: Valtimo's `LiquibaseRunner` runs one Liquibase per
+  registered `LiquibaseMasterChangeLogLocation`, so this changelog is a separate run whose
+  changesets carry their own `logicalFilePath`. Valtimo's own files are neither included nor touched.
+
+  **Letters are deleted after 30 days**, detached from their case first so no dossier is left
+  listing a file that no longer opens (`epistola.demo.documents.retention-days` and
+  `…deletion-cron`). A demo generates letters forever and nobody prunes them, and every PDF in that
+  table is somebody's name and address.
+
+### Added
+
 - **The letter composer's configurator now says which generate tasks read the letter it stores.**
   A composer puts its chosen letter on a process variable and one generate task reads one variable;
   nothing told the author whether those line up. When they do not — a renamed key, or a second
