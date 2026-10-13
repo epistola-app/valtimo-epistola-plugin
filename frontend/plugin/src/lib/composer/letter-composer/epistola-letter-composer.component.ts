@@ -46,7 +46,14 @@ import {
 } from './composer-data';
 import { readOpenDossierId } from './open-dossier';
 import { isRendered, PreviewRenderer } from './preview-renderer';
-import { FloatingPanel, readPanelMemory, writePanelMemory } from './floating-panel';
+import {
+  clampDockedHeight,
+  clampDockedWidth,
+  FloatingPanel,
+  readPanelMemory,
+  trackDrag,
+  writePanelMemory,
+} from './floating-panel';
 import { isSectioned, sectionForm } from './composer-sections';
 import { formioLanguage, readerLocale, withLocaleDates } from '../../utils/formio-locale';
 import { tagRichText } from '../../utils/rich-text-values';
@@ -153,15 +160,26 @@ export interface ComposerValue {
         </div>
 
         <div
+          *ngIf="!floating"
+          class="composer-splitter"
+          role="separator"
+          aria-orientation="vertical"
+          [attr.aria-label]="'composerResizePreview' | pluginTranslate: pluginId | async"
+          (pointerdown)="resizeDocked($event, 'width')"
+          data-testid="epistola-composer-splitter"
+        ></div>
+
+        <section
           #previewPane
           class="composer-preview"
           [class.floating]="floating"
+          [style.flex-basis.%]="floating || !dockedWidth ? null : dockedWidth * 100"
           data-testid="epistola-composer-preview"
         >
-          <div class="preview-header" data-testid="epistola-composer-preview-header">
-            <span class="preview-title">{{
-              'composerPreview' | pluginTranslate: pluginId | async
-            }}</span>
+          <header class="preview-header" data-testid="epistola-composer-preview-header">
+            <h4 class="preview-title">
+              {{ 'composerPreview' | pluginTranslate: pluginId | async }}
+            </h4>
             <span
               *ngIf="previewLoading && previewUrl"
               class="preview-status"
@@ -175,37 +193,57 @@ export interface ComposerValue {
               >{{ 'composerPreviewStale' | pluginTranslate: pluginId | async }}</span
             >
             <div class="preview-controls">
-              <label class="preview-autorefresh">
+              <div class="cds--checkbox-wrapper preview-autorefresh">
                 <input
                   type="checkbox"
+                  class="cds--checkbox"
+                  [id]="selectId + '-autorefresh'"
                   [checked]="autoRefreshEnabled"
                   (change)="onToggleAutoRefresh($any($event.target).checked)"
                   data-testid="epistola-composer-autorefresh"
                 />
-                {{ 'composerAutoRefresh' | pluginTranslate: pluginId | async }}
-              </label>
+                <label [for]="selectId + '-autorefresh'" class="cds--checkbox-label">
+                  <span class="cds--checkbox-label-text">{{
+                    'composerAutoRefresh' | pluginTranslate: pluginId | async
+                  }}</span>
+                </label>
+              </div>
               <button
                 type="button"
-                class="preview-button"
+                class="cds--btn cds--btn--ghost cds--btn--sm preview-icon-button"
                 [disabled]="previewLoading || !canRefresh"
+                [attr.title]="'composerRefresh' | pluginTranslate: pluginId | async"
+                [attr.aria-label]="'composerRefresh' | pluginTranslate: pluginId | async"
                 (click)="refresh()"
                 data-testid="epistola-composer-refresh"
               >
-                {{ 'composerRefresh' | pluginTranslate: pluginId | async }}
+                <i class="mdi mdi-refresh" aria-hidden="true"></i>
               </button>
               <button
                 type="button"
-                class="preview-button"
+                class="cds--btn cds--btn--ghost cds--btn--sm preview-icon-button"
+                [attr.title]="
+                  (floating ? 'composerDock' : 'composerPopOut') | pluginTranslate: pluginId | async
+                "
+                [attr.aria-label]="
+                  (floating ? 'composerDock' : 'composerPopOut') | pluginTranslate: pluginId | async
+                "
                 (click)="togglePopOut()"
                 data-testid="epistola-composer-popout"
               >
-                {{
-                  (floating ? 'composerDock' : 'composerPopOut') | pluginTranslate: pluginId | async
-                }}
+                <i
+                  class="mdi"
+                  [class.mdi-open-in-new]="!floating"
+                  [class.mdi-dock-right]="floating"
+                  aria-hidden="true"
+                ></i>
               </button>
             </div>
-          </div>
-          <div class="preview-content">
+          </header>
+          <div
+            class="preview-content"
+            [style.height.px]="floating || !dockedHeight ? null : dockedHeight"
+          >
             <div
               *ngIf="previewLoading && !previewUrl"
               class="composer-message"
@@ -264,7 +302,15 @@ export interface ComposerValue {
             </div>
           </div>
           <div class="preview-resize" aria-hidden="true"></div>
-        </div>
+          <div
+            class="preview-grip"
+            role="separator"
+            aria-orientation="horizontal"
+            [attr.aria-label]="'composerResizePreview' | pluginTranslate: pluginId | async"
+            (pointerdown)="resizeDocked($event, 'height')"
+            data-testid="epistola-composer-preview-grip"
+          ></div>
+        </section>
       </div>
     </div>
   `,
@@ -305,82 +351,118 @@ export interface ComposerValue {
       .composer-preview {
         min-width: 0;
       }
+      .composer-splitter {
+        display: none;
+      }
       @container (min-width: 36rem) {
         .composer-body {
           flex-direction: row;
           align-items: flex-start;
+          gap: 0;
         }
-        .composer-inputs,
-        .composer-preview {
-          flex: 1 1 50%;
+        .composer-inputs {
+          flex: 1 1 0;
+          padding-right: 0.5rem;
         }
-        /* Stays in view while a long form scrolls past it. */
         .composer-preview:not(.floating) {
+          flex: 0 0 50%;
+          /* Stays in view while a long form scrolls past it. */
           position: sticky;
           top: 0;
         }
+        /* Drag to share the width between the form and the letter differently. */
+        .composer-splitter {
+          display: block;
+          align-self: stretch;
+          flex: 0 0 0.5rem;
+          cursor: col-resize;
+          touch-action: none;
+          border-left: 1px solid transparent;
+        }
+        .composer-splitter:hover {
+          border-left-color: var(--cds-border-strong-01, #8d8d8d);
+        }
+      }
+      /* The box, in Valtimo's (Carbon's) colours: a bordered layer with a heading bar. */
+      .composer-preview {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        background: var(--cds-layer-01, #f4f4f4);
+        border: 1px solid var(--cds-border-subtle-01, #c6c6c6);
       }
       .preview-header {
         display: flex;
         flex-wrap: wrap;
         align-items: center;
-        gap: 0.25rem 0.75rem;
-        padding-bottom: 0.25rem;
+        gap: 0 0.75rem;
+        min-height: 2.5rem;
+        padding: 0 0.25rem 0 1rem;
+        background: var(--cds-layer-accent-01, #e0e0e0);
+        border-bottom: 1px solid var(--cds-border-subtle-01, #c6c6c6);
       }
       .preview-title {
+        margin: 0;
+        font-size: 0.875rem;
         font-weight: 600;
+        line-height: 1.28572;
+        letter-spacing: 0.16px;
+        color: var(--cds-text-primary, #161616);
       }
       .preview-status {
-        color: #6c757d;
-        font-size: 0.875rem;
+        font-size: 0.75rem;
+        color: var(--cds-text-secondary, #525252);
       }
       .preview-status--stale {
-        color: #8a6d00;
+        color: var(--cds-support-warning-inverse, #8e6a00);
       }
       .preview-controls {
         display: flex;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.25rem;
         margin-left: auto;
-        font-size: 0.875rem;
       }
       .preview-autorefresh {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        margin: 0;
-        cursor: pointer;
+        margin: 0 0.5rem 0 0;
       }
-      .preview-button {
-        border: 1px solid #8d8d8d;
-        background: #fff;
-        padding: 0.125rem 0.5rem;
-        cursor: pointer;
+      .preview-icon-button {
+        padding: 0 0.5rem;
+        min-height: 2rem;
       }
-      .preview-button:disabled {
-        cursor: default;
-        opacity: 0.5;
+      .preview-icon-button .mdi {
+        font-size: 1.125rem;
+        line-height: 1;
+      }
+      .preview-content {
+        /* Fits a laptop's task dialog with its header and grip; the grip makes it taller. */
+        height: clamp(18rem, calc(100vh - 20rem), 60rem);
+        padding: 0.5rem;
+        overflow: auto;
       }
       .preview-pdf {
+        display: block;
         width: 100%;
-        height: min(80vh, 60rem);
-        border: 1px solid #dee2e6;
+        height: 100%;
+        border: 0;
         transition: opacity 0.15s;
       }
       .preview-pdf--updating {
         opacity: 0.5;
+      }
+      /* Drag down to make the docked letter taller. */
+      .preview-grip {
+        height: 0.5rem;
+        cursor: ns-resize;
+        touch-action: none;
+        border-top: 1px solid var(--cds-border-subtle-01, #c6c6c6);
+        background: var(--cds-layer-accent-01, #e0e0e0);
       }
       .preview-resize {
         display: none;
       }
       /* Floating: moved to the body by FloatingPanel, which sets its place and size. */
       .composer-preview.floating {
-        display: flex;
-        flex-direction: column;
-        background: #fff;
-        border: 1px solid #c6c6c6;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-        padding: 0.5rem;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
       }
       .composer-preview.floating .preview-header {
         cursor: move;
@@ -389,10 +471,9 @@ export interface ComposerValue {
       .composer-preview.floating .preview-content {
         flex: 1 1 auto;
         min-height: 0;
-        overflow: auto;
       }
-      .composer-preview.floating .preview-pdf {
-        height: 100%;
+      .composer-preview.floating .preview-grip {
+        display: none;
       }
       .composer-preview.floating .preview-resize {
         display: block;
@@ -402,7 +483,12 @@ export interface ComposerValue {
         width: 1rem;
         height: 1rem;
         cursor: nwse-resize;
-        background: linear-gradient(135deg, transparent 50%, #8d8d8d 50%);
+        touch-action: none;
+        background: linear-gradient(
+          135deg,
+          transparent 50%,
+          var(--cds-border-strong-01, #8d8d8d) 50%
+        );
       }
       /* The PDF viewer would take the pointer mid-drag and stop it dead. */
       .composer-preview.dragging .preview-pdf {
@@ -472,6 +558,9 @@ export class EpistolaLetterComposerComponent
   previewStale = false;
   /** Whether the preview floats over the page instead of sitting beside the form. */
   floating = readPanelMemory().floating;
+  /** The docked preview's share of the width and its height, as the employee left them. */
+  dockedWidth: number | null = readPanelMemory().dockedWidth ?? null;
+  dockedHeight: number | null = readPanelMemory().dockedHeight ?? null;
 
   readonly selectId = `epistola-composer-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -714,7 +803,45 @@ export class EpistolaLetterComposerComponent
       handle,
       resizer,
       readPanelMemory().geometry,
-      (geometry) => writePanelMemory({ floating: true, geometry }),
+      (geometry) => writePanelMemory({ ...readPanelMemory(), floating: true, geometry }),
+    );
+  }
+
+  /**
+   * Resize the docked preview: its share of the width by the divider beside it, its height by the
+   * grip below it. Remembered per browser, like the floating panel's place.
+   */
+  resizeDocked(start: PointerEvent, axis: 'width' | 'height'): void {
+    const pane = this.previewPaneElement;
+    const body = pane?.parentElement;
+    const content = pane?.querySelector<HTMLElement>('.preview-content');
+    if (!pane || !body || !content || this.floating) {
+      return;
+    }
+    const bodyWidth = body.getBoundingClientRect().width;
+    const fromShare = pane.getBoundingClientRect().width / bodyWidth;
+    const fromHeight = content.getBoundingClientRect().height;
+    pane.classList.add('dragging');
+    trackDrag(
+      start,
+      window,
+      (dx, dy) => {
+        if (axis === 'width') {
+          // The preview is on the right: dragging the divider left gives it more.
+          this.dockedWidth = clampDockedWidth(fromShare - dx / bodyWidth);
+        } else {
+          this.dockedHeight = clampDockedHeight(fromHeight + dy, window.innerHeight);
+        }
+        this.cdr.markForCheck();
+      },
+      () => {
+        pane.classList.remove('dragging');
+        writePanelMemory({
+          ...readPanelMemory(),
+          dockedWidth: this.dockedWidth ?? undefined,
+          dockedHeight: this.dockedHeight ?? undefined,
+        });
+      },
     );
   }
 

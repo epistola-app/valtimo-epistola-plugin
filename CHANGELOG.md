@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   side, a PDF taller than the dialog, and a preview that scrolled away with a long form.
   - **The preview stays in view** to the right of the form while a long form scrolls; only a
     phone-narrow space (below 36rem of the composer's own width) stacks it below.
+  - **A box in Valtimo's style that can be resized**: a Carbon heading bar with the controls, the
+    divider beside it to share the width differently, and a grip below it for the height. Its
+    default height fits a laptop's task dialog; both sizes are remembered per browser.
   - **Losmaken / Vastzetten** floats the preview over the page: dragged by its header, resized from
     its corner, kept on screen, remembered per browser, and gone with the dialog.
   - **Automatisch bijwerken** can be switched off by the employee, with **Vernieuwen** to render on

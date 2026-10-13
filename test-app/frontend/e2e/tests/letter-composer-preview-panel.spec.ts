@@ -33,8 +33,17 @@ test.describe('Letter composer — the preview panel', () => {
       timeout: 60_000,
     });
 
-    // Popped out: onto the page itself, so a dialog's transform cannot hold it inside.
+    // Docked, the divider shares the dialog's width differently.
     const pane = page.getByTestId('epistola-composer-preview');
+    const docked = (await pane.boundingBox())!.width;
+    const divider = (await page.getByTestId('epistola-composer-splitter').boundingBox())!;
+    await page.mouse.move(divider.x + 3, divider.y + 100);
+    await page.mouse.down();
+    await page.mouse.move(divider.x - 97, divider.y + 100, { steps: 5 });
+    await page.mouse.up();
+    expect(Math.round((await pane.boundingBox())!.width - docked)).toBe(100);
+
+    // Popped out: onto the page itself, so a dialog's transform cannot hold it inside.
     await page.getByTestId('epistola-composer-popout').click();
     expect(await pane.evaluate((el) => el.parentElement === document.body)).toBe(true);
 
@@ -64,7 +73,10 @@ test.describe('Letter composer — the preview panel', () => {
     });
 
     // Paused: nothing renders while typing, and the panel says it is behind until Refresh.
-    await page.getByTestId('epistola-composer-autorefresh').uncheck();
+    // Carbon draws the box on the label and hides the input, so the label is what is clicked.
+    const autoRefresh = page.getByTestId('epistola-composer-autorefresh');
+    await page.locator('[data-testid="epistola-composer-autorefresh"] + label').click();
+    await expect(autoRefresh).not.toBeChecked();
     renders.length = 0;
     await motivation.fill('Derde versie.');
     await expect(page.getByTestId('epistola-composer-preview-stale')).toBeVisible();

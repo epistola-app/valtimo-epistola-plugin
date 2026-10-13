@@ -213,10 +213,14 @@ letter of this case type needs and the fragment only what makes this one differe
 The preview sits to the right of the form, and stays in view while a long form scrolls past it. The
 composer sizes itself by the space it is given rather than the window, because a Valtimo task dialog
 is far narrower than the screen it is on (about 770px on a 1280px laptop): only a phone-narrow space
-(below 36rem) stacks the preview below the form. Half a dialog is still small for a page, which is
-what **Losmaken** is for.
+(below 36rem) stacks the preview below the form.
 
-Its header has three controls:
+It is a box in Valtimo's own (Carbon) style: a heading bar, then the letter. Docked, it is
+resized by the divider between it and the form — up to three quarters of the width, down to a
+quarter — and by the grip along its bottom edge. Its default height fits a laptop's task dialog.
+Both sizes are remembered per browser.
+
+Its heading bar has three controls, the last two as icons with a tooltip:
 
 - **Automatisch bijwerken** — whether the preview follows each edit (about a second after the last
   one). Seeded from the author's setting, then the employee's to switch. While it is off the header

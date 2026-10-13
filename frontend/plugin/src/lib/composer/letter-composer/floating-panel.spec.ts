@@ -20,6 +20,8 @@
  */
 
 import {
+  clampDockedHeight,
+  clampDockedWidth,
   clampGeometry,
   defaultGeometry,
   FloatingPanel,
@@ -57,6 +59,20 @@ describe('panel geometry', () => {
   });
 });
 
+describe('docked size', () => {
+  it('keeps the docked preview between a quarter and three quarters of the width', () => {
+    expect(clampDockedWidth(0.1)).toBe(0.25);
+    expect(clampDockedWidth(0.6)).toBe(0.6);
+    expect(clampDockedWidth(0.9)).toBe(0.75);
+  });
+
+  it('keeps its height between a usable page and the screen', () => {
+    expect(clampDockedHeight(100, 720)).toBe(MIN_PANEL.height);
+    expect(clampDockedHeight(500.4, 720)).toBe(500);
+    expect(clampDockedHeight(2000, 720)).toBe(720);
+  });
+});
+
 describe('panel memory', () => {
   const storage = () => {
     const items = new Map<string, string>();
@@ -73,6 +89,21 @@ describe('panel memory', () => {
     writePanelMemory({ floating: true, geometry }, store);
 
     expect(readPanelMemory(store)).toEqual({ floating: true, geometry });
+  });
+
+  it('remembers how the docked preview was sized, within its limits', () => {
+    const store = storage();
+    store.setItem(
+      'epistola.composer.previewPanel',
+      JSON.stringify({ floating: false, dockedWidth: 0.95, dockedHeight: 640 }),
+    );
+
+    expect(readPanelMemory(store)).toEqual({
+      floating: false,
+      geometry: undefined,
+      dockedWidth: 0.75,
+      dockedHeight: 640,
+    });
   });
 
   it('reads anything it cannot use as docked, without failing', () => {

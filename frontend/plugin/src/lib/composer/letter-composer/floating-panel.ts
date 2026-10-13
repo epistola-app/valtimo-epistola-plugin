@@ -74,10 +74,31 @@ export function clampGeometry(geometry: PanelGeometry, viewport: Viewport): Pane
   return { left, top, width, height };
 }
 
-/** What is remembered between dialogs: whether the panel floats, and where. Per browser. */
+/**
+ * What is remembered between dialogs, per browser: whether the preview floats and where, and how
+ * it was sized while docked.
+ */
 export interface PanelMemory {
   floating: boolean;
   geometry?: PanelGeometry;
+  /** The docked preview's share of the composer's width, 0.25–0.75. */
+  dockedWidth?: number;
+  /** The docked preview's height in pixels. */
+  dockedHeight?: number;
+}
+
+/** The narrowest and widest share of the composer the docked preview may take. */
+export const DOCKED_WIDTH = { min: 0.25, max: 0.75 };
+
+export function clampDockedWidth(share: number): number {
+  return Math.min(Math.max(share, DOCKED_WIDTH.min), DOCKED_WIDTH.max);
+}
+
+/** At least a usable page, and never taller than the screen it is on. */
+export function clampDockedHeight(height: number, viewportHeight: number): number {
+  return Math.round(
+    Math.min(Math.max(height, MIN_PANEL.height), Math.max(MIN_PANEL.height, viewportHeight)),
+  );
 }
 
 const STORAGE_KEY = 'epistola.composer.previewPanel';
@@ -95,7 +116,14 @@ export function readPanelMemory(
     if (parsed && typeof parsed.floating === 'boolean') {
       const g = parsed.geometry;
       const valid = g && ['left', 'top', 'width', 'height'].every((k) => Number.isFinite(g[k]));
-      return { floating: parsed.floating, geometry: valid ? g : undefined };
+      const memory: PanelMemory = { floating: parsed.floating, geometry: valid ? g : undefined };
+      if (Number.isFinite(parsed.dockedWidth)) {
+        memory.dockedWidth = clampDockedWidth(parsed.dockedWidth);
+      }
+      if (Number.isFinite(parsed.dockedHeight)) {
+        memory.dockedHeight = parsed.dockedHeight;
+      }
+      return memory;
     }
   } catch {
     // Unreadable is the same as absent.
@@ -120,6 +148,30 @@ function safeStorage(): Storage | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Follow one pointer drag: `onMove` with the distance from where it started, `onEnd` once it is
+ * let go. Listens on the window, so a drag that leaves the element it started on keeps going.
+ */
+export function trackDrag(
+  start: PointerEvent,
+  win: Window,
+  onMove: (dx: number, dy: number) => void,
+  onEnd: () => void,
+): void {
+  start.preventDefault();
+  const move = (event: Event) => {
+    const e = event as PointerEvent;
+    onMove(e.clientX - start.clientX, e.clientY - start.clientY);
+  };
+  const end = () => {
+    win.removeEventListener('pointermove', move);
+    win.removeEventListener('pointerup', end);
+    onEnd();
+  };
+  win.addEventListener('pointermove', move);
+  win.addEventListener('pointerup', end);
 }
 
 /**
@@ -187,30 +239,26 @@ export class FloatingPanel {
     if (mode === 'move' && (start.target as HTMLElement)?.closest?.('button, input, label, a')) {
       return;
     }
-    start.preventDefault();
     const from = { ...this.geometry };
     // The PDF viewer swallows pointer events, so a drag that crosses it would stop dead.
     this.element.classList.add('dragging');
-    const move = (event: Event) => {
-      const e = event as PointerEvent;
-      const dx = e.clientX - start.clientX;
-      const dy = e.clientY - start.clientY;
-      this.geometry = clampGeometry(
-        mode === 'move'
-          ? { ...from, left: from.left + dx, top: from.top + dy }
-          : { ...from, width: from.width + dx, height: from.height + dy },
-        this.viewport(),
-      );
-      this.apply();
-    };
-    const end = () => {
-      this.element.classList.remove('dragging');
-      this.win.removeEventListener('pointermove', move);
-      this.win.removeEventListener('pointerup', end);
-      this.onMoved(this.geometry);
-    };
-    this.win.addEventListener('pointermove', move);
-    this.win.addEventListener('pointerup', end);
+    trackDrag(
+      start,
+      this.win,
+      (dx, dy) => {
+        this.geometry = clampGeometry(
+          mode === 'move'
+            ? { ...from, left: from.left + dx, top: from.top + dy }
+            : { ...from, width: from.width + dx, height: from.height + dy },
+          this.viewport(),
+        );
+        this.apply();
+      },
+      () => {
+        this.element.classList.remove('dragging');
+        this.onMoved(this.geometry);
+      },
+    );
   }
 
   private apply(): void {
