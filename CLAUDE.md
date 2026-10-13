@@ -312,14 +312,14 @@ License headers on the Java backend are applied/gated by Spotless
 - **3 plugin actions**: `generate-document`, `check-job-status`, `download-document`
 - **Async completion**: `EpistolaResultCollectorRunner` manages one contract `ResultCollector` per active plugin configuration and correlates results via `EpistolaMessageCorrelationService`
 - **Catalog sync**: Automatic import of classpath-based catalogs on startup, plus a manual per-catalog force-redeploy from the admin page that bypasses the version-skip and `templateSyncEnabled` gate (`EpistolaCatalogSyncService`). Bundled catalogs are authored at Epistola **catalog wire `schemaVersion` 4** (Suite ≥ 0.26.0; see [COMPATIBILITY.md](COMPATIBILITY.md)); the floor is pinned by `BundledCatalogSchemaVersionTest`/`EpistolaCatalogSyncServiceTest`, and a too-old wire schema surfaces a translated, operator-actionable redeploy error (downstream 4xx → 422, not 502)
-- **Retry flow**: Dynamic Formio form generation for failed document retries (`RetryFormService`)
+- **Retry flow** (**deprecated** since 0.21.0): Dynamic Formio form generation for failed document retries (`RetryFormService`). It corrects the letter rather than the case; the demo and [docs/user-task-fallback.md](docs/user-task-fallback.md) now show correcting the case and generating again. Don't build on it, and don't add it to new examples
 - **Document preview**: Preview without creating generation jobs (`PreviewService`)
 - **Admin page**: Health checks, plugin usage overview (with dangling catalog/template/variant reference detection), per-config classpath-catalog redeploy, running version + bundled CHANGELOG tab (`EpistolaAdminResource`)
 - **Variant selection**: 3 modes — default, explicit variantId, or attribute-based automatic selection
 - **Value resolution**: Data mappings are JSONata expressions evaluated with `$doc`, `$pv`, and `$case` context variables
 - **Rich text**: Epistola rich-text fields are filled from the case's own format (`plain`, `html`, `markdown`, `prosemirror`, or an installation's `RichTextFormat` bean), see [docs/rich-text.md](docs/rich-text.md)
 - **Security (PBAC)**: Three layers, see [Authorization](#authorization) below. User-task endpoints check `OperatonTask:VIEW`, admin endpoints check the custom `EpistolaAdministration:MANAGE` PBAC permission, and configurator endpoints stay HTTP-gated by `ROLE_ADMIN`.
-- **Configuration**: Spring Boot auto-configuration with feature toggles (`epistola.enabled`, `epistola.result-collector.enabled`, `epistola.retry-form.enabled`)
+- **Configuration**: Spring Boot auto-configuration with feature toggles (`epistola.enabled`, `epistola.result-collector.enabled`)
 
 ### Frontend
 
@@ -439,7 +439,6 @@ in `test-app/frontend/src/app/embedding/`; the published plugin library is untou
 - `PreviewService` — Document preview functionality
 - `RetryFormService` — Dynamic retry form generation
 - `EpistolaAdminService` — Health checks, usage overview, and process-link reference validation (dangling catalog/template/variant detection)
-- `EpistolaFormAutoDeployAspect` — Form auto-deployment aspect
 - `CatalogScanner` — Classpath catalog discovery
 - `EpistolaCatalogSyncService` — Catalog import with version tracking, forced single-catalog redeploy, and classpath discovery
 - `NormalizeVariantAttributes` — Old vs new format normalization
@@ -457,7 +456,8 @@ in `test-app/frontend/src/app/embedding/`; the published plugin library is untou
 - **End-to-end** (`test-app`, Testcontainers, runs in CI): `DownloadDocumentE2ETest` — real app boot, both download storage strategies, async catch-event completion, and the task-scope value resolver; `FormFlowTransitionE2ETest` — walks the Form Flow demo case (open the task, complete both steps, assert the process reached the follow-up task and the submission reached the document)
 - `FormFlowDemoConfigurationTest` — shape of the Form Flow demo fixtures, including the invariant that the preview variant differs from the preview-free baseline **only** by the preview component and generates after (not between) the user tasks
 - **Playwright E2E suites** — plugin-configuration, generate-document, check-job-status,
-  download-document, form-flow-transition, letter-composer (×2), letter-composer-adhoc. They run
+  download-document, form-flow-transition, letter-composer (×2), letter-composer-adhoc,
+  permit-correct-case (a refused letter fixed by correcting the case). They run
   **nightly and on demand** (`.github/workflows/e2e-ui.yml`, `gh workflow run "E2E (browser)"`),
   not in PR CI: they need Postgres, Keycloak, Epistola, the backend and the Angular dev server, so
   they are far slower than a PR check should be. Run them before a release — they are where the

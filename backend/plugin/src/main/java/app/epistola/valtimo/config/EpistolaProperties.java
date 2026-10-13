@@ -38,7 +38,6 @@ public class EpistolaProperties {
     private boolean enabled = true;
 
     private final ResultCollector resultCollector = new ResultCollector();
-    private final RetryForm retryForm = new RetryForm();
     private final CatchEventAutoWiring catchEventAutoWiring = new CatchEventAutoWiring();
     private final Client client = new Client();
     private final VersionCheck versionCheck = new VersionCheck();
@@ -48,14 +47,13 @@ public class EpistolaProperties {
     public static class RichText {
 
         /**
-         * The format rich text is typed and kept in, used to read a string mapped onto an Epistola
-         * rich-text field and to pick the editor a person types one in. One of the shipped formats
-         * ({@code html}, {@code plain}, {@code markdown}, {@code prosemirror}) or the id of an
-         * installation's own {@code RichTextFormat} bean. Defaults to {@code html}: what Valtimo's
-         * WYSIWYG text areas write, and what the generated editors write. A field in another
-         * format names it in the mapping instead — {@code $richText($doc.x, "plain")} for a plain
-         * text area, whose line breaks HTML would collapse. Changing it reinterprets text already
-         * stored, so treat it like a schema change. See ADR 0008.
+         * The format the plugin's own editors write rich text in, which picks the editor a person
+         * types one in, and what {@code $richText(value)} reads without a format. One of the
+         * shipped formats ({@code html}, {@code plain}, {@code markdown}, {@code prosemirror}) or
+         * the id of an installation's own {@code RichTextFormat} bean. Defaults to {@code html}:
+         * what Valtimo's WYSIWYG text areas write. A string mapped onto a rich-text field is never
+         * read in it; the mapping names the format, {@code $richText($doc.x, "plain")}. What an
+         * editor already submitted keeps the format it was typed in. See ADR 0008.
          */
         private String defaultFormat = "html";
     }
@@ -159,24 +157,6 @@ public class EpistolaProperties {
          * declares the {@code epistolaWaitFor} {@code camunda:inputParameter} mapping explicitly.
          */
         private boolean enabled = true;
-    }
-
-    @Data
-    public static class RetryForm {
-
-        /**
-         * Whether to auto-deploy the epistola-retry-document form for each case.
-         */
-        private boolean enabled = true;
-
-        /**
-         * Filter which cases get the retry form deployed.
-         * "all" (default) — deploy for every case.
-         * "none" — deploy for no cases (same as enabled=false).
-         * Any other value is treated as a regex matched against the case definition key.
-         * Example: "permit.*|subsidy.*"
-         */
-        private String caseFilter = "all";
     }
 
     @Data

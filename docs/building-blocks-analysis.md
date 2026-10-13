@@ -1,5 +1,10 @@
 # Building Blocks for Epistola: Analysis
 
+> **Historical.** This analysis is about making the retry form reusable. The retry form is
+> deprecated since 0.21.0 and its auto-deployment (`EpistolaFormAutoDeployAspect`) is removed; a
+> failed generation is now handled by correcting the case and generating again, which needs no
+> plugin form at all. See [user-task-fallback.md](user-task-fallback.md).
+
 ## What We Want to Achieve
 
 The Epistola plugin provides a `generate-document` action that submits data to the Epistola API and returns a generated document. When generation fails, the user should be able to **correct the input data and retry** without starting over.
