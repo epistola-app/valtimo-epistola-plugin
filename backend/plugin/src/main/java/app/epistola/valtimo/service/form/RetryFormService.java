@@ -50,10 +50,20 @@ import java.util.Map;
  * Looks up the original generate-document process link, resolves its data mapping
  * expressions against the current process instance, fetches the template field schema,
  * and generates a Formio form JSON with prefilled values.
+ *
+ * @deprecated The retry form corrects a letter without correcting the case: the edited values go
+ *     into that one letter only, every field can be changed, and the mapping is skipped. Correct
+ *     the case and generate again instead — see {@code docs/user-task-fallback.md}. Kept working
+ *     until it is removed in a later release.
  */
+@Deprecated(since = "0.21.0")
 @Slf4j
 @RequiredArgsConstructor
 public class RetryFormService {
+
+    /** Said once per run, so an installation that still uses it notices without a log flood. */
+    private static final java.util.concurrent.atomic.AtomicBoolean DEPRECATION_LOGGED =
+            new java.util.concurrent.atomic.AtomicBoolean();
 
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
@@ -77,6 +87,10 @@ public class RetryFormService {
      * @throws RetryFormException if the form cannot be generated
      */
     public ObjectNode generateRetryForm(String processInstanceId, String documentId, String sourceActivityId) {
+        if (DEPRECATION_LOGGED.compareAndSet(false, true)) {
+            log.warn("The Epistola retry form (epistola-retry-document) is deprecated and will be removed:"
+                    + " correct the case and generate again instead. See docs/user-task-fallback.md.");
+        }
         ProcessInstance processInstance = lookupProcessInstance(processInstanceId);
         String processDefinitionId = processInstance.getProcessDefinitionId();
 

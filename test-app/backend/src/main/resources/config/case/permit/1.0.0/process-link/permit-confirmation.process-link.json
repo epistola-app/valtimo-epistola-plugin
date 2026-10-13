@@ -40,9 +40,9 @@
     "formDefinitionName": "review-document"
   },
   {
-    "activityId": "retry-edit-data",
+    "activityId": "correct-case-data",
     "activityType": "bpmn:UserTask:create",
     "processLinkType": "form",
-    "formDefinitionName": "epistola-retry-document"
+    "formDefinitionName": "correct-permit-data"
   }
 ]

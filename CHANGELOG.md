@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Deprecated
+
+- **The retry form (`epistola-retry-form`, the auto-deployed `epistola-retry-document` form and
+  `GET /retry-form`) is deprecated, to be removed in a later release.** It corrects the letter
+  rather than the case: the edited values go into that one letter only, so the case keeps the wrong
+  value and the next letter fails the same way; every template field can be changed, including
+  values the case supplied correctly; and the generate action's mapping is skipped. Route a failed
+  generation to a task that shows Epistola's reason (`${epistolaResult.errorMessage}`) and corrects
+  the case with an ordinary form, then generate again — `docs/user-task-fallback.md` shows how. It
+  keeps working until it is removed, including `epistola.retry-form.*`, and logs a deprecation
+  warning once per run when it is used.
+
+### Changed
+
+- **The `permit` demo corrects the case instead of the letter.** A refused confirmation letter now
+  leads to "Corrigeer dossiergegevens": the reason Epistola gave, and the applicant and location
+  fields of the case. Submitting it writes them to the case and generates again, with the mapping.
+  A browser test walks it (`permit-correct-case.spec.ts`): the reason Epistola gave is shown, and
+  the corrected case generates the letter.
+
 ### Added
 
 - **Epistola rich-text fields can be filled, in whatever format the case keeps text.** A template

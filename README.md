@@ -122,7 +122,7 @@ Configure under `epistola:` in `application.yml`:
 epistola:
   enabled: true # disable the plugin entirely (default: true)
   base-url: ${EPISTOLA_BASE_URL} # fallback baseUrl, also used by classpath-deployed plugin configs
-  retry-form:
+  retry-form: # deprecated, with the retry form: see docs/user-task-fallback.md
     enabled: true # auto-deploy the retry form for case failures (default: true)
     case-filter: "all" # "all" | "none" | regex on case definition keys
   result-collector:
@@ -233,7 +233,7 @@ See [docs/authorization.md](docs/authorization.md) for the full endpoint matrix 
 | --------------------------- | --------------------------------------------------------------- | -------------------------------------------------------- |
 | `epistola-document`         | Render or download a PDF that has **already been generated**.   | [docs/document-component.md](docs/document-component.md) |
 | `epistola-document-preview` | Live preview of a document **before generation** (form-driven). | [docs/document-preview.md](docs/document-preview.md)     |
-| `epistola-retry-form`       | Recovery UX after a failed generation.                          | [docs/user-task-fallback.md](docs/user-task-fallback.md) |
+| `epistola-retry-form`       | **Deprecated.** Correct the case and generate again instead.    | [docs/user-task-fallback.md](docs/user-task-fallback.md) |
 
 Using these inside a multi-step Valtimo Form Flow has its own rules — where to put the preview, where
 to generate, and how to read a field from an earlier step: see

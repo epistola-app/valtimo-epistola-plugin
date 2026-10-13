@@ -38,6 +38,13 @@ import { EpistolaPluginService } from '../../services';
 import { formioLanguage, readerLocale, withLocaleDates } from '../../utils/formio-locale';
 import { tagRichText } from '../../utils/rich-text-values';
 
+/**
+ * Corrects and resubmits a failed generation's data.
+ *
+ * @deprecated A correction made here goes into that one letter only, not into the case, and
+ * bypasses the mapping. Correct the case and generate again instead — see
+ * `docs/user-task-fallback.md`. Kept working until it is removed in a later release.
+ */
 @Component({
   standalone: true,
   imports: [CommonModule, FormioModule],
