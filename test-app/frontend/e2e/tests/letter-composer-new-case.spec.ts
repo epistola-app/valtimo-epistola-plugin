@@ -70,6 +70,18 @@ test.describe('Letter composer — on the form that creates the case', () => {
         await field.fill(valueFor(await field.getAttribute('placeholder')));
         await field.blur();
       }
+      // A date or date-time is a calendar: the named input is hidden and the one shown has no name,
+      // so the loop above never sees it, and typing would depend on the locale's display format.
+      // Flatpickr's own setDate takes the stored value and fires the change Form.io listens for.
+      for (const picker of await inputs
+        .locator('.formio-component:visible input.flatpickr-input[name^="data["]')
+        .all()) {
+        await picker.evaluate((el) =>
+          (
+            el as HTMLInputElement & { _flatpickr: { setDate(d: Date, change: boolean): void } }
+          )._flatpickr.setDate(new Date('2026-02-15T10:00:00Z'), true),
+        );
+      }
       // A rich-text field is a WYSIWYG text area: no textarea, no name, and an editor that loads
       // after the step shows — so it is waited for rather than collected like the inputs above.
       for (const area of await inputs.locator('.formio-component-textarea:visible').all()) {
