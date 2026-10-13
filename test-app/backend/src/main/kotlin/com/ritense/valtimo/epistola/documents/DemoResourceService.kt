@@ -80,6 +80,10 @@ class DemoResourceService(
                     sizeInBytes = content.size.toLong(),
                     content = content,
                     createdOn = LocalDateTime.now(),
+                    // The delegate passes the case document id as the key, which S3 would use as an
+                    // object key. Recording it is what lets retention detach the file from its case
+                    // instead of leaving a dossier pointing at something that no longer opens.
+                    caseDocumentId = key.takeIf { runCatching { UUID.fromString(it) }.isSuccess },
                 ),
             ).asResource()
     }

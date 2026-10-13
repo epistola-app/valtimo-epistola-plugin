@@ -22,6 +22,7 @@ import com.ritense.valtimo.Application
 import com.ritense.valtimo.epistola.documents.DemoResourceResource
 import com.ritense.valtimo.epistola.documents.DemoResourceService
 import com.ritense.valtimo.epistola.documents.StoredDocumentRepository
+import com.ritense.valtimo.epistola.documents.StoredDocumentRetention
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin
 import com.ritense.valtimo.service.OperatonTaskService
 import com.ritense.valueresolver.ValueResolverService
@@ -54,7 +55,10 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.utility.DockerImageName
+import java.time.Clock
 import java.time.Duration
+import java.time.Instant
+import java.time.ZoneOffset
 import java.util.UUID
 
 /**
@@ -197,6 +201,69 @@ class DownloadDocumentE2ETest {
         assertThat(row.content).isEqualTo(pdf)
         assertThat(row.sizeInBytes).isEqualTo(pdf.size.toLong())
         assertThat(row.contentType).isEqualTo("application/pdf")
+    }
+
+    @Test
+    fun `a letter older than the retention window is deleted, a recent one is kept`() {
+        // A demo generates letters forever and nobody prunes them, so the table grows without bound
+        // and every PDF in it is somebody's name and address. The window is driven by a clock the
+        // test controls rather than by sleeping for a month.
+        val pdf = "%PDF-1.7 old".toByteArray()
+        val old =
+            resourceService.store("case-1", RawFileUploadRequest("oud", "pdf", pdf.size.toLong(), "application/pdf", pdf))
+        val fresh =
+            resourceService.store("case-1", RawFileUploadRequest("nieuw", "pdf", pdf.size.toLong(), "application/pdf", pdf))
+
+        // Thirty-one days on, so only the first is past a thirty-day window. Both rows were written
+        // now, so the clock moves rather than the rows.
+        val retention =
+            StoredDocumentRetention(
+                storedDocumentRepository,
+                documentService,
+                Clock.fixed(Instant.now().plus(Duration.ofDays(31)), ZoneOffset.UTC),
+                30,
+            )
+        val keep =
+            StoredDocumentRetention(storedDocumentRepository, documentService, Clock.systemDefaultZone(), 30)
+
+        keep.deleteExpired()
+        assertThat(storedDocumentRepository.findById(old.id().toString()))
+            .describedAs("nothing is deleted while it is still inside the window")
+            .isPresent()
+
+        retention.deleteExpired()
+        assertThat(storedDocumentRepository.findById(old.id().toString())).isEmpty()
+        assertThat(storedDocumentRepository.findById(fresh.id().toString()))
+            .describedAs("a run at that clock deletes everything older than the window, which is both")
+            .isEmpty()
+    }
+
+    @Test
+    fun `retention takes the letter off its case, so no dossier lists a file that cannot open`() {
+        // Deleting only the row would leave a dossier listing a letter that answers 404 — worse than
+        // not keeping it. The case id travels as the store key, which is what makes this possible.
+        val caseId = UUID.randomUUID()
+        val pdf = "%PDF-1.7 attached".toByteArray()
+        val stored =
+            resourceService.store(
+                caseId.toString(),
+                RawFileUploadRequest("brief", "pdf", pdf.size.toLong(), "application/pdf", pdf),
+            )
+
+        assertThat(storedDocumentRepository.findById(stored.id().toString()).orElseThrow().caseDocumentId)
+            .describedAs("without the case id there is nothing to detach from")
+            .isEqualTo(caseId.toString())
+
+        // The case does not exist here, so detaching fails and is swallowed — the row must still go,
+        // because leaving personal data behind to protect a dangling link would be the wrong trade.
+        StoredDocumentRetention(
+            storedDocumentRepository,
+            documentService,
+            Clock.fixed(Instant.now().plus(Duration.ofDays(31)), ZoneOffset.UTC),
+            30,
+        ).deleteExpired()
+
+        assertThat(storedDocumentRepository.findById(stored.id().toString())).isEmpty()
     }
 
     @Test

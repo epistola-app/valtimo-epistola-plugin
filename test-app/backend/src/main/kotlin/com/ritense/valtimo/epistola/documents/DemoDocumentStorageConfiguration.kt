@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 package com.ritense.valtimo.epistola.documents
 
+import com.ritense.document.service.DocumentService
 import com.ritense.resource.service.ResourceService
 import com.ritense.resource.web.rest.ResourceResource
 import com.ritense.valtimo.contract.config.LiquibaseMasterChangeLogLocation
@@ -11,6 +12,7 @@ import org.springframework.boot.autoconfigure.domain.EntityScan
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories
+import java.time.Clock
 
 /**
  * Durable document storage for the demo.
@@ -51,6 +53,17 @@ class DemoDocumentStorageConfiguration {
 
     @Bean
     fun demoResourceResource(resourceService: ResourceService): ResourceResource = DemoResourceResource(resourceService)
+
+    /**
+     * Thirty days, so a demo database stays a demo database and nobody's letter sits in it forever.
+     * `epistola.demo.documents.retention-days` and `…deletion-cron` move it per environment.
+     */
+    @Bean
+    fun storedDocumentRetention(
+        repository: StoredDocumentRepository,
+        documentService: DocumentService,
+        @Value("\${epistola.demo.documents.retention-days:30}") retentionDays: Long,
+    ): StoredDocumentRetention = StoredDocumentRetention(repository, documentService, Clock.systemDefaultZone(), retentionDays)
 
     /**
      * Valtimo's own resource security does not permit the `/download` path its own case UI calls, so

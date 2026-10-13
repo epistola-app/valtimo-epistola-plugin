@@ -24,5 +24,6 @@
       the Documenten API or S3. The demo has neither, so it provides the smallest stand-in.
     -->
     <include file="epistola-demo/0001-stored-document.xml" relativeToChangelogFile="true"/>
+    <include file="epistola-demo/0002-stored-document-case.xml" relativeToChangelogFile="true"/>
 
 </databaseChangeLog>

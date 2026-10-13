@@ -38,6 +38,14 @@ class StoredDocument(
     val content: ByteArray,
     @Column(name = "created_on", nullable = false)
     val createdOn: LocalDateTime,
+    /**
+     * The case this letter belongs to, so retention can detach it before deleting it.
+     *
+     * Nullable because rows written before the column existed have no case recorded — see the
+     * changeset. Retention deletes those too; it simply cannot tidy the case they were on.
+     */
+    @Column(name = "case_document_id")
+    val caseDocumentId: String? = null,
 ) {
     /**
      * The shape Valtimo asks for.

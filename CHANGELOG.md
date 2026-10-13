@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   registered `LiquibaseMasterChangeLogLocation`, so this changelog is a separate run whose
   changesets carry their own `logicalFilePath`. Valtimo's own files are neither included nor touched.
 
+  **Letters are deleted after 30 days**, detached from their case first so no dossier is left
+  listing a file that no longer opens (`epistola.demo.documents.retention-days` and
+  `…deletion-cron`). A demo generates letters forever and nobody prunes them, and every PDF in that
+  table is somebody's name and address.
+
 ### Added
 
 - **The letter composer's configurator now says which generate tasks read the letter it stores.**
