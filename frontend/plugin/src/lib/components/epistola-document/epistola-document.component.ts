@@ -32,6 +32,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { Subscription } from 'rxjs';
 import { DownloadDocumentRequest, EpistolaPluginService } from '../../services';
+import { pdfViewUrl } from '../../utils/pdf-view';
 
 export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
 
@@ -351,7 +352,9 @@ export class EpistolaDocumentComponent
     this.subscription = this.epistolaPluginService.downloadDocumentBlob(request).subscribe({
       next: (blob) => {
         this.currentBlobUrl = URL.createObjectURL(blob);
-        this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.currentBlobUrl);
+        this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+          pdfViewUrl(this.currentBlobUrl),
+        );
         this.loading = false;
         this.cdr.markForCheck();
       },

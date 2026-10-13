@@ -190,6 +190,13 @@ Do not quote the whole dotted key as one segment.
 > next time the form is saved in the builder. The admin page's **Forms** tab lists forms still on the
 > legacy format (`GET /admin/forms/legacy-override`).
 
+### The PDF on its own
+
+The letter is shown without the browser's PDF controls: no toolbar, no thumbnail panel, the page
+fitted to the width (`#toolbar=0&navpanes=0&view=FitH`, see `utils/pdf-view.ts`). Chrome and Edge
+honour this; Firefox keeps its toolbar but fits the page, and Safari shows its usual viewer, so
+nothing breaks where it is not heard. Zooming with the keyboard or mouse still works.
+
 ## How it works
 
 ### Override mapping format

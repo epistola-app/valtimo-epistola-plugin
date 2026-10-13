@@ -99,6 +99,13 @@ Forms whose component was saved **without** a carrier must be re-authored: open 
 | `button` | no                    | yes             | no             | Confirmation/wrap-up steps where the inline PDF would distract.      |
 | `both`   | yes                   | yes (icon)      | yes            | Standard "review-then-decide" task forms. **Default.**               |
 
+### The PDF on its own
+
+The letter is shown inline without the browser's PDF controls: no toolbar, no thumbnail panel, the page
+fitted to the width (`#toolbar=0&navpanes=0&view=FitH`, see `utils/pdf-view.ts`). Chrome and Edge
+honour this; Firefox keeps its toolbar but fits the page, and Safari shows its usual viewer, so
+nothing breaks where it is not heard. Zooming with the keyboard or mouse still works.
+
 ### Design-mode behaviour
 
 In the Formio builder there is no prefilled `taskId`, so the component renders a configuration summary instead of trying to fetch a non-existent document — `display`, `documentVariable`, and `tenantIdVariable` are shown as labelled values. This means form authors can drop the component on the canvas without seeing an error toast.
