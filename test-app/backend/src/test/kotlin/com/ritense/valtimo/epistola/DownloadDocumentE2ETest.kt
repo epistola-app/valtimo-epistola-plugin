@@ -14,7 +14,15 @@ import com.ritense.document.domain.impl.request.NewDocumentRequest
 import com.ritense.document.service.DocumentService
 import com.ritense.plugin.domain.PluginConfiguration
 import com.ritense.plugin.service.PluginService
+import com.ritense.resource.service.ResourceService
+import com.ritense.resource.service.request.ByteArrayMultipartFile
+import com.ritense.resource.service.request.RawFileUploadRequest
+import com.ritense.resource.web.rest.ResourceResource
 import com.ritense.valtimo.Application
+import com.ritense.valtimo.epistola.documents.DemoResourceResource
+import com.ritense.valtimo.epistola.documents.DemoResourceService
+import com.ritense.valtimo.epistola.documents.StoredDocumentRepository
+import com.ritense.valtimo.epistola.documents.StoredDocumentRetention
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin
 import com.ritense.valtimo.service.OperatonTaskService
 import com.ritense.valueresolver.ValueResolverService
@@ -38,6 +46,7 @@ import org.operaton.bpm.engine.delegate.DelegateExecution
 import org.operaton.bpm.engine.variable.value.BytesValue
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
@@ -46,7 +55,11 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.PostgreSQLContainer
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.utility.DockerImageName
+import java.time.Clock
 import java.time.Duration
+import java.time.Instant
+import java.time.ZoneOffset
+import java.util.UUID
 
 /**
  * End-to-end test that boots the real test-app [Application] (full Valtimo) against Testcontainers
@@ -101,6 +114,15 @@ class DownloadDocumentE2ETest {
     @Autowired
     lateinit var engineTaskService: TaskService
 
+    @Autowired
+    lateinit var resourceService: ResourceService
+
+    @Autowired
+    lateinit var resourceResource: ResourceResource
+
+    @Autowired
+    lateinit var storedDocumentRepository: StoredDocumentRepository
+
     private var deploymentId: String? = null
 
     @BeforeEach
@@ -116,6 +138,155 @@ class DownloadDocumentE2ETest {
     @AfterEach
     fun undeploy() {
         deploymentId?.let { repositoryService.deleteDeployment(it, true) }
+    }
+
+    /**
+     * Where a downloaded letter can end up for good.
+     *
+     * The plugin's two targets both hand the file onwards — a process variable, or Valtimo's
+     * *temporary* storage, which this demo keeps for an hour. Right for handing a file to the next
+     * step, wrong for the letter that was sent. The demo adds a durable place, so a case worker can
+     * open it after the process has ended.
+     *
+     * These live here rather than in a test of their own because every interesting part is wiring
+     * that only a booted application shows, and this class already boots one.
+     */
+    @Test
+    fun `the demo's own storage is what the application uses, not Valtimo's placeholder`() {
+        // Asserted by name on purpose. Valtimo's LocalResourceService.store throws
+        // NotImplementedError and LocalResource answers 204 for every download, and its
+        // @ConditionalOnMissingBean names those concrete classes — so another implementation does
+        // not displace them, and application.yml excludes the auto-configuration instead. If that
+        // exclusion were ever lost, the failure would surface as a NotImplementedError from inside a
+        // store call, which reads like a broken test rather than a bean that lost a fight.
+        assertThat(resourceService).isInstanceOf(DemoResourceService::class.java)
+        assertThat(resourceResource).isInstanceOf(DemoResourceResource::class.java)
+    }
+
+    @Test
+    fun `a stored letter comes back through the path the case UI calls`() {
+        val pdf = "%PDF-1.7 a letter".toByteArray()
+
+        val stored =
+            resourceService.store(
+                "case-1",
+                RawFileUploadRequest("brief", "pdf", pdf.size.toLong(), "application/pdf", pdf),
+            )
+
+        // /api/v1/resource/{id}/download, whose mapping is inherited from ResourceResource — so
+        // serving it is all Valtimo's own UI needs.
+        val response = resourceResource.getContent(stored.id().toString())
+        assertThat(response.statusCode.value()).isEqualTo(200)
+        assertThat(response.body).isEqualTo(pdf)
+        assertThat(response.headers.contentType).isEqualTo(MediaType.APPLICATION_PDF)
+        assertThat(response.headers.getFirst("Content-Disposition"))
+            .describedAs("downloads as a file, rather than replacing the case the worker is looking at")
+            .contains("attachment")
+            .contains("brief.pdf")
+    }
+
+    @Test
+    fun `the bytes are in the database, which is the whole point of storing them`() {
+        val pdf = ByteArray(9000) { (it % 256).toByte() }
+
+        val stored =
+            resourceService.store(
+                "case-1",
+                RawFileUploadRequest("groot", "pdf", pdf.size.toLong(), "application/pdf", pdf),
+            )
+
+        // Read back from the row rather than from the instance that wrote it: a letter has to
+        // outlive the process that made it, which is exactly what temporary storage does not do.
+        val row = storedDocumentRepository.findById(stored.id().toString()).orElseThrow()
+        assertThat(row.content).isEqualTo(pdf)
+        assertThat(row.sizeInBytes).isEqualTo(pdf.size.toLong())
+        assertThat(row.contentType).isEqualTo("application/pdf")
+    }
+
+    @Test
+    fun `a letter older than the retention window is deleted, a recent one is kept`() {
+        // A demo generates letters forever and nobody prunes them, so the table grows without bound
+        // and every PDF in it is somebody's name and address. The window is driven by a clock the
+        // test controls rather than by sleeping for a month.
+        val pdf = "%PDF-1.7 old".toByteArray()
+        val old =
+            resourceService.store("case-1", RawFileUploadRequest("oud", "pdf", pdf.size.toLong(), "application/pdf", pdf))
+        val fresh =
+            resourceService.store("case-1", RawFileUploadRequest("nieuw", "pdf", pdf.size.toLong(), "application/pdf", pdf))
+
+        // Thirty-one days on, so only the first is past a thirty-day window. Both rows were written
+        // now, so the clock moves rather than the rows.
+        val retention =
+            StoredDocumentRetention(
+                storedDocumentRepository,
+                documentService,
+                Clock.fixed(Instant.now().plus(Duration.ofDays(31)), ZoneOffset.UTC),
+                30,
+            )
+        val keep =
+            StoredDocumentRetention(storedDocumentRepository, documentService, Clock.systemDefaultZone(), 30)
+
+        keep.deleteExpired()
+        assertThat(storedDocumentRepository.findById(old.id().toString()))
+            .describedAs("nothing is deleted while it is still inside the window")
+            .isPresent()
+
+        retention.deleteExpired()
+        assertThat(storedDocumentRepository.findById(old.id().toString())).isEmpty()
+        assertThat(storedDocumentRepository.findById(fresh.id().toString()))
+            .describedAs("a run at that clock deletes everything older than the window, which is both")
+            .isEmpty()
+    }
+
+    @Test
+    fun `retention takes the letter off its case, so no dossier lists a file that cannot open`() {
+        // Deleting only the row would leave a dossier listing a letter that answers 404 — worse than
+        // not keeping it. The case id travels as the store key, which is what makes this possible.
+        val caseId = UUID.randomUUID()
+        val pdf = "%PDF-1.7 attached".toByteArray()
+        val stored =
+            resourceService.store(
+                caseId.toString(),
+                RawFileUploadRequest("brief", "pdf", pdf.size.toLong(), "application/pdf", pdf),
+            )
+
+        assertThat(storedDocumentRepository.findById(stored.id().toString()).orElseThrow().caseDocumentId)
+            .describedAs("without the case id there is nothing to detach from")
+            .isEqualTo(caseId.toString())
+
+        // The case does not exist here, so detaching fails and is swallowed — the row must still go,
+        // because leaving personal data behind to protect a dangling link would be the wrong trade.
+        StoredDocumentRetention(
+            storedDocumentRepository,
+            documentService,
+            Clock.fixed(Instant.now().plus(Duration.ofDays(31)), ZoneOffset.UTC),
+            30,
+        ).deleteExpired()
+
+        assertThat(storedDocumentRepository.findById(stored.id().toString())).isEmpty()
+    }
+
+    @Test
+    fun `the demo stores what a process generated, and refuses an upload`() {
+        // The interface declares multipart overloads, so they exist; implementing them would quietly
+        // turn the demo's table into a general file store. A person uploading in the UI never
+        // reaches here anyway — Valtimo posts that to the Zaken API, which this demo does not run —
+        // so the refusal states an intent rather than closing a hole.
+        val upload = ByteArrayMultipartFile("hello".toByteArray(), "notes.txt", MediaType.TEXT_PLAIN)
+
+        assertThat(runCatching { resourceService.store("case-1", upload) }.exceptionOrNull())
+            .isInstanceOf(UnsupportedOperationException::class.java)
+            .hasMessageContaining("only documents a process generated")
+    }
+
+    @Test
+    fun `asking for a letter that is not there says so, instead of answering nothing`() {
+        // Valtimo's placeholder answers 204 for every id, which a browser cannot tell from an empty
+        // file. A letter that is missing should be an error.
+        val missing = UUID.randomUUID().toString()
+
+        assertThat(runCatching { resourceResource.getContent(missing) }.exceptionOrNull())
+            .isInstanceOf(NoSuchElementException::class.java)
     }
 
     @Test
