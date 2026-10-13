@@ -4,6 +4,10 @@ valtimo = "13.48.0.RELEASE"
 epistola-client = "1.4.0"
 lombok = "1.18.42"
 jsonata = "0.9.9"
+# Rich text (ADR 0008): reading HTML and markdown. Plain dependencies, not shaded — see
+# backend/plugin/build.gradle.kts.
+jsoup = "1.23.2"
+commonmark = "0.30.1"
 # Shaded into the plugin jar (relocated) — see backend/plugin/build.gradle.kts
 json-schema-validator = "2.0.4"
 testcontainers = "2.0.3"
@@ -28,6 +32,8 @@ shadow = "9.6.1"
 [libraries]
 # Epistola
 epistola-client = { module = "app.epistola.contract:client-spring3-restclient", version.ref = "epistola-client" }
+# Test only: Epistola's own rich-text schemas, at the contract version the client is pinned to.
+epistola-catalog = { module = "app.epistola.contract:epistola-catalog", version.ref = "epistola-client" }
 
 # Valtimo
 valtimo-bom = { module = "com.ritense.valtimo:valtimo-dependency-versions", version.ref = "valtimo" }
@@ -61,6 +67,9 @@ valtimo-catalogi-api = { module = "com.ritense.valtimo:catalogi-api" }
 # JSONata
 jsonata = { module = "com.dashjoin:jsonata", version.ref = "jsonata" }
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+commonmark = { module = "org.commonmark:commonmark", version.ref = "commonmark" }
+commonmark-ext-strikethrough = { module = "org.commonmark:commonmark-ext-gfm-strikethrough", version.ref = "commonmark" }
 jackson-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml" }
 
 # Lombok

@@ -72,8 +72,8 @@
           "description": "De beslissing op het bezwaar"
         },
         "motivation": {
-          "type": "string",
-          "description": "De motivering van de beslissing"
+          "$ref": "https://epistola.app/schemas/richtext-block-v1.json",
+          "description": "De motivering van de beslissing, met opmaak: alinea's, opsommingen, vet en cursief"
         }
       },
       "required": ["objector", "originalDecision", "decisionType", "decision", "motivation"]
@@ -99,7 +99,69 @@
           },
           "decisionType": "gegrond",
           "decision": "Het bezwaar wordt gegrond verklaard. Het besluit van 15 januari 2026 wordt herroepen. De gevraagde omgevingsvergunning wordt alsnog verleend.",
-          "motivation": "Na heroverweging is gebleken dat de aanvraag voldoet aan de geldende bestemmingsplanregels. De eerder geconstateerde strijdigheid met het bestemmingsplan berustte op een onjuiste interpretatie van de bouwvoorschriften. De verbouwing past binnen de toegestane bebouwingsmogelijkheden."
+          "motivation": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Na heroverweging is gebleken dat de aanvraag voldoet aan de geldende bestemmingsplanregels:"
+                  }
+                ]
+              },
+              {
+                "type": "bullet_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          { "type": "text", "text": "de verbouwing past binnen het " },
+                          {
+                            "type": "text",
+                            "text": "toegestane bouwvlak",
+                            "marks": [{ "type": "strong" }]
+                          },
+                          { "type": "text", "text": ";" }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          {
+                            "type": "text",
+                            "text": "de bouwhoogte blijft onder de maximaal toegestane "
+                          },
+                          { "type": "text", "text": "10 meter", "marks": [{ "type": "strong" }] },
+                          { "type": "text", "text": "." }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "De eerder geconstateerde strijdigheid berustte op een "
+                  },
+                  { "type": "text", "text": "onjuiste interpretatie", "marks": [{ "type": "em" }] },
+                  { "type": "text", "text": " van de bouwvoorschriften." }
+                ]
+              }
+            ]
+          }
         }
       },
       {
@@ -122,7 +184,35 @@
           },
           "decisionType": "ongegrond",
           "decision": "Het bezwaar wordt ongegrond verklaard. Het besluit van 20 februari 2026 blijft in stand.",
-          "motivation": "Het evenement voldoet niet aan de veiligheidseisen zoals vastgelegd in de Algemene Plaatselijke Verordening. De aangevraagde locatie biedt onvoldoende vluchtroutes voor het verwachte bezoekersaantal."
+          "motivation": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "Het evenement voldoet niet aan de veiligheidseisen zoals vastgelegd in de "
+                  },
+                  {
+                    "type": "text",
+                    "text": "Algemene Plaatselijke Verordening",
+                    "marks": [{ "type": "em" }]
+                  },
+                  { "type": "text", "text": "." }
+                ]
+              },
+              {
+                "type": "paragraph",
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "De aangevraagde locatie biedt onvoldoende vluchtroutes voor het verwachte bezoekersaantal."
+                  }
+                ]
+              }
+            ]
+          }
         }
       },
       {
@@ -145,7 +235,51 @@
           },
           "decisionType": "deels_gegrond",
           "decision": "Het bezwaar wordt deels gegrond verklaard. De subsidie voor jeugdactiviteiten wordt alsnog toegekend. De subsidie voor de verbouwing van de kantine blijft afgewezen.",
-          "motivation": "Bij heroverweging is gebleken dat de jeugdactiviteiten wel voldoen aan de subsidiecriteria. De verbouwing van de kantine valt echter buiten het subsidieprogramma voor sportverenigingen en komt daarom niet in aanmerking."
+          "motivation": {
+            "type": "doc",
+            "content": [
+              {
+                "type": "paragraph",
+                "content": [
+                  { "type": "text", "text": "Bij heroverweging is het volgende gebleken:" }
+                ]
+              },
+              {
+                "type": "ordered_list",
+                "content": [
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          { "type": "text", "text": "De jeugdactiviteiten voldoen " },
+                          { "type": "text", "text": "wel", "marks": [{ "type": "strong" }] },
+                          { "type": "text", "text": " aan de subsidiecriteria." }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "list_item",
+                    "content": [
+                      {
+                        "type": "paragraph",
+                        "content": [
+                          { "type": "text", "text": "De verbouwing van de kantine valt " },
+                          { "type": "text", "text": "buiten", "marks": [{ "type": "strong" }] },
+                          {
+                            "type": "text",
+                            "text": " het subsidieprogramma voor sportverenigingen."
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
         }
       }
     ],
@@ -518,20 +652,10 @@
         },
         "n-motivation-body": {
           "id": "n-motivation-body",
-          "type": "text",
+          "type": "richTextVariable",
           "slots": [],
           "styles": { "marginBottom": "12pt" },
-          "props": {
-            "content": {
-              "type": "doc",
-              "content": [
-                {
-                  "type": "paragraph",
-                  "content": [{ "type": "expression", "attrs": { "expression": "motivation" } }]
-                }
-              ]
-            }
-          }
+          "props": { "binding": "motivation" }
         },
         "n-legal-remedy": {
           "id": "n-legal-remedy",

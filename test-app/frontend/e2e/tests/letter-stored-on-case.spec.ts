@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 import { expect, test } from '@playwright/test';
 import { createDossier } from '../pages/correspondentie.page';
+import { composerField } from '../pages/composer-field';
 
 /**
  * The letter a case worker composed is on the dossier afterwards, and opens.
@@ -47,7 +48,7 @@ test.describe('A composed letter ends up on the dossier', () => {
     const inputs = page.getByTestId('epistola-composer-inputs');
     await expect(inputs.locator(`[name="data[decisionType]"]`)).toBeVisible({ timeout: 30_000 });
     for (const [field, value] of Object.entries(DECISION_FIELDS)) {
-      await inputs.locator(`[name="data[${field}]"]`).fill(value);
+      await composerField(inputs, field).fill(value);
     }
     // Wait for the preview, which is the signal that the letter is renderable — submitting before it
     // would be a race with Epistola rather than a test of what happens afterwards.

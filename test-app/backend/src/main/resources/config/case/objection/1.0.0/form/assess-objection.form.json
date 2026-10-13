@@ -9,21 +9,74 @@
       "defaultValue": "gegrond",
       "data": {
         "values": [
-          { "label": "Gegrond", "value": "gegrond" },
-          { "label": "Ongegrond", "value": "ongegrond" },
-          { "label": "Deels gegrond", "value": "deels_gegrond" }
+          {
+            "label": "Gegrond",
+            "value": "gegrond"
+          },
+          {
+            "label": "Ongegrond",
+            "value": "ongegrond"
+          },
+          {
+            "label": "Deels gegrond",
+            "value": "deels_gegrond"
+          }
         ]
       },
-      "validate": { "required": true }
+      "validate": {
+        "required": true
+      }
     },
     {
       "key": "pv:motivation",
       "type": "textarea",
       "input": true,
       "label": "Motivatie",
-      "rows": 5,
-      "defaultValue": "Na heroverweging is gebleken dat de dakkapel voldoet aan de geldende welstandscriteria. Het bezwaar wordt gegrond verklaard.",
-      "validate": { "required": true }
+      "editor": "ckeditor",
+      "isUploadEnabled": false,
+      "wysiwyg": {
+        "toolbar": [
+          "bold",
+          "italic",
+          "|",
+          "fontColor",
+          "|",
+          "bulletedList",
+          "numberedList",
+          "outdent",
+          "indent",
+          "|",
+          "link",
+          "|",
+          "undo",
+          "redo"
+        ],
+        "removePlugins": [
+          "Heading",
+          "BlockQuote",
+          "Table",
+          "TableToolbar",
+          "Image",
+          "ImageCaption",
+          "ImageStyle",
+          "ImageToolbar",
+          "ImageUpload",
+          "ImageResize",
+          "EasyImage",
+          "CKFinder",
+          "CKFinderUploadAdapter",
+          "MediaEmbed",
+          "Alignment",
+          "IndentBlock",
+          "FontFamily",
+          "FontSize",
+          "FontBackgroundColor"
+        ]
+      },
+      "defaultValue": "<p>Na heroverweging is gebleken dat de dakkapel voldoet aan de geldende <strong>welstandscriteria</strong>:</p><ul><li>de dakkapel staat op het achterdakvlak;</li><li>de hoogte blijft onder de <em>1,75 meter</em>.</li></ul><p>Het bezwaar wordt gegrond verklaard.</p>",
+      "validate": {
+        "required": true
+      }
     },
     {
       "type": "epistola-document-preview",

@@ -145,9 +145,9 @@ public final class MissingFieldSelector {
      *       reference, a {@code oneOf} of shapes and an empty schema.</li>
      * </ul>
      *
-     * <p>Rich text carried as an external {@code $ref} lands in the second case. Inlined into the
-     * contract instead, it is indistinguishable from any other object and is <i>not</i> caught
-     * here; see docs/letter-composer.md.
+     * <p>Rich text is not among them. Its {@code $ref} is a canonical URL the analyzer recognises,
+     * so it arrives as a plain scalar marked as rich text, and the generator asks for it with an
+     * editor (ADR 0008).
      */
     private static boolean cannotBeAsked(TemplateField field) {
         if (field.fieldType() == TemplateField.FieldType.SCALAR) {

@@ -92,6 +92,9 @@ public record TemplateField(
      *                      any other shape is not an example of a value. Unlike
      *                      {@code defaultValue}, which is written back into the submission as JSON
      *                      and so has to keep its type.
+     * @param richText      Which Epistola rich-text schema the field references, or null when it
+     *                      is not rich text. Its value is a ProseMirror document, never text,
+     *                      whatever format the case keeps it in; see {@code RichTextConverter}.
      */
     public record FieldHints(
             String title,
@@ -99,8 +102,21 @@ public record TemplateField(
             List<Object> allowedValues,
             Object defaultValue,
             Constraints constraints,
-            String example
+            String example,
+            RichTextKind richText
     ) {
+        /** Hints for a field that is not rich text. */
+        public FieldHints(
+                String title,
+                String format,
+                List<Object> allowedValues,
+                Object defaultValue,
+                Constraints constraints,
+                String example
+        ) {
+            this(title, format, allowedValues, defaultValue, constraints, example, null);
+        }
+
         /** Hints from a schema that offers no example. */
         public FieldHints(
                 String title,
@@ -109,12 +125,12 @@ public record TemplateField(
                 Object defaultValue,
                 Constraints constraints
         ) {
-            this(title, format, allowedValues, defaultValue, constraints, null);
+            this(title, format, allowedValues, defaultValue, constraints, null, null);
         }
 
         /** Hints from a schema that states no constraints. */
         public FieldHints(String title, String format, List<Object> allowedValues, Object defaultValue) {
-            this(title, format, allowedValues, defaultValue, null, null);
+            this(title, format, allowedValues, defaultValue, null, null, null);
         }
 
         public boolean isEmpty() {
@@ -122,7 +138,8 @@ public record TemplateField(
                     && (allowedValues == null || allowedValues.isEmpty())
                     && defaultValue == null
                     && (constraints == null || constraints.isEmpty())
-                    && example == null;
+                    && example == null
+                    && richText == null;
         }
     }
 
@@ -159,9 +176,34 @@ public record TemplateField(
         }
     }
 
+    /** The rich text this field holds, or null when it holds none. */
+    public RichTextKind richTextKind() {
+        return hints != null ? hints.richText() : null;
+    }
+
+    /**
+     * Whether the field holds a list of values — scalars, or rich-text documents — rather than one.
+     * Such a field reaches here as SCALAR typed {@code array}: it has no child fields, only
+     * repeated values.
+     */
+    public boolean takesList() {
+        return fieldType == FieldType.SCALAR && "array".equalsIgnoreCase(type);
+    }
+
     public enum FieldType {
         SCALAR,
         OBJECT,
         ARRAY
+    }
+
+    /**
+     * The two shapes of Epistola rich text. Which schema stands for which is the analyzer's
+     * business (it reads contracts); the domain only says what a field holds.
+     */
+    public enum RichTextKind {
+        /** One paragraph of text and hard breaks, spliced into a sentence of the template. */
+        INLINE,
+        /** Paragraphs and (nested) bullet and ordered lists. */
+        BLOCK
     }
 }

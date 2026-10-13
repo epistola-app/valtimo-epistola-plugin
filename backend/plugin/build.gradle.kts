@@ -68,6 +68,14 @@ dependencies {
     // Left unshaded: a stable Jackson module whose version the host's Spring Boot BOM manages.
     implementation(libs.jackson.dataformat.yaml)
 
+    // Rich text (ADR 0008): parsing HTML and markdown. Both pure Java with no dependencies of their
+    // own. Deliberately not shaded: shading is for a clash we have seen (json-schema-validator), and
+    // a shaded copy would hide these from the host's vulnerability scanning and patching. jsoup is
+    // already on Valtimo's classpath through Tika, and resolves to this version there.
+    implementation(libs.jsoup)
+    implementation(libs.commonmark)
+    implementation(libs.commonmark.ext.strikethrough)
+
     // Valtimo dependencies (compileOnly - provided by implementing application)
     compileOnly(libs.valtimo.core)
     compileOnly(libs.valtimo.contract)
@@ -107,6 +115,10 @@ dependencies {
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.valtimo.test.utils.common)
     testImplementation(libs.junit.jupiter)
+    // Epistola's own rich-text schemas, which every converter's output is validated against — read
+    // from the contract artifact rather than copied, so a contract bump re-tests against its schemas.
+    // Only its schema files are read, never its code, so none of its dependencies are wanted.
+    testImplementation(libs.epistola.catalog) { isTransitive = false }
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     // In-memory DB for the standalone Operaton engine used by the correlation integration test
     testImplementation("com.h2database:h2")

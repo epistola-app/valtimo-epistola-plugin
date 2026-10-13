@@ -4,6 +4,7 @@
 
 import { test, expect } from '@playwright/test';
 import { createDossier, startFromMenu } from '../pages/correspondentie.page';
+import { composerField } from '../pages/composer-field';
 
 /**
  * An ad-hoc letter from an open dossier, with **no user task anywhere**.
@@ -38,14 +39,14 @@ test.describe('Letter composer — an ad-hoc letter, without a user task', () =>
     // Still exactly the three fields the case cannot supply — the baseline mapping read this
     // dossier through $doc, which is what proves the case reached the backend at all.
     const inputs = page.getByTestId('epistola-composer-inputs');
-    await inputs.locator('[name="data[decisionType]"]').waitFor({ timeout: 30_000 });
+    await composerField(inputs, 'decisionType').waitFor({ timeout: 30_000 });
     for (const field of ['decisionType', 'decision', 'motivation']) {
-      await expect(inputs.locator(`[name="data[${field}]"]`)).toBeVisible();
+      await expect(composerField(inputs, field)).toBeVisible();
     }
 
-    await inputs.locator('[name="data[decisionType]"]').fill('gegrond');
-    await inputs.locator('[name="data[decision]"]').fill('Het bezwaar is gegrond verklaard.');
-    await inputs.locator('[name="data[motivation]"]').fill('Ad-hoc brief, zonder taak.');
+    await composerField(inputs, 'decisionType').fill('gegrond');
+    await composerField(inputs, 'decision').fill('Het bezwaar is gegrond verklaard.');
+    await composerField(inputs, 'motivation').fill('Ad-hoc brief, zonder taak.');
     await expect(page.getByTestId('epistola-composer-preview-pdf')).toBeVisible({
       timeout: 60_000,
     });

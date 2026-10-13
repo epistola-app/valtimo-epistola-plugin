@@ -274,6 +274,22 @@ See [Custom expression functions](custom-expression-functions.md) for registrati
 typed arguments, automatically supplied evaluation context, external data access,
 result schemas, and evaluation-scoped caching.
 
+## Rich Text
+
+A template field that references Epistola's rich-text schema takes a ProseMirror document, not
+text. A string mapped onto it is read in the installation's default format
+(`epistola.rich-text.default-format`, `html` unless configured), so most mappings need nothing
+special. A field kept in another format names it:
+
+```jsonata
+{
+  "toelichting": $richText($doc.besluit.toelichting, "html"),
+  "samenvatting": $richText($doc.samenvatting, "markdown")
+}
+```
+
+See [Rich text](rich-text.md) for the formats, what each keeps, and how to add one.
+
 ## Key Files
 
 | File                                                                 | Role                                               |

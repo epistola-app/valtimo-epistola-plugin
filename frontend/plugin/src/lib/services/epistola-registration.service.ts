@@ -24,6 +24,7 @@ import { registerEpistolaRetryFormComponent } from '../components/epistola-retry
 import { registerEpistolaOverrideBuilderComponent } from '../components/override-builder/override-builder.formio';
 import { registerEpistolaProcessLinkSelectorComponent } from '../components/process-link-selector/process-link-selector.formio';
 import { isEpistolaEnabled } from '../epistola-runtime-config';
+import { installCkEditorListStyles } from '../utils/ckeditor-list-styles';
 import { EpistolaMenuService } from './epistola-menu.service';
 
 @Injectable()
@@ -48,5 +49,7 @@ export class EpistolaRegistrationService {
     registerEpistolaProcessLinkSelectorComponent(this.injector);
     registerEpistolaDocumentPreviewComponent(this.injector);
     registerEpistolaComposerComponents(this.injector);
+    // Rich-text fields are asked with CKEditor, whose lists lose their markers in Valtimo.
+    installCkEditorListStyles();
   }
 }

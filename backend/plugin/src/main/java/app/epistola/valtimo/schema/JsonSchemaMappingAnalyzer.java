@@ -37,6 +37,14 @@ import java.util.Set;
 public final class JsonSchemaMappingAnalyzer {
 
     private static final int MAX_DEPTH = 32;
+    /**
+     * Epistola's rich-text schemas by their canonical URL. The URL is the marker: the contract
+     * keeps these references un-inlined when it serves a template's schema, so a field is rich text
+     * exactly when its {@code $ref} is one of them. A later schema version is a new URL, added here.
+     */
+    private static final Map<String, TemplateField.RichTextKind> RICH_TEXT_SCHEMAS = Map.of(
+            "https://epistola.app/schemas/richtext-inline-v1.json", TemplateField.RichTextKind.INLINE,
+            "https://epistola.app/schemas/richtext-block-v1.json", TemplateField.RichTextKind.BLOCK);
     private static final Set<String> CONDITIONAL_KEYWORDS = Set.of(
             "if", "then", "else", "dependentSchemas", "dependentRequired"
     );
@@ -175,6 +183,11 @@ public final class JsonSchemaMappingAnalyzer {
                     name, path, required, description, fieldSchema, resolved, root, depth);
         }
 
+        TemplateField.RichTextKind richText = richTextKind(resolved.schema());
+        if (richText != null) {
+            return richTextField(name, path, required, description, fieldSchema, resolved, richText);
+        }
+
         return new TemplateField(
                 name,
                 path,
@@ -188,6 +201,60 @@ public final class JsonSchemaMappingAnalyzer {
                 resolved.nullable(),
                 hints(fieldSchema, resolved.schema())
         );
+    }
+
+    /**
+     * A rich-text field: one value, mapped with one expression like any scalar, whose value is a
+     * ProseMirror document rather than text. Not {@code complex} — there is nothing to decompose and
+     * nothing for Simple mode to refuse — but marked in its hints, so the generated input is an
+     * editor and the data reaching Epistola is converted from the case's format first.
+     */
+    private TemplateField richTextField(
+            String name,
+            String path,
+            boolean required,
+            String description,
+            Map<String, Object> fieldSchema,
+            ResolvedSchema resolved,
+            TemplateField.RichTextKind kind
+    ) {
+        TemplateField.FieldHints hints = hints(fieldSchema, resolved.schema());
+        return new TemplateField(
+                name,
+                path,
+                richTextTypeLabel(kind),
+                TemplateField.FieldType.SCALAR,
+                required,
+                description,
+                Collections.emptyList(),
+                false,
+                null,
+                resolved.nullable(),
+                new TemplateField.FieldHints(
+                        hints != null ? hints.title() : null,
+                        null,
+                        null,
+                        hints != null ? hints.defaultValue() : null,
+                        null,
+                        null,
+                        kind)
+        );
+    }
+
+    /**
+     * The rich-text kind a resolved schema stands for. Resolution keeps the canonical {@code $ref}
+     * on the schema it hands back — through a local {@code $ref} to a definition holding it, and
+     * through a {@code oneOf} with {@code null} — so this one lookup covers every way a contract
+     * may wrap it.
+     */
+    private TemplateField.RichTextKind richTextKind(Map<String, Object> schema) {
+        return schema.get("$ref") instanceof String reference
+                ? RICH_TEXT_SCHEMAS.get(reference)
+                : null;
+    }
+
+    private String richTextTypeLabel(TemplateField.RichTextKind kind) {
+        return kind == TemplateField.RichTextKind.INLINE ? "richtext-inline" : "richtext-block";
     }
 
     /**
@@ -344,6 +411,32 @@ public final class JsonSchemaMappingAnalyzer {
                     arraySchema.nullable()
             );
         }
+        TemplateField.RichTextKind itemKind = richTextKind(items.schema());
+        if (itemKind != null) {
+            // A list of documents is mapped and asked for like a list of scalars — one repeating
+            // editor — with each item converted on its own. The array's hints (title, minItems,
+            // maxItems) are kept; the kind is the items'.
+            return new TemplateField(
+                    name,
+                    path,
+                    "array",
+                    TemplateField.FieldType.SCALAR,
+                    required,
+                    description,
+                    Collections.emptyList(),
+                    false,
+                    null,
+                    arraySchema.nullable(),
+                    new TemplateField.FieldHints(
+                            hints != null ? hints.title() : null,
+                            null,
+                            null,
+                            hints != null ? hints.defaultValue() : null,
+                            hints != null ? hints.constraints() : null,
+                            null,
+                            itemKind)
+            );
+        }
         if (isArraySchema(items.schema())) {
             return complexField(
                     name,
@@ -405,6 +498,12 @@ public final class JsonSchemaMappingAnalyzer {
 
         Object referenceValue = working.get("$ref");
         if (referenceValue instanceof String reference) {
+            if (RICH_TEXT_SCHEMAS.containsKey(reference)) {
+                // Not resolved, and not complex: the reference itself is the meaning. It stays on
+                // the returned schema so the field can be recognised, see richTextKind.
+                return new ResolvedSchema(
+                        working, false, false, null, referenceLabel(reference), nextReferenceStack);
+            }
             if (!reference.startsWith("#/")) {
                 return complex(
                         working,

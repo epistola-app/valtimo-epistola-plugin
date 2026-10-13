@@ -67,12 +67,17 @@
         "highContrast": false,
         "properties": {
           "columns": [
-            [
-              { "key": "besluittype", "title": "Besluittype", "value": "doc:besluit.type" },
-              { "key": "toelichting", "title": "Toelichting", "value": "doc:besluit.toelichting" }
-            ]
+            [{ "key": "besluittype", "title": "Besluittype", "value": "doc:besluit.type" }]
           ]
         }
+      },
+      {
+        "type": "formio",
+        "key": "toelichting",
+        "title": "Toelichting",
+        "width": 1,
+        "highContrast": false,
+        "properties": { "formDefinitionName": "besluit-toelichting" }
       }
     ]
   }

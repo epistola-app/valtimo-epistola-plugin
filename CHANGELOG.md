@@ -9,6 +9,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Epistola rich-text fields can be filled, in whatever format the case keeps text.** A template
+  field that references Epistola's rich-text schema (`richtext-inline-v1` / `richtext-block-v1`)
+  takes a ProseMirror document, and until now the plugin had no way to produce one: the composer
+  refused such a field with a 422, and a mapped string was rejected by Epistola. The format a case
+  keeps its text in is the installation's choice, so the plugin now translates
+  ([ADR 0008](docs/adr/0008-rich-text-inputs.md)):
+  - **Four formats ship** — `plain`, `html` (what Valtimo's Form.io WYSIWYG writes, Quill or
+    CKEditor), `markdown` and `prosemirror` — and an installation adds its own by declaring a
+    `RichTextFormat` bean.
+  - **The format is said, never guessed.** `epistola.rich-text.default-format` (default `html`,
+    what Valtimo's WYSIWYG text areas write) applies to a string mapped straight onto a rich-text
+    field; a field in another format names it in the mapping, e.g. `$richText($doc.x, "plain")`
+    for a plain text area. Changing the default reinterprets stored text: treat it as a schema
+    change.
+  - **A ProseMirror document is now narrowed too.** A document mapped straight onto a rich-text
+    field used to be sent as it was; it now passes the same check as converted text, so nodes and
+    marks outside Epistola's schema are dropped instead of failing the letter.
+  - **The output is always valid.** Whatever a format produces is narrowed to what Epistola's
+    schema allows — a heading becomes a paragraph, an unknown mark or a `javascript:` link is
+    dropped — and shaped to the field: an inline field gets one paragraph. Every converter is tested
+    against Epistola's own schemas.
+  - **Conversion happens where data leaves for Epistola**, in a decorator around the client, so
+    generation, preview, the composer and the retry form all send the same document. The
+    template's fields are read from its current contract and kept for a minute; a version not yet
+    deployed that changes a field's type is a known limitation (`docs/rich-text.md`). The template's contract is read to find the
+    rich-text fields; if that read fails, the data goes as mapped and Epistola's own validation
+    speaks.
+  - **Any form can supply it**, not only the composer: a Valtimo form's WYSIWYG text area writes
+    HTML to the case, and the mapping reads it with `$richText($doc.x, "html")` (or by the
+    default format). `docs/rich-text.md` gives the editor configuration that offers only what
+    Epistola renders.
+  - **The composer and retry form ask for a rich-text field** with the default format's editor:
+    Form.io's WYSIWYG text area (CKEditor, limited to what Epistola renders: its toolbar, and no
+    headings, tables or images by paste or autoformat either) for `html`, a
+    plain text area otherwise. A list of rich text gets one editor per item. What the employee types stays in the case's format, so write-back does not change
+    a field's format.
+
+  - **What does not survive is reported.** A generated letter logs a warning naming the field, the
+    template and the kinds lost (`heading ×1, table ×1`), never the text; a preview logs it at
+    debug.
+  - **Lists in CKEditor show their bullets again.** Valtimo's Carbon reset removes list markers
+    everywhere and restores them only in its text widget, so a list in any CKEditor in Valtimo,
+    Valtimo's own WYSIWYG text areas included, showed as indented text. The plugin adds the same
+    restore scoped to CKEditor's content (`.ck-content`). Display only: the letter was never
+    affected. The finding and how it was checked are in `docs/rich-text.md`.
+  - **The demo shows both paths.** `besluit-bezwaar`'s `motivation` is now block rich text
+    (municipality-demo catalog 1.4.0). The Bezwaar case asks for it in a plain Valtimo form with a
+    limited CKEditor and maps it with `$richText($pv.motivation, "html")`; the Correspondentie
+    composer asks for it with the same editor, and the case shows the written-back HTML in a
+    read-only `formio` widget, because a `fields` widget would print the tags.
+
+  HTML is parsed with jsoup and markdown with commonmark-java, both new dependencies (pure Java,
+  none of their own). They are not shaded. jsoup is already on Valtimo's classpath through Tika,
+  which now resolves to the plugin's version.
+
 - **A generated letter now stays on the dossier, and a case worker can open it** — in the demo
   application, without the Documenten API or S3. The composer demo used to end having produced a PDF
   nobody could see: the process reached `end-success` with nothing downloaded and nothing stored,
@@ -74,6 +129,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   out of scope. Suite vulnerabilities are pointed at the Suite's own form.
 
 ### Fixed
+
+- **The retry check no longer logs the corrected data.** `generate-document` logged the first 200
+  characters of `epistolaEditedData` at debug: a letter's data as a person corrected it. It now logs
+  only whether the variable is there and its type.
 
 - **A Dutch amount is no longer read as English.** The composer and the retry form did not tell
   Form.io which language Valtimo is in, so a number field fell back to English separators and

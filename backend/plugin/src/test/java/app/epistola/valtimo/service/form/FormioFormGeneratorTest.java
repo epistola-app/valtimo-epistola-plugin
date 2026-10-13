@@ -41,7 +41,7 @@ class FormioFormGeneratorTest {
 
     @BeforeEach
     void setUp() {
-        generator = new FormioFormGenerator(objectMapper);
+        generator = app.epistola.valtimo.richtext.RichTextFixtures.generator(objectMapper, "plain");
     }
 
     @Nested

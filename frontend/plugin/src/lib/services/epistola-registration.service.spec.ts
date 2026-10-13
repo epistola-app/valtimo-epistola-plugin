@@ -37,6 +37,7 @@ jest.mock('../components/override-builder/override-builder.formio', () => ({
 jest.mock('../components/process-link-selector/process-link-selector.formio', () => ({
   registerEpistolaProcessLinkSelectorComponent: jest.fn(),
 }));
+jest.mock('../utils/ckeditor-list-styles', () => ({ installCkEditorListStyles: jest.fn() }));
 
 import { registerEpistolaDocumentComponent } from '../components/epistola-document/epistola-document.formio';
 import { registerEpistolaDocumentPreviewComponent } from '../components/epistola-document-preview/epistola-document-preview.formio';
@@ -45,6 +46,7 @@ import { registerEpistolaRetryFormComponent } from '../components/epistola-retry
 import { registerEpistolaOverrideBuilderComponent } from '../components/override-builder/override-builder.formio';
 import { registerEpistolaProcessLinkSelectorComponent } from '../components/process-link-selector/process-link-selector.formio';
 import { isEpistolaEnabled } from '../epistola-runtime-config';
+import { installCkEditorListStyles } from '../utils/ckeditor-list-styles';
 import { EpistolaRegistrationService } from './epistola-registration.service';
 
 const registrationFunctions = [
@@ -76,6 +78,7 @@ describe('EpistolaRegistrationService', () => {
       expect(register).toHaveBeenCalledTimes(1);
       expect(register).toHaveBeenCalledWith(injector);
     });
+    expect(installCkEditorListStyles).toHaveBeenCalledTimes(1);
   });
 
   it('does not register anything while Epistola is disabled', () => {
@@ -86,5 +89,6 @@ describe('EpistolaRegistrationService', () => {
 
     expect(menuService.register).not.toHaveBeenCalled();
     registrationFunctions.forEach((register) => expect(register).not.toHaveBeenCalled());
+    expect(installCkEditorListStyles).not.toHaveBeenCalled();
   });
 });

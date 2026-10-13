@@ -1,0 +1,16 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "key": "besluit.toelichting",
+      "type": "textarea",
+      "input": true,
+      "label": "Toelichting",
+      "hideLabel": true,
+      "editor": "ckeditor",
+      "isUploadEnabled": false,
+      "disabled": true,
+      "wysiwyg": { "toolbar": [] }
+    }
+  ]
+}
