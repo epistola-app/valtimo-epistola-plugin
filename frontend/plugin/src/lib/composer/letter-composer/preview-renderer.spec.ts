@@ -15,7 +15,7 @@
  *
  * SPDX-License-Identifier: EUPL-1.2
  */
-import { of, throwError } from 'rxjs';
+import { of, Subject, throwError } from 'rxjs';
 import { isRendered, PreviewRenderer, PreviewResult } from './preview-renderer';
 
 /**
@@ -56,11 +56,24 @@ describe('PreviewRenderer', () => {
     expect((result as any).url).toBe('safe:blob:1');
   });
 
-  it('releases the previous letter before rendering the next', () => {
+  it('keeps the previous letter on screen until the next one arrives, then releases it', () => {
     render(of(new Blob(['%PDF'])));
+    const next = new Subject<Blob>();
+    renderer.render(next).subscribe();
+
+    // Still rendering: the letter on screen is the one to keep showing.
+    expect(revoked).toEqual([]);
+
+    next.next(new Blob(['%PDF']));
+    expect(created).toEqual(['blob:1', 'blob:2']);
+    expect(revoked).toEqual(['blob:1']);
+  });
+
+  it('releases the previous letter when the next is refused, leaving nothing wrong on screen', () => {
     render(of(new Blob(['%PDF'])));
 
-    expect(created).toEqual(['blob:1', 'blob:2']);
+    render(throwError(() => ({ error: { error: 'Ongeldig' } })));
+
     expect(revoked).toEqual(['blob:1']);
   });
 

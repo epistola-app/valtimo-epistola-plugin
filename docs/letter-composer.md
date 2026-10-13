@@ -162,14 +162,15 @@ data belongs in a case form, not in one letter.
 
 ## Configuring the component
 
-| Setting                                     | Meaning                                                                                                                                                                                                                                           |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Name for the chosen letter** (`key`)      | A name for the process variable the letter is stored in, e.g. `epistolaLetter`. The `pv:` prefix is added on save, so the author types a name rather than a key; typing `pv:epistolaLetter` also works. Each picker on a form needs its own name. |
-| **Which letters, from where**               | Pick the Epistola connection and catalog, then tick the letters to offer and name each one as the employee should see it. The three cascade: changing the connection clears the catalog and the ticks, because those ids mean nothing elsewhere.  |
-| **Baseline mapping**                        | One JSONata mapping over `$doc`/`$pv` for every offered letter. Whatever it does not fill is asked of the employee.                                                                                                                               |
-| **Split into steps above this many fields** | Empty for the default of 6. A letter asking for more than this many fields is shown as steps, one per section of the letter, rather than one long column. Raise it to keep more on one screen; set it very high to never split.                   |
-| **Also ask for optional fields**            | Off by default: only fields the template marks required are asked for.                                                                                                                                                                            |
-| **Process to start**                        | Normally left empty — see [Where it is used](#where-it-is-used). Fill it in only when the backend says two processes offer the same letter.                                                                                                       |
+| Setting                                                           | Meaning                                                                                                                                                                                                                                           |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Name for the chosen letter** (`key`)                            | A name for the process variable the letter is stored in, e.g. `epistolaLetter`. The `pv:` prefix is added on save, so the author types a name rather than a key; typing `pv:epistolaLetter` also works. Each picker on a form needs its own name. |
+| **Which letters, from where**                                     | Pick the Epistola connection and catalog, then tick the letters to offer and name each one as the employee should see it. The three cascade: changing the connection clears the catalog and the ticks, because those ids mean nothing elsewhere.  |
+| **Baseline mapping**                                              | One JSONata mapping over `$doc`/`$pv` for every offered letter. Whatever it does not fill is asked of the employee.                                                                                                                               |
+| **Split into steps above this many fields**                       | Empty for the default of 6. A letter asking for more than this many fields is shown as steps, one per section of the letter, rather than one long column. Raise it to keep more on one screen; set it very high to never split.                   |
+| **Also ask for optional fields**                                  | Off by default: only fields the template marks required are asked for.                                                                                                                                                                            |
+| **Update the preview as the letter is filled in** (`autoRefresh`) | On by default. Turn off for a letter that is slow to render: the employee then updates the preview with **Vernieuwen**, and can still switch it on for themselves.                                                                                |
+| **Process to start**                                              | Normally left empty — see [Where it is used](#where-it-is-used). Fill it in only when the backend says two processes offer the same letter.                                                                                                       |
 
 **The `pv:` prefix is the component's, not the author's.** There is no case where the key could be
 anything else: the only thing that reads a composed letter is the generate action, which reads a
@@ -206,6 +207,32 @@ Stored, that half looks like this — under `epistola`, the one key this compone
 
 A per-letter `dataMapping` fragment is merged over the baseline, so the baseline says what every
 letter of this case type needs and the fragment only what makes this one different.
+
+### The preview
+
+The composer sizes itself by the space it is given, not by the window, because a Valtimo task dialog
+is far narrower than the screen it is on (about 770px on a 1280px laptop). The form and the preview
+sit side by side only from 60rem wide, where both halves stay readable; the preview then stays in
+view while a long form scrolls past it. Narrower, the preview goes below the form.
+
+Its header has three controls:
+
+- **Automatisch bijwerken** — whether the preview follows each edit (about a second after the last
+  one). Seeded from the author's setting, then the employee's to switch. While it is off the header
+  says **Niet bijgewerkt** after an edit, and switching it back on catches up at once. Choosing a
+  letter always shows it once: choosing is asking to see it.
+- **Vernieuwen** — render the letter as it stands now, without waiting.
+- **Losmaken** / **Vastzetten** — float the preview over the page, or put it back. A floating
+  preview is moved out of the dialog onto the page itself (a fixed element inside a transformed
+  dialog would stay inside it), dragged by its header and resized from its corner, and kept on
+  screen. Whether it floats, and where, is remembered per browser; closing the dialog takes it
+  along.
+
+While a new render is on its way the previous letter stays on screen, dimmed, so an edit does not
+blank the preview and lose the employee's place in it.
+
+`autoRefresh` is a presentation setting under `epistola`, absent meaning on, so it did not change
+the stored shape's `schemaVersion`: an older plugin simply ignores it.
 
 ### On a task form, a start form, or a form-flow step
 

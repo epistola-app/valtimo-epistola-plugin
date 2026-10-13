@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The letter composer fits a small dialog, and its preview can float.** A Valtimo task dialog is
+  about 770px wide on a laptop, which left the form and an unreadable 360px-wide preview side by
+  side, a PDF taller than the dialog, and a preview that scrolled away with a long form.
+  - **Side by side only where it fits**: from 60rem of the composer's own width, with the preview
+    staying in view while the form scrolls; narrower, the preview goes below the form.
+  - **Losmaken / Vastzetten** floats the preview over the page: dragged by its header, resized from
+    its corner, kept on screen, remembered per browser, and gone with the dialog.
+  - **Automatisch bijwerken** can be switched off by the employee, with **Vernieuwen** to render on
+    demand and **Niet bijgewerkt** while it is behind; an author can start it off with the new
+    `autoRefresh` setting, for a letter that is slow to render.
+  - **The previous letter stays on screen while the next renders**, dimmed, instead of the preview
+    going blank on every edit and losing the employee's place in it.
+  - A browser test walks it inside a real dialog (`letter-composer-preview-panel.spec.ts`).
+
 ### Added
 
 - **Epistola rich-text fields can be filled, in whatever format the case keeps text.** A template

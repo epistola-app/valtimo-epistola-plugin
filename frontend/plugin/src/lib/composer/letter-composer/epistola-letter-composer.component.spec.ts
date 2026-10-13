@@ -20,6 +20,8 @@ jest.mock('@angular/core', () => ({
   Component: () => (target: unknown) => target,
   Input: () => () => undefined,
   Output: () => () => undefined,
+  ViewChild: () => () => undefined,
+  ElementRef: class {},
   EventEmitter: class {
     emit = jest.fn();
   },
@@ -192,6 +194,89 @@ describe('EpistolaLetterComposerComponent', () => {
     expect(service.composerPreviewToBlob).toHaveBeenCalledWith(
       expect.objectContaining({ data: { naam: 'Jansen', motivatie } }),
     );
+  });
+
+  describe('auto-refresh', () => {
+    function typedWithAutoRefreshOff() {
+      const created = createComponent();
+      created.component.onTemplateSelected('besluit');
+      jest.advanceTimersByTime(1000);
+      created.service.composerPreviewToBlob.mockClear();
+      created.component.onToggleAutoRefresh(false);
+      created.component.onInputsChanged({ data: { motivatie: 'omdat' } });
+      return created;
+    }
+
+    it('stops following each edit when switched off, and says the preview is behind', () => {
+      const { component, service } = typedWithAutoRefreshOff();
+
+      jest.advanceTimersByTime(2000);
+
+      expect(service.composerPreviewToBlob).not.toHaveBeenCalled();
+      expect(component.previewStale).toBe(true);
+      // What is stored is still what was typed: only the preview waits.
+      expect(component.value?.inputs).toEqual({ motivatie: 'omdat' });
+    });
+
+    it('renders at once on Refresh, without waiting for the debounce', () => {
+      const { component, service } = typedWithAutoRefreshOff();
+
+      component.refresh();
+
+      expect(service.composerPreviewToBlob).toHaveBeenCalledWith(
+        expect.objectContaining({ data: { naam: 'Jansen', motivatie: 'omdat' } }),
+      );
+      expect(component.previewStale).toBe(false);
+    });
+
+    it('catches up at once when switched back on', () => {
+      const { component, service } = typedWithAutoRefreshOff();
+
+      component.onToggleAutoRefresh(true);
+
+      expect(service.composerPreviewToBlob).toHaveBeenCalledTimes(1);
+      expect(component.previewStale).toBe(false);
+    });
+
+    it("starts off when the author turned it off, and then is the employee's to switch", () => {
+      const { component } = createComponent();
+
+      component.epistola = { autoRefresh: false };
+      component.ngOnChanges({ epistola: {} } as any);
+      expect(component.autoRefreshEnabled).toBe(false);
+
+      component.onToggleAutoRefresh(true);
+      component.epistola = { autoRefresh: false };
+      component.ngOnChanges({ epistola: {} } as any);
+      expect(component.autoRefreshEnabled).toBe(true);
+    });
+
+    it('still shows the chosen letter once, since choosing it is asking to see it', () => {
+      const { component, service } = createComponent();
+      component.epistola = { autoRefresh: false };
+      component.ngOnChanges({ epistola: {} } as any);
+
+      component.onTemplateSelected('besluit');
+      jest.advanceTimersByTime(1000);
+
+      expect(service.composerPreviewToBlob).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('keeps the last letter on screen while the next one renders', () => {
+    const { component, service } = createComponent();
+    component.onTemplateSelected('besluit');
+    jest.advanceTimersByTime(1000);
+    const shown = component.previewUrl;
+    expect(shown).toBeTruthy();
+
+    const rendering = new Subject<Blob>();
+    service.composerPreviewToBlob.mockReturnValue(rendering);
+    component.onInputsChanged({ data: { motivatie: 'omdat' } });
+    jest.advanceTimersByTime(1000);
+
+    expect(component.previewLoading).toBe(true);
+    expect(component.previewUrl).toBe(shown);
   });
 
   it('previews what was typed, debounced', () => {

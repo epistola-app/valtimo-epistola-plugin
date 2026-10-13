@@ -59,21 +59,27 @@ export class PreviewRenderer {
   ) {}
 
   /**
-   * Render one preview, releasing whatever was on screen before it.
+   * Render one preview, releasing whatever was on screen before it once the new one is there.
    *
-   * <p>The previous URL is released immediately rather than when the next one arrives: a preview
-   * being replaced is already stale, and holding it until the request returns means holding two.
+   * <p>The previous letter stays on screen while the next renders, so an edit does not blank the
+   * preview and lose the employee's place in it. That briefly means holding two URLs; the old one
+   * is released as soon as its successor arrives, or when the render fails, since a refused letter
+   * leaves nothing correct to show.
    */
   render(pdf: Observable<Blob>): Observable<PreviewResult> {
-    this.release();
     return new Observable<PreviewResult>((subscriber) => {
       const subscription = pdf.subscribe({
         next: (blob) => {
+          const previous = this.currentUrl;
           this.currentUrl = URL.createObjectURL(blob);
           subscriber.next({ url: this.sanitizer.bypassSecurityTrustResourceUrl(this.currentUrl) });
+          if (previous) {
+            URL.revokeObjectURL(previous);
+          }
           subscriber.complete();
         },
         error: (failure) => {
+          this.release();
           this.readError(failure, (error, fields) => {
             subscriber.next(fields?.length ? { error, fields } : { error });
             subscriber.complete();

@@ -457,7 +457,8 @@ in `test-app/frontend/src/app/embedding/`; the published plugin library is untou
 - **End-to-end** (`test-app`, Testcontainers, runs in CI): `DownloadDocumentE2ETest` — real app boot, both download storage strategies, async catch-event completion, and the task-scope value resolver; `FormFlowTransitionE2ETest` — walks the Form Flow demo case (open the task, complete both steps, assert the process reached the follow-up task and the submission reached the document)
 - `FormFlowDemoConfigurationTest` — shape of the Form Flow demo fixtures, including the invariant that the preview variant differs from the preview-free baseline **only** by the preview component and generates after (not between) the user tasks
 - **Playwright E2E suites** — plugin-configuration, generate-document, check-job-status,
-  download-document, form-flow-transition, letter-composer (×2), letter-composer-adhoc. They run
+  download-document, form-flow-transition, letter-composer (×2), letter-composer-adhoc,
+  letter-composer-preview-panel (pop out, drag, dock and pause the preview inside a real dialog). They run
   **nightly and on demand** (`.github/workflows/e2e-ui.yml`, `gh workflow run "E2E (browser)"`),
   not in PR CI: they need Postgres, Keycloak, Epistola, the backend and the Angular dev server, so
   they are far slower than a PR check should be. Run them before a release — they are where the

@@ -19,12 +19,14 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   EventEmitter,
   Input,
   OnChanges,
   OnDestroy,
   Output,
   SimpleChanges,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -44,6 +46,7 @@ import {
 } from './composer-data';
 import { readOpenDossierId } from './open-dossier';
 import { isRendered, PreviewRenderer } from './preview-renderer';
+import { FloatingPanel, readPanelMemory, writePanelMemory } from './floating-panel';
 import { isSectioned, sectionForm } from './composer-sections';
 import { formioLanguage, readerLocale, withLocaleDates } from '../../utils/formio-locale';
 import { tagRichText } from '../../utils/rich-text-values';
@@ -149,58 +152,118 @@ export interface ComposerValue {
           ></formio>
         </div>
 
-        <div class="composer-preview" data-testid="epistola-composer-preview">
-          <div class="preview-header">
-            <span>{{ 'composerPreview' | pluginTranslate: pluginId | async }}</span>
+        <div
+          #previewPane
+          class="composer-preview"
+          [class.floating]="floating"
+          data-testid="epistola-composer-preview"
+        >
+          <div class="preview-header" data-testid="epistola-composer-preview-header">
+            <span class="preview-title">{{
+              'composerPreview' | pluginTranslate: pluginId | async
+            }}</span>
+            <span
+              *ngIf="previewLoading && previewUrl"
+              class="preview-status"
+              data-testid="epistola-composer-preview-updating"
+              >{{ 'composerPreviewUpdating' | pluginTranslate: pluginId | async }}</span
+            >
+            <span
+              *ngIf="previewStale && !previewLoading"
+              class="preview-status preview-status--stale"
+              data-testid="epistola-composer-preview-stale"
+              >{{ 'composerPreviewStale' | pluginTranslate: pluginId | async }}</span
+            >
+            <div class="preview-controls">
+              <label class="preview-autorefresh">
+                <input
+                  type="checkbox"
+                  [checked]="autoRefreshEnabled"
+                  (change)="onToggleAutoRefresh($any($event.target).checked)"
+                  data-testid="epistola-composer-autorefresh"
+                />
+                {{ 'composerAutoRefresh' | pluginTranslate: pluginId | async }}
+              </label>
+              <button
+                type="button"
+                class="preview-button"
+                [disabled]="previewLoading || !canRefresh"
+                (click)="refresh()"
+                data-testid="epistola-composer-refresh"
+              >
+                {{ 'composerRefresh' | pluginTranslate: pluginId | async }}
+              </button>
+              <button
+                type="button"
+                class="preview-button"
+                (click)="togglePopOut()"
+                data-testid="epistola-composer-popout"
+              >
+                {{
+                  (floating ? 'composerDock' : 'composerPopOut') | pluginTranslate: pluginId | async
+                }}
+              </button>
+            </div>
           </div>
-          <div
-            *ngIf="previewLoading"
-            class="composer-message"
-            data-testid="epistola-composer-preview-loading"
-          >
-            {{ 'composerPreviewLoading' | pluginTranslate: pluginId | async }}
-          </div>
-          <object
-            *ngIf="previewUrl && !previewLoading"
-            [data]="previewUrl"
-            type="application/pdf"
-            class="preview-pdf"
-            data-testid="epistola-composer-preview-pdf"
-          >
-            {{ 'composerPreviewUnsupported' | pluginTranslate: pluginId | async }}
-          </object>
-          <div
-            *ngIf="previewError"
-            class="composer-error"
-            data-testid="epistola-composer-preview-error"
-          >
-            {{ previewError }}
-          </div>
-          <!--
+          <div class="preview-content">
+            <div
+              *ngIf="previewLoading && !previewUrl"
+              class="composer-message"
+              data-testid="epistola-composer-preview-loading"
+            >
+              {{ 'composerPreviewLoading' | pluginTranslate: pluginId | async }}
+            </div>
+            <!--
+            The last letter stays on screen while the next one renders, dimmed, so an edit does not
+            blank the preview and lose the employee's place in it.
+          -->
+            <object
+              *ngIf="previewUrl"
+              [data]="previewUrl"
+              type="application/pdf"
+              class="preview-pdf"
+              [class.preview-pdf--updating]="previewLoading"
+              data-testid="epistola-composer-preview-pdf"
+            >
+              {{ 'composerPreviewUnsupported' | pluginTranslate: pluginId | async }}
+            </object>
+            <div
+              *ngIf="previewError"
+              class="composer-error"
+              data-testid="epistola-composer-preview-error"
+            >
+              {{ previewError }}
+            </div>
+            <!--
             The fields Epistola refused, each named as the employee sees it named. Shown here
             rather than under the inputs because most of them have no input: the baseline mapping
             supplies them, so the employee was never asked. See composer-findings.ts.
           -->
-          <div
-            *ngIf="refusedFields.length"
-            class="composer-error"
-            data-testid="epistola-composer-refused-fields"
-          >
-            <p>{{ 'composerRefusedFields' | pluginTranslate: pluginId | async }}</p>
-            <ul>
-              <li *ngFor="let field of refusedFields" data-testid="epistola-composer-refused-field">
-                <strong>{{ field.label }}</strong
-                >: {{ field.message }}
-              </li>
-            </ul>
+            <div
+              *ngIf="refusedFields.length"
+              class="composer-error"
+              data-testid="epistola-composer-refused-fields"
+            >
+              <p>{{ 'composerRefusedFields' | pluginTranslate: pluginId | async }}</p>
+              <ul>
+                <li
+                  *ngFor="let field of refusedFields"
+                  data-testid="epistola-composer-refused-field"
+                >
+                  <strong>{{ field.label }}</strong
+                  >: {{ field.message }}
+                </li>
+              </ul>
+            </div>
+            <div
+              *ngIf="awaitingRequired"
+              class="composer-message"
+              data-testid="epistola-composer-awaiting-input"
+            >
+              {{ 'composerAwaitingInput' | pluginTranslate: pluginId | async }}
+            </div>
           </div>
-          <div
-            *ngIf="awaitingRequired"
-            class="composer-message"
-            data-testid="epistola-composer-awaiting-input"
-          >
-            {{ 'composerAwaitingInput' | pluginTranslate: pluginId | async }}
-          </div>
+          <div class="preview-resize" aria-hidden="true"></div>
         </div>
       </div>
     </div>
@@ -224,23 +287,125 @@ export interface ComposerValue {
         color: #dc3545;
         padding: 0.25rem 0;
       }
+      /*
+       * Sized by the space the composer is given, not the window: a Valtimo dialog is far narrower
+       * than the screen it is on. Side by side only where both halves stay readable; otherwise the
+       * preview goes below the form, and "Pop out" is the way to have both in view.
+       */
+      .epistola-composer {
+        container-type: inline-size;
+      }
       .composer-body {
         display: flex;
+        flex-direction: column;
         gap: 1rem;
       }
       .composer-inputs,
       .composer-preview {
-        flex: 1 1 50%;
         min-width: 0;
       }
+      @container (min-width: 60rem) {
+        .composer-body {
+          flex-direction: row;
+          align-items: flex-start;
+        }
+        .composer-inputs,
+        .composer-preview {
+          flex: 1 1 50%;
+        }
+        /* Stays in view while a long form scrolls past it. */
+        .composer-preview:not(.floating) {
+          position: sticky;
+          top: 0;
+        }
+      }
       .preview-header {
-        font-weight: 600;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.25rem 0.75rem;
         padding-bottom: 0.25rem;
+      }
+      .preview-title {
+        font-weight: 600;
+      }
+      .preview-status {
+        color: #6c757d;
+        font-size: 0.875rem;
+      }
+      .preview-status--stale {
+        color: #8a6d00;
+      }
+      .preview-controls {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-left: auto;
+        font-size: 0.875rem;
+      }
+      .preview-autorefresh {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        margin: 0;
+        cursor: pointer;
+      }
+      .preview-button {
+        border: 1px solid #8d8d8d;
+        background: #fff;
+        padding: 0.125rem 0.5rem;
+        cursor: pointer;
+      }
+      .preview-button:disabled {
+        cursor: default;
+        opacity: 0.5;
       }
       .preview-pdf {
         width: 100%;
-        height: 40rem;
+        height: min(80vh, 60rem);
         border: 1px solid #dee2e6;
+        transition: opacity 0.15s;
+      }
+      .preview-pdf--updating {
+        opacity: 0.5;
+      }
+      .preview-resize {
+        display: none;
+      }
+      /* Floating: moved to the body by FloatingPanel, which sets its place and size. */
+      .composer-preview.floating {
+        display: flex;
+        flex-direction: column;
+        background: #fff;
+        border: 1px solid #c6c6c6;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        padding: 0.5rem;
+      }
+      .composer-preview.floating .preview-header {
+        cursor: move;
+        user-select: none;
+      }
+      .composer-preview.floating .preview-content {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: auto;
+      }
+      .composer-preview.floating .preview-pdf {
+        height: 100%;
+      }
+      .composer-preview.floating .preview-resize {
+        display: block;
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 1rem;
+        height: 1rem;
+        cursor: nwse-resize;
+        background: linear-gradient(135deg, transparent 50%, #8d8d8d 50%);
+      }
+      /* The PDF viewer would take the pointer mid-drag and stop it dead. */
+      .composer-preview.dragging .preview-pdf {
+        pointer-events: none;
       }
     `,
   ],
@@ -258,6 +423,8 @@ export class EpistolaLetterComposerComponent
   @Input() epistola?: {
     letterSet?: { templates?: ComposerTemplateOption[] };
     stepAfter?: number | string;
+    /** Whether the preview follows each edit; on unless the author turned it off. */
+    autoRefresh?: boolean;
   };
   @Input() label?: string;
   @Input() placeholder?: string;
@@ -295,6 +462,15 @@ export class EpistolaLetterComposerComponent
   previewError: string | null = null;
   /** True while the letter still misses a required value, so no preview is attempted. */
   awaitingRequired = false;
+  /**
+   * Whether the preview follows each edit. Seeded once from the author's setting, then the
+   * employee's to switch: rendering on every change is what makes a long letter feel slow.
+   */
+  autoRefreshEnabled = true;
+  /** True when something was edited since the last render, while auto-refresh is off. */
+  previewStale = false;
+  /** Whether the preview floats over the page instead of sitting beside the form. */
+  floating = readPanelMemory().floating;
 
   readonly selectId = `epistola-composer-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -336,6 +512,31 @@ export class EpistolaLetterComposerComponent
 
   /** What the mapping produced; the employee's input is laid over this, never into it. */
   private mappedData: ComposerData = {};
+  /** The letter as it stands now, which a manual refresh renders. */
+  private latestData: ComposerData | null = null;
+  private autoRefreshSeeded = false;
+  /** The floating preview, while it floats. See {@link FloatingPanel}. */
+  private panel: FloatingPanel | null = null;
+  private previewPaneElement: HTMLElement | null = null;
+
+  /**
+   * The preview pane, whenever Angular (re)creates it. It lives inside the block that is rebuilt
+   * while a letter is prepared, so a floating pane is let go of when its element goes, and a new
+   * one floats again if the employee left it floating.
+   */
+  @ViewChild('previewPane')
+  set previewPane(ref: ElementRef<HTMLElement> | undefined) {
+    const element = ref?.nativeElement ?? null;
+    if (element === this.previewPaneElement) {
+      return;
+    }
+    this.panel?.release();
+    this.panel = null;
+    this.previewPaneElement = element;
+    if (element && this.floating) {
+      this.startFloating(element);
+    }
+  }
   /**
    * The process the backend worked out this start form belongs to, kept from the prepare response.
    *
@@ -376,6 +577,10 @@ export class EpistolaLetterComposerComponent
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['epistola'] && !this.autoRefreshSeeded) {
+      this.autoRefreshEnabled = this.epistola?.autoRefresh !== false;
+      this.autoRefreshSeeded = true;
+    }
     // Restore an earlier selection when the form is reopened, and pick up the ids, which the
     // wrapper can set after the first render.
     if (changes['value'] && this.value?.templateId && !this.selectedTemplateId) {
@@ -409,6 +614,8 @@ export class EpistolaLetterComposerComponent
   }
 
   ngOnDestroy(): void {
+    this.panel?.release();
+    this.panel = null;
     this.prepareSubscription?.unsubscribe();
     this.previewSubscription?.unsubscribe();
     this.renderSubscription?.unsubscribe();
@@ -417,6 +624,8 @@ export class EpistolaLetterComposerComponent
 
   onTemplateSelected(templateId: string): void {
     this.selectedTemplateId = templateId || null;
+    this.latestData = null;
+    this.previewStale = false;
     // Another letter may be offered by another process, so what was resolved for the last one
     // says nothing about this one.
     this.resolvedProcessDefinitionKey = null;
@@ -447,23 +656,88 @@ export class EpistolaLetterComposerComponent
       data,
       inputs,
     });
-    this.requestPreview(data);
+    this.latestData = data;
+    if (this.autoRefreshEnabled) {
+      this.requestPreview(data);
+    } else {
+      this.previewStale = true;
+      this.cdr.markForCheck();
+    }
+  }
+
+  /** Whether there is a letter to render on demand. */
+  get canRefresh(): boolean {
+    return !!this.selectedTemplateId && !!this.latestData;
+  }
+
+  /** Render the letter as it stands now, without waiting for the debounce. */
+  refresh(): void {
+    if (!this.latestData) {
+      return;
+    }
+    if (this.markReadiness(this.latestData)) {
+      this.loadPreview(this.latestData);
+    }
+  }
+
+  onToggleAutoRefresh(enabled: boolean): void {
+    this.autoRefreshEnabled = enabled;
+    // Catch up at once on what was typed while it was off.
+    if (enabled && this.previewStale) {
+      this.refresh();
+    }
+    this.cdr.markForCheck();
+  }
+
+  /** Float the preview over the page, or put it back beside the form. Remembered per browser. */
+  togglePopOut(): void {
+    this.floating = !this.floating;
+    writePanelMemory({ ...readPanelMemory(), floating: this.floating });
+    if (this.floating && this.previewPaneElement) {
+      this.startFloating(this.previewPaneElement);
+    } else {
+      this.panel?.release();
+      this.panel = null;
+    }
+    this.cdr.markForCheck();
+  }
+
+  private startFloating(element: HTMLElement): void {
+    const handle = element.querySelector<HTMLElement>('.preview-header');
+    const resizer = element.querySelector<HTMLElement>('.preview-resize');
+    if (!handle || !resizer) {
+      return;
+    }
+    this.panel = new FloatingPanel(
+      element,
+      handle,
+      resizer,
+      readPanelMemory().geometry,
+      (geometry) => writePanelMemory({ floating: true, geometry }),
+    );
   }
 
   /**
    * Preview the letter once it can be rendered, and otherwise say what is still needed.
    */
   private requestPreview(data: ComposerData): void {
+    if (this.markReadiness(data)) {
+      this.previewSubject.next(data);
+    }
+  }
+
+  /** Whether the letter can be rendered; when it cannot, say what is still needed instead. */
+  private markReadiness(data: ComposerData): boolean {
     const ready = hasValuesFor(data, this.requiredInputKeys);
     this.awaitingRequired = !ready;
     if (!ready) {
       this.previewError = null;
       this.previewLoading = false;
+      this.previewStale = false;
       this.revokePreview();
       this.cdr.markForCheck();
-      return;
     }
-    this.previewSubject.next(data);
+    return ready;
   }
 
   private prepare(templateId: string): void {
@@ -501,6 +775,9 @@ export class EpistolaLetterComposerComponent
         // Show the letter as the case alone would produce it — but only when the case can
         // actually produce it. Rendering a letter whose required fields are still empty just
         // returns Epistola's validation error, in place of fields the employee was asked to fill.
+        // Rendered whatever auto-refresh says: choosing a letter is itself the request to see it.
+        this.latestData = this.mappedData;
+        this.previewStale = false;
         this.requestPreview(this.mappedData);
         this.cdr.markForCheck();
       },
@@ -517,9 +794,10 @@ export class EpistolaLetterComposerComponent
     if (!this.canCompose || !this.selectedTemplateId) {
       return;
     }
+    // The previous letter stays on screen until this one arrives; see PreviewRenderer.
     this.previewLoading = true;
     this.previewError = null;
-    this.previewUrl = null;
+    this.previewStale = false;
     this.cdr.markForCheck();
 
     // Supersedes whatever was still rendering: a newer preview is the only one worth showing, and
