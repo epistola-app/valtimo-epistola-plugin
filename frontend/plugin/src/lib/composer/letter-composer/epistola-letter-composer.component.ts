@@ -289,8 +289,9 @@ export interface ComposerValue {
       }
       /*
        * Sized by the space the composer is given, not the window: a Valtimo dialog is far narrower
-       * than the screen it is on. Side by side only where both halves stay readable; otherwise the
-       * preview goes below the form, and "Pop out" is the way to have both in view.
+       * than the screen it is on. The preview sits to the right of the form wherever there is room
+       * for two columns at all, which is every Valtimo dialog; only a phone-narrow space stacks it
+       * below. "Pop out" is the way to give the letter more room than half a dialog.
        */
       .epistola-composer {
         container-type: inline-size;
@@ -304,7 +305,7 @@ export interface ComposerValue {
       .composer-preview {
         min-width: 0;
       }
-      @container (min-width: 60rem) {
+      @container (min-width: 36rem) {
         .composer-body {
           flex-direction: row;
           align-items: flex-start;

@@ -210,10 +210,11 @@ letter of this case type needs and the fragment only what makes this one differe
 
 ### The preview
 
-The composer sizes itself by the space it is given, not by the window, because a Valtimo task dialog
-is far narrower than the screen it is on (about 770px on a 1280px laptop). The form and the preview
-sit side by side only from 60rem wide, where both halves stay readable; the preview then stays in
-view while a long form scrolls past it. Narrower, the preview goes below the form.
+The preview sits to the right of the form, and stays in view while a long form scrolls past it. The
+composer sizes itself by the space it is given rather than the window, because a Valtimo task dialog
+is far narrower than the screen it is on (about 770px on a 1280px laptop): only a phone-narrow space
+(below 36rem) stacks the preview below the form. Half a dialog is still small for a page, which is
+what **Losmaken** is for.
 
 Its header has three controls:
 
