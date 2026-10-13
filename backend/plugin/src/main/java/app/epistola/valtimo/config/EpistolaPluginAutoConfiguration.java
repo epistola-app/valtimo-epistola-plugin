@@ -580,14 +580,16 @@ public class EpistolaPluginAutoConfiguration {
         return new EpistolaCatalogSyncTrigger(pluginService, syncService);
     }
 
+    /**
+     * The retry form's auto-deployment is gone (the retry form is deprecated), so a setting that
+     * still asks for it does nothing. Said once at startup rather than silently ignored.
+     */
     @Bean
-    @ConditionalOnMissingBean(EpistolaFormAutoDeployAspect.class)
-    @ConditionalOnProperty(name = "epistola.retry-form.enabled", havingValue = "true", matchIfMissing = true)
-    public EpistolaFormAutoDeployAspect epistolaFormAutoDeployAspect(
-            com.ritense.form.autodeployment.FormDefinitionDeploymentService formDeploymentService,
-            EpistolaProperties properties
-    ) {
-        return new EpistolaFormAutoDeployAspect(formDeploymentService, properties);
+    @ConditionalOnProperty(name = "epistola.retry-form.enabled", havingValue = "true")
+    public org.springframework.beans.factory.SmartInitializingSingleton epistolaRetryFormSettingIgnored() {
+        return () -> log.warn("epistola.retry-form.enabled no longer deploys the epistola-retry-document form:"
+                + " the retry form is deprecated and its auto-deployment was removed. Add the form to the case"
+                + " yourself if you still use it; see docs/user-task-fallback.md.");
     }
 
     // TEMPORARY: admin-page detection of forms still using the legacy override-mapping object

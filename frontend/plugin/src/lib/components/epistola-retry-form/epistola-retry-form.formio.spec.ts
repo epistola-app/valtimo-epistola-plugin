@@ -19,7 +19,7 @@
 /**
  * Lifecycle tests for the wrapper registered by {@link registerEpistolaRetryFormComponent}: it forwards
  * the server-prefilled task id (from the hidden carrier field) onto the Angular element on attach, and —
- * since the retry form is part of the plugin's auto-deployed form, not a drop-anywhere component, it uses
+ * since the retry form is deprecated and used only through its known form, not a drop-anywhere component, it uses
  * Formio's hidden builder group. The Angular component and @valtimo/components are mocked so the wrapper
  * runs in the plain node/ts-jest environment, with a fake Formio.Components registry.
  */

@@ -69,7 +69,8 @@ The `permit` case in the test-app: leave the BSN empty on its start form and the
 > edits the letter rather than the case: the corrected values go into that one letter only, so the
 > case keeps the wrong value and the next letter fails the same way; every template field can be
 > changed, including values the case supplied correctly; and the mapping is skipped. Correct the
-> case instead, as above. Using it logs a deprecation warning once per run.
+> case instead, as above. Using it logs a deprecation warning once per run. The plugin no longer
+> deploys its form: a case that still uses it ships the form itself, see [The form](#the-form).
 
 The rest of this section describes how it works, for installations that still use it.
 
@@ -137,7 +138,8 @@ Add a retry user task on the failure path that loops back to the original genera
 
 #### 2. Process Link
 
-Add a process-link entry for the retry user task pointing to the built-in `epistola-retry-document` form:
+Add a process-link entry for the retry user task pointing to the `epistola-retry-document` form,
+which the case ships itself ([The form](#the-form)):
 
 ```json
 {
@@ -148,11 +150,9 @@ Add a process-link entry for the retry user task pointing to the built-in `epist
 }
 ```
 
-No custom form JSON is needed — the plugin auto-deploys the `epistola-retry-document` form for each case.
-
 #### 3. Component Registration
 
-`EpistolaPluginModule` registers the retry and document components automatically. No per-process form JSON or additional component registration is needed.
+`EpistolaPluginModule` registers the retry and document components automatically. Beyond the form above, no component registration is needed.
 
 ### How generate-document Detects a Retry
 
@@ -208,16 +208,58 @@ Template fields are mapped to Formio components:
 
 Field keys use dot-notation paths (e.g., `applicant.address.street`) so Formio automatically nests the submission data.
 
-### Auto-Deployment
+### The form
 
-The `epistola-retry-document` form is auto-deployed for each case definition via an AOP aspect on `FormDefinitionImporter`. This is configurable:
+Until 0.21.0 the plugin deployed this form into every case (`epistola.retry-form.*`). That
+deployment is gone, and the settings do nothing; `epistola.retry-form.enabled: true` logs a warning
+saying so. A case that still uses the retry form adds it to its own forms, as
+`form/epistola-retry-document.form.json` in the case's configuration. A form deployed by an earlier
+version stays in place; this matters only for case versions deployed after the upgrade.
 
-```yaml
-epistola:
-  retry-form:
-    enabled: true # default: true
-    case-filter: "all" # "all", "none", or regex (e.g., "permit.*|subsidy.*")
+```json
+{
+  "display": "form",
+  "components": [
+    {
+      "key": "pv:epistolaResult.errorMessage",
+      "type": "textfield",
+      "input": true,
+      "label": "Error",
+      "disabled": true
+    },
+    {
+      "type": "epistola-retry-form",
+      "key": "pv:epistolaEditedData",
+      "input": true,
+      "label": "Document Data",
+      "components": [
+        {
+          "type": "hidden",
+          "key": "epistolaTaskId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola:taskId"
+          }
+        }
+      ]
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Retry Generation",
+      "action": "submit",
+      "theme": "primary",
+      "disableOnInvalid": true
+    }
+  ]
+}
 ```
+
+The hidden `epistolaTaskId` field is the task-id carrier the component reads (see
+[formio-components.md](formio-components.md)); keep it.
 
 ### Architecture
 
@@ -245,10 +287,6 @@ epistola:
 │    ├── Check epistolaEditedData PV                           │
 │    ├── If present: use edited data, clear PV                 │
 │    └── If absent: resolve data mapping as usual              │
-│                                                              │
-│  EpistolaFormAutoDeployAspect                                │
-│    └── @After FormDefinitionImporter.import()                │
-│        → deploy epistola-retry-document for each case        │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
 ```

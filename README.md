@@ -122,9 +122,6 @@ Configure under `epistola:` in `application.yml`:
 epistola:
   enabled: true # disable the plugin entirely (default: true)
   base-url: ${EPISTOLA_BASE_URL} # fallback baseUrl, also used by classpath-deployed plugin configs
-  retry-form: # deprecated, with the retry form: see docs/user-task-fallback.md
-    enabled: true # auto-deploy the retry form for case failures (default: true)
-    case-filter: "all" # "all" | "none" | regex on case definition keys
   result-collector:
     enabled: true # collect async generation results automatically (default: true)
     batch-size: 100 # max results per collect call (default: 100)

@@ -16,8 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   values the case supplied correctly; and the generate action's mapping is skipped. Route a failed
   generation to a task that shows Epistola's reason (`${epistolaResult.errorMessage}`) and corrects
   the case with an ordinary form, then generate again — `docs/user-task-fallback.md` shows how. It
-  keeps working until it is removed, including `epistola.retry-form.*`, and logs a deprecation
-  warning once per run when it is used.
+  keeps working until it is removed, and logs a deprecation warning once per run when it is used.
+
+### Removed
+
+- **The plugin no longer deploys the `epistola-retry-document` form into every case**, and the
+  `epistola.retry-form.enabled` and `epistola.retry-form.case-filter` settings are gone, along with
+  the aspect on Valtimo's `FormDefinitionImporter` that did it. The form existed only for the now
+  deprecated retry form, and correcting the case needs no plugin form at all. **A case that still
+  uses the retry form ships the form itself**: `docs/user-task-fallback.md` has its JSON. Forms an
+  earlier version deployed stay in place; only case versions deployed after the upgrade need it.
+  `epistola.retry-form.enabled: true` logs a warning at startup saying it no longer does anything.
 
 ### Changed
 

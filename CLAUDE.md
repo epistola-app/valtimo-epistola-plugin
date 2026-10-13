@@ -319,7 +319,7 @@ License headers on the Java backend are applied/gated by Spotless
 - **Value resolution**: Data mappings are JSONata expressions evaluated with `$doc`, `$pv`, and `$case` context variables
 - **Rich text**: Epistola rich-text fields are filled from the case's own format (`plain`, `html`, `markdown`, `prosemirror`, or an installation's `RichTextFormat` bean), see [docs/rich-text.md](docs/rich-text.md)
 - **Security (PBAC)**: Three layers, see [Authorization](#authorization) below. User-task endpoints check `OperatonTask:VIEW`, admin endpoints check the custom `EpistolaAdministration:MANAGE` PBAC permission, and configurator endpoints stay HTTP-gated by `ROLE_ADMIN`.
-- **Configuration**: Spring Boot auto-configuration with feature toggles (`epistola.enabled`, `epistola.result-collector.enabled`, `epistola.retry-form.enabled`)
+- **Configuration**: Spring Boot auto-configuration with feature toggles (`epistola.enabled`, `epistola.result-collector.enabled`)
 
 ### Frontend
 
@@ -439,7 +439,6 @@ in `test-app/frontend/src/app/embedding/`; the published plugin library is untou
 - `PreviewService` — Document preview functionality
 - `RetryFormService` — Dynamic retry form generation
 - `EpistolaAdminService` — Health checks, usage overview, and process-link reference validation (dangling catalog/template/variant detection)
-- `EpistolaFormAutoDeployAspect` — Form auto-deployment aspect
 - `CatalogScanner` — Classpath catalog discovery
 - `EpistolaCatalogSyncService` — Catalog import with version tracking, forced single-catalog redeploy, and classpath discovery
 - `NormalizeVariantAttributes` — Old vs new format normalization

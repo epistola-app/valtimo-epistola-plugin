@@ -29,7 +29,7 @@ step — see [form-flows.md](form-flows.md).
 
 \* **Palette** — `visible`: an author can drag it onto a form from the builder's component palette.
 `hidden`: kept out of the palette with `group: 'none'` in its `FormioCustomComponentInfo`, because it
-is either part of the plugin's own auto-deployed form or an editForm-only widget. Hidden
+is either deprecated and used only through a known form (the retry form) or an editForm-only widget. Hidden
 components still render wherever they already exist and inside other components' `editForm`s.
 
 \*\*\* **The preview is task-bound only in its default mode.** Its `previewContext` setting
@@ -132,7 +132,7 @@ named process variables on the caller's task (`documentVariable`/`tenantIdVariab
 > task that corrects the case and generates again instead — see
 > [user-task-fallback.md](user-task-fallback.md). It keeps working until it is removed.
 
-Part of the plugin's auto-deployed `epistola-retry-document` form (hidden from the palette). Fetches a
+Used by the `epistola-retry-document` form, which a case ships itself since 0.21.0 (hidden from the palette). Fetches a
 dynamically generated Formio form for correcting and resubmitting a failed generation (`GET /retry-form`)
 and shows an embedded live preview (`POST /preview`) of the corrected document.
 

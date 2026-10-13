@@ -38,7 +38,6 @@ public class EpistolaProperties {
     private boolean enabled = true;
 
     private final ResultCollector resultCollector = new ResultCollector();
-    private final RetryForm retryForm = new RetryForm();
     private final CatchEventAutoWiring catchEventAutoWiring = new CatchEventAutoWiring();
     private final Client client = new Client();
     private final VersionCheck versionCheck = new VersionCheck();
@@ -158,28 +157,6 @@ public class EpistolaProperties {
          * declares the {@code epistolaWaitFor} {@code camunda:inputParameter} mapping explicitly.
          */
         private boolean enabled = true;
-    }
-
-    /**
-     * The retry form's auto-deployment. <b>Deprecated</b> together with the retry form (see
-     * {@code RetryFormService}); it keeps working until the retry form is removed.
-     */
-    @Data
-    public static class RetryForm {
-
-        /**
-         * Whether to auto-deploy the epistola-retry-document form for each case.
-         */
-        private boolean enabled = true;
-
-        /**
-         * Filter which cases get the retry form deployed.
-         * "all" (default) — deploy for every case.
-         * "none" — deploy for no cases (same as enabled=false).
-         * Any other value is treated as a regex matched against the case definition key.
-         * Example: "permit.*|subsidy.*"
-         */
-        private String caseFilter = "all";
     }
 
     @Data
