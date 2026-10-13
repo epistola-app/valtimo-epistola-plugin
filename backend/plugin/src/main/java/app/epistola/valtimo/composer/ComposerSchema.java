@@ -47,8 +47,13 @@ public final class ComposerSchema {
      *
      * <p>1 — the original: a component's settings ({@code letterSet} + baseline mapping) and a
      * composed letter ({@code catalogId}, {@code templateId}, {@code data}, {@code inputs}).
+     *
+     * <p>2 — rich text in a letter's {@code data} and {@code inputs} is a tagged value stating the
+     * editor's format ({@code {"$richText": {"format", "kind", "value"}}}, see
+     * {@code RichTextValues}) rather than a bare string. An older plugin would send the tag to
+     * Epistola as it is, which is why it must refuse the letter instead.
      */
-    public static final int CURRENT = 1;
+    public static final int CURRENT = 2;
 
     /**
      * The version field on a <b>composed letter</b>, which lives in a process variable of its own.

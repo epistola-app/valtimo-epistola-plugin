@@ -19,8 +19,6 @@ package app.epistola.valtimo.service.preview;
 
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfigurationRegistry;
 import app.epistola.valtimo.logging.Failures;
-import app.epistola.valtimo.richtext.EditorRichText;
-import app.epistola.valtimo.richtext.RichTextConversionException;
 import app.epistola.valtimo.service.EpistolaService;
 
 import app.epistola.valtimo.mapping.JsonataMappingService;
@@ -64,7 +62,6 @@ public class PreviewService {
     private final JsonataMappingService jsonataMappingService;
     private final com.ritense.document.service.DocumentService documentService;
     private final ObjectMapper objectMapper;
-    private final EditorRichText editorRichText;
 
     /**
      * Generate a document preview.
@@ -177,26 +174,15 @@ public class PreviewService {
         Map<String, Object> resolvedData = actionConfig.evaluateDataMapping(
                 jsonataMappingService, evalCtxBuilder.build());
 
-        // Get plugin config
-        EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
-                processLink.getPluginConfigurationId());
-
         // Deep-merge with output-level overrides (overrides win) — used by retry-form.
         // Always null on the start path: StartPreviewRequest carries no such field.
         if (ctx.outputOverrides() != null && !ctx.outputOverrides().isEmpty()) {
-            // The overrides were typed into the retry form's editors, so they are in the editor's
-            // format; the mapped data is not converted, its author says the format (ADR 0008).
-            Map<String, Object> typed;
-            try {
-                typed = editorRichText.toDocuments(
-                        plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(), catalogId, templateId,
-                        ctx.outputOverrides(), EditorRichText.Purpose.PREVIEW);
-            } catch (RichTextConversionException e) {
-                // Names the field and format, never the text, so it is safe to carry.
-                throw new PreviewException(PreviewException.Reason.RENDER_FAILED, e.getMessage(), e);
-            }
-            resolvedData = deepMerge(resolvedData, typed);
+            resolvedData = deepMerge(resolvedData, ctx.outputOverrides());
         }
+
+        // Get plugin config
+        EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
+                processLink.getPluginConfigurationId());
 
         var scalarEvalContext = evalCtxBuilder.build();
         String variantId = actionConfig.variantId().isConfigured()

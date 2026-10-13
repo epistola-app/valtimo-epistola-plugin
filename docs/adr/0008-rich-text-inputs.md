@@ -1,6 +1,6 @@
 # ADR 0008 — Rich-text values: whose format, and who translates
 
-- **Status:** Accepted — the recommendation, built as described under [As built](#as-built-2026-10-12), where to convert revised under [Revision](#revision-2026-10-13-convert-where-the-format-is-known)
+- **Status:** Accepted — the recommendation, built as described under [As built](#as-built-2026-10-12), where to convert revised under [Revision](#revision-2026-10-13-a-value-says-its-own-format)
 - **Date:** 2026-10-12
 - **Deciders:** Epistola plugin maintainers
 - **Related:** ADR 0006 (letter composer configuration), `JsonSchemaMappingAnalyzer`, `TemplateField.FieldHints`, `FormioFormGenerator`, `MissingFieldSelector`, `LetterComposerService`, `ComposerWriteBackService`, `JsonataMappingService`, `docs/letter-composer.md`
@@ -267,7 +267,7 @@ The recommendation was built as written, with the differences below worth knowin
 from an architecture review of the first version.
 
 **Conversion happens where data leaves for Epistola, not while composing.** _Superseded by the
-[revision](#revision-2026-10-13-convert-where-the-format-is-known): the decorator is gone._
+[revision](#revision-2026-10-13-a-value-says-its-own-format): the decorator is gone._
 `RichTextEpistolaService`, a decorator around the Epistola client, converts the data's rich-text
 fields in `submitGenerationJob` and `previewDocument`, just before the request is sent. (A first
 version did this inside `EpistolaServiceImpl`; review moved it out, so the client is only a client
@@ -371,7 +371,7 @@ Two smaller choices:
   default format, and the conversion step handles it like any other value. (Since the revision,
   only with `$richText`.)
 
-## Revision (2026-10-13): convert where the format is known
+## Revision (2026-10-13): a value says its own format
 
 The decorator answered "where is every path to Epistola covered?" rather than "who knows the
 format?". It made conversion invisible (reading `PreviewService` gave no hint that its data was
@@ -380,28 +380,48 @@ contract before every generation or preview of a template not seen in the last m
 not. Its implicit step, reading any string in a rich-text field in the default format, was a
 configured guess, which this ADR's own rule ("the format is said, never guessed") argues against.
 
-**Decision:** conversion happens where the format is known, and nowhere else.
+**Decision:** a value says which format it is in, and whoever produced it says so.
 
 - **A data mapping** is the author's statement of how case data becomes template data. The author
-  knows the case's format, so the mapping says it: `$richText($doc.x, "html")`. Mapped data is not
-  converted afterwards; a string mapped onto a rich-text field as it is goes to Epistola and is
-  refused. The mapping builder marks such a field, so the author learns this while writing the
-  mapping rather than from a failed letter.
-- **The plugin's own editors**, the letter composer and the retry form, ask for a rich-text field
-  with the default format's editor, so the plugin knows what they write. `EditorRichText` converts
-  that data at the four places it leaves for Epistola: the composer's preview, the generation of a
-  composed letter, a retry's generation (inside the submit, so a failure lands on the result
-  variable like any other), and the retry form's preview (its overrides only). It keeps the
-  decorator's field cache and loss reporting.
+  knows the case's format, so the mapping says it and converts: `$richText($doc.x, "html")`, with
+  an optional third argument (`"inline"`) for an inline field that would otherwise get several
+  paragraphs. Mapped data is not converted afterwards; a string mapped onto a rich-text field as it
+  is goes to Epistola and is refused. The mapping builder marks such a field, so the author learns
+  this while writing the mapping rather than from a failed letter. A list of rich text is mapped
+  inside an array constructor, `[$doc.alineas.$richText($, "html")]`, because JSONata collapses a
+  one-item result into its item.
+- **The plugin's own editors**, the letter composer and the retry form, submit what was typed as a
+  **tagged value**:
+  `{"$richText": {"format": "html", "kind": "BLOCK", "value": "<p>…</p>"}}`. The form generator
+  marks each rich-text component with the format its editor writes and the field's kind
+  (`epistolaRichText`), and one frontend helper (`tagRichText`) wraps the typed value from that
+  marker. The tag travels with the value: through the composer's merge with mapped data, onto the
+  process variable, into a list.
+- **The client turns tags into documents** while it builds the generate and preview requests
+  (`RichTextValues`, called from `EpistolaServiceImpl`). This is a serialization step rather than
+  a decorator: it reads no contract and guesses nothing, and data without tags passes unchanged.
+  Every path to Epistola goes through those two methods, so the preview and the letter convert the
+  same way, which was the decorator's one real merit. Replacing `EpistolaService` would lose the
+  step, the concern that moved conversion out of the client before; the interface now states that
+  an implementation sends tagged values as documents.
+
+An intermediate version converted editor data at the four places it leaves for Epistola, reading
+the template's contract to find the rich-text fields. It was dropped in review: each call needed the
+Epistola connection details only to read that contract, a new path had to remember to call it, and
+the composer's merged data could not tell typed text from mapped text, so a bare mapped string was
+still converted there while `generate-document` refused it. A tagged value has none of these.
 
 **Consequences:**
 
 - **Behaviour change for mappings:** a bare HTML string mapped onto a rich-text field no longer
-  converts. It did only in the unreleased version, so no released installation relies on it.
-- **The default format** now decides the editors' format and `$richText(value)` without a format,
+  converts, in `generate-document` and in a composer's baseline mapping alike. It did only in the
+  unreleased version, so no released installation relies on it.
+- **The composer's stored letter changes shape**, so `ComposerSchema.CURRENT` is 2: an older plugin
+  would send the tag to Epistola as it is, and refuses the letter instead.
+- **The case keeps what was typed.** Write-back binds `$data` and `$inputs` with the tags unwrapped,
+  so a rule writes the editor's HTML, which the case's own forms can show. The retry form shows an
+  earlier correction unwrapped as well.
+- **The default format** decides the editors' format and `$richText(value)` without a format,
   and no longer reinterprets mapped strings.
-- **A composed letter arrives as one object**, baseline mapping and typed input merged, so a text
-  value in any of its rich-text fields is read in the editor's format. Separating the two would
-  need `inputs` on the composer's preview request and on `DynamicDocument`, which is a change to
-  stored shapes the composer's `schemaVersion` exists for; not done here.
-- **The contract is read only when editor data is sent**, not for every letter.
+- **No contract is read for conversion**, and `RichTextConverter.normalize`, the schema-driven walk
+  that went with the guess, is gone.

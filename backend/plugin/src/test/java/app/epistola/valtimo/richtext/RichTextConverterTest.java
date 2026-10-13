@@ -17,8 +17,6 @@
  */
 package app.epistola.valtimo.richtext;
 
-import app.epistola.valtimo.domain.TemplateField;
-import app.epistola.valtimo.domain.TemplateField.FieldType;
 import app.epistola.valtimo.domain.TemplateField.RichTextKind;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
 import app.epistola.valtimo.mapping.JsonataMappingService;
@@ -26,11 +24,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static app.epistola.valtimo.richtext.Docs.BREAK;
 import static app.epistola.valtimo.richtext.Docs.STRONG;
 import static app.epistola.valtimo.richtext.Docs.doc;
 import static app.epistola.valtimo.richtext.Docs.p;
@@ -43,20 +39,6 @@ class RichTextConverterTest {
     private static List<RichTextFormat> shipped() {
         return List.of(new PlainTextFormat(), new HtmlFormat(), new MarkdownFormat(),
                 new ProseMirrorFormat(new ObjectMapper()));
-    }
-
-    private static TemplateField richText(String name, String path, RichTextKind kind) {
-        return new TemplateField(name, path, "richtext", FieldType.SCALAR, false, null, List.of(), false, null,
-                false, new TemplateField.FieldHints(null, null, null, null, null, null, kind));
-    }
-
-    private static TemplateField richTextList(String name, RichTextKind kind) {
-        return new TemplateField(name, name, "array", FieldType.SCALAR, false, null, List.of(), false, null,
-                false, new TemplateField.FieldHints(null, null, null, null, null, null, kind));
-    }
-
-    private static TemplateField scalar(String name, String path) {
-        return new TemplateField(name, path, "string", FieldType.SCALAR, false, null, List.of());
     }
 
     @Nested
@@ -115,168 +97,6 @@ class RichTextConverterTest {
     }
 
     @Nested
-    class Normalize {
-
-        private final RichTextConverter converter = new RichTextConverter(shipped(), "markdown");
-
-        @Test
-        void readsAStringInTheDefaultFormat() {
-            var result = converter.normalize(
-                    Map.of("toelichting", "**vet**", "naam", "**blijft tekst**"),
-                    List.of(richText("toelichting", "toelichting", RichTextKind.BLOCK), scalar("naam", "naam")));
-
-            assertThat(result).containsEntry("toelichting", doc(p(text("vet", STRONG))))
-                    .containsEntry("naam", "**blijft tekst**");
-        }
-
-        @Test
-        void shapesADocumentToTheFieldsKind() {
-            var result = converter.normalize(
-                    Map.of("kort", doc(p(text("een")), p(text("twee")))),
-                    List.of(richText("kort", "kort", RichTextKind.INLINE)));
-
-            assertThat(result).containsEntry("kort", doc(p(text("een"), BREAK, text("twee"))));
-        }
-
-        @Test
-        void dropsABlankValue_andLeavesAbsenceAndNullAlone() {
-            Map<String, Object> data = new LinkedHashMap<>();
-            data.put("leeg", "  ");
-            data.put("niets", null);
-
-            var result = converter.normalize(data, List.of(
-                    richText("leeg", "leeg", RichTextKind.BLOCK),
-                    richText("niets", "niets", RichTextKind.BLOCK),
-                    richText("afwezig", "afwezig", RichTextKind.BLOCK)));
-
-            assertThat(result).doesNotContainKeys("leeg", "afwezig").containsEntry("niets", null);
-        }
-
-        @Test
-        void dropsMarkupAroundNothing_asAnEmptiedEditorLeavesIt() {
-            var html = new RichTextConverter(shipped(), "html");
-
-            var result = html.normalize(Map.of("leeg", "<p><br></p>", "gevuld", "<p>x</p>"), List.of(
-                    richText("leeg", "leeg", RichTextKind.BLOCK), richText("gevuld", "gevuld", RichTextKind.BLOCK)));
-
-            assertThat(result).doesNotContainKey("leeg").containsEntry("gevuld", doc(p(text("x"))));
-        }
-
-        @Test
-        void findsRichTextInsideObjectsAndArrayRows() {
-            TemplateField besluit = new TemplateField("besluit", "besluit", "object", FieldType.OBJECT, false, null,
-                    List.of(richText("motivering", "besluit.motivering", RichTextKind.BLOCK)));
-            TemplateField regels = new TemplateField("regels", "regels", "array", FieldType.ARRAY, false, null,
-                    List.of(richText("tekst", "regels[].tekst", RichTextKind.INLINE)));
-
-            var result = converter.normalize(Map.of(
-                    "besluit", Map.of("motivering", "*m*"),
-                    "regels", List.of(Map.of("tekst", "r1"), Map.of("tekst", "r2"))), List.of(besluit, regels));
-
-            assertThat(result.get("besluit")).isEqualTo(Map.of("motivering",
-                    doc(p(text("m", Docs.EM)))));
-            assertThat(result.get("regels")).isEqualTo(List.of(
-                    Map.of("tekst", doc(p(text("r1")))), Map.of("tekst", doc(p(text("r2"))))));
-        }
-
-        @Test
-        void convertsEachItemOfAList_leavingOutTheEmptyOnes() {
-            var result = converter.normalize(
-                    Map.of("alineas", java.util.Arrays.asList("**een**", " ", null, doc(p(text("twee")), p(text("drie"))))),
-                    List.of(richTextList("alineas", RichTextKind.INLINE)));
-
-            assertThat(result).containsEntry("alineas", List.of(
-                    doc(p(text("een", STRONG))), doc(p(text("twee"), BREAK, text("drie")))));
-        }
-
-        @Test
-        void takesASingleValueForAListFieldAsAListOfOne() {
-            // What JSONata hands over when a mapping over a case list meets a case with one item.
-            var result = converter.normalize(
-                    Map.of("een", doc(p(text("enige"))), "tekst", "*los*"),
-                    List.of(richTextList("een", RichTextKind.BLOCK), richTextList("tekst", RichTextKind.BLOCK)));
-
-            assertThat(result).containsEntry("een", List.of(doc(p(text("enige")))))
-                    .containsEntry("tekst", List.of(doc(p(text("los", Docs.EM)))));
-        }
-
-        @Test
-        void dropsAListWithNothingInIt() {
-            var result = converter.normalize(Map.of("alineas", List.of("", "  ")),
-                    List.of(richTextList("alineas", RichTextKind.BLOCK)));
-
-            assertThat(result).doesNotContainKey("alineas");
-        }
-
-        @Test
-        void reportsWhatAFieldLostByItsPath_andNothingForAFieldThatLostNothing() {
-            var html = new RichTextConverter(shipped(), "html");
-            Map<String, RichTextLosses> reported = new LinkedHashMap<>();
-
-            html.normalize(Map.of(
-                    "besluit", Map.of("toelichting", "<h1>Kop</h1><img src=x>"),
-                    "schoon", "<p>niets mis</p>",
-                    "alineas", List.of("<h2>a</h2>", "<h2>b</h2>")), List.of(
-                    new TemplateField("besluit", "besluit", "object", FieldType.OBJECT, false, null,
-                            List.of(richText("toelichting", "besluit.toelichting", RichTextKind.BLOCK))),
-                    richText("schoon", "schoon", RichTextKind.BLOCK),
-                    richTextList("alineas", RichTextKind.BLOCK)), reported::put);
-
-            assertThat(reported).containsOnlyKeys("besluit.toelichting", "alineas");
-            assertThat(reported.get("besluit.toelichting").counts()).isEqualTo(Map.of("heading", 1, "image", 1));
-            assertThat(reported.get("alineas").counts()).isEqualTo(Map.of("heading", 2));
-        }
-
-        @Test
-        void returnsDataWithoutRichTextFieldsAsItCame() {
-            Map<String, Object> data = Map.of("naam", "x");
-
-            assertThat(converter.normalize(data, List.of(scalar("naam", "naam")))).isSameAs(data);
-        }
-
-        @Test
-        void leavesAValueThatIsNeitherTextNorADocumentForEpistolaToRefuse() {
-            var result = converter.normalize(Map.of("lijst", List.of("a")),
-                    List.of(richText("lijst", "lijst", RichTextKind.BLOCK)));
-
-            assertThat(result).containsEntry("lijst", List.of("a"));
-        }
-
-        @Test
-        void dropsAnEmptyDocumentAsMuchAsEmptyText() {
-            var result = converter.normalize(
-                    Map.of("leeg", Map.of("type", "doc", "content", List.of(Map.of("type", "paragraph")))),
-                    List.of(richText("leeg", "leeg", RichTextKind.BLOCK)));
-
-            assertThat(result).doesNotContainKey("leeg");
-        }
-
-        @Test
-        void namesTheFieldButNeverTheValueWhenAFormatFails() {
-            RichTextFormat broken = new RichTextFormat() {
-                @Override
-                public String id() {
-                    return "broken";
-                }
-
-                @Override
-                public Map<String, Object> toProseMirror(Object value, RichTextLosses losses) {
-                    throw new IllegalStateException("cannot parse " + value);
-                }
-            };
-            var failing = new RichTextConverter(List.of(broken), "broken");
-
-            assertThatThrownBy(() -> failing.normalize(Map.of("motivering", "BSN 123456782"),
-                    List.of(richText("motivering", "besluit.motivering", RichTextKind.BLOCK))))
-                    .isInstanceOf(RichTextConversionException.class)
-                    .hasMessageContaining("besluit.motivering")
-                    .hasMessageContaining("IllegalStateException")
-                    .hasMessageNotContaining("123456782")
-                    .hasNoCause();
-        }
-    }
-
-    @Nested
     class InAMapping {
 
         private final RichTextConverter converter = new RichTextConverter(shipped(), "plain");
@@ -296,20 +116,38 @@ class RichTextConverterTest {
         }
 
         @Test
-        void mapsOverACaseListTheJsonataWay_evenWhenItHasOneItem() {
-            TemplateField alineas = richTextList("alineas", RichTextKind.BLOCK);
+        void mapsOverACaseListTheJsonataWay_keepingAOneItemListAList() {
+            // The array constructor is what keeps a one-item result a list: JSONata would otherwise
+            // collapse it into its item, and a list field refuses a single value.
             for (String expression : List.of(
-                    "{ \"alineas\": $doc.items.$richText($, \"markdown\") }",
-                    "{ \"alineas\": $map($doc.items, function($v) { $richText($v, \"markdown\") }) }")) {
-                var two = converter.normalize(mapping.evaluate(expression,
-                        Map.of("items", List.of("*x*", "y")), Map.of(), Map.of()), List.of(alineas));
-                var one = converter.normalize(mapping.evaluate(expression,
-                        Map.of("items", List.of("*x*")), Map.of(), Map.of()), List.of(alineas));
+                    "{ \"alineas\": [$doc.items.$richText($, \"markdown\")] }",
+                    "{ \"alineas\": [$map($doc.items, function($v) { $richText($v, \"markdown\") })] }")) {
+                var two = mapping.evaluate(expression, Map.of("items", List.of("*x*", "y")), Map.of(), Map.of());
+                var one = mapping.evaluate(expression, Map.of("items", List.of("*x*")), Map.of(), Map.of());
 
                 assertThat(two).as(expression)
                         .containsEntry("alineas", List.of(doc(p(text("x", Docs.EM))), doc(p(text("y")))));
                 assertThat(one).as(expression).containsEntry("alineas", List.of(doc(p(text("x", Docs.EM)))));
             }
+        }
+
+        @Test
+        void narrowsToOneParagraphForAnInlineField_whenTheMappingSaysSo() {
+            var result = mapping.evaluate(
+                    "{ \"block\": $richText($doc.html, \"html\"), \"inline\": $richText($doc.html, \"html\", \"inline\") }",
+                    Map.of("html", "<p>Een</p><p>Twee</p>"), Map.of(), Map.of());
+
+            assertThat(result)
+                    .containsEntry("block", converter.toDocument("<p>Een</p><p>Twee</p>", "html", RichTextKind.BLOCK))
+                    .containsEntry("inline", converter.toDocument("<p>Een</p><p>Twee</p>", "html", RichTextKind.INLINE));
+            assertThat(result.get("inline")).isNotEqualTo(result.get("block"));
+        }
+
+        @Test
+        void refusesAKindItDoesNotKnow() {
+            assertThatThrownBy(() -> mapping.evaluate("{ \"a\": $richText($doc.html, \"html\", \"alinea\") }",
+                    Map.of("html", "<p>x</p>"), Map.of(), Map.of()))
+                    .hasMessageContaining("alinea");
         }
 
         @Test

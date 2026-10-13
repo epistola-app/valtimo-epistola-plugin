@@ -27,7 +27,8 @@
  *
  * Keep in step with `ComposerSchema.CURRENT`.
  */
-export const COMPOSER_SCHEMA_VERSION = 1;
+// 2: rich text in a letter's `data` and `inputs` is tagged with its editor's format (`tagRichText`).
+export const COMPOSER_SCHEMA_VERSION = 2;
 
 /**
  * The version field on a **composed letter**, which lives in a process variable of its own.

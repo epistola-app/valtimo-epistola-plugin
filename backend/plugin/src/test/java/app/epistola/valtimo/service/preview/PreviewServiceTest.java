@@ -16,8 +16,6 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 package app.epistola.valtimo.service.preview;
-import app.epistola.valtimo.richtext.EditorRichText;
-import app.epistola.valtimo.richtext.RichTextConversionException;
 import app.epistola.valtimo.service.preview.PreviewService;
 import app.epistola.valtimo.service.EpistolaService;
 
@@ -89,9 +87,6 @@ class PreviewServiceTest {
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
-
-    @Mock
-    private EditorRichText editorRichText;
 
     @Captor
     private ArgumentCaptor<EvaluationContext> evaluationContextCaptor;
@@ -330,8 +325,7 @@ class PreviewServiceTest {
             lenient().when(plugin.getDefaultEnvironmentId()).thenReturn("env-1");
             when(pluginService.createInstance(configId)).thenReturn(plugin);
 
-            // Lenient: a test whose render fails before it reaches Epistola never uses it.
-            lenient().when(epistolaService.previewDocument(
+            when(epistolaService.previewDocument(
                     anyString(), anyString(), anyString(), anyString(),
                     anyString(), any(), anyString(), any()))
                     .thenReturn(new ByteArrayInputStream(new byte[]{0x25, 0x50, 0x44, 0x46}));
@@ -473,24 +467,6 @@ class PreviewServiceTest {
                     anyString(), any(), eq("env-1"), any());
         }
 
-        /** A typed value its format cannot read is a render failure, not an unhandled error. */
-        @Test
-        void outputOverridesTheEditorFormatCannotRead_failTheRender() {
-            mockFullChain("instance-1", "my-process:1:abc");
-            when(jsonataMappingService.evaluate(any(EvaluationContext.class))).thenReturn(new LinkedHashMap<>());
-            Map<String, Object> outputOverrides = Map.of("toelichting", "<p>Gegrond</p>");
-            when(editorRichText.toDocuments(anyString(), anyString(), anyString(), anyString(), anyString(),
-                    eq(outputOverrides), eq(EditorRichText.Purpose.PREVIEW)))
-                    .thenThrow(new RichTextConversionException("Field 'toelichting' could not be read as 'html'"));
-
-            PreviewException ex = assertThrows(PreviewException.class, () -> previewService.generatePreview(
-                    new PreviewRequest("task-id-test", null, outputOverrides, null), "doc-123", "instance-1"));
-
-            assertEquals(PreviewException.Reason.RENDER_FAILED, ex.getReason());
-            verify(epistolaService, org.mockito.Mockito.never()).previewDocument(
-                    any(), any(), any(), any(), any(), any(), any(), any());
-        }
-
         @Test
         void inputOverridesCombinedWithOutputOverrides_bothApplied() {
             mockFullChain("instance-1", "my-process:1:abc");
@@ -510,15 +486,8 @@ class PreviewServiceTest {
             Map<String, Object> outputOverrides = Map.of("address", "overridden-address");
 
             PreviewRequest request = new PreviewRequest("task-id-test", null, outputOverrides, inputOverrides);
-            // The retry form's overrides are what a person typed, so they — and only they — go
-            // through the editors' conversion; this answer hands them back unchanged.
-            when(editorRichText.toDocuments(anyString(), anyString(), anyString(), anyString(), anyString(),
-                    eq(outputOverrides), eq(EditorRichText.Purpose.PREVIEW)))
-                    .thenAnswer(invocation -> invocation.getArgument(5));
 
             previewService.generatePreview(request, "doc-123", "instance-1");
-            verify(editorRichText).toDocuments(anyString(), anyString(), anyString(), anyString(), anyString(),
-                    eq(outputOverrides), eq(EditorRichText.Purpose.PREVIEW));
 
             // Verify input overrides were applied (doc resolver wraps with OverlayMap)
             verify(jsonataMappingService).evaluate(evaluationContextCaptor.capture());

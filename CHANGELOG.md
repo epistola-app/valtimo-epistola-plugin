@@ -28,14 +28,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     and marks outside Epistola's schema are dropped instead of failing the letter.
   - **The output is always valid.** Whatever a format produces is narrowed to what Epistola's
     schema allows — a heading becomes a paragraph, an unknown mark or a `javascript:` link is
-    dropped — and shaped to the field: an inline field gets one paragraph. Every converter is tested
-    against Epistola's own schemas.
-  - **Conversion happens where the format is known**: in `$richText` for a mapping, and, for what
-    a person typed into the composer or the retry form, where that data leaves for Epistola, the
-    same way for the preview and the letter. For the latter the template's fields are read from its
-    current contract and kept for a minute; a version not yet deployed that changes a field's type
-    is a known limitation (`docs/rich-text.md`). If that read fails, the data goes as typed and
-    Epistola's own validation speaks.
+    dropped — and shaped to the field: what an editor wrote for an inline field gets one paragraph,
+    and a mapping asks for that with `$richText($doc.x, "html", "inline")`. A list is mapped inside
+    `[…]`, `[$doc.alineas.$richText($, "html")]`, so a one-item case list stays a list. Every
+    converter is tested against Epistola's own schemas.
+  - **A value says its own format.** A mapping converts in `$richText`. What a person types into
+    the composer or the retry form is submitted tagged with the editor's format,
+    `{"$richText": {"format": "html", "kind": "BLOCK", "value": "…"}}`, and the Epistola client
+    turns every tag into a document as it builds the generate and preview request, so the preview
+    and the letter convert the same way and no template contract is read to do it. A composer's
+    baseline mapping is a mapping like any other: a rich-text field it fills needs `$richText`. The
+    composer's stored letter is `schemaVersion` 2 for this; an older plugin refuses it rather than
+    send the tag to Epistola.
   - **Any form can supply it**, not only the composer: a Valtimo form's WYSIWYG text area writes
     HTML to the case, and the mapping reads it with `$richText($doc.x, "html")`.
     `docs/rich-text.md` gives the editor configuration that offers only what
@@ -43,8 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **The composer and retry form ask for a rich-text field** with the default format's editor:
     Form.io's WYSIWYG text area (CKEditor, limited to what Epistola renders: its toolbar, and no
     headings, tables or images by paste or autoformat either) for `html`, a
-    plain text area otherwise. A list of rich text gets one editor per item. What the employee types stays in the case's format, so write-back does not change
-    a field's format.
+    plain text area otherwise. A list of rich text gets one editor per item. Write-back gives the
+    case what the employee typed, not the tag around it, so a field keeps its format.
 
   - **What does not survive is reported.** A generated letter logs a warning naming the field, the
     template and the kinds lost (`heading ×1, table ×1`), never the text; a preview logs it at

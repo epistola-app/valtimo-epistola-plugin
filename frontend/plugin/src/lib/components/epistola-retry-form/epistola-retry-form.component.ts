@@ -36,6 +36,7 @@ import { Subject, Subscription } from 'rxjs';
 import { debounceTime, switchMap } from 'rxjs/operators';
 import { EpistolaPluginService } from '../../services';
 import { formioLanguage, readerLocale, withLocaleDates } from '../../utils/formio-locale';
+import { tagRichText } from '../../utils/rich-text-values';
 
 @Component({
   standalone: true,
@@ -272,11 +273,13 @@ export class EpistolaRetryFormComponent
 
   onFormChange(event: any): void {
     if (event?.data) {
-      const json = JSON.stringify(event.data);
+      // What an editor typed says which format it is in, so nothing has to guess later (ADR 0008).
+      const data = tagRichText(this.formDefinition, event.data);
+      const json = JSON.stringify(data);
       this.value = json; // Formio reads element.value on change event
       this.valueChange.emit(json);
       // Trigger debounced preview
-      this.previewSubject.next(event.data);
+      this.previewSubject.next(data);
     }
   }
 

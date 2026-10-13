@@ -87,8 +87,7 @@ class LetterComposerServiceTest {
                 app.epistola.valtimo.richtext.RichTextFixtures.generator(new ObjectMapper(), "html"),
                 mock(com.ritense.document.service.DocumentService.class),
                 mock(RuntimeService.class),
-                new ObjectMapper(),
-                app.epistola.valtimo.richtext.RichTextFixtures.editorRichText(epistolaService));
+                new ObjectMapper());
     }
 
     /** An offered letter in the test's own catalog, so the catalog stays out of every call. */
@@ -257,27 +256,6 @@ class LetterComposerServiceTest {
         org.mockito.Mockito.verify(epistolaService).previewDocument(
                 eq("http://epistola"), eq("key"), eq("gemeente"), eq("gemeente"), eq("besluit"),
                 eq(null), eq("prod"), eq(Map.of("naam", "Jansen")));
-    }
-
-    /** The composer asked with its HTML editor, so what comes back is HTML, sent as a document. */
-    @Test
-    void previewsWhatTheEmployeeTypedInTheEditorAsADocument() {
-        offering(configuration(offered("besluit", "Besluit", null)), "besluit");
-        templateRequires("besluit", required("naam"), new TemplateField(
-                "toelichting", "toelichting", "richtext-block", FieldType.SCALAR, true, null, List.of(),
-                false, null, false, new TemplateField.FieldHints(null, null, null, null, null, null,
-                        TemplateField.RichTextKind.BLOCK)));
-        when(epistolaService.previewDocument(anyString(), anyString(), anyString(), anyString(),
-                anyString(), any(), any(), any()))
-                .thenReturn(new ByteArrayInputStream("%PDF".getBytes()));
-
-        service.preview(CONTEXT, null, "besluit", Map.of("naam", "Jansen", "toelichting", "<p>Gegrond</p>"));
-
-        Map<String, Object> document = Map.of("type", "doc", "content", List.of(Map.of(
-                "type", "paragraph", "content", List.of(Map.of("type", "text", "text", "Gegrond")))));
-        org.mockito.Mockito.verify(epistolaService).previewDocument(
-                eq("http://epistola"), eq("key"), eq("gemeente"), eq("gemeente"), eq("besluit"),
-                eq(null), eq("prod"), eq(Map.of("naam", "Jansen", "toelichting", document)));
     }
 
     @Test

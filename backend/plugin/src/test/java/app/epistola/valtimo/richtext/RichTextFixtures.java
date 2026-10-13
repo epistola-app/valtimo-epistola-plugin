@@ -17,7 +17,6 @@
  */
 package app.epistola.valtimo.richtext;
 
-import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.form.FormioFormGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -42,10 +41,5 @@ public final class RichTextFixtures {
     /** A form generator as wired, asking for rich text in {@code defaultFormat}. */
     public static FormioFormGenerator generator(ObjectMapper objectMapper, String defaultFormat) {
         return new FormioFormGenerator(objectMapper, converter(defaultFormat), editors());
-    }
-
-    /** Converts what the plugin's editors typed, reading fields from {@code client}; html, as shipped. */
-    public static EditorRichText editorRichText(EpistolaService client) {
-        return new EditorRichText(client, converter("html"));
     }
 }

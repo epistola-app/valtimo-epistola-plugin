@@ -285,9 +285,14 @@ marks such a field. `$richText(value)` without a format reads the installation's
 ```jsonata
 {
   "toelichting": $richText($doc.besluit.toelichting, "html"),
-  "samenvatting": $richText($doc.samenvatting, "markdown")
+  "samenvatting": $richText($doc.samenvatting, "markdown"),
+  "aanhef": $richText($doc.aanhef, "html", "inline"),
+  "alineas": [$doc.alineas.$richText($, "html")]
 }
 ```
+
+The third argument narrows the document to the one paragraph an inline field takes. A list is
+mapped inside `[…]`, so a case list with one item still gives a list.
 
 See [Rich text](rich-text.md) for the formats, what each keeps, and how to add one.
 

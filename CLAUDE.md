@@ -155,13 +155,17 @@ docker/            # Docker compose for local dependencies
   a field whose `$ref` is Epistola's `richtext-{inline,block}-v1.json` URL takes a ProseMirror
   document, while the case keeps text in a format of its own. The plugin translates, and three rules
   hold it together:
-  - **Convert where the format is known, nowhere else.** A mapping converts in `$richText`; mapped
-    data is never converted afterwards. What a person typed into the plugin's own editors (the
-    composer, the retry form) is converted by `EditorRichText` where it leaves for Epistola —
-    composer preview, composed-letter and retry generation, retry preview overrides. A new path that
-    sends editor data must call it too; there is no catch-all wrapper (ADR 0008, Revision).
-  - **Never guess a string's format.** It comes from `$richText(value, format)`, or is the editors'
-    own format, `epistola.rich-text.default-format`.
+  - **A value says its own format.** A mapping converts in `$richText(value, format)`; mapped data
+    is never converted afterwards, so a bare string in a rich-text field is refused. The plugin's
+    own editors (the composer, the retry form) submit what was typed as a tagged value,
+    `{"$richText": {"format", "kind", "value"}}`, built by the frontend's `tagRichText` from the
+    `epistolaRichText` marker `FormioFormGenerator` puts on each rich-text component. The client
+    (`EpistolaServiceImpl`, via `RichTextValues`) turns tags into documents while building the
+    generate and preview requests, so every path is covered without a wrapper or a contract read.
+    Anything that hands typed rich text to a person or the case — write-back, a retry form's
+    prefill — unwraps it first (ADR 0008, Revision).
+  - **Never guess a string's format.** It comes from `$richText(value, format)` or from the tag the
+    editor wrote.
   - **Send only what passes `ProseMirrorSanitizer`.** Each format's tests validate its output
     against Epistola's own schemas, read from the `epistola-catalog` test dependency at the pinned
     contract version.

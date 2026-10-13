@@ -17,7 +17,6 @@
  */
 package app.epistola.valtimo.config;
 
-import app.epistola.valtimo.richtext.EditorRichText;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
@@ -44,7 +43,6 @@ public class EpistolaPluginFactory extends PluginFactory<EpistolaPlugin> {
     private final DocumentService documentService;
     private final EpistolaResultCollectorRunner resultCollectorRunner;
     private final Map<DocumentStorageTarget, DocumentStorageStrategy> storageStrategies;
-    private final EditorRichText editorRichText;
     // Held as the provider, not as what it resolved to at startup: a plugin instance is created
     // per configuration long after the context is up, and resolving then is both later and safer.
     // Resolving in this constructor instead captured null whenever the composer bean was not yet
@@ -56,8 +54,7 @@ public class EpistolaPluginFactory extends PluginFactory<EpistolaPlugin> {
             @NotNull JsonataMappingService jsonataMappingService,
             @NotNull DocumentService documentService,
             @NotNull EpistolaResultCollectorRunner resultCollectorRunner,
-            @NotNull List<DocumentStorageStrategy> storageStrategies,
-            @NotNull EditorRichText editorRichText
+            @NotNull List<DocumentStorageStrategy> storageStrategies
     ) {
         super(pluginService);
         this.epistolaService = epistolaService;
@@ -65,7 +62,6 @@ public class EpistolaPluginFactory extends PluginFactory<EpistolaPlugin> {
         this.jsonataMappingService = jsonataMappingService;
         this.documentService = documentService;
         this.resultCollectorRunner = resultCollectorRunner;
-        this.editorRichText = editorRichText;
         // Only the strategies whose backend is present are registered as beans (see auto-config),
         // so this map reflects what is actually available in this environment.
         this.storageStrategies = storageStrategies.stream().collect(Collectors.toMap(
@@ -80,6 +76,6 @@ public class EpistolaPluginFactory extends PluginFactory<EpistolaPlugin> {
     protected EpistolaPlugin create() {
         return new EpistolaPlugin(epistolaService, objectMapper,
                 jsonataMappingService, documentService, resultCollectorRunner,
-                storageStrategies, editorRichText);
+                storageStrategies);
     }
 }
