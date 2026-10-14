@@ -26,6 +26,7 @@ import {
   defaultGeometry,
   FloatingPanel,
   MIN_PANEL,
+  PopOut,
   readPanelMemory,
   writePanelMemory,
 } from './floating-panel';
@@ -261,5 +262,155 @@ describe('FloatingPanel', () => {
     pointer('pointermove', window, 200, 200);
 
     expect(pane.style.left).toBe('');
+  });
+});
+
+describe('FloatingPanel in a Valtimo dialog', () => {
+  const dialogWithPane = () => {
+    document.body.innerHTML = '';
+    const layer = document.createElement('section');
+    layer.className = 'cds--modal';
+    const dialog = document.createElement('div');
+    dialog.className = 'cds--modal-container';
+    const field = document.createElement('input');
+    const pane = document.createElement('div');
+    const header = document.createElement('div');
+    const resizer = document.createElement('div');
+    pane.append(header, resizer);
+    dialog.append(field, pane);
+    layer.appendChild(dialog);
+    document.body.appendChild(layer);
+    return { layer, dialog, field, pane, header, resizer };
+  };
+  const press = (target: EventTarget) =>
+    target.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true }));
+
+  it("floats in the dialog's own layer, in front of the dialog", () => {
+    const { layer, dialog, pane, header, resizer } = dialogWithPane();
+
+    new FloatingPanel(pane, header, resizer, undefined, () => {});
+
+    expect(pane.parentElement).toBe(layer);
+    expect(dialog.contains(pane)).toBe(false);
+    expect(pane.style.zIndex).toBe('2');
+  });
+
+  it('steps behind the dialog when the dialog is used, and comes forward when it is', () => {
+    const { field, pane, header, resizer } = dialogWithPane();
+    const panel = new FloatingPanel(pane, header, resizer, undefined, () => {});
+
+    press(field);
+    expect(panel.behind).toBe(true);
+    // Behind the white dialog box (z-index 1), still above the layer's own backdrop.
+    expect(pane.style.zIndex).toBe('0');
+
+    press(pane);
+    expect(panel.behind).toBe(false);
+    expect(pane.style.zIndex).toBe('2');
+  });
+
+  it('stays in front when the dialog would cover it completely, so it can always be reached', () => {
+    const { dialog, field, pane, header, resizer } = dialogWithPane();
+    dialog.getBoundingClientRect = () =>
+      ({ left: 100, top: 50, right: 1100, bottom: 700, width: 1000, height: 650 }) as DOMRect;
+    const panel = new FloatingPanel(
+      pane,
+      header,
+      resizer,
+      { left: 300, top: 100, width: 400, height: 500 },
+      () => {},
+    );
+
+    press(field);
+
+    expect(panel.behind).toBe(false);
+  });
+
+  it('comes forward when focus moves into it, as a click on the PDF viewer does', () => {
+    const { field, pane, header, resizer } = dialogWithPane();
+    const panel = new FloatingPanel(pane, header, resizer, undefined, () => {});
+    press(field);
+
+    pane.dispatchEvent(new FocusEvent('focusin', { bubbles: true }));
+
+    expect(panel.behind).toBe(false);
+  });
+
+  it('goes back into the dialog when docked, in front again', () => {
+    const { dialog, field, pane, header, resizer } = dialogWithPane();
+    const panel = new FloatingPanel(pane, header, resizer, undefined, () => {});
+    press(field);
+
+    panel.release();
+
+    expect(pane.parentElement).toBe(dialog);
+    expect(pane.classList.contains('behind')).toBe(false);
+    expect(pane.style.zIndex).toBe('');
+  });
+});
+
+describe('PopOut', () => {
+  const memory = () => {
+    const items = new Map<string, string>();
+    return {
+      getItem: (key: string) => items.get(key) ?? null,
+      setItem: (key: string, value: string) => void items.set(key, value),
+      items,
+    } as unknown as Storage & { items: Map<string, string> };
+  };
+
+  const preview = () => {
+    const host = document.createElement('div');
+    const pane = document.createElement('div');
+    pane.innerHTML = '<div class="preview-header"></div><div class="preview-resize"></div>';
+    host.appendChild(pane);
+    document.body.appendChild(host);
+    return { host, pane };
+  };
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('floats when asked, remembers it under its own key, and docks again', () => {
+    const store = memory();
+    const popOut = new PopOut('epistola.documentPreview.previewPanel', undefined, undefined, store);
+    const { host, pane } = preview();
+    popOut.setElement(pane);
+
+    popOut.toggle();
+    expect(pane.parentElement).toBe(document.body);
+    expect(JSON.parse(store.items.get('epistola.documentPreview.previewPanel')!).floating).toBe(
+      true,
+    );
+    expect(store.items.has('epistola.composer.previewPanel')).toBe(false);
+
+    popOut.toggle();
+    expect(pane.parentElement).toBe(host);
+  });
+
+  it('floats a new element at once when it was left floating', () => {
+    const store = memory();
+    store.setItem('epistola.document.previewPanel', JSON.stringify({ floating: true }));
+    const popOut = new PopOut('epistola.document.previewPanel', undefined, undefined, store);
+    const { pane } = preview();
+
+    popOut.setElement(pane);
+
+    expect(popOut.floating).toBe(true);
+    expect(pane.parentElement).toBe(document.body);
+  });
+
+  it('lets go of a floating element when Angular takes it away', () => {
+    const store = memory();
+    const popOut = new PopOut('k', undefined, undefined, store);
+    const { host, pane } = preview();
+    popOut.setElement(pane);
+    popOut.toggle();
+    host.remove();
+
+    popOut.setElement(null);
+
+    expect(document.body.contains(pane)).toBe(false);
   });
 });

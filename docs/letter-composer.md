@@ -231,7 +231,10 @@ Its heading bar has three controls, the last two as icons with a tooltip:
   preview is moved out of the dialog onto the page itself (a fixed element inside a transformed
   dialog would stay inside it), dragged by its header and resized from its corner, and kept on
   screen. Whether it floats, and where, is remembered per browser; closing the dialog takes it
-  along.
+  along. Inside the dialog it stacks like a window on a desktop: a click in the dialog sends it
+  behind the dialog box (still above the grey backdrop), and a click on what still shows of it
+  brings it forward — but only while a strip of it shows beside the dialog, so it can always be
+  reached.
 
 While a new render is on its way the previous letter stays on screen, dimmed, so an edit does not
 blank the preview and lose the employee's place in it.

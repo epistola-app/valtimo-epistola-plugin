@@ -49,11 +49,12 @@ import { isRendered, PreviewRenderer } from './preview-renderer';
 import {
   clampDockedHeight,
   clampDockedWidth,
-  FloatingPanel,
+  PANEL_MEMORY_KEYS,
+  PopOut,
   readPanelMemory,
   trackDrag,
   writePanelMemory,
-} from './floating-panel';
+} from '../../utils/floating-panel';
 import { isSectioned, sectionForm } from './composer-sections';
 import { formioLanguage, readerLocale, withLocaleDates } from '../../utils/formio-locale';
 import { tagRichText } from '../../utils/rich-text-values';
@@ -556,8 +557,13 @@ export class EpistolaLetterComposerComponent
   autoRefreshEnabled = true;
   /** True when something was edited since the last render, while auto-refresh is off. */
   previewStale = false;
+  /** Floats the preview over the page, and puts it back. See {@link PopOut}. */
+  private readonly popOut = new PopOut(PANEL_MEMORY_KEYS.composer);
+
   /** Whether the preview floats over the page instead of sitting beside the form. */
-  floating = readPanelMemory().floating;
+  get floating(): boolean {
+    return this.popOut.floating;
+  }
   /** The docked preview's share of the width and its height, as the employee left them. */
   dockedWidth: number | null = readPanelMemory().dockedWidth ?? null;
   dockedHeight: number | null = readPanelMemory().dockedHeight ?? null;
@@ -605,8 +611,6 @@ export class EpistolaLetterComposerComponent
   /** The letter as it stands now, which a manual refresh renders. */
   private latestData: ComposerData | null = null;
   private autoRefreshSeeded = false;
-  /** The floating preview, while it floats. See {@link FloatingPanel}. */
-  private panel: FloatingPanel | null = null;
   private previewPaneElement: HTMLElement | null = null;
 
   /**
@@ -616,16 +620,8 @@ export class EpistolaLetterComposerComponent
    */
   @ViewChild('previewPane')
   set previewPane(ref: ElementRef<HTMLElement> | undefined) {
-    const element = ref?.nativeElement ?? null;
-    if (element === this.previewPaneElement) {
-      return;
-    }
-    this.panel?.release();
-    this.panel = null;
-    this.previewPaneElement = element;
-    if (element && this.floating) {
-      this.startFloating(element);
-    }
+    this.previewPaneElement = ref?.nativeElement ?? null;
+    this.popOut.setElement(this.previewPaneElement);
   }
   /**
    * The process the backend worked out this start form belongs to, kept from the prepare response.
@@ -704,8 +700,7 @@ export class EpistolaLetterComposerComponent
   }
 
   ngOnDestroy(): void {
-    this.panel?.release();
-    this.panel = null;
+    this.popOut.release();
     this.prepareSubscription?.unsubscribe();
     this.previewSubscription?.unsubscribe();
     this.renderSubscription?.unsubscribe();
@@ -781,30 +776,8 @@ export class EpistolaLetterComposerComponent
 
   /** Float the preview over the page, or put it back beside the form. Remembered per browser. */
   togglePopOut(): void {
-    this.floating = !this.floating;
-    writePanelMemory({ ...readPanelMemory(), floating: this.floating });
-    if (this.floating && this.previewPaneElement) {
-      this.startFloating(this.previewPaneElement);
-    } else {
-      this.panel?.release();
-      this.panel = null;
-    }
+    this.popOut.toggle();
     this.cdr.markForCheck();
-  }
-
-  private startFloating(element: HTMLElement): void {
-    const handle = element.querySelector<HTMLElement>('.preview-header');
-    const resizer = element.querySelector<HTMLElement>('.preview-resize');
-    if (!handle || !resizer) {
-      return;
-    }
-    this.panel = new FloatingPanel(
-      element,
-      handle,
-      resizer,
-      readPanelMemory().geometry,
-      (geometry) => writePanelMemory({ ...readPanelMemory(), floating: true, geometry }),
-    );
   }
 
   /**

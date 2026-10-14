@@ -21,6 +21,8 @@ jest.mock('@angular/core', () => ({
   Component: () => (target: unknown) => target,
   Input: () => () => undefined,
   Output: () => () => undefined,
+  ViewChild: () => () => undefined,
+  ElementRef: class {},
   EventEmitter: class {
     emit = jest.fn();
   },
