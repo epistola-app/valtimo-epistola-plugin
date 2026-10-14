@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 import { test, expect } from '@playwright/test';
+import { clickSettled } from '../pages/settled-click';
 import { createDossier, startFromMenu } from '../pages/correspondentie.page';
 import { composerField } from '../pages/composer-field';
 
@@ -95,7 +96,7 @@ test.describe('Letter composer — on a form-flow step', () => {
     });
 
     // Step 1 → step 2. The composer is behind us now, and the letter has to have come along.
-    await page.getByRole('button', { name: 'Doorgaan' }).click({ force: true });
+    await clickSettled(page.getByRole('button', { name: 'Doorgaan' }), { force: true });
     const confirm = page.getByRole('button', { name: 'Verstuur brief' });
     await expect(confirm).toBeVisible({ timeout: 30_000 });
     await expect(composer).toBeHidden();

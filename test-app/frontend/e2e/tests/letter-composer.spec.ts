@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 import { test, expect } from '@playwright/test';
+import { clickSettled } from '../pages/settled-click';
 import { createDossier } from '../pages/correspondentie.page';
 import { composerField } from '../pages/composer-field';
 
@@ -80,7 +81,7 @@ test.describe('Letter composer — pick a letter, fill in what the case cannot s
     await expect(page.getByTestId('epistola-composer-preview-error')).toBeHidden();
 
     // Submitting completes the task, which is what hands the chosen letter to the generate task.
-    await page.getByRole('button', { name: 'Genereer brief' }).click();
+    await clickSettled(page.getByRole('button', { name: 'Genereer brief' }));
     const visibleText = async () => (await page.locator('body').innerText()).replace(/\s+/g, ' ');
     await expect
       .poll(visibleText, { timeout: 30_000, message: 'the choose-letter task never completed' })

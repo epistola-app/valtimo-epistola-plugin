@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: EUPL-1.2
 import { expect, test } from '@playwright/test';
+import { clickSettled } from '../pages/settled-click';
 import { createDossier } from '../pages/correspondentie.page';
 import { composerField } from '../pages/composer-field';
 
@@ -56,7 +57,7 @@ test.describe('A composed letter ends up on the dossier', () => {
       timeout: 60_000,
     });
 
-    await page.getByRole('button', { name: 'Genereer brief' }).click();
+    await clickSettled(page.getByRole('button', { name: 'Genereer brief' }));
 
     // Generation is asynchronous: the task completes, then Epistola answers, then the catch event
     // fires, and only then does the demo store the letter and relate it to the case.

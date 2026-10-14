@@ -281,8 +281,13 @@ import { PreviewWindow } from '../../utils/preview-window';
           var(--cds-border-strong-01, #8d8d8d) 50%
         );
       }
-      /* The PDF viewer would take the pointer mid-drag and stop it dead. */
-      .dragging .epistola-preview-frame__pdf {
+      /*
+       * The PDF viewer keeps every pointer event to itself: mid-drag it would stop the drag dead,
+       * and behind a dialog a click on the letter would never reach the panel to bring it forward.
+       * Behind, the letter is to be brought forward rather than read, so it takes no clicks.
+       */
+      .dragging .epistola-preview-frame__pdf,
+      .epistola-preview-frame.behind .epistola-preview-frame__pdf {
         pointer-events: none;
       }
     `,

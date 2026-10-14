@@ -460,7 +460,8 @@ in `test-app/frontend/src/app/embedding/`; the published plugin library is untou
   permit-correct-case (a refused letter fixed by correcting the case),
   letter-composer-preview-panel (pop out, drag, dock and pause the preview inside a real dialog),
   preview-popout (the document preview and the generated letter pop out of real forms),
-  preview-window (the letter in a browser window of its own, closed with the dialog). They run
+  preview-window (the letter in a browser window of its own, closed with the dialog),
+  preview-window-csp (form and window obey a page's object-src alike). They run
   **nightly and on demand** (`.github/workflows/e2e-ui.yml`, `gh workflow run "E2E (browser)"`),
   not in PR CI: they need Postgres, Keycloak, Epistola, the backend and the Angular dev server, so
   they are far slower than a PR check should be. Run them before a release — they are where the
@@ -497,6 +498,25 @@ deliberately reverting a fix and re-running — worth doing for any new UI asser
   the page's visible text (`body.innerText`) and on a distinguishing row such as `Vervolgtaak Open`.
 - **Completion leaves the finished task on screen**, as part of Valtimo's success toast. The _absence_
   of the previous task's name is therefore not a usable signal that the flow advanced.
+
+**PDFs need the full Chromium build.** The suite runs `channel: 'chromium'` (the full build in its
+new headless mode) because Playwright's lightweight headless shell has no PDF viewer: it never loads
+a preview's `<object>`, so no letter renders and no `object-src` policy is ever checked — a test of
+either passes for the wrong reason (`navigator.pdfViewerEnabled` tells which you have). Two things
+follow from a real viewer:
+
+- **A click right after a scroll can land in the PDF.** The viewer is a frame of its own whose place
+  on screen catches up a moment after a scroll; Playwright scrolls and clicks in the same instant, so
+  a submit button below a composer's preview gets no click at all. Use `clickSettled`
+  (`e2e/pages/settled-click.ts`) for such a control. A person does not click that fast; it is not a
+  product bug.
+- **A PDF keeps pointer events to itself**, so a click "on the letter" never reaches the component
+  around it. The preview frame turns its PDF's pointer events off where a click must reach the frame
+  (dragging, and behind a dialog).
+
+A page's Content-Security-Policy in a test goes in as a `<meta>` in `<head>` before the app's scripts
+(`preview-window-csp.spec.ts`): Valtimo's page arrives by a redirect from Keycloak, which a route does
+not intercept, so a header added there never reaches it.
 
 An Angular dev build also emits console noise unrelated to the app under test (`NG0100`, a
 `toLowerCase` TypeError present on every Valtimo case list, Keycloak account CORS). Filter those with

@@ -17,6 +17,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   leaving Valtimo. Closing it by hand brings the letter back into the form. A blocked pop-up is
   said so in the frame. The in-page pop-out now has a picture-in-picture icon, since
   `open-in-new` belongs to the window. A browser test walks it (`preview-window.spec.ts`).
+  Under a host's Content-Security-Policy the window behaves exactly like the preview in the form —
+  it inherits the page's policy, and its PDF is under the same `object-src` — which
+  `preview-window-csp.spec.ts` proves with a policy that allows the letter and one that blocks it.
+
+### Changed
+
+- **The browser suite renders real PDFs.** It runs the full Chromium build (`channel: 'chromium'`)
+  instead of Playwright's lightweight headless shell, which has no PDF viewer: before, no preview's
+  letter ever rendered in a test, so a hidden toolbar or a page's policy could not be tested at all.
+  Doing so found two things: a click on the letter of a panel behind a dialog never brought it
+  forward (the viewer kept the click; behind, the letter now takes no clicks), and a test's click
+  right after a scroll can land in the PDF (`clickSettled` in the specs; not something a person runs
+  into).
 
 ### Deprecated
 

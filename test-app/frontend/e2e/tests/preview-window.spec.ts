@@ -40,7 +40,7 @@ test.describe('Previews — in a window of their own', () => {
       page.getByTestId('epistola-composer-preview-window').click(),
     ]);
     const shown = () => popup.locator('object').getAttribute('data');
-    await expect.poll(shown).toMatch(/^blob:.*#view=FitH$/);
+    await expect.poll(shown).toMatch(/^blob:.*#navpanes=0&view=FitH$/);
     await expect(page.getByTestId('epistola-composer-preview-windowed')).toBeVisible();
     await expect(page.getByTestId('epistola-composer-preview-pdf')).toBeHidden();
 

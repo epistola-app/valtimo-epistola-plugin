@@ -27,6 +27,10 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        // The full Chromium build in its new headless mode, not the lightweight headless shell: only
+        // the full build has a PDF viewer, so only it renders a preview's letter — and only then
+        // does a browser test see what an employee sees, or a page's object-src policy apply.
+        channel: 'chromium',
         storageState: 'e2e/.auth/user.json',
       },
       dependencies: ['setup'],

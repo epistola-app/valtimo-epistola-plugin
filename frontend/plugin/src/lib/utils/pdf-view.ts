@@ -37,9 +37,10 @@ export function pdfViewUrl(url: string): string {
 }
 
 /**
- * The URL to show a PDF at in a window of its own: fitted to the width, with the viewer's toolbar.
- * There is room for it there, and printing or zooming is what a separate window is often for.
+ * The URL to show a PDF at in a window of its own: fitted to the width, with the viewer's toolbar
+ * but without its thumbnail panel. There is room for the toolbar there, and printing or zooming is
+ * what a separate window is often for; the thumbnails only take the letter's room.
  */
 export function windowViewUrl(url: string): string {
-  return `${url.split('#')[0]}#view=FitH`;
+  return `${url.split('#')[0]}#navpanes=0&view=FitH`;
 }

@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-import { pdfViewUrl } from './pdf-view';
+import { pdfViewUrl, windowViewUrl } from './pdf-view';
 
 describe('pdfViewUrl', () => {
   it('asks the viewer for the letter alone: no toolbar, no side panel, fitted to the width', () => {
@@ -28,6 +28,14 @@ describe('pdfViewUrl', () => {
   it('replaces a fragment the URL already had rather than adding a second', () => {
     expect(pdfViewUrl('blob:http://localhost/abc#page=2')).toBe(
       'blob:http://localhost/abc#toolbar=0&navpanes=0&view=FitH',
+    );
+  });
+});
+
+describe('windowViewUrl', () => {
+  it('keeps the toolbar in a window of its own, without the thumbnails, fitted to the width', () => {
+    expect(windowViewUrl('blob:http://localhost/abc#toolbar=0')).toBe(
+      'blob:http://localhost/abc#navpanes=0&view=FitH',
     );
   });
 });
