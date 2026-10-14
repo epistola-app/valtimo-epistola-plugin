@@ -115,17 +115,23 @@ export class ProcessLinkPage {
    * The wizard is: what kind of link ("Plugins & Apps"), which plugin configuration (a table with
    * a row per configuration), which action (tiles), then the action's own form. It stops before
    * the action so a caller can inspect what is on offer.
+   *
+   * The first step appears only when there is a choice. Since Valtimo 13.50 that is counted in
+   * tiles rather than in the backend's link types, and a service task's `plugin` and
+   * `external_plugin` share the one "Plugins & Apps" tile — so on a service task the wizard opens
+   * on the configuration table. Both shapes are accepted, so the suite holds on either side of it.
    */
   async startNewEpistolaLink(): Promise<void> {
-    await this.page
-      .getByRole('button', { name: /Plugins & Apps/i })
-      .first()
-      .click();
-
+    const kindTile = this.page.getByRole('button', { name: /Plugins & Apps/i }).first();
     const configRow = this.page
       .locator('cds-list-row')
       .filter({ hasText: 'Epistola Document Suite' })
       .first();
+
+    await expect(kindTile.or(configRow).first()).toBeVisible({ timeout: 15_000 });
+    if (await kindTile.isVisible()) {
+      await kindTile.click();
+    }
     await expect(configRow).toBeVisible({ timeout: 15_000 });
     await configRow.click();
     await this.next();
