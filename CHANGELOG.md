@@ -7,1105 +7,124 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-10-14
+
+### Upgrading
+
+- **The plugin no longer deploys the `epistola-retry-document` form into every case.** A case that
+  still uses the (now deprecated) retry form must ship the form itself; its JSON is in
+  [docs/user-task-fallback.md](docs/user-task-fallback.md). Forms an earlier version deployed stay
+  in place. The `epistola.retry-form.enabled` and `epistola.retry-form.case-filter` settings are
+  gone; `epistola.retry-form.enabled: true` logs a startup warning saying it does nothing.
+- **The frontend library now has a peer dependency on `@ngx-translate/core`**, which every Valtimo
+  frontend already has.
+- **The admin page's contract check expects contract `1.4.0`**, so a Suite serving `1.3.x` or
+  earlier shows a warning where it showed OK before. Such a server still works.
+- **Rich-text template fields need `$richText(value, format)` in a mapping.** A plain string mapped
+  onto one is sent as it is and Epistola refuses it, as before; the mapping builder marks such a
+  field.
+
 ### Added
 
-- **A preview can open in a browser window of its own**, for a second screen: the composer's
-  preview, the document preview and the document component, through their shared frame. The
-  window holds only the letter (with the viewer's toolbar, for printing and zooming) and follows
-  each edit; what the employee is told stays in the form. There is only ever one — every preview
-  uses the same named window — and it closes with the dialog, and with the page on a reload or when
-  leaving Valtimo. Closing it by hand brings the letter back into the form. A blocked pop-up is
-  said so in the frame. The in-page pop-out now has a picture-in-picture icon, since
-  `open-in-new` belongs to the window. A browser test walks it (`preview-window.spec.ts`).
-  Under a host's Content-Security-Policy the window behaves exactly like the preview in the form —
-  it inherits the page's policy, and its PDF is under the same `object-src` — which
-  `preview-window-csp.spec.ts` proves with a policy that allows the letter and one that blocks it.
+- **Letter composer (alpha): one Form.io component for a list of letters.**
+  `epistola-letter-composer` offers a configured list of templates. Choosing one resolves the
+  letter's data for the case through a baseline mapping (plus an optional fragment per letter),
+  asks the employee for exactly the fields the mapping left empty, and shows a live preview. One
+  `epistola-generate-dynamic-document` service task ("Generate Chosen Letter") renders whichever
+  letter was chosen. Highlights:
+  - **Works on a task form, a form-flow step and a start form**, including a start form that
+    creates a case, without being told which: the context decides, and a start-form composer
+    finds its own process. Every shape authorizes on the task (`OperatonTask:VIEW`) or like
+    Valtimo's own start-form path (`OperatonExecution:CREATE` + `JsonSchemaDocument:VIEW`), and
+    the configuration is always read server-side from the form definition.
+  - **Settings are picked, not typed**: connection, catalog and templates cascade in the builder
+    and are chosen automatically where there is only one. Each letter can be configured on its
+    own, a catalog belongs to the letter, and the advanced settings sit in a collapsed panel.
+  - **Generated inputs follow the template contract**: labels, selects for `enum`/`const`,
+    defaults, examples as placeholders, data grids with nested objects, a calendar for dates and
+    date-times in the reader's locale, and the contract's `minLength`/`maxLength`/`pattern`/
+    `minimum`/`maximum`/`minItems`/`maxItems` rules, reported in the reader's language. A long
+    letter is filled in step by step (configurable threshold).
+  - **A letter Epistola refuses says which fields stop it** (contract `template-data-invalid`,
+    Suite on contract 1.4.0 or later). A required field the composer cannot ask for is refused
+    up front with a 422 naming it.
+  - **Write-back**: rules in the component save a letter's values on the case (`doc:` or `pv:`)
+    when the form is submitted. A failing rule blocks the submission, so an approved value either
+    reaches the case or nothing is submitted. A rule can clear a field with `null`.
+  - **The stored shapes are versioned** (`schemaVersion`, under one `epistola` key on the form) and
+    a newer one is refused rather than half-read. They may still change while the composer is
+    alpha.
+  - Can be switched off with `epistola.composer.enabled=false`. See
+    [docs/letter-composer.md](docs/letter-composer.md) and
+    [ADR 0006](docs/adr/0006-letter-composer-configuration.md).
+- **Epistola rich-text fields can be filled, in whatever format the case keeps text**
+  ([docs/rich-text.md](docs/rich-text.md), [ADR 0008](docs/adr/0008-rich-text-inputs.md)).
+  `plain`, `html` (what Valtimo's Form.io WYSIWYG writes), `markdown` and `prosemirror` ship, and an
+  installation can add a `RichTextFormat` bean. A mapping names the format with
+  `$richText($doc.x, "html")`; the output is always narrowed to Epistola's schema (dropped content
+  is logged by kind, never by text). The composer and the retry form ask for a rich-text field with
+  a CKEditor limited to what Epistola renders. `epistola.rich-text.default-format` (default `html`)
+  is what the editors write. New dependencies: jsoup and commonmark-java (not shaded).
+- **Previews.** The composer's preview, the document preview and the document component share one
+  frame, with Dutch and English labels. Each shows the letter without the browser's PDF controls,
+  can pop out to float over the page (and step behind a dialog) or open in a browser window of its
+  own for a second screen, and can be resized. The composer's preview stays in view beside a long
+  form and keeps the previous letter on screen while the next renders; auto-refresh can be
+  switched off.
+- **The document preview derives its input overrides from the form's field keys** (`pv:x`,
+  `doc:/a/b`), so most task forms need no Input Overrides mapping. Setting: _Use the form's field
+  keys as overrides_ (on by default; turn it off inside a form flow).
+- **Demo.** A Correspondentie case with the composer on a task form, a form-flow step, an ad-hoc
+  start form and a start form that creates a case; a widget tab showing what the letter wrote
+  back; a `permit` demo that corrects the case after a refused letter; and generated letters kept
+  on the dossier under **Documenten** (demo-only store, letters deleted after 30 days).
+- **Test-app release workflow** (`test-app-release.yml`) publishes only the demo images, tagged
+  `<last plugin release>-testapp.<run>`, without a plugin release.
+- **Browser suites run nightly** and on demand (`e2e-ui.yml`), against the full Chromium build so
+  PDFs really render.
 
 ### Changed
 
-- **Upgraded Valtimo from `13.48.0` to `13.50.0` (backend + frontend).** No toolchain change:
-  Spring Boot `3.5.16`, Angular `19.2.25`, `carbon-components-angular` `5.57.6` and `formiojs`
-  `4.19.5` are the same in both, and the Epistola client stays at `1.4.0`. 13.49.0, 13.49.1 and
-  13.50.0 were changelog-reviewed. 13.50's tightened case `view` checks (widgets, zaak, case tabs,
-  process links, timers, the process diagram) cover no endpoint the plugin calls.
-
-  One undocumented change reached the browser suite: the process-link wizard now counts the tiles
-  it shows rather than the link types the backend offers, and a service task's `plugin` and
-  `external_plugin` share the one "Plugins & Apps" tile — so on a service task it opens straight on
-  the plugin-configuration table. `ProcessLinkPage.startNewEpistolaLink` takes either shape.
-
-  13.50's new **side panel** (a task form linked with the **Panel** display type opens beside the
-  case) was tried with the composer: choosing, filling, previewing and generating a letter all work,
-  and the composer's narrow layout stacks the preview under the fields. A popped-out preview,
-  though, lands on top of the panel and its fields, since a panel at the screen's edge leaves no
-  room beside it the way a dialog does.
-
-  13.50.0 was installed on its release day, so `pnpm-workspace.yaml` exempts its `@valtimo/*`
-  packages from pnpm's one-day `minimumReleaseAge`, pinned to that version and safe to remove
-  after 2026-10-15.
-
-- **The browser suite renders real PDFs.** It runs the full Chromium build (`channel: 'chromium'`)
-  instead of Playwright's lightweight headless shell, which has no PDF viewer: before, no preview's
-  letter ever rendered in a test, so a hidden toolbar or a page's policy could not be tested at all.
-  Doing so found two things: a click on the letter of a panel behind a dialog never brought it
-  forward (the viewer kept the click; behind, the letter now takes no clicks), and a test's click
-  right after a scroll can land in the PDF (`clickSettled` in the specs; not something a person runs
-  into).
+- **Upgraded Valtimo from `13.47.0` to `13.50.0` (backend + frontend).** 13.48.0 to 13.50.0 were
+  changelog-reviewed. Spring Boot (3.5.16), Angular (19.2), Carbon and Form.io
+  (`formiojs@4.19.5`) are unchanged. 13.48 needs `@valtimo/building-block-management` declared
+  explicitly by the host (#177). 13.50's tightened case `view` checks cover no endpoint the plugin
+  calls. The composer works in 13.50's new side panel; a popped-out preview there covers the
+  panel's fields.
+- **Upgraded the Epistola contract client from `1.3.1` to `1.4.0`.** Additive only; the bundled
+  catalogs stay at wire schema `4` and `oldestSupportedServerTest` still passes against a Suite
+  1.0.0 server.
+- **The security policy** moved to the repository root, matches Epistola Suite's, and supports the
+  two most recent minor lines.
+- **Training (test-app):** trainees work in the shared case types on their own cases only, and
+  their own Epistola tenant gets the demo templates.
 
 ### Deprecated
 
-- **The retry form (`epistola-retry-form`, the auto-deployed `epistola-retry-document` form and
-  `GET /retry-form`) is deprecated, to be removed in a later release.** It corrects the letter
-  rather than the case: the edited values go into that one letter only, so the case keeps the wrong
-  value and the next letter fails the same way; every template field can be changed, including
-  values the case supplied correctly; and the generate action's mapping is skipped. Route a failed
-  generation to a task that shows Epistola's reason (`${epistolaResult.errorMessage}`) and corrects
-  the case with an ordinary form, then generate again — `docs/user-task-fallback.md` shows how. It
-  keeps working until it is removed, and logs a deprecation warning once per run when it is used.
-
-### Removed
-
-- **The plugin no longer deploys the `epistola-retry-document` form into every case**, and the
-  `epistola.retry-form.enabled` and `epistola.retry-form.case-filter` settings are gone, along with
-  the aspect on Valtimo's `FormDefinitionImporter` that did it. The form existed only for the now
-  deprecated retry form, and correcting the case needs no plugin form at all. **A case that still
-  uses the retry form ships the form itself**: `docs/user-task-fallback.md` has its JSON. Forms an
-  earlier version deployed stay in place; only case versions deployed after the upgrade need it.
-  `epistola.retry-form.enabled: true` logs a warning at startup saying it no longer does anything.
-
-### Changed
-
-- **Every preview is one frame.** The composer's preview, the document preview and the document
-  component now show their letter in one shared `epistola-preview-frame`: the same Carbon heading
-  bar, the same pop-out, and — new for the latter two — Dutch and English labels and Carbon controls
-  instead of English-only text buttons. The floating behaviour, its styles and the clean-up when a
-  form closes live in that one component instead of three copies; the composer's docked resizing
-  moved to a shared `DockedSize`, and the composer component lost its pop-out and sizing code.
-- **A Carbon upgrade that changes the dialog fails the build.** A floating preview stacks around
-  Carbon's modal (its layer, its box at z-index 1, a close only on the backdrop itself), which no
-  compiler checks. `carbon-modal.contract.spec.ts` now reads the installed Carbon and asserts each,
-  so a Valtimo upgrade that changes one fails `pnpm test` instead of quietly changing how previews
-  stack.
-
-- **The document preview and the document component pop out too**, like the composer's preview:
-  floated over the page, dragged by the header, resized from the corner, gone with the form, and
-  remembered per browser for each kind of preview. Inside a Valtimo dialog a floating preview, the
-  composer's included, now stacks like a window on a desktop: a click in the dialog sends it behind
-  the dialog box, and a click on what still shows of it brings it forward. It only goes behind
-  while a strip of it stays visible, so it can always be reached. The floating panel moved from the composer
-  module to `utils/` as a shared `PopOut`, since nothing outside the composer may depend on it. A
-  browser test walks both in the permit demo (`preview-popout.spec.ts`).
-
-- **A letter is shown without the browser's PDF controls**, in the composer's preview, the
-  document preview and the document component: no toolbar, no thumbnail panel, the page fitted to
-  the width. Chrome and Edge honour it; Firefox keeps its toolbar but fits the page, and Safari is
-  unchanged. In `epistola-document` the component's own download button stays; the viewer's
-  print and download buttons go with its toolbar.
-
-- **The letter composer fits a small dialog, and its preview can float.** A Valtimo task dialog is
-  about 770px wide on a laptop, which left the form and an unreadable 360px-wide preview side by
-  side, a PDF taller than the dialog, and a preview that scrolled away with a long form.
-  - **The preview stays in view** to the right of the form while a long form scrolls; only a
-    phone-narrow space (below 36rem of the composer's own width) stacks it below.
-  - **A box in Valtimo's style that can be resized**: a Carbon heading bar with the controls, the
-    divider beside it to share the width differently, and a grip below it for the height. Its
-    default height fits a laptop's task dialog; both sizes are remembered per browser.
-  - **Losmaken / Vastzetten** floats the preview over the page: dragged by its header, resized from
-    its corner, kept on screen, remembered per browser, and gone with the dialog.
-  - **Automatisch bijwerken** can be switched off by the employee, with **Vernieuwen** to render on
-    demand and **Niet bijgewerkt** while it is behind; an author can start it off with the new
-    `autoRefresh` setting, for a letter that is slow to render.
-  - **The previous letter stays on screen while the next renders**, dimmed, instead of the preview
-    going blank on every edit and losing the employee's place in it.
-  - A browser test walks it inside a real dialog (`letter-composer-preview-panel.spec.ts`).
-
-- **The `permit` demo corrects the case instead of the letter.** A refused confirmation letter now
-  leads to "Corrigeer dossiergegevens": the reason Epistola gave, and the applicant and location
-  fields of the case. Submitting it writes them to the case and generates again, with the mapping.
-  A browser test walks it (`permit-correct-case.spec.ts`): the reason Epistola gave is shown, and
-  the corrected case generates the letter.
-
-### Added
-
-- **Epistola rich-text fields can be filled, in whatever format the case keeps text.** A template
-  field that references Epistola's rich-text schema (`richtext-inline-v1` / `richtext-block-v1`)
-  takes a ProseMirror document, and until now the plugin had no way to produce one: the composer
-  refused such a field with a 422, and a mapped string was rejected by Epistola. The format a case
-  keeps its text in is the installation's choice, so the plugin now translates
-  ([ADR 0008](docs/adr/0008-rich-text-inputs.md)):
-  - **Four formats ship** — `plain`, `html` (what Valtimo's Form.io WYSIWYG writes, Quill or
-    CKEditor), `markdown` and `prosemirror` — and an installation adds its own by declaring a
-    `RichTextFormat` bean.
-  - **The format is said, never guessed.** A mapping names the case's format:
-    `$richText($doc.x, "html")`, or `"plain"` for a plain text area. A string mapped onto a
-    rich-text field without it is sent as it is, and Epistola refuses it; the mapping builder marks
-    such a field. `epistola.rich-text.default-format` (default `html`, what Valtimo's WYSIWYG text
-    areas write) is what the plugin's own editors write and what `$richText(value)` reads without a
-    format. Changing it changes what the editors write: treat it as a schema change.
-  - **A ProseMirror document is narrowed too**, through `$richText` or from an editor, so nodes
-    and marks outside Epistola's schema are dropped instead of failing the letter.
-  - **The output is always valid.** Whatever a format produces is narrowed to what Epistola's
-    schema allows — a heading becomes a paragraph, an unknown mark or a `javascript:` link is
-    dropped — and shaped to the field: what an editor wrote for an inline field gets one paragraph,
-    and a mapping asks for that with `$richText($doc.x, "html", "inline")`. A list is mapped inside
-    `[…]`, `[$doc.alineas.$richText($, "html")]`, so a one-item case list stays a list. Every
-    converter is tested against Epistola's own schemas.
-  - **A value says its own format.** A mapping converts in `$richText`. What a person types into
-    the composer or the retry form is submitted tagged with the editor's format,
-    `{"$richText": {"format": "html", "kind": "BLOCK", "value": "…"}}`, and the Epistola client
-    turns every tag into a document as it builds the generate and preview request, so the preview
-    and the letter convert the same way and no template contract is read to do it. A composer's
-    baseline mapping is a mapping like any other: a rich-text field it fills needs `$richText`. The
-    composer's stored letter is `schemaVersion` 2 for this; an older plugin refuses it rather than
-    send the tag to Epistola.
-  - **Any form can supply it**, not only the composer: a Valtimo form's WYSIWYG text area writes
-    HTML to the case, and the mapping reads it with `$richText($doc.x, "html")`.
-    `docs/rich-text.md` gives the editor configuration that offers only what
-    Epistola renders.
-  - **The composer and retry form ask for a rich-text field** with the default format's editor:
-    Form.io's WYSIWYG text area (CKEditor, limited to what Epistola renders: its toolbar, and no
-    headings, tables or images by paste or autoformat either) for `html`, a
-    plain text area otherwise. A list of rich text gets one editor per item. Write-back gives the
-    case what the employee typed, not the tag around it, so a field keeps its format.
-
-  - **What does not survive is reported.** A generated letter logs a warning naming the field, the
-    template and the kinds lost (`heading ×1, table ×1`), never the text; a preview logs it at
-    debug.
-  - **Lists in CKEditor show their bullets again.** Valtimo's Carbon reset removes list markers
-    everywhere and restores them only in its text widget, so a list in any CKEditor in Valtimo,
-    Valtimo's own WYSIWYG text areas included, showed as indented text. The plugin adds the same
-    restore scoped to CKEditor's content (`.ck-content`). Display only: the letter was never
-    affected. The finding and how it was checked are in `docs/rich-text.md`.
-  - **The demo shows both paths.** `besluit-bezwaar`'s `motivation` is now block rich text
-    (municipality-demo catalog 1.4.0). The Bezwaar case asks for it in a plain Valtimo form with a
-    limited CKEditor and maps it with `$richText($pv.motivation, "html")`; the Correspondentie
-    composer asks for it with the same editor, and the case shows the written-back HTML in a
-    read-only `formio` widget, because a `fields` widget would print the tags.
-
-  HTML is parsed with jsoup and markdown with commonmark-java, both new dependencies (pure Java,
-  none of their own). They are not shaded. jsoup is already on Valtimo's classpath through Tika,
-  which now resolves to the plugin's version.
-
-- **A generated letter now stays on the dossier, and a case worker can open it** — in the demo
-  application, without the Documenten API or S3. The composer demo used to end having produced a PDF
-  nobody could see: the process reached `end-success` with nothing downloaded and nothing stored,
-  which is also why no browser test could tell a working generate path from a dead one.
-
-  Valtimo offers no durable file store without one of those. Its `local-resource` module looks like
-  one and is not — `store` throws `NotImplementedError`, the download endpoint answers `204` for
-  every id, and that path is not even in its permitted list — so the demo keeps its own: one table,
-  a `ResourceService`, and the REST bean behind `/api/v1/resource/{id}/download`, which is the path
-  Valtimo's own case UI already calls. The letter is related to the case document, so it appears
-  under **Documenten** like any other file.
-
-  **Demo-only, deliberately.** The plugin owns no schema and needs no database changes to install,
-  which is what lets an operator add and remove it freely; bytes in Postgres are fine for demo
-  letters and a poor idea at volume; and a real installation points Valtimo at the Documenten API or
-  S3, which applies its own authorization. The demo's download is authenticated but not case-scoped
-  — the resource id is the capability, as it is for Valtimo's own resource endpoints.
-
-  The schema is its own Liquibase line: Valtimo's `LiquibaseRunner` runs one Liquibase per
-  registered `LiquibaseMasterChangeLogLocation`, so this changelog is a separate run whose
-  changesets carry their own `logicalFilePath`. Valtimo's own files are neither included nor touched.
-
-  **Letters are deleted after 30 days**, detached from their case first so no dossier is left
-  listing a file that no longer opens (`epistola.demo.documents.retention-days` and
-  `…deletion-cron`). A demo generates letters forever and nobody prunes them, and every PDF in that
-  table is somebody's name and address.
-
-### Added
-
-- **The letter composer's configurator now says which generate tasks read the letter it stores.**
-  A composer puts its chosen letter on a process variable and one generate task reads one variable;
-  nothing told the author whether those line up. When they do not — a renamed key, or a second
-  composer whose own generate task was never configured — the letter is composed, previewed,
-  approved, and nothing renders it, with no error anywhere. Since write-back moved to submission the
-  values do reach the case, which makes it sharper: the case records a decision, the employee
-  believes a letter went out, and no letter exists.
-
-  The panel now reads "This letter is generated by **generate-chosen-letter** in _Brief kiezen en
-  genereren_", or says that nothing on this case type reads it — and updates as the key is typed, so
-  a rename is visible immediately.
-
-  Deliberately a statement and never a verdict. "No generate task reads this" is not reliably a
-  fault: generating in another process via `startSupportingProcess` is a design
-  [ADR 0006](docs/adr/0006-letter-composer-configuration.md) describes, and a call activity, a form
-  flow handing the letter on, or a consumer that is not this plugin all look identical from the
-  outside. A check that cried wolf would cost more than the silence it replaced. For the same
-  reason a failed lookup shows nothing rather than claiming there is no reader.
-
-- **Date fields get a calendar, in the reader's locale.** In the letter composer and the retry
-  form, a contract field with `"format": "date"` is a text field with a date picker: it is shown
-  and typed the way Valtimo's language writes a date (`15-04-2026` in Dutch, `04/15/2026` in
-  English) and still stores exactly `2026-04-15`, the value the contract asks for. A
-  `"format": "date-time"` field is a date-time picker on the locale's clock. Both used to be plain
-  text fields with a format placeholder. An `integer` field no longer accepts decimals.
-
-### Changed
-
-- **The security policy lives at the repository root and matches Epistola Suite's.** `SECURITY.md`
-  moved out of `.github/` (GitHub's Security tab still finds it) and now supports the two most
-  recent minor release lines instead of only the latest. Reports go straight to the private
-  reporting form, fixes are prepared in a draft advisory's private fork before a patched release,
-  and the scope names the published Maven and npm packages — the demo app, its images and chart are
-  out of scope. Suite vulnerabilities are pointed at the Suite's own form.
+- **The retry form (`epistola-retry-form`, the `epistola-retry-document` form and
+  `GET /retry-form`)**, to be removed in a later release. It corrects the letter rather than the
+  case, so the next letter fails the same way. Route a failed generation to a task that shows
+  Epistola's reason and corrects the case, then generate again
+  ([docs/user-task-fallback.md](docs/user-task-fallback.md)). It keeps working until removed (it
+  now also retries a composed letter) and logs a deprecation warning once per run.
 
 ### Fixed
 
-- **The retry check no longer logs the corrected data.** `generate-document` logged the first 200
-  characters of `epistolaEditedData` at debug: a letter's data as a person corrected it. It now logs
-  only whether the variable is there and its type.
-
-- **A Dutch amount is no longer read as English.** The composer and the retry form did not tell
-  Form.io which language Valtimo is in, so a number field fell back to English separators and
-  `12,50` was stored as `1250`. Both now pass Valtimo's current language, as Valtimo does for its
-  own forms. The plugin declares `@ngx-translate/core` as a peer dependency for it, which every
-  Valtimo frontend already has.
-
-- **Write-back now applies the rules of the form that was submitted, not of every composer on the
-  case type.** Rules are found by the letter's process variable, so two forms storing their letter
-  on the same key had their rules merged and each applied the other's to its own letter. Measured on
-  the demo — an ad-hoc letter picked up a `pv:besluitType` rule from an unrelated task form, and a
-  `pv:` destination cannot resolve on a case running more than one process, so the write failed
-  naming a destination the author never configured on the form they were editing.
-
-  Sharing a key is a reasonable design — one generate task fed by two entry forms — so it is now
-  supported rather than refused: each form's composers supply their own rules. The start-form path
-  scopes exactly, by the submitted form's own process link; the task path scopes by process
-  definition, because the runtime task is already gone when the event fires and an activity cannot
-  be resolved from it reliably. Where neither is available the old case-wide lookup still applies,
-  and only there can two composers' rules still collide — that case is refused with a message naming
-  the shared key and both components, rather than quietly writing the wrong values.
-
-### Fixed
-
-- **Audited every log statement for personal data, and fixed the ones that carried it.** `CLAUDE.md`
-  states the rule — a letter's values, a case document's content, a form submission and a template's
-  data do not belong in a log at any level — and this is the pass that applied it beyond the two
-  leaks found with it. Ten log statements about a document, a letter, a submission, a preview or a
-  generation request passed a message from code this plugin does not own; they now name the
-  failure's type and its root cause's type (`Failures.describe`), which keeps the
-  transient-versus-permanent distinction a class name is actually good at. The worst of them was not
-  a message at all: the preview path logged Epistola's **raw error response body** at `DEBUG`, which
-  is whatever the server chose to echo back from the data we had just sent it.
-
-  Two things the audit settled rather than assumed. A **log is not a message shown to someone** — a
-  log crosses the case's authorization boundary, while an error shown to the employee composing the
-  letter, or recorded on the case as a process variable, stays inside it, so those keep their
-  message and three existing tests say why. And an exception's own message is not safe merely
-  because the plugin wrote it: `LetterComposerService` folded a JSONata failure's message into its
-  own, and a JSONata failure quotes the case data it was evaluating.
-
-  `LogStatementPersonalDataTest` guards it by shape — any log statement mentioning a
-  case-data subject and passing a message fails the build — and was verified by reintroducing a
-  fixed leak. `Failures.describe` also no longer hangs on a cause cycle: Java refuses
-  `x.initCause(x)`, but not a pair pointing at each other, and the unbounded walk inherited from
-  `ComposerWriteBackService` spun forever on one.
-
-### Changed
-
-- **A letter's values now reach the case when the form is submitted, not after Epistola accepts the
-  letter.** That is the moment every other form writes to a case, and it closes the window in which
-  a form redeployed between composing and generating would apply rules the employee never saw. It
-  also separates two concerns that were tangled: recording what a case worker decided, and rendering
-  a PDF. A case no longer waits on an asynchronous render for values that were approved at submit.
-
-  The trigger is Valtimo's own `TaskCompletedEvent`, which carries the case document id and the
-  process variables. A composer cannot do what an ordinary form does — carry a `doc:`-keyed field in
-  its submission — because its own field is already keyed `pv:` and a Form.io component can add
-  neither a top-level sibling nor a submitted child; that was measured rather than assumed, and is
-  recorded with everything else in [ADR 0006](docs/adr/0006-letter-composer-configuration.md). So
-  the platform's submission _signal_ is used instead of its submission _payload_. The rules, the
-  JSONata evaluation and the write through `ValueResolverService` are unchanged.
-
-  **A write-back problem now blocks the submission.** The event is published synchronously, inside
-  the submission's transaction, so a failure rolls the whole submission back: the submit call
-  answers 400, the task stays open and the case is left untouched. A value a case worker approved
-  either reaches the case or the submission does not happen — which is how an ordinary form behaves
-  when it carries a `doc:` field the case schema refuses.
-
-  Everything that can stop a letter's values arriving blocks, with no exceptions: a rule that cannot
-  be _evaluated_, a write the case refuses, a composed letter that cannot be read, and a case that
-  cannot be read. The last two used to be skipped — one with a warning, one at `DEBUG` — which left
-  an infrastructure failure looking exactly like a case with no composers. A rule that resolves to
-  _nothing_ still writes nothing, as before: that is a value the employee did not supply, not a
-  failure.
-
-  **Logged as a warning, not an error.** The submission rolled back, so nothing is inconsistent and
-  the caller already has a 400. The usual cause is a form to fix, which is worth noticing and not
-  worth waking anyone. A failure the plugin does not recognise — the case or its forms being
-  unreadable — stays `ERROR`, because nothing else in that path logs it.
-
-  **Failures name destinations and classes, never values.** A letter's values are personal data, and
-  the downstream complaint quotes the value it rejected — Valtimo's reads
-  `Failed to handle values … Values: {/besluit/x=gegrond}` — so it is neither attached to the
-  exception that travels nor logged at any level, `DEBUG` included. What is logged is the
-  destination plus the outer and root cause classes, which is where the useful distinction usually
-  sits. On a batch failure each destination is retried alone to _identify_ the one at fault rather
-  than to salvage the others, which would be incoherent with a transaction about to roll back.
-
-### Fixed
-
-- **Stopped logging personal data.** `EpistolaServiceImpl` logged every value of a generation
-  request (`Template data: {…}`) at `DEBUG` — names, identifiers, addresses, the text of a decision
-  — and `DEBUG` is enabled in the test-app and on plenty of real installations. It logs the data's
-  **keys** now. [CLAUDE.md](CLAUDE.md#never-log-personal-data) records the rule and the two vectors
-  that are easy to miss: a downstream `e.getMessage()`, and a cause attached to an exception that
-  propagates out of a web request.
-
-  One other consequence: **a letter whose rendering later fails has still written to the case** —
-  deliberate, and nearly true before, since the old placement only protected against Epistola
-  refusing the _request_, not against a rendering failure.
-
-  **Where it applies: every shape.** Two triggers, disjoint so nothing writes twice. A task form and
-  a form-flow step complete a task, and Valtimo's `TaskCompletedEvent` carries both the case id and
-  the letter. A **start form** completes nothing, so it is intercepted at
-  `FormSubmissionService.handleSubmission` — the service every regular submission passes through,
-  dispatching to all three of Valtimo's shapes, inside the submission's transaction. A start form
-  that _creates_ a case is covered too, taking the new id from the result. A submission carrying a
-  task instance id is left to the event, which is what keeps the two apart.
-
-  `ProcessStartedEvent` was tried first and reverted: it is published before Valtimo writes the
-  submitted `pv:` values, so the letter does not exist yet.
-
-  **All four shapes are now demonstrated**, the last by a new demo: `direct-brief`, a second process
-  that may create a `correspondentie` case, whose start form carries a composer. That shape has no
-  case to read from, which has two consequences an author meets nowhere else — it must name the
-  process it starts, and it has no baseline mapping, because a mapping would consume the letter's
-  fields against an empty `$doc` instead of asking for them. Guarded by
-  `letter-composer-new-case.spec.ts`, which fails when the write-back rule is removed.
-
-  **Each composer now has its own `pv:` key in the demo.** Write-back rules are found by variable
-  name, so two composers writing the same variable have their rules merged — the task form and the
-  ad-hoc start form both used `pv:epistolaLetter`, so an ad-hoc letter inherited a `pv:besluitType`
-  rule from an unrelated form, which cannot resolve on a case running more than one process. The
-  ad-hoc composer and its generate task now use `epistolaAdhocLetter`.
-
-### Fixed
-
-- **Stopped logging personal data.** `EpistolaServiceImpl` logged every value of a generation
-  request (`Template data: {…}`) at `DEBUG` — names, identifiers, addresses, the text of a decision
-  — and `DEBUG` is enabled in the test-app and on plenty of real installations. It logs the data's
-  **keys** now. [CLAUDE.md](CLAUDE.md#never-log-personal-data) records the rule and the two vectors
-  that are easy to miss: a downstream `e.getMessage()`, and a cause attached to an exception that
-  propagates out of a web request.
-
-  One other consequence: **a letter whose rendering later fails has still written to the case** —
-  deliberate, and nearly true before, since the old placement only protected against Epistola
-  refusing the _request_, not against a rendering failure.
-
-  **Where it applies.** A task form and a form-flow step both complete a task, so both are covered,
-  and the demo now exercises both — `kies-brief` with three rules and `kies-brief-flow` with two,
-  each verified end to end. A composer on a **start form** is not covered: starting a process
-  completes no task, and `ProcessStartedEvent` is published before Valtimo writes the submitted
-  `pv:` values, so the letter does not exist yet — measured, after implementing it that way and
-  reverting. `kies-brief-adhoc` therefore declares no rules, rather than rules that would silently
-  never apply.
-
-### Fixed
-
-- **A write-back rule can now clear a case field, and a rule that found nothing says so.** JSONata
-  already distinguished "found nothing" from an explicit `null` — a missing path leaves the key out
-  of the result, `null` puts it in — but the guard tested both and so collapsed them, leaving no way
-  to express a deliberate clear. Only the key's presence is tested now: `null` means _clear this
-  field_, and nothing else has to be configured to allow it. An absent value still writes nothing,
-  which is what keeps a value the employee never supplied from clobbering the case. Empty string and
-  `false` were always written, being neither missing nor null.
-
-  The destinations that resolved to nothing are also named in the log now. A rule that quietly found
-  nothing and one that worked used to look identical from outside — the harder half of #179.
-
-- **Recorded what Valtimo offers for writing back at form submission, and what it does not.**
-  [ADR 0006](docs/adr/0006-letter-composer-configuration.md) now carries the measurements: a hidden
-  prefixed child of a Form.io component is never instantiated and never submitted (so neither the
-  composer's inputs nor a trigger carrier can ride Valtimo's native write path),
-  `ExternalDataSubmittedEvent` does not fire for a composer form, and `TaskCompletedEvent` does —
-  carrying the case document id and the process variables, which is everything write-back needs.
-  Submission-time write-back is therefore possible as a listener rather than as a form field.
-
-- **Corrected what the documentation claims about when write-back is evaluated.** It said the rules
-  are evaluated when the letter is composed, with the result riding on the letter variable — the
-  design [ADR 0006](docs/adr/0006-letter-composer-configuration.md) decided. What shipped resolves
-  them server-side when the letter is generated, which is stronger in one respect (no write-back
-  value ever crosses the wire, so a crafted letter has nothing to craft with) and weaker in another
-  (rules changed between composing and generating take effect). The unfinished machinery for the
-  documented design — `ComposedLetter.writeBack`, `writeBackLimitedTo`, `writeBackRefused` and
-  `LetterComposerConfiguration.writeBackDestinations` — had no callers and no tests, and is removed
-  rather than left looking live.
-
-### Added
-
-- **A letter can be configured on its own.** Each offered letter in the composer's settings gets a
-  **Configure** button opening a panel for that letter alone, and the first setting to live there is
-  its **mapping fragment** — JSONata merged over the baseline for that letter only (#155).
-
-  The backend has read `templates[].dataMapping` and merged it since the composer was built; what
-  was missing was anywhere to author it. One panel opens at a time, because the fields are identical
-  between letters and two open panels invite editing the wrong one, and a fragment cleared to blank
-  is dropped rather than stored, so a letter that was never configured does not look as though it
-  was.
-
-  This is the surface #172 asked for: variant (#151), per-property rendering (#161) and which fields
-  are asked for (#164) all belong in the same panel and now have somewhere to go.
-
-  The demo shows one: `bevestigingsbrief-vergunning` is a permit confirmation offered by a case
-  whose baseline mapping is objection-shaped, so the baseline fills none of it. Its fragment maps
-  the same person the case already knows into the names that letter uses (`applicant` rather than
-  `objector`), leaving only what the case genuinely cannot know — the BSN, the property, the
-  activities — to the employee.
-
-### Changed
-
-- **The author names the letter; the composer owns the `pv:` prefix.** The settings field used to
-  reject anything but a `pv:` key, explaining a Valtimo storage concept an author should not need to
-  learn — and a composer arrives from the palette keyed after the palette title, so that rejection
-  was the first thing they met. There is no case where the key could be anything else: the only
-  thing that reads a composed letter is the generate action, which reads a process variable, and
-  `pv:` is what makes Valtimo store a submitted value as one. A constant is not a decision, so the
-  field now takes a name (`epistolaLetter`) and the prefix is applied on save, at the one point
-  every saved component passes through. Typing `pv:epistolaLetter` still works, and a name a process
-  variable could never carry is still refused — with a message about the name, not about prefixes.
-
-- **Two letter pickers answering to one name are now refused** (422, `AMBIGUOUS_COMPOSER`) instead
-  of resolved by document order. They write the same process variable, so only one could survive a
-  submit anyway, while their mappings and write-back rules differ — taking the first applied one
-  picker's rules to the other's letter. Reachable from a hand-written form, and newly reachable from
-  the builder by naming one picker `brief` and another `pv:brief`: different keys to Form.io's own
-  uniqueness check, the same key once the prefix is applied.
-
-- **When a letter is split into steps is now the form's decision.** The composer shows a letter's
-  generated inputs as steps once there are more than six of them; six was a constant, and how much
-  belongs on one screen is a judgement about the letter rather than a universal. A **Split into
-  steps above this many fields** setting sits with the advanced settings; empty keeps the default.
-
-  Read tolerantly on purpose: a blank field, a string from a form saved as text, a zero, a negative
-  or a fraction all fall back to the default. A presentation setting is never worth breaking the
-  letter over. Note the count treats a repeatable group as one field however large it is, so filling
-  a few fields from the mapping can cross the boundary in one step — which is exactly how the demo's
-  permit letter lost its steps before this was configurable.
-
-- **The composer's settings panel asks less.** Of its eight entries only two — the property name and
-  the letters on offer — are decisions every author makes; the rest had working defaults at the same
-  visual weight, so the panel read as six decisions instead of two. The baseline mapping, the
-  write-back rules, the optional-field toggle and the process key now sit in a collapsed **Mapping
-  and advanced settings** panel. Form.io reopens a collapsed panel when something inside it fails
-  validation, so nothing can be refused behind a closed lid.
-
-- **Where there is nothing to choose between, the composer chooses.** A normal install has one
-  Epistola connection, so the author opened a dropdown holding one entry before reaching a real
-  decision; the same applies to a single catalog. Both are now selected automatically, through the
-  ordinary selection path so the choice is **stored** and not merely shown — a selection that
-  appears in the UI without being saved is this widget's classic silent failure. A choice the form
-  already names is never overwritten, including one naming a connection that has since gone: the
-  author should see that rather than have it quietly corrected.
-
-- **Everything the letter composer stores on a form moved under one key, `epistola`** —
-  `letterSet`, `dataMapping`, `writeBack`, `askOptionalFields` and `schemaVersion`. A Form.io
-  component object is shared space: it holds Form.io's own properties (`key`, `label`, `validate`,
-  `prefill`) and whatever other custom components put there, and `dataMapping` or `schemaVersion`
-  are names anyone could reasonably claim. One namespace is claimed instead of five generic names.
-
-  `prefill` stays outside the namespace because it is Form.io's own property, and the **letter on
-  the process variable keeps a plain `schemaVersion`**: nothing shares that variable, and a process
-  may write one by hand, so a name nobody has to look up is worth more there than a namespace
-  nothing would collide with. The two constants are now distinct (`ComposerSchema.FIELD` for the
-  letter, `COMPONENT_FIELD` under `COMPONENT_NAMESPACE` for the component).
-
-  The composer is alpha and unreleased, so no migration is provided: a form saved from an earlier
-  build of this branch must have its settings re-entered. Forms written by hand keep working — the
-  parser reads the settings flat when the namespace is absent. Verified through the running builder:
-  the nested settings load, save and come back filled, including a per-letter fragment.
-
-### Added
-
-- **A failed dynamic document can be retried.** `epistola-retry-form` rebuilt a failed generation's
-  form from the process link's own template and mapping, so it covered `epistola-generate-document`
-  only — a composed letter that failed had no retry path and the employee composed it again from
-  scratch (#154). Where the template and data come from is now a **source** the retry form asks,
-  with one implementation per kind of activity, so covering the dynamic action was an
-  implementation rather than a second service (ADR 0007).
-
-  The two sources differ in one way worth knowing: a configured activity **re-evaluates** its
-  mapping, picking up whatever the case has learned since the failure, while a dynamic document is
-  read back **exactly as it was going to be sent** — re-deriving it would mean composing it again,
-  which is what the employee is being spared.
-
-### Changed
-
-- **Upgraded Valtimo from `13.47.0` to `13.48.0` (backend + frontend).** No toolchain change: Spring
-  Boot, Java, Gradle and Kotlin are unchanged, and the Epistola client stays at `1.4.0`.
-
-  The upgrade needs one package Renovate cannot add on its own:
-  `@valtimo/building-block-management`. `@valtimo/case-management@13.48.0` imports it but declares it
-  neither as a dependency nor as a peerDependency, so the build fails with
-  `Can't resolve '@valtimo/building-block-management'` — naming the importing package rather than the
-  missing one. It is not in the release notes either. See #177, which also records the check worth
-  running on the next bump.
-
-  Two 13.48 changes touch what this plugin relies on, both verified rather than assumed: a fix to
-  selecting an alternate start process (the ad-hoc letter composer runs on a start form) and faster
-  loading of multi-widget case tabs (the demo's Algemeen tab).
-
-### Fixed
-
-- **Letter composer hardening.** Eight defects found by working through the edges rather than the
-  happy path, each reproduced by a failing test first:
-  - A **cleared field** made a letter unreadable: `Map.copyOf` rejects a null value, so the generate
-    action threw `NullPointerException` with no message. Nulls are kept — "cleared" and "never
-    offered" are different things to a rule reading them.
-  - A letter **aliased the process variable's own map**, so a later activity could change what it
-    said it had sent, after sending.
-  - Write-back applied the rules of **every composer on the case type**, whatever letter was sent.
-    The generate action now names the variable it read, and only the composer writing it
-    contributes rules.
-  - One destination the case refused **lost every other value** in the same write. The write now
-    falls back to one destination at a time, salvaging what it can and naming what it cannot.
-  - A destination with **no resolver prefix** (`besluit` rather than `doc:/besluit`) is refused
-    where it can be reported against the component that declared it.
-  - Write-back's documented **"never throws"** did not hold for a failure reading configuration —
-    which would fail the activity, and a retry sends a second letter.
-  - One **malformed form hid every composer** on the case type, which for write-back reads as "this
-    case saves nothing".
-  - `prepare` returned a **raw 500** when Epistola could not describe the template (catalog removed,
-    template renamed, Epistola down) or when the author's own mapping failed. Both now answer 422
-    with a message saying which it is, so the right person is called.
-  - A **slow earlier preview overwrote a newer one**, showing a letter that did not match what was
-    typed.
-
-### Fixed
-
-- **The letter composer says what is wrong with an input in the reader's language, and never shows
-  a regular expression.** The contract's constraints reach the generated form, so the browser
-  already checks them as the employee types — but it reported the failure with Form.io's English
-  defaults, and for `pattern` it printed the expression. That expression is not even the contract's
-  own: a JSON Schema `pattern` searches while Form.io's matches, so the generator wraps it, and a
-  Dutch case worker was shown `[\s\S]*(?:[A-Z]{2}\d{4})[\s\S]*` — a regex this plugin
-  assembled, about a rule it did not invent. A `pattern` message now leans on the contract field's
-  own `description` where there is one, since that is text an author wrote for this field, and says
-  only that the value has the wrong form where there is not. Frontend only; the rules themselves are
-  unchanged, so nothing newly accepts what Epistola would refuse (#150).
-
-### Added
-
-- **The demo case shows its own data, and the letter writes into it.** Correspondentie's
-  **Algemeen** tab is now a widget tab (Bezwaarmaker, Bezwaar, Besluit op bezwaar), the case schema
-  gained an optional `besluit` object, and the bundled composer writes the typed decision into it —
-  so a sent letter visibly changes the case rather than only a process variable. This also needed a
-  PBAC grant the app never had: `CaseWidgetTabWidget:view`. Without it Valtimo filters every widget
-  out of the tab (an empty tab, with no error) and answers the widget data call with 403, which
-  surfaces in the UI as an error right after a letter is sent.
-
-- **A composer can save a letter's values on the case.** (Fixed before release: the generate action
-  handed the service an already-read letter where a raw submission was expected, so every write was
-  skipped with a warning and the case silently received nothing.) Each rule is a destination — a
-  `doc:` case path or a `pv:` process variable — and a JSONata expression over the letter, authored
-  in **Also save these values on the case**. `$letter` (or `$data`, the contract's own name for it)
-  is the letter as it will be sent, `$inputs` only what the employee typed; an expression that yields nothing writes nothing, so a value nobody
-  supplied never clobbers good case data. Applied by the generate task once Epistola has accepted
-  the letter, so a refused letter saves nothing and a failed save never fails a letter that was
-  genuinely sent. The destinations and expressions are read from the stored form, never from the
-  submission: the letter is assembled in the browser, so a crafted one could otherwise name any
-  case path. A `doc:` destination must already exist in the case schema — a case with
-  `additionalProperties: false` refuses an undeclared path (#149).
-
-- **A letter Epistola refuses now says which fields are stopping it.** The browser can only check
-  the fields it offered; most of a letter's data comes from the baseline mapping, which it neither
-  computed nor holds the contract for, so a refusal over one of those arrived as a single flattened
-  sentence above the preview. Contract 1.4.0 answers a refused preview with `template-data-invalid`,
-  naming each bad or absent field by JSON Pointer, so the composer now lists them — each named the
-  way the employee sees the field named, with Epistola's own sentence about the rule that failed.
-  A field the form does not have keeps its pointer, which is less friendly than a label and more
-  truthful than inventing one. An absent **optional** field is not reported: the contract says it is
-  not a failure. Requires a server on contract 1.4.0 or later; against an older one the single
-  message is shown exactly as before (#150).
-
-- **A field that offers a valid value now shows one.** Where a template's data contract carries
-  JSON Schema `examples` (or `example`) on a field, that value becomes the generated input's
-  placeholder and is appended to the message when the value is refused — "Bijvoorbeeld: 3511 LX".
-  One valid value says more than any description of a rule, and a placeholder says it _before_ the
-  employee types rather than after they fail. Only strings, numbers and booleans are taken: an
-  object or an array is an example of a structure, not of a value. Nothing authored carries the
-  keyword yet, and a field without one is unchanged — Epistola deriving per-field examples from a
-  template's `dataExamples` is where they are expected to come from, so this is the consuming half,
-  ready for it.
-
-### Added
-
-- **A demo of the composer on a form-flow step.** Form-flow support had unit tests and nothing to
-  click: the `form-flow-demo` case has a flow, but no composer on any of its steps, and that demo
-  is pinned by five tests that expect its preview to target a `generate-document` link. So the
-  Correspondentie case gains `correspondentie-flow-letter` — started from the dossier's Start menu,
-  its user task linked to a **form flow** whose first step carries a composer, then generation and
-  the catch event as the other composer demos have them.
-
-- **The three lists that adding a Form.io component means updating are now checked.** Registering a
-  component, forwarding its settings through `fieldOptions`, and listing it in
-  [docs/formio-components.md](docs/formio-components.md) are all written by hand somewhere other
-  than the component itself, and forgetting any of them is silent — an unregistered component
-  simply does not exist in the builder, a setting left out of `fieldOptions` arrives as
-  `undefined`, and a missing docs row is a component nobody knows about. None is a compile error
-  and no behavioural test notices, which is how a generate action missing from a list shipped a
-  letter that generated perfectly and left its process waiting forever.
-
-  `component-registry.spec.ts` reads the components off disk rather than restating them, so adding
-  one needs no list updated here. Each check was proved by breaking it: dropping a registration
-  call, adding a setting the component reads but nothing forwards, and removing a row from the docs
-  table each fail it. The registration check ignores import lines — a registration imported and
-  never called is exactly the mistake it exists to catch, and the name alone cannot tell the
-  difference.
-
-- **A letter composer works on a form-flow step.** The configuration was read only from a task's
-  _form_ link, so a composer inside a form flow was never found. Both link kinds are now followed:
-  a form link gives its form directly, a form-flow link gives the flow and every form step in it is
-  read. Authorization is unchanged — the task still exists and still gates the request, so a form
-  flow needs no gate of its own, contrary to what this was expected to need. What differs is only
-  the lookup: a step stores its form by _name_, which is unique only within a case definition, so
-  the flow and its forms resolve against the case definition the process belongs to. Every API used
-  was verified present in 13.21 with identical signatures, so the floor is unchanged.
-
-- **A letter can be named with its catalog.** A prepare or preview request may carry a `catalogId`
-  beside the `templateId`, and the picker sends whichever catalog the form gave the chosen letter.
-  It stays optional, since a template id is unique within a catalog and a composer usually offers
-  one — but a composer offering two can hold the same id twice, and the backend now refuses to
-  guess rather than rendering whichever was configured first. Storage already carried a catalog per
-  letter; this is the wire catching up, and it is the last piece multi-catalog needed that could
-  not have been added later without changing an endpoint.
-
-### Fixed
-
-- **The browser suites are green again, and three of them now test what they are named after.**
-  Wiring `E2E (browser)` into CI showed 10 of 18 failing; they failed the same way on a developer
-  machine, so it was rot rather than anything about the runner.
-
-  Two structural facts about Valtimo's admin UI defeated the selectors. `getByLabel` cannot work on
-  any Valtimo admin form: Carbon's `cds-label` points its `for` at its own generated id and the
-  input is a sibling further up inside `div.v-input-container`, so every `getByLabel(/Base URL/)`
-  was resolving to nothing. And the plugin wizard is fully mounted from page load, so presence
-  proves nothing, a bare text match is ambiguous, and the tiles are radios driven by their labels —
-  clicking the heading text selected nothing and left the wizard unable to advance, which is why
-  the configuration fields looked absent.
-
-  `check-job-status`, `download-document` and `generate-document` were not stale but **placeholders**:
-  they navigated to `/plugins` and asserted a URL under names promising they checked the action
-  configurators, and `generate-document` mocked four endpoints then verified its own fixtures
-  through `page.request`, which bypasses `page.route`. They now open the real links the demo
-  declares, through a new `ProcessLinkPage` that addresses activities by their BPMN
-  `data-element-id`, and read back what each fixture stored. `check-job-status` is the one action no
-  demo links, so it walks the new-link wizard and on the way asserts all four action types are
-  offered.
-
-  Two more failures were **cold-database only**, which is why they passed everywhere but on a fresh
-  runner: an empty case list renders "Creëer Nieuw Dossier" twice, and `openDossier` clicked a list
-  row Valtimo's polling had not filled yet.
-
-  Proved by reverting: putting `getByLabel` back returns five of them to failing.
-
-- **The browser suites now run in CI, and 10 of 18 of them fail.** Wiring up
-  `E2E (browser)` was the point of the exercise; finding out that most of the suites had rotted
-  while nothing executed them was the result. The failures reproduce on a developer machine exactly
-  as on a runner — stale selectors against the current Valtimo admin UI, not anything
-  environmental — and none of them is the letter composer, whose four suites all pass. The list is
-  recorded in CLAUDE.md and tracked for a follow-up before release.
-
-- **The composer on a form-flow step generated nothing, and the task never completed.** The demo
-  added for it looked right in the browser — the letter was offered, previewed and submitted — and
-  then the final step answered 500 with _"No composed letter on process variable
-  'epistolaFlowLetter'"_. Two separate reasons, both particular to form flows.
-
-  A flow does not resolve `pv:` keys. Outside one, Valtimo maps a field keyed `pv:x` onto a process
-  variable on submit; inside one, `completeTask`'s two-argument overload writes the whole submission
-  to a single path (`doc:/submission`) and resolves nothing. The three-argument overload takes a map
-  of value-resolver target → JSON pointer into the submission, so `kies-brief-flow` now names the
-  variable the generate task reads. With the mapping explicit, nothing is written to
-  `doc:/submission` any more, so the case schema needs no `submission` property.
-
-  And only the **completing** step's submission is mapped, while the composer sits on the first
-  step — so the confirming step re-declares the same key as a hidden carrier, the pattern the
-  form-flow demo already used for its subject field. Prefill fills it from the flow's merged
-  submission data, which was verified against a live flow instance rather than assumed.
-
-  Both were found by walking the demo in a browser; the fixture tests that guard the demo's shape
-  saw neither. `letter-composer-flow.spec.ts` now covers it, and the ad-hoc suite shares the
-  Start-menu helper it needed.
-
-- **The local stack could not be started from scratch.** Both failures were invisible on a machine
-  that already had the stack running, and both surfaced the first time the browser E2E workflow
-  actually ran on a clean runner.
-
-  Keycloak refused to start: `ROLE_DEMO`'s description in the realm import is 395 characters and
-  Keycloak stores a role description in a `varchar(255)`, so the import aborted the boot. Keycloak
-  imports with `IGNORE_EXISTING`, so an existing volume never re-reads the realm — the realm had
-  been broken for as long as the description had been that long, and only a fresh volume showed it.
-  The description is now short and the rationale stays in
-  [docs/training-facility.md](docs/training-facility.md), with `KeycloakRealmImportTest` failing on
-  any name or description that would not fit the column Keycloak stores it in.
-
-  Epistola then exited during startup: since Suite 1.3.0 demo mode ships only in
-  `epistola-suite:{version}-demo`, and the plain image refuses the `demo` profile on purpose, so
-  that a production install cannot be demoted by configuration. A cached 1.2.0 `:latest` still has
-  demo built in, which is why only a fresh pull hit it. Compose and the README's `docker run` flow
-  now use `latest-demo`.
-
-  The workflow's own diagnosis was wrong on top of that, and is fixed too: nothing waited for
-  Keycloak, so a dead Keycloak was reported as "Epistola never came up"; the waits now fail as soon
-  as a container exits instead of after five more minutes; and the Epistola image is a Paketo build
-  that prints a ~90-line native-memory summary when the JVM exits, so the `--tail 100` that was
-  meant to show the error showed only that. The container logs are now captured in full and
-  uploaded with the run.
-
-- **A composed letter generated, then left its process waiting forever.** The catch event takes its
-  correlation token from a start listener that asks which generate task feeds it, and that lookup
-  matched one hardcoded action key. `epistola-generate-dynamic-document` was added without being
-  registered there, so the wait was never given a token, nothing subscribed, and the result came
-  back to nowhere — the letter rendered perfectly and the process sat on "wacht op document". The
-  same omission was in the deployment validator (a composer process was never warned about a
-  generate with no reachable wait) and in the admin page's usage overview (composer usage was
-  invisible). All three now read one list, `EpistolaProcessVariables.GENERATING_ACTION_KEYS`, and
-  `EpistolaGeneratingActionsTest` derives it from the plugin class by reflection rather than
-  trusting the next person to update three files.
-
-- **A letter with a data grid could never be previewed.** The preview waits until every required
-  field has a value, and it read those from the generated form — including the grid's _columns_,
-  which are keyed inside a row (`type`) rather than against the submission. Demanded at document
-  level they can never appear, so the composer asked for the form to be filled in however much was
-  typed into it. The demo's permit letter is the only bundled letter with a required grid, which is
-  why it surfaced there. The gate now descends only through layout — panels, fieldsets, wizard
-  steps — and asks for the grid as a whole, which is what makes a row necessary; an empty grid also
-  counts as unfilled now, as an empty field does.
-
-  The browser E2E had asserted only that the letter _waits_, which certified the dead end as
-  correct. It now fills every step and asserts the composer leaves the waiting state and actually
-  renders something — the letter or Epistola's complaint about the data, either of which proves the
-  gate opened.
-
-- **An object inside a data-grid row keeps its shape.** A nested object used to be flattened to a
-  single text field, because the analyzer paths an item's fields against the document
-  (`regels[].adres.straat`) while a Form.io data grid scopes its components to the row. Item
-  components are now built exactly as top-level ones are — so an object becomes a fieldset and a
-  nested array becomes another grid — and then rebased onto the row. A nested grid rebases its own
-  children first, so it is left alone by the outer pass.
-
-- **The letter variable can carry more than one letter, though nothing writes more than one yet.**
-  Every known gap was checked against the three stored shapes before shipping, since those are the
-  part that cannot be changed cheaply once cases are deployed on them. All of them turned out to be
-  additive — write-back, variants, rich text, catalog-qualified letters — except letting an
-  employee choose _how many_ letters go out, which needed the variable to hold a list and whose
-  reader refused anything else. `ComposedLetter.allFrom` now reads both that envelope and today's
-  single letter, and `from` refuses more than one with a sentence rather than generating the first
-  and dropping the rest. When multi-letter lands it is a behaviour change, not a migration.
-
-- **Every open gap now carries a direction**, including the five that had none: form flows, rich
-  text, nested objects inside array items, catalog-qualified template ids on the wire, and the one
-  that is _accepted rather than open_ — the browser assembling `data`, which only a server-side
-  re-resolve would close, at the cost of the promise that what was previewed is what gets generated.
-
-- **The browser suites run nightly** (`.github/workflows/e2e-ui.yml`, plus `workflow_dispatch`).
-  They stand up Postgres, Keycloak, Epistola, the Valtimo backend and the Angular dev server, then
-  run every Playwright suite and keep the report and the service logs as artifacts. These are the
-  tests that find the defects the unit tests are blind to — a Form.io serializer dropping a
-  component's flags, a wizard rendering its own submit button inside a Valtimo form — and until now
-  nothing ran them automatically.
-
-- **The stepped form is pinned against the real Formio wizard** (`composer-sections.formio.spec.ts`).
-  The sectioning had unit tests for what it produces; this covers what Formio then does with it,
-  which is the part that went wrong. It runs the actual `Wizard` class over a sectioned form and
-  asserts the pages, that no Cancel or Submit button is offered on any of them, that Next and
-  Previous appear where they should, and that every field keeps the key the contract gave it.
-  Verified by deleting the page-level `buttonSettings` and watching it fail.
-
-- **A start-form composer no longer searches for its process on every preview.** Finding it reads
-  every deployed definition's process links, and the preview fires on each edit — so one letter's
-  cost grew with the number of processes on the installation. `prepare` now hands the resolved key
-  back and the calls that follow name it, which changes no permission: a named process goes through
-  the same two gates as a discovered one. Choosing another letter forgets it, since another letter
-  may belong to another process.
-
-- **Flow diagrams in [docs/letter-composer.md](docs/letter-composer.md)**: what happens when an
-  employee picks a letter, how generation renders it, how the composer decides which fields to ask
-  for, and which authorization path a request takes. The document also lost a duplicated section
-  and an Authorization section that predated start-form support.
-
-- **The contract's rules now reach the generated inputs.** `minLength`, `maxLength`, `pattern`,
-  `minimum`, `maximum`, `minItems` and `maxItems` are carried from the template's data contract
-  onto the component's `validate`, so a value that cannot work is refused under the field instead
-  of coming back as a render error beside the finished letter. Epistola stays the authority — it
-  validates everything when it renders — so this changes where and when the complaint appears, not
-  whether it happens. It therefore need not be exhaustive (`exclusiveMinimum`, `exclusiveMaximum`
-  and `multipleOf` have no Formio validator and are left to render time) but must never be
-  stricter than the contract: JSON Schema patterns _search_ while Formio wraps what it is given as
-  `^…$`, so an unanchored pattern is wrapped to keep searching rather than silently rejecting
-  values the server accepts. An `enum` keeps only its options, since a length or pattern rule on
-  top of them can only contradict. The retry form gets this too, sharing the same generator.
-  Messages are still Formio's English defaults.
-
-### Changed
-
-- **Upgraded the Epistola contract client from `1.3.1` to `1.4.0`.** Both of the release's changes
-  are additive, and that was checked rather than taken from the release notes:
-  - **`template-data-invalid`**, a new 400 problem type carrying `missingFields` and `invalidFields`
-    as JSON Pointers into `data`, each with the field's own JSON Schema, plus a new
-    `validateTemplateData` operation. Every new field is optional. Nothing in the plugin reads them
-    yet — they are the obvious way to close [#150](https://github.com/epistola-app/valtimo-epistola-plugin/issues/150),
-    since the composer currently shows Epistola's message verbatim and cannot say which input is at
-    fault.
-  - **Page headers and footers anywhere in a catalog's flow**, which only loosens the old
-    `PAGEHEADER_*` rules. No wire `schemaVersion` bump, so the bundled catalogs stay at `4` and
-    need no re-authoring.
-
-  The risk on a client bump is the reverse of the usual one: a newer client can stop reading older
-  servers, which is how `1.3.0` broke on `slug`. `oldestSupportedServerTest` passes with the `1.4.0`
-  client against a contract-`0.16.1` server — the oldest a supported Suite serves — so the floor
-  stays where it was. The mock-server image moves with the pin.
-
-  **The admin page's contract check now expects `1.4.0`**, so a Suite serving contract `1.3.x` or
-  earlier shows a warning where a `1.3.1` server previously showed OK. The compatibility rule
-  itself is unchanged — a server whose contract minor is behind the plugin's is a warning, because
-  it may lack something the plugin can ask for — and reading such a server still works, which is
-  what `oldestSupportedServerTest` covers. Confirmed against a live Suite serving `1.3.1`.
-
-  The bump also surfaced a latent bug in the test that guards this: it compared versions with
-  `Runtime.Version.parse`, which rejects a version whose last element is zero and so cannot read
-  `"1.4.0"` at all. Any `x.y.0` contract would have broken it. It now uses the plugin's own
-  `SemVersion`, and its newer-server case moved to a server a **minor** ahead rather than a patch,
-  which is what its name claims to cover.
-
-- **The preview's object-URL lifecycle moved out of the composer component** into `PreviewRenderer`,
-  which owns creating and revoking the URL and reading a refused render's complaint out of its Blob
-  body. Both were untested while they lived among the component's state, and both are the kind that
-  fail quietly: a preview refreshes on every edit, so a URL that is never revoked leaks one per
-  keystroke, and a refusal read as an error object says nothing at all. Nine tests now cover them,
-  including that rendering a second letter releases the first.
-
-- **The composer resolver was doing three jobs; now it does one.** Finding which form applies needs
-  four Valtimo services and three link paths; reading composers out of a form's JSON and picking
-  the one a request means need nothing at all. Those two are now `ComposerParser` and
-  `ComposerSelection`, and the resolver is 423 lines down to 259. The rules that actually change
-  when the stored shape changes are the ones that moved, and `ComposerParserTest` exercises them
-  with no mocks at all — where before a question like "is a letter without a catalog usable" could
-  only be asked through a mocked process-link service, form repository, form-flow service and case
-  definition service.
-
-- **Start-form discovery asks the case, not the installation.** Finding which process a composer's
-  start form belongs to read _every deployed process definition's_ process links, so one ad-hoc
-  letter cost more the more processes were deployed — unrelated ones included. It now asks which
-  processes a user can start on the open dossier's case, which is the only set of candidates there
-  ever were: an ad-hoc letter starts a process on that case. The resolver loses its
-  `RepositoryService` dependency with it. A start form for a _new_ case has no case to narrow by,
-  and naming the process remains the answer there.
-
-- **One lookup where there were two.** `prepare` and `preview` each resolved the composer and then
-  picked the letter out of it with `.get(0)` — safe only because of an invariant enforced in
-  another class and stated at neither call site. Both now go through one `resolve(…)`, and
-  `LetterComposerConfiguration.requireOne` makes the invariant explicit rather than assumed.
-  `catalogFor` is deleted: it had no callers left and fell back to the _set's_ catalog, which is
-  exactly the mistake that made a letter's own catalog matter in the first place.
-
-- **The generate action says what it does.** "Genereer samengestelde brief" / "Generate composed
-  letter" described the plumbing, not the job — "samengesteld" is a literal rendering of "composed"
-  and reads as jargon. It is now **"Genereer Gekozen Brief"** / **"Generate Chosen Letter"**, which
-  is what the task does: render the letter the employee picked. The action key is unchanged, so
-  existing process links are unaffected.
-
-### Fixed
-
-- **A letter needing a value the composer cannot ask for is refused instead of quietly failing.**
-  Some contract shapes have no separate fields to fill in — a structure that decomposes to no
-  parts, or a scalar the analyzer could not see a scalar in, which is how an external `$ref`
-  arrives, and how a shared rich-text schema usually arrives. A required one the baseline mapping
-  left empty used to be dropped from the generated
-  form, which read as success: the composer announced that the letter needed no further input, and
-  Epistola then refused to render it for a field nobody had been asked about — a failure two steps
-  from its cause. Preparing such a letter now fails with a 422 naming the field and saying to
-  supply it from the mapping. An optional one is still never offered, and one the mapping fills is
-  unaffected. The check covers scalars too, because an external `$ref` reaches the plugin as
-  `{"$ref": "…"}` with no type and no properties, so it infers `SCALAR` and would otherwise have
-  rendered as a single-line text box for a value that is not text. It does **not** key off the
-  analyzer's `complex` flag: that belongs to the mapping builder, and an ordinary array of objects
-  carries it while rendering as a data grid perfectly well.
-
-### Added
-
-- **The composer's own strings moved into the composer.** Thirty-three translation keys per
-  language lived in `epistola.specification.ts`, so deleting `lib/composer/` would have left its
-  labels behind in a file that describes the rest of the plugin. They now live in
-  `composer/composer.translations.ts` and the specification spreads them into the one shape Valtimo
-  consumes. That spread is a silent seam — drop it and every label falls back to its key on screen,
-  with nothing failing — so a spec asserts it, that both languages define the same keys, and that
-  the composer takes over no key the rest of the plugin owns.
-
-- **The letter composer is marked alpha, and its stored shapes are versioned.** It works end to end
-  and is covered by tests, but what it stores may still change — so the palette entry reads
-  "(alpha)", the component's settings open with a notice saying so, and
-  [docs/letter-composer.md](docs/letter-composer.md) leads with it. Both shapes that outlive the
-  code that wrote them — a component's settings in a form definition, and the chosen letter on a
-  process variable — now carry a `schemaVersion`, read tolerantly downwards (absent means 1, so
-  nothing already deployed is invalidated) and refused upwards with a message naming both versions.
-  A letter from a later plugin is refused rather than half-understood, because generating the wrong
-  letter is worse than not generating one. The rule lives in one place (`ComposerSchema`), and the
-  version is written back on every save, since Form.io drops schema equal to the default.
-
-- **A catalog is now a property of the letter, not of the letter set.** `letterSet.catalogId`
-  becomes the default and a letter may carry its own, which is what a picker offering letters from
-  more than one catalog will need. Nothing changes for an existing form, and the settings widget
-  still writes only the default — but the shape no longer has to change to get there. A composer
-  whose catalogs all live on its letters is accepted rather than skipped, which previously surfaced
-  as "No letter composer on this form"; a letter with no catalog anywhere is dropped with a warning
-  naming the component.
-
-- **A letter with a lot to fill in is filled in step by step.** Above six inputs the generated form
-  becomes a wizard, with breadcrumbs that can be clicked so a step is one click away rather than a
-  page at a time. Steps take the names the template's contract already uses — a group becomes a
-  step, a group that is a lot on its own is split into numbered parts of it, a step holding a
-  single field takes that field's name — and only a step of several unnamed fields is numbered. The
-  preview stays alongside throughout. A short letter is left exactly as it was: three fields behind
-  Back/Next would be worse than the column it replaces. Presentation only: the same fields, the
-  same keys, the same submission.
-
-- **The demo offers a letter that actually needs stepping.** The Correspondentie case now also
-  offers **Bevestiging omgevingsvergunning** — a permit confirmation from a bezwaar case, so the
-  baseline mapping fills none of its twelve required fields. The other two letters ask for three
-  fields and one for none, which showed the composer's promise but never its sectioning.
-
-- **The composer no longer asks where it is used.** "Where is this form shown?" was a setting that
-  described the situation rather than changing it, and a composer could only be one or the other.
-  The mode is now read from the context — a task form fills a server-side task-id carrier, a start
-  form does not — so one configuration works on a user task and on a start form at the same time.
-  Nothing about authorization rides on the reading: the two endpoints are separate and each checks
-  its own permission, and a task id always wins so a task form can never fall through to the
-  start-form endpoint.
-
-- **A start-form composer finds its own process.** "Process to start" had to be filled in because
-  Valtimo tells a Form.io component nothing about the link that rendered it. The backend now looks
-  for the start forms carrying this composer and offering the chosen letter, narrows them to the
-  processes the caller may actually start on this case, and uses the single survivor — through the
-  same two gates a named process goes through. The setting remains, for the one case discovery
-  cannot decide: two processes offering the same letter from a composer keyed the same way.
-
-- **The composer's baseline mapping is parsed as you type.** It was a plain textarea, so a typo in
-  the JSONata surfaced much later as a letter that "could not be prepared", with nothing pointing at
-  the mapping. The field now reports the parse error, or — when it parses — which `$doc`/`$pv` paths
-  the mapping reads, which is the other thing an author wants to check. What was typed is kept
-  either way: every intermediate state of writing an expression is invalid.
-
-- **A composer dropped from the palette now has to be given a `pv:` property name.** Form.io derives
-  a new component's key from the palette entry, ignoring a schema key and an `editForm` default
-  alike, so a composer arrived keyed `chooseALetter`. Without the `pv:` prefix Valtimo stores the
-  chosen letter in the submission data instead of as a process variable, and the generate task then
-  failed with "no letter was composed" — one step later, for a mistake made in the builder. The
-  property name is validated where it is typed, with a message that says what to type.
-
-- **The composer keeps `prefill: false` when a form is saved from the builder.** The flag was
-  declared in the registered schema but the wrapper that re-adds it on serialization was never
-  applied, so Form.io dropped it as "equal to the default" — the same trap as the hidden task-id
-  carriers. A composer authored in the builder would have failed the whole form with a 500 on a
-  dossier holding a second process instance. It only ever worked because the bundled demo forms
-  carry the flag literally.
-
-- **Letter composer (pilot): one component for a list of letters.** A new
-  `epistola-letter-composer` Form.io component offers a configured list of templates. Choosing one
-  resolves that letter's data for the case through a single baseline mapping (plus an optional
-  fragment per template) and generates a form for exactly the template fields the mapping left
-  empty, next to a live preview. A form offering fifty letters is therefore the same size as one
-  offering three, and adding a letter is one row in the component's settings.
-  - **Which fields an employee is asked for is read from the mapping's outcome, not its text**, so
-    an opaque mapping such as `$doc.someObject` works as well as a field-by-field one. Fields the
-    mapping did fill are not offered: correcting case data belongs in a case form.
-  - **The configuration is read server-side from the form definition**, never from the request. The
-    browser names the task and one template; a template the form does not offer is refused. Both
-    endpoints (`POST /composer/prepare`, `POST /composer/preview`) authorize on `OperatonTask:VIEW`
-    and derive the case, process instance and configuration from that task.
-  - The component's value is `{templateId, catalogId, data, inputs}` — `data` is what the letter is
-    rendered with (and what generation should be handed), `inputs` is only what the employee typed.
-  - Generated inputs now follow the template contract: `enum`/`const` become a select of exactly
-    those values, `title` becomes the label, `default` fills an empty field, `email` gets an email
-    component, a date keeps an explicit `YYYY-MM-DD` placeholder (Formio's picker emits a timestamp
-    that `"format": "date"` rejects), and an array of scalars becomes one repeating input.
-  - **The settings are picked, not typed.** A new `epistola-letter-set-builder` widget in the
-    component's edit dialog lists the configured Epistola connections (`GET /configurations`), then
-    that connection's catalogs, then that catalog's templates to tick and label. The three cascade,
-    so changing the connection clears ids that mean nothing in the new one.
-  - **A single service task generates whichever letter was chosen**, through the
-    `epistola-generate-dynamic-document` action. No gateway branch or service task per letter.
-  - **A composer is excluded from Valtimo's prefill.** Its key is a `pv:` one so the chosen letter
-    becomes a process variable on submit, but Valtimo resolves a `pv:` key against the case's
-    process instances when prefilling — and once a dossier has run the process twice it cannot pick
-    one and fails the whole form with a 500. `prefill: false` is part of the component's schema and
-    is re-added on save, like the hidden carriers, with `BundledComposerFormTest` pinning it for
-    every bundled form.
-  - **A composer names itself in every request.** A form may carry more than one, and a start-form
-    composer has to name the process it starts (Valtimo hands a Form.io component only the
-    components, never the process link). Sending the component's own key means the backend resolves
-    _that_ composer's settings, so a `processDefinitionKey` naming the wrong process now fails with
-    "no letter composer" instead of composing with another process's composer.
-  - **An ad-hoc letter, with no user task at all.** The composer also runs on the **start form** of
-    a process that starts on the dossier already open, so a case worker picks a letter from the
-    dossier's Start menu, adjusts and previews it there, and the process only generates what was
-    chosen. Set **Where is this form shown?** to _On a start form_ and name the process it starts.
-    Its endpoints (`/composer/prepare/start`, `/composer/preview/start`) authorize like Valtimo's
-    own start-form path — `OperatonExecution:CREATE` plus `JsonSchemaDocument:VIEW` — through a
-    `StartEventAuthorization` now shared with the document preview, so the two checks cannot drift
-    apart. Demo: `correspondentie-ad-hoc-letter`, walked by `letter-composer-adhoc.spec.ts`.
-  - **A letter is previewed once it can be rendered**, not before: while a required generated field
-    is still empty the component says so, instead of showing Epistola's validation error for the
-    very fields the employee was just asked to fill.
-  - Demo: a new **Correspondentie** case ships `correspondentie-letter-composer`, offering two
-    letters over one baseline mapping — the acknowledgement needs nothing from the employee, the
-    decision asks for its three decision fields. `LetterComposerE2ETest` walks it against the real
-    bundled template contracts, and `e2e/tests/letter-composer.spec.ts` walks it in a browser.
-  - See [docs/letter-composer.md](docs/letter-composer.md) and
-    [ADR 0006](docs/adr/0006-letter-composer-configuration.md). Known gaps are listed there: the
-    browser assembles the rendered data, there is no write-back to the case, form flows are not
-    supported yet, and a task composes one letter.
-
-- **The document preview derives its input overrides from the form's field keys.** A field keyed
-  `pv:motivation` or `doc:/aanvrager/naam` already states where Valtimo saves it, so the preview
-  now overlays those unsaved values by itself — exactly what saving the form would do. Most task
-  forms therefore need no Input Overrides mapping at all, and a field added later is picked up
-  without touching the preview. Both Valtimo notations are understood (`doc:/a/b` and `doc:a.b`),
-  keys without a `pv:`/`doc:` prefix are ignored, and an explicit mapping still wins per field.
-  The new component setting **Use the form's field keys as overrides** is on by default; turn it
-  off inside a Form Flow, where a step's data is saved by its `onComplete` expression rather than
-  by field key. The objection demo form lost its now-redundant mapping.
-
-- **ADR 0006 — letter composer configuration.** Records where a "pick a letter, adjust it, preview
-  it" component keeps its configuration, now that it is being piloted. The configuration lives in
-  the Form.io component (and so in the versioned form definition), the composer computes the data
-  while generation only renders it, each generated input's target decides both write-back and
-  preview semantics, and reuse across processes is packaged as a building block later. See
-  [docs/adr/0006-letter-composer-configuration.md](docs/adr/0006-letter-composer-configuration.md).
-
-- **Test-app release workflow** (`test-app-release.yml`, manual dispatch). It publishes only the
-  `demo-backend` and `demo-frontend` images, built from the selected branch, and then dispatches
-  the demo pin bump. Nothing goes to Maven Central or npm, and no GitHub Release or version tag is
-  created. Use it for test-app-only changes that should reach the demo without a plugin release.
-  Both images get the same tag, `<last plugin release>-testapp.<run number>` (for example
-  `0.20.1-testapp.12`), because the infra pin bump resolves both pins from one tag. A bare `X.Y.Z`
-  tag is refused, so a test-app release can never overwrite a plugin release's images.
-
-### Changed
-
-- **Training (test-app): trainees work in the shared case types, on their own cases only.** A
-  trainee (`ROLE_DEMO`) can now see every bundled case type, start cases in it and work on them,
-  and sees only the cases they created there. They can read a shared case type's configuration but
-  not change it, and can still configure their own cloned dossier. Their token keeps `ROLE_ADMIN`
-  for the admin screens, but the backend no longer honours it for a trainee, so Valtimo's
-  unconditioned `ROLE_ADMIN` permissions no longer apply to them; `demo.permission.json` (now
-  changeset `trainee-pbac-v2`) scopes them instead. The plugin's `evaluate-mapping` endpoint is
-  scoped to the trainee's own cases. The published plugin is unchanged.
-- **Training (test-app): a trainee's own Epistola tenant gets the demo templates.** Provisioning
-  now installs the classpath catalogs into the trainee's new tenant, using the same catalog
-  deployer as the startup sync, and the trainee's plugin configuration is sync-enabled so restarts
-  keep it current. Before, the tenant stayed empty and every template in the trainee's own dossier
-  failed with "No default variant found".
-
-### Fixed
-
-- **Training: a trainee sees their own dossier.** The provisioner finalized the cloned case
-  definition but never activated it. Valtimo's case list only shows active case definitions, so
-  the trainee saw just the shared `form-flow-demo` template, and opening it returned "This belongs
-  to another user's dossier, not yours." New dossiers are now activated. A dossier provisioned by
-  0.20.x is activated on the trainee's next request. Test-app only; the published plugin is
-  unchanged.
+- **A Dutch amount is no longer read as English.** The composer and the retry form now pass
+  Valtimo's language to Form.io, so `12,50` is no longer stored as `1250`.
+- **Training (test-app): a trainee sees their own dossier.** Cloned case definitions are now
+  activated, including ones provisioned by 0.20.x on the trainee's next request.
+- **The local stack starts from scratch**: the Keycloak realm import no longer aborts on a too-long
+  role description, and compose uses Epistola's `latest-demo` image (demo mode ships only there
+  since Suite 1.3.0).
+
+### Security
+
+- **Personal data is no longer logged.** `EpistolaServiceImpl` logged every value of a generation
+  request at `DEBUG`, the retry check logged corrected data, and the preview path logged
+  Epistola's raw error body; ten more log statements passed a downstream exception message that can
+  quote case data. They now log keys, ids and exception classes. `LogStatementPersonalDataTest`
+  fails the build on a new one ([CLAUDE.md](CLAUDE.md#never-log-personal-data)).
 
 ## [0.20.1] - 2026-09-24
 
