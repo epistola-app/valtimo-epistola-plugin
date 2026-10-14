@@ -19,14 +19,12 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  ElementRef,
   EventEmitter,
   Input,
   OnChanges,
   OnDestroy,
   Output,
   SimpleChanges,
-  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -46,15 +44,9 @@ import {
 } from './composer-data';
 import { readOpenDossierId } from './open-dossier';
 import { isRendered, PreviewRenderer } from './preview-renderer';
-import {
-  clampDockedHeight,
-  clampDockedWidth,
-  PANEL_MEMORY_KEYS,
-  PopOut,
-  readPanelMemory,
-  trackDrag,
-  writePanelMemory,
-} from '../../utils/floating-panel';
+import { PANEL_MEMORY_KEYS } from '../../utils/floating-panel';
+import { DockedSize } from '../../utils/docked-size';
+import { EpistolaPreviewFrameComponent } from '../../components/epistola-preview-frame/epistola-preview-frame.component';
 import { isSectioned, sectionForm } from './composer-sections';
 import { formioLanguage, readerLocale, withLocaleDates } from '../../utils/formio-locale';
 import { tagRichText } from '../../utils/rich-text-values';
@@ -104,7 +96,7 @@ export interface ComposerValue {
  */
 @Component({
   standalone: true,
-  imports: [CommonModule, FormioModule, PluginTranslatePipeModule],
+  imports: [CommonModule, FormioModule, PluginTranslatePipeModule, EpistolaPreviewFrameComponent],
   selector: 'epistola-letter-composer-component',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -161,157 +153,122 @@ export interface ComposerValue {
         </div>
 
         <div
-          *ngIf="!floating"
+          *ngIf="!previewFrame.floating"
           class="composer-splitter"
           role="separator"
           aria-orientation="vertical"
           [attr.aria-label]="'composerResizePreview' | pluginTranslate: pluginId | async"
-          (pointerdown)="resizeDocked($event, 'width')"
+          (pointerdown)="resizeWidth($event)"
           data-testid="epistola-composer-splitter"
         ></div>
 
-        <section
-          #previewPane
+        <epistola-preview-frame
+          #previewFrame
           class="composer-preview"
-          [class.floating]="floating"
-          [style.flex-basis.%]="floating || !dockedWidth ? null : dockedWidth * 100"
-          data-testid="epistola-composer-preview"
+          [class.floating]="previewFrame.floating"
+          [style.flex-basis.%]="
+            previewFrame.floating || !dockedSize.width ? null : dockedSize.width * 100
+          "
+          [title]="('composerPreview' | pluginTranslate: pluginId | async) ?? ''"
+          [memoryKey]="memoryKey"
+          [resizable]="true"
+          testId="epistola-composer-preview"
         >
-          <header class="preview-header" data-testid="epistola-composer-preview-header">
-            <h4 class="preview-title">
-              {{ 'composerPreview' | pluginTranslate: pluginId | async }}
-            </h4>
-            <span
-              *ngIf="previewLoading && previewUrl"
-              class="preview-status"
-              data-testid="epistola-composer-preview-updating"
-              >{{ 'composerPreviewUpdating' | pluginTranslate: pluginId | async }}</span
-            >
-            <span
-              *ngIf="previewStale && !previewLoading"
-              class="preview-status preview-status--stale"
-              data-testid="epistola-composer-preview-stale"
-              >{{ 'composerPreviewStale' | pluginTranslate: pluginId | async }}</span
-            >
-            <div class="preview-controls">
-              <div class="cds--checkbox-wrapper preview-autorefresh">
-                <input
-                  type="checkbox"
-                  class="cds--checkbox"
-                  [id]="selectId + '-autorefresh'"
-                  [checked]="autoRefreshEnabled"
-                  (change)="onToggleAutoRefresh($any($event.target).checked)"
-                  data-testid="epistola-composer-autorefresh"
-                />
-                <label [for]="selectId + '-autorefresh'" class="cds--checkbox-label">
-                  <span class="cds--checkbox-label-text">{{
-                    'composerAutoRefresh' | pluginTranslate: pluginId | async
-                  }}</span>
-                </label>
-              </div>
-              <button
-                type="button"
-                class="cds--btn cds--btn--ghost cds--btn--sm preview-icon-button"
-                [disabled]="previewLoading || !canRefresh"
-                [attr.title]="'composerRefresh' | pluginTranslate: pluginId | async"
-                [attr.aria-label]="'composerRefresh' | pluginTranslate: pluginId | async"
-                (click)="refresh()"
-                data-testid="epistola-composer-refresh"
-              >
-                <i class="mdi mdi-refresh" aria-hidden="true"></i>
-              </button>
-              <button
-                type="button"
-                class="cds--btn cds--btn--ghost cds--btn--sm preview-icon-button"
-                [attr.title]="
-                  (floating ? 'composerDock' : 'composerPopOut') | pluginTranslate: pluginId | async
-                "
-                [attr.aria-label]="
-                  (floating ? 'composerDock' : 'composerPopOut') | pluginTranslate: pluginId | async
-                "
-                (click)="togglePopOut()"
-                data-testid="epistola-composer-popout"
-              >
-                <i
-                  class="mdi"
-                  [class.mdi-open-in-new]="!floating"
-                  [class.mdi-dock-right]="floating"
-                  aria-hidden="true"
-                ></i>
-              </button>
-            </div>
-          </header>
-          <div
-            class="preview-content"
-            [style.height.px]="floating || !dockedHeight ? null : dockedHeight"
+          <span
+            previewStatus
+            *ngIf="previewLoading && previewUrl"
+            class="epistola-preview-frame__status"
+            data-testid="epistola-composer-preview-updating"
+            >{{ 'composerPreviewUpdating' | pluginTranslate: pluginId | async }}</span
           >
-            <div
-              *ngIf="previewLoading && !previewUrl"
-              class="composer-message"
-              data-testid="epistola-composer-preview-loading"
-            >
-              {{ 'composerPreviewLoading' | pluginTranslate: pluginId | async }}
-            </div>
-            <!--
+          <span
+            previewStatus
+            *ngIf="previewStale && !previewLoading"
+            class="epistola-preview-frame__status epistola-preview-frame__status--warning"
+            data-testid="epistola-composer-preview-stale"
+            >{{ 'composerPreviewStale' | pluginTranslate: pluginId | async }}</span
+          >
+          <div previewControls class="cds--checkbox-wrapper epistola-preview-frame__checkbox">
+            <input
+              type="checkbox"
+              class="cds--checkbox"
+              [id]="selectId + '-autorefresh'"
+              [checked]="autoRefreshEnabled"
+              (change)="onToggleAutoRefresh($any($event.target).checked)"
+              data-testid="epistola-composer-autorefresh"
+            />
+            <label [for]="selectId + '-autorefresh'" class="cds--checkbox-label">
+              <span class="cds--checkbox-label-text">{{
+                'composerAutoRefresh' | pluginTranslate: pluginId | async
+              }}</span>
+            </label>
+          </div>
+          <button
+            previewControls
+            type="button"
+            class="cds--btn cds--btn--ghost cds--btn--sm epistola-preview-frame__icon-button"
+            [disabled]="previewLoading || !canRefresh"
+            [attr.title]="'composerRefresh' | pluginTranslate: pluginId | async"
+            [attr.aria-label]="'composerRefresh' | pluginTranslate: pluginId | async"
+            (click)="refresh()"
+            data-testid="epistola-composer-refresh"
+          >
+            <i class="mdi mdi-refresh" aria-hidden="true"></i>
+          </button>
+          <div
+            *ngIf="previewLoading && !previewUrl"
+            class="composer-message"
+            data-testid="epistola-composer-preview-loading"
+          >
+            {{ 'composerPreviewLoading' | pluginTranslate: pluginId | async }}
+          </div>
+          <!--
             The last letter stays on screen while the next one renders, dimmed, so an edit does not
             blank the preview and lose the employee's place in it.
           -->
-            <object
-              *ngIf="previewUrl"
-              [data]="previewUrl"
-              type="application/pdf"
-              class="preview-pdf"
-              [class.preview-pdf--updating]="previewLoading"
-              data-testid="epistola-composer-preview-pdf"
-            >
-              {{ 'composerPreviewUnsupported' | pluginTranslate: pluginId | async }}
-            </object>
-            <div
-              *ngIf="previewError"
-              class="composer-error"
-              data-testid="epistola-composer-preview-error"
-            >
-              {{ previewError }}
-            </div>
-            <!--
+          <object
+            *ngIf="previewUrl"
+            [data]="previewUrl"
+            type="application/pdf"
+            class="epistola-preview-frame__pdf"
+            [class.preview-pdf--updating]="previewLoading"
+            data-testid="epistola-composer-preview-pdf"
+          >
+            {{ 'composerPreviewUnsupported' | pluginTranslate: pluginId | async }}
+          </object>
+          <div
+            *ngIf="previewError"
+            class="composer-error"
+            data-testid="epistola-composer-preview-error"
+          >
+            {{ previewError }}
+          </div>
+          <!--
             The fields Epistola refused, each named as the employee sees it named. Shown here
             rather than under the inputs because most of them have no input: the baseline mapping
             supplies them, so the employee was never asked. See composer-findings.ts.
           -->
-            <div
-              *ngIf="refusedFields.length"
-              class="composer-error"
-              data-testid="epistola-composer-refused-fields"
-            >
-              <p>{{ 'composerRefusedFields' | pluginTranslate: pluginId | async }}</p>
-              <ul>
-                <li
-                  *ngFor="let field of refusedFields"
-                  data-testid="epistola-composer-refused-field"
-                >
-                  <strong>{{ field.label }}</strong
-                  >: {{ field.message }}
-                </li>
-              </ul>
-            </div>
-            <div
-              *ngIf="awaitingRequired"
-              class="composer-message"
-              data-testid="epistola-composer-awaiting-input"
-            >
-              {{ 'composerAwaitingInput' | pluginTranslate: pluginId | async }}
-            </div>
-          </div>
-          <div class="preview-resize" aria-hidden="true"></div>
           <div
-            class="preview-grip"
-            role="separator"
-            aria-orientation="horizontal"
-            [attr.aria-label]="'composerResizePreview' | pluginTranslate: pluginId | async"
-            (pointerdown)="resizeDocked($event, 'height')"
-            data-testid="epistola-composer-preview-grip"
-          ></div>
-        </section>
+            *ngIf="refusedFields.length"
+            class="composer-error"
+            data-testid="epistola-composer-refused-fields"
+          >
+            <p>{{ 'composerRefusedFields' | pluginTranslate: pluginId | async }}</p>
+            <ul>
+              <li *ngFor="let field of refusedFields" data-testid="epistola-composer-refused-field">
+                <strong>{{ field.label }}</strong
+                >: {{ field.message }}
+              </li>
+            </ul>
+          </div>
+          <div
+            *ngIf="awaitingRequired"
+            class="composer-message"
+            data-testid="epistola-composer-awaiting-input"
+          >
+            {{ 'composerAwaitingInput' | pluginTranslate: pluginId | async }}
+          </div>
+        </epistola-preview-frame>
       </div>
     </div>
   `,
@@ -384,116 +341,14 @@ export interface ComposerValue {
           border-left-color: var(--cds-border-strong-01, #8d8d8d);
         }
       }
-      /* The box, in Valtimo's (Carbon's) colours: a bordered layer with a heading bar. */
-      .composer-preview {
-        position: relative;
-        display: flex;
-        flex-direction: column;
-        background: var(--cds-layer-01, #f4f4f4);
-        border: 1px solid var(--cds-border-subtle-01, #c6c6c6);
+      /* The box itself is the shared preview frame's; floating, it has left this layout. */
+      .composer-preview.floating {
+        display: none;
       }
-      .preview-header {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 0 0.75rem;
-        min-height: 2.5rem;
-        padding: 0 0.25rem 0 1rem;
-        background: var(--cds-layer-accent-01, #e0e0e0);
-        border-bottom: 1px solid var(--cds-border-subtle-01, #c6c6c6);
-      }
-      .preview-title {
-        margin: 0;
-        font-size: 0.875rem;
-        font-weight: 600;
-        line-height: 1.28572;
-        letter-spacing: 0.16px;
-        color: var(--cds-text-primary, #161616);
-      }
-      .preview-status {
-        font-size: 0.75rem;
-        color: var(--cds-text-secondary, #525252);
-      }
-      .preview-status--stale {
-        color: var(--cds-support-warning-inverse, #8e6a00);
-      }
-      .preview-controls {
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-        margin-left: auto;
-      }
-      .preview-autorefresh {
-        margin: 0 0.5rem 0 0;
-      }
-      .preview-icon-button {
-        padding: 0 0.5rem;
-        min-height: 2rem;
-      }
-      .preview-icon-button .mdi {
-        font-size: 1.125rem;
-        line-height: 1;
-      }
-      .preview-content {
-        /* Fits a laptop's task dialog with its header and grip; the grip makes it taller. */
-        height: clamp(18rem, calc(100vh - 20rem), 60rem);
-        padding: 0.5rem;
-        overflow: auto;
-      }
-      .preview-pdf {
-        display: block;
-        width: 100%;
-        height: 100%;
-        border: 0;
-        transition: opacity 0.15s;
-      }
+      /* The previous letter, dimmed while the next one renders. */
       .preview-pdf--updating {
         opacity: 0.5;
-      }
-      /* Drag down to make the docked letter taller. */
-      .preview-grip {
-        height: 0.5rem;
-        cursor: ns-resize;
-        touch-action: none;
-        border-top: 1px solid var(--cds-border-subtle-01, #c6c6c6);
-        background: var(--cds-layer-accent-01, #e0e0e0);
-      }
-      .preview-resize {
-        display: none;
-      }
-      /* Floating: moved to the body by FloatingPanel, which sets its place and size. */
-      .composer-preview.floating {
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-      }
-      .composer-preview.floating .preview-header {
-        cursor: move;
-        user-select: none;
-      }
-      .composer-preview.floating .preview-content {
-        flex: 1 1 auto;
-        min-height: 0;
-      }
-      .composer-preview.floating .preview-grip {
-        display: none;
-      }
-      .composer-preview.floating .preview-resize {
-        display: block;
-        position: absolute;
-        right: 0;
-        bottom: 0;
-        width: 1rem;
-        height: 1rem;
-        cursor: nwse-resize;
-        touch-action: none;
-        background: linear-gradient(
-          135deg,
-          transparent 50%,
-          var(--cds-border-strong-01, #8d8d8d) 50%
-        );
-      }
-      /* The PDF viewer would take the pointer mid-drag and stop it dead. */
-      .composer-preview.dragging .preview-pdf {
-        pointer-events: none;
+        transition: opacity 0.15s;
       }
     `,
   ],
@@ -557,16 +412,10 @@ export class EpistolaLetterComposerComponent
   autoRefreshEnabled = true;
   /** True when something was edited since the last render, while auto-refresh is off. */
   previewStale = false;
-  /** Floats the preview over the page, and puts it back. See {@link PopOut}. */
-  private readonly popOut = new PopOut(PANEL_MEMORY_KEYS.composer);
-
-  /** Whether the preview floats over the page instead of sitting beside the form. */
-  get floating(): boolean {
-    return this.popOut.floating;
-  }
-  /** The docked preview's share of the width and its height, as the employee left them. */
-  dockedWidth: number | null = readPanelMemory().dockedWidth ?? null;
-  dockedHeight: number | null = readPanelMemory().dockedHeight ?? null;
+  /** Where the composer's preview frame remembers its panel, and its share of the width. */
+  readonly memoryKey = PANEL_MEMORY_KEYS.composer;
+  /** The docked preview's share of the width, by the divider beside it; its frame keeps its height. */
+  readonly dockedSize = new DockedSize(PANEL_MEMORY_KEYS.composer);
 
   readonly selectId = `epistola-composer-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -611,18 +460,6 @@ export class EpistolaLetterComposerComponent
   /** The letter as it stands now, which a manual refresh renders. */
   private latestData: ComposerData | null = null;
   private autoRefreshSeeded = false;
-  private previewPaneElement: HTMLElement | null = null;
-
-  /**
-   * The preview pane, whenever Angular (re)creates it. It lives inside the block that is rebuilt
-   * while a letter is prepared, so a floating pane is let go of when its element goes, and a new
-   * one floats again if the employee left it floating.
-   */
-  @ViewChild('previewPane')
-  set previewPane(ref: ElementRef<HTMLElement> | undefined) {
-    this.previewPaneElement = ref?.nativeElement ?? null;
-    this.popOut.setElement(this.previewPaneElement);
-  }
   /**
    * The process the backend worked out this start form belongs to, kept from the prepare response.
    *
@@ -700,7 +537,6 @@ export class EpistolaLetterComposerComponent
   }
 
   ngOnDestroy(): void {
-    this.popOut.release();
     this.prepareSubscription?.unsubscribe();
     this.previewSubscription?.unsubscribe();
     this.renderSubscription?.unsubscribe();
@@ -774,48 +610,15 @@ export class EpistolaLetterComposerComponent
     this.cdr.markForCheck();
   }
 
-  /** Float the preview over the page, or put it back beside the form. Remembered per browser. */
-  togglePopOut(): void {
-    this.popOut.toggle();
-    this.cdr.markForCheck();
-  }
-
-  /**
-   * Resize the docked preview: its share of the width by the divider beside it, its height by the
-   * grip below it. Remembered per browser, like the floating panel's place.
-   */
-  resizeDocked(start: PointerEvent, axis: 'width' | 'height'): void {
-    const pane = this.previewPaneElement;
-    const body = pane?.parentElement;
-    const content = pane?.querySelector<HTMLElement>('.preview-content');
-    if (!pane || !body || !content || this.floating) {
+  /** Drag the divider beside the docked preview to share the width differently. */
+  resizeWidth(start: PointerEvent): void {
+    const divider = start.currentTarget as HTMLElement | null;
+    const preview = divider?.nextElementSibling as HTMLElement | null;
+    const body = divider?.parentElement;
+    if (!preview || !body) {
       return;
     }
-    const bodyWidth = body.getBoundingClientRect().width;
-    const fromShare = pane.getBoundingClientRect().width / bodyWidth;
-    const fromHeight = content.getBoundingClientRect().height;
-    pane.classList.add('dragging');
-    trackDrag(
-      start,
-      window,
-      (dx, dy) => {
-        if (axis === 'width') {
-          // The preview is on the right: dragging the divider left gives it more.
-          this.dockedWidth = clampDockedWidth(fromShare - dx / bodyWidth);
-        } else {
-          this.dockedHeight = clampDockedHeight(fromHeight + dy, window.innerHeight);
-        }
-        this.cdr.markForCheck();
-      },
-      () => {
-        pane.classList.remove('dragging');
-        writePanelMemory({
-          ...readPanelMemory(),
-          dockedWidth: this.dockedWidth ?? undefined,
-          dockedHeight: this.dockedHeight ?? undefined,
-        });
-      },
-    );
+    this.dockedSize.dragWidth(start, preview, body, () => this.cdr.markForCheck());
   }
 
   /**

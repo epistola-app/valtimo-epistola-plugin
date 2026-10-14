@@ -93,6 +93,17 @@ reaches the saved form), forward the id in the wrapper, and add the same late-ar
 
 ## Component details
 
+### The preview frame
+
+The composer, `epistola-document-preview` and `epistola-document` show their letter in one shared
+Angular component, `epistola-preview-frame` (`components/epistola-preview-frame/`): a Carbon heading
+bar with the title, the component's own controls projected into it (`previewControls`), a status
+beside the title (`previewStatus`), and the letter as the body. The frame owns popping out
+(`PopOut`), docking back, the optional height grip (`DockedSize`), and letting go of a floating panel
+when its form closes. A new preview uses the frame rather than a box of its own; its classes are
+prefixed `epistola-preview-frame` and unencapsulated so projected content can use them. What it
+relies on in Carbon's modal is checked by `carbon-modal.contract.spec.ts`.
+
 ### `epistola-document-preview` — Document preview (author-facing)
 
 Live preview of the document a `generate-document` link would produce, rendered by dry-running the link

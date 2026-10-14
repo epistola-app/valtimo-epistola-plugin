@@ -30,6 +30,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Every preview is one frame.** The composer's preview, the document preview and the document
+  component now show their letter in one shared `epistola-preview-frame`: the same Carbon heading
+  bar, the same pop-out, and — new for the latter two — Dutch and English labels and Carbon controls
+  instead of English-only text buttons. The floating behaviour, its styles and the clean-up when a
+  form closes live in that one component instead of three copies; the composer's docked resizing
+  moved to a shared `DockedSize`, and the composer component lost its pop-out and sizing code.
+- **A Carbon upgrade that changes the dialog fails the build.** A floating preview stacks around
+  Carbon's modal (its layer, its box at z-index 1, a close only on the backdrop itself), which no
+  compiler checks. `carbon-modal.contract.spec.ts` now reads the installed Carbon and asserts each,
+  so a Valtimo upgrade that changes one fails `pnpm test` instead of quietly changing how previews
+  stack.
+
 - **The document preview and the document component pop out too**, like the composer's preview:
   floated over the page, dragged by the header, resized from the corner, gone with the form, and
   remembered per browser for each kind of preview. Inside a Valtimo dialog a floating preview, the

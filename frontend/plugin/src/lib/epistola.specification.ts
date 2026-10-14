@@ -19,6 +19,7 @@
 import { PluginSpecification } from '@valtimo/plugin';
 import { GenerateComposedDocumentConfigurationComponent } from './composer/configuration/generate-composed-document-configuration.component';
 import { COMPOSER_TRANSLATIONS } from './composer/composer.translations';
+import { PREVIEW_FRAME_TRANSLATIONS } from './components/epistola-preview-frame/preview-frame.translations';
 import { EpistolaConfigurationComponent } from './components/epistola-configuration/epistola-configuration.component';
 import { GenerateDocumentConfigurationComponent } from './components/generate-document-configuration/generate-document-configuration.component';
 import { CheckJobStatusConfigurationComponent } from './components/check-job-status-configuration/check-job-status-configuration.component';
@@ -193,6 +194,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       // Download document action
       // The composer owns its own strings; see composer/composer.translations.ts.
       ...COMPOSER_TRANSLATIONS.nl,
+      ...PREVIEW_FRAME_TRANSLATIONS.nl,
       'epistola-download-document': 'Download Document',
       documentVariable: 'Document Variabele',
       documentVariableTooltip:
@@ -462,6 +464,7 @@ const epistolaPluginSpecification: PluginSpecification = {
       // Download document action
       // The composer owns its own strings; see composer/composer.translations.ts.
       ...COMPOSER_TRANSLATIONS.en,
+      ...PREVIEW_FRAME_TRANSLATIONS.en,
       'epistola-download-document': 'Download Document',
       documentVariable: 'Document Variable',
       documentVariableTooltip:
