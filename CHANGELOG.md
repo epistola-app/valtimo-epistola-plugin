@@ -23,6 +23,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Upgraded Valtimo from `13.48.0` to `13.50.0` (backend + frontend).** No toolchain change:
+  Spring Boot `3.5.16`, Angular `19.2.25`, `carbon-components-angular` `5.57.6` and `formiojs`
+  `4.19.5` are the same in both, and the Epistola client stays at `1.4.0`. 13.49.0, 13.49.1 and
+  13.50.0 were changelog-reviewed. 13.50's tightened case `view` checks (widgets, zaak, case tabs,
+  process links, timers, the process diagram) cover no endpoint the plugin calls.
+
+  One undocumented change reached the browser suite: the process-link wizard now counts the tiles
+  it shows rather than the link types the backend offers, and a service task's `plugin` and
+  `external_plugin` share the one "Plugins & Apps" tile — so on a service task it opens straight on
+  the plugin-configuration table. `ProcessLinkPage.startNewEpistolaLink` takes either shape.
+
+  13.50's new **side panel** (a task form linked with the **Panel** display type opens beside the
+  case) was tried with the composer: choosing, filling, previewing and generating a letter all work,
+  and the composer's narrow layout stacks the preview under the fields. A popped-out preview,
+  though, lands on top of the panel and its fields, since a panel at the screen's edge leaves no
+  room beside it the way a dialog does.
+
 - **The browser suite renders real PDFs.** It runs the full Chromium build (`channel: 'chromium'`)
   instead of Playwright's lightweight headless shell, which has no PDF viewer: before, no preview's
   letter ever rendered in a test, so a hidden toolbar or a page's policy could not be tested at all.
