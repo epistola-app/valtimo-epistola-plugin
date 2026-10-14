@@ -29,6 +29,30 @@ export interface Viewport {
   height: number;
 }
 
+/**
+ * What this file relies on in Carbon's modal (carbon-components-angular `cds-modal`, styled by
+ * `@carbon/styles`), which is how Valtimo opens a task. Carbon's, not ours, so it is checked against
+ * the installed version by `carbon-modal.contract.spec.ts`: an upgrade that changes it fails the
+ * build instead of quietly changing how a floating preview stacks.
+ */
+export const CARBON_MODAL = {
+  /** The full-screen layer: fixed, its own background the backdrop, no transform. */
+  layerClass: 'cds--modal',
+  /** The white dialog box, a child of the layer. */
+  dialogClass: 'cds--modal-container',
+  /** The box's z-index within the layer (an inline style in Carbon's template). */
+  dialogZIndex: 1,
+  /** The layer's z-index on the page (`z('modal')`). */
+  layerZIndex: 9000,
+} as const;
+
+/** The z-index a floating panel takes: in a dialog's layer around its box, or on the page above any dialog. */
+export const PANEL_Z_INDEX = {
+  behindDialog: CARBON_MODAL.dialogZIndex - 1,
+  inFrontOfDialog: CARBON_MODAL.dialogZIndex + 1,
+  onPage: CARBON_MODAL.layerZIndex + 500,
+} as const;
+
 /** How much of a panel must show beside a dialog for it to go behind it, in CSS pixels. */
 const VISIBLE_STRIP = 40;
 
@@ -267,10 +291,10 @@ export class FloatingPanel {
     const doc = this.element.ownerDocument;
     this.anchor = doc.createComment('epistola-preview-docked');
     this.element.parentNode?.insertBefore(this.anchor, this.element);
-    this.layer = this.element.closest<HTMLElement>('.cds--modal');
+    this.layer = this.element.closest<HTMLElement>(`.${CARBON_MODAL.layerClass}`);
     (this.layer ?? doc.body).appendChild(this.element);
     this.apply();
-    const dialog = this.layer?.querySelector<HTMLElement>('.cds--modal-container');
+    const dialog = this.layer?.querySelector<HTMLElement>(`.${CARBON_MODAL.dialogClass}`);
     this.dialog = dialog ?? null;
     if (dialog) {
       // Capture, so it is seen before anything in the dialog stops it.
@@ -326,7 +350,13 @@ export class FloatingPanel {
     // In a dialog's layer the white dialog box is z-index 1, and the layer's own background is the
     // backdrop: 2 is in front of the box, 0 behind it but still above the backdrop. On the body,
     // above Carbon's modals (9000).
-    s.zIndex = this.layer ? (this.behind ? '0' : '2') : '9500';
+    s.zIndex = String(
+      this.layer
+        ? this.behind
+          ? PANEL_Z_INDEX.behindDialog
+          : PANEL_Z_INDEX.inFrontOfDialog
+        : PANEL_Z_INDEX.onPage,
+    );
   }
 
   /** Whether at least a clickable strip of the panel lies outside the dialog box. */

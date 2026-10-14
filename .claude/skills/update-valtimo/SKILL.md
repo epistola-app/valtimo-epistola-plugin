@@ -119,6 +119,10 @@ cd ../../test-app/frontend && pnpm install && pnpm build
 
 Fix breakages. Watch for Angular major bumps (template/API changes) and `@valtimo/components` Formio API changes.
 
+Keep `carbon-components-angular` in `frontend/plugin/package.json` at the version the target Valtimo
+uses. `carbon-modal.contract.spec.ts` (part of `pnpm test`) reads that version's modal and fails
+when a floating preview's stacking around a Valtimo dialog no longer holds; it says what to adapt.
+
 ## Step 7 — Update CHANGELOG.md
 
 Add an entry under `## [Unreleased]` (Keep-a-Changelog prose style, matching existing entries), e.g. under `### Changed`:
@@ -146,6 +150,11 @@ pnpm build             # from repo root — must succeed
 ```
 
 All must pass before the upgrade is considered done.
+
+Then run the **browser suite** against the upgraded test-app (`cd test-app/frontend && pnpm e2e`,
+with the stack from `CLAUDE.md` running). It runs nightly rather than on pull requests, and it is
+where Form.io and Valtimo integration defects surface — the composer, the previews in a real task
+dialog, form flows. An upgrade is not done while it is red.
 
 ## Step 9 — Summarize
 
