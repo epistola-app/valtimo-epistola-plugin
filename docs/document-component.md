@@ -106,6 +106,11 @@ way as the letter composer's: dragged by its header, resized from its corner, ke
 gone with the form. The dock icon puts it back. Whether it floats, and where, is remembered per browser,
 apart from the other kinds of preview (`utils/floating-panel.ts`, `PopOut`).
 
+Inside a Valtimo dialog the floating document stacks like a window on a desktop: a click in the
+dialog sends it behind the dialog box (still above the grey backdrop, and not dimmed), and a click
+on what still shows of it brings it forward. It only goes behind while at least a strip of it
+shows beside the dialog, so it can always be reached.
+
 ### The PDF on its own
 
 The letter is shown inline without the browser's PDF controls: no toolbar, no thumbnail panel, the page

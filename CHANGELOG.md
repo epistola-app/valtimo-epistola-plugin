@@ -32,7 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **The document preview and the document component pop out too**, like the composer's preview:
   floated over the page, dragged by the header, resized from the corner, gone with the form, and
-  remembered per browser for each kind of preview. The floating panel moved from the composer
+  remembered per browser for each kind of preview. Inside a Valtimo dialog a floating preview, the
+  composer's included, now stacks like a window on a desktop: a click in the dialog sends it behind
+  the dialog box, and a click on what still shows of it brings it forward. It only goes behind
+  while a strip of it stays visible, so it can always be reached. The floating panel moved from the composer
   module to `utils/` as a shared `PopOut`, since nothing outside the composer may depend on it. A
   browser test walks both in the permit demo (`preview-popout.spec.ts`).
 

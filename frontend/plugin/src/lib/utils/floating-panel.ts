@@ -29,6 +29,9 @@ export interface Viewport {
   height: number;
 }
 
+/** How much of a panel must show beside a dialog for it to go behind it, in CSS pixels. */
+const VISIBLE_STRIP = 40;
+
 /** The smallest a panel may become, so its header and a readable page always fit. */
 export const MIN_PANEL = { width: 320, height: 240 };
 
@@ -182,18 +185,27 @@ export function trackDrag(
 }
 
 /**
- * Detaches an element from wherever Angular put it and floats it over the page: moved to
- * `document.body`, fixed in place, dragged by a handle and resized from a corner.
+ * Detaches an element from wherever Angular put it and floats it over the page, fixed in place,
+ * dragged by a handle and resized from a corner.
  *
- * <p>Moved to the body rather than positioned where it is, because a dialog is usually transformed,
- * and a fixed element inside a transformed ancestor is fixed to that ancestor — the panel would
- * stay inside the dialog it is meant to escape. Angular keeps updating the element after the move:
- * bindings follow the node, not its parent.
+ * <p>Where it goes depends on where it was. Inside a Carbon dialog — which is how Valtimo opens a
+ * task — it moves into the dialog's own layer (`.cds--modal`, the fixed full-screen element whose
+ * background is the grey backdrop), beside the white dialog box. Stacked there it can be in front
+ * of the dialog or behind it while staying above the backdrop: a click in the dialog sends it back
+ * so it never covers what is being typed in, and a click on what is still visible of it brings it
+ * forward, like windows on a desktop. Anywhere else it moves to `document.body`, above everything.
+ * Either way it leaves the place Angular put it, because a fixed element inside a transformed
+ * ancestor is fixed to that ancestor. Angular keeps updating the element after the move: bindings
+ * follow the node, not its parent.
  *
  * <p>The element still belongs to Angular, so when Angular destroys it the panel has to let go of
  * it ({@link release}); otherwise it would stay on the body, orphaned, after the dialog closed.
  */
 export class FloatingPanel {
+  /** Carbon's modal layer the panel shares with a dialog, or null when it floats on the body. */
+  private layer: HTMLElement | null = null;
+  /** The white dialog box in that layer. */
+  private dialog: HTMLElement | null = null;
   private anchor: Comment | null = null;
   private geometry: PanelGeometry;
   private cleanup: Array<() => void> = [];
@@ -222,17 +234,53 @@ export class FloatingPanel {
       this.element.remove();
     }
     this.anchor = null;
+    this.layer = null;
+    this.dialog = null;
+    this.element.classList.remove('behind');
     ['position', 'left', 'top', 'width', 'height', 'z-index'].forEach((p) =>
       this.element.style.removeProperty(p),
     );
+  }
+
+  /** Whether the panel is currently behind the dialog it shares a layer with. */
+  get behind(): boolean {
+    return this.element.classList.contains('behind');
+  }
+
+  /**
+   * In front of the dialog, or behind it. Only meaningful inside a dialog's layer, and only behind
+   * while enough of it still shows beside the dialog to click it forward again: a panel the dialog
+   * would cover completely stays in front, or it could not be reached until the dialog closed.
+   */
+  private stack(behind: boolean): void {
+    if (!this.layer || behind === this.behind) {
+      return;
+    }
+    if (behind && !this.showsBeside(this.dialog)) {
+      return;
+    }
+    this.element.classList.toggle('behind', behind);
+    this.apply();
   }
 
   private float(): void {
     const doc = this.element.ownerDocument;
     this.anchor = doc.createComment('epistola-preview-docked');
     this.element.parentNode?.insertBefore(this.anchor, this.element);
-    doc.body.appendChild(this.element);
+    this.layer = this.element.closest<HTMLElement>('.cds--modal');
+    (this.layer ?? doc.body).appendChild(this.element);
     this.apply();
+    const dialog = this.layer?.querySelector<HTMLElement>('.cds--modal-container');
+    this.dialog = dialog ?? null;
+    if (dialog) {
+      // Capture, so it is seen before anything in the dialog stops it.
+      this.listen(dialog, 'pointerdown', () => this.stack(true), true);
+      this.listen(this.element, 'pointerdown', () => this.stack(false), true);
+      // A click on the PDF itself goes to the browser's viewer, not to the page, but it does move
+      // focus to the viewer's element: that is how a click on the letter brings it forward.
+      this.listen(this.element, 'focusin', () => this.stack(false));
+      this.listen(dialog, 'focusin', () => this.stack(true));
+    }
     this.listen(this.handle, 'pointerdown', (event) => this.drag(event as PointerEvent, 'move'));
     this.listen(this.resizer, 'pointerdown', (event) => this.drag(event as PointerEvent, 'resize'));
     this.listen(this.win, 'resize', () => {
@@ -275,17 +323,39 @@ export class FloatingPanel {
     s.top = `${this.geometry.top}px`;
     s.width = `${this.geometry.width}px`;
     s.height = `${this.geometry.height}px`;
-    // Above Carbon's modal (9000), which is what the composer usually sits in.
-    s.zIndex = '9500';
+    // In a dialog's layer the white dialog box is z-index 1, and the layer's own background is the
+    // backdrop: 2 is in front of the box, 0 behind it but still above the backdrop. On the body,
+    // above Carbon's modals (9000).
+    s.zIndex = this.layer ? (this.behind ? '0' : '2') : '9500';
+  }
+
+  /** Whether at least a clickable strip of the panel lies outside the dialog box. */
+  private showsBeside(dialog: HTMLElement | null): boolean {
+    if (!dialog) {
+      return false;
+    }
+    const box = dialog.getBoundingClientRect();
+    const g = this.geometry;
+    return (
+      box.left - g.left >= VISIBLE_STRIP ||
+      g.left + g.width - box.right >= VISIBLE_STRIP ||
+      box.top - g.top >= VISIBLE_STRIP ||
+      g.top + g.height - box.bottom >= VISIBLE_STRIP
+    );
   }
 
   private viewport(): Viewport {
     return { width: this.win.innerWidth, height: this.win.innerHeight };
   }
 
-  private listen(target: EventTarget, type: string, listener: (event: Event) => void): void {
-    target.addEventListener(type, listener);
-    this.cleanup.push(() => target.removeEventListener(type, listener));
+  private listen(
+    target: EventTarget,
+    type: string,
+    listener: (event: Event) => void,
+    capture = false,
+  ): void {
+    target.addEventListener(type, listener, capture);
+    this.cleanup.push(() => target.removeEventListener(type, listener, capture));
   }
 }
 

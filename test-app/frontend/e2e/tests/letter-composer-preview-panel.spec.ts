@@ -43,9 +43,29 @@ test.describe('Letter composer — the preview panel', () => {
     await page.mouse.up();
     expect(Math.round((await pane.boundingBox())!.width - docked)).toBe(100);
 
-    // Popped out: onto the page itself, so a dialog's transform cannot hold it inside.
+    // Popped out: out of the dialog box, so the box's layout cannot hold it inside.
     await page.getByTestId('epistola-composer-popout').click();
-    expect(await pane.evaluate((el) => el.parentElement === document.body)).toBe(true);
+    // Into the dialog's own layer, beside the dialog box rather than in it.
+    expect(
+      await pane.evaluate(
+        (el) => el.parentElement?.matches('.cds--modal') && !el.closest('.cds--modal-container'),
+      ),
+    ).toBe(true);
+    const zIndex = () => pane.evaluate((el) => getComputedStyle(el).zIndex);
+    expect(await zIndex()).toBe('2');
+
+    // Typing in the dialog sends it behind the dialog; a click on it brings it forward again.
+    await composerField(inputs, 'decision').click();
+    expect(await zIndex()).toBe('0');
+    // Clicked where it still shows: beside the dialog box, not under it.
+    const box = (await pane.boundingBox())!;
+    // The dialog box in the panel's own layer: Valtimo keeps more, hidden, in the page.
+    const dialogRight = await pane.evaluate(
+      (el) =>
+        el.parentElement!.querySelector('.cds--modal-container')!.getBoundingClientRect().right,
+    );
+    await page.mouse.click(Math.max(box.x + 10, dialogRight + 10), box.y + box.height / 2);
+    expect(await zIndex()).toBe('2');
 
     // A click on the panel is not a click outside the dialog.
     const header = page.getByTestId('epistola-composer-preview-header');

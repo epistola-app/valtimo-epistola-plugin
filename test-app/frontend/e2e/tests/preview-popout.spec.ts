@@ -15,10 +15,14 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
  * Needs a reachable Epistola, since both render a real PDF.
  */
 async function popsOutAndDocks(page: Page, panel: Locator, popOut: Locator): Promise<void> {
+  // Out of the place it sits in — into a dialog's own layer, or onto the page outside a dialog —
+  // and back into exactly that place when docked.
+  await panel.evaluate((el) => el.parentElement!.setAttribute('data-popout-home', ''));
+  const atHome = () => panel.evaluate((el) => !!el.parentElement?.hasAttribute('data-popout-home'));
   await popOut.click();
-  expect(await panel.evaluate((el) => el.parentElement === document.body)).toBe(true);
+  expect(await atHome()).toBe(false);
   await popOut.click();
-  expect(await panel.evaluate((el) => el.parentElement !== document.body)).toBe(true);
+  expect(await atHome()).toBe(true);
 }
 
 test.describe('Previews outside the composer — pop out', () => {
