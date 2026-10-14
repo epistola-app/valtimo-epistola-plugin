@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   though, lands on top of the panel and its fields, since a panel at the screen's edge leaves no
   room beside it the way a dialog does.
 
+  13.50.0 was installed on its release day, so `pnpm-workspace.yaml` exempts its `@valtimo/*`
+  packages from pnpm's one-day `minimumReleaseAge`, pinned to that version and safe to remove
+  after 2026-10-15.
+
 - **The browser suite renders real PDFs.** It runs the full Chromium build (`channel: 'chromium'`)
   instead of Playwright's lightweight headless shell, which has no PDF viewer: before, no preview's
   letter ever rendered in a test, so a hidden toolbar or a page's policy could not be tested at all.
