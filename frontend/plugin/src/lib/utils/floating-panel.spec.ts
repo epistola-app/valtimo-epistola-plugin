@@ -26,6 +26,7 @@ import {
   defaultGeometry,
   FloatingPanel,
   MIN_PANEL,
+  PopOut,
   readPanelMemory,
   writePanelMemory,
 } from './floating-panel';
@@ -261,5 +262,71 @@ describe('FloatingPanel', () => {
     pointer('pointermove', window, 200, 200);
 
     expect(pane.style.left).toBe('');
+  });
+});
+
+describe('PopOut', () => {
+  const memory = () => {
+    const items = new Map<string, string>();
+    return {
+      getItem: (key: string) => items.get(key) ?? null,
+      setItem: (key: string, value: string) => void items.set(key, value),
+      items,
+    } as unknown as Storage & { items: Map<string, string> };
+  };
+
+  const preview = () => {
+    const host = document.createElement('div');
+    const pane = document.createElement('div');
+    pane.innerHTML = '<div class="preview-header"></div><div class="preview-resize"></div>';
+    host.appendChild(pane);
+    document.body.appendChild(host);
+    return { host, pane };
+  };
+
+  beforeEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('floats when asked, remembers it under its own key, and docks again', () => {
+    const store = memory();
+    const popOut = new PopOut('epistola.documentPreview.previewPanel', undefined, undefined, store);
+    const { host, pane } = preview();
+    popOut.setElement(pane);
+
+    popOut.toggle();
+    expect(pane.parentElement).toBe(document.body);
+    expect(JSON.parse(store.items.get('epistola.documentPreview.previewPanel')!).floating).toBe(
+      true,
+    );
+    expect(store.items.has('epistola.composer.previewPanel')).toBe(false);
+
+    popOut.toggle();
+    expect(pane.parentElement).toBe(host);
+  });
+
+  it('floats a new element at once when it was left floating', () => {
+    const store = memory();
+    store.setItem('epistola.document.previewPanel', JSON.stringify({ floating: true }));
+    const popOut = new PopOut('epistola.document.previewPanel', undefined, undefined, store);
+    const { pane } = preview();
+
+    popOut.setElement(pane);
+
+    expect(popOut.floating).toBe(true);
+    expect(pane.parentElement).toBe(document.body);
+  });
+
+  it('lets go of a floating element when Angular takes it away', () => {
+    const store = memory();
+    const popOut = new PopOut('k', undefined, undefined, store);
+    const { host, pane } = preview();
+    popOut.setElement(pane);
+    popOut.toggle();
+    host.remove();
+
+    popOut.setElement(null);
+
+    expect(document.body.contains(pane)).toBe(false);
   });
 });

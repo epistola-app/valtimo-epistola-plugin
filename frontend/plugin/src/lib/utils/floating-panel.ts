@@ -101,7 +101,12 @@ export function clampDockedHeight(height: number, viewportHeight: number): numbe
   );
 }
 
-const STORAGE_KEY = 'epistola.composer.previewPanel';
+/** Where each kind of preview remembers its panel; the composer's key predates the others. */
+export const PANEL_MEMORY_KEYS = {
+  composer: 'epistola.composer.previewPanel',
+  documentPreview: 'epistola.documentPreview.previewPanel',
+  document: 'epistola.document.previewPanel',
+} as const;
 
 /**
  * The remembered panel, or a docked one. Browser storage is a convenience: it can be missing,
@@ -110,9 +115,10 @@ const STORAGE_KEY = 'epistola.composer.previewPanel';
  */
 export function readPanelMemory(
   storage: Pick<Storage, 'getItem'> | undefined = safeStorage(),
+  key: string = PANEL_MEMORY_KEYS.composer,
 ): PanelMemory {
   try {
-    const parsed = JSON.parse(storage?.getItem(STORAGE_KEY) ?? 'null');
+    const parsed = JSON.parse(storage?.getItem(key) ?? 'null');
     if (parsed && typeof parsed.floating === 'boolean') {
       const g = parsed.geometry;
       const valid = g && ['left', 'top', 'width', 'height'].every((k) => Number.isFinite(g[k]));
@@ -134,9 +140,10 @@ export function readPanelMemory(
 export function writePanelMemory(
   memory: PanelMemory,
   storage: Pick<Storage, 'setItem'> | undefined = safeStorage(),
+  key: string = PANEL_MEMORY_KEYS.composer,
 ): void {
   try {
-    storage?.setItem(STORAGE_KEY, JSON.stringify(memory));
+    storage?.setItem(key, JSON.stringify(memory));
   } catch {
     // Not remembered, which costs the employee one drag next time.
   }
@@ -279,5 +286,80 @@ export class FloatingPanel {
   private listen(target: EventTarget, type: string, listener: (event: Event) => void): void {
     target.addEventListener(type, listener);
     this.cleanup.push(() => target.removeEventListener(type, listener));
+  }
+}
+
+/**
+ * Pop a preview out of its form and back, for a component that shows one.
+ *
+ * <p>Holds what the component would otherwise repeat: whether it floats (remembered per browser,
+ * per kind of preview), floating the element when Angular hands it over, and letting go of it when
+ * Angular takes it away — a preview usually lives inside an `*ngIf`, and an element left floating on
+ * the page after its component is gone would be an orphan nobody can close.
+ *
+ * <p>The element needs a header to drag (`handleSelector`) and a corner to resize from
+ * (`resizerSelector`) inside it.
+ */
+export class PopOut {
+  floating: boolean;
+  private panel: FloatingPanel | null = null;
+  private element: HTMLElement | null = null;
+
+  constructor(
+    private readonly memoryKey: string,
+    private readonly handleSelector = '.preview-header',
+    private readonly resizerSelector = '.preview-resize',
+    private readonly storage: Storage | undefined = safeStorage(),
+  ) {
+    this.floating = readPanelMemory(this.storage, this.memoryKey).floating;
+  }
+
+  /** The preview's element, whenever Angular (re)creates or removes it. */
+  setElement(element: HTMLElement | null): void {
+    if (element === this.element) {
+      return;
+    }
+    this.release();
+    this.element = element;
+    if (element && this.floating) {
+      this.start(element);
+    }
+  }
+
+  /** Float it, or put it back. */
+  toggle(): void {
+    this.floating = !this.floating;
+    writePanelMemory(
+      { ...readPanelMemory(this.storage, this.memoryKey), floating: this.floating },
+      this.storage,
+      this.memoryKey,
+    );
+    if (this.floating && this.element) {
+      this.start(this.element);
+    } else {
+      this.release();
+    }
+  }
+
+  /** Back where Angular put it. Call from `ngOnDestroy`. */
+  release(): void {
+    this.panel?.release();
+    this.panel = null;
+  }
+
+  private start(element: HTMLElement): void {
+    const handle = element.querySelector<HTMLElement>(this.handleSelector);
+    const resizer = element.querySelector<HTMLElement>(this.resizerSelector);
+    if (!handle || !resizer) {
+      return;
+    }
+    const memory = readPanelMemory(this.storage, this.memoryKey);
+    this.panel = new FloatingPanel(element, handle, resizer, memory.geometry, (geometry) =>
+      writePanelMemory(
+        { ...readPanelMemory(this.storage, this.memoryKey), floating: true, geometry },
+        this.storage,
+        this.memoryKey,
+      ),
+    );
   }
 }
