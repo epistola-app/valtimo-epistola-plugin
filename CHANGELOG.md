@@ -30,6 +30,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The letter composer fits a small dialog, and its preview can float.** A Valtimo task dialog is
+  about 770px wide on a laptop, which left the form and an unreadable 360px-wide preview side by
+  side, a PDF taller than the dialog, and a preview that scrolled away with a long form.
+  - **The preview stays in view** to the right of the form while a long form scrolls; only a
+    phone-narrow space (below 36rem of the composer's own width) stacks it below.
+  - **A box in Valtimo's style that can be resized**: a Carbon heading bar with the controls, the
+    divider beside it to share the width differently, and a grip below it for the height. Its
+    default height fits a laptop's task dialog; both sizes are remembered per browser.
+  - **Losmaken / Vastzetten** floats the preview over the page: dragged by its header, resized from
+    its corner, kept on screen, remembered per browser, and gone with the dialog.
+  - **Automatisch bijwerken** can be switched off by the employee, with **Vernieuwen** to render on
+    demand and **Niet bijgewerkt** while it is behind; an author can start it off with the new
+    `autoRefresh` setting, for a letter that is slow to render.
+  - **The previous letter stays on screen while the next renders**, dimmed, instead of the preview
+    going blank on every edit and losing the employee's place in it.
+  - A browser test walks it inside a real dialog (`letter-composer-preview-panel.spec.ts`).
+
 - **The `permit` demo corrects the case instead of the letter.** A refused confirmation letter now
   leads to "Corrigeer dossiergegevens": the reason Epistola gave, and the applicant and location
   fields of the case. Submitting it writes them to the case and generates again, with the mapping.

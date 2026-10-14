@@ -178,6 +178,16 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
           },
           {
             type: 'checkbox',
+            key: 'epistola.autoRefresh',
+            label: 'Update the preview as the letter is filled in',
+            tooltip:
+              'On by default. Turn off for a letter that is slow to render: the employee then ' +
+              'updates the preview with its Refresh button, and can still switch this on for themselves.',
+            defaultValue: true,
+            weight: 28,
+          },
+          {
+            type: 'checkbox',
             key: 'epistola.askOptionalFields',
             label: 'Also ask for optional fields the mapping left empty',
             tooltip:
