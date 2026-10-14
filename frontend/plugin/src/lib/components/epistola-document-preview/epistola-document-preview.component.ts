@@ -20,12 +20,14 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   EventEmitter,
   Input,
   OnChanges,
   OnDestroy,
   Output,
   SimpleChanges,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -33,6 +35,7 @@ import { FormioCustomComponent } from '@valtimo/components';
 import { Observable, Subscription } from 'rxjs';
 import { EpistolaPluginService } from '../../services';
 import { pdfViewUrl } from '../../utils/pdf-view';
+import { PANEL_MEMORY_KEYS, PopOut } from '../../utils/floating-panel';
 import { shouldLoadPreview } from './preview-utils';
 import {
   isLegacyOverrideMapping,
@@ -72,7 +75,13 @@ import {
     </div>
 
     <!-- Runtime view: actual preview -->
-    <div *ngIf="!designMode" class="epistola-preview-panel" data-testid="epistola-preview-runtime">
+    <div
+      *ngIf="!designMode"
+      #runtimePanel
+      class="epistola-preview-panel"
+      [class.floating]="floating"
+      data-testid="epistola-preview-runtime"
+    >
       <div class="preview-header">
         <span>{{ label || 'Document Preview' }}</span>
         <div class="preview-controls">
@@ -99,6 +108,23 @@ import {
             <i class="mdi mdi-refresh mr-1"></i>
             {{ loading ? 'Generating...' : 'Refresh' }}
           </button>
+          <button
+            type="button"
+            class="preview-refresh"
+            data-testid="epistola-preview-popout"
+            [attr.title]="
+              floating ? 'Put the preview back in the form' : 'Pop the preview out of the form'
+            "
+            (click)="togglePopOut()"
+          >
+            <i
+              class="mdi"
+              [class.mdi-open-in-new]="!floating"
+              [class.mdi-dock-right]="floating"
+              aria-hidden="true"
+            ></i>
+            <span class="ml-1">{{ floating ? 'Dock' : 'Pop out' }}</span>
+          </button>
         </div>
       </div>
       <div class="preview-body">
@@ -123,6 +149,7 @@ import {
           PDF preview is not supported in this browser.
         </object>
       </div>
+      <div class="preview-resize" aria-hidden="true"></div>
     </div>
   `,
   styles: [
@@ -217,6 +244,40 @@ import {
         flex: 1;
         min-height: 500px;
       }
+      .preview-resize {
+        display: none;
+      }
+      /* Floating: moved onto the page by PopOut, which sets its place and size. */
+      .epistola-preview-panel.floating {
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      }
+      .epistola-preview-panel.floating .preview-header {
+        cursor: move;
+        user-select: none;
+      }
+      .epistola-preview-panel.floating .preview-body {
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+      .epistola-preview-panel.floating .preview-pdf {
+        min-height: 0;
+        height: 100%;
+      }
+      .epistola-preview-panel.floating .preview-resize {
+        display: block;
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 1rem;
+        height: 1rem;
+        cursor: nwse-resize;
+        touch-action: none;
+        background: linear-gradient(135deg, transparent 50%, #8d8d8d 50%);
+      }
+      /* The PDF viewer would take the pointer mid-drag and stop it dead. */
+      .epistola-preview-panel.dragging .preview-pdf {
+        pointer-events: none;
+      }
       .preview-empty {
         padding: 2rem;
         text-align: center;
@@ -265,6 +326,9 @@ import {
 export class EpistolaDocumentPreviewComponent
   implements FormioCustomComponent<Record<string, any> | null>, OnChanges, OnDestroy
 {
+  /** Floats the preview over the page, and puts it back. */
+  private readonly popOut = new PopOut(PANEL_MEMORY_KEYS.documentPreview);
+
   @Input() value!: Record<string, any> | null;
   @Output() valueChange = new EventEmitter<Record<string, any> | null>();
 
@@ -423,7 +487,28 @@ export class EpistolaDocumentPreviewComponent
     }
   }
 
+  /**
+   * The runtime panel, whenever Angular (re)creates it, so a floating one follows it and an
+   * orphaned one never stays on the page. See {@link PopOut}.
+   */
+  @ViewChild('runtimePanel')
+  set runtimePanel(ref: ElementRef<HTMLElement> | undefined) {
+    this.popOut.setElement(ref?.nativeElement ?? null);
+  }
+
+  /** Whether the preview floats over the page instead of sitting in the form. */
+  get floating(): boolean {
+    return this.popOut.floating;
+  }
+
+  /** Float the preview over the page, or put it back. Remembered per browser. */
+  togglePopOut(): void {
+    this.popOut.toggle();
+    this.cdr.markForCheck();
+  }
+
   ngOnDestroy(): void {
+    this.popOut.release();
     this.previewSubscription?.unsubscribe();
     this.revokeBlobUrl();
   }

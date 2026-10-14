@@ -30,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The document preview and the document component pop out too**, like the composer's preview:
+  floated over the page, dragged by the header, resized from the corner, gone with the form, and
+  remembered per browser for each kind of preview. The floating panel moved from the composer
+  module to `utils/` as a shared `PopOut`, since nothing outside the composer may depend on it. A
+  browser test walks both in the permit demo (`preview-popout.spec.ts`).
+
 - **A letter is shown without the browser's PDF controls**, in the composer's preview, the
   document preview and the document component: no toolbar, no thumbnail panel, the page fitted to
   the width. Chrome and Edge honour it; Firefox keeps its toolbar but fits the page, and Safari is

@@ -458,7 +458,8 @@ in `test-app/frontend/src/app/embedding/`; the published plugin library is untou
 - **Playwright E2E suites** — plugin-configuration, generate-document, check-job-status,
   download-document, form-flow-transition, letter-composer (×2), letter-composer-adhoc,
   permit-correct-case (a refused letter fixed by correcting the case),
-  letter-composer-preview-panel (pop out, drag, dock and pause the preview inside a real dialog). They run
+  letter-composer-preview-panel (pop out, drag, dock and pause the preview inside a real dialog),
+  preview-popout (the document preview and the generated letter pop out of real forms). They run
   **nightly and on demand** (`.github/workflows/e2e-ui.yml`, `gh workflow run "E2E (browser)"`),
   not in PR CI: they need Postgres, Keycloak, Epistola, the backend and the Angular dev server, so
   they are far slower than a PR check should be. Run them before a release — they are where the

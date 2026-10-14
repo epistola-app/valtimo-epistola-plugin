@@ -190,6 +190,13 @@ Do not quote the whole dotted key as one segment.
 > next time the form is saved in the builder. The admin page's **Forms** tab lists forms still on the
 > legacy format (`GET /admin/forms/legacy-override`).
 
+### Pop out
+
+**Pop out** in the header floats the preview over the page, out of the form it sits in, the same
+way as the letter composer's: dragged by its header, resized from its corner, kept on screen, and
+gone with the form. **Dock** puts it back. Whether it floats, and where, is remembered per browser,
+apart from the other kinds of preview (`utils/floating-panel.ts`, `PopOut`).
+
 ### The PDF on its own
 
 The letter is shown without the browser's PDF controls: no toolbar, no thumbnail panel, the page

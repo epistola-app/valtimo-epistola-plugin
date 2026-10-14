@@ -20,12 +20,14 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   EventEmitter,
   Input,
   OnChanges,
   OnDestroy,
   Output,
   SimpleChanges,
+  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -33,6 +35,7 @@ import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { Subscription } from 'rxjs';
 import { DownloadDocumentRequest, EpistolaPluginService } from '../../services';
 import { pdfViewUrl } from '../../utils/pdf-view';
+import { PANEL_MEMORY_KEYS, PopOut } from '../../utils/floating-panel';
 
 export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
 
@@ -96,7 +99,9 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
     <!-- Inline / both: panel with optional download icon -->
     <div
       *ngIf="!designMode && display !== 'button'"
+      #inlinePanel
       class="epistola-doc-panel"
+      [class.floating]="floating"
       data-testid="epistola-document-inline-view"
     >
       <div class="doc-header">
@@ -123,6 +128,22 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
           >
             <i class="mdi mdi-refresh"></i>
           </button>
+          <button
+            type="button"
+            class="doc-icon-btn"
+            data-testid="epistola-document-popout"
+            [title]="
+              floating ? 'Put the document back in the form' : 'Pop the document out of the form'
+            "
+            (click)="togglePopOut()"
+          >
+            <i
+              class="mdi"
+              [class.mdi-open-in-new]="!floating"
+              [class.mdi-dock-right]="floating"
+              aria-hidden="true"
+            ></i>
+          </button>
         </div>
       </div>
       <div class="doc-body">
@@ -147,6 +168,7 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
           PDF preview is not supported in this browser.
         </object>
       </div>
+      <div class="doc-resize" aria-hidden="true"></div>
     </div>
   `,
   styles: [
@@ -157,6 +179,42 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
         background: #f8f9fa;
         display: flex;
         flex-direction: column;
+      }
+      .doc-resize {
+        display: none;
+      }
+      /* Floating: moved onto the page by PopOut, which sets its place and size. */
+      .epistola-doc-panel.floating {
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+      }
+      .epistola-doc-panel.floating .doc-header {
+        cursor: move;
+        user-select: none;
+      }
+      .epistola-doc-panel.floating .doc-body {
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+      .epistola-doc-panel.floating .doc-pdf {
+        min-height: 0;
+        height: 100%;
+      }
+      .epistola-doc-panel.floating .doc-resize {
+        display: block;
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        width: 1rem;
+        height: 1rem;
+        cursor: nwse-resize;
+        touch-action: none;
+        background: linear-gradient(135deg, transparent 50%, #8d8d8d 50%);
+      }
+      /* The PDF viewer would take the pointer mid-drag and stop it dead. */
+      .epistola-doc-panel.dragging .doc-pdf {
+        pointer-events: none;
       }
       .doc-header {
         display: flex;
@@ -239,6 +297,9 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
 export class EpistolaDocumentComponent
   implements FormioCustomComponent<unknown>, OnChanges, OnDestroy
 {
+  /** Floats the document over the page, and puts it back. */
+  private readonly popOut = new PopOut(PANEL_MEMORY_KEYS.document, '.doc-header', '.doc-resize');
+
   @Input() value: unknown;
   @Output() valueChange = new EventEmitter<unknown>();
 
@@ -302,7 +363,28 @@ export class EpistolaDocumentComponent
     }
   }
 
+  /**
+   * The inline panel, whenever Angular (re)creates it, so a floating one follows it and an
+   * orphaned one never stays on the page. See {@link PopOut}.
+   */
+  @ViewChild('inlinePanel')
+  set inlinePanel(ref: ElementRef<HTMLElement> | undefined) {
+    this.popOut.setElement(ref?.nativeElement ?? null);
+  }
+
+  /** Whether the document floats over the page instead of sitting in the form. */
+  get floating(): boolean {
+    return this.popOut.floating;
+  }
+
+  /** Float the document over the page, or put it back. Remembered per browser. */
+  togglePopOut(): void {
+    this.popOut.toggle();
+    this.cdr.markForCheck();
+  }
+
   ngOnDestroy(): void {
+    this.popOut.release();
     this.subscription?.unsubscribe();
     this.revokeBlobUrl();
   }
