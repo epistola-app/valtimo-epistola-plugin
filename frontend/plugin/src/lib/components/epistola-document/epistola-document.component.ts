@@ -101,6 +101,7 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
       *ngIf="!designMode && display !== 'button'"
       [title]="label || 'Document'"
       [memoryKey]="memoryKey"
+      [windowUrl]="currentBlobUrl"
       testId="epistola-document-inline-view"
     >
       <button
@@ -258,7 +259,8 @@ export class EpistolaDocumentComponent
   error: string | null = null;
   previewUrl: SafeResourceUrl | null = null;
 
-  private currentBlobUrl: string | null = null;
+  /** The rendered PDF's object URL; the frame shows it in a window of its own when asked. */
+  currentBlobUrl: string | null = null;
   private subscription?: Subscription;
 
   get designMode(): boolean {

@@ -23,7 +23,11 @@ import { pdfViewUrl } from '../../utils/pdf-view';
 
 /** A rendered letter, or why it could not be rendered. */
 export type PreviewResult =
-  | { url: SafeResourceUrl }
+  | {
+      url: SafeResourceUrl;
+      /** The same letter as a plain object URL, for a window of its own. */
+      raw: string;
+    }
   | {
       error: string;
       /**
@@ -37,7 +41,7 @@ export type PreviewResult =
       fields?: readonly FieldFinding[];
     };
 
-export function isRendered(result: PreviewResult): result is { url: SafeResourceUrl } {
+export function isRendered(result: PreviewResult): result is { url: SafeResourceUrl; raw: string } {
   return 'url' in result;
 }
 
@@ -75,6 +79,7 @@ export class PreviewRenderer {
           this.currentUrl = URL.createObjectURL(blob);
           subscriber.next({
             url: this.sanitizer.bypassSecurityTrustResourceUrl(pdfViewUrl(this.currentUrl)),
+            raw: this.currentUrl,
           });
           if (previous) {
             URL.revokeObjectURL(previous);

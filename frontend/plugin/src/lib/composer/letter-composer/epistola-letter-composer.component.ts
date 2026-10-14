@@ -172,6 +172,7 @@ export interface ComposerValue {
           [title]="('composerPreview' | pluginTranslate: pluginId | async) ?? ''"
           [memoryKey]="memoryKey"
           [resizable]="true"
+          [windowUrl]="previewRawUrl"
           testId="epistola-composer-preview"
         >
           <span
@@ -401,6 +402,8 @@ export class EpistolaLetterComposerComponent
   error: string | null = null;
 
   previewUrl: SafeResourceUrl | null = null;
+  /** The same letter as a plain object URL, for the frame's window. */
+  previewRawUrl: string | null = null;
   previewLoading = false;
   previewError: string | null = null;
   /** True while the letter still misses a required value, so no preview is attempted. */
@@ -716,9 +719,11 @@ export class EpistolaLetterComposerComponent
 
         if (isRendered(result)) {
           this.previewUrl = result.url;
+          this.previewRawUrl = result.raw;
           this.previewError = null;
         } else {
           this.previewUrl = null;
+          this.previewRawUrl = null;
           this.previewError = this.describeRefusal(result.error, result.fields);
         }
         this.cdr.markForCheck();
@@ -869,5 +874,6 @@ export class EpistolaLetterComposerComponent
   private revokePreview(): void {
     this.previews.release();
     this.previewUrl = null;
+    this.previewRawUrl = null;
   }
 }

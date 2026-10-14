@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A preview can open in a browser window of its own**, for a second screen: the composer's
+  preview, the document preview and the document component, through their shared frame. The
+  window holds only the letter (with the viewer's toolbar, for printing and zooming) and follows
+  each edit; what the employee is told stays in the form. There is only ever one — every preview
+  uses the same named window — and it closes with the dialog, and with the page on a reload or when
+  leaving Valtimo. Closing it by hand brings the letter back into the form. A blocked pop-up is
+  said so in the frame. The in-page pop-out now has a picture-in-picture icon, since
+  `open-in-new` belongs to the window. A browser test walks it (`preview-window.spec.ts`).
+
 ### Deprecated
 
 - **The retry form (`epistola-retry-form`, the auto-deployed `epistola-retry-document` form and

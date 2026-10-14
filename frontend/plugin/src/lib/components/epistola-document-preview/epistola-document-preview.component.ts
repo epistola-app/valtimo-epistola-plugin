@@ -79,6 +79,7 @@ import {
       *ngIf="!designMode"
       [title]="label || 'Document Preview'"
       [memoryKey]="memoryKey"
+      [windowUrl]="currentBlobUrl"
       testId="epistola-preview-runtime"
     >
       <div
@@ -292,7 +293,8 @@ export class EpistolaDocumentPreviewComponent
   error: string | null = null;
   previewUrl: SafeResourceUrl | null = null;
   private initialized = false;
-  private currentBlobUrl: string | null = null;
+  /** The rendered PDF's object URL; the frame shows it in a window of its own when asked. */
+  currentBlobUrl: string | null = null;
   private previewSubscription?: Subscription;
 
   constructor(
