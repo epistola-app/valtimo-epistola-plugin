@@ -30,6 +30,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **A letter is shown without the browser's PDF controls**, in the composer's preview, the
+  document preview and the document component: no toolbar, no thumbnail panel, the page fitted to
+  the width. Chrome and Edge honour it; Firefox keeps its toolbar but fits the page, and Safari is
+  unchanged. In `epistola-document` the component's own download button stays; the viewer's
+  print and download buttons go with its toolbar.
+
 - **The letter composer fits a small dialog, and its preview can float.** A Valtimo task dialog is
   about 770px wide on a laptop, which left the form and an unreadable 360px-wide preview side by
   side, a PDF taller than the dialog, and a preview that scrolled away with a long form.

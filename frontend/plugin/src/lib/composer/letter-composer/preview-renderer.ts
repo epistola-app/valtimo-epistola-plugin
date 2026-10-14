@@ -19,6 +19,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { Observable } from 'rxjs';
 
 import type { FieldFinding } from './composer-findings';
+import { pdfViewUrl } from '../../utils/pdf-view';
 
 /** A rendered letter, or why it could not be rendered. */
 export type PreviewResult =
@@ -72,7 +73,9 @@ export class PreviewRenderer {
         next: (blob) => {
           const previous = this.currentUrl;
           this.currentUrl = URL.createObjectURL(blob);
-          subscriber.next({ url: this.sanitizer.bypassSecurityTrustResourceUrl(this.currentUrl) });
+          subscriber.next({
+            url: this.sanitizer.bypassSecurityTrustResourceUrl(pdfViewUrl(this.currentUrl)),
+          });
           if (previous) {
             URL.revokeObjectURL(previous);
           }

@@ -53,7 +53,7 @@ describe('PreviewRenderer', () => {
     const result = render(of(new Blob(['%PDF'])));
 
     expect(isRendered(result)).toBe(true);
-    expect((result as any).url).toBe('safe:blob:1');
+    expect((result as any).url).toBe('safe:blob:1#toolbar=0&navpanes=0&view=FitH');
   });
 
   it('keeps the previous letter on screen until the next one arrives, then releases it', () => {

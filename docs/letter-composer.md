@@ -239,6 +239,13 @@ blank the preview and lose the employee's place in it.
 `autoRefresh` is a presentation setting under `epistola`, absent meaning on, so it did not change
 the stored shape's `schemaVersion`: an older plugin simply ignores it.
 
+### The PDF on its own
+
+The letter is shown without the browser's PDF controls: no toolbar, no thumbnail panel, the page
+fitted to the width (`#toolbar=0&navpanes=0&view=FitH`, see `utils/pdf-view.ts`). Chrome and Edge
+honour this; Firefox keeps its toolbar but fits the page, and Safari shows its usual viewer, so
+nothing breaks where it is not heard. Zooming with the keyboard or mouse still works.
+
 ### On a task form, a start form, or a form-flow step
 
 A composer is found wherever the activity's process link leads. A **form** link gives its form

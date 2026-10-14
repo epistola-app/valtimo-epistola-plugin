@@ -32,6 +32,7 @@ import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { FormioCustomComponent } from '@valtimo/components';
 import { Observable, Subscription } from 'rxjs';
 import { EpistolaPluginService } from '../../services';
+import { pdfViewUrl } from '../../utils/pdf-view';
 import { shouldLoadPreview } from './preview-utils';
 import {
   isLegacyOverrideMapping,
@@ -556,7 +557,9 @@ export class EpistolaDocumentPreviewComponent
 
   private handlePreviewSuccess(blob: Blob): void {
     this.currentBlobUrl = URL.createObjectURL(blob);
-    this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.currentBlobUrl);
+    this.previewUrl = this.sanitizer.bypassSecurityTrustResourceUrl(
+      pdfViewUrl(this.currentBlobUrl),
+    );
     this.error = null;
     this.loading = false;
     this.cdr.markForCheck();
