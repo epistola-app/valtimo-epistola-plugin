@@ -176,7 +176,8 @@ export function writePanelMemory(
   }
 }
 
-function safeStorage(): Storage | undefined {
+/** The browser's storage, or nothing where it is forbidden. */
+export function safeStorage(): Storage | undefined {
   try {
     return globalThis.localStorage;
   } catch {
@@ -448,6 +449,16 @@ export class PopOut {
   }
 
   private start(element: HTMLElement): void {
+    // A component's element can be handed over before Angular has put it in the page; floated then,
+    // it would not find the dialog it belongs to. Try again once it is there.
+    if (!element.isConnected) {
+      globalThis.requestAnimationFrame?.(() => {
+        if (element === this.element && this.floating && !this.panel) {
+          this.start(element);
+        }
+      });
+      return;
+    }
     const handle = element.querySelector<HTMLElement>(this.handleSelector);
     const resizer = element.querySelector<HTMLElement>(this.resizerSelector);
     if (!handle || !resizer) {

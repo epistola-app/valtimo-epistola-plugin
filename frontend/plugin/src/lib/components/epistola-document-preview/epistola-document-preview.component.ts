@@ -20,14 +20,12 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  ElementRef,
   EventEmitter,
   Input,
   OnChanges,
   OnDestroy,
   Output,
   SimpleChanges,
-  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -35,7 +33,9 @@ import { FormioCustomComponent } from '@valtimo/components';
 import { Observable, Subscription } from 'rxjs';
 import { EpistolaPluginService } from '../../services';
 import { pdfViewUrl } from '../../utils/pdf-view';
-import { PANEL_MEMORY_KEYS, PopOut } from '../../utils/floating-panel';
+import { PANEL_MEMORY_KEYS } from '../../utils/floating-panel';
+import { PluginTranslatePipeModule } from '@valtimo/plugin';
+import { EpistolaPreviewFrameComponent } from '../epistola-preview-frame/epistola-preview-frame.component';
 import { shouldLoadPreview } from './preview-utils';
 import {
   isLegacyOverrideMapping,
@@ -44,7 +44,7 @@ import {
 
 @Component({
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PluginTranslatePipeModule, EpistolaPreviewFrameComponent],
   selector: 'epistola-document-preview-component',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -74,83 +74,69 @@ import {
       </div>
     </div>
 
-    <!-- Runtime view: actual preview -->
-    <div
+    <!-- Runtime view: actual preview, in the frame every Epistola preview shares -->
+    <epistola-preview-frame
       *ngIf="!designMode"
-      #runtimePanel
-      class="epistola-preview-panel"
-      [class.floating]="floating"
-      data-testid="epistola-preview-runtime"
+      [title]="label || 'Document Preview'"
+      [memoryKey]="memoryKey"
+      testId="epistola-preview-runtime"
     >
-      <div class="preview-header">
-        <span>{{ label || 'Document Preview' }}</span>
-        <div class="preview-controls">
-          <label
-            *ngIf="overrideMapping || liveOverrides"
-            class="preview-autorefresh"
-            title="Automatically refresh the preview as you fill in the form"
-          >
-            <input
-              type="checkbox"
-              data-testid="epistola-preview-autorefresh"
-              [checked]="autoRefreshEnabled"
-              (change)="onToggleAutoRefresh($event)"
-            />
-            Auto-refresh
-          </label>
-          <button
-            type="button"
-            class="preview-refresh"
-            data-testid="epistola-preview-refresh"
-            [disabled]="loading"
-            (click)="refresh()"
-          >
-            <i class="mdi mdi-refresh mr-1"></i>
-            {{ loading ? 'Generating...' : 'Refresh' }}
-          </button>
-          <button
-            type="button"
-            class="preview-refresh"
-            data-testid="epistola-preview-popout"
-            [attr.title]="
-              floating ? 'Put the preview back in the form' : 'Pop the preview out of the form'
-            "
-            (click)="togglePopOut()"
-          >
-            <i
-              class="mdi"
-              [class.mdi-open-in-new]="!floating"
-              [class.mdi-dock-right]="floating"
-              aria-hidden="true"
-            ></i>
-            <span class="ml-1">{{ floating ? 'Dock' : 'Pop out' }}</span>
-          </button>
-        </div>
+      <div
+        previewControls
+        *ngIf="overrideMapping || liveOverrides"
+        class="cds--checkbox-wrapper epistola-preview-frame__checkbox"
+      >
+        <input
+          type="checkbox"
+          class="cds--checkbox"
+          [id]="autoRefreshId"
+          data-testid="epistola-preview-autorefresh"
+          [checked]="autoRefreshEnabled"
+          (change)="onToggleAutoRefresh($event)"
+        />
+        <label [for]="autoRefreshId" class="cds--checkbox-label">
+          <span class="cds--checkbox-label-text">{{
+            'previewAutoRefresh' | pluginTranslate: pluginId | async
+          }}</span>
+        </label>
       </div>
-      <div class="preview-body">
-        <div *ngIf="loading" class="preview-loading" data-testid="epistola-preview-loading">
-          Generating preview...
-        </div>
-        <div
-          *ngIf="error && !loading"
-          class="preview-unavailable"
-          data-testid="epistola-preview-error"
-        >
-          <i class="mdi mdi-information-outline"></i>
-          {{ error }}
-        </div>
-        <object
-          *ngIf="previewUrl && !loading"
-          [data]="previewUrl"
-          type="application/pdf"
-          class="preview-pdf"
-          data-testid="epistola-preview-pdf"
-        >
-          PDF preview is not supported in this browser.
-        </object>
+      <button
+        previewControls
+        type="button"
+        class="cds--btn cds--btn--ghost cds--btn--sm epistola-preview-frame__icon-button"
+        data-testid="epistola-preview-refresh"
+        [disabled]="loading"
+        [attr.title]="'previewRefresh' | pluginTranslate: pluginId | async"
+        [attr.aria-label]="'previewRefresh' | pluginTranslate: pluginId | async"
+        (click)="refresh()"
+      >
+        <i class="mdi mdi-refresh" aria-hidden="true"></i>
+      </button>
+      <div
+        *ngIf="loading"
+        class="epistola-preview-frame__message"
+        data-testid="epistola-preview-loading"
+      >
+        {{ 'previewGenerating' | pluginTranslate: pluginId | async }}
       </div>
-      <div class="preview-resize" aria-hidden="true"></div>
-    </div>
+      <div
+        *ngIf="error && !loading"
+        class="epistola-preview-frame__message"
+        data-testid="epistola-preview-error"
+      >
+        <i class="mdi mdi-information-outline" aria-hidden="true"></i>
+        {{ error }}
+      </div>
+      <object
+        *ngIf="previewUrl && !loading"
+        [data]="previewUrl"
+        type="application/pdf"
+        class="epistola-preview-frame__pdf"
+        data-testid="epistola-preview-pdf"
+      >
+        {{ 'previewUnsupported' | pluginTranslate: pluginId | async }}
+      </object>
+    </epistola-preview-frame>
   `,
   styles: [
     `
@@ -172,117 +158,10 @@ import {
         flex-wrap: wrap;
         gap: 0.5rem;
       }
-      .preview-controls {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-      }
-      .preview-autorefresh {
-        display: flex;
-        align-items: center;
-        gap: 0.3rem;
-        font-size: 0.8rem;
-        font-weight: normal;
-        color: #495057;
-        cursor: pointer;
-        margin: 0;
-        white-space: nowrap;
-      }
-      .preview-autorefresh input {
-        cursor: pointer;
-        margin: 0;
-      }
-      .preview-select {
-        border: 1px solid #ced4da;
-        border-radius: 4px;
-        padding: 0.25rem 0.5rem;
-        font-size: 0.8rem;
-        background: white;
-        max-width: 300px;
-      }
-      .preview-refresh {
-        background: none;
-        border: 1px solid #6c757d;
-        border-radius: 4px;
-        color: #6c757d;
-        padding: 0.25rem 0.75rem;
-        font-size: 0.8rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        white-space: nowrap;
-      }
-      .preview-refresh:hover:not(:disabled) {
-        background: #e9ecef;
-      }
-      .preview-refresh:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
       .preview-body {
         display: flex;
         flex-direction: column;
         min-height: 500px;
-      }
-      .preview-loading {
-        padding: 2rem;
-        text-align: center;
-        color: #6c757d;
-        font-style: italic;
-      }
-      .preview-unavailable {
-        padding: 1.5rem;
-        text-align: center;
-        color: #6c757d;
-        font-style: italic;
-      }
-      .preview-unavailable i {
-        margin-right: 0.25rem;
-      }
-      .preview-pdf {
-        width: 100%;
-        flex: 1;
-        min-height: 500px;
-      }
-      .preview-resize {
-        display: none;
-      }
-      /* Floating: moved onto the page by PopOut, which sets its place and size. */
-      .epistola-preview-panel.floating {
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-      }
-      .epistola-preview-panel.floating .preview-header {
-        cursor: move;
-        user-select: none;
-      }
-      .epistola-preview-panel.floating .preview-body {
-        flex: 1 1 auto;
-        min-height: 0;
-      }
-      .epistola-preview-panel.floating .preview-pdf {
-        min-height: 0;
-        height: 100%;
-      }
-      .epistola-preview-panel.floating .preview-resize {
-        display: block;
-        position: absolute;
-        right: 0;
-        bottom: 0;
-        width: 1rem;
-        height: 1rem;
-        cursor: nwse-resize;
-        touch-action: none;
-        background: linear-gradient(135deg, transparent 50%, #8d8d8d 50%);
-      }
-      /* The PDF viewer would take the pointer mid-drag and stop it dead. */
-      .epistola-preview-panel.dragging .preview-pdf {
-        pointer-events: none;
-      }
-      .preview-empty {
-        padding: 2rem;
-        text-align: center;
-        color: #6c757d;
-        font-style: italic;
       }
       .design-info {
         padding: 1rem;
@@ -326,8 +205,10 @@ import {
 export class EpistolaDocumentPreviewComponent
   implements FormioCustomComponent<Record<string, any> | null>, OnChanges, OnDestroy
 {
-  /** Floats the preview over the page, and puts it back. */
-  private readonly popOut = new PopOut(PANEL_MEMORY_KEYS.documentPreview);
+  readonly pluginId = 'epistola';
+  /** Where this kind of preview remembers its panel. */
+  readonly memoryKey = PANEL_MEMORY_KEYS.documentPreview;
+  readonly autoRefreshId = `epistola-preview-autorefresh-${Math.random().toString(36).slice(2, 9)}`;
 
   @Input() value!: Record<string, any> | null;
   @Output() valueChange = new EventEmitter<Record<string, any> | null>();
@@ -487,28 +368,7 @@ export class EpistolaDocumentPreviewComponent
     }
   }
 
-  /**
-   * The runtime panel, whenever Angular (re)creates it, so a floating one follows it and an
-   * orphaned one never stays on the page. See {@link PopOut}.
-   */
-  @ViewChild('runtimePanel')
-  set runtimePanel(ref: ElementRef<HTMLElement> | undefined) {
-    this.popOut.setElement(ref?.nativeElement ?? null);
-  }
-
-  /** Whether the preview floats over the page instead of sitting in the form. */
-  get floating(): boolean {
-    return this.popOut.floating;
-  }
-
-  /** Float the preview over the page, or put it back. Remembered per browser. */
-  togglePopOut(): void {
-    this.popOut.toggle();
-    this.cdr.markForCheck();
-  }
-
   ngOnDestroy(): void {
-    this.popOut.release();
     this.previewSubscription?.unsubscribe();
     this.revokeBlobUrl();
   }

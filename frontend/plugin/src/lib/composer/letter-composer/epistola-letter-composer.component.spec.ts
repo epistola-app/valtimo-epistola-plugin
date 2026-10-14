@@ -27,6 +27,10 @@ jest.mock('@angular/core', () => ({
   },
 }));
 
+jest.mock('../../components/epistola-preview-frame/epistola-preview-frame.component', () => ({
+  EpistolaPreviewFrameComponent: class {},
+}));
+
 jest.mock('@angular/common', () => ({
   CommonModule: class {},
 }));

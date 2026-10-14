@@ -20,14 +20,12 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  ElementRef,
   EventEmitter,
   Input,
   OnChanges,
   OnDestroy,
   Output,
   SimpleChanges,
-  ViewChild,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -35,7 +33,9 @@ import { FormioCustomComponent, FormIoStateService } from '@valtimo/components';
 import { Subscription } from 'rxjs';
 import { DownloadDocumentRequest, EpistolaPluginService } from '../../services';
 import { pdfViewUrl } from '../../utils/pdf-view';
-import { PANEL_MEMORY_KEYS, PopOut } from '../../utils/floating-panel';
+import { PANEL_MEMORY_KEYS } from '../../utils/floating-panel';
+import { PluginTranslatePipeModule } from '@valtimo/plugin';
+import { EpistolaPreviewFrameComponent } from '../epistola-preview-frame/epistola-preview-frame.component';
 
 export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
 
@@ -57,7 +57,7 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
  */
 @Component({
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PluginTranslatePipeModule, EpistolaPreviewFrameComponent],
   selector: 'epistola-document-component',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
@@ -96,80 +96,71 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
       }}</span>
     </div>
 
-    <!-- Inline / both: panel with optional download icon -->
-    <div
+    <!-- Inline / both: the letter in the frame every Epistola preview shares -->
+    <epistola-preview-frame
       *ngIf="!designMode && display !== 'button'"
-      #inlinePanel
-      class="epistola-doc-panel"
-      [class.floating]="floating"
-      data-testid="epistola-document-inline-view"
+      [title]="label || 'Document'"
+      [memoryKey]="memoryKey"
+      testId="epistola-document-inline-view"
     >
-      <div class="doc-header">
-        <span>{{ label || 'Document' }}</span>
-        <div class="doc-controls">
-          <button
-            *ngIf="display === 'both'"
-            type="button"
-            class="doc-icon-btn"
-            data-testid="epistola-document-download-icon"
-            [disabled]="disabled || downloading"
-            (click)="download()"
-            [title]="downloading ? 'Downloading...' : 'Download'"
-          >
-            <i class="mdi mdi-download"></i>
-          </button>
-          <button
-            type="button"
-            class="doc-icon-btn"
-            data-testid="epistola-document-refresh"
-            [disabled]="loading"
-            (click)="refresh()"
-            title="Refresh"
-          >
-            <i class="mdi mdi-refresh"></i>
-          </button>
-          <button
-            type="button"
-            class="doc-icon-btn"
-            data-testid="epistola-document-popout"
-            [title]="
-              floating ? 'Put the document back in the form' : 'Pop the document out of the form'
-            "
-            (click)="togglePopOut()"
-          >
-            <i
-              class="mdi"
-              [class.mdi-open-in-new]="!floating"
-              [class.mdi-dock-right]="floating"
-              aria-hidden="true"
-            ></i>
-          </button>
-        </div>
+      <button
+        previewControls
+        *ngIf="display === 'both'"
+        type="button"
+        class="cds--btn cds--btn--ghost cds--btn--sm epistola-preview-frame__icon-button"
+        data-testid="epistola-document-download-icon"
+        [disabled]="disabled || downloading"
+        [attr.title]="
+          (downloading ? 'previewDownloading' : 'previewDownload')
+            | pluginTranslate: pluginId
+            | async
+        "
+        [attr.aria-label]="
+          (downloading ? 'previewDownloading' : 'previewDownload')
+            | pluginTranslate: pluginId
+            | async
+        "
+        (click)="download()"
+      >
+        <i class="mdi mdi-download" aria-hidden="true"></i>
+      </button>
+      <button
+        previewControls
+        type="button"
+        class="cds--btn cds--btn--ghost cds--btn--sm epistola-preview-frame__icon-button"
+        data-testid="epistola-document-refresh"
+        [disabled]="loading"
+        [attr.title]="'previewRefresh' | pluginTranslate: pluginId | async"
+        [attr.aria-label]="'previewRefresh' | pluginTranslate: pluginId | async"
+        (click)="refresh()"
+      >
+        <i class="mdi mdi-refresh" aria-hidden="true"></i>
+      </button>
+      <div
+        *ngIf="loading"
+        class="epistola-preview-frame__message"
+        data-testid="epistola-document-loading"
+      >
+        {{ 'previewLoadingDocument' | pluginTranslate: pluginId | async }}
       </div>
-      <div class="doc-body">
-        <div *ngIf="loading" class="doc-loading" data-testid="epistola-document-loading">
-          Loading document...
-        </div>
-        <div
-          *ngIf="error && !loading"
-          class="doc-unavailable"
-          data-testid="epistola-document-error"
-        >
-          <i class="mdi mdi-information-outline"></i>
-          {{ error }}
-        </div>
-        <object
-          *ngIf="previewUrl && !loading"
-          [data]="previewUrl"
-          type="application/pdf"
-          class="doc-pdf"
-          data-testid="epistola-document-pdf"
-        >
-          PDF preview is not supported in this browser.
-        </object>
+      <div
+        *ngIf="error && !loading"
+        class="epistola-preview-frame__message"
+        data-testid="epistola-document-error"
+      >
+        <i class="mdi mdi-information-outline" aria-hidden="true"></i>
+        {{ error }}
       </div>
-      <div class="doc-resize" aria-hidden="true"></div>
-    </div>
+      <object
+        *ngIf="previewUrl && !loading"
+        [data]="previewUrl"
+        type="application/pdf"
+        class="epistola-preview-frame__pdf"
+        data-testid="epistola-document-pdf"
+      >
+        {{ 'previewUnsupported' | pluginTranslate: pluginId | async }}
+      </object>
+    </epistola-preview-frame>
   `,
   styles: [
     `
@@ -180,42 +171,6 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
         display: flex;
         flex-direction: column;
       }
-      .doc-resize {
-        display: none;
-      }
-      /* Floating: moved onto the page by PopOut, which sets its place and size. */
-      .epistola-doc-panel.floating {
-        display: flex;
-        flex-direction: column;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-      }
-      .epistola-doc-panel.floating .doc-header {
-        cursor: move;
-        user-select: none;
-      }
-      .epistola-doc-panel.floating .doc-body {
-        flex: 1 1 auto;
-        min-height: 0;
-      }
-      .epistola-doc-panel.floating .doc-pdf {
-        min-height: 0;
-        height: 100%;
-      }
-      .epistola-doc-panel.floating .doc-resize {
-        display: block;
-        position: absolute;
-        right: 0;
-        bottom: 0;
-        width: 1rem;
-        height: 1rem;
-        cursor: nwse-resize;
-        touch-action: none;
-        background: linear-gradient(135deg, transparent 50%, #8d8d8d 50%);
-      }
-      /* The PDF viewer would take the pointer mid-drag and stop it dead. */
-      .epistola-doc-panel.dragging .doc-pdf {
-        pointer-events: none;
-      }
       .doc-header {
         display: flex;
         justify-content: space-between;
@@ -225,46 +180,12 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
         font-weight: bold;
         color: #495057;
       }
-      .doc-controls {
-        display: flex;
-        gap: 0.25rem;
-      }
-      .doc-icon-btn {
-        background: none;
-        border: 1px solid #6c757d;
-        border-radius: 4px;
-        color: #6c757d;
-        padding: 0.25rem 0.5rem;
-        font-size: 0.9rem;
-        cursor: pointer;
-      }
-      .doc-icon-btn:hover:not(:disabled) {
-        background: #e9ecef;
-      }
-      .doc-icon-btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
       .doc-body {
         display: flex;
         flex-direction: column;
         min-height: 500px;
       }
       .doc-loading,
-      .doc-unavailable {
-        padding: 2rem;
-        text-align: center;
-        color: #6c757d;
-        font-style: italic;
-      }
-      .doc-unavailable i {
-        margin-right: 0.25rem;
-      }
-      .doc-pdf {
-        width: 100%;
-        flex: 1;
-        min-height: 500px;
-      }
       .design-info {
         padding: 1rem;
         min-height: auto;
@@ -297,8 +218,9 @@ export type EpistolaDocumentDisplay = 'inline' | 'button' | 'both';
 export class EpistolaDocumentComponent
   implements FormioCustomComponent<unknown>, OnChanges, OnDestroy
 {
-  /** Floats the document over the page, and puts it back. */
-  private readonly popOut = new PopOut(PANEL_MEMORY_KEYS.document, '.doc-header', '.doc-resize');
+  readonly pluginId = 'epistola';
+  /** Where this kind of preview remembers its panel. */
+  readonly memoryKey = PANEL_MEMORY_KEYS.document;
 
   @Input() value: unknown;
   @Output() valueChange = new EventEmitter<unknown>();
@@ -363,28 +285,7 @@ export class EpistolaDocumentComponent
     }
   }
 
-  /**
-   * The inline panel, whenever Angular (re)creates it, so a floating one follows it and an
-   * orphaned one never stays on the page. See {@link PopOut}.
-   */
-  @ViewChild('inlinePanel')
-  set inlinePanel(ref: ElementRef<HTMLElement> | undefined) {
-    this.popOut.setElement(ref?.nativeElement ?? null);
-  }
-
-  /** Whether the document floats over the page instead of sitting in the form. */
-  get floating(): boolean {
-    return this.popOut.floating;
-  }
-
-  /** Float the document over the page, or put it back. Remembered per browser. */
-  togglePopOut(): void {
-    this.popOut.toggle();
-    this.cdr.markForCheck();
-  }
-
   ngOnDestroy(): void {
-    this.popOut.release();
     this.subscription?.unsubscribe();
     this.revokeBlobUrl();
   }

@@ -28,6 +28,14 @@ jest.mock('@angular/core', () => ({
   },
 }));
 
+jest.mock('../epistola-preview-frame/epistola-preview-frame.component', () => ({
+  EpistolaPreviewFrameComponent: class {},
+}));
+
+jest.mock('@valtimo/plugin', () => ({
+  PluginTranslatePipeModule: class {},
+}));
+
 jest.mock('@angular/common', () => ({
   CommonModule: class {},
 }));

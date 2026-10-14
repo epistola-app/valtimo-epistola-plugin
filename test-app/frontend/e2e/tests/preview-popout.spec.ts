@@ -49,10 +49,10 @@ test.describe('Previews outside the composer — pop out', () => {
 
     const preview = page.getByTestId('epistola-preview-runtime');
     await expect(preview).toBeVisible({ timeout: 30_000 });
-    await popsOutAndDocks(page, preview, page.getByTestId('epistola-preview-popout'));
+    await popsOutAndDocks(page, preview, page.getByTestId('epistola-preview-runtime-popout'));
 
     // Left floating when the form is submitted: it goes with the form rather than staying behind.
-    await page.getByTestId('epistola-preview-popout').click();
+    await page.getByTestId('epistola-preview-runtime-popout').click();
     await page.getByRole('button', { name: 'Indienen' }).click();
     await expect(page).toHaveURL(/\/cases\/permit\/document\/[0-9a-f-]{36}/, { timeout: 30_000 });
     await expect(page.getByTestId('epistola-preview-runtime')).toHaveCount(0, { timeout: 10_000 });
@@ -71,6 +71,6 @@ test.describe('Previews outside the composer — pop out', () => {
 
     const letter = page.getByTestId('epistola-document-inline-view');
     await expect(letter).toBeVisible({ timeout: 30_000 });
-    await popsOutAndDocks(page, letter, page.getByTestId('epistola-document-popout'));
+    await popsOutAndDocks(page, letter, page.getByTestId('epistola-document-inline-view-popout'));
   });
 });

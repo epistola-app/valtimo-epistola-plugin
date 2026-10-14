@@ -44,7 +44,7 @@ test.describe('Letter composer — the preview panel', () => {
     expect(Math.round((await pane.boundingBox())!.width - docked)).toBe(100);
 
     // Popped out: out of the dialog box, so the box's layout cannot hold it inside.
-    await page.getByTestId('epistola-composer-popout').click();
+    await page.getByTestId('epistola-composer-preview-popout').click();
     // Into the dialog's own layer, beside the dialog box rather than in it.
     expect(
       await pane.evaluate(
@@ -107,13 +107,13 @@ test.describe('Letter composer — the preview panel', () => {
     await expect(page.getByTestId('epistola-composer-preview-stale')).toBeHidden();
 
     // Docked: back beside the form, inside the composer.
-    await page.getByTestId('epistola-composer-popout').click();
+    await page.getByTestId('epistola-composer-preview-popout').click();
     expect(await pane.evaluate((el) => !!el.closest('[data-testid="epistola-composer"]'))).toBe(
       true,
     );
 
     // Floating when the dialog closes: the panel goes with it rather than staying on the page.
-    await page.getByTestId('epistola-composer-popout').click();
+    await page.getByTestId('epistola-composer-preview-popout').click();
     await page.keyboard.press('Escape');
     await expect(page.getByTestId('epistola-composer-preview')).toHaveCount(0, {
       timeout: 10_000,
