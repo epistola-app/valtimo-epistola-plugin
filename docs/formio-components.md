@@ -104,6 +104,17 @@ when its form closes. A new preview uses the frame rather than a box of its own;
 prefixed `epistola-preview-frame` and unencapsulated so projected content can use them. What it
 relies on in Carbon's modal is checked by `carbon-modal.contract.spec.ts`.
 
+**In a window of its own.** Beside popping out on the page, the frame can show the letter in a
+browser window of its own (`PreviewWindow`, `utils/preview-window.ts`), for a second screen. The
+window holds only the PDF the page already rendered — an empty page of the same origin, so no
+Angular, login or request of its own — with the viewer's toolbar, and every new render is swapped
+in. What the employee is told (still empty fields, a refusal) stays in the form. There is only ever
+one: every preview opens the window named `epistola-preview`, so a second replaces what the first
+showed. It closes with its form, and with the page on a reload or when leaving Valtimo; closing it
+by hand brings the letter back into the form. A browser only lets a page open a window from a click,
+so it is never reopened by itself, and the frame says so when the browser blocks it. Its size and
+place are remembered per browser.
+
 ### `epistola-document-preview` — Document preview (author-facing)
 
 Live preview of the document a `generate-document` link would produce, rendered by dry-running the link

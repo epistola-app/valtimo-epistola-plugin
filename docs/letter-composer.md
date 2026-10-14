@@ -235,6 +235,9 @@ Its heading bar has three controls, the last two as icons with a tooltip:
   behind the dialog box (still above the grey backdrop), and a click on what still shows of it
   brings it forward — but only while a strip of it shows beside the dialog, so it can always be
   reached.
+- **In een apart venster openen** — the letter in a browser window of its own, for a second screen,
+  following each edit. One window for every preview, closed with the dialog and with the page;
+  closing it by hand brings the letter back. See [the preview frame](formio-components.md#the-preview-frame).
 
 While a new render is on its way the previous letter stays on screen, dimmed, so an edit does not
 blank the preview and lose the employee's place in it.

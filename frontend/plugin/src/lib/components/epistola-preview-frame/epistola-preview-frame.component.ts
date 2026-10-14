@@ -22,15 +22,19 @@ import {
   Component,
   ElementRef,
   Input,
+  OnChanges,
   OnDestroy,
   OnInit,
+  SimpleChanges,
   ViewChild,
   ViewEncapsulation,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { PluginTranslatePipeModule } from '@valtimo/plugin';
+import { PluginTranslatePipeModule, PluginTranslationService } from '@valtimo/plugin';
 import { DockedSize } from '../../utils/docked-size';
 import { PopOut } from '../../utils/floating-panel';
+import { windowViewUrl } from '../../utils/pdf-view';
+import { PreviewWindow } from '../../utils/preview-window';
 
 /**
  * The box every Epistola preview shows its letter in: a heading bar in Valtimo's (Carbon) style,
@@ -60,6 +64,7 @@ import { PopOut } from '../../utils/floating-panel';
       [attr.aria-label]="title"
       class="epistola-preview-frame"
       [class.floating]="floating"
+      [class.windowed]="windowed"
       [attr.data-testid]="testId"
     >
       <div class="epistola-preview-frame__header" [attr.data-testid]="testId + '-header'">
@@ -70,6 +75,30 @@ import { PopOut } from '../../utils/floating-panel';
         <div class="epistola-preview-frame__controls">
           <ng-content select="[previewControls]"></ng-content>
           <button
+            type="button"
+            class="cds--btn cds--btn--ghost cds--btn--sm epistola-preview-frame__icon-button"
+            [attr.title]="
+              (windowed ? 'previewFrameWindowBack' : 'previewFrameWindow')
+                | pluginTranslate: pluginId
+                | async
+            "
+            [attr.aria-label]="
+              (windowed ? 'previewFrameWindowBack' : 'previewFrameWindow')
+                | pluginTranslate: pluginId
+                | async
+            "
+            (click)="toggleWindow()"
+            [attr.data-testid]="testId + '-window'"
+          >
+            <i
+              class="mdi"
+              [class.mdi-open-in-new]="!windowed"
+              [class.mdi-arrow-collapse]="windowed"
+              aria-hidden="true"
+            ></i>
+          </button>
+          <button
+            *ngIf="!windowed"
             type="button"
             class="cds--btn cds--btn--ghost cds--btn--sm epistola-preview-frame__icon-button"
             [attr.title]="
@@ -87,7 +116,7 @@ import { PopOut } from '../../utils/floating-panel';
           >
             <i
               class="mdi"
-              [class.mdi-open-in-new]="!floating"
+              [class.mdi-picture-in-picture-bottom-right]="!floating"
               [class.mdi-dock-right]="floating"
               aria-hidden="true"
             ></i>
@@ -96,8 +125,23 @@ import { PopOut } from '../../utils/floating-panel';
       </div>
       <div
         class="epistola-preview-frame__body"
-        [style.height.px]="!floating && docked?.height ? docked!.height : null"
+        [style.height.px]="!floating && !windowed && docked?.height ? docked!.height : null"
       >
+        <!-- In its own window, only the PDF goes there: what the employee is told stays here. -->
+        <p
+          *ngIf="windowed"
+          class="epistola-preview-frame__message"
+          [attr.data-testid]="testId + '-windowed'"
+        >
+          {{ 'previewFrameWindowOpen' | pluginTranslate: pluginId | async }}
+        </p>
+        <p
+          *ngIf="windowBlocked"
+          class="epistola-preview-frame__message epistola-preview-frame__message--error"
+          [attr.data-testid]="testId + '-window-blocked'"
+        >
+          {{ 'previewFrameWindowBlocked' | pluginTranslate: pluginId | async }}
+        </p>
         <ng-content></ng-content>
       </div>
       <div
@@ -211,7 +255,15 @@ import { PopOut } from '../../utils/floating-panel';
         min-height: 0;
         height: auto;
       }
-      .epistola-preview-frame.floating .epistola-preview-frame__grip {
+      .epistola-preview-frame.floating .epistola-preview-frame__grip,
+      .epistola-preview-frame.windowed .epistola-preview-frame__grip {
+        display: none;
+      }
+      /* In its own window: the letter is there, so the body here only holds what is said. */
+      .epistola-preview-frame.windowed .epistola-preview-frame__body {
+        height: auto;
+      }
+      .epistola-preview-frame.windowed .epistola-preview-frame__pdf {
         display: none;
       }
       .epistola-preview-frame.floating .epistola-preview-frame__resize {
@@ -229,14 +281,19 @@ import { PopOut } from '../../utils/floating-panel';
           var(--cds-border-strong-01, #8d8d8d) 50%
         );
       }
-      /* The PDF viewer would take the pointer mid-drag and stop it dead. */
-      .dragging .epistola-preview-frame__pdf {
+      /*
+       * The PDF viewer keeps every pointer event to itself: mid-drag it would stop the drag dead,
+       * and behind a dialog a click on the letter would never reach the panel to bring it forward.
+       * Behind, the letter is to be brought forward rather than read, so it takes no clicks.
+       */
+      .dragging .epistola-preview-frame__pdf,
+      .epistola-preview-frame.behind .epistola-preview-frame__pdf {
         pointer-events: none;
       }
     `,
   ],
 })
-export class EpistolaPreviewFrameComponent implements OnInit, OnDestroy {
+export class EpistolaPreviewFrameComponent implements OnInit, OnChanges, OnDestroy {
   /** The heading, e.g. "Voorbeeld" or the component's label. */
   @Input() title = '';
   /** Where this kind of preview remembers its panel; one of `PANEL_MEMORY_KEYS`. */
@@ -245,13 +302,66 @@ export class EpistolaPreviewFrameComponent implements OnInit, OnDestroy {
   @Input() testId = 'epistola-preview-frame';
   /** Whether the docked frame has a grip below it to make it taller or shorter. */
   @Input() resizable = false;
+  /**
+   * The rendered letter's object URL, as a plain string, for showing it in a window of its own;
+   * null while there is none. The component's own `<object>` keeps showing it in the form.
+   */
+  @Input() windowUrl: string | null = null;
+
+  /** True after the browser refused to open the window, until it opens. */
+  windowBlocked = false;
+  private readonly previewWindow = new PreviewWindow(() => {
+    // Closed by the employee: the letter is back in the form.
+    this.cdr.markForCheck();
+  });
 
   readonly pluginId = 'epistola';
   docked: DockedSize | null = null;
   private popOut: PopOut | null = null;
   private element: HTMLElement | null = null;
 
-  constructor(private readonly cdr: ChangeDetectorRef) {}
+  constructor(
+    private readonly cdr: ChangeDetectorRef,
+    private readonly translations: PluginTranslationService,
+  ) {}
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['windowUrl'] || changes['title']) {
+      this.previewWindow.update(
+        this.windowUrl ? windowViewUrl(this.windowUrl) : null,
+        this.windowTitle,
+      );
+    }
+  }
+
+  /** Whether the letter is shown in a window of its own. */
+  get windowed(): boolean {
+    return this.previewWindow.open;
+  }
+
+  /**
+   * Show the letter in a window of its own, or bring it back. One window for every preview
+   * ({@link PREVIEW_WINDOW_NAME}), which closes with the form and with the page.
+   */
+  toggleWindow(): void {
+    if (this.windowed) {
+      this.previewWindow.close();
+    } else {
+      if (this.floating) {
+        this.togglePopOut();
+      }
+      this.windowBlocked = !this.previewWindow.show(
+        this.windowTitle,
+        this.windowUrl ? windowViewUrl(this.windowUrl) : null,
+        this.translations.instant('previewFrameWindowWaiting', this.pluginId),
+      );
+    }
+    this.cdr.markForCheck();
+  }
+
+  private get windowTitle(): string {
+    return this.title ? `${this.title} — Epistola` : 'Epistola';
+  }
 
   ngOnInit(): void {
     this.popOut = new PopOut(
@@ -290,6 +400,7 @@ export class EpistolaPreviewFrameComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.previewWindow.close();
     this.popOut?.release();
   }
 }
