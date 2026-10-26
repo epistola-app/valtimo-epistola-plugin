@@ -35,12 +35,12 @@ class SharedSecretEpistolaTenantProvisionerTest {
                 if (responseStatus in
                     200..299
                 ) {
-                    "{\"id\":\"trainee-x\",\"name\":\"n\",\"createdAt\":\"2026-01-01T00:00:00Z\"}"
+                    "{\"key\":\"trainee-x\",\"name\":\"n\",\"createdAt\":\"2026-01-01T00:00:00Z\"}"
                 } else {
                     "{}"
                 }
             val bytes = body.toByteArray(StandardCharsets.UTF_8)
-            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.responseHeaders.add("Content-Type", "application/vnd.epistola.v2+json")
             exchange.sendResponseHeaders(responseStatus, bytes.size.toLong())
             exchange.responseBody.use { it.write(bytes) }
         }
@@ -70,7 +70,7 @@ class SharedSecretEpistolaTenantProvisionerTest {
         assertThat(credentials.tenantId).matches("^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
         assertThat(credentials.apiKey).isEqualTo("epk_test_shared_secret_at_least_32_chars_long")
         assertThat(lastAuthorizationHeader).isEqualTo("ApiKey epk_test_shared_secret_at_least_32_chars_long")
-        assertThat(lastRequestBody).contains("\"id\":\"$expectedTenantId\"")
+        assertThat(lastRequestBody).contains("\"key\":\"$expectedTenantId\"")
     }
 
     @Test

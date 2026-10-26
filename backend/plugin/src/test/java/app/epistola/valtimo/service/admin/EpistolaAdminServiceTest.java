@@ -634,6 +634,39 @@ class EpistolaAdminServiceTest {
         }
 
         @Test
+        void shouldDetectACatalogKeyTwoNamespacesShare() {
+            // A link saved against contract 1.x names its catalog by key alone; when two
+            // namespaces have that key, generation refuses it, so the overview says so first.
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(
+                            new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true),
+                            new CatalogInfo("local/other/cat-1", "Other", "local", "other", "cat-1", true)));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems())
+                    .anySatisfy(problem -> assertThat(problem).startsWith("Catalog 'cat-1' is ambiguous"));
+            verify(epistolaService, never())
+                    .getTemplates(anyString(), anyString(), anyString(), anyString());
+        }
+
+        @Test
+        void shouldAcceptACatalogNamedInFull() {
+            singleGenerateDocLink(createActionProps("local/valtimo/cat-1", "tmpl-1"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+                    .thenReturn(List.of(
+                            new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true),
+                            new CatalogInfo("local/other/cat-1", "Other", "local", "other", "cat-1", true)));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1"))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "local/valtimo/cat-1", "Catalog")));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems()).isEmpty();
+        }
+
+        @Test
         void shouldDetectMissingTemplate() {
             singleGenerateDocLink(createActionProps("cat-1", "tmpl-x"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
