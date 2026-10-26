@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Upgrading
+
+- **The plugin speaks Epistola contract 2.0 (`2.0.0-alpha.3`) and needs an Epistola Suite that
+  serves it.** A 2.x client sends the `application/vnd.epistola.v2+json` media type, which every
+  1.x Suite refuses (406/415), so no 1.x Suite works with this build. No Suite 2.0 is released
+  yet: this is preparation for it, tested against the contract's mock server. See
+  [COMPATIBILITY.md](COMPATIBILITY.md).
+- **Process links keep working unchanged.** Contract 2.0 names a catalog by registry, namespace and
+  key; a link saved before holds the key alone, and the plugin looks it up among the tenant's
+  catalogs. When two namespaces both have that key the call is refused (409) with the full names to
+  choose from, and the admin page flags the link: open it and pick the catalog again, which stores
+  `registry/namespace/key`.
+- **Bundled classpath catalogs are installed under `local/valtimo`** (`epistola.catalog-sync.registry`
+  and `epistola.catalog-sync.namespace`), because a manifest from before catalog wire v8 names no
+  registry or namespace. A v8 manifest names its own, and those are used. An import installs the
+  archive's release beside the catalog's others, so a changed catalog needs a new
+  `release.version`: the same version with other content is refused (`release-number-taken`).
+- **An import no longer makes a release live in an environment.** A process link that names an
+  environment renders the release deployed there; deploy the imported release in Epistola first.
+  Without an environment the catalog's highest release is rendered, as before.
+- **Generation statuses on process variables are unchanged.** Contract 2.0 sends `completed` and
+  `in-progress`; the plugin keeps writing `COMPLETED` and `IN_PROGRESS`, so BPMN gateways need no
+  change.
+- **The admin page's redeploy reports the installed release** (`catalogId`, `newlyInstalled`,
+  `total`) instead of per-resource `installed`/`updated`/`failed` counts, which 2.0 no longer has.
+
+### Changed
+
+- **Epistola contract client `1.4.0` → `2.0.0-alpha.3`** (`app.epistola.contract:client-spring3-restclient`,
+  and `epistola-catalog` for the rich-text schema tests). Templates, variants and attributes are
+  read from the catalog's highest release, or its newest draft when it has never been released;
+  generation and preview render the highest release (the environment's, when one is configured).
+  A dotted attribute criterion saved against 1.4 (`system.locale`) is sent as `catalogKey` +
+  `key`, which 2.0 requires.
+- **The admin page's contract check warns on a different pre-release.** Alpha releases change in
+  place, so `2.0.0-alpha.2` and `2.0.0-alpha.3` may disagree within one minor; only an exact match
+  is OK while either side is a pre-release.
+
 ### Added
 
 - **Forgejo CI for private internal branches** (`.forgejo/workflows/ci.yml`). Epistola's internal

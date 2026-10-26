@@ -4,7 +4,10 @@ services:
     # -demo, not plain latest: since Suite 1.3.0 demo mode ships only in the -demo image, so
     # that a production install cannot be turned into a demo by setting a profile. The plain
     # image refuses to start with SPRING_PROFILES_ACTIVE=demo.
-    image: ghcr.io/epistola-app/epistola-suite:latest-demo
+    # The plugin speaks contract 2.0, which no released Suite serves yet (a 1.x Suite refuses the
+    # v2 media type with 406/415). Until Suite 2.0 is published, point this at a 2.0 build:
+    # EPISTOLA_SUITE_IMAGE=<image built from epistola-suite's release/2.0> docker compose --profile server up -d
+    image: ${EPISTOLA_SUITE_IMAGE:-ghcr.io/epistola-app/epistola-suite:latest-demo}
     container_name: ved-epistola-server
     environment:
       SPRING_PROFILES_ACTIVE: demo,localauth
@@ -25,7 +28,7 @@ services:
 
   ved-epistola-mock:
     profiles: ["mock"]
-    image: ghcr.io/epistola-app/epistola-contract/mock-server:1.4.0
+    image: ghcr.io/epistola-app/epistola-contract/mock-server:2.0.0-alpha.3
     container_name: ved-epistola-mock
     ports:
       - "4010:4010"
