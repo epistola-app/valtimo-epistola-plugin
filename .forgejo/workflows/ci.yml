@@ -1,0 +1,141 @@
+# Forgejo CI for private `internal/**` branches.
+#
+# Epistola's Forgejo (code.int.epistola.io) keeps a copy of this repository that is synced from
+# GitHub, plus private `internal/**` branches (for example a security fix before its disclosure)
+# that never reach GitHub. This workflow checks those branches on Forgejo's own runners.
+#
+# It only exists on Forgejo's side: GitHub ignores `.forgejo/`, and once this directory exists
+# Forgejo ignores `.github/workflows`, so the synced public branches and tags start nothing there.
+# Publishing (plugin, images, charts, releases) stays with GitHub. The checks mirror ci.yml; the
+# Trivy scan is left out because it only feeds GitHub's Security tab. Actions are referenced by
+# full URL because Forgejo resolves short names against its own action mirror, not github.com.
+# setup-gradle stays on v5 for the licensing reason given in CHANGELOG.md.
+name: CI (Forgejo, internal branches)
+
+on:
+  push:
+    branches: ["internal/**"]
+  workflow_dispatch:
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup tools with mise
+        uses: https://github.com/jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+
+      - name: Setup Gradle
+        uses: https://github.com/gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+
+      - name: Build plugin
+        run: ./gradlew :backend:plugin:build
+
+      - name: Build test-app (compile only)
+        run: ./gradlew :test-app:backend:build -x test
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: https://github.com/actions/upload-artifact@v4
+        with:
+          name: backend-test-results
+          path: backend/plugin/build/reports/tests/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  e2e-backend:
+    name: Backend E2E (Testcontainers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Setup tools with mise
+        uses: https://github.com/jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+
+      - name: Setup Gradle
+        uses: https://github.com/gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5
+
+      # Boots the real test-app against Testcontainers Postgres + Keycloak, through the runner's
+      # Docker daemon (DOCKER_HOST is set by the runner).
+      - name: Run test-app backend E2E
+        run: ./gradlew :test-app:backend:test
+
+      - name: Upload E2E test results on failure
+        if: failure()
+        uses: https://github.com/actions/upload-artifact@v4
+        with:
+          name: e2e-backend-test-results
+          path: test-app/backend/build/reports/tests/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: https://github.com/actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      # mise provides the pinned node and pnpm as well as the license tooling.
+      - name: Setup tools with mise
+        uses: https://github.com/jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint:check
+
+      - name: Check format
+        run: pnpm format:check
+
+      - name: Check license metadata
+        run: pnpm license:check
+
+      - name: Type-check (strict)
+        run: pnpm typecheck
+
+      - name: Check frontend runtime singletons
+        run: pnpm singletons:check
+
+      - name: Test plugin
+        run: pnpm --filter @epistola.app/valtimo-plugin test
+
+      # The runner image has no browser, unlike a GitHub-hosted runner; Karma needs one.
+      - name: Set up Chrome
+        id: chrome
+        uses: https://github.com/browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
+        with:
+          install-dependencies: true
+          # Jobs run as root in the runner image.
+          no-sudo: true
+
+      # Chrome refuses to start as root without --no-sandbox; the wrapper adds it so karma.conf
+      # stays as it is.
+      - name: Wrap Chrome for root
+        run: |
+          printf '#!/bin/sh\nexec "%s" --no-sandbox "$@"\n' '${{ steps.chrome.outputs.chrome-path }}' > /usr/local/bin/chrome-no-sandbox
+          chmod 755 /usr/local/bin/chrome-no-sandbox
+
+      # At Node's default heap limit (about 2 GB in a runner's job container) the test-app build
+      # runs out of heap. Half of the job's memory limit instead: that follows whatever cap the
+      # runner gives a job (6, 9 or 12 GB) and leaves the rest for the test browser.
+      - name: Test rendered frontend integration
+        env:
+          CI: "true"
+          NODE_OPTIONS: --max-old-space-size-percentage=50
+          CHROME_BIN: /usr/local/bin/chrome-no-sandbox
+        run: pnpm --filter gzac-frontend-template test --watch=false
+
+      - name: Build plugin
+        run: pnpm --filter @epistola.app/valtimo-plugin build
+
+      - name: Build test-app
+        run: pnpm --filter gzac-frontend-template build
