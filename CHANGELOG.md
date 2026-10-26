@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Forgejo CI for private internal branches** (`.forgejo/workflows/ci.yml`). Epistola's internal
+  Forgejo keeps a synced copy of this repository plus private branches under `internal/`, for
+  example a security fix before its disclosure. Those branches now run the same checks as
+  `ci.yml` on Forgejo's runners. GitHub ignores the file, and on Forgejo it replaces the
+  `.github/workflows` that were being started there (and failing) for every synced push.
+
 ## [0.21.0] - 2026-10-14
 
 ### Upgrading
