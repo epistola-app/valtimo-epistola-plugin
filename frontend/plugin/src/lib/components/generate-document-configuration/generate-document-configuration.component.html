@@ -5,6 +5,7 @@
     disabled: disabled$ | async,
     prefill: effectivePrefill$ ? (effectivePrefill$ | async) : null,
     catalogs: catalogs$ | async,
+    prefillCatalogId: prefillCatalogId$ | async,
     templates: templates$ | async,
     variants: variants$ | async,
     environments: environments$ | async,
@@ -55,7 +56,7 @@
     [items]="obs.catalogs.data"
     [appendInline]="false"
     [dropUp]="false"
-    [defaultSelectionId]="obs.prefill?.catalogId"
+    [defaultSelectionId]="obs.prefillCatalogId"
     [disabled]="obs.disabled || obs.catalogs.loading"
     [required]="true"
     [loading]="obs.catalogs.loading"

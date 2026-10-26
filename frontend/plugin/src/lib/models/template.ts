@@ -111,11 +111,17 @@ export interface AttributeDefinition {
 
 /**
  * Information about an Epistola catalog.
+ *
+ * `id` is what a process link stores: `registry/namespace/key` (contract 2.0 names a catalog by all
+ * three). A link saved against contract 1.x holds only the key; see `matchCatalogId`.
  */
 export interface CatalogInfo {
   id: string;
   name: string;
-  type: string;
+  registry: string;
+  namespace: string;
+  key: string;
+  editable: boolean;
 }
 
 /**

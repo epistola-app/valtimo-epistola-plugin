@@ -144,10 +144,11 @@ export interface CatalogRedeployResult {
   slug: string;
   version: string;
   success: boolean;
-  catalogKey: string | null;
-  installed: number;
-  updated: number;
-  failed: number;
+  /** The catalog the release was installed in, `registry/namespace/key`; null on failure. */
+  catalogId: string | null;
+  /** False when Epistola already had this release. */
+  newlyInstalled: boolean;
+  /** The number of resources in the release. */
   total: number;
   errorMessage: string | null;
   httpStatus?: number | null;

@@ -52,6 +52,7 @@ import {
 } from 'rxjs/operators';
 import {
   AsyncResource,
+  CatalogInfo,
   errorResource,
   ExpressionFunctionInfo,
   GenerateDocumentConfig,
@@ -68,6 +69,7 @@ import {
 } from '../../models';
 import { FULL_SIMPLE_MAPPING_SUPPORT, supportsSimpleMapping } from '../../schema/template-schema';
 import { isBuilderCompatible } from '../../utils/jsonata-converter';
+import { matchCatalogId } from '../../utils/catalog-ref';
 import { EpistolaPluginService } from '../../services';
 import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
 import { ExpectedStructureComponent } from '../expected-structure/expected-structure.component';
@@ -140,6 +142,10 @@ export class GenerateDocumentConfigurationComponent
     new EventEmitter<FunctionConfigurationData>();
 
   catalogs$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
+  /** The catalogs as listed, to match a reference saved against contract 1.x (`matchCatalogId`). */
+  private readonly catalogInfos$ = new BehaviorSubject<CatalogInfo[]>([]);
+  /** The catalog to show as selected: the prefilled reference, matched to the listed catalogs. */
+  prefillCatalogId$!: Observable<string | null>;
   templates$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   variants$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   environments$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
@@ -213,6 +219,9 @@ export class GenerateDocumentConfigurationComponent
   ngOnInit(): void {
     this.prefill$ = this.resolvePrefill$();
     this.effectivePrefill$ = this.prefill$;
+    this.prefillCatalogId$ = combineLatest([this.prefill$, this.catalogInfos$]).pipe(
+      map(([config, catalogs]) => matchCatalogId(config?.catalogId, catalogs)),
+    );
 
     this.initContext();
     this.initPluginConfiguration();
@@ -598,6 +607,7 @@ export class GenerateDocumentConfigurationComponent
         tap(() => this.catalogs$.next(loadingResource(this.catalogs$.getValue().data))),
         switchMap((configurationId) =>
           this.epistolaPluginService.getCatalogs(configurationId).pipe(
+            tap((catalogs) => this.catalogInfos$.next(catalogs)),
             map((catalogs) => successResource(catalogs.map((c) => ({ id: c.id, text: c.name })))),
             catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load catalogs'))),
           ),
@@ -626,7 +636,9 @@ export class GenerateDocumentConfigurationComponent
     ])
       .pipe(takeUntil(this.destroy$), take(1))
       .subscribe(([config]) => {
-        this.selectedCatalogId$.next(config!.catalogId);
+        this.selectedCatalogId$.next(
+          matchCatalogId(config!.catalogId, this.catalogInfos$.getValue()) ?? config!.catalogId,
+        );
       });
 
     // An empty id is no selection: it resets what depends on it, and nothing is fetched.

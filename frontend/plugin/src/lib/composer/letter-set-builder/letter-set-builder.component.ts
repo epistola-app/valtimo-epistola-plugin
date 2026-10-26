@@ -33,6 +33,7 @@ import { PluginTranslatePipeModule, PluginTranslationService } from '@valtimo/pl
 import { Subscription } from 'rxjs';
 import { EpistolaComposerApiService } from '../composer-api.service';
 import { CatalogInfo, LetterReader, TemplateInfo } from '../../models';
+import { matchCatalogId } from '../../utils/catalog-ref';
 
 /** One letter on offer, as stored in the composer's settings. */
 export interface OfferedTemplate {
@@ -100,7 +101,7 @@ export interface LetterSet {
       <select
         class="field-input"
         data-testid="epistola-letter-set-catalog"
-        [ngModel]="value?.catalogId || ''"
+        [ngModel]="selectedCatalogId"
         (ngModelChange)="onCatalogSelected($event)"
         [disabled]="disabled || !value?.pluginConfigurationId"
       >
@@ -363,6 +364,14 @@ export class EpistolaLetterSetBuilderComponent
 
   configurations: { id: string; title: string; tenantId: string | null }[] = [];
   catalogs: CatalogInfo[] = [];
+
+  /**
+   * The stored catalog as the select lists it. A set saved against contract 1.x holds the
+   * catalog's key alone, and catalogs are now listed as `registry/namespace/key`.
+   */
+  get selectedCatalogId(): string {
+    return matchCatalogId(this.value?.catalogId, this.catalogs) ?? '';
+  }
   templates: TemplateInfo[] = [];
 
   loadingConfigurations = false;

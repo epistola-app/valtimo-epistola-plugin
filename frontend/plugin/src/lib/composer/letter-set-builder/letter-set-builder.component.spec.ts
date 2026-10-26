@@ -44,7 +44,18 @@ describe('EpistolaLetterSetBuilderComponent', () => {
       getConfigurations: jest.fn(() =>
         of([{ id: 'config-1', title: 'Epistola productie', tenantId: 'gemeente' }]),
       ),
-      getCatalogs: jest.fn(() => of([{ id: 'gemeente', name: 'Gemeente', type: 'default' }])),
+      getCatalogs: jest.fn(() =>
+        of([
+          {
+            id: 'local/valtimo/gemeente',
+            name: 'Gemeente',
+            registry: 'local',
+            namespace: 'valtimo',
+            key: 'gemeente',
+            editable: true,
+          },
+        ]),
+      ),
       getTemplates: jest.fn(() =>
         of([
           { id: 'besluit', name: 'Besluit op bezwaar', catalogId: 'gemeente' },
@@ -133,6 +144,20 @@ describe('EpistolaLetterSetBuilderComponent', () => {
     });
   });
 
+  describe('a set saved against contract 1.x', () => {
+    // It holds the catalog's key alone; catalogs are listed as `registry/namespace/key` since 2.0.
+    it('shows its catalog as selected', () => {
+      const { component } = createComponent({
+        pluginConfigurationId: 'config-1',
+        catalogId: 'gemeente',
+        templates: [{ templateId: 'besluit', label: 'Besluit' }],
+      });
+      component.ngOnChanges();
+
+      expect(component.selectedCatalogId).toBe('local/valtimo/gemeente');
+    });
+  });
+
   describe('a letter that is no longer in the catalog', () => {
     /**
      * The table is drawn from what Epistola returns now, ticking the letters this composer stores.
@@ -204,8 +229,22 @@ describe('EpistolaLetterSetBuilderComponent', () => {
     const { component, service } = createComponent(null, {
       getCatalogs: jest.fn(() =>
         of([
-          { id: 'gemeente', name: 'Gemeente', type: 'default' },
-          { id: 'provincie', name: 'Provincie', type: 'default' },
+          {
+            id: 'local/valtimo/gemeente',
+            name: 'Gemeente',
+            registry: 'local',
+            namespace: 'valtimo',
+            key: 'gemeente',
+            editable: true,
+          },
+          {
+            id: 'local/valtimo/provincie',
+            name: 'Provincie',
+            registry: 'local',
+            namespace: 'valtimo',
+            key: 'provincie',
+            editable: true,
+          },
         ]),
       ),
     });
@@ -231,8 +270,22 @@ describe('EpistolaLetterSetBuilderComponent', () => {
       {
         getCatalogs: jest.fn(() =>
           of([
-            { id: 'gemeente', name: 'Gemeente', type: 'default' },
-            { id: 'provincie', name: 'Provincie', type: 'default' },
+            {
+              id: 'local/valtimo/gemeente',
+              name: 'Gemeente',
+              registry: 'local',
+              namespace: 'valtimo',
+              key: 'gemeente',
+              editable: true,
+            },
+            {
+              id: 'local/valtimo/provincie',
+              name: 'Provincie',
+              registry: 'local',
+              namespace: 'valtimo',
+              key: 'provincie',
+              editable: true,
+            },
           ]),
         ),
       },
@@ -357,10 +410,10 @@ describe('EpistolaLetterSetBuilderComponent', () => {
 
       expect(component.value).toEqual({
         pluginConfigurationId: 'config-1',
-        catalogId: 'gemeente',
+        catalogId: 'local/valtimo/gemeente',
         templates: [],
       });
-      expect(service.getTemplates).toHaveBeenCalledWith('config-1', 'gemeente');
+      expect(service.getTemplates).toHaveBeenCalledWith('config-1', 'local/valtimo/gemeente');
     });
 
     it('leaves the choice to the author when there is more than one', () => {
