@@ -9,7 +9,8 @@
 # Publishing (plugin, images, charts, releases) stays with GitHub. The checks mirror ci.yml; the
 # Trivy scan is left out because it only feeds GitHub's Security tab. Actions are referenced by
 # full URL because Forgejo resolves short names against its own action mirror, not github.com.
-# setup-gradle stays on v5 for the licensing reason given in CHANGELOG.md.
+# Failure reports go through Forgejo's fork of upload-artifact: upstream v4+ refuses to run
+# anywhere but github.com. setup-gradle stays on v5 for the licensing reason given in CHANGELOG.md.
 name: CI (Forgejo, internal branches)
 
 on:
@@ -40,7 +41,7 @@ jobs:
 
       - name: Upload test results on failure
         if: failure()
-        uses: https://github.com/actions/upload-artifact@v4
+        uses: https://code.forgejo.org/forgejo/upload-artifact@cb8afe72b42edc798abfb8fcb556cf660d894245 # v5
         with:
           name: backend-test-results
           path: backend/plugin/build/reports/tests/
@@ -68,7 +69,7 @@ jobs:
 
       - name: Upload E2E test results on failure
         if: failure()
-        uses: https://github.com/actions/upload-artifact@v4
+        uses: https://code.forgejo.org/forgejo/upload-artifact@cb8afe72b42edc798abfb8fcb556cf660d894245 # v5
         with:
           name: e2e-backend-test-results
           path: test-app/backend/build/reports/tests/
