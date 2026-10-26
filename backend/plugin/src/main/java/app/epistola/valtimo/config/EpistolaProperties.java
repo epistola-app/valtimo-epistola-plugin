@@ -42,6 +42,24 @@ public class EpistolaProperties {
     private final Client client = new Client();
     private final VersionCheck versionCheck = new VersionCheck();
     private final RichText richText = new RichText();
+    private final CatalogSync catalogSync = new CatalogSync();
+
+    /**
+     * Where the plugin installs a bundled classpath catalog whose manifest predates catalog wire
+     * v8. Since contract 2.0 a catalog is named by registry, namespace and key, and such a manifest
+     * has only the key; a v8 manifest names its own, and these are not used for it.
+     */
+    @Data
+    public static class CatalogSync {
+        /**
+         * Registry to name the catalog in. {@code local} needs no grant: it names catalogs that
+         * never leave the organisation, which is what a catalog compiled into an application is.
+         */
+        private String registry = "local";
+
+        /** Namespace to name the catalog in, within {@link #registry}. */
+        private String namespace = "valtimo";
+    }
 
     @Data
     public static class RichText {

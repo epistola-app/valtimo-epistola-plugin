@@ -18,9 +18,13 @@
 package app.epistola.valtimo.service;
 
 import app.epistola.client.api.AttributesApi;
+import app.epistola.client.api.CatalogsApi;
 import app.epistola.client.api.TemplatesApi;
 import app.epistola.client.api.VariantsApi;
 import app.epistola.client.error.ProblemDetailException;
+import app.epistola.client.model.CatalogReleaseListResponse;
+import app.epistola.client.model.CatalogReleaseStatus;
+import app.epistola.client.model.PageMeta;
 import app.epistola.client.model.ProblemDetail;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +40,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -57,18 +62,20 @@ class EpistolaServiceImplNotFoundTest {
 
     private EpistolaApiClientFactory factory;
     private EpistolaServiceImpl service;
+    private CatalogsApi catalogsApi;
 
     @BeforeEach
     void setUp() {
         factory = mock(EpistolaApiClientFactory.class);
         service = new EpistolaServiceImpl(factory);
+        catalogsApi = CatalogFixtures.stubCatalogs(factory, TENANT, CatalogFixtures.catalog(CATALOG));
     }
 
     @Test
     void getTemplateDetails_keepsTheNotFoundStatus() {
         TemplatesApi templatesApi = mock(TemplatesApi.class);
         when(factory.createTemplatesApi(anyString(), anyString())).thenReturn(templatesApi);
-        when(templatesApi.getTemplate(TENANT, CATALOG, TEMPLATE)).thenThrow(notFound("Template Not Found"));
+        when(templatesApi.getTemplate(TENANT, "local", "valtimo", CATALOG, "1.0.0", TEMPLATE)).thenThrow(notFound("Template Not Found"));
 
         assertNotFound(() -> service.getTemplateDetails(BASE_URL, API_KEY, TENANT, CATALOG, TEMPLATE));
     }
@@ -77,7 +84,7 @@ class EpistolaServiceImplNotFoundTest {
     void getVariants_keepsTheNotFoundStatus() {
         VariantsApi variantsApi = mock(VariantsApi.class);
         when(factory.createVariantsApi(anyString(), anyString())).thenReturn(variantsApi);
-        when(variantsApi.listVariants(eq(TENANT), eq(CATALOG), eq(TEMPLATE), anyInt(), anyInt(), any(), any()))
+        when(variantsApi.listVariants(eq(TENANT), eq("local"), eq("valtimo"), eq(CATALOG), eq("1.0.0"), eq(TEMPLATE), anyInt(), anyInt(), any(), any()))
                 .thenThrow(notFound("Template Not Found"));
 
         assertNotFound(() -> service.getVariants(BASE_URL, API_KEY, TENANT, CATALOG, TEMPLATE));
@@ -87,7 +94,7 @@ class EpistolaServiceImplNotFoundTest {
     void getTemplates_keepsTheNotFoundStatus() {
         TemplatesApi templatesApi = mock(TemplatesApi.class);
         when(factory.createTemplatesApi(anyString(), anyString())).thenReturn(templatesApi);
-        when(templatesApi.listTemplates(eq(TENANT), eq(CATALOG), any(), anyInt(), anyInt(), any(), any()))
+        when(templatesApi.listTemplates(eq(TENANT), eq("local"), eq("valtimo"), eq(CATALOG), eq("1.0.0"), any(), anyInt(), anyInt(), any(), any()))
                 .thenThrow(notFound("Catalog Not Found"));
 
         assertNotFound(() -> service.getTemplates(BASE_URL, API_KEY, TENANT, CATALOG));
@@ -97,10 +104,46 @@ class EpistolaServiceImplNotFoundTest {
     void getAttributes_keepsTheNotFoundStatus() {
         AttributesApi attributesApi = mock(AttributesApi.class);
         when(factory.createAttributesApi(anyString(), anyString())).thenReturn(attributesApi);
-        when(attributesApi.listAttributes(eq(TENANT), eq(CATALOG), anyInt(), anyInt(), any(), any()))
+        when(attributesApi.listAttributes(eq(TENANT), eq("local"), eq("valtimo"), eq(CATALOG), eq("1.0.0"), anyInt(), anyInt(), any(), any()))
                 .thenThrow(notFound("Catalog Not Found"));
 
         assertNotFound(() -> service.getAttributes(BASE_URL, API_KEY, TENANT, CATALOG));
+    }
+
+    @Test
+    void aCatalogTheTenantDoesNotHave_isNotFound() {
+        assertNotFound(() -> service.getTemplates(BASE_URL, API_KEY, TENANT, "local/valtimo/elsewhere"));
+    }
+
+    @Test
+    void aCatalogInAnotherNamespace_isNotFound() {
+        assertNotFound(() -> service.getTemplates(BASE_URL, API_KEY, TENANT, "local/other/" + CATALOG));
+    }
+
+    @Test
+    void aKeySavedAgainstContract1_isAmbiguousWhenTwoNamespacesHaveIt() {
+        CatalogFixtures.stubCatalogs(factory, TENANT,
+                CatalogFixtures.catalog(CATALOG),
+                CatalogFixtures.catalog("exchange.epistola.app", "acme", CATALOG, "2.0.0"));
+
+        EpistolaApiException ex = assertThrows(EpistolaApiException.class,
+                () -> service.getTemplates(BASE_URL, API_KEY, TENANT, CATALOG));
+
+        assertEquals(409, ex.getHttpStatus());
+        // The message names what to choose from, so the configuration can be fixed.
+        assertTrue(ex.getMessage().contains("exchange.epistola.app/acme/" + CATALOG));
+        assertTrue(ex.getMessage().contains("local/valtimo/" + CATALOG));
+    }
+
+    @Test
+    void aCatalogWithNeitherReleaseNorDraft_isNotFound() {
+        CatalogsApi unreleased = CatalogFixtures.stubCatalogs(factory, TENANT,
+                CatalogFixtures.catalog("local", "valtimo", CATALOG, null));
+        when(unreleased.listCatalogReleases(eq(TENANT), eq("local"), eq("valtimo"), eq(CATALOG),
+                eq(CatalogReleaseStatus.draft), any(), anyInt(), anyInt()))
+                .thenReturn(new CatalogReleaseListResponse(List.of(), new PageMeta(0, 100, 0, 0)));
+
+        assertNotFound(() -> service.getTemplates(BASE_URL, API_KEY, TENANT, CATALOG));
     }
 
     private static void assertNotFound(Executable call) {

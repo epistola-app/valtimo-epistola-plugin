@@ -28,6 +28,11 @@ import java.util.Map;
  * <p>
  * All methods require baseUrl and apiKey for authentication with the Epistola API.
  * These values are typically obtained from the plugin configuration.
+ * <p>
+ * A {@code catalogId} is a catalog reference as a process link stores it ({@link CatalogRef}):
+ * {@code registry/namespace/key}, {@code namespace/key}, or a bare key saved against contract 1.x,
+ * which is looked up among the tenant's catalogs. Templates, variants and attributes are read from
+ * the catalog's highest release — what generation renders when no environment narrows it.
  */
 public interface EpistolaService {
 
@@ -192,20 +197,28 @@ public interface EpistolaService {
      * @param apiKey      The API key for authentication
      * @param tenantId    The tenant ID in Epistola
      * @param zipBytes    The catalog ZIP archive bytes
-     * @param catalogType The type of catalog import (e.g. "full", "templates-only")
-     * @return The import result with counts of installed/updated/failed resources
+     * @param registry    The registry to name the catalog in when the archive predates catalog wire
+     *                    v8 and does not name its own; {@code null} for a v8 archive
+     * @param namespace   The namespace, likewise; {@code null} for a v8 archive
+     * @return The release the import installed, or found already installed
      */
-    ImportCatalogResult importCatalog(String baseUrl, String apiKey, String tenantId, byte[] zipBytes, String catalogType);
+    ImportCatalogResult importCatalog(
+            String baseUrl, String apiKey, String tenantId, byte[] zipBytes, String registry, String namespace);
 
     /**
-     * Result of a catalog import operation.
+     * Result of a catalog import operation. Since contract 2.0 an import installs the archive's
+     * release as a whole, so there are no per-resource counts.
+     *
+     * @param newlyInstalled false when the same release was already installed
+     * @param total          the number of resources in the release
      */
     record ImportCatalogResult(
+            String registry,
+            String namespace,
             String catalogKey,
             String catalogName,
-            int installed,
-            int updated,
-            int failed,
+            String version,
+            boolean newlyInstalled,
             int total
     ) {}
 

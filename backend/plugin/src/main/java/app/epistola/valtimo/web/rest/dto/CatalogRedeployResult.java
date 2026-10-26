@@ -21,10 +21,12 @@ package app.epistola.valtimo.web.rest.dto;
  * Outcome of a manual single-catalog redeploy from the admin page.
  *
  * <p>{@code success=true} means the catalog ZIP was built from the classpath and
- * accepted by Epistola's import endpoint; {@code installed} / {@code updated} /
- * {@code failed} / {@code total} are the per-resource counts Epistola reported.
+ * accepted by Epistola's import endpoint, which installs the release it carries as a whole
+ * (contract 2.0): {@code catalogId} names the catalog it was installed in
+ * ({@code registry/namespace/key}), {@code newlyInstalled} is false when that release was already
+ * there, and {@code total} is the number of resources in it.
  * {@code success=false} means the build or import failed — {@code errorMessage}
- * carries the reason and the resource counts are zero. {@code httpStatus} is the
+ * carries the reason, {@code catalogId} is null and {@code total} is zero. {@code httpStatus} is the
  * downstream Epistola status code (when the failure was an HTTP response); the
  * controller maps a downstream 4xx to {@code 422 Unprocessable Entity} (a
  * deterministic data problem the operator must fix) and reserves {@code 502 Bad
@@ -34,10 +36,8 @@ public record CatalogRedeployResult(
         String slug,
         String version,
         boolean success,
-        String catalogKey,
-        int installed,
-        int updated,
-        int failed,
+        String catalogId,
+        boolean newlyInstalled,
         int total,
         String errorMessage,
         Integer httpStatus

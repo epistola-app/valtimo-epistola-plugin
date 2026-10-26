@@ -148,7 +148,7 @@ class EpistolaServiceImplRetryTest {
 
         EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 2);
         EpistolaApiException ex = assertThrows(EpistolaApiException.class,
-                () -> service.importCatalog("http://x", "key", TENANT, new byte[]{1, 2, 3}, "AUTHORED"));
+                () -> service.importCatalog("http://x", "key", TENANT, new byte[]{1, 2, 3}, "local", "valtimo"));
 
         assertEquals(400, ex.getHttpStatus());
         assertEquals("catalog-schema-too-old", ex.getProblemTypeSlug());

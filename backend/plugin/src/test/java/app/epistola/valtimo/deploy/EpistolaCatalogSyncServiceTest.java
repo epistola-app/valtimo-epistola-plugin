@@ -30,6 +30,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -39,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -56,7 +58,8 @@ class EpistolaCatalogSyncServiceTest {
     private static final String BASE_URL = "https://api.epistola.app";
     private static final String API_KEY = "secret-key";
     private static final String TENANT_ID = "tenant-1";
-    private static final String CATALOG_TYPE = "full";
+    private static final String REGISTRY = "local";
+    private static final String NAMESPACE = "valtimo";
     private static final int EXPECTED_CATALOG_SCHEMA_VERSION = 4;
 
     @BeforeEach
@@ -70,15 +73,16 @@ class EpistolaCatalogSyncServiceTest {
 
         @Test
         void syncsWhenVersionDoesNotMatchPreviouslyDeployed() {
-            when(epistolaService.importCatalog(eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), any(byte[].class), eq(CATALOG_TYPE)))
-                    .thenReturn(new EpistolaService.ImportCatalogResult("test-catalog", "Test Catalog", 1, 0, 0, 1));
+            when(epistolaService.importCatalog(eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), any(byte[].class), eq(REGISTRY), eq(NAMESPACE)))
+                    .thenReturn(new EpistolaService.ImportCatalogResult(
+                            REGISTRY, NAMESPACE, "test-catalog", "Test Catalog", "1.0.0", true, 1));
 
-            EpistolaCatalogSyncService.SyncResult result = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+            EpistolaCatalogSyncService.SyncResult result = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
 
             assertThat(result.successCount()).isGreaterThanOrEqualTo(1);
             assertThat(result.failCount()).isZero();
             assertThat(result.totalCatalogs()).isGreaterThanOrEqualTo(1);
-            verify(epistolaService).importCatalog(eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), any(byte[].class), eq(CATALOG_TYPE));
+            verify(epistolaService).importCatalog(eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), any(byte[].class), eq(REGISTRY), eq(NAMESPACE));
         }
     }
 
@@ -88,20 +92,21 @@ class EpistolaCatalogSyncServiceTest {
         @Test
         void skipsWhenVersionMatchesPreviouslyDeployed() {
             // First sync to populate deployed versions
-            when(epistolaService.importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString()))
-                    .thenReturn(new EpistolaService.ImportCatalogResult("test-catalog", "Test Catalog", 1, 0, 0, 1));
+            when(epistolaService.importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString(), anyString()))
+                    .thenReturn(new EpistolaService.ImportCatalogResult(
+                            REGISTRY, NAMESPACE, "test-catalog", "Test Catalog", "1.0.0", true, 1));
 
-            syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+            syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
 
             // Reset mock to track only second invocation
             org.mockito.Mockito.reset(epistolaService);
 
             // Second sync — version hasn't changed, should skip
-            EpistolaCatalogSyncService.SyncResult result = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+            EpistolaCatalogSyncService.SyncResult result = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
 
             assertThat(result.successCount()).isZero();
             assertThat(result.failCount()).isZero();
-            verify(epistolaService, never()).importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString());
+            verify(epistolaService, never()).importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString(), anyString());
         }
     }
 
@@ -165,10 +170,10 @@ class EpistolaCatalogSyncServiceTest {
         @Test
         void tracksVersionOnlyForSuccessfulSyncs() {
             // The test classpath has at least one catalog. We simulate failure for it.
-            when(epistolaService.importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString()))
+            when(epistolaService.importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString(), anyString()))
                     .thenThrow(new RuntimeException("API error"));
 
-            EpistolaCatalogSyncService.SyncResult result = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+            EpistolaCatalogSyncService.SyncResult result = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
 
             assertThat(result.failCount()).isGreaterThanOrEqualTo(1);
             assertThat(result.successCount()).isZero();
@@ -176,10 +181,11 @@ class EpistolaCatalogSyncServiceTest {
 
             // Since the sync failed, a retry should attempt the catalog again (not skip it)
             org.mockito.Mockito.reset(epistolaService);
-            when(epistolaService.importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString()))
-                    .thenReturn(new EpistolaService.ImportCatalogResult("test-catalog", "Test Catalog", 1, 0, 0, 1));
+            when(epistolaService.importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString(), anyString()))
+                    .thenReturn(new EpistolaService.ImportCatalogResult(
+                            REGISTRY, NAMESPACE, "test-catalog", "Test Catalog", "1.0.0", true, 1));
 
-            EpistolaCatalogSyncService.SyncResult retryResult = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+            EpistolaCatalogSyncService.SyncResult retryResult = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
 
             assertThat(retryResult.successCount()).isGreaterThanOrEqualTo(1);
             assertThat(retryResult.failCount()).isZero();
@@ -192,33 +198,78 @@ class EpistolaCatalogSyncServiceTest {
 
         @Test
         void tracksVersionAfterSuccessfulSync() {
-            when(epistolaService.importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString()))
-                    .thenReturn(new EpistolaService.ImportCatalogResult("test-catalog", "Test Catalog", 1, 0, 0, 1));
+            when(epistolaService.importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString(), anyString()))
+                    .thenReturn(new EpistolaService.ImportCatalogResult(
+                            REGISTRY, NAMESPACE, "test-catalog", "Test Catalog", "1.0.0", true, 1));
 
-            EpistolaCatalogSyncService.SyncResult firstResult = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+            EpistolaCatalogSyncService.SyncResult firstResult = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
             assertThat(firstResult.successCount()).isGreaterThanOrEqualTo(1);
 
             // Second sync should skip all catalogs since versions match
             org.mockito.Mockito.reset(epistolaService);
-            EpistolaCatalogSyncService.SyncResult secondResult = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+            EpistolaCatalogSyncService.SyncResult secondResult = syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
 
             assertThat(secondResult.successCount()).isZero();
             assertThat(secondResult.failCount()).isZero();
-            verify(epistolaService, never()).importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString());
+            verify(epistolaService, never()).importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString(), anyString());
         }
 
         @Test
         void tracksSeparateVersionsPerConfigId() {
-            when(epistolaService.importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString()))
-                    .thenReturn(new EpistolaService.ImportCatalogResult("test-catalog", "Test Catalog", 1, 0, 0, 1));
+            when(epistolaService.importCatalog(anyString(), anyString(), anyString(), any(byte[].class), anyString(), anyString()))
+                    .thenReturn(new EpistolaService.ImportCatalogResult(
+                            REGISTRY, NAMESPACE, "test-catalog", "Test Catalog", "1.0.0", true, 1));
 
             // Sync for config-1
-            syncService.syncCatalogs("config-1", BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+            syncService.syncCatalogs("config-1", BASE_URL, API_KEY, TENANT_ID);
 
             // Sync for config-2 should still import (separate version tracking)
-            EpistolaCatalogSyncService.SyncResult config2Result = syncService.syncCatalogs("config-2", BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+            EpistolaCatalogSyncService.SyncResult config2Result = syncService.syncCatalogs("config-2", BASE_URL, API_KEY, TENANT_ID);
 
             assertThat(config2Result.successCount()).isGreaterThanOrEqualTo(1);
+        }
+    }
+
+    @Nested
+    class CatalogName {
+
+        @Test
+        void namesAPreV8CatalogWithTheConfiguredRegistryAndNamespace() {
+            EpistolaCatalogSyncService service =
+                    new EpistolaCatalogSyncService(scanner, epistolaService, "example.org", "acme");
+            when(epistolaService.importCatalog(eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
+                    any(byte[].class), eq("example.org"), eq("acme")))
+                    .thenReturn(new EpistolaService.ImportCatalogResult(
+                            "example.org", "acme", "test-catalog", "Test Catalog", "1.0.0", true, 1));
+
+            EpistolaCatalogSyncService.RedeployOutcome outcome = service.redeployCatalog(
+                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, "test-catalog");
+
+            assertThat(outcome.success()).isTrue();
+            assertThat(outcome.catalogId()).isEqualTo("example.org/acme/test-catalog");
+        }
+
+        @Test
+        void leavesAV8CatalogToNameItself() {
+            // A wire v8 manifest names its own registry and namespace; sending the defaults as
+            // well could only disagree with it.
+            CatalogScanner v8Scanner = org.mockito.Mockito.mock(CatalogScanner.class);
+            when(v8Scanner.scan()).thenReturn(List.of(new CatalogScanner.CatalogOnClasspath(
+                    "test-catalog", "1.0.0", "config/epistola/catalogs/test-catalog",
+                    "exchange.epistola.app", "epistola")));
+            EpistolaCatalogSyncService service = new EpistolaCatalogSyncService(v8Scanner, epistolaService);
+            when(epistolaService.importCatalog(eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
+                    any(byte[].class), isNull(), isNull()))
+                    .thenReturn(new EpistolaService.ImportCatalogResult(
+                            "exchange.epistola.app", "epistola", "test-catalog", "Test Catalog", "1.0.0", true, 1));
+
+            EpistolaCatalogSyncService.RedeployOutcome outcome = service.redeployCatalog(
+                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, "test-catalog");
+
+            assertThat(outcome.success()).isTrue();
+            assertThat(outcome.catalogId()).isEqualTo("exchange.epistola.app/epistola/test-catalog");
+            assertThat(service.importedAs(v8Scanner.scan().get(0)).toString())
+                    .isEqualTo("exchange.epistola.app/epistola/test-catalog");
         }
     }
 
@@ -229,37 +280,38 @@ class EpistolaCatalogSyncServiceTest {
         void forcesImportEvenWhenVersionMatches() {
             // First sync populates the deployed-version for test-catalog.
             when(epistolaService.importCatalog(anyString(), anyString(), anyString(),
-                    any(byte[].class), anyString()))
+                    any(byte[].class), anyString(), anyString()))
                     .thenReturn(new EpistolaService.ImportCatalogResult(
-                            "test-catalog", "Test Catalog", 1, 0, 0, 1));
-            syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE);
+                            REGISTRY, NAMESPACE, "test-catalog", "Test Catalog", "1.0.0", true, 1));
+            syncService.syncCatalogs(CONFIG_ID, BASE_URL, API_KEY, TENANT_ID);
 
             // A plain re-sync would now skip (version matches) — see SkipUnchangedCatalogs.
             org.mockito.Mockito.reset(epistolaService);
             when(epistolaService.importCatalog(eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
-                    any(byte[].class), eq(CATALOG_TYPE)))
+                    any(byte[].class), eq(REGISTRY), eq(NAMESPACE)))
                     .thenReturn(new EpistolaService.ImportCatalogResult(
-                            "test-catalog", "Test Catalog", 0, 1, 0, 1));
+                            REGISTRY, NAMESPACE, "test-catalog", "Test Catalog", "1.0.0", false, 1));
 
             EpistolaCatalogSyncService.RedeployOutcome outcome = syncService.redeployCatalog(
-                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE, "test-catalog");
+                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, "test-catalog");
 
             assertThat(outcome.success()).isTrue();
             assertThat(outcome.slug()).isEqualTo("test-catalog");
-            assertThat(outcome.updated()).isEqualTo(1);
+            assertThat(outcome.newlyInstalled()).isFalse();
+            assertThat(outcome.catalogId()).isEqualTo("local/valtimo/test-catalog");
             // Forced — the version-skip check is bypassed, so import runs again.
             verify(epistolaService).importCatalog(eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
-                    any(byte[].class), eq(CATALOG_TYPE));
+                    any(byte[].class), eq(REGISTRY), eq(NAMESPACE));
         }
 
         @Test
         void returnsFailureOutcomeWithoutThrowingWhenImportFails() {
             when(epistolaService.importCatalog(anyString(), anyString(), anyString(),
-                    any(byte[].class), anyString()))
+                    any(byte[].class), anyString(), anyString()))
                     .thenThrow(new RuntimeException("Epistola rejected the import"));
 
             EpistolaCatalogSyncService.RedeployOutcome outcome = syncService.redeployCatalog(
-                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE, "test-catalog");
+                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, "test-catalog");
 
             assertThat(outcome.success()).isFalse();
             assertThat(outcome.slug()).isEqualTo("test-catalog");
@@ -269,12 +321,12 @@ class EpistolaCatalogSyncServiceTest {
         @Test
         void preservesDownstreamDetailAndStatusOnApiFailure() {
             when(epistolaService.importCatalog(anyString(), anyString(), anyString(),
-                    any(byte[].class), anyString()))
+                    any(byte[].class), anyString(), anyString()))
                     .thenThrow(new EpistolaApiException(
                             "Some other validation failure", null, 422, null, null));
 
             EpistolaCatalogSyncService.RedeployOutcome outcome = syncService.redeployCatalog(
-                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE, "test-catalog");
+                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, "test-catalog");
 
             assertThat(outcome.success()).isFalse();
             assertThat(outcome.errorMessage()).isEqualTo("Some other validation failure");
@@ -284,7 +336,7 @@ class EpistolaCatalogSyncServiceTest {
         @Test
         void translatesCatalogSchemaTooOldForClasspathOperator() {
             when(epistolaService.importCatalog(anyString(), anyString(), anyString(),
-                    any(byte[].class), anyString()))
+                    any(byte[].class), anyString(), anyString()))
                     .thenThrow(new EpistolaApiException(
                             "Catalog wire schema version 2 predates the oldest supported version (4). "
                                     + "Re-export the catalog from a current source.",
@@ -293,7 +345,7 @@ class EpistolaCatalogSyncServiceTest {
                             Map.of("version", 2, "baselineVersion", 4)));
 
             EpistolaCatalogSyncService.RedeployOutcome outcome = syncService.redeployCatalog(
-                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE, "test-catalog");
+                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, "test-catalog");
 
             assertThat(outcome.success()).isFalse();
             assertThat(outcome.httpStatus()).isEqualTo(400);
@@ -310,7 +362,7 @@ class EpistolaCatalogSyncServiceTest {
         @Test
         void throwsForUnknownSlug() {
             assertThatThrownBy(() -> syncService.redeployCatalog(
-                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, CATALOG_TYPE, "does-not-exist"))
+                    CONFIG_ID, BASE_URL, API_KEY, TENANT_ID, "does-not-exist"))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("No classpath catalog found with slug 'does-not-exist'");
         }

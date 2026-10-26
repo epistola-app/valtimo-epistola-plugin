@@ -63,7 +63,7 @@ class EpistolaResultCollectorRunnerTest {
 
     @Test
     void handleResult_correlatesWithJobPathFromTenantAndRequest() {
-        ResultCollector.GenerationResult result = makeResult("req-123", "COMPLETED", "doc-7", null);
+        ResultCollector.GenerationResult result = makeResult("req-123", "completed", "doc-7", null);
         when(correlationService.correlateCompletion(
                 eq("acme"), eq("req-123"), eq("COMPLETED"), eq("doc-7"), eq((String) null)))
                 .thenReturn(1);
@@ -80,7 +80,7 @@ class EpistolaResultCollectorRunnerTest {
         // — re-throwing would block the collector's sequence from advancing and replay the same
         // result on the next poll forever. Server-side delivery already happened; redelivery
         // can't resurrect a missing waiting execution.
-        ResultCollector.GenerationResult result = makeResult("req-456", "FAILED", null, "boom");
+        ResultCollector.GenerationResult result = makeResult("req-456", "failed", null, "boom");
         when(correlationService.correlateCompletion(any(), any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("operaton was sad"));
 
@@ -155,9 +155,12 @@ class EpistolaResultCollectorRunnerTest {
                 documentId,
                 /* correlationId */ null,
                 /* routingKey */ null,
-                /* templateId */ null,
-                /* variantId */ null,
-                /* versionId */ null,
+                /* templateKey */ null,
+                /* variantKey */ null,
+                /* registry */ "local",
+                /* namespace */ "valtimo",
+                /* catalogKey */ "demo",
+                /* version */ null,
                 /* filename */ null,
                 /* contentType */ null,
                 /* sizeBytes */ null,

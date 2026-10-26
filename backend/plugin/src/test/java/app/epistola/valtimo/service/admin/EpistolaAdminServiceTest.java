@@ -26,6 +26,7 @@ import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService
 import app.epistola.valtimo.service.versioncheck.VersionCheckService;
 
 import app.epistola.valtimo.domain.CatalogInfo;
+import app.epistola.valtimo.domain.CatalogRef;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
 import app.epistola.valtimo.domain.TemplateInfo;
@@ -131,7 +132,7 @@ class EpistolaAdminServiceTest {
         void shouldReturnReachableWhenCatalogsCallSucceeds() {
             mockSinglePluginConfiguration();
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
-                    .thenReturn(List.of(new CatalogInfo("cat-1", "Test Catalog", "default")));
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Test Catalog", "local", "valtimo", "cat-1", true)));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
@@ -145,7 +146,7 @@ class EpistolaAdminServiceTest {
             // The contract version the plugin ships, read from epistola-contract-version.txt
             // inside the client jar. Pinned deliberately: bumping the contract dependency
             // should be a conscious update here, not a silent drift.
-            assertThat(status.contractVersion()).isEqualTo("1.4.0");
+            assertThat(status.contractVersion()).isEqualTo("2.0.0-alpha.3");
             assertThat(status.serverContractVersion()).isNull();
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
@@ -157,14 +158,14 @@ class EpistolaAdminServiceTest {
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("0.26.3", "1.4.0"));
+                    .thenReturn(new EpistolaService.SystemInfo("2.0.0", "2.0.0-alpha.3"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
             ConnectionStatus status = results.get(0);
-            assertThat(status.serverVersion()).isEqualTo("0.26.3");
-            assertThat(status.contractVersion()).isEqualTo("1.4.0");
-            assertThat(status.serverContractVersion()).isEqualTo("1.4.0");
+            assertThat(status.serverVersion()).isEqualTo("2.0.0");
+            assertThat(status.contractVersion()).isEqualTo("2.0.0-alpha.3");
+            assertThat(status.serverContractVersion()).isEqualTo("2.0.0-alpha.3");
             assertThat(status.contractCompatibilitySeverity()).isEqualTo(ContractCompatibilitySeverity.OK);
         }
 
@@ -174,7 +175,7 @@ class EpistolaAdminServiceTest {
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("0.26.3", "0.16.1"));
+                    .thenReturn(new EpistolaService.SystemInfo("1.3.0", "1.4.0"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
@@ -188,7 +189,7 @@ class EpistolaAdminServiceTest {
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("2.0.0", "2.0.0"));
+                    .thenReturn(new EpistolaService.SystemInfo("3.0.0", "3.0.0"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
@@ -198,44 +199,51 @@ class EpistolaAdminServiceTest {
 
         @Test
         void shouldTreatNewerServerMinorAndPatchAsCompatible() {
+            // On the classifier, with release versions: while the plugin pins a 2.0 alpha, every
+            // other server is a warning (see shouldWarnWhenEitherSideIsAnotherPreRelease).
+            assertThat(EpistolaAdminService.classifyContractCompatibility("2.0.0", "2.1.3"))
+                    .isEqualTo(ContractCompatibilitySeverity.OK);
+            assertThat(EpistolaAdminService.classifyContractCompatibility("2.1.0", "2.1.3"))
+                    .isEqualTo(ContractCompatibilitySeverity.OK);
+        }
+
+        @Test
+        void shouldWarnWhilePinnedToAPreReleaseAndTheServerIsAnother() {
             mockSinglePluginConfiguration();
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
                     .thenReturn(List.of());
-            // Must stay ahead of the plugin's own contract version, or this asserts nothing.
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("1.5.3", "1.5.3"));
+                    .thenReturn(new EpistolaService.SystemInfo("2.1.3", "2.1.3"));
 
-            List<ConnectionStatus> results = adminService.checkConnections();
+            ConnectionStatus status = adminService.checkConnections().get(0);
 
-            ConnectionStatus status = results.get(0);
-            // The premise, checked rather than trusted: a contract bump once made this server
-            // equal to the plugin's own version, and the test kept passing.
-            //
-            // Compared with the plugin's own SemVersion, not Runtime.Version: the JDK's parser
-            // rejects a version whose last element is zero, so it cannot read "1.4.0" at all and
-            // threw here the moment the contract reached a x.y.0 release.
-            assertThat(SemVersion.parse(status.serverContractVersion()).orElseThrow())
-                    .isGreaterThan(SemVersion.parse(status.contractVersion()).orElseThrow());
             assertThat(status.contractCompatibilitySeverity())
-                    .isEqualTo(ContractCompatibilitySeverity.OK);
+                    .isEqualTo(ContractCompatibilitySeverity.WARNING);
         }
 
         @Test
         void shouldWarnWhenServerContractMinorIsBehindPluginContractMinor() {
             // Same major, server a minor behind: the server predates features the plugin's
-            // contract knows about, which is a warning rather than an outright mismatch.
-            mockSinglePluginConfiguration();
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
-                    .thenReturn(List.of());
-            when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("0.26.3", "1.1.0"));
-
-            List<ConnectionStatus> results = adminService.checkConnections();
-
-            ConnectionStatus status = results.get(0);
-            assertThat(status.serverContractVersion()).isEqualTo("1.1.0");
-            assertThat(status.contractCompatibilitySeverity())
+            // contract knows about, which is a warning rather than an outright mismatch. Checked on
+            // the classifier, with versions of its own: the plugin's pinned contract is x.0 while
+            // 2.0 is new, and no server of the same major can be a minor behind it.
+            assertThat(EpistolaAdminService.classifyContractCompatibility("2.3.0", "2.1.0"))
                     .isEqualTo(ContractCompatibilitySeverity.WARNING);
+            assertThat(EpistolaAdminService.classifyContractCompatibility("2.3.0", "2.3.4"))
+                    .isEqualTo(ContractCompatibilitySeverity.OK);
+        }
+
+        @Test
+        void shouldWarnWhenEitherSideIsAnotherPreRelease() {
+            // Alpha releases change in place, so two of them may disagree within one minor.
+            assertThat(EpistolaAdminService.classifyContractCompatibility("2.0.0-alpha.3", "2.0.0-alpha.2"))
+                    .isEqualTo(ContractCompatibilitySeverity.WARNING);
+            assertThat(EpistolaAdminService.classifyContractCompatibility("2.0.0-alpha.3", "2.0.0"))
+                    .isEqualTo(ContractCompatibilitySeverity.WARNING);
+            assertThat(EpistolaAdminService.classifyContractCompatibility("2.0.0-alpha.3", "2.0.0-alpha.3"))
+                    .isEqualTo(ContractCompatibilitySeverity.OK);
+            assertThat(EpistolaAdminService.classifyContractCompatibility("2.0.0-alpha.3", "1.4.0"))
+                    .isEqualTo(ContractCompatibilitySeverity.ERROR);
         }
 
         @Test
@@ -269,7 +277,7 @@ class EpistolaAdminServiceTest {
             ConnectionStatus status = results.get(0);
             assertThat(status.reachable()).isFalse();
             assertThat(status.errorMessage()).isEqualTo("Connection refused");
-            assertThat(status.contractVersion()).isEqualTo("1.4.0");
+            assertThat(status.contractVersion()).isEqualTo("2.0.0-alpha.3");
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
         }
@@ -388,7 +396,7 @@ class EpistolaAdminServiceTest {
 
             // Configured catalog + template resolve in Epistola — no dangling references
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
-                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
             when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
 
@@ -613,7 +621,7 @@ class EpistolaAdminServiceTest {
         void shouldDetectMissingCatalog() {
             singleGenerateDocLink(createActionProps("cat-x", "tmpl-1"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
-                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
 
@@ -629,7 +637,7 @@ class EpistolaAdminServiceTest {
         void shouldDetectMissingTemplate() {
             singleGenerateDocLink(createActionProps("cat-1", "tmpl-x"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
-                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
             when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
 
@@ -643,7 +651,7 @@ class EpistolaAdminServiceTest {
         void shouldDetectMissingVariant() {
             singleGenerateDocLink(createLegacyActionProps("cat-1", "tmpl-1", "nl"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
-                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
             when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
             when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1"))
@@ -661,7 +669,7 @@ class EpistolaAdminServiceTest {
         void shouldSkipVariantCheckWhenVariantIsExpression() {
             singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "$pv.lang"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
-                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
             when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
 
@@ -693,7 +701,7 @@ class EpistolaAdminServiceTest {
         void shouldReportNoProblemsWhenAllReferencesPresent() {
             singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "nl"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
-                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
             when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
             when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1"))
@@ -720,7 +728,7 @@ class EpistolaAdminServiceTest {
             when(processLinkService.getProcessLinks(pd2.getId())).thenReturn(List.of(link2));
             mockSinglePluginConfiguration();
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
-                    .thenReturn(List.of(new CatalogInfo("cat-1", "Catalog", "default")));
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
 
@@ -773,9 +781,11 @@ class EpistolaAdminServiceTest {
             when(catalogSyncService.listClasspathCatalogs()).thenReturn(List.of(
                     new CatalogScanner.CatalogOnClasspath("demo", "1.2.0", "config/epistola/catalogs/demo"),
                     new CatalogScanner.CatalogOnClasspath("other", "2.0.0", "config/epistola/catalogs/other")));
+            when(catalogSyncService.importedAs(any())).thenAnswer(invocation -> new CatalogRef(
+                    "local", "valtimo", invocation.<CatalogScanner.CatalogOnClasspath>getArgument(0).slug()));
             // Epistola only has "demo".
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID)).thenReturn(List.of(
-                    new CatalogInfo("demo", "Demo", "default")));
+                    new CatalogInfo("local/valtimo/demo", "Demo", "local", "valtimo", "demo", true)));
 
             List<ClasspathCatalog> result = adminService.listClasspathCatalogs(configId);
 
@@ -817,15 +827,16 @@ class EpistolaAdminServiceTest {
             String configId = config.getId().toString();
 
             when(catalogSyncService.redeployCatalog(eq(configId), eq(BASE_URL), eq(API_KEY),
-                    eq(TENANT_ID), anyString(), eq("demo")))
+                    eq(TENANT_ID), eq("demo")))
                     .thenReturn(new EpistolaCatalogSyncService.RedeployOutcome(
-                            "demo", "1.2.0", true, "demo", 3, 1, 0, 4, null, null));
+                            "demo", "1.2.0", true, "local/valtimo/demo", true, 4, null, null));
 
             CatalogRedeployResult result = adminService.redeployCatalog(configId, "demo");
 
             assertThat(result.success()).isTrue();
             assertThat(result.slug()).isEqualTo("demo");
-            assertThat(result.installed()).isEqualTo(3);
+            assertThat(result.catalogId()).isEqualTo("local/valtimo/demo");
+            assertThat(result.newlyInstalled()).isTrue();
             assertThat(result.total()).isEqualTo(4);
         }
 

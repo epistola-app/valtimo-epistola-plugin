@@ -381,10 +381,9 @@ public class EpistolaPlugin {
         // Build variant selection attributes, resolving each value as a JSONata expression
         List<VariantSelectionAttribute> resolvedAttributes = hasAttributes
                 ? actionConfig.variantAttributes().stream()
-                        .map(attr -> new VariantSelectionAttribute(
+                        .map(attr -> variantSelectionAttribute(
                                 attr.key(),
                                 attr.value().resolve(jsonataMappingService, scalarEvalContext),
-                                null,
                                 attr.required()))
                         .toList()
                 : null;
@@ -768,4 +767,18 @@ public class EpistolaPlugin {
                 .build();
     }
 
+
+    /**
+     * An attribute criterion as contract 2.0 takes it. Contract 1.4 also accepted the attribute of
+     * another catalog as a dotted key, {@code <catalog>.<key>} ({@code system.locale}), and process
+     * links saved then may hold one; 2.0 refuses a dotted key and names the catalog in a member of
+     * its own, so the two are split here. A key without a dot is the template's own catalog's.
+     */
+    static VariantSelectionAttribute variantSelectionAttribute(String key, String value, Boolean required) {
+        int dot = key.indexOf('.');
+        if (dot > 0 && dot < key.length() - 1) {
+            return new VariantSelectionAttribute(key.substring(dot + 1), value, key.substring(0, dot), required);
+        }
+        return new VariantSelectionAttribute(key, value, null, required);
+    }
 }

@@ -23,6 +23,7 @@ import app.epistola.valtimo.action.generate.GenerateDocumentActionConfigurationR
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.domain.CatalogInfo;
+import app.epistola.valtimo.domain.CatalogRef;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
 import app.epistola.valtimo.domain.TemplateInfo;
@@ -86,9 +87,8 @@ public class EpistolaAdminService {
     ).collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     /** Catalog import type — mirrors the value used by the startup sync trigger. */
-    private static final String CATALOG_SYNC_TYPE = "AUTHORED";
     private static final String CONTRACT_VERSION_RESOURCE = "epistola-contract-version.txt";
-    private static final Pattern SEMVER_PREFIX = Pattern.compile("^(\\d+)\\.(\\d+)(?:\\.(\\d+))?.*");
+    private static final Pattern SEMVER_PREFIX = Pattern.compile("^(\\d+)\\.(\\d+)(?:\\.(\\d+))?(-[^+]*)?.*");
 
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
@@ -187,7 +187,13 @@ public class EpistolaAdminService {
         }
     }
 
-    private ContractCompatibilitySeverity classifyContractCompatibility(
+    /**
+     * How the plugin's contract and the server's go together: another major is an error (since
+     * contract 2.0 the media type carries the major, so the server refuses every request), a server
+     * a minor behind a warning. A pre-release on either side is a warning unless both are exactly
+     * the same: alpha releases change in place, so 2.0.0-alpha.2 and 2.0.0-alpha.3 may disagree.
+     */
+    static ContractCompatibilitySeverity classifyContractCompatibility(
             String contractVersion,
             String serverContractVersion
     ) {
@@ -200,6 +206,10 @@ public class EpistolaAdminService {
             return ContractCompatibilitySeverity.ERROR;
         }
         if (server.get().minor() < local.get().minor()) {
+            return ContractCompatibilitySeverity.WARNING;
+        }
+        if ((local.get().preRelease() || server.get().preRelease())
+                && !contractVersion.trim().equals(serverContractVersion.trim())) {
             return ContractCompatibilitySeverity.WARNING;
         }
         return ContractCompatibilitySeverity.OK;
@@ -502,25 +512,40 @@ public class EpistolaAdminService {
      */
     public List<ClasspathCatalog> listClasspathCatalogs(String configurationId) {
         EpistolaPlugin plugin = findConfigEntry(configurationId).plugin();
-        Optional<Set<String>> epistolaCatalogIds = fetchEpistolaCatalogIds(plugin);
+        Optional<List<CatalogInfo>> epistolaCatalogs = fetchEpistolaCatalogs(plugin);
 
         return catalogSyncService.listClasspathCatalogs().stream()
                 .map(c -> new ClasspathCatalog(
                         c.slug(),
                         c.version(),
-                        epistolaCatalogIds
-                                .map(ids -> ids.contains(c.slug())
+                        epistolaCatalogs
+                                .map(catalogs -> countMatching(catalogs, catalogSyncService.importedAs(c).toString()) > 0
                                         ? ClasspathCatalog.IN_EPISTOLA
                                         : ClasspathCatalog.NOT_IN_EPISTOLA)
                                 .orElse(ClasspathCatalog.UNKNOWN)))
                 .toList();
     }
 
-    private Optional<Set<String>> fetchEpistolaCatalogIds(EpistolaPlugin plugin) {
+    /**
+     * How many of {@code catalogs} a stored catalog reference names. A key saved against contract
+     * 1.x names every catalog with that key, so more than one means it is ambiguous.
+     */
+    private static long countMatching(List<CatalogInfo> catalogs, String catalogId) {
+        CatalogRef ref;
+        try {
+            ref = CatalogRef.parse(catalogId);
+        } catch (IllegalArgumentException e) {
+            return 0;
+        }
+        return catalogs.stream()
+                .filter(c -> ref.matches(c.registry(), c.namespace(), c.key()))
+                .count();
+    }
+
+    private Optional<List<CatalogInfo>> fetchEpistolaCatalogs(EpistolaPlugin plugin) {
         try {
             return Optional.of(epistolaService
-                    .getCatalogs(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId())
-                    .stream().map(CatalogInfo::id).collect(Collectors.toSet()));
+                    .getCatalogs(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId()));
         } catch (Exception e) {
             log.debug("Could not list Epistola catalogs for existence check: {}", e.getMessage());
             return Optional.empty();
@@ -540,16 +565,13 @@ public class EpistolaAdminService {
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
-                CATALOG_SYNC_TYPE,
                 slug);
         return new CatalogRedeployResult(
                 outcome.slug(),
                 outcome.version(),
                 outcome.success(),
-                outcome.catalogKey(),
-                outcome.installed(),
-                outcome.updated(),
-                outcome.failed(),
+                outcome.catalogId(),
+                outcome.newlyInstalled(),
                 outcome.total(),
                 outcome.errorMessage(),
                 outcome.httpStatus());
@@ -680,10 +702,14 @@ public class EpistolaAdminService {
             if (catalogConfigured && templateConfigured) {
                 String configId = link.getPluginConfigurationId().toString();
 
-                Optional<Set<String>> catalogIds = refCache.catalogIds(configId, plugin);
-                if (catalogIds.isPresent()) {
-                    if (!catalogIds.get().contains(catalogId)) {
+                Optional<List<CatalogInfo>> catalogs = refCache.catalogs(configId, plugin);
+                if (catalogs.isPresent()) {
+                    long matching = countMatching(catalogs.get(), catalogId);
+                    if (matching == 0) {
                         problems.add("Catalog '" + catalogId + "' does not exist in Epistola");
+                    } else if (matching > 1) {
+                        problems.add("Catalog '" + catalogId + "' is ambiguous in Epistola: "
+                                + "it names catalogs in several namespaces; select it again to name it in full");
                     } else {
                         Optional<Set<String>> templateIds =
                                 refCache.templateIds(configId, catalogId, plugin);
@@ -718,17 +744,16 @@ public class EpistolaAdminService {
      */
     private final class EpistolaReferenceCache {
 
-        private final Map<String, Optional<Set<String>>> catalogIdsByConfig = new HashMap<>();
+        private final Map<String, Optional<List<CatalogInfo>>> catalogsByConfig = new HashMap<>();
         private final Map<String, Optional<Set<String>>> templateIdsByConfigCatalog = new HashMap<>();
         private final Map<String, Optional<Set<String>>> variantIdsByConfigCatalogTemplate = new HashMap<>();
 
-        /** Present = the existing-id set; empty = lookup failed (caller must skip the check). */
-        Optional<Set<String>> catalogIds(String configId, EpistolaPlugin plugin) {
-            return catalogIdsByConfig.computeIfAbsent(configId, k -> {
+        /** Present = the existing catalogs; empty = lookup failed (caller must skip the check). */
+        Optional<List<CatalogInfo>> catalogs(String configId, EpistolaPlugin plugin) {
+            return catalogsByConfig.computeIfAbsent(configId, k -> {
                 try {
                     return Optional.of(epistolaService
-                            .getCatalogs(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId())
-                            .stream().map(CatalogInfo::id).collect(Collectors.toSet()));
+                            .getCatalogs(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId()));
                 } catch (Exception e) {
                     log.debug("Catalog existence check skipped for config {}: {}",
                             configId, e.getMessage());
@@ -796,7 +821,7 @@ public class EpistolaAdminService {
         }
     }
 
-    private record SemanticVersion(int major, int minor) {
+    private record SemanticVersion(int major, int minor, boolean preRelease) {
         static Optional<SemanticVersion> parse(String version) {
             if (version == null || version.isBlank()) {
                 return Optional.empty();
@@ -807,7 +832,8 @@ public class EpistolaAdminService {
             }
             return Optional.of(new SemanticVersion(
                     Integer.parseInt(matcher.group(1)),
-                    Integer.parseInt(matcher.group(2))
+                    Integer.parseInt(matcher.group(2)),
+                    matcher.group(4) != null
             ));
         }
     }
