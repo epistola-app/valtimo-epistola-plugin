@@ -32,6 +32,7 @@ import com.ritense.valtimo.epistola.plugin.EpistolaPlugin
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.isNull
@@ -63,6 +64,7 @@ class GetCustomDataGenerationTest {
                 isNull(),
                 isNull(),
                 any(),
+                anyOrNull(),
                 any(),
                 eq(FileFormat.PDF),
                 any(),
@@ -99,6 +101,7 @@ class GetCustomDataGenerationTest {
             null,
             null,
             null,
+            null,
             """
             {
                 "customerName": ${'$'}getCustomData().customerName,
@@ -122,6 +125,7 @@ class GetCustomDataGenerationTest {
             isNull(),
             isNull(),
             eq("default"),
+            isNull(),
             submittedData.capture(),
             eq(FileFormat.PDF),
             eq("document.pdf"),

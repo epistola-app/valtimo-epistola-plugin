@@ -195,6 +195,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
                     valid.variantId(),
                     valid.variantAttributes(),
                     valid.environmentId(),
+                    null,
                     "<mapping>",
                     valid.outputFormat(),
                     valid.filename(),
@@ -235,6 +236,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 valid.variantId(),
                 valid.variantAttributes(),
                 valid.environmentId(),
+                null,
                 valid.dataMapping(),
                 valid.outputFormat(),
                 "<filename>",
@@ -337,6 +339,69 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 .hasMessageContaining("expression='$pv.language'");
     }
 
+    @Test
+    void aVersionRangeIsKeptAsWritten_withoutItsSurroundingWhitespace() {
+        for (int version : List.of(0, 1)) {
+            var config = GenerateDocumentActionConfigurationRegistry.parse(
+                    withVersionRange(properties(version, version == 0 ? "value.pdf" : "\"value.pdf\"", null, null), " ^1.4.0 "));
+
+            assertThat(config.versionRange()).as("v" + version).isEqualTo("^1.4.0");
+        }
+    }
+
+    @Test
+    void aBlankVersionRangeIsNoRange() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(1, "\"value.pdf\"", null, null), "  "));
+
+        assertThat(config.versionRange()).isNull();
+    }
+
+    @Test
+    void rejectsAVersionRangeTheContractDoesNotAccept() {
+        // Refused when the action runs, rather than rendering whatever a typo happens to match.
+        for (int version : List.of(0, 1)) {
+            var invalid = withVersionRange(properties(version, version == 0 ? "value.pdf" : "\"value.pdf\"", null, null), "latest");
+
+            assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(invalid))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("configuration v" + version)
+                    .hasMessageContaining("versionRange: Invalid version range 'latest'");
+        }
+    }
+
+    @Test
+    void readsTheVersionRangeFromStoredProperties() {
+        var stored = JsonNodeFactory.instance.objectNode()
+                .put("actionConfigVersion", 1)
+                .put("catalogId", "local/valtimo/brieven")
+                .put("templateId", "besluit")
+                .put("versionRange", "1.9.0")
+                .put("dataMapping", "{}")
+                .put("outputFormat", "\"PDF\"")
+                .put("filename", "\"besluit.pdf\"")
+                .put("resultProcessVariable", "result");
+
+        assertThat(GenerateDocumentActionConfigurationRegistry.parse(stored).versionRange()).isEqualTo("1.9.0");
+    }
+
+    private static GenerateDocumentActionProperties withVersionRange(
+            GenerateDocumentActionProperties valid, String versionRange) {
+        return new GenerateDocumentActionProperties(
+                valid.actionConfigVersion(),
+                valid.catalogId(),
+                valid.templateId(),
+                valid.variantId(),
+                valid.variantAttributes(),
+                valid.environmentId(),
+                versionRange,
+                valid.dataMapping(),
+                valid.outputFormat(),
+                valid.filename(),
+                valid.correlationId(),
+                valid.resultProcessVariable());
+    }
+
     private static void assertMissingRequired(
             int version,
             String field,
@@ -353,6 +418,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 version,
                 field.equals("catalogId") ? " " : "catalog",
                 field.equals("templateId") ? null : "template",
+                null,
                 null,
                 null,
                 null,
@@ -375,6 +441,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 "template",
                 variantId,
                 variantAttributes,
+                null,
                 null,
                 "{}",
                 version == null || version == 0 ? "PDF" : "\"PDF\"",

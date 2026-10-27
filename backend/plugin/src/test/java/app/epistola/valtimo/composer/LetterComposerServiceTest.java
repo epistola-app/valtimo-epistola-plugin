@@ -119,7 +119,7 @@ class LetterComposerServiceTest {
     }
 
     private void templateRequires(String templateId, TemplateField... fields) {
-        when(epistolaService.getTemplateDetails(anyString(), anyString(), anyString(), eq("gemeente"), eq(templateId), any()))
+        when(epistolaService.getTemplateDetails(anyString(), anyString(), anyString(), eq("gemeente"), eq(templateId), any(), any()))
                 .thenReturn(new TemplateDetails(templateId, templateId, List.of(fields), null,
                         SimpleMappingSupport.full()));
     }
@@ -141,7 +141,7 @@ class LetterComposerServiceTest {
     void saysSoWhenEpistolaCannotDescribeTheTemplate() {
         offering(configuration(offered("besluit", "Besluit", null)), "besluit");
         when(jsonataMappingService.evaluate(any())).thenReturn(Map.of("naam", "Jansen"));
-        when(epistolaService.getTemplateDetails(anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit"), any()))
+        when(epistolaService.getTemplateDetails(anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit"), any(), any()))
                 .thenThrow(new RuntimeException("Catalog 'gemeente' not found"));
 
         assertThatThrownBy(() -> service.prepare(CONTEXT, null, "besluit"))
@@ -248,14 +248,14 @@ class LetterComposerServiceTest {
     void previewsWithTheCatalogAndTenantOfTheConfiguredPlugin() {
         offering(configuration(offered("besluit", "Besluit", null)), "besluit");
         when(epistolaService.previewDocument(anyString(), anyString(), anyString(), anyString(),
-                anyString(), any(), any(), any()))
+                anyString(), any(), any(), any(), any()))
                 .thenReturn(new ByteArrayInputStream("%PDF".getBytes()));
 
         service.preview(CONTEXT, null, "besluit", Map.of("naam", "Jansen"));
 
         org.mockito.Mockito.verify(epistolaService).previewDocument(
                 eq("http://epistola"), eq("key"), eq("gemeente"), eq("gemeente"), eq("besluit"),
-                eq(null), eq("prod"), eq(Map.of("naam", "Jansen")));
+                eq(null), eq("prod"), any(), eq(Map.of("naam", "Jansen")));
     }
 
     @Test
@@ -271,7 +271,7 @@ class LetterComposerServiceTest {
     void reportsARefusedRenderAsSuch() {
         offering(configuration(offered("besluit", "Besluit", null)), "besluit");
         when(epistolaService.previewDocument(anyString(), anyString(), anyString(), anyString(),
-                anyString(), any(), any(), any()))
+                anyString(), any(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("422 from Epistola"));
 
         assertThatThrownBy(() -> service.preview(CONTEXT, null, "besluit", Map.of()))

@@ -84,7 +84,7 @@ class EpistolaServiceImplRichTextTest {
     }
 
     private void submit(Map<String, Object> data) {
-        service.submitGenerationJob("http://x", "key", TENANT, "local/valtimo/catalog", "besluit", null, null, null, data,
+        service.submitGenerationJob("http://x", "key", TENANT, "local/valtimo/catalog", "besluit", null, null, null, null, data,
                 FileFormat.PDF, "besluit.pdf", null, null);
     }
 
@@ -118,7 +118,7 @@ class EpistolaServiceImplRichTextTest {
 
     @Test
     void previewsWhatAnEditorTypedAsADocument() {
-        service.previewDocument("http://x", "key", TENANT, "local/valtimo/catalog", "besluit", null, null,
+        service.previewDocument("http://x", "key", TENANT, "local/valtimo/catalog", "besluit", null, null, null,
                 Map.of("motivation", tagged("html", "BLOCK", HTML)));
 
         ArgumentCaptor<PreviewDocumentRequest> request = ArgumentCaptor.forClass(PreviewDocumentRequest.class);

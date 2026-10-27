@@ -89,7 +89,7 @@ class LetterComposerE2ETest {
     fun stubTemplateContracts() {
         TEMPLATES.forEach { templateId ->
             whenever(
-                epistolaService.getTemplateDetails(any(), any(), any(), eq(CATALOG), eq(templateId), anyOrNull()),
+                epistolaService.getTemplateDetails(any(), any(), any(), eq(CATALOG), eq(templateId), anyOrNull(), anyOrNull()),
             ).thenReturn(bundledTemplateDetails(templateId))
         }
         whenever(
@@ -99,6 +99,7 @@ class LetterComposerE2ETest {
                 any(),
                 any(),
                 any(),
+                anyOrNull(),
                 anyOrNull(),
                 anyOrNull(),
                 anyOrNull(),
@@ -196,6 +197,7 @@ class LetterComposerE2ETest {
             any(),
             eq(CATALOG),
             eq(DECISION),
+            anyOrNull(),
             anyOrNull(),
             anyOrNull(),
             anyOrNull(),

@@ -77,6 +77,7 @@ class StartFormPreviewE2ETest {
                 any(),
                 anyOrNull(),
                 anyOrNull(),
+                anyOrNull(),
                 any(),
             ),
         ).thenReturn(ByteArrayInputStream(byteArrayOf(0x25, 0x50, 0x44, 0x46)))
@@ -127,6 +128,7 @@ class StartFormPreviewE2ETest {
             any(),
             anyOrNull(),
             anyOrNull(),
+            anyOrNull(),
             captor.capture(),
         )
     }
@@ -149,6 +151,7 @@ class StartFormPreviewE2ETest {
             any(),
             eq("municipality-demo"),
             eq("bevestigingsbrief-vergunning"),
+            anyOrNull(),
             anyOrNull(),
             anyOrNull(),
             any(),

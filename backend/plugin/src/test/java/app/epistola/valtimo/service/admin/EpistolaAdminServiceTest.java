@@ -27,6 +27,7 @@ import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService
 import app.epistola.valtimo.service.versioncheck.VersionCheckService;
 
 import app.epistola.valtimo.domain.CatalogInfo;
+import app.epistola.valtimo.domain.CatalogReleases;
 import app.epistola.valtimo.domain.CatalogRef;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
@@ -398,7 +399,7 @@ class EpistolaAdminServiceTest {
             // Configured catalog + template resolve in Epistola — no dangling references
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null, null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -631,7 +632,7 @@ class EpistolaAdminServiceTest {
                     .contains("Catalog 'cat-x' does not exist in Epistola");
             // Missing catalog short-circuits — no point probing templates.
             verify(epistolaService, never())
-                    .getTemplates(anyString(), anyString(), anyString(), anyString(), any());
+                    .getTemplates(anyString(), anyString(), anyString(), anyString(), any(), any());
         }
 
         @Test
@@ -649,7 +650,7 @@ class EpistolaAdminServiceTest {
             assertThat(entries.get(0).problems())
                     .anySatisfy(problem -> assertThat(problem).startsWith("Catalog 'cat-1' is ambiguous"));
             verify(epistolaService, never())
-                    .getTemplates(anyString(), anyString(), anyString(), anyString(), any());
+                    .getTemplates(anyString(), anyString(), anyString(), anyString(), any(), any());
         }
 
         @Test
@@ -659,7 +660,7 @@ class EpistolaAdminServiceTest {
                     .thenReturn(List.of(
                             new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true),
                             new CatalogInfo("local/other/cat-1", "Other", "local", "other", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", null))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", null, null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "local/valtimo/cat-1", "Catalog")));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -686,7 +687,7 @@ class EpistolaAdminServiceTest {
             singleGenerateDocLink(createActionProps("local/valtimo/cat-1", "tmpl-1"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, "acceptatie"))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", "acceptatie"))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", "acceptatie", null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "local/valtimo/cat-1", "Catalog")));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -703,12 +704,49 @@ class EpistolaAdminServiceTest {
             singleGenerateDocLink(props);
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", null))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", null, null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "local/valtimo/cat-1", "Catalog")));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
 
             assertThat(entries.get(0).problems()).isEmpty();
+        }
+
+        @Test
+        void shouldReportAVersionRangeNoDeployedReleaseSatisfies() {
+            ObjectNode props = createActionProps("local/valtimo/cat-1", "tmpl-1");
+            props.put("environmentId", "\"productie\"");
+            props.put("versionRange", "^2.0.0");
+            singleGenerateDocLink(props);
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, "productie"))
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
+            when(epistolaService.getReleases(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", "productie", "^2.0.0"))
+                    .thenReturn(new CatalogReleases(List.of("1.9.0"), null, false));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            // Only the range: without a release to read, a template check would only mislead.
+            assertThat(entries.get(0).problems()).containsExactly(
+                    "No release of catalog 'local/valtimo/cat-1' deployed to environment 'productie' "
+                            + "satisfies version range '^2.0.0'");
+        }
+
+        @Test
+        void shouldCheckTheTemplateInTheReleaseTheVersionRangeSelects() {
+            ObjectNode props = createActionProps("local/valtimo/cat-1", "tmpl-1");
+            props.put("versionRange", "1.9.0");
+            singleGenerateDocLink(props);
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
+            when(epistolaService.getReleases(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", null, "1.9.0"))
+                    .thenReturn(new CatalogReleases(List.of("2.0.0", "1.9.0"), "1.9.0", false));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", null, "1.9.0"))
+                    .thenReturn(List.of());
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems()).containsExactly(
+                    "Template 'tmpl-1' does not exist in catalog 'local/valtimo/cat-1' in the release '1.9.0' selects");
         }
 
         @Test
@@ -729,7 +767,7 @@ class EpistolaAdminServiceTest {
             singleGenerateDocLink(createActionProps("cat-1", "tmpl-x"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null, null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -743,9 +781,9 @@ class EpistolaAdminServiceTest {
             singleGenerateDocLink(createLegacyActionProps("cat-1", "tmpl-1", "nl"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null, null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
-            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1", null))
+            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1", null, null))
                     .thenReturn(List.of(new VariantInfo("formal", "tmpl-1", "Formal", Map.of())));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -761,7 +799,7 @@ class EpistolaAdminServiceTest {
             singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "$pv.lang"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null, null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -769,7 +807,7 @@ class EpistolaAdminServiceTest {
             assertThat(entries.get(0).problems()).isEmpty();
             // A JSONata expression resolves at runtime — never statically verified.
             verify(epistolaService, never())
-                    .getVariants(anyString(), anyString(), anyString(), anyString(), anyString(), any());
+                    .getVariants(anyString(), anyString(), anyString(), anyString(), anyString(), any(), any());
         }
 
         @Test
@@ -783,9 +821,9 @@ class EpistolaAdminServiceTest {
             // No false "does not exist" — reachability is the /health tab's job.
             assertThat(entries.get(0).problems()).isEmpty();
             verify(epistolaService, never())
-                    .getTemplates(anyString(), anyString(), anyString(), anyString(), any());
+                    .getTemplates(anyString(), anyString(), anyString(), anyString(), any(), any());
             verify(epistolaService, never())
-                    .getVariants(anyString(), anyString(), anyString(), anyString(), anyString(), any());
+                    .getVariants(anyString(), anyString(), anyString(), anyString(), anyString(), any(), any());
         }
 
         @Test
@@ -793,9 +831,9 @@ class EpistolaAdminServiceTest {
             singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "nl"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null, null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
-            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1", null))
+            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1", null, null))
                     .thenReturn(List.of(new VariantInfo("nl", "tmpl-1", "Dutch", Map.of())));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();

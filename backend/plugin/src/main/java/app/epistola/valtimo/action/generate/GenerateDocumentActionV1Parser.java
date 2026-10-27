@@ -21,6 +21,8 @@ import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.JsonataScalar;
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.VariantAttribute;
 
+import app.epistola.valtimo.service.VersionRanges;
+
 import java.util.List;
 import java.util.Map;
 
@@ -58,6 +60,7 @@ final class GenerateDocumentActionV1Parser implements GenerateDocumentActionVers
                 variantId,
                 attributes,
                 scalar("environmentId", properties.environmentId()),
+                versionRange(properties.versionRange()),
                 properties.dataMapping(),
                 scalar("outputFormat", properties.outputFormat()),
                 scalar("filename", properties.filename()),
@@ -78,6 +81,17 @@ final class GenerateDocumentActionV1Parser implements GenerateDocumentActionVers
                             + GenerateDocumentExpressionException.expressionSnippet(value) + "')",
                     exception);
         }
+    }
+
+    private String versionRange(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        String range = value.strip();
+        VersionRanges.problem(range).ifPresent(problem -> {
+            throw invalid("versionRange: " + problem);
+        });
+        return range;
     }
 
     private void requireNonBlank(String value, String message) {

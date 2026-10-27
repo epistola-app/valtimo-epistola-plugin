@@ -19,6 +19,7 @@ package app.epistola.valtimo.service;
 
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.domain.CatalogInfo;
+import app.epistola.valtimo.domain.CatalogReleases;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
@@ -106,7 +107,21 @@ class EpistolaServiceImplTest {
 
         assertFalse(catalogs.isEmpty());
         // Read from the release the environment serves, by the id its deployment names.
-        assertFalse(service.getTemplates(baseUrl, API_KEY, TENANT_ID, catalogs.get(0).id(), "production").isEmpty());
+        assertFalse(service.getTemplates(baseUrl, API_KEY, TENANT_ID, catalogs.get(0).id(), "production", null).isEmpty());
+    }
+
+    @Test
+    void getReleases_offersTheReleasedVersions_andAPinnedOneReadsBack() {
+        List<CatalogInfo> catalogs = service.getCatalogs(baseUrl, API_KEY, TENANT_ID);
+        String catalog = catalogs.get(0).id();
+
+        CatalogReleases releases = service.getReleases(baseUrl, API_KEY, TENANT_ID, catalog, null, null);
+
+        assertFalse(releases.versions().isEmpty());
+        String pinned = releases.versions().get(0);
+        assertEquals(pinned, service.getReleases(baseUrl, API_KEY, TENANT_ID, catalog, null, pinned).selected());
+        // Read from the pinned release, by its version in the path.
+        assertFalse(service.getTemplates(baseUrl, API_KEY, TENANT_ID, catalog, null, pinned).isEmpty());
     }
 
     @Test
@@ -187,6 +202,7 @@ class EpistolaServiceImplTest {
                 variantId,
                 null,  // no variant attributes when using explicit variantId
                 "production",
+                "^1.0.0", // validated by the mock server against the contract's request schema
                 Map.of("customer", Map.of("name", "Test Customer", "email", "test@example.com")),
                 FileFormat.PDF,
                 "invoice-001.pdf",

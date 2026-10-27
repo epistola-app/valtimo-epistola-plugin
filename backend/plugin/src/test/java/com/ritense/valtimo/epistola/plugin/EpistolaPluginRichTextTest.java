@@ -106,6 +106,7 @@ class EpistolaPluginRichTextTest {
 
     private void generate(EpistolaPlugin plugin) {
         plugin.generateDocument(execution, null, "local/valtimo/catalog", "besluit", null, null, null,
+                null,
                 "{\"toelichting\": $doc.toelichting}", "PDF", "besluit.pdf", null, "epistolaResult");
     }
 

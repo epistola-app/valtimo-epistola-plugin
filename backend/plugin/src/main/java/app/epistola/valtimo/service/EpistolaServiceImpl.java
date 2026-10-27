@@ -20,6 +20,7 @@ package app.epistola.valtimo.service;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.domain.AttributeDefinition;
 import app.epistola.valtimo.domain.CatalogInfo;
+import app.epistola.valtimo.domain.CatalogReleases;
 import app.epistola.valtimo.domain.CatalogRef;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.FileFormat;
@@ -64,6 +65,7 @@ import app.epistola.client.model.TemplateSummaryDto;
 import app.epistola.client.model.VariantDto;
 import app.epistola.client.model.VariantListResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.semver4j.range.RangeList;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.web.client.RestClientResponseException;
@@ -265,8 +267,9 @@ public class EpistolaServiceImpl implements EpistolaService {
      * @param namespace the namespace
      * @param key       the catalog key
      * @param release   the release to read templates, variants and attributes from: the one
-     *                  generation renders. In an environment, its deployed draft, else its highest
-     *                  deployed release. Without one, the catalog's highest release, or its newest
+     *                  generation renders. With a version range, the highest release that satisfies
+     *                  it. Otherwise, in an environment, its deployed draft, else its highest
+     *                  deployed release; without one, the catalog's highest release, or its newest
      *                  draft when it has never been released
      */
     record ResolvedCatalog(String registry, String namespace, String key, String release) {
@@ -303,25 +306,67 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     /** The catalog a stored reference names, with the release its content is read from. */
-    ResolvedCatalog resolveForRead(String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId) {
+    ResolvedCatalog resolveForRead(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId, String versionRange) {
         CatalogRef ref = parseCatalogRef(catalogId);
+        RangeList range = versionRange == null ? null : VersionRanges.parse(versionRange);
         if (environmentId != null) {
-            return resolveInEnvironment(baseUrl, apiKey, tenantId, ref, environmentId);
+            return resolveInEnvironment(baseUrl, apiKey, tenantId, ref, environmentId, versionRange, range);
         }
         CatalogDto catalog = findCatalog(baseUrl, apiKey, tenantId, ref, null);
-        String release = catalog.getHighestVersion();
-        if (release == null) {
-            release = newestDraft(baseUrl, apiKey, tenantId, catalog);
+        String release;
+        if (range != null) {
+            release = releasedVersions(baseUrl, apiKey, tenantId, catalog).stream()
+                    .filter(version -> VersionRanges.satisfies(version, range))
+                    .findFirst()
+                    .orElseThrow(() -> new EpistolaApiException(
+                            "No release of catalog '" + refOf(catalog) + "' satisfies '" + versionRange + "'",
+                            null, 404, null, Map.of()));
+        } else {
+            release = catalog.getHighestVersion();
+            if (release == null) {
+                release = newestDraft(baseUrl, apiKey, tenantId, catalog);
+            }
         }
         return new ResolvedCatalog(catalog.getRegistry(), catalog.getNamespace(), catalog.getCatalogKey(), release);
     }
 
     /**
-     * The release an environment renders a catalog from when a request names no version range:
-     * its deployed draft, else its highest deployed release ({@code listEnvironmentDeployments}).
-     * Read from the deployments alone, so a qualified reference costs one call.
+     * The release an environment renders a catalog from, read from its deployments alone
+     * ({@code listEnvironmentDeployments}), so a qualified reference costs one call. With no version
+     * range, its deployed draft, else its highest deployed release; with one, the highest deployed
+     * release that satisfies it, never the draft.
      */
     private ResolvedCatalog resolveInEnvironment(
+            String baseUrl, String apiKey, String tenantId, CatalogRef ref, String environmentId,
+            String versionRange, RangeList range) {
+        List<DeploymentDto> deployments = deploymentsOf(baseUrl, apiKey, tenantId, ref, environmentId);
+        DeploymentDto served;
+        if (range != null) {
+            served = deployments.stream()
+                    .filter(dto -> dto.getStatus() == CatalogReleaseStatus.released)
+                    .filter(dto -> VersionRanges.satisfies(dto.getVersion(), range))
+                    .max(Comparator.comparing(DeploymentDto::getVersion, ReleaseVersions.PRECEDENCE))
+                    .orElseThrow(() -> new EpistolaApiException(
+                            "No release of catalog '" + refOf(deployments.get(0)) + "' deployed to environment '"
+                                    + environmentId + "' satisfies '" + versionRange + "'",
+                            null, 404, null, Map.of()));
+        } else {
+            served = deployments.stream()
+                    .filter(dto -> dto.getStatus() == CatalogReleaseStatus.draft)
+                    .findFirst()
+                    .orElseGet(() -> deployments.stream()
+                            .max(Comparator.comparing(DeploymentDto::getVersion, ReleaseVersions.PRECEDENCE))
+                            .orElseThrow());
+        }
+        return new ResolvedCatalog(served.getRegistry(), served.getNamespace(), served.getCatalogKey(), served.getReleaseId());
+    }
+
+    /**
+     * The deployments of the one catalog {@code ref} names in an environment: refused with a 404 when
+     * none is deployed there, and with a 409 when a bare key matches catalogs in two namespaces.
+     */
+    private List<DeploymentDto> deploymentsOf(
             String baseUrl, String apiKey, String tenantId, CatalogRef ref, String environmentId) {
         List<DeploymentDto> deployments = listDeployments(baseUrl, apiKey, tenantId, environmentId).stream()
                 .filter(dto -> ref.matches(dto.getRegistry(), dto.getNamespace(), dto.getCatalogKey()))
@@ -338,13 +383,64 @@ public class EpistolaServiceImpl implements EpistolaService {
                             + "'; name it in full, one of " + catalogs,
                     null, 409, null, Map.of());
         }
-        DeploymentDto served = deployments.stream()
-                .filter(dto -> dto.getStatus() == CatalogReleaseStatus.draft)
-                .findFirst()
-                .orElseGet(() -> deployments.stream()
-                        .max(Comparator.comparing(DeploymentDto::getVersion, ReleaseVersions.PRECEDENCE))
-                        .orElseThrow());
-        return new ResolvedCatalog(served.getRegistry(), served.getNamespace(), served.getCatalogKey(), served.getReleaseId());
+        return deployments;
+    }
+
+    /** A catalog's released versions, highest first. */
+    private List<String> releasedVersions(String baseUrl, String apiKey, String tenantId, CatalogDto catalog) {
+        CatalogsApi catalogsApi = apiClientFactory.createCatalogsApi(baseUrl, apiKey);
+        List<CatalogReleaseDto> releases = fetchAllPages(
+                "catalog releases",
+                page -> withRetry("listCatalogReleases", () -> catalogsApi.listCatalogReleases(
+                        tenantId, catalog.getRegistry(), catalog.getNamespace(), catalog.getCatalogKey(),
+                        CatalogReleaseStatus.released, null, page, LIST_PAGE_SIZE)),
+                CatalogReleaseListResponse::getItems,
+                CatalogReleaseListResponse::getPage
+        );
+        return highestFirst(releases.stream().map(CatalogReleaseDto::getVersion).toList());
+    }
+
+    private static List<String> highestFirst(List<String> versions) {
+        return versions.stream()
+                .filter(java.util.Objects::nonNull)
+                .distinct()
+                .sorted(ReleaseVersions.PRECEDENCE.reversed())
+                .toList();
+    }
+
+    @Override
+    public CatalogReleases getReleases(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId, String versionRange) {
+        log.debug("Fetching releases for tenant: {}, catalog: {}, environment: {}", tenantId, catalogId, environmentId);
+        String environment = blankToNull(environmentId);
+        String rangeSource = rangeOrNull(versionRange);
+        try {
+            CatalogRef ref = parseCatalogRef(catalogId);
+            RangeList range = rangeSource == null ? null : VersionRanges.parse(rangeSource);
+            List<String> versions;
+            boolean draft = false;
+            if (environment != null) {
+                List<DeploymentDto> deployments = deploymentsOf(baseUrl, apiKey, tenantId, ref, environment);
+                versions = highestFirst(deployments.stream()
+                        .filter(dto -> dto.getStatus() == CatalogReleaseStatus.released)
+                        .map(DeploymentDto::getVersion)
+                        .toList());
+                draft = range == null && deployments.stream()
+                        .anyMatch(dto -> dto.getStatus() == CatalogReleaseStatus.draft);
+            } else {
+                versions = releasedVersions(baseUrl, apiKey, tenantId, findCatalog(baseUrl, apiKey, tenantId, ref, null));
+            }
+            String selected = draft ? null : versions.stream()
+                    .filter(version -> range == null || VersionRanges.satisfies(version, range))
+                    .findFirst()
+                    .orElse(null);
+            return new CatalogReleases(versions, selected, draft);
+        } catch (EpistolaApiException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to fetch releases for tenant {}: {}", tenantId, e.getMessage());
+            throw toApiException("Failed to fetch catalog releases", e);
+        }
     }
 
     private String newestDraft(String baseUrl, String apiKey, String tenantId, CatalogDto catalog) {
@@ -383,6 +479,11 @@ public class EpistolaServiceImpl implements EpistolaService {
         return value == null || value.isBlank() ? null : value;
     }
 
+    /** A version range as a request carries it: trimmed, and null when there is none. */
+    private static String rangeOrNull(String value) {
+        return value == null || value.isBlank() ? null : value.strip();
+    }
+
     private static CatalogRef parseCatalogRef(String catalogId) {
         try {
             return CatalogRef.parse(catalogId);
@@ -410,10 +511,11 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     @Override
     public List<TemplateInfo> getTemplates(
-            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId) {
+            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId, String versionRange) {
         log.debug("Fetching templates for tenant: {}, catalog: {}", tenantId, catalogId);
         try {
-            ResolvedCatalog catalog = resolveForRead(baseUrl, apiKey, tenantId, catalogId, blankToNull(environmentId));
+            ResolvedCatalog catalog = resolveForRead(
+                    baseUrl, apiKey, tenantId, catalogId, blankToNull(environmentId), rangeOrNull(versionRange));
             TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
             var templates = fetchAllPages(
                     "templates",
@@ -436,10 +538,12 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     @Override
     public TemplateDetails getTemplateDetails(
-            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId, String environmentId) {
+            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId,
+            String environmentId, String versionRange) {
         log.debug("Fetching template details for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
         try {
-            ResolvedCatalog catalog = resolveForRead(baseUrl, apiKey, tenantId, catalogId, blankToNull(environmentId));
+            ResolvedCatalog catalog = resolveForRead(
+                    baseUrl, apiKey, tenantId, catalogId, blankToNull(environmentId), rangeOrNull(versionRange));
             TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
             TemplateDto response = templatesApi.getTemplate(tenantId, catalog.registry(), catalog.namespace(),
                     catalog.key(), catalog.release(), templateId);
@@ -459,10 +563,11 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     @Override
     public List<AttributeDefinition> getAttributes(
-            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId) {
+            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId, String versionRange) {
         log.debug("Fetching attribute definitions for tenant: {}, catalog: {}", tenantId, catalogId);
         try {
-            ResolvedCatalog catalog = resolveForRead(baseUrl, apiKey, tenantId, catalogId, blankToNull(environmentId));
+            ResolvedCatalog catalog = resolveForRead(
+                    baseUrl, apiKey, tenantId, catalogId, blankToNull(environmentId), rangeOrNull(versionRange));
             AttributesApi attributesApi = apiClientFactory.createAttributesApi(baseUrl, apiKey);
             var attributes = fetchAllPages(
                     "attributes",
@@ -506,10 +611,12 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     @Override
     public List<VariantInfo> getVariants(
-            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId, String environmentId) {
+            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId,
+            String environmentId, String versionRange) {
         log.debug("Fetching variants for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
         try {
-            ResolvedCatalog catalog = resolveForRead(baseUrl, apiKey, tenantId, catalogId, blankToNull(environmentId));
+            ResolvedCatalog catalog = resolveForRead(
+                    baseUrl, apiKey, tenantId, catalogId, blankToNull(environmentId), rangeOrNull(versionRange));
             VariantsApi variantsApi = apiClientFactory.createVariantsApi(baseUrl, apiKey);
             var variants = fetchAllPages(
                     "variants",
@@ -540,14 +647,15 @@ public class EpistolaServiceImpl implements EpistolaService {
             String variantId,
             List<VariantSelectionAttribute> variantAttributes,
             String environmentId,
+            String versionRange,
             Map<String, Object> data,
             FileFormat format,
             String filename,
             String correlationId,
             String routingKey
     ) {
-        log.debug("Submitting document generation request: tenantId={}, templateId={}, variantId={}, attributes={}, format={}, filename={}, routingKey={}",
-                tenantId, templateId, variantId, variantAttributes, format, filename, routingKey);
+        log.debug("Submitting document generation request: tenantId={}, templateId={}, variantId={}, attributes={}, versionRange={}, format={}, filename={}, routingKey={}",
+                tenantId, templateId, variantId, variantAttributes, versionRange, format, filename, routingKey);
         // Never the data itself: it is a letter's contents — names, identifiers, addresses, the
         // text of a decision. The keys say what was sent, which is what a log is for here.
         log.debug("Template data keys: {}", data == null ? "none" : data.keySet());
@@ -571,7 +679,7 @@ public class EpistolaServiceImpl implements EpistolaService {
                     catalog.registry(), // null - the server's default registry
                     variantId,          // nullable - omit when using attribute-based selection
                     variantAttributes,  // nullable - for attribute-based variant selection
-                    null,               // versionRange - the highest release (the environment's, when given)
+                    rangeOrNull(versionRange), // null: the environment's draft, else its highest release
                     environmentId,
                     filename,
                     correlationId,
@@ -699,7 +807,7 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     public java.io.InputStream previewDocument(
             String baseUrl, String apiKey, String tenantId,
-            String catalogId, String templateId, String variantId, String environmentId,
+            String catalogId, String templateId, String variantId, String environmentId, String versionRange,
             Map<String, Object> data
     ) {
         log.debug("Previewing document for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
@@ -715,7 +823,7 @@ public class EpistolaServiceImpl implements EpistolaService {
                     catalog.registry(),
                     variantId,
                     null,           // attributes — the plugin selects a variant explicitly or by default
-                    null,           // versionRange — the highest release (the environment's, when given)
+                    rangeOrNull(versionRange), // null: the environment's draft, else its highest release
                     environmentId,
                     null);          // draft — the plugin previews what generation would render
 

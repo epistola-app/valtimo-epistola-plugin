@@ -8,6 +8,8 @@ jsonata = "0.9.9"
 # backend/plugin/build.gradle.kts.
 jsoup = "1.23.2"
 commonmark = "0.30.1"
+# Catalog version ranges (npm SemVer range grammar, as contract 2.0 defines it). Not shaded.
+semver4j = "6.0.0"
 # Shaded into the plugin jar (relocated) — see backend/plugin/build.gradle.kts
 json-schema-validator = "2.0.4"
 testcontainers = "2.0.3"
@@ -69,6 +71,7 @@ jsonata = { module = "com.dashjoin:jsonata", version.ref = "jsonata" }
 json-schema-validator = { module = "com.networknt:json-schema-validator", version.ref = "json-schema-validator" }
 jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
 commonmark = { module = "org.commonmark:commonmark", version.ref = "commonmark" }
+semver4j = { module = "org.semver4j:semver4j", version.ref = "semver4j" }
 commonmark-ext-strikethrough = { module = "org.commonmark:commonmark-ext-gfm-strikethrough", version.ref = "commonmark" }
 jackson-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml" }
 

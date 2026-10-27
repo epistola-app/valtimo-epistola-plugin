@@ -76,6 +76,12 @@ dependencies {
     implementation(libs.commonmark)
     implementation(libs.commonmark.ext.strikethrough)
 
+    // Catalog version ranges: a process link may pin a release or a range of them, in npm's SemVer
+    // range grammar (contract 2.0, "Versions and version ranges"). The server resolves a range when
+    // rendering; the plugin matches the same range to read the release a configurator shows. Pure
+    // Java, no dependencies, and not shaded for the reasons given for jsoup above.
+    implementation(libs.semver4j)
+
     // Valtimo dependencies (compileOnly - provided by implementing application)
     compileOnly(libs.valtimo.core)
     compileOnly(libs.valtimo.contract)

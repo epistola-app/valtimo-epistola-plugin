@@ -103,7 +103,7 @@ class EpistolaServiceImplEnvironmentTest {
                 released("local", "valtimo", "brieven", "rel-10", "1.10.0"));
         TemplatesApi templatesApi = templates();
 
-        service.getTemplates(BASE_URL, API_KEY, TENANT, "local/valtimo/brieven", ENV);
+        service.getTemplates(BASE_URL, API_KEY, TENANT, "local/valtimo/brieven", ENV, null);
 
         verify(templatesApi).listTemplates(eq(TENANT), eq("local"), eq("valtimo"), eq("brieven"), eq("rel-10"),
                 any(), anyInt(), anyInt(), any(), any());
@@ -117,7 +117,7 @@ class EpistolaServiceImplEnvironmentTest {
                 deployment("local", "valtimo", "brieven", "draft-1", CatalogReleaseStatus.draft, null));
         TemplatesApi templatesApi = templates();
 
-        service.getTemplates(BASE_URL, API_KEY, TENANT, "local/valtimo/brieven", ENV);
+        service.getTemplates(BASE_URL, API_KEY, TENANT, "local/valtimo/brieven", ENV, null);
 
         verify(templatesApi).listTemplates(eq(TENANT), eq("local"), eq("valtimo"), eq("brieven"), eq("draft-1"),
                 any(), anyInt(), anyInt(), any(), any());
@@ -129,7 +129,7 @@ class EpistolaServiceImplEnvironmentTest {
         deployed(released("exchange.epistola.app", "vng", "brieven", "rel-3", "3.0.0"));
         TemplatesApi templatesApi = templates();
 
-        service.getTemplates(BASE_URL, API_KEY, TENANT, "brieven", ENV);
+        service.getTemplates(BASE_URL, API_KEY, TENANT, "brieven", ENV, null);
 
         verify(templatesApi).listTemplates(eq(TENANT), eq("exchange.epistola.app"), eq("vng"), eq("brieven"),
                 eq("rel-3"), any(), anyInt(), anyInt(), any(), any());
@@ -139,7 +139,7 @@ class EpistolaServiceImplEnvironmentTest {
     void aCatalogNotDeployedToTheEnvironment_isNotFound() {
         deployed(released("local", "valtimo", "huisstijl", "rel-1", "1.0.0"));
 
-        assertThatThrownBy(() -> service.getTemplates(BASE_URL, API_KEY, TENANT, "local/valtimo/brieven", ENV))
+        assertThatThrownBy(() -> service.getTemplates(BASE_URL, API_KEY, TENANT, "local/valtimo/brieven", ENV, null))
                 .isInstanceOfSatisfying(EpistolaApiException.class, e -> {
                     assertThat(e.getHttpStatus()).isEqualTo(404);
                     assertThat(e.getMessage()).contains("not deployed to environment 'productie'");

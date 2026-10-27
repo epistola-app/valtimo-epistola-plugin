@@ -39,6 +39,12 @@ import java.util.Map;
  * deployed to that environment are offered, and content is read from the release it serves: its
  * deployed draft, else its highest deployed release. That is what generation in that environment
  * renders, so a configurator never offers a template the environment cannot produce.
+ * <p>
+ * They also take an optional {@code versionRange} ({@link VersionRanges}), which a process link sets
+ * to pin a release or a range of them. Content is then read from the highest release that satisfies
+ * it — of those deployed to the environment, when there is one — which is the release generation
+ * with the same range renders. A range never matches a draft. A range that matches nothing is a
+ * 404, one that is not a range a 400.
  */
 public interface EpistolaService {
 
@@ -85,11 +91,15 @@ public interface EpistolaService {
      * @return List of available templates
      */
     default List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId, String catalogId) {
-        return getTemplates(baseUrl, apiKey, tenantId, catalogId, null);
+        return getTemplates(baseUrl, apiKey, tenantId, catalogId, null, null);
     }
 
-    /** As the overload without it, narrowed to what {@code environmentId} serves when not null. */
-    List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId);
+    /**
+     * As the overload without them, narrowed to what {@code environmentId} serves and read from the
+     * release {@code versionRange} selects, each when not null.
+     */
+    List<TemplateInfo> getTemplates(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId, String versionRange);
 
     /**
      * Get template details including its fields.
@@ -102,12 +112,16 @@ public interface EpistolaService {
      * @return Template details with fields
      */
     default TemplateDetails getTemplateDetails(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId) {
-        return getTemplateDetails(baseUrl, apiKey, tenantId, catalogId, templateId, null);
+        return getTemplateDetails(baseUrl, apiKey, tenantId, catalogId, templateId, null, null);
     }
 
-    /** As the overload without it, narrowed to what {@code environmentId} serves when not null. */
+    /**
+     * As the overload without them, narrowed to what {@code environmentId} serves and read from the
+     * release {@code versionRange} selects, each when not null.
+     */
     TemplateDetails getTemplateDetails(
-            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId, String environmentId);
+            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId,
+            String environmentId, String versionRange);
 
     /**
      * Get all attribute definitions for a tenant and catalog.
@@ -120,11 +134,15 @@ public interface EpistolaService {
      * @return List of attribute definitions
      */
     default List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId, String catalogId) {
-        return getAttributes(baseUrl, apiKey, tenantId, catalogId, null);
+        return getAttributes(baseUrl, apiKey, tenantId, catalogId, null, null);
     }
 
-    /** As the overload without it, narrowed to what {@code environmentId} serves when not null. */
-    List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId);
+    /**
+     * As the overload without them, narrowed to what {@code environmentId} serves and read from the
+     * release {@code versionRange} selects, each when not null.
+     */
+    List<AttributeDefinition> getAttributes(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId, String versionRange);
 
     /**
      * Get all available environments for a tenant.
@@ -147,12 +165,26 @@ public interface EpistolaService {
      * @return List of variants for the template
      */
     default List<VariantInfo> getVariants(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId) {
-        return getVariants(baseUrl, apiKey, tenantId, catalogId, templateId, null);
+        return getVariants(baseUrl, apiKey, tenantId, catalogId, templateId, null, null);
     }
 
-    /** As the overload without it, narrowed to what {@code environmentId} serves when not null. */
+    /**
+     * As the overload without them, narrowed to what {@code environmentId} serves and read from the
+     * release {@code versionRange} selects, each when not null.
+     */
     List<VariantInfo> getVariants(
-            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId, String environmentId);
+            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId,
+            String environmentId, String versionRange);
+
+    /**
+     * The released versions of a catalog a process link may pin, highest first, and the one it renders
+     * with {@code versionRange}: in an environment, of those deployed to it.
+     *
+     * @param environmentId the environment the link generates in, or null for every release
+     * @param versionRange  the link's range, or null for none
+     */
+    CatalogReleases getReleases(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId, String versionRange);
 
     /**
      * Generate a document using a template.
@@ -170,6 +202,9 @@ public interface EpistolaService {
      * @param variantId          The ID of the variant to use (nullable when using attribute selection)
      * @param variantAttributes  Attributes for automatic variant selection (nullable when using explicit variantId)
      * @param environmentId      The ID of the environment (optional)
+     * @param versionRange       The release of the catalog to render, as a version range
+     *                           ({@link VersionRanges}); null for the environment's draft, else
+     *                           the highest release it serves (the catalog's highest without one)
      * @param data               The data to populate the template with (already resolved values).
      *                           Rich text an editor tagged with its format ({@code RichTextValues})
      *                           must be sent as a document; an implementation does that with
@@ -193,6 +228,7 @@ public interface EpistolaService {
             String variantId,
             List<VariantSelectionAttribute> variantAttributes,
             String environmentId,
+            String versionRange,
             Map<String, Object> data,
             FileFormat format,
             String filename,
@@ -265,6 +301,7 @@ public interface EpistolaService {
      * @param templateId    The template to preview
      * @param variantId     The variant ID (optional)
      * @param environmentId The environment ID (optional)
+     * @param versionRange  The release to render, as for {@link #submitGenerationJob} (optional)
      * @param data          The data to render with; tagged rich text is sent as a document, as
      *                      for {@link #submitGenerationJob}
      * @return PDF bytes
@@ -277,6 +314,7 @@ public interface EpistolaService {
             String templateId,
             String variantId,
             String environmentId,
+            String versionRange,
             Map<String, Object> data
     );
 }

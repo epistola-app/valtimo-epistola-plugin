@@ -19,6 +19,7 @@ package app.epistola.valtimo.web.rest;
 
 import app.epistola.valtimo.domain.AttributeDefinition;
 import app.epistola.valtimo.domain.CatalogInfo;
+import app.epistola.valtimo.domain.CatalogReleases;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateInfo;
@@ -89,38 +90,38 @@ class EpistolaTemplateResourceTest {
     @Test
     void getTemplates_passesCatalogId() {
         List<TemplateInfo> templates = List.of();
-        when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null)).thenReturn(templates);
+        when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null, null)).thenReturn(templates);
 
-        ResponseEntity<List<TemplateInfo>> response = resource.getTemplates(CONFIG_ID, CATALOG_ID, null, false);
+        ResponseEntity<List<TemplateInfo>> response = resource.getTemplates(CONFIG_ID, CATALOG_ID, null, false, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isSameAs(templates);
-        verify(epistolaService).getTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null);
+        verify(epistolaService).getTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null, null);
     }
 
     @Test
     void getTemplateDetails_passesCatalogAndTemplateId() {
         TemplateDetails details = mock(TemplateDetails.class);
-        when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null))
+        when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null, null))
                 .thenReturn(details);
 
-        ResponseEntity<TemplateDetails> response = resource.getTemplateDetails(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, null, false);
+        ResponseEntity<TemplateDetails> response = resource.getTemplateDetails(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, null, false, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isSameAs(details);
-        verify(epistolaService).getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null);
+        verify(epistolaService).getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null, null);
     }
 
     @Test
     void getAttributes_passesCatalogId() {
         List<AttributeDefinition> attributes = List.of();
-        when(epistolaService.getAttributes(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null)).thenReturn(attributes);
+        when(epistolaService.getAttributes(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null, null)).thenReturn(attributes);
 
-        ResponseEntity<List<AttributeDefinition>> response = resource.getAttributes(CONFIG_ID, CATALOG_ID, null, false);
+        ResponseEntity<List<AttributeDefinition>> response = resource.getAttributes(CONFIG_ID, CATALOG_ID, null, false, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isSameAs(attributes);
-        verify(epistolaService).getAttributes(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null);
+        verify(epistolaService).getAttributes(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null, null);
     }
 
     @Test
@@ -138,51 +139,51 @@ class EpistolaTemplateResourceTest {
     @Test
     void getVariants_passesCatalogAndTemplateId() {
         List<VariantInfo> variants = List.of();
-        when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null))
+        when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null, null))
                 .thenReturn(variants);
 
-        ResponseEntity<List<VariantInfo>> response = resource.getVariants(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, null, false);
+        ResponseEntity<List<VariantInfo>> response = resource.getVariants(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, null, false, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isSameAs(variants);
-        verify(epistolaService).getVariants(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null);
+        verify(epistolaService).getVariants(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null, null);
     }
 
     @Test
     void getTemplateDetails_answersNotFoundWhenEpistolaReportsTheTemplateMissing() {
         // A stale selection — a template looked up in a catalog it is not in — is not a server fault.
-        when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null))
+        when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null, null))
                 .thenThrow(upstream(404));
 
-        ResponseEntity<TemplateDetails> response = resource.getTemplateDetails(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, null, false);
+        ResponseEntity<TemplateDetails> response = resource.getTemplateDetails(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, null, false, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void getVariants_answersNotFoundWhenEpistolaReportsTheTemplateMissing() {
-        when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null))
+        when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null, null))
                 .thenThrow(upstream(404));
 
-        ResponseEntity<List<VariantInfo>> response = resource.getVariants(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, null, false);
+        ResponseEntity<List<VariantInfo>> response = resource.getVariants(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, null, false, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void getTemplates_answersNotFoundWhenEpistolaReportsTheCatalogMissing() {
-        when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null)).thenThrow(upstream(404));
+        when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null, null)).thenThrow(upstream(404));
 
-        ResponseEntity<List<TemplateInfo>> response = resource.getTemplates(CONFIG_ID, CATALOG_ID, null, false);
+        ResponseEntity<List<TemplateInfo>> response = resource.getTemplates(CONFIG_ID, CATALOG_ID, null, false, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void getAttributes_answersNotFoundWhenEpistolaReportsTheCatalogMissing() {
-        when(epistolaService.getAttributes(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null)).thenThrow(upstream(404));
+        when(epistolaService.getAttributes(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null, null)).thenThrow(upstream(404));
 
-        ResponseEntity<List<AttributeDefinition>> response = resource.getAttributes(CONFIG_ID, CATALOG_ID, null, false);
+        ResponseEntity<List<AttributeDefinition>> response = resource.getAttributes(CONFIG_ID, CATALOG_ID, null, false, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
@@ -190,10 +191,10 @@ class EpistolaTemplateResourceTest {
     @Test
     void getTemplateDetails_propagatesOtherFailures() {
         EpistolaApiException unavailable = upstream(503);
-        when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null))
+        when(epistolaService.getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, null, null))
                 .thenThrow(unavailable);
 
-        assertThatThrownBy(() -> resource.getTemplateDetails(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, null, false))
+        assertThatThrownBy(() -> resource.getTemplateDetails(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, null, false, null))
                 .isSameAs(unavailable);
     }
 
@@ -202,10 +203,10 @@ class EpistolaTemplateResourceTest {
         when(plugin.getDefaultEnvironmentId()).thenReturn("acceptatie");
 
         resource.getCatalogs(CONFIG_ID, "productie", false);
-        resource.getTemplates(CONFIG_ID, CATALOG_ID, "productie", false);
+        resource.getTemplates(CONFIG_ID, CATALOG_ID, "productie", false, null);
 
         verify(epistolaService).getCatalogs(BASE_URL, API_KEY, TENANT_ID, "productie");
-        verify(epistolaService).getTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, "productie");
+        verify(epistolaService).getTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, "productie", null);
     }
 
     @Test
@@ -213,10 +214,10 @@ class EpistolaTemplateResourceTest {
         when(plugin.getDefaultEnvironmentId()).thenReturn("acceptatie");
 
         resource.getCatalogs(CONFIG_ID, null, false);
-        resource.getVariants(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, " ", false);
+        resource.getVariants(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, " ", false, null);
 
         verify(epistolaService).getCatalogs(BASE_URL, API_KEY, TENANT_ID, "acceptatie");
-        verify(epistolaService).getVariants(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, "acceptatie");
+        verify(epistolaService).getVariants(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, "acceptatie", null);
     }
 
     @Test
@@ -234,6 +235,42 @@ class EpistolaTemplateResourceTest {
         when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, "weg")).thenThrow(upstream(404));
 
         assertThat(resource.getCatalogs(CONFIG_ID, "weg", false).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void lookupsReadFromTheReleaseTheLinksVersionRangeSelects() {
+        resource.getTemplates(CONFIG_ID, CATALOG_ID, "prod", false, "^1.4.0");
+        resource.getTemplateDetails(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, "prod", false, "^1.4.0");
+        resource.getAttributes(CONFIG_ID, CATALOG_ID, "prod", false, "^1.4.0");
+        resource.getVariants(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, "prod", false, "^1.4.0");
+
+        verify(epistolaService).getTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, "prod", "^1.4.0");
+        verify(epistolaService).getTemplateDetails(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, "prod", "^1.4.0");
+        verify(epistolaService).getAttributes(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, "prod", "^1.4.0");
+        verify(epistolaService).getVariants(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, "prod", "^1.4.0");
+    }
+
+    @Test
+    void getReleases_answersWithTheVersionsAndTheOneTheRangeSelects() {
+        CatalogReleases releases = new CatalogReleases(List.of("2.0.0", "1.9.0"), "1.9.0", false);
+        when(plugin.getDefaultEnvironmentId()).thenReturn("prod");
+        when(epistolaService.getReleases(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, "prod", "^1.0.0")).thenReturn(releases);
+
+        ResponseEntity<CatalogReleases> response = resource.getReleases(CONFIG_ID, CATALOG_ID, null, false, "^1.0.0");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isSameAs(releases);
+    }
+
+    @Test
+    void aVersionRangeThatIsNotOne_isABadRequestRatherThanAServerFault() {
+        when(epistolaService.getReleases(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null, "latest")).thenThrow(upstream(400));
+        when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null, "latest")).thenThrow(upstream(400));
+
+        assertThat(resource.getReleases(CONFIG_ID, CATALOG_ID, null, false, "latest").getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(resource.getTemplates(CONFIG_ID, CATALOG_ID, null, false, "latest").getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     private static EpistolaApiException upstream(int status) {
