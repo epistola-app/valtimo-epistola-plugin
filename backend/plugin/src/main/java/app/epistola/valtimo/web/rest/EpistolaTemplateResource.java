@@ -98,25 +98,30 @@ public class EpistolaTemplateResource {
     }
 
     /**
-     * Get all available catalogs for a plugin configuration.
+     * Get the catalogs a process link may name for a plugin configuration: those deployed to the
+     * environment it generates in (see {@link #environmentFor}), or all of the tenant's when no
+     * environment applies.
      *
      * @param configurationId The plugin configuration ID
+     * @param environmentId   The environment the link generates in; the configuration's default when absent
+     * @param anyEnvironment  True when the link's environment is only known at run time: no filter
      * @return List of available catalogs
      */
     @GetMapping("/configurations/{configurationId}/catalogs")
     public ResponseEntity<List<CatalogInfo>> getCatalogs(
-            @PathVariable("configurationId") UUID configurationId
+            @PathVariable("configurationId") UUID configurationId,
+            @RequestParam(value = "environmentId", required = false) String environmentId,
+            @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment
     ) {
         log.debug("Fetching catalogs for plugin configuration: {}", configurationId);
 
         EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        List<CatalogInfo> catalogs = epistolaService.getCatalogs(
+        return okOrNotFound(() -> epistolaService.getCatalogs(
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
-                plugin.getTenantId()
-        );
-
-        return ResponseEntity.ok(catalogs);
+                plugin.getTenantId(),
+                environmentFor(plugin, environmentId, anyEnvironment)
+        ));
     }
 
     /**
@@ -129,7 +134,9 @@ public class EpistolaTemplateResource {
     @GetMapping("/configurations/{configurationId}/templates")
     public ResponseEntity<List<TemplateInfo>> getTemplates(
             @PathVariable("configurationId") UUID configurationId,
-            @RequestParam("catalogId") String catalogId
+            @RequestParam("catalogId") String catalogId,
+            @RequestParam(value = "environmentId", required = false) String environmentId,
+            @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment
     ) {
         log.debug("Fetching templates for plugin configuration: {}, catalog: {}", configurationId, catalogId);
 
@@ -138,7 +145,8 @@ public class EpistolaTemplateResource {
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
-                catalogId
+                catalogId,
+                environmentFor(plugin, environmentId, anyEnvironment)
         ));
     }
 
@@ -154,7 +162,9 @@ public class EpistolaTemplateResource {
     public ResponseEntity<TemplateDetails> getTemplateDetails(
             @PathVariable("configurationId") UUID configurationId,
             @PathVariable("templateId") String templateId,
-            @RequestParam("catalogId") String catalogId
+            @RequestParam("catalogId") String catalogId,
+            @RequestParam(value = "environmentId", required = false) String environmentId,
+            @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment
     ) {
         log.debug("Fetching template details for plugin configuration: {}, catalog: {}, template: {}",
                 configurationId, catalogId, templateId);
@@ -165,7 +175,8 @@ public class EpistolaTemplateResource {
                 plugin.getApiKey(),
                 plugin.getTenantId(),
                 catalogId,
-                templateId
+                templateId,
+                environmentFor(plugin, environmentId, anyEnvironment)
         ));
     }
 
@@ -180,7 +191,9 @@ public class EpistolaTemplateResource {
     @GetMapping("/configurations/{configurationId}/attributes")
     public ResponseEntity<List<AttributeDefinition>> getAttributes(
             @PathVariable("configurationId") UUID configurationId,
-            @RequestParam("catalogId") String catalogId
+            @RequestParam("catalogId") String catalogId,
+            @RequestParam(value = "environmentId", required = false) String environmentId,
+            @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment
     ) {
         log.debug("Fetching attribute definitions for plugin configuration: {}, catalog: {}", configurationId, catalogId);
 
@@ -189,7 +202,8 @@ public class EpistolaTemplateResource {
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
-                catalogId
+                catalogId,
+                environmentFor(plugin, environmentId, anyEnvironment)
         ));
     }
 
@@ -227,7 +241,9 @@ public class EpistolaTemplateResource {
     public ResponseEntity<List<VariantInfo>> getVariants(
             @PathVariable("configurationId") UUID configurationId,
             @PathVariable("templateId") String templateId,
-            @RequestParam("catalogId") String catalogId
+            @RequestParam("catalogId") String catalogId,
+            @RequestParam(value = "environmentId", required = false) String environmentId,
+            @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment
     ) {
         log.debug("Fetching variants for plugin configuration: {}, catalog: {}, template: {}",
                 configurationId, catalogId, templateId);
@@ -238,8 +254,26 @@ public class EpistolaTemplateResource {
                 plugin.getApiKey(),
                 plugin.getTenantId(),
                 catalogId,
-                templateId
+                templateId,
+                environmentFor(plugin, environmentId, anyEnvironment)
         ));
+    }
+
+    /**
+     * The environment a configurator's lookups are narrowed to, mirroring how generation picks
+     * one: the link's own environment, else the configuration's default. {@code anyEnvironment}
+     * says the link's environment is an expression evaluated at run time, so no single one applies
+     * and nothing is narrowed. Null means every catalog of the tenant.
+     */
+    static String environmentFor(EpistolaPlugin plugin, String environmentId, boolean anyEnvironment) {
+        if (anyEnvironment) {
+            return null;
+        }
+        if (environmentId != null && !environmentId.isBlank()) {
+            return environmentId;
+        }
+        String fallback = plugin.getDefaultEnvironmentId();
+        return fallback == null || fallback.isBlank() ? null : fallback;
     }
 
     /**

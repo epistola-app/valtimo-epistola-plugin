@@ -43,6 +43,8 @@ import app.epistola.client.model.CatalogDto;
 import app.epistola.client.model.CatalogReleaseDto;
 import app.epistola.client.model.CatalogReleaseListResponse;
 import app.epistola.client.model.CatalogReleaseStatus;
+import app.epistola.client.model.DeploymentDto;
+import app.epistola.client.model.DeploymentListResponse;
 import app.epistola.client.model.DocumentGenerationItemDto;
 import app.epistola.client.model.EnvironmentDto;
 import app.epistola.client.model.EnvironmentListResponse;
@@ -75,9 +77,11 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of EpistolaService using the Epistola REST API client.
@@ -181,18 +185,20 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
-    public List<CatalogInfo> getCatalogs(String baseUrl, String apiKey, String tenantId) {
-        log.debug("Fetching catalogs for tenant: {}", tenantId);
+    public List<CatalogInfo> getCatalogs(String baseUrl, String apiKey, String tenantId, String environmentId) {
+        log.debug("Fetching catalogs for tenant: {}, environment: {}", tenantId, environmentId);
         try {
-            return listCatalogs(baseUrl, apiKey, tenantId).stream()
+            return candidateCatalogs(baseUrl, apiKey, tenantId, environmentId).stream()
                     .map(dto -> new CatalogInfo(
-                            new CatalogRef(dto.getRegistry(), dto.getNamespace(), dto.getCatalogKey()).toString(),
+                            refOf(dto).toString(),
                             dto.getName(),
                             dto.getRegistry(),
                             dto.getNamespace(),
                             dto.getCatalogKey(),
                             dto.getEditable()))
                     .toList();
+        } catch (EpistolaApiException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Failed to fetch catalogs for tenant {}: {}", tenantId, e.getMessage());
             throw new EpistolaApiException("Failed to fetch catalogs", e);
@@ -211,35 +217,82 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     /**
+     * What {@code environmentId} serves: every release of a catalog deployed to it. Dependencies of
+     * a deployed release are not in it — the environment uses them without deploying them — unless
+     * someone deployed them explicitly.
+     */
+    private List<DeploymentDto> listDeployments(String baseUrl, String apiKey, String tenantId, String environmentId) {
+        EnvironmentsApi environmentsApi = apiClientFactory.createEnvironmentsApi(baseUrl, apiKey);
+        try {
+            DeploymentListResponse response = withRetry("listEnvironmentDeployments",
+                    () -> environmentsApi.listEnvironmentDeployments(tenantId, environmentId));
+            return response == null || response.getItems() == null ? List.of() : response.getItems();
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 404) {
+                throw new EpistolaApiException("Environment not found: " + environmentId, null, 404, null, Map.of());
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * The catalogs a selection may name: every catalog of the tenant, or, for an environment, those
+     * with a release deployed to it, in the order the tenant lists them.
+     */
+    private List<CatalogDto> candidateCatalogs(String baseUrl, String apiKey, String tenantId, String environmentId) {
+        List<CatalogDto> catalogs = listCatalogs(baseUrl, apiKey, tenantId);
+        if (environmentId == null) {
+            return catalogs;
+        }
+        Set<CatalogRef> deployed = listDeployments(baseUrl, apiKey, tenantId, environmentId).stream()
+                .map(EpistolaServiceImpl::refOf)
+                .collect(Collectors.toSet());
+        return catalogs.stream().filter(dto -> deployed.contains(refOf(dto))).toList();
+    }
+
+    private static CatalogRef refOf(CatalogDto dto) {
+        return new CatalogRef(dto.getRegistry(), dto.getNamespace(), dto.getCatalogKey());
+    }
+
+    private static CatalogRef refOf(DeploymentDto dto) {
+        return new CatalogRef(dto.getRegistry(), dto.getNamespace(), dto.getCatalogKey());
+    }
+
+    /**
      * A catalog as contract 2.0 addresses it, with the release the plugin reads its content from.
      *
      * @param registry  the registry, in full
      * @param namespace the namespace
      * @param key       the catalog key
-     * @param release   the release to read templates, variants and attributes from: the highest
-     *                  release, which is what generation renders when nothing narrows it, or the
-     *                  newest draft for a catalog that has never been released
+     * @param release   the release to read templates, variants and attributes from: the one
+     *                  generation renders. In an environment, its deployed draft, else its highest
+     *                  deployed release. Without one, the catalog's highest release, or its newest
+     *                  draft when it has never been released
      */
     record ResolvedCatalog(String registry, String namespace, String key, String release) {
     }
 
     /**
-     * Find the catalog a stored reference names among the tenant's catalogs.
+     * Find the catalog a stored reference names among the catalogs a selection may name (see
+     * {@link #candidateCatalogs}).
      * <p>
      * A reference saved against contract 1.x is only a key; it is looked up by key, and refused
      * when two catalogs share it in different namespaces, because guessing would read (and later
      * render) the wrong one. The message names the qualified references to choose from.
      */
-    CatalogDto findCatalog(String baseUrl, String apiKey, String tenantId, CatalogRef ref) {
-        List<CatalogDto> matches = listCatalogs(baseUrl, apiKey, tenantId).stream()
+    CatalogDto findCatalog(String baseUrl, String apiKey, String tenantId, CatalogRef ref, String environmentId) {
+        List<CatalogDto> matches = candidateCatalogs(baseUrl, apiKey, tenantId, environmentId).stream()
                 .filter(dto -> ref.matches(dto.getRegistry(), dto.getNamespace(), dto.getCatalogKey()))
                 .toList();
         if (matches.isEmpty()) {
-            throw new EpistolaApiException("Catalog not found: " + ref, null, 404, null, Map.of());
+            String message = environmentId == null
+                    ? "Catalog not found: " + ref
+                    : "Catalog '" + ref + "' is not deployed to environment '" + environmentId + "'";
+            throw new EpistolaApiException(message, null, 404, null, Map.of());
         }
         if (matches.size() > 1) {
             List<String> candidates = matches.stream()
-                    .map(dto -> new CatalogRef(dto.getRegistry(), dto.getNamespace(), dto.getCatalogKey()).toString())
+                    .map(dto -> refOf(dto).toString())
                     .sorted()
                     .toList();
             throw new EpistolaApiException(
@@ -250,13 +303,48 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     /** The catalog a stored reference names, with the release its content is read from. */
-    ResolvedCatalog resolveForRead(String baseUrl, String apiKey, String tenantId, String catalogId) {
-        CatalogDto catalog = findCatalog(baseUrl, apiKey, tenantId, parseCatalogRef(catalogId));
+    ResolvedCatalog resolveForRead(String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId) {
+        CatalogRef ref = parseCatalogRef(catalogId);
+        if (environmentId != null) {
+            return resolveInEnvironment(baseUrl, apiKey, tenantId, ref, environmentId);
+        }
+        CatalogDto catalog = findCatalog(baseUrl, apiKey, tenantId, ref, null);
         String release = catalog.getHighestVersion();
         if (release == null) {
             release = newestDraft(baseUrl, apiKey, tenantId, catalog);
         }
         return new ResolvedCatalog(catalog.getRegistry(), catalog.getNamespace(), catalog.getCatalogKey(), release);
+    }
+
+    /**
+     * The release an environment renders a catalog from when a request names no version range:
+     * its deployed draft, else its highest deployed release ({@code listEnvironmentDeployments}).
+     * Read from the deployments alone, so a qualified reference costs one call.
+     */
+    private ResolvedCatalog resolveInEnvironment(
+            String baseUrl, String apiKey, String tenantId, CatalogRef ref, String environmentId) {
+        List<DeploymentDto> deployments = listDeployments(baseUrl, apiKey, tenantId, environmentId).stream()
+                .filter(dto -> ref.matches(dto.getRegistry(), dto.getNamespace(), dto.getCatalogKey()))
+                .toList();
+        List<String> catalogs = deployments.stream().map(dto -> refOf(dto).toString()).distinct().sorted().toList();
+        if (catalogs.isEmpty()) {
+            throw new EpistolaApiException(
+                    "Catalog '" + ref + "' is not deployed to environment '" + environmentId + "'",
+                    null, 404, null, Map.of());
+        }
+        if (catalogs.size() > 1) {
+            throw new EpistolaApiException(
+                    "Catalog '" + ref + "' is ambiguous in environment '" + environmentId
+                            + "'; name it in full, one of " + catalogs,
+                    null, 409, null, Map.of());
+        }
+        DeploymentDto served = deployments.stream()
+                .filter(dto -> dto.getStatus() == CatalogReleaseStatus.draft)
+                .findFirst()
+                .orElseGet(() -> deployments.stream()
+                        .max(Comparator.comparing(DeploymentDto::getVersion, ReleaseVersions.PRECEDENCE))
+                        .orElseThrow());
+        return new ResolvedCatalog(served.getRegistry(), served.getNamespace(), served.getCatalogKey(), served.getReleaseId());
     }
 
     private String newestDraft(String baseUrl, String apiKey, String tenantId, CatalogDto catalog) {
@@ -274,22 +362,25 @@ public class EpistolaServiceImpl implements EpistolaService {
                         Comparator.nullsFirst(Comparator.naturalOrder())))
                 .map(CatalogReleaseDto::getReleaseId)
                 .orElseThrow(() -> new EpistolaApiException(
-                        "Catalog " + new CatalogRef(catalog.getRegistry(), catalog.getNamespace(), catalog.getCatalogKey())
-                                + " has no release to read templates from",
+                        "Catalog " + refOf(catalog) + " has no release to read templates from",
                         null, 404, null, Map.of()));
     }
 
     /**
      * The catalog a generation or preview names. A qualified reference is sent as it is, with no
-     * lookup; only a key saved against contract 1.x costs a list call.
+     * lookup; only a key saved against contract 1.x costs a list call, and is looked up among what
+     * the environment serves when there is one.
      */
-    private CatalogRef resolveForRender(String baseUrl, String apiKey, String tenantId, String catalogId) {
+    private CatalogRef resolveForRender(String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId) {
         CatalogRef ref = parseCatalogRef(catalogId);
         if (ref.isQualified()) {
             return ref;
         }
-        CatalogDto catalog = findCatalog(baseUrl, apiKey, tenantId, ref);
-        return new CatalogRef(catalog.getRegistry(), catalog.getNamespace(), catalog.getCatalogKey());
+        return refOf(findCatalog(baseUrl, apiKey, tenantId, ref, blankToNull(environmentId)));
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     private static CatalogRef parseCatalogRef(String catalogId) {
@@ -318,10 +409,11 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
-    public List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId, String catalogId) {
+    public List<TemplateInfo> getTemplates(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId) {
         log.debug("Fetching templates for tenant: {}, catalog: {}", tenantId, catalogId);
         try {
-            ResolvedCatalog catalog = resolveForRead(baseUrl, apiKey, tenantId, catalogId);
+            ResolvedCatalog catalog = resolveForRead(baseUrl, apiKey, tenantId, catalogId, blankToNull(environmentId));
             TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
             var templates = fetchAllPages(
                     "templates",
@@ -343,10 +435,11 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
-    public TemplateDetails getTemplateDetails(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId) {
+    public TemplateDetails getTemplateDetails(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId, String environmentId) {
         log.debug("Fetching template details for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
         try {
-            ResolvedCatalog catalog = resolveForRead(baseUrl, apiKey, tenantId, catalogId);
+            ResolvedCatalog catalog = resolveForRead(baseUrl, apiKey, tenantId, catalogId, blankToNull(environmentId));
             TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
             TemplateDto response = templatesApi.getTemplate(tenantId, catalog.registry(), catalog.namespace(),
                     catalog.key(), catalog.release(), templateId);
@@ -365,10 +458,11 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
-    public List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId, String catalogId) {
+    public List<AttributeDefinition> getAttributes(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId) {
         log.debug("Fetching attribute definitions for tenant: {}, catalog: {}", tenantId, catalogId);
         try {
-            ResolvedCatalog catalog = resolveForRead(baseUrl, apiKey, tenantId, catalogId);
+            ResolvedCatalog catalog = resolveForRead(baseUrl, apiKey, tenantId, catalogId, blankToNull(environmentId));
             AttributesApi attributesApi = apiClientFactory.createAttributesApi(baseUrl, apiKey);
             var attributes = fetchAllPages(
                     "attributes",
@@ -411,10 +505,11 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     @Override
-    public List<VariantInfo> getVariants(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId) {
+    public List<VariantInfo> getVariants(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId, String environmentId) {
         log.debug("Fetching variants for tenant: {}, catalog: {}, template: {}", tenantId, catalogId, templateId);
         try {
-            ResolvedCatalog catalog = resolveForRead(baseUrl, apiKey, tenantId, catalogId);
+            ResolvedCatalog catalog = resolveForRead(baseUrl, apiKey, tenantId, catalogId, blankToNull(environmentId));
             VariantsApi variantsApi = apiClientFactory.createVariantsApi(baseUrl, apiKey);
             var variants = fetchAllPages(
                     "variants",
@@ -462,7 +557,7 @@ public class EpistolaServiceImpl implements EpistolaService {
                 richTextValues.toDocuments(data, templateId, RichTextValues.Purpose.GENERATION);
 
         try {
-            CatalogRef catalog = resolveForRender(baseUrl, apiKey, tenantId, catalogId);
+            CatalogRef catalog = resolveForRender(baseUrl, apiKey, tenantId, catalogId, environmentId);
             GenerationApi generationApi = apiClientFactory.createGenerationApi(baseUrl, apiKey);
 
             // Build the request using the constructor (Kotlin data class - immutable)
@@ -611,7 +706,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         Map<String, Object> documents =
                 richTextValues.toDocuments(data, templateId, RichTextValues.Purpose.PREVIEW);
         try {
-            CatalogRef catalog = resolveForRender(baseUrl, apiKey, tenantId, catalogId);
+            CatalogRef catalog = resolveForRender(baseUrl, apiKey, tenantId, catalogId, environmentId);
             var request = new PreviewDocumentRequest(
                     catalog.namespace(),
                     catalog.key(),

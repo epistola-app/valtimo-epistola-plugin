@@ -119,7 +119,7 @@ class LetterComposerServiceTest {
     }
 
     private void templateRequires(String templateId, TemplateField... fields) {
-        when(epistolaService.getTemplateDetails(anyString(), anyString(), anyString(), eq("gemeente"), eq(templateId)))
+        when(epistolaService.getTemplateDetails(anyString(), anyString(), anyString(), eq("gemeente"), eq(templateId), any()))
                 .thenReturn(new TemplateDetails(templateId, templateId, List.of(fields), null,
                         SimpleMappingSupport.full()));
     }
@@ -141,7 +141,7 @@ class LetterComposerServiceTest {
     void saysSoWhenEpistolaCannotDescribeTheTemplate() {
         offering(configuration(offered("besluit", "Besluit", null)), "besluit");
         when(jsonataMappingService.evaluate(any())).thenReturn(Map.of("naam", "Jansen"));
-        when(epistolaService.getTemplateDetails(anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit")))
+        when(epistolaService.getTemplateDetails(anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit"), any()))
                 .thenThrow(new RuntimeException("Catalog 'gemeente' not found"));
 
         assertThatThrownBy(() -> service.prepare(CONTEXT, null, "besluit"))

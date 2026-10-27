@@ -314,12 +314,14 @@ public class LetterComposerService {
             String templateId
     ) {
         EpistolaPlugin plugin = plugin(configuration);
+        // Read from what the default environment serves, which is where the composer renders.
         return epistolaService.getTemplateDetails(
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
                 catalogId,
-                templateId);
+                templateId,
+                plugin.getDefaultEnvironmentId());
     }
 
     private EpistolaPlugin plugin(LetterComposerConfiguration configuration) {

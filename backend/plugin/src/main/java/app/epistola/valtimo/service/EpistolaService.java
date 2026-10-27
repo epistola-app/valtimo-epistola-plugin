@@ -31,8 +31,14 @@ import java.util.Map;
  * <p>
  * A {@code catalogId} is a catalog reference as a process link stores it ({@link CatalogRef}):
  * {@code registry/namespace/key}, {@code namespace/key}, or a bare key saved against contract 1.x,
- * which is looked up among the tenant's catalogs. Templates, variants and attributes are read from
- * the catalog's highest release — what generation renders when no environment narrows it.
+ * which is looked up among the tenant's catalogs.
+ * <p>
+ * The reads take an optional {@code environmentId}. Without one, every catalog the tenant has is
+ * offered — including those installed only as another catalog's dependency, which the contract does
+ * not tell apart — and content is read from a catalog's highest release. With one, only the catalogs
+ * deployed to that environment are offered, and content is read from the release it serves: its
+ * deployed draft, else its highest deployed release. That is what generation in that environment
+ * renders, so a configurator never offers a template the environment cannot produce.
  */
 public interface EpistolaService {
 
@@ -44,7 +50,12 @@ public interface EpistolaService {
      * @param tenantId The tenant ID in Epistola
      * @return List of available catalogs
      */
-    List<CatalogInfo> getCatalogs(String baseUrl, String apiKey, String tenantId);
+    default List<CatalogInfo> getCatalogs(String baseUrl, String apiKey, String tenantId) {
+        return getCatalogs(baseUrl, apiKey, tenantId, null);
+    }
+
+    /** As the overload without it, narrowed to what {@code environmentId} serves when not null. */
+    List<CatalogInfo> getCatalogs(String baseUrl, String apiKey, String tenantId, String environmentId);
 
     /**
      * Fetch Epistola system metadata, including the server application version and
@@ -73,7 +84,12 @@ public interface EpistolaService {
      * @param catalogId The catalog ID in Epistola
      * @return List of available templates
      */
-    List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId, String catalogId);
+    default List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId, String catalogId) {
+        return getTemplates(baseUrl, apiKey, tenantId, catalogId, null);
+    }
+
+    /** As the overload without it, narrowed to what {@code environmentId} serves when not null. */
+    List<TemplateInfo> getTemplates(String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId);
 
     /**
      * Get template details including its fields.
@@ -85,7 +101,13 @@ public interface EpistolaService {
      * @param templateId The ID of the template
      * @return Template details with fields
      */
-    TemplateDetails getTemplateDetails(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId);
+    default TemplateDetails getTemplateDetails(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId) {
+        return getTemplateDetails(baseUrl, apiKey, tenantId, catalogId, templateId, null);
+    }
+
+    /** As the overload without it, narrowed to what {@code environmentId} serves when not null. */
+    TemplateDetails getTemplateDetails(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId, String environmentId);
 
     /**
      * Get all attribute definitions for a tenant and catalog.
@@ -97,7 +119,12 @@ public interface EpistolaService {
      * @param catalogId The catalog ID in Epistola
      * @return List of attribute definitions
      */
-    List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId, String catalogId);
+    default List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId, String catalogId) {
+        return getAttributes(baseUrl, apiKey, tenantId, catalogId, null);
+    }
+
+    /** As the overload without it, narrowed to what {@code environmentId} serves when not null. */
+    List<AttributeDefinition> getAttributes(String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId);
 
     /**
      * Get all available environments for a tenant.
@@ -119,7 +146,13 @@ public interface EpistolaService {
      * @param templateId The ID of the template
      * @return List of variants for the template
      */
-    List<VariantInfo> getVariants(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId);
+    default List<VariantInfo> getVariants(String baseUrl, String apiKey, String tenantId, String catalogId, String templateId) {
+        return getVariants(baseUrl, apiKey, tenantId, catalogId, templateId, null);
+    }
+
+    /** As the overload without it, narrowed to what {@code environmentId} serves when not null. */
+    List<VariantInfo> getVariants(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId, String environmentId);
 
     /**
      * Generate a document using a template.

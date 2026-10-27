@@ -126,8 +126,13 @@ docker/            # Docker compose for local dependencies
   saved against 1.x is the bare key and is resolved by listing the tenant's catalogs
   (`EpistolaServiceImpl.findCatalog`, 409 when two namespaces share it). Every `EpistolaService`
   method still takes that one `catalogId` string — don't thread registry/namespace through callers.
-  Reads go through a **release** (`resolveForRead`: the highest, else the newest draft); there is no
-  "latest" alias in the path. Statuses arrive lowercase (`in-progress`) and are normalised to the
+  Reads go through a **release**; there is no "latest" alias in the path. With an environment
+  (the configurator's `environmentId`, else the configuration's `defaultEnvironmentId`;
+  `anyEnvironment=true` for an expression) catalogs are what `listEnvironmentDeployments` serves and
+  the release is its deployed draft, else its highest deployed release (`ReleaseVersions`) —
+  dependencies are used by an environment without being deployed, so they are not offered. Without
+  one, every catalog, read from the highest release, else the newest draft; the contract cannot
+  tell a dependency-only catalog apart there. Statuses arrive lowercase (`in-progress`) and are normalised to the
   1.x form on process variables (`GenerationJobStatus.normalize`), because BPMN gateways compare
   against `COMPLETED`. Resource addresses are `key` everywhere; `id`/`slug` are gone.
   `oldestSupportedServerTest` runs the mock-server test against the pinned alpha until a Suite

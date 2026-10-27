@@ -20,6 +20,7 @@ import app.epistola.valtimo.deploy.CatalogScanner;
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
+import app.epistola.valtimo.service.EpistolaApiException;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.versioncheck.SemVersion;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
@@ -131,7 +132,7 @@ class EpistolaAdminServiceTest {
         @Test
         void shouldReturnReachableWhenCatalogsCallSucceeds() {
             mockSinglePluginConfiguration();
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Test Catalog", "local", "valtimo", "cat-1", true)));
 
             List<ConnectionStatus> results = adminService.checkConnections();
@@ -155,7 +156,7 @@ class EpistolaAdminServiceTest {
         @Test
         void shouldReturnServerVersionMetadataWhenPingSucceeds() {
             mockSinglePluginConfiguration();
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
                     .thenReturn(new EpistolaService.SystemInfo("2.0.0", "2.0.0-alpha.3"));
@@ -172,7 +173,7 @@ class EpistolaAdminServiceTest {
         @Test
         void shouldReportErrorWhenServerContractMajorIsOlderThanPluginContractMajor() {
             mockSinglePluginConfiguration();
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
                     .thenReturn(new EpistolaService.SystemInfo("1.3.0", "1.4.0"));
@@ -186,7 +187,7 @@ class EpistolaAdminServiceTest {
         @Test
         void shouldReportErrorWhenContractMajorDiffers() {
             mockSinglePluginConfiguration();
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
                     .thenReturn(new EpistolaService.SystemInfo("3.0.0", "3.0.0"));
@@ -210,7 +211,7 @@ class EpistolaAdminServiceTest {
         @Test
         void shouldWarnWhilePinnedToAPreReleaseAndTheServerIsAnother() {
             mockSinglePluginConfiguration();
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
                     .thenReturn(new EpistolaService.SystemInfo("2.1.3", "2.1.3"));
@@ -249,7 +250,7 @@ class EpistolaAdminServiceTest {
         @Test
         void shouldKeepConnectionReachableWhenPingFails() {
             mockSinglePluginConfiguration();
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
                     .thenThrow(new RuntimeException("ping not found"));
@@ -268,7 +269,7 @@ class EpistolaAdminServiceTest {
         @Test
         void shouldReturnUnreachableWhenCatalogsCallFails() {
             mockSinglePluginConfiguration();
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenThrow(new RuntimeException("Connection refused"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
@@ -304,9 +305,9 @@ class EpistolaAdminServiceTest {
             when(pluginService.createInstance(config1)).thenReturn(plugin1);
             when(pluginService.createInstance(config2)).thenReturn(plugin2);
 
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, "tenant-1"))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, "tenant-1", null))
                     .thenReturn(List.of());
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, "tenant-2"))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, "tenant-2", null))
                     .thenThrow(new RuntimeException("timeout"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
@@ -395,9 +396,9 @@ class EpistolaAdminServiceTest {
             mockSinglePluginConfiguration();
 
             // Configured catalog + template resolve in Epistola — no dangling references
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -416,7 +417,7 @@ class EpistolaAdminServiceTest {
         void shouldReportMissingGenerateDocumentConfigurationVersionAsOutdated() {
             ObjectNode props = createLegacyActionProps("cat-1", "tmpl-1");
             singleGenerateDocLink(props);
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenThrow(new RuntimeException("unreachable"));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -430,7 +431,7 @@ class EpistolaAdminServiceTest {
             ObjectNode props = createLegacyActionProps("cat-1", "tmpl-1");
             props.putNull("actionConfigVersion");
             singleGenerateDocLink(props);
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenThrow(new RuntimeException("unreachable"));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -444,7 +445,7 @@ class EpistolaAdminServiceTest {
             ObjectNode props = createLegacyActionProps("cat-1", "tmpl-1");
             props.put("actionConfigVersion", 0);
             singleGenerateDocLink(props);
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenThrow(new RuntimeException("unreachable"));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -583,7 +584,7 @@ class EpistolaAdminServiceTest {
             mockSinglePluginConfiguration();
             // Reference checks are irrelevant here; treat Epistola as unreachable so
             // they are skipped (graceful degradation — no false problems).
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenThrow(new RuntimeException("unreachable"));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -608,7 +609,7 @@ class EpistolaAdminServiceTest {
             mockSinglePluginConfiguration();
             // Reference checks are irrelevant here; treat Epistola as unreachable so
             // they are skipped (graceful degradation — no false problems).
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenThrow(new RuntimeException("unreachable"));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -620,7 +621,7 @@ class EpistolaAdminServiceTest {
         @Test
         void shouldDetectMissingCatalog() {
             singleGenerateDocLink(createActionProps("cat-x", "tmpl-1"));
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -630,7 +631,7 @@ class EpistolaAdminServiceTest {
                     .contains("Catalog 'cat-x' does not exist in Epistola");
             // Missing catalog short-circuits — no point probing templates.
             verify(epistolaService, never())
-                    .getTemplates(anyString(), anyString(), anyString(), anyString());
+                    .getTemplates(anyString(), anyString(), anyString(), anyString(), any());
         }
 
         @Test
@@ -638,7 +639,7 @@ class EpistolaAdminServiceTest {
             // A link saved against contract 1.x names its catalog by key alone; when two
             // namespaces have that key, generation refuses it, so the overview says so first.
             singleGenerateDocLink(createActionProps("cat-1", "tmpl-1"));
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(
                             new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true),
                             new CatalogInfo("local/other/cat-1", "Other", "local", "other", "cat-1", true)));
@@ -648,17 +649,17 @@ class EpistolaAdminServiceTest {
             assertThat(entries.get(0).problems())
                     .anySatisfy(problem -> assertThat(problem).startsWith("Catalog 'cat-1' is ambiguous"));
             verify(epistolaService, never())
-                    .getTemplates(anyString(), anyString(), anyString(), anyString());
+                    .getTemplates(anyString(), anyString(), anyString(), anyString(), any());
         }
 
         @Test
         void shouldAcceptACatalogNamedInFull() {
             singleGenerateDocLink(createActionProps("local/valtimo/cat-1", "tmpl-1"));
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(
                             new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true),
                             new CatalogInfo("local/other/cat-1", "Other", "local", "other", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1"))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "local/valtimo/cat-1", "Catalog")));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -667,11 +668,68 @@ class EpistolaAdminServiceTest {
         }
 
         @Test
+        void shouldCheckACatalogAgainstTheEnvironmentTheLinkNames() {
+            ObjectNode props = createActionProps("local/valtimo/cat-1", "tmpl-1");
+            props.put("environmentId", "\"productie\"");
+            singleGenerateDocLink(props);
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, "productie")).thenReturn(List.of());
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems())
+                    .contains("Catalog 'local/valtimo/cat-1' is not deployed to environment 'productie'");
+        }
+
+        @Test
+        void shouldCheckAgainstTheDefaultEnvironmentWhenTheLinkNamesNone() {
+            defaultEnvironment = "acceptatie";
+            singleGenerateDocLink(createActionProps("local/valtimo/cat-1", "tmpl-1"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, "acceptatie"))
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", "acceptatie"))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "local/valtimo/cat-1", "Catalog")));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems()).isEmpty();
+        }
+
+        @Test
+        void shouldCheckAgainstEveryCatalogWhenTheEnvironmentIsAnExpression() {
+            // Known only at run time: the default does not stand in for it.
+            defaultEnvironment = "acceptatie";
+            ObjectNode props = createActionProps("local/valtimo/cat-1", "tmpl-1");
+            props.put("environmentId", "$pv.environment");
+            singleGenerateDocLink(props);
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", null))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "local/valtimo/cat-1", "Catalog")));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems()).isEmpty();
+        }
+
+        @Test
+        void shouldReportAnEnvironmentThatDoesNotExist() {
+            ObjectNode props = createActionProps("local/valtimo/cat-1", "tmpl-1");
+            props.put("environmentId", "'weg'");
+            singleGenerateDocLink(props);
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, "weg"))
+                    .thenThrow(new EpistolaApiException("Environment not found: weg", null, 404, null, Map.of()));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems()).contains("Environment 'weg' does not exist in Epistola");
+        }
+
+        @Test
         void shouldDetectMissingTemplate() {
             singleGenerateDocLink(createActionProps("cat-1", "tmpl-x"));
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -683,11 +741,11 @@ class EpistolaAdminServiceTest {
         @Test
         void shouldDetectMissingVariant() {
             singleGenerateDocLink(createLegacyActionProps("cat-1", "tmpl-1", "nl"));
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
-            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1"))
+            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1", null))
                     .thenReturn(List.of(new VariantInfo("formal", "tmpl-1", "Formal", Map.of())));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -701,9 +759,9 @@ class EpistolaAdminServiceTest {
         @Test
         void shouldSkipVariantCheckWhenVariantIsExpression() {
             singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "$pv.lang"));
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -711,13 +769,13 @@ class EpistolaAdminServiceTest {
             assertThat(entries.get(0).problems()).isEmpty();
             // A JSONata expression resolves at runtime — never statically verified.
             verify(epistolaService, never())
-                    .getVariants(anyString(), anyString(), anyString(), anyString(), anyString());
+                    .getVariants(anyString(), anyString(), anyString(), anyString(), anyString(), any());
         }
 
         @Test
         void shouldNotFlagWhenEpistolaUnreachable() {
             singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "nl"));
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenThrow(new RuntimeException("Connection refused"));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -725,19 +783,19 @@ class EpistolaAdminServiceTest {
             // No false "does not exist" — reachability is the /health tab's job.
             assertThat(entries.get(0).problems()).isEmpty();
             verify(epistolaService, never())
-                    .getTemplates(anyString(), anyString(), anyString(), anyString());
+                    .getTemplates(anyString(), anyString(), anyString(), anyString(), any());
             verify(epistolaService, never())
-                    .getVariants(anyString(), anyString(), anyString(), anyString(), anyString());
+                    .getVariants(anyString(), anyString(), anyString(), anyString(), anyString(), any());
         }
 
         @Test
         void shouldReportNoProblemsWhenAllReferencesPresent() {
             singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "nl"));
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1"))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
-            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1"))
+            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1", null))
                     .thenReturn(List.of(new VariantInfo("nl", "tmpl-1", "Dutch", Map.of())));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -760,7 +818,7 @@ class EpistolaAdminServiceTest {
             when(processLinkService.getProcessLinks(pd1.getId())).thenReturn(List.of(link1));
             when(processLinkService.getProcessLinks(pd2.getId())).thenReturn(List.of(link2));
             mockSinglePluginConfiguration();
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -769,7 +827,7 @@ class EpistolaAdminServiceTest {
             assertThat(entries).allSatisfy(e ->
                     assertThat(e.problems()).contains("Catalog 'cat-x' does not exist in Epistola"));
             // Per-invocation cache: one call serves both links on the same config.
-            verify(epistolaService, times(1)).getCatalogs(BASE_URL, API_KEY, TENANT_ID);
+            verify(epistolaService, times(1)).getCatalogs(BASE_URL, API_KEY, TENANT_ID, null);
         }
 
         @Test
@@ -787,7 +845,7 @@ class EpistolaAdminServiceTest {
             when(processLinkService.getProcessLinks(pd1.getId())).thenReturn(List.of(link1));
             when(processLinkService.getProcessLinks(pd2.getId())).thenReturn(List.of(link2));
             mockSinglePluginConfiguration();
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenThrow(new RuntimeException("Connection refused"));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -795,7 +853,7 @@ class EpistolaAdminServiceTest {
             assertThat(entries).hasSize(2);
             assertThat(entries).allSatisfy(e -> assertThat(e.problems()).isEmpty());
             // Failed fetch is memoized (Optional.empty sentinel) — not re-probed per link.
-            verify(epistolaService, times(1)).getCatalogs(BASE_URL, API_KEY, TENANT_ID);
+            verify(epistolaService, times(1)).getCatalogs(BASE_URL, API_KEY, TENANT_ID, null);
         }
     }
 
@@ -817,7 +875,7 @@ class EpistolaAdminServiceTest {
             when(catalogSyncService.importedAs(any())).thenAnswer(invocation -> new CatalogRef(
                     "local", "valtimo", invocation.<CatalogScanner.CatalogOnClasspath>getArgument(0).slug()));
             // Epistola only has "demo".
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID)).thenReturn(List.of(
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null)).thenReturn(List.of(
                     new CatalogInfo("local/valtimo/demo", "Demo", "local", "valtimo", "demo", true)));
 
             List<ClasspathCatalog> result = adminService.listClasspathCatalogs(configId);
@@ -840,7 +898,7 @@ class EpistolaAdminServiceTest {
 
             when(catalogSyncService.listClasspathCatalogs()).thenReturn(List.of(
                     new CatalogScanner.CatalogOnClasspath("demo", "1.2.0", "config/epistola/catalogs/demo")));
-            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID))
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenThrow(new RuntimeException("Connection refused"));
 
             List<ClasspathCatalog> result = adminService.listClasspathCatalogs(configId);
@@ -1177,6 +1235,9 @@ class EpistolaAdminServiceTest {
 
     // --- Helpers ---
 
+    /** The plugin configurations' default environment; set before a link is mocked. */
+    private String defaultEnvironment;
+
     private void mockSinglePluginConfiguration() {
         PluginConfiguration config = mockPluginConfiguration(CONFIG_TITLE);
         EpistolaPlugin plugin = mockPluginInstance(TENANT_ID);
@@ -1200,6 +1261,7 @@ class EpistolaAdminServiceTest {
         lenient().when(plugin.getBaseUrl()).thenReturn(BASE_URL);
         lenient().when(plugin.getApiKey()).thenReturn(API_KEY);
         lenient().when(plugin.getTenantId()).thenReturn(tenantId);
+        lenient().when(plugin.getDefaultEnvironmentId()).thenReturn(defaultEnvironment);
         return plugin;
     }
 

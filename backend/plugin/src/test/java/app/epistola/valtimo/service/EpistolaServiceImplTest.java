@@ -100,6 +100,16 @@ class EpistolaServiceImplTest {
     }
 
     @Test
+    void getCatalogs_inAnEnvironment_offersWhatIsDeployedThere() {
+        // The contract's examples deploy the one catalog it lists, so the environment offers it.
+        List<CatalogInfo> catalogs = service.getCatalogs(baseUrl, API_KEY, TENANT_ID, "production");
+
+        assertFalse(catalogs.isEmpty());
+        // Read from the release the environment serves, by the id its deployment names.
+        assertFalse(service.getTemplates(baseUrl, API_KEY, TENANT_ID, catalogs.get(0).id(), "production").isEmpty());
+    }
+
+    @Test
     void getTemplates_returnsTemplateList() {
         List<TemplateInfo> templates = service.getTemplates(baseUrl, API_KEY, TENANT_ID, CATALOG_ID);
 
