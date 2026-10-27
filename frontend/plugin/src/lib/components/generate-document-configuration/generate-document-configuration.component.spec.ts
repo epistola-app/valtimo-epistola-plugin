@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-import { firstValueFrom, of, Subject } from 'rxjs';
+import { firstValueFrom, of, Subject, throwError } from 'rxjs';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -66,6 +66,7 @@ jest.mock('../smart-expression-editor/smart-expression-editor.component', () => 
 import {
   environmentScopeOf,
   GenerateDocumentConfigurationComponent,
+  releaseHintOf,
 } from './generate-document-configuration.component';
 import { ANY_ENVIRONMENT } from '../../services';
 
@@ -429,6 +430,9 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
           simpleMappingSupport: { level: 'FULL' },
         }),
       ),
+      getReleases: jest.fn((_c: string, _catalog: string, _env: unknown, range?: string) =>
+        of({ versions: ['2.0.0', '1.9.0'], selected: range ? '1.9.0' : '2.0.0', draft: false }),
+      ),
       validateJsonata: jest.fn().mockReturnValue(of({ valid: true, errors: [] })),
     };
     const component = new GenerateDocumentConfigurationComponent(
@@ -437,6 +441,7 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       { markForCheck: jest.fn(), detectChanges: jest.fn() } as any,
     );
     (component as any).prefill$ = of(prefill);
+    (component as any).initEnvironmentPrefill();
     (component as any).initCascade();
     (component as any).initVariantPrefill();
     (component as any).pluginConfigurationId$.next('config');
@@ -456,6 +461,7 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       'invoice',
       'catalog-a',
       undefined,
+      '',
     );
     service.getTemplateDetails.mockClear();
     service.getVariants.mockClear();
@@ -463,7 +469,7 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
     // The form still carries the old template id in the emission that changes the catalog.
     formChange(component, { catalogId: 'catalog-b', templateId: 'invoice' });
 
-    expect(service.getTemplates).toHaveBeenLastCalledWith('config', 'catalog-b', undefined);
+    expect(service.getTemplates).toHaveBeenLastCalledWith('config', 'catalog-b', undefined, '');
     expect(service.getTemplateDetails).not.toHaveBeenCalled();
     expect(service.getVariants).not.toHaveBeenCalled();
     expect(component.selectedTemplateId$.value).toBe('');
@@ -506,6 +512,7 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       'reminder',
       'catalog-a',
       undefined,
+      '',
     );
     expect(component.variantIdExpression).toBe('');
     expect(component.variantSelectionMode).toBe('explicit');
@@ -585,12 +592,13 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       jest.advanceTimersByTime(250);
 
       expect(service.getCatalogs).toHaveBeenLastCalledWith('config', 'productie');
-      expect(service.getTemplates).toHaveBeenLastCalledWith('config', 'catalog-a', 'productie');
+      expect(service.getTemplates).toHaveBeenLastCalledWith('config', 'catalog-a', 'productie', '');
       expect(service.getTemplateDetails).toHaveBeenLastCalledWith(
         'config',
         'invoice',
         'catalog-a',
         'productie',
+        '',
       );
     } finally {
       jest.useRealTimers();
@@ -622,6 +630,116 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
     }
   });
 
+  it('reads the template from the release the version range selects, keeping what was chosen', () => {
+    jest.useFakeTimers();
+    try {
+      const { component, service } = createCascade();
+      selectInvoiceInCatalogA(component);
+      component.dataMapping$.next('{"name": $doc.name}');
+
+      component.onVersionRangeChange(' ^1.4.0 ');
+      jest.advanceTimersByTime(250);
+
+      expect(service.getReleases).toHaveBeenLastCalledWith(
+        'config',
+        'catalog-a',
+        undefined,
+        '^1.4.0',
+      );
+      expect(service.getTemplates).toHaveBeenLastCalledWith(
+        'config',
+        'catalog-a',
+        undefined,
+        '^1.4.0',
+      );
+      expect(service.getTemplateDetails).toHaveBeenLastCalledWith(
+        'config',
+        'invoice',
+        'catalog-a',
+        undefined,
+        '^1.4.0',
+      );
+      // Another release of the same catalog: the template and its mapping stay.
+      expect(component.selectedTemplateId$.value).toBe('invoice');
+      expect(component.dataMapping$.value).toBe('{"name": $doc.name}');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a template the selected release does not have, and says so', () => {
+    jest.useFakeTimers();
+    try {
+      const { component, service } = createCascade();
+      selectInvoiceInCatalogA(component);
+      const notices: boolean[] = [];
+      component.templateNotOffered$.subscribe((notOffered) => notices.push(notOffered));
+      const items: string[][] = [];
+      component.templateItems$.subscribe((resource) =>
+        items.push(resource.data.map((i) => String(i.id))),
+      );
+
+      service.getTemplates.mockImplementation(() => of([{ id: 'reminder', name: 'Reminder' }]));
+      component.onVersionRangeChange('1.0.0');
+      jest.advanceTimersByTime(250);
+
+      expect(component.selectedTemplateId$.value).toBe('invoice');
+      // Kept under the label it was listed with.
+      expect(items[items.length - 1]).toEqual(['reminder', 'invoice']);
+      expect(notices[notices.length - 1]).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('refuses to save a range that is not one, and says why', async () => {
+    jest.useFakeTimers();
+    try {
+      const { component, service } = createCascade();
+      selectInvoiceInCatalogA(component);
+      const validity: boolean[] = [];
+      component.valid.subscribe((valid) => validity.push(valid));
+      service.getReleases.mockReturnValue(throwError(() => ({ status: 400 })));
+
+      component.onVersionRangeChange('latest');
+      jest.advanceTimersByTime(250);
+
+      expect(validity[validity.length - 1]).toBe(false);
+      expect(await firstValueFrom(component.releaseHint$)).toEqual({
+        key: 'versionRangeInvalid',
+        problem: true,
+      });
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('seeds the version range from a saved configuration', () => {
+    const { component, service } = createCascade({
+      actionConfigVersion: 1,
+      catalogId: 'catalog-a',
+      templateId: 'invoice',
+      versionRange: '1.9.0',
+      dataMapping: '{}',
+      outputFormat: '"PDF"',
+      filename: '"letter.pdf"',
+      resultProcessVariable: 'result',
+    });
+
+    expect(component.versionRange).toBe('1.9.0');
+    formChange(component, { catalogId: 'catalog-a' });
+    formChange(component, { catalogId: 'catalog-a', templateId: 'invoice' });
+    // Read once, from the saved release: never first from the highest one.
+    expect(service.getTemplateDetails).toHaveBeenCalledTimes(1);
+    expect(service.getTemplateDetails).toHaveBeenCalledWith(
+      'config',
+      'invoice',
+      'catalog-a',
+      undefined,
+      '1.9.0',
+    );
+  });
+
   it('keeps a saved configuration intact while it loads', () => {
     const { component, service } = createCascade({
       actionConfigVersion: 1,
@@ -648,6 +766,7 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       'invoice',
       'catalog-a',
       undefined,
+      '',
     );
   });
 });
@@ -665,5 +784,51 @@ describe('environmentScopeOf', () => {
 
   it('narrows nothing for an environment only known at run time', () => {
     expect(environmentScopeOf('$pv.environment')).toBe(ANY_ENVIRONMENT);
+  });
+});
+
+describe('releaseHintOf', () => {
+  const state = (range: string, data: object | null, error: string | null = null) => ({
+    range,
+    resource: { data: data as any, loading: false, error },
+  });
+
+  it('names the release a range selects', () => {
+    expect(
+      releaseHintOf(state('^1.0.0', { versions: ['1.9.0'], selected: '1.9.0', draft: false })),
+    ).toEqual({
+      key: 'versionRangeSelects',
+      version: '1.9.0',
+      problem: false,
+    });
+  });
+
+  it('warns when no release satisfies the range', () => {
+    expect(
+      releaseHintOf(state('^3.0.0', { versions: ['1.9.0'], selected: null, draft: false })),
+    ).toEqual({
+      key: 'versionRangeMatchesNothing',
+      problem: true,
+    });
+  });
+
+  it('without a range, says the environment renders its draft, else the highest release', () => {
+    expect(
+      releaseHintOf(state('', { versions: ['1.9.0'], selected: null, draft: true }))?.key,
+    ).toBe('versionRangeNoneDraft');
+    expect(
+      releaseHintOf(state('', { versions: ['1.9.0'], selected: '1.9.0', draft: false })),
+    ).toEqual({
+      key: 'versionRangeNoneHighest',
+      version: '1.9.0',
+      problem: false,
+    });
+  });
+
+  it('says nothing while loading, or when the lookup failed for another reason', () => {
+    expect(
+      releaseHintOf({ range: '1.0.0', resource: { data: null, loading: true, error: null } }),
+    ).toBeNull();
+    expect(releaseHintOf(state('1.0.0', null, 'Failed to load releases'))).toBeNull();
   });
 });

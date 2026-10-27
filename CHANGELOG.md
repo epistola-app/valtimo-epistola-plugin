@@ -60,6 +60,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **A generate-document action can pin a catalog release, or a range of them** (`versionRange`).
+  A version (`1.4.0`) pins one release; a range in npm's SemVer grammar (`^1.4.0`, `~1.4.0`,
+  `>=1.0.0 <2.0.0`) takes the highest release that satisfies it, among those deployed to the
+  action's environment when it has one. Empty keeps today's behaviour: the environment's deployed
+  draft, else its highest release. Generation and preview send the range, so Epistola picks the
+  release; the configurator reads the template, its fields and variants from the release the range
+  selects, offers the catalog's versions to pick from, and says which release the action will use
+  or that none satisfies the range. A range that is not one cannot be saved, and fails the action
+  rather than rendering something else. The admin page reports a range no release satisfies.
+  Plain text, not an expression: the configurator needs it to read the template. The letter
+  composer does not take one yet.
 - **Forgejo CI for private internal branches** (`.forgejo/workflows/ci.yml`). Epistola's internal
   Forgejo keeps a synced copy of this repository plus private branches under `internal/`, for
   example a security fix before its disclosure. Those branches now run the same checks as

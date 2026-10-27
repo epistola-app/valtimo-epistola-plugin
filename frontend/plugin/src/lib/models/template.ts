@@ -125,6 +125,20 @@ export interface CatalogInfo {
 }
 
 /**
+ * The released versions of a catalog a process link may pin, and the one it renders.
+ *
+ * Mirrors `CatalogReleases` on the backend.
+ */
+export interface CatalogReleases {
+  /** Released versions, highest first: in an environment, those deployed to it. */
+  versions: string[];
+  /** The version the link renders with its range, or `null` when none satisfies it. */
+  selected: string | null;
+  /** True when, without a range, the environment renders the catalog's deployed draft. */
+  draft: boolean;
+}
+
+/**
  * One generate task that reads a composer's letter, named as the author sees it in the modeller.
  *
  * Mirrors `LetterReaderService.LetterReader` on the backend.

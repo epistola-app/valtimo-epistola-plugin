@@ -132,7 +132,13 @@ docker/            # Docker compose for local dependencies
   the release is its deployed draft, else its highest deployed release (`ReleaseVersions`) —
   dependencies are used by an environment without being deployed, so they are not offered. Without
   one, every catalog, read from the highest release, else the newest draft; the contract cannot
-  tell a dependency-only catalog apart there. Statuses arrive lowercase (`in-progress`) and are normalised to the
+  tell a dependency-only catalog apart there. A generate link's `versionRange` (plain text, not
+  JSONata: the configurator reads the template through it) selects the highest released release
+  that satisfies it, of those deployed when there is an environment, never a draft. Generation and
+  preview send it for the server to resolve; reads resolve it in the plugin (`VersionRanges`,
+  `/releases`). semver4j's default parser also accepts Ivy ranges and `latest`, which the contract
+  does not: `VersionRanges` restricts it to npm's processors and refuses a range semver4j would
+  silently read as matching nothing. Statuses arrive lowercase (`in-progress`) and are normalised to the
   1.x form on process variables (`GenerationJobStatus.normalize`), because BPMN gateways compare
   against `COMPLETED`. Resource addresses are `key` everywhere; `id`/`slug` are gone.
   `oldestSupportedServerTest` runs the mock-server test against the pinned alpha until a Suite

@@ -55,6 +55,7 @@ import {
 import {
   AsyncResource,
   CatalogInfo,
+  CatalogReleases,
   errorResource,
   ExpressionFunctionInfo,
   GenerateDocumentConfig,
@@ -176,39 +177,35 @@ export class GenerateDocumentConfigurationComponent
    * author clearing the catalog — wiping the template with it — when only the environment changed.
    * Kept listed (by its reference), it stays selected, and `catalogNotOffered$` says why it is odd.
    */
-  readonly catalogItems$: Observable<AsyncResource<SelectItem[]>> = combineLatest([
-    this.catalogs$,
-    this.selectedCatalogId$.pipe(distinctUntilChanged()),
-  ]).pipe(
-    map(([catalogs, selected]) =>
-      !selected || catalogs.data.some((item) => item.id === selected)
-        ? catalogs
-        : { ...catalogs, data: [...catalogs.data, { id: selected, text: selected }] },
-    ),
-    // Only a new list re-applies the select's default; an unchanged one must not.
-    distinctUntilChanged(
-      (previous, current) =>
-        previous === current ||
-        (previous.loading === current.loading &&
-          previous.error === current.error &&
-          previous.data.length === current.data.length &&
-          previous.data.every((item, i) => item.id === current.data[i].id)),
-    ),
-  );
+  readonly catalogItems$ = keepingSelected(this.catalogs$, this.selectedCatalogId$);
   /** True when the selected catalog is not among those offered, e.g. not deployed to the environment. */
-  readonly catalogNotOffered$: Observable<boolean> = combineLatest([
-    this.selectedCatalogId$,
-    this.catalogs$,
-  ]).pipe(
-    map(
-      ([selected, catalogs]) =>
-        !!selected &&
-        !catalogs.loading &&
-        !catalogs.error &&
-        !catalogs.data.some((item) => item.id === selected),
-    ),
-    distinctUntilChanged(),
+  readonly catalogNotOffered$ = notOffered(this.selectedCatalogId$, this.catalogs$);
+
+  /**
+   * The templates the select lists, keeping the selected one for the same reason as the catalogs:
+   * a new environment or version range reloads them, and a list that is empty while it loads, or
+   * read from a release without the template, would otherwise clear it and the mapping with it.
+   */
+  readonly templateItems$ = keepingSelected(this.templates$, this.selectedTemplateId$);
+  /** True when the selected template is not in the release the link renders. */
+  readonly templateNotOffered$ = notOffered(this.selectedTemplateId$, this.templates$);
+
+  /**
+   * The link's version range as typed: the release of the catalog it renders, `1.4.0` to pin one or
+   * `^1.4.0` for the highest that satisfies it. Blank is none. Templates, attributes, variants and
+   * fields are read from the release it selects (see `initCascade`).
+   */
+  versionRange = '';
+  private readonly versionRange$ = new BehaviorSubject<string>('');
+  /** The catalog's releases and the one the range selects, for the range field's suggestions and hint. */
+  readonly releases$ = new BehaviorSubject<ReleasesState>({
+    range: '',
+    resource: initialResource(null),
+  });
+  readonly releaseVersions$: Observable<string[]> = this.releases$.pipe(
+    map((state) => state.resource.data?.versions ?? []),
   );
+  readonly releaseHint$: Observable<ReleaseHint | null> = this.releases$.pipe(map(releaseHintOf));
 
   /**
    * Force-clears the templateId v-select. Triggered when the catalog changes —
@@ -273,8 +270,10 @@ export class GenerateDocumentConfigurationComponent
 
     this.initContext();
     this.initPluginConfiguration();
-    this.initCascade();
+    // Before the cascade: the first lookups then read from the saved environment and release,
+    // rather than from the default ones and again once these arrive.
     this.initEnvironmentPrefill();
+    this.initCascade();
     this.initVariantPrefill();
     this.initCorrelationIdPrefill();
     this.loadExpressionFunctions();
@@ -425,6 +424,11 @@ export class GenerateDocumentConfigurationComponent
     this.revalidate();
   }
 
+  onVersionRangeChange(value: string): void {
+    this.versionRange = value;
+    this.versionRange$.next(value);
+  }
+
   onCorrelationIdExpressionChange(value: string): void {
     this.correlationIdExpression = value;
     this.revalidate();
@@ -540,6 +544,8 @@ export class GenerateDocumentConfigurationComponent
     this.prefill$.pipe(takeUntil(this.destroy$), take(1)).subscribe((config) => {
       this.environmentIdExpression = config?.environmentId || '';
       this.environmentScope$.next(environmentScopeOf(this.environmentIdExpression));
+      this.versionRange = config?.versionRange || '';
+      this.versionRange$.next(this.versionRange);
       this.cdr.markForCheck();
     });
   }
@@ -656,6 +662,14 @@ export class GenerateDocumentConfigurationComponent
       this.environmentScope$.pipe(take(1)),
       this.environmentScope$.pipe(skip(1), debounceTime(250)),
     ).pipe(distinctUntilChanged());
+    // Likewise for the version range, which is typed.
+    const range$ = merge(
+      this.versionRange$.pipe(take(1)),
+      this.versionRange$.pipe(skip(1), debounceTime(250)),
+    ).pipe(
+      map((range) => range.trim()),
+      distinctUntilChanged(),
+    );
 
     // ── Catalogs: load when pluginConfigurationId or the environment changes ──
     combineLatest([configId$, environment$])
@@ -705,33 +719,71 @@ export class GenerateDocumentConfigurationComponent
     // An empty id is no selection: it resets what depends on it, and nothing is fetched.
     const catalogId$ = this.selectedCatalogId$.pipe(distinctUntilChanged());
 
-    // ── Templates: load when catalogId or the environment changes ──
-    combineLatest([configId$, catalogId$, environment$])
+    // ── Releases: the catalog's, and the one the version range selects ──
+    combineLatest([configId$, catalogId$, environment$, range$])
       .pipe(
         takeUntil(this.destroy$),
-        switchMap(([configurationId, catalogId, environment]) =>
+        switchMap(([configurationId, catalogId, environment, range]) =>
+          !catalogId
+            ? of<ReleasesState>({ range, resource: initialResource(null) })
+            : this.epistolaPluginService
+                .getReleases(configurationId, catalogId, environment, range)
+                .pipe(
+                  map(
+                    (releases): ReleasesState => ({ range, resource: successResource(releases) }),
+                  ),
+                  catchError((error: unknown) =>
+                    of<ReleasesState>({
+                      range,
+                      resource: errorResource<CatalogReleases | null>(
+                        null,
+                        (error as { status?: number } | null)?.status === 400
+                          ? INVALID_RANGE
+                          : 'Failed to load releases',
+                      ),
+                    }),
+                  ),
+                  startWith<ReleasesState>({ range, resource: loadingResource(null) }),
+                ),
+        ),
+      )
+      .subscribe((state) => {
+        this.releases$.next(state);
+        // A range that is not one would fail every generation: it blocks saving until corrected.
+        this.expressionValidity.set('versionRange', state.resource.error !== INVALID_RANGE);
+        this.revalidate();
+        this.cdr.markForCheck();
+      });
+
+    // ── Templates: load when catalogId, the environment or the version range changes ──
+    combineLatest([configId$, catalogId$, environment$, range$])
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap(([configurationId, catalogId, environment, range]) =>
           !catalogId
             ? of(initialResource<SelectItem[]>([]))
-            : this.epistolaPluginService.getTemplates(configurationId, catalogId, environment).pipe(
-                map((templates) =>
-                  successResource(templates.map((t) => ({ id: t.id, text: t.name }))),
+            : this.epistolaPluginService
+                .getTemplates(configurationId, catalogId, environment, range)
+                .pipe(
+                  map((templates) =>
+                    successResource(templates.map((t) => ({ id: t.id, text: t.name }))),
+                  ),
+                  catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load templates'))),
+                  startWith(loadingResource<SelectItem[]>([])),
                 ),
-                catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load templates'))),
-                startWith(loadingResource<SelectItem[]>([])),
-              ),
         ),
       )
       .subscribe((resource) => this.templates$.next(resource));
 
     // ── Attributes: load when catalogId changes ──
-    combineLatest([configId$, catalogId$, environment$])
+    combineLatest([configId$, catalogId$, environment$, range$])
       .pipe(
         takeUntil(this.destroy$),
-        switchMap(([configurationId, catalogId, environment]) =>
+        switchMap(([configurationId, catalogId, environment, range]) =>
           !catalogId
             ? of([])
             : this.epistolaPluginService
-                .getAttributes(configurationId, catalogId, environment)
+                .getAttributes(configurationId, catalogId, environment, range)
                 .pipe(catchError(() => of([]))),
         ),
       )
@@ -758,17 +810,18 @@ export class GenerateDocumentConfigurationComponent
       catalogId$,
       this.selectedTemplateId$.pipe(distinctUntilChanged()),
       environment$,
+      range$,
     ]);
 
     // ── Variants: load when the template selection changes ──
     templateSelection$
       .pipe(
         takeUntil(this.destroy$),
-        switchMap(([configurationId, catalogId, templateId, environment]) =>
+        switchMap(([configurationId, catalogId, templateId, environment, range]) =>
           !catalogId || !templateId
             ? of(initialResource<SelectItem[]>([]))
             : this.epistolaPluginService
-                .getVariants(configurationId, templateId, catalogId, environment)
+                .getVariants(configurationId, templateId, catalogId, environment, range)
                 .pipe(
                   map((variants) =>
                     successResource(
@@ -794,11 +847,11 @@ export class GenerateDocumentConfigurationComponent
           this.templateSchema$.next(null);
           this.simpleMappingSupport$.next(FULL_SIMPLE_MAPPING_SUPPORT);
         }),
-        switchMap(([configurationId, catalogId, templateId, environment]) =>
+        switchMap(([configurationId, catalogId, templateId, environment, range]) =>
           !catalogId || !templateId
             ? of(initialResource<TemplateField[]>([]))
             : this.epistolaPluginService
-                .getTemplateDetails(configurationId, templateId, catalogId, environment)
+                .getTemplateDetails(configurationId, templateId, catalogId, environment, range)
                 .pipe(
                   tap((details) => this.applyTemplateSchemaDetails(details)),
                   map((details) => successResource(details.fields || [])),
@@ -931,6 +984,7 @@ export class GenerateDocumentConfigurationComponent
               correlationIdExpression: this.correlationIdExpression,
               resultProcessVariable: formValue.resultProcessVariable!,
               environmentExpression: this.environmentIdExpression,
+              versionRange: this.versionRange,
               variantSelectionMode: this.variantSelectionMode,
               variantExpression: this.variantIdExpression,
               variantAttributes: this.variantAttributeEntries,
@@ -977,4 +1031,91 @@ export function environmentScopeOf(expression: string | null | undefined): Envir
   if (!expression || !expression.trim()) return undefined;
   const literal = decodeJsonataStringLiteral(expression);
   return literal !== undefined && literal.trim() ? literal.trim() : ANY_ENVIRONMENT;
+}
+
+/** The error a release lookup reports for a range that is not one (the server answers 400). */
+const INVALID_RANGE = 'invalidRange';
+
+/** The catalog's releases as last loaded, with the range they were loaded for. */
+interface ReleasesState {
+  range: string;
+  resource: AsyncResource<CatalogReleases | null>;
+}
+
+/** What the version range field says the link renders: a translation key and the version it names. */
+export interface ReleaseHint {
+  key: string;
+  version?: string;
+  /** True when saving this would fail, or render nothing, at run time. */
+  problem: boolean;
+}
+
+/**
+ * What a link with this range renders, as the field explains it: the release it selects, the
+ * draft an environment serves, or why it renders nothing. Null while loading, and when a lookup
+ * failed for another reason than the range itself (the template field reports that).
+ */
+export function releaseHintOf(state: ReleasesState): ReleaseHint | null {
+  const { range, resource } = state;
+  if (resource.error === INVALID_RANGE) return { key: 'versionRangeInvalid', problem: true };
+  const releases = resource.data;
+  if (resource.loading || !releases) return null;
+  if (range) {
+    return releases.selected
+      ? { key: 'versionRangeSelects', version: releases.selected, problem: false }
+      : { key: 'versionRangeMatchesNothing', problem: true };
+  }
+  if (releases.draft) return { key: 'versionRangeNoneDraft', problem: false };
+  return releases.selected
+    ? { key: 'versionRangeNoneHighest', version: releases.selected, problem: false }
+    : null;
+}
+
+/**
+ * A select's items with the selected one kept among them. `v-select` clears a value its items no
+ * longer hold — including while a reload leaves them empty — and the form would take that for the
+ * author clearing it. A kept item keeps the label it was last listed with.
+ */
+function keepingSelected(
+  items$: Observable<AsyncResource<SelectItem[]>>,
+  selected$: Observable<string>,
+): Observable<AsyncResource<SelectItem[]>> {
+  const labels = new Map<string, string>();
+  return combineLatest([items$, selected$.pipe(distinctUntilChanged())]).pipe(
+    tap(([items]) => items.data.forEach((item) => labels.set(String(item.id), item.text ?? ''))),
+    map(([items, selected]) =>
+      !selected || items.data.some((item) => item.id === selected)
+        ? items
+        : {
+            ...items,
+            data: [...items.data, { id: selected, text: labels.get(selected) || selected }],
+          },
+    ),
+    // Only a new list re-applies the select's default; an unchanged one must not.
+    distinctUntilChanged(
+      (previous, current) =>
+        previous === current ||
+        (previous.loading === current.loading &&
+          previous.error === current.error &&
+          previous.data.length === current.data.length &&
+          previous.data.every((item, i) => item.id === current.data[i].id)),
+    ),
+  );
+}
+
+/** True when a selection is made but the loaded items do not offer it. */
+function notOffered(
+  selected$: Observable<string>,
+  items$: Observable<AsyncResource<SelectItem[]>>,
+): Observable<boolean> {
+  return combineLatest([selected$, items$]).pipe(
+    map(
+      ([selected, items]) =>
+        !!selected &&
+        !items.loading &&
+        !items.error &&
+        !items.data.some((item) => item.id === selected),
+    ),
+    distinctUntilChanged(),
+  );
 }

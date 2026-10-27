@@ -23,6 +23,7 @@ import { Observable } from 'rxjs';
 import {
   AttributeDefinition,
   CatalogInfo,
+  CatalogReleases,
   EnvironmentInfo,
   ExpressionFunctionInfo,
   JsonataValidationResult,
@@ -103,6 +104,19 @@ function environmentParams(environment: EnvironmentScope): Record<string, string
   return environment ? { environmentId: environment } : {};
 }
 
+/**
+ * Where a configurator reads a catalog's content from: the environment the link generates in and
+ * the link's version range, which selects a release of what that environment serves.
+ */
+function releaseParams(
+  environment: EnvironmentScope,
+  versionRange?: string,
+): Record<string, string> {
+  const params = environmentParams(environment);
+  const range = versionRange?.trim();
+  return range ? { ...params, versionRange: range } : params;
+}
+
 @Injectable()
 export class EpistolaPluginService {
   private readonly apiEndpoint: string;
@@ -134,8 +148,9 @@ export class EpistolaPluginService {
     pluginConfigurationId: string,
     catalogId?: string,
     environment?: EnvironmentScope,
+    versionRange?: string,
   ): Observable<TemplateInfo[]> {
-    const params: Record<string, string> = environmentParams(environment);
+    const params: Record<string, string> = releaseParams(environment, versionRange);
     if (catalogId) params['catalogId'] = catalogId;
     return this.http.get<TemplateInfo[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates`,
@@ -151,10 +166,11 @@ export class EpistolaPluginService {
     templateId: string,
     catalogId: string,
     environment?: EnvironmentScope,
+    versionRange?: string,
   ): Observable<TemplateDetails> {
     return this.http.get<TemplateDetails>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}`,
-      { params: { ...environmentParams(environment), catalogId } },
+      { params: { ...releaseParams(environment, versionRange), catalogId } },
     );
   }
 
@@ -165,8 +181,9 @@ export class EpistolaPluginService {
     pluginConfigurationId: string,
     catalogId: string,
     environment?: EnvironmentScope,
+    versionRange?: string,
   ): Observable<AttributeDefinition[]> {
-    const params: Record<string, string> = environmentParams(environment);
+    const params: Record<string, string> = releaseParams(environment, versionRange);
     if (catalogId) params['catalogId'] = catalogId;
     return this.http.get<AttributeDefinition[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/attributes`,
@@ -191,12 +208,29 @@ export class EpistolaPluginService {
     templateId: string,
     catalogId: string,
     environment?: EnvironmentScope,
+    versionRange?: string,
   ): Observable<VariantInfo[]> {
-    const params: Record<string, string> = environmentParams(environment);
+    const params: Record<string, string> = releaseParams(environment, versionRange);
     if (catalogId) params['catalogId'] = catalogId;
     return this.http.get<VariantInfo[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}/variants`,
       { params },
+    );
+  }
+
+  /**
+   * The released versions of a catalog a process link may pin, and the one its range selects.
+   * Answers 400 when the range is not one.
+   */
+  getReleases(
+    pluginConfigurationId: string,
+    catalogId: string,
+    environment?: EnvironmentScope,
+    versionRange?: string,
+  ): Observable<CatalogReleases> {
+    return this.http.get<CatalogReleases>(
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/releases`,
+      { params: { ...releaseParams(environment, versionRange), catalogId } },
     );
   }
 

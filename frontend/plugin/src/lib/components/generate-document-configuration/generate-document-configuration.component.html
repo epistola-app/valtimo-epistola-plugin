@@ -8,6 +8,10 @@
     catalogItems: catalogItems$ | async,
     prefillCatalogId: prefillCatalogId$ | async,
     templates: templates$ | async,
+    templateItems: templateItems$ | async,
+    templateNotOffered: templateNotOffered$ | async,
+    releaseVersions: releaseVersions$ | async,
+    releaseHint: releaseHint$ | async,
     variants: variants$ | async,
     environments: environments$ | async,
     templateFields: templateFields$ | async,
@@ -80,16 +84,55 @@
     {{ 'catalogNotOffered' | pluginTranslate: pluginId | async }}
   </div>
 
+  <div
+    *ngIf="obs.selectedCatalogId"
+    class="version-range"
+    data-testid="epistola-generate-version-range"
+  >
+    <label class="version-range-label" for="epistola-generate-version-range-input">{{
+      'versionRange' | pluginTranslate: pluginId | async
+    }}</label>
+    <p class="version-range-help">
+      {{ 'versionRangeTooltip' | pluginTranslate: pluginId | async }}
+    </p>
+    <input
+      id="epistola-generate-version-range-input"
+      type="text"
+      class="version-range-input"
+      data-testid="epistola-generate-version-range-input"
+      list="epistola-generate-version-range-releases"
+      autocomplete="off"
+      [value]="versionRange"
+      [placeholder]="'versionRangePlaceholder' | pluginTranslate: pluginId | async"
+      [disabled]="obs.disabled"
+      (input)="onVersionRangeChange($any($event.target).value)"
+    />
+    <!-- The catalog's released versions, offered to pin one; a range is typed. -->
+    <datalist id="epistola-generate-version-range-releases">
+      <option *ngFor="let version of obs.releaseVersions" [value]="version"></option>
+    </datalist>
+    <div
+      *ngIf="obs.releaseHint as hint"
+      class="version-range-hint"
+      [class.version-range-problem]="hint.problem"
+      data-testid="epistola-generate-version-range-hint"
+      role="status"
+    >
+      {{ hint.key | pluginTranslate: pluginId | async }}
+      <strong *ngIf="hint.version">{{ hint.version }}</strong>
+    </div>
+  </div>
+
   <v-select
     name="templateId"
     data-testid="epistola-generate-template-id"
     [title]="'templateId' | pluginTranslate: pluginId | async"
     [tooltip]="'templateIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
-    [items]="obs.templates.data"
+    [items]="obs.templateItems.data"
     [appendInline]="false"
     [dropUp]="false"
-    [defaultSelectionId]="obs.prefill?.templateId"
+    [defaultSelectionId]="obs.selectedTemplateId || obs.prefill?.templateId"
     [clearSelectionSubject$]="clearTemplateId$"
     [disabled]="obs.disabled || obs.templates.loading || !obs.selectedCatalogId"
     [required]="true"
@@ -102,6 +145,14 @@
     data-testid="epistola-generate-template-error"
   >
     {{ obs.templates.error }}
+  </div>
+  <div
+    *ngIf="obs.templateNotOffered"
+    class="loading-error"
+    data-testid="epistola-generate-template-not-offered"
+    role="status"
+  >
+    {{ 'templateNotOffered' | pluginTranslate: pluginId | async }}
   </div>
 
   <!-- Variant selection mode toggle -->
