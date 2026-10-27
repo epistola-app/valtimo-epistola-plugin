@@ -5,12 +5,14 @@
     disabled: disabled$ | async,
     prefill: effectivePrefill$ ? (effectivePrefill$ | async) : null,
     catalogs: catalogs$ | async,
+    catalogItems: catalogItems$ | async,
     prefillCatalogId: prefillCatalogId$ | async,
     templates: templates$ | async,
     variants: variants$ | async,
     environments: environments$ | async,
     templateFields: templateFields$ | async,
     selectedCatalogId: selectedCatalogId$ | async,
+    catalogNotOffered: catalogNotOffered$ | async,
     selectedTemplateId: selectedTemplateId$ | async,
     validationErrors: validationErrors$ | async,
     configurationVersionError: configurationVersionError$ | async,
@@ -53,10 +55,10 @@
     [title]="'catalogId' | pluginTranslate: pluginId | async"
     [tooltip]="'catalogIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
-    [items]="obs.catalogs.data"
+    [items]="obs.catalogItems.data"
     [appendInline]="false"
     [dropUp]="false"
-    [defaultSelectionId]="obs.prefillCatalogId"
+    [defaultSelectionId]="obs.selectedCatalogId || obs.prefillCatalogId"
     [disabled]="obs.disabled || obs.catalogs.loading"
     [required]="true"
     [loading]="obs.catalogs.loading"
@@ -68,6 +70,14 @@
     data-testid="epistola-generate-catalog-error"
   >
     {{ obs.catalogs.error }}
+  </div>
+  <div
+    *ngIf="obs.catalogNotOffered"
+    class="loading-error"
+    data-testid="epistola-generate-catalog-not-offered"
+    role="status"
+  >
+    {{ 'catalogNotOffered' | pluginTranslate: pluginId | async }}
   </div>
 
   <v-select

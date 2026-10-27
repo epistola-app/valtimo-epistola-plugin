@@ -17,7 +17,7 @@
  */
 
 import { CatalogInfo } from '../models';
-import { matchCatalogId } from './catalog-ref';
+import { catalogLabel, matchCatalogId, sortCatalogs } from './catalog-ref';
 
 const catalog = (registry: string, namespace: string, key: string): CatalogInfo => ({
   id: `${registry}/${namespace}/${key}`,
@@ -57,5 +57,35 @@ describe('matchCatalogId', () => {
   it('has nothing to match without a reference', () => {
     expect(matchCatalogId('', [demo])).toBeNull();
     expect(matchCatalogId(undefined, [demo])).toBeNull();
+  });
+});
+
+describe('catalogLabel', () => {
+  it('names the namespace of a tenant’s own catalog', () => {
+    expect(catalogLabel({ ...catalog('local', 'valtimo', 'brieven'), name: 'Brieven' })).toBe(
+      'Brieven (valtimo)',
+    );
+  });
+
+  it('names the registry too when the catalog is not the tenant’s own', () => {
+    expect(
+      catalogLabel({ ...catalog('exchange.epistola.app', 'vng', 'brieven'), name: 'Brieven' }),
+    ).toBe('Brieven (vng · exchange.epistola.app)');
+  });
+});
+
+describe('sortCatalogs', () => {
+  it('offers the tenant’s own catalogs first, grouped by namespace', () => {
+    const sorted = sortCatalogs([
+      catalog('exchange.epistola.app', 'vng', 'a'),
+      catalog('local', 'zaken', 'b'),
+      catalog('local', 'valtimo', 'c'),
+    ]);
+
+    expect(sorted.map((c) => c.id)).toEqual([
+      'local/valtimo/c',
+      'local/zaken/b',
+      'exchange.epistola.app/vng/a',
+    ]);
   });
 });

@@ -87,6 +87,22 @@ export interface DownloadDocumentRequest {
  * Provides methods to fetch templates, environments, variants,
  * process variables, and validate mappings.
  */
+/**
+ * The environment a configurator's lookups are narrowed to: what generation in it renders.
+ * `undefined` defers to the plugin configuration's default environment (the server applies it), a
+ * key names one, and {@link ANY_ENVIRONMENT} says the link's environment is an expression only
+ * known at run time, so nothing is narrowed.
+ */
+export type EnvironmentScope = string | typeof ANY_ENVIRONMENT | undefined;
+
+/** No single environment applies: every catalog of the tenant, read from its highest release. */
+export const ANY_ENVIRONMENT = Symbol('anyEnvironment');
+
+function environmentParams(environment: EnvironmentScope): Record<string, string> {
+  if (environment === ANY_ENVIRONMENT) return { anyEnvironment: 'true' };
+  return environment ? { environmentId: environment } : {};
+}
+
 @Injectable()
 export class EpistolaPluginService {
   private readonly apiEndpoint: string;
@@ -101,17 +117,25 @@ export class EpistolaPluginService {
   /**
    * Get all available catalogs for a plugin configuration.
    */
-  getCatalogs(pluginConfigurationId: string): Observable<CatalogInfo[]> {
+  getCatalogs(
+    pluginConfigurationId: string,
+    environment?: EnvironmentScope,
+  ): Observable<CatalogInfo[]> {
     return this.http.get<CatalogInfo[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/catalogs`,
+      { params: environmentParams(environment) },
     );
   }
 
   /**
    * Get all available templates for a plugin configuration and catalog.
    */
-  getTemplates(pluginConfigurationId: string, catalogId?: string): Observable<TemplateInfo[]> {
-    const params: Record<string, string> = {};
+  getTemplates(
+    pluginConfigurationId: string,
+    catalogId?: string,
+    environment?: EnvironmentScope,
+  ): Observable<TemplateInfo[]> {
+    const params: Record<string, string> = environmentParams(environment);
     if (catalogId) params['catalogId'] = catalogId;
     return this.http.get<TemplateInfo[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates`,
@@ -126,10 +150,11 @@ export class EpistolaPluginService {
     pluginConfigurationId: string,
     templateId: string,
     catalogId: string,
+    environment?: EnvironmentScope,
   ): Observable<TemplateDetails> {
     return this.http.get<TemplateDetails>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}`,
-      { params: { catalogId } },
+      { params: { ...environmentParams(environment), catalogId } },
     );
   }
 
@@ -139,8 +164,9 @@ export class EpistolaPluginService {
   getAttributes(
     pluginConfigurationId: string,
     catalogId: string,
+    environment?: EnvironmentScope,
   ): Observable<AttributeDefinition[]> {
-    const params: Record<string, string> = {};
+    const params: Record<string, string> = environmentParams(environment);
     if (catalogId) params['catalogId'] = catalogId;
     return this.http.get<AttributeDefinition[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/attributes`,
@@ -164,8 +190,9 @@ export class EpistolaPluginService {
     pluginConfigurationId: string,
     templateId: string,
     catalogId: string,
+    environment?: EnvironmentScope,
   ): Observable<VariantInfo[]> {
-    const params: Record<string, string> = {};
+    const params: Record<string, string> = environmentParams(environment);
     if (catalogId) params['catalogId'] = catalogId;
     return this.http.get<VariantInfo[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}/variants`,

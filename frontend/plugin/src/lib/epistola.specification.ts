@@ -73,7 +73,10 @@ const epistolaPluginSpecification: PluginSpecification = {
       legacyGenerateConfigurationDescription:
         'Deze actie is alleen in de editor bijgewerkt naar versie 1. Sla de proceskoppeling op om de bijgewerkte configuratie te bewaren; annuleren laat de opgeslagen configuratie ongewijzigd.',
       catalogId: 'Catalogus',
-      catalogIdTooltip: 'Selecteer de catalogus waaruit een template gekozen wordt',
+      catalogIdTooltip:
+        'Selecteer de catalogus waaruit een template gekozen wordt. Getoond worden de catalogi die zijn uitgerold naar de omgeving van deze actie (of de standaardomgeving); zonder omgeving alle catalogi van de tenant.',
+      catalogNotOffered:
+        'Deze catalogus is niet uitgerold naar de omgeving waarin deze actie genereert. Rol hem daar uit in Epistola, of kies een andere catalogus.',
       templateId: 'Template',
       templateIdTooltip: 'Selecteer het template dat gebruikt wordt voor documentgeneratie',
       variantId: 'Variant',
@@ -347,7 +350,10 @@ const epistolaPluginSpecification: PluginSpecification = {
       legacyGenerateConfigurationDescription:
         'This action has only been upgraded to version 1 inside the editor. Save the process link to persist the upgraded configuration; cancelling leaves the stored configuration unchanged.',
       catalogId: 'Catalog',
-      catalogIdTooltip: 'Select the catalog to choose a template from',
+      catalogIdTooltip:
+        "Select the catalog to choose a template from. Offered are the catalogs deployed to this action's environment (or the default environment); without an environment, every catalog of the tenant.",
+      catalogNotOffered:
+        'This catalog is not deployed to the environment this action generates in. Deploy it there in Epistola, or choose another catalog.',
       templateId: 'Template',
       templateIdTooltip: 'Select the template to use for document generation',
       variantId: 'Variant',

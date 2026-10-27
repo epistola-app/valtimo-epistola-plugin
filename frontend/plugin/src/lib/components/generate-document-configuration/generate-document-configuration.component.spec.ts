@@ -63,7 +63,11 @@ jest.mock('../smart-expression-editor/smart-expression-editor.component', () => 
   SmartExpressionEditorComponent: class {},
 }));
 
-import { GenerateDocumentConfigurationComponent } from './generate-document-configuration.component';
+import {
+  environmentScopeOf,
+  GenerateDocumentConfigurationComponent,
+} from './generate-document-configuration.component';
+import { ANY_ENVIRONMENT } from '../../services';
 
 describe('GenerateDocumentConfigurationComponent selectors', () => {
   it.each(['catalogId', 'templateId'])(
@@ -447,14 +451,19 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
   it('does not ask the new catalog for the template selected in the previous one', () => {
     const { component, service } = createCascade();
     selectInvoiceInCatalogA(component);
-    expect(service.getTemplateDetails).toHaveBeenCalledWith('config', 'invoice', 'catalog-a');
+    expect(service.getTemplateDetails).toHaveBeenCalledWith(
+      'config',
+      'invoice',
+      'catalog-a',
+      undefined,
+    );
     service.getTemplateDetails.mockClear();
     service.getVariants.mockClear();
 
     // The form still carries the old template id in the emission that changes the catalog.
     formChange(component, { catalogId: 'catalog-b', templateId: 'invoice' });
 
-    expect(service.getTemplates).toHaveBeenLastCalledWith('config', 'catalog-b');
+    expect(service.getTemplates).toHaveBeenLastCalledWith('config', 'catalog-b', undefined);
     expect(service.getTemplateDetails).not.toHaveBeenCalled();
     expect(service.getVariants).not.toHaveBeenCalled();
     expect(component.selectedTemplateId$.value).toBe('');
@@ -492,7 +501,12 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
 
     formChange(component, { catalogId: 'catalog-a', templateId: 'reminder' });
 
-    expect(service.getTemplateDetails).toHaveBeenLastCalledWith('config', 'reminder', 'catalog-a');
+    expect(service.getTemplateDetails).toHaveBeenLastCalledWith(
+      'config',
+      'reminder',
+      'catalog-a',
+      undefined,
+    );
     expect(component.variantIdExpression).toBe('');
     expect(component.variantSelectionMode).toBe('explicit');
     expect(component.variantAttributeEntries).toEqual([]);
@@ -533,6 +547,81 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
     expect(component.templates$.value.data).toEqual([]);
   });
 
+  it('labels each catalog with where it lives, the tenant’s own first', () => {
+    const { component, service } = createCascade();
+    service.getCatalogs.mockReturnValue(
+      of([
+        {
+          id: 'exchange.epistola.app/vng/brieven',
+          name: 'Brieven',
+          registry: 'exchange.epistola.app',
+          namespace: 'vng',
+          key: 'brieven',
+        },
+        {
+          id: 'local/valtimo/brieven',
+          name: 'Brieven',
+          registry: 'local',
+          namespace: 'valtimo',
+          key: 'brieven',
+        },
+      ]),
+    );
+    (component as any).pluginConfigurationId$.next('other-config');
+
+    expect(component.catalogs$.value.data).toEqual([
+      { id: 'local/valtimo/brieven', text: 'Brieven (valtimo)' },
+      { id: 'exchange.epistola.app/vng/brieven', text: 'Brieven (vng · exchange.epistola.app)' },
+    ]);
+  });
+
+  it('narrows the lookups to the environment the action names', () => {
+    jest.useFakeTimers();
+    try {
+      const { component, service } = createCascade();
+      selectInvoiceInCatalogA(component);
+
+      component.onEnvironmentIdExpressionChange('"productie"');
+      jest.advanceTimersByTime(250);
+
+      expect(service.getCatalogs).toHaveBeenLastCalledWith('config', 'productie');
+      expect(service.getTemplates).toHaveBeenLastCalledWith('config', 'catalog-a', 'productie');
+      expect(service.getTemplateDetails).toHaveBeenLastCalledWith(
+        'config',
+        'invoice',
+        'catalog-a',
+        'productie',
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a catalog the environment does not serve selected, and says so', () => {
+    jest.useFakeTimers();
+    try {
+      const { component, service } = createCascade();
+      selectInvoiceInCatalogA(component);
+      const notices: boolean[] = [];
+      component.catalogNotOffered$.subscribe((notOffered) => notices.push(notOffered));
+      const items: string[][] = [];
+      component.catalogItems$.subscribe((resource) =>
+        items.push(resource.data.map((i) => String(i.id))),
+      );
+
+      service.getCatalogs.mockReturnValue(of([{ id: 'catalog-b', name: 'Catalog B' }]));
+      component.onEnvironmentIdExpressionChange('"productie"');
+      jest.advanceTimersByTime(250);
+
+      expect(component.selectedCatalogId$.value).toBe('catalog-a');
+      expect(component.selectedTemplateId$.value).toBe('invoice');
+      expect(items[items.length - 1]).toEqual(['catalog-b', 'catalog-a']);
+      expect(notices[notices.length - 1]).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('keeps a saved configuration intact while it loads', () => {
     const { component, service } = createCascade({
       actionConfigVersion: 1,
@@ -554,6 +643,27 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
     expect(component.variantIdExpression).toBe('"formal"');
     expect(component.dataMapping$.value).toBe('{"name": $doc.name}');
     expect(service.getTemplateDetails).toHaveBeenCalledTimes(1);
-    expect(service.getTemplateDetails).toHaveBeenCalledWith('config', 'invoice', 'catalog-a');
+    expect(service.getTemplateDetails).toHaveBeenCalledWith(
+      'config',
+      'invoice',
+      'catalog-a',
+      undefined,
+    );
+  });
+});
+
+describe('environmentScopeOf', () => {
+  it('defers to the plugin default when no environment is set', () => {
+    expect(environmentScopeOf('')).toBeUndefined();
+    expect(environmentScopeOf(undefined)).toBeUndefined();
+  });
+
+  it('reads the environment a string literal names', () => {
+    expect(environmentScopeOf('"productie"')).toBe('productie');
+    expect(environmentScopeOf("'acceptatie'")).toBe('acceptatie');
+  });
+
+  it('narrows nothing for an environment only known at run time', () => {
+    expect(environmentScopeOf('$pv.environment')).toBe(ANY_ENVIRONMENT);
   });
 });

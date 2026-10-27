@@ -33,7 +33,7 @@ import { PluginTranslatePipeModule, PluginTranslationService } from '@valtimo/pl
 import { Subscription } from 'rxjs';
 import { EpistolaComposerApiService } from '../composer-api.service';
 import { CatalogInfo, LetterReader, TemplateInfo } from '../../models';
-import { matchCatalogId } from '../../utils/catalog-ref';
+import { catalogLabel, matchCatalogId, sortCatalogs } from '../../utils/catalog-ref';
 
 /** One letter on offer, as stored in the composer's settings. */
 export interface OfferedTemplate {
@@ -112,7 +112,9 @@ export interface LetterSet {
               | async
           }}
         </option>
-        <option *ngFor="let catalog of catalogs" [value]="catalog.id">{{ catalog.name }}</option>
+        <option *ngFor="let catalog of catalogs" [value]="catalog.id">
+          {{ catalogLabel(catalog) }}
+        </option>
       </select>
 
       <label class="field-label">{{
@@ -364,6 +366,7 @@ export class EpistolaLetterSetBuilderComponent
 
   configurations: { id: string; title: string; tenantId: string | null }[] = [];
   catalogs: CatalogInfo[] = [];
+  readonly catalogLabel = catalogLabel;
 
   /**
    * The stored catalog as the select lists it. A set saved against contract 1.x holds the
@@ -672,7 +675,7 @@ export class EpistolaLetterSetBuilderComponent
     this.subscriptions.push(
       this.composerApi.getCatalogs(pluginConfigurationId).subscribe({
         next: (catalogs) => {
-          this.catalogs = catalogs;
+          this.catalogs = sortCatalogs(catalogs);
           this.loadingCatalogs = false;
           this.cdr.markForCheck();
           // Safe without the value guard: catalogs are only ever loaded once a connection is

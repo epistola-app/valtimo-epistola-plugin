@@ -30,6 +30,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Generation statuses on process variables are unchanged.** Contract 2.0 sends `completed` and
   `in-progress`; the plugin keeps writing `COMPLETED` and `IN_PROGRESS`, so BPMN gateways need no
   change.
+- **Catalog choices follow the environment.** A configurator now offers the catalogs deployed to
+  the environment the action generates in — its own, else the plugin configuration's default — and
+  reads templates, variants and attributes from the release that environment renders (its deployed
+  draft, else its highest deployed release). Catalogs it only uses as another catalog's dependency
+  are not offered. Without an environment every catalog of the tenant is offered, dependencies
+  included, because the contract does not tell them apart. A link whose environment is an
+  expression is checked against every catalog. The admin page checks each link against its
+  environment the same way, and reports a catalog that is not deployed there.
 - **The admin page's redeploy reports the installed release** (`catalogId`, `newlyInstalled`,
   `total`) instead of per-resource `installed`/`updated`/`failed` counts, which 2.0 no longer has.
 
@@ -41,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   generation and preview render the highest release (the environment's, when one is configured).
   A dotted attribute criterion saved against 1.4 (`system.locale`) is sent as `catalogKey` +
   `key`, which 2.0 requires.
+- **Catalogs are labelled with their namespace**, and with their registry when it is not the
+  tenant's own (`Brieven (vng · exchange.epistola.app)`), in the generate-document configurator and
+  the letter composer's letter set: since 2.0 two catalogs may share a name. The tenant's own are
+  listed first. A selected catalog the environment does not serve stays selected, with a notice,
+  rather than being cleared when the environment changes.
 - **The admin page's contract check warns on a different pre-release.** Alpha releases change in
   place, so `2.0.0-alpha.2` and `2.0.0-alpha.3` may disagree within one minor; only an exact match
   is OK while either side is a pre-release.

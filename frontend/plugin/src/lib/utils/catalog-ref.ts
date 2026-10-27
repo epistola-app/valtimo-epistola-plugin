@@ -53,3 +53,34 @@ export function matchCatalogId(
   );
   return matching.length === 1 ? matching[0].id : stored;
 }
+
+/** The registry a tenant's own catalogs live in; any other is named in a catalog's label. */
+export const LOCAL_REGISTRY = 'local';
+
+/**
+ * How a catalog is offered in a dropdown: its name, with where it lives. Since contract 2.0 two
+ * catalogs may share a name (a tenant's own `brieven` and one installed from the exchange), so the
+ * namespace is always shown, and the registry when it is not the tenant's own.
+ */
+export function catalogLabel(catalog: CatalogInfo): string {
+  const where =
+    catalog.registry && catalog.registry !== LOCAL_REGISTRY
+      ? `${catalog.namespace} · ${catalog.registry}`
+      : catalog.namespace;
+  return where ? `${catalog.name} (${where})` : catalog.name;
+}
+
+/**
+ * The catalogs in the order a dropdown offers them: the tenant's own first, then by namespace and
+ * name, so catalogs of one namespace sit together.
+ */
+export function sortCatalogs(catalogs: readonly CatalogInfo[]): CatalogInfo[] {
+  const rank = (catalog: CatalogInfo) => (catalog.registry === LOCAL_REGISTRY ? 0 : 1);
+  return [...catalogs].sort(
+    (a, b) =>
+      rank(a) - rank(b) ||
+      (a.registry ?? '').localeCompare(b.registry ?? '') ||
+      (a.namespace ?? '').localeCompare(b.namespace ?? '') ||
+      a.name.localeCompare(b.name),
+  );
+}
