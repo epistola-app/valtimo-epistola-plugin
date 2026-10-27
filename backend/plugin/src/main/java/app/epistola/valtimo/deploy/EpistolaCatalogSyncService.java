@@ -50,7 +50,8 @@ import java.util.zip.ZipOutputStream;
  * <p>
  * A manifest from before catalog wire v8 does not name its catalog's registry and namespace, which
  * contract 2.0 requires; it is installed under the configured defaults
- * ({@code epistola.catalog-sync.registry} / {@code namespace}).
+ * ({@code epistola.catalog-sync.registry} / {@code namespace}), by default {@code local} and the
+ * tenant's own namespace ({@link CatalogRef#asMigrated}).
  */
 @Slf4j
 public class EpistolaCatalogSyncService {
@@ -65,10 +66,11 @@ public class EpistolaCatalogSyncService {
     private final Map<String, Map<String, String>> deployedVersions = new HashMap<>();
 
     private final String defaultRegistry;
+    /** Null for the tenant's own namespace. */
     private final String defaultNamespace;
 
     public EpistolaCatalogSyncService(CatalogScanner scanner, EpistolaService epistolaService) {
-        this(scanner, epistolaService, "local", "valtimo");
+        this(scanner, epistolaService, CatalogRef.LOCAL_REGISTRY, null);
     }
 
     public EpistolaCatalogSyncService(
@@ -76,7 +78,7 @@ public class EpistolaCatalogSyncService {
         this.scanner = scanner;
         this.epistolaService = epistolaService;
         this.defaultRegistry = defaultRegistry;
-        this.defaultNamespace = defaultNamespace;
+        this.defaultNamespace = defaultNamespace == null || defaultNamespace.isBlank() ? null : defaultNamespace;
     }
 
     /**
@@ -209,13 +211,17 @@ public class EpistolaCatalogSyncService {
     }
 
     /**
-     * The catalog a classpath catalog is installed as: the registry and namespace its v8 manifest
-     * names, or the configured defaults for an older one.
+     * The catalog a classpath catalog is installed as for {@code tenantId}: the registry and
+     * namespace its v8 manifest names, or the configured defaults for an older one.
      */
-    public CatalogRef importedAs(CatalogScanner.CatalogOnClasspath catalog) {
+    public CatalogRef importedAs(CatalogScanner.CatalogOnClasspath catalog, String tenantId) {
         return catalog.isNamed()
                 ? new CatalogRef(catalog.registry(), catalog.namespace(), catalog.slug())
-                : new CatalogRef(defaultRegistry, defaultNamespace, catalog.slug());
+                : new CatalogRef(defaultRegistry, namespaceFor(tenantId), catalog.slug());
+    }
+
+    private String namespaceFor(String tenantId) {
+        return defaultNamespace != null ? defaultNamespace : CatalogRef.migratedNamespace(tenantId);
     }
 
     private EpistolaService.ImportCatalogResult importCatalog(
@@ -223,7 +229,7 @@ public class EpistolaCatalogSyncService {
         // A v8 archive names its catalog itself; naming it again in the request could only disagree.
         return catalog.isNamed()
                 ? epistolaService.importCatalog(baseUrl, apiKey, tenantId, zipBytes, null, null)
-                : epistolaService.importCatalog(baseUrl, apiKey, tenantId, zipBytes, defaultRegistry, defaultNamespace);
+                : epistolaService.importCatalog(baseUrl, apiKey, tenantId, zipBytes, defaultRegistry, namespaceFor(tenantId));
     }
 
     /**

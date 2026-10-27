@@ -24,13 +24,16 @@ import { CatalogInfo } from '../models';
  * Contract 2.0 names a catalog by registry, namespace and key, and the configurators store
  * `registry/namespace/key`. A process link saved against contract 1.x holds the key alone, and a
  * hand-written one may hold `namespace/key`. Such a reference is matched like the backend matches
- * it (`CatalogRef`), so the catalog it names shows as selected: exactly one catalog must match, and
- * re-saving the link then stores it in full. When none or several match, the reference is returned
- * unchanged — the select shows nothing chosen, and choosing one fixes the link.
+ * it (`CatalogRef`), so the catalog it names shows as selected, and re-saving the link then stores
+ * it in full. Of several catalogs with a stored key, it is the tenant's own as Epistola's 2.0
+ * upgrade named it ({@link migratedCatalogId}), when `tenantId` is known and that one is among them.
+ * When none or several match, the reference is returned unchanged — the select shows nothing
+ * chosen, and choosing one fixes the link.
  */
 export function matchCatalogId(
   stored: string | null | undefined,
   catalogs: readonly CatalogInfo[],
+  tenantId?: string | null,
 ): string | null {
   if (!stored) {
     return null;
@@ -51,11 +54,24 @@ export function matchCatalogId(
       (namespace === null || catalog.namespace === namespace) &&
       (registry === null || catalog.registry === registry),
   );
-  return matching.length === 1 ? matching[0].id : stored;
+  if (matching.length === 1) {
+    return matching[0].id;
+  }
+  const own = parts.length === 1 && tenantId ? migratedCatalogId(tenantId, key) : null;
+  return matching.some((catalog) => catalog.id === own) ? own : stored;
 }
 
 /** The registry a tenant's own catalogs live in; any other is named in a catalog's label. */
 export const LOCAL_REGISTRY = 'local';
+
+/**
+ * What Epistola's 2.0 upgrade named the catalog `key` a tenant had authored before:
+ * `local/<tenant key padded with 0 to 3 characters>/<key>`. Mirrors the backend's
+ * `CatalogRef.asMigrated`.
+ */
+export function migratedCatalogId(tenantId: string, key: string): string {
+  return `${LOCAL_REGISTRY}/${tenantId.padEnd(3, '0')}/${key}`;
+}
 
 /**
  * How a catalog is offered in a dropdown: its name, with where it lives. Since contract 2.0 two

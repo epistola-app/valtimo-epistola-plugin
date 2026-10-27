@@ -124,7 +124,9 @@ docker/            # Docker compose for local dependencies
   serving 2.0, and none is released yet (point compose's `EPISTOLA_SUITE_IMAGE` at a `release/2.0`
   build). A catalog is named `registry/namespace/key` (`CatalogRef`); a process link's `catalogId`
   saved against 1.x is the bare key and is resolved by listing the tenant's catalogs
-  (`EpistolaServiceImpl.findCatalog`, 409 when two namespaces share it). Every `EpistolaService`
+  (`EpistolaServiceImpl.findCatalog`): of several with that key, `local/<tenant key padded to 3>/<key>`,
+  which is what the Suite's 2.0 upgrade names a tenant's own catalogs (`CatalogRef.select`), else 409. The admin usage overview flags a bare key with what it resolves to, and the catalog sync names
+  a pre-v8 bundled catalog the same way by default, so it lands on the migrated catalog. Every `EpistolaService`
   method still takes that one `catalogId` string — don't thread registry/namespace through callers.
   Reads go through a **release**; there is no "latest" alias in the path. With an environment
   (the configurator's `environmentId`, else the configuration's `defaultEnvironmentId`;

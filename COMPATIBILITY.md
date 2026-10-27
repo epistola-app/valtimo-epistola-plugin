@@ -76,12 +76,15 @@ Notes:
   pre-release. The catalog wire baseline is still `4` (`CatalogSchemaMigrator.BASELINE_VERSION`),
   so the bundled catalogs stay at wire 4 and the Suite migrates them to v8 on import, which needs
   a registry and namespace the v4 manifest does not have: the plugin sends
-  `epistola.catalog-sync.registry`/`namespace` (default `local`/`valtimo`; `local` needs no
-  namespace grant). Verified against the contract's mock server only: no Suite 2.0 image is
+  `epistola.catalog-sync.registry`/`namespace` (default `local` and the tenant key padded to 3
+  characters, which is what the Suite's 2.0 upgrade names the catalogs a tenant had; `local` needs
+  no namespace grant). Verified against the contract's mock server only: no Suite 2.0 image is
   published yet, so the Suite's v4→v8 import of these catalogs is still to be exercised.
 - Stored process links survive 2.0 by lookup, not by migration: their `catalogId` is the 1.x key,
-  and the plugin resolves it among the tenant's catalogs (`EpistolaServiceImpl.findCatalog`),
-  refusing a key two namespaces share. New links store `registry/namespace/key` (`CatalogRef`).
+  and the plugin resolves it among the tenant's catalogs (`EpistolaServiceImpl.findCatalog`). Of
+  several with that key it takes `local/<tenant key>/<key>`, the name the Suite's 2.0 upgrade gives
+  a tenant's own catalog (`CatalogRef.select`), and refuses the key without it. New links store
+  `registry/namespace/key` (`CatalogRef`).
 - Contract `1.4.0` is **additive on both counts**: its new problem type
   (`template-data-invalid`, with `missingFields`/`invalidFields`), its `validateTemplateData`
   operation and its new schemas are all optional, and its catalog change only _loosens_ the

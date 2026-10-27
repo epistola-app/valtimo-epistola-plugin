@@ -136,6 +136,34 @@ class EpistolaServiceImplEnvironmentTest {
     }
 
     @Test
+    void aKeySavedAgainstContract1_readsTheTenantsOwnCatalog_whenTwoAreDeployed() {
+        // Epistola's 2.0 upgrade named the tenant's own catalog local/<tenant>/<key>; before 2.0 the
+        // key named that one.
+        deployed(
+                released("exchange.epistola.app", "vng", "brieven", "rel-3", "3.0.0"),
+                released("local", TENANT, "brieven", "rel-1", "1.0.0"));
+        TemplatesApi templatesApi = templates();
+
+        service.getTemplates(BASE_URL, API_KEY, TENANT, "brieven", ENV, null);
+
+        verify(templatesApi).listTemplates(eq(TENANT), eq("local"), eq(TENANT), eq("brieven"),
+                eq("rel-1"), any(), anyInt(), anyInt(), any(), any());
+    }
+
+    @Test
+    void aKeySavedAgainstContract1_readsTheTenantsOwnCatalog_withoutAnEnvironment() {
+        CatalogFixtures.stubCatalogs(factory, TENANT,
+                CatalogFixtures.catalog("exchange.epistola.app", "vng", "brieven", "3.0.0"),
+                CatalogFixtures.catalog("local", TENANT, "brieven", "1.2.0"));
+        TemplatesApi templatesApi = templates();
+
+        service.getTemplates(BASE_URL, API_KEY, TENANT, "brieven", null, null);
+
+        verify(templatesApi).listTemplates(eq(TENANT), eq("local"), eq(TENANT), eq("brieven"),
+                eq("1.2.0"), any(), anyInt(), anyInt(), any(), any());
+    }
+
+    @Test
     void aCatalogNotDeployedToTheEnvironment_isNotFound() {
         deployed(released("local", "valtimo", "huisstijl", "rel-1", "1.0.0"));
 

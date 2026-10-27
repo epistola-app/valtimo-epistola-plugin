@@ -523,7 +523,8 @@ public class EpistolaAdminService {
                         c.slug(),
                         c.version(),
                         epistolaCatalogs
-                                .map(catalogs -> countMatching(catalogs, catalogSyncService.importedAs(c).toString()) > 0
+                                .map(catalogs -> !catalogsNamed(catalogs, catalogSyncService.importedAs(c, plugin.getTenantId()).toString(),
+                                        plugin.getTenantId()).isEmpty()
                                         ? ClasspathCatalog.IN_EPISTOLA
                                         : ClasspathCatalog.NOT_IN_EPISTOLA)
                                 .orElse(ClasspathCatalog.UNKNOWN)))
@@ -531,19 +532,17 @@ public class EpistolaAdminService {
     }
 
     /**
-     * How many of {@code catalogs} a stored catalog reference names. A key saved against contract
-     * 1.x names every catalog with that key, so more than one means it is ambiguous.
+     * The catalogs among {@code catalogs} a stored catalog reference names, as generation picks them
+     * ({@link CatalogRef#select}): more than one means it is ambiguous.
      */
-    private static long countMatching(List<CatalogInfo> catalogs, String catalogId) {
+    private static List<CatalogInfo> catalogsNamed(List<CatalogInfo> catalogs, String catalogId, String tenantId) {
         CatalogRef ref;
         try {
             ref = CatalogRef.parse(catalogId);
         } catch (IllegalArgumentException e) {
-            return 0;
+            return List.of();
         }
-        return catalogs.stream()
-                .filter(c -> ref.matches(c.registry(), c.namespace(), c.key()))
-                .count();
+        return ref.select(catalogs, c -> new CatalogRef(c.registry(), c.namespace(), c.key()), tenantId);
     }
 
     private Optional<List<CatalogInfo>> fetchEpistolaCatalogs(EpistolaPlugin plugin) {
@@ -714,33 +713,38 @@ public class EpistolaAdminService {
                 if (catalogs.isEmpty() && environmentId != null && refCache.isMissingEnvironment(configId, environmentId)) {
                     problems.add("Environment '" + environmentId + "' does not exist in Epistola");
                 } else if (catalogs.isPresent()) {
-                    long matching = countMatching(catalogs.get(), catalogId);
-                    if (matching == 0) {
+                    List<CatalogInfo> matching = catalogsNamed(catalogs.get(), catalogId, plugin.getTenantId());
+                    if (matching.isEmpty()) {
                         problems.add(environmentId == null
                                 ? "Catalog '" + catalogId + "' does not exist in Epistola"
                                 : "Catalog '" + catalogId + "' is not deployed to environment '" + environmentId + "'");
-                    } else if (matching > 1) {
+                    } else if (matching.size() > 1) {
                         problems.add("Catalog '" + catalogId + "' is ambiguous " + where + ": "
                                 + "it names catalogs in several namespaces; select it again to name it in full");
-                    } else if (!rangeSatisfied(refCache, configId, catalogId, environmentId,
-                            actionConfig.versionRange(), plugin, problems)) {
-                        // Reported; with no release to read, a template check would only mislead.
                     } else {
-                        String versionRange = actionConfig.versionRange();
-                        Optional<Set<String>> templateIds =
-                                refCache.templateIds(configId, catalogId, environmentId, versionRange, plugin);
-                        if (templateIds.isPresent()) {
-                            if (!templateIds.get().contains(templateId)) {
-                                problems.add("Template '" + templateId
-                                        + "' does not exist in catalog '" + catalogId + "'"
-                                                + (environmentId == null ? "" : " as deployed to environment '" + environmentId + "'")
-                                        + (versionRange == null ? "" : " in the release '" + versionRange + "' selects"));
-                            } else if (variantId != null && !variantId.isBlank()) {
-                                Optional<Set<String>> variantIds =
-                                        refCache.variantIds(configId, catalogId, templateId, environmentId, versionRange, plugin);
-                                if (variantIds.isPresent() && !variantIds.get().contains(variantId)) {
-                                    problems.add("Variant '" + variantId
-                                            + "' does not exist for template '" + templateId + "'");
+                        if (!CatalogRef.parse(catalogId).isQualified()) {
+                            problems.add("Catalog '" + catalogId + "' is not named in full; it resolves to '"
+                                    + matching.get(0).id() + "'. Select the catalog again in this action to store its full name");
+                        }
+                        // With no release to read, a template check would only mislead.
+                        if (rangeSatisfied(refCache, configId, catalogId, environmentId,
+                                actionConfig.versionRange(), plugin, problems)) {
+                            String versionRange = actionConfig.versionRange();
+                            Optional<Set<String>> templateIds =
+                                    refCache.templateIds(configId, catalogId, environmentId, versionRange, plugin);
+                            if (templateIds.isPresent()) {
+                                if (!templateIds.get().contains(templateId)) {
+                                    problems.add("Template '" + templateId
+                                            + "' does not exist in catalog '" + catalogId + "'"
+                                                    + (environmentId == null ? "" : " as deployed to environment '" + environmentId + "'")
+                                            + (versionRange == null ? "" : " in the release '" + versionRange + "' selects"));
+                                } else if (variantId != null && !variantId.isBlank()) {
+                                    Optional<Set<String>> variantIds =
+                                            refCache.variantIds(configId, catalogId, templateId, environmentId, versionRange, plugin);
+                                    if (variantIds.isPresent() && !variantIds.get().contains(variantId)) {
+                                        problems.add("Variant '" + variantId
+                                                + "' does not exist for template '" + templateId + "'");
+                                    }
                                 }
                             }
                         }

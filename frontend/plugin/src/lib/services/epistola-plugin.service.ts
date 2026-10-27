@@ -19,7 +19,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ConfigService } from '@valtimo/shared';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import {
   AttributeDefinition,
   CatalogInfo,
@@ -126,6 +126,21 @@ export class EpistolaPluginService {
     private readonly configService: ConfigService,
   ) {
     this.apiEndpoint = `${this.configService.config.valtimoApi.endpointUri}v1/plugin/epistola`;
+  }
+
+  /**
+   * The tenant a plugin configuration connects to, or null when it cannot be read.
+   */
+  getTenantId(pluginConfigurationId: string): Observable<string | null> {
+    return this.http
+      .get<{ id: string; tenantId: string | null }[]>(`${this.apiEndpoint}/configurations`)
+      .pipe(
+        map(
+          (configurations) =>
+            configurations.find((configuration) => configuration.id === pluginConfigurationId)
+              ?.tenantId ?? null,
+        ),
+      );
   }
 
   /**

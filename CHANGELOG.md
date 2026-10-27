@@ -16,12 +16,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [COMPATIBILITY.md](COMPATIBILITY.md).
 - **Process links keep working unchanged.** Contract 2.0 names a catalog by registry, namespace and
   key; a link saved before holds the key alone, and the plugin looks it up among the tenant's
-  catalogs. When two namespaces both have that key the call is refused (409) with the full names to
-  choose from, and the admin page flags the link: open it and pick the catalog again, which stores
-  `registry/namespace/key`.
-- **Bundled classpath catalogs are installed under `local/valtimo`** (`epistola.catalog-sync.registry`
-  and `epistola.catalog-sync.namespace`), because a manifest from before catalog wire v8 names no
-  registry or namespace. A v8 manifest names its own, and those are used. An import installs the
+  catalogs. Epistola 2.0's upgrade names the catalogs a tenant authored `local/<tenant key>/<key>`
+  (the key padded with `0` to 3 characters), so when several namespaces have that key it is that
+  one; without it the call is refused (409) with the full names to choose from. The admin page's
+  usage overview lists each such link with the catalog it resolves to: open it and pick the catalog
+  again, which stores `registry/namespace/key`.
+- **Bundled classpath catalogs are installed under `local/<tenant key>`**, the name Epistola 2.0's
+  upgrade gives the catalogs a tenant had, so the first sync after the upgrade adds to the migrated
+  catalog instead of installing a second one beside it. A manifest from before catalog wire v8 names
+  no registry or namespace; `epistola.catalog-sync.registry` and `epistola.catalog-sync.namespace`
+  override them. A v8 manifest names its own, and those are used. An import installs the
   archive's release beside the catalog's others, so a changed catalog needs a new
   `release.version`: the same version with other content is refused (`release-number-taken`).
 - **An import no longer makes a release live in an environment.** A process link that names an

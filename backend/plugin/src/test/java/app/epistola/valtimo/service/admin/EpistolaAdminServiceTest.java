@@ -384,7 +384,7 @@ class EpistolaAdminServiceTest {
             mockProcessDefinitionQuery(List.of(processDef));
 
             PluginProcessLink link = mockProcessLink("Activity_1", "epistola-generate-document",
-                    createActionProps("cat-1", "tmpl-1"));
+                    createActionProps("local/valtimo/cat-1", "tmpl-1"));
             mockPluginInstanceForLink(link);
 
             when(processLinkService.getProcessLinks(processDef.getId()))
@@ -399,7 +399,7 @@ class EpistolaAdminServiceTest {
             // Configured catalog + template resolve in Epistola — no dangling references
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null, null))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", null, null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -654,6 +654,41 @@ class EpistolaAdminServiceTest {
         }
 
         @Test
+        void shouldSayWhatACatalogKeyResolvesTo() {
+            // A link saved against contract 1.x works, by lookup; the overview names the catalog it
+            // reaches so the link can be saved with it in full.
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null, null))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "local/valtimo/cat-1", "Catalog")));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems()).containsExactly(
+                    "Catalog 'cat-1' is not named in full; it resolves to 'local/valtimo/cat-1'. "
+                            + "Select the catalog again in this action to store its full name");
+        }
+
+        @Test
+        void shouldResolveACatalogKeyToTheTenantsOwnCatalog_whereTwoNamespacesShareIt() {
+            // As generation does: Epistola's 2.0 upgrade named the tenant's own catalog
+            // local/<tenant>/<key>, and before 2.0 the key named that one.
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1"));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
+                    .thenReturn(List.of(
+                            new CatalogInfo("exchange.epistola.app/vng/cat-1", "Published", "exchange.epistola.app", "vng", "cat-1", false),
+                            new CatalogInfo("local/" + TENANT_ID + "/cat-1", "Catalog", "local", TENANT_ID, "cat-1", true)));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null, null))
+                    .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "local/" + TENANT_ID + "/cat-1", "Catalog")));
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems()).singleElement().asString()
+                    .contains("resolves to 'local/" + TENANT_ID + "/cat-1'");
+        }
+
+        @Test
         void shouldAcceptACatalogNamedInFull() {
             singleGenerateDocLink(createActionProps("local/valtimo/cat-1", "tmpl-1"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
@@ -796,10 +831,10 @@ class EpistolaAdminServiceTest {
 
         @Test
         void shouldSkipVariantCheckWhenVariantIsExpression() {
-            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "$pv.lang"));
+            singleGenerateDocLink(createActionProps("local/valtimo/cat-1", "tmpl-1", "$pv.lang"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null, null))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", null, null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -828,12 +863,12 @@ class EpistolaAdminServiceTest {
 
         @Test
         void shouldReportNoProblemsWhenAllReferencesPresent() {
-            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1", "nl"));
+            singleGenerateDocLink(createActionProps("local/valtimo/cat-1", "tmpl-1", "nl"));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
-            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "cat-1", null, null))
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", null, null))
                     .thenReturn(List.of(new TemplateInfo("tmpl-1", "Template", "desc", "cat-1", "Catalog")));
-            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "cat-1", "tmpl-1", null, null))
+            when(epistolaService.getVariants(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", "tmpl-1", null, null))
                     .thenReturn(List.of(new VariantInfo("nl", "tmpl-1", "Dutch", Map.of())));
 
             List<PluginUsageEntry> entries = adminService.getPluginUsage();
@@ -910,7 +945,7 @@ class EpistolaAdminServiceTest {
             when(catalogSyncService.listClasspathCatalogs()).thenReturn(List.of(
                     new CatalogScanner.CatalogOnClasspath("demo", "1.2.0", "config/epistola/catalogs/demo"),
                     new CatalogScanner.CatalogOnClasspath("other", "2.0.0", "config/epistola/catalogs/other")));
-            when(catalogSyncService.importedAs(any())).thenAnswer(invocation -> new CatalogRef(
+            when(catalogSyncService.importedAs(any(), eq(TENANT_ID))).thenAnswer(invocation -> new CatalogRef(
                     "local", "valtimo", invocation.<CatalogScanner.CatalogOnClasspath>getArgument(0).slug()));
             // Epistola only has "demo".
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null)).thenReturn(List.of(

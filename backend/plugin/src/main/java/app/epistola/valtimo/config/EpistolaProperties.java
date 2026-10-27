@@ -57,8 +57,13 @@ public class EpistolaProperties {
          */
         private String registry = "local";
 
-        /** Namespace to name the catalog in, within {@link #registry}. */
-        private String namespace = "valtimo";
+        /**
+         * Namespace to name the catalog in, within {@link #registry}. Unset, the tenant's own: its key,
+         * padded with {@code 0} to 3 characters, which is what Epistola's 2.0 upgrade named the
+         * catalogs a tenant had, so the first sync after the upgrade adds to the catalog it migrated
+         * instead of installing a second one beside it.
+         */
+        private String namespace;
     }
 
     @Data

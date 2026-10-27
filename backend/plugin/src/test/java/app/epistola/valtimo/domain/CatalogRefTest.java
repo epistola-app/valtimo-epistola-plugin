@@ -18,8 +18,11 @@
 package app.epistola.valtimo.domain;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -75,5 +78,52 @@ class CatalogRefTest {
         assertThat(CatalogRef.parse("local/acme/letters").matches("exchange.epistola.app", "acme", "letters"))
                 .isFalse();
         assertThat(CatalogRef.parse("local/acme/letters").matches("local", "acme", "letters")).isTrue();
+    }
+
+    @ParameterizedTest
+    @CsvSource({"acme, acme", "ab, ab0", "a, a00", "gemeente-x, gemeente-x"})
+    void theMigratedNamespace_isTheTenantKeyPaddedToThreeCharacters(String tenantId, String namespace) {
+        // As Epistola's 2.0 upgrade named the catalogs a tenant had.
+        assertThat(CatalogRef.migratedNamespace(tenantId)).isEqualTo(namespace);
+        assertThat(CatalogRef.parse("letters").asMigrated(tenantId))
+                .isEqualTo(new CatalogRef("local", namespace, "letters"));
+    }
+
+    @Test
+    void aKeyTwoNamespacesShare_selectsTheTenantsOwnCatalog() {
+        CatalogRef own = new CatalogRef("local", "acme", "letters");
+        CatalogRef published = new CatalogRef("exchange.epistola.app", "vng", "letters");
+
+        assertThat(CatalogRef.parse("letters").select(List.of(published, own), c -> c, "acme"))
+                .containsExactly(own);
+    }
+
+    @Test
+    void aKeyTwoOtherNamespacesShare_staysAmbiguous() {
+        List<CatalogRef> catalogs = List.of(
+                new CatalogRef("local", "valtimo", "letters"),
+                new CatalogRef("exchange.epistola.app", "vng", "letters"));
+
+        assertThat(CatalogRef.parse("letters").select(catalogs, c -> c, "acme")).hasSize(2);
+    }
+
+    @Test
+    void aKeyOneCatalogHas_selectsItWhereverItIsNamed() {
+        // An Exchange catalog kept its Exchange name on the upgrade.
+        CatalogRef published = new CatalogRef("exchange.epistola.app", "vng", "letters");
+
+        assertThat(CatalogRef.parse("letters").select(List.of(published, published), c -> c, "acme"))
+                .containsExactly(published, published);
+    }
+
+    @Test
+    void aQualifiedReference_selectsOnlyWhatItNames() {
+        List<CatalogRef> catalogs = List.of(
+                new CatalogRef("local", "acme", "letters"),
+                new CatalogRef("exchange.epistola.app", "acme", "letters"));
+
+        assertThat(CatalogRef.parse("acme/letters").select(catalogs, c -> c, "acme")).hasSize(2);
+        assertThat(CatalogRef.parse("exchange.epistola.app/acme/letters").select(catalogs, c -> c, "acme"))
+                .containsExactly(new CatalogRef("exchange.epistola.app", "acme", "letters"));
     }
 }

@@ -17,7 +17,7 @@
  */
 
 import { CatalogInfo } from '../models';
-import { catalogLabel, matchCatalogId, sortCatalogs } from './catalog-ref';
+import { catalogLabel, matchCatalogId, migratedCatalogId, sortCatalogs } from './catalog-ref';
 
 const catalog = (registry: string, namespace: string, key: string): CatalogInfo => ({
   id: `${registry}/${namespace}/${key}`,
@@ -47,6 +47,21 @@ describe('matchCatalogId', () => {
   it('leaves a key two namespaces share as it is, rather than guessing', () => {
     const other = catalog('local', 'other', 'municipality-demo');
     expect(matchCatalogId('municipality-demo', [demo, other])).toBe('municipality-demo');
+  });
+
+  it("takes the tenant's own catalog for a key several namespaces share, as the backend does", () => {
+    // Epistola's 2.0 upgrade named the catalogs a tenant had local/<tenant>/<key>.
+    const own = catalog('local', 'ab0', 'municipality-demo');
+    const published = catalog('exchange.epistola.app', 'vng', 'municipality-demo');
+    expect(matchCatalogId('municipality-demo', [published, own], 'ab')).toBe(own.id);
+    expect(matchCatalogId('municipality-demo', [published, demo], 'ab')).toBe('municipality-demo');
+    // A namespace and key are not a 1.x reference: no preference.
+    expect(matchCatalogId('ab0/municipality-demo', [own], 'ab')).toBe(own.id);
+  });
+
+  it('names a migrated catalog with the tenant key padded to 3 characters', () => {
+    expect(migratedCatalogId('ab', 'brieven')).toBe('local/ab0/brieven');
+    expect(migratedCatalogId('gemeente', 'brieven')).toBe('local/gemeente/brieven');
   });
 
   it('leaves a reference to a catalog the tenant does not have as it is', () => {

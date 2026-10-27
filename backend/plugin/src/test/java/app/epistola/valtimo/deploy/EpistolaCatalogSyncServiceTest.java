@@ -59,7 +59,8 @@ class EpistolaCatalogSyncServiceTest {
     private static final String API_KEY = "secret-key";
     private static final String TENANT_ID = "tenant-1";
     private static final String REGISTRY = "local";
-    private static final String NAMESPACE = "valtimo";
+    /** The tenant's own namespace, as Epistola's 2.0 upgrade named the catalogs it had. */
+    private static final String NAMESPACE = "tenant-1";
     private static final int EXPECTED_CATALOG_SCHEMA_VERSION = 4;
 
     @BeforeEach
@@ -250,6 +251,26 @@ class EpistolaCatalogSyncServiceTest {
         }
 
         @Test
+        void namesAPreV8CatalogInTheTenantsOwnNamespaceByDefault() {
+            // What Epistola's 2.0 upgrade named the catalogs a tenant had, so a sync after the
+            // upgrade adds to the migrated catalog instead of installing a second one beside it;
+            // a short tenant key is padded as the upgrade pads it.
+            when(epistolaService.importCatalog(eq(BASE_URL), eq(API_KEY), eq("ab"),
+                    any(byte[].class), eq("local"), eq("ab0")))
+                    .thenReturn(new EpistolaService.ImportCatalogResult(
+                            "local", "ab0", "test-catalog", "Test Catalog", "1.0.0", false, 1));
+
+            EpistolaCatalogSyncService.RedeployOutcome outcome = syncService.redeployCatalog(
+                    CONFIG_ID, BASE_URL, API_KEY, "ab", "test-catalog");
+
+            assertThat(outcome.catalogId()).isEqualTo("local/ab0/test-catalog");
+            CatalogScanner.CatalogOnClasspath catalog = scanner.scan().stream()
+                    .filter(c -> "test-catalog".equals(c.slug())).findFirst().orElseThrow();
+            assertThat(syncService.importedAs(catalog, "ab").toString())
+                    .isEqualTo("local/ab0/test-catalog");
+        }
+
+        @Test
         void leavesAV8CatalogToNameItself() {
             // A wire v8 manifest names its own registry and namespace; sending the defaults as
             // well could only disagree with it.
@@ -268,7 +289,7 @@ class EpistolaCatalogSyncServiceTest {
 
             assertThat(outcome.success()).isTrue();
             assertThat(outcome.catalogId()).isEqualTo("exchange.epistola.app/epistola/test-catalog");
-            assertThat(service.importedAs(v8Scanner.scan().get(0)).toString())
+            assertThat(service.importedAs(v8Scanner.scan().get(0), TENANT_ID).toString())
                     .isEqualTo("exchange.epistola.app/epistola/test-catalog");
         }
     }
@@ -298,7 +319,7 @@ class EpistolaCatalogSyncServiceTest {
             assertThat(outcome.success()).isTrue();
             assertThat(outcome.slug()).isEqualTo("test-catalog");
             assertThat(outcome.newlyInstalled()).isFalse();
-            assertThat(outcome.catalogId()).isEqualTo("local/valtimo/test-catalog");
+            assertThat(outcome.catalogId()).isEqualTo("local/tenant-1/test-catalog");
             // Forced — the version-skip check is bypassed, so import runs again.
             verify(epistolaService).importCatalog(eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
                     any(byte[].class), eq(REGISTRY), eq(NAMESPACE));

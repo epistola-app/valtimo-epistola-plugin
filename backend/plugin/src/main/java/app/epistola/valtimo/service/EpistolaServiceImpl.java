@@ -279,14 +279,14 @@ public class EpistolaServiceImpl implements EpistolaService {
      * Find the catalog a stored reference names among the catalogs a selection may name (see
      * {@link #candidateCatalogs}).
      * <p>
-     * A reference saved against contract 1.x is only a key; it is looked up by key, and refused
-     * when two catalogs share it in different namespaces, because guessing would read (and later
-     * render) the wrong one. The message names the qualified references to choose from.
+     * A reference saved against contract 1.x is only a key; it is looked up by key. Of several
+     * catalogs with that key, it is the one Epistola's 2.0 upgrade named the tenant's own
+     * ({@link CatalogRef#select}); without that one it is refused, because guessing would read (and
+     * later render) the wrong one. The message names the qualified references to choose from.
      */
     CatalogDto findCatalog(String baseUrl, String apiKey, String tenantId, CatalogRef ref, String environmentId) {
-        List<CatalogDto> matches = candidateCatalogs(baseUrl, apiKey, tenantId, environmentId).stream()
-                .filter(dto -> ref.matches(dto.getRegistry(), dto.getNamespace(), dto.getCatalogKey()))
-                .toList();
+        List<CatalogDto> matches = ref.select(
+                candidateCatalogs(baseUrl, apiKey, tenantId, environmentId), EpistolaServiceImpl::refOf, tenantId);
         if (matches.isEmpty()) {
             String message = environmentId == null
                     ? "Catalog not found: " + ref
@@ -364,13 +364,13 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     /**
      * The deployments of the one catalog {@code ref} names in an environment: refused with a 404 when
-     * none is deployed there, and with a 409 when a bare key matches catalogs in two namespaces.
+     * none is deployed there, and with a 409 when a bare key matches catalogs in two namespaces,
+     * neither of them the one Epistola's 2.0 upgrade named the tenant's own ({@link CatalogRef#select}).
      */
     private List<DeploymentDto> deploymentsOf(
             String baseUrl, String apiKey, String tenantId, CatalogRef ref, String environmentId) {
-        List<DeploymentDto> deployments = listDeployments(baseUrl, apiKey, tenantId, environmentId).stream()
-                .filter(dto -> ref.matches(dto.getRegistry(), dto.getNamespace(), dto.getCatalogKey()))
-                .toList();
+        List<DeploymentDto> deployments = ref.select(
+                listDeployments(baseUrl, apiKey, tenantId, environmentId), EpistolaServiceImpl::refOf, tenantId);
         List<String> catalogs = deployments.stream().map(dto -> refOf(dto).toString()).distinct().sorted().toList();
         if (catalogs.isEmpty()) {
             throw new EpistolaApiException(

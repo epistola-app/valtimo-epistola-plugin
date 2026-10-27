@@ -405,15 +405,17 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
     'catalog-b': ['letter'],
   };
 
-  const createCascade = (prefill: unknown = null) => {
+  const createCascade = (
+    prefill: unknown = null,
+    catalogs: unknown[] = [
+      { id: 'catalog-a', name: 'Catalog A' },
+      { id: 'catalog-b', name: 'Catalog B' },
+    ],
+  ) => {
     const service = {
-      getCatalogs: jest.fn().mockReturnValue(
-        of([
-          { id: 'catalog-a', name: 'Catalog A' },
-          { id: 'catalog-b', name: 'Catalog B' },
-        ]),
-      ),
+      getCatalogs: jest.fn().mockReturnValue(of(catalogs)),
       getEnvironments: jest.fn().mockReturnValue(of([])),
+      getTenantId: jest.fn().mockReturnValue(of('demo')),
       getTemplates: jest.fn((_configurationId: string, catalogId: string) =>
         of((TEMPLATES[catalogId] ?? []).map((id) => ({ id, name: id }))),
       ),
@@ -580,6 +582,25 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       { id: 'local/valtimo/brieven', text: 'Brieven (valtimo)' },
       { id: 'exchange.epistola.app/vng/brieven', text: 'Brieven (vng · exchange.epistola.app)' },
     ]);
+  });
+
+  it("selects the tenant's own catalog for a 1.x key several namespaces share", () => {
+    // Epistola's 2.0 upgrade named the catalogs tenant "demo" had local/demo/<key>; generation
+    // resolves the stored key to that one, so the configurator shows it chosen.
+    const brieven = (registry: string, namespace: string) => ({
+      id: `${registry}/${namespace}/brieven`,
+      name: 'Brieven',
+      registry,
+      namespace,
+      key: 'brieven',
+    });
+    const { component, service } = createCascade({ version: 1, catalogId: 'brieven' }, [
+      brieven('exchange.epistola.app', 'vng'),
+      brieven('local', 'demo'),
+    ]);
+
+    expect(service.getTenantId).toHaveBeenCalledWith('config');
+    expect(component.selectedCatalogId$.value).toBe('local/demo/brieven');
   });
 
   it('narrows the lookups to the environment the action names', () => {

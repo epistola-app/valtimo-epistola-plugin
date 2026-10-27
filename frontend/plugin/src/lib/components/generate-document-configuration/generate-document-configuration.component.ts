@@ -37,7 +37,16 @@ import {
 import { FormModule, FormOutput, InputModule, SelectItem, SelectModule } from '@valtimo/components';
 import { CaseManagementParams, ManagementContext } from '@valtimo/shared';
 import { ProcessLinkStateService } from '@valtimo/process-link';
-import { BehaviorSubject, combineLatest, merge, Observable, of, Subject, Subscription } from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  merge,
+  Observable,
+  of,
+  ReplaySubject,
+  Subject,
+  Subscription,
+} from 'rxjs';
 import {
   catchError,
   debounceTime,
@@ -243,6 +252,11 @@ export class GenerateDocumentConfigurationComponent
   private readonly formValue$ = new BehaviorSubject<Partial<GenerateDocumentConfig> | null>(null);
   private readonly valid$ = new BehaviorSubject<boolean>(false);
   private pluginConfigurationId$ = new BehaviorSubject<string>('');
+  /**
+   * The configuration's tenant, null when it cannot be read: a catalog key saved against contract
+   * 1.x that several namespaces share names the tenant's own catalog ({@link matchCatalogId}).
+   */
+  private readonly tenantId$ = new ReplaySubject<string | null>(1);
   private readonly expressionValidity = new Map<string, boolean>();
   private nextAttributeEditorId = 0;
   private templateFieldsLoadedForTemplateId: string | null = null;
@@ -264,8 +278,12 @@ export class GenerateDocumentConfigurationComponent
   ngOnInit(): void {
     this.prefill$ = this.resolvePrefill$();
     this.effectivePrefill$ = this.prefill$;
-    this.prefillCatalogId$ = combineLatest([this.prefill$, this.catalogInfos$]).pipe(
-      map(([config, catalogs]) => matchCatalogId(config?.catalogId, catalogs)),
+    this.prefillCatalogId$ = combineLatest([
+      this.prefill$,
+      this.catalogInfos$,
+      this.tenantId$,
+    ]).pipe(
+      map(([config, catalogs, tenantId]) => matchCatalogId(config?.catalogId, catalogs, tenantId)),
     );
 
     this.initContext();
@@ -656,6 +674,15 @@ export class GenerateDocumentConfigurationComponent
       distinctUntilChanged(),
     );
 
+    configId$
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap((configId) =>
+          this.epistolaPluginService.getTenantId(configId).pipe(catchError(() => of(null))),
+        ),
+      )
+      .subscribe((tenantId) => this.tenantId$.next(tenantId));
+
     // Typing an expression changes the scope per keystroke; settle before reloading. The first
     // scope is taken at once, so loading does not wait on it.
     const environment$ = merge(
@@ -708,11 +735,13 @@ export class GenerateDocumentConfigurationComponent
     combineLatest([
       this.prefill$.pipe(filter((config) => !!config?.catalogId)),
       this.catalogs$.pipe(filter((c) => !c.loading && c.data.length > 0)),
+      this.tenantId$,
     ])
       .pipe(takeUntil(this.destroy$), take(1))
-      .subscribe(([config]) => {
+      .subscribe(([config, , tenantId]) => {
         this.selectedCatalogId$.next(
-          matchCatalogId(config!.catalogId, this.catalogInfos$.getValue()) ?? config!.catalogId,
+          matchCatalogId(config!.catalogId, this.catalogInfos$.getValue(), tenantId) ??
+            config!.catalogId,
         );
       });
 

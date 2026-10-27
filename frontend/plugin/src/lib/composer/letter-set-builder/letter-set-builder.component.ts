@@ -373,7 +373,10 @@ export class EpistolaLetterSetBuilderComponent
    * catalog's key alone, and catalogs are now listed as `registry/namespace/key`.
    */
   get selectedCatalogId(): string {
-    return matchCatalogId(this.value?.catalogId, this.catalogs) ?? '';
+    const tenantId = this.configurations.find(
+      (configuration) => configuration.id === this.value?.pluginConfigurationId,
+    )?.tenantId;
+    return matchCatalogId(this.value?.catalogId, this.catalogs, tenantId) ?? '';
   }
   templates: TemplateInfo[] = [];
 
