@@ -81,6 +81,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ci.yml` on Forgejo's runners. GitHub ignores the file, and on Forgejo it replaces the
   `.github/workflows` that were being started there (and failing) for every synced push.
 
+### Fixed
+
+- **Demo app (test-app): a page longer than the window scrolls again while the demo banner is
+  shown.** The banner's wrapper clipped everything below the fold, such as the Epistola admin
+  page's list of plugin actions and their problems. The content area now scrolls under Valtimo's
+  top bar and side nav, which stay in place.
+
 ## [0.21.0] - 2026-10-14
 
 ### Upgrading
