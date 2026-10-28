@@ -149,7 +149,7 @@ class StartFormPreviewE2ETest {
             any(),
             any(),
             any(),
-            eq("municipality-demo"),
+            eq("local/demo/municipality-demo"),
             eq("bevestigingsbrief-vergunning"),
             anyOrNull(),
             anyOrNull(),

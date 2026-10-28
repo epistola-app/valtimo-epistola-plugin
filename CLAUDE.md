@@ -22,7 +22,7 @@ The frontend plugin must be built BEFORE the test-app frontend:
 
 3. **Start test-app backend** (can run independently):
    ```bash
-   ./gradlew :test-app:backend:bootRun
+   ./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev'
    ```
 
 ## Development Scenarios
@@ -35,16 +35,17 @@ Best for cross-repo development when changing both Epistola and the plugin.
 # Epistola infrastructure (Postgres 4001, Keycloak 8080)
 cd repos/epistola-suite/apps/epistola/docker && docker compose up -d
 
-# Epistola app (port 4000)
+# Epistola app (port 4000). Since 2.0 demo mode is an app of its own (:apps:epistola-demo),
+# and `local` points it at the infrastructure above.
 cd repos/epistola-suite
 pnpm install && pnpm build
-./gradlew :apps:epistola:bootRun --args='--spring.profiles.active=demo,localauth'
+./gradlew :apps:epistola-demo:bootRun --args='--spring.profiles.active=demo,local,localauth'
 
 # Plugin infrastructure (Postgres 5432, Keycloak 8081)
 cd repos/valtimo-epistola-plugin/docker && docker compose up -d
 
 # Valtimo backend (port 8080, connects to Epistola on 4000)
-cd repos/valtimo-epistola-plugin && ./gradlew :test-app:backend:bootRun
+cd repos/valtimo-epistola-plugin && ./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev'
 
 # Valtimo frontend (port 4200)
 cd repos/valtimo-epistola-plugin/frontend/plugin && pnpm build
@@ -57,7 +58,7 @@ For working on Epistola without the plugin.
 
 ```bash
 cd repos/epistola-suite/apps/epistola/docker && docker compose up -d
-./gradlew :apps:epistola:bootRun --args='--spring.profiles.active=demo,localauth'
+./gradlew :apps:epistola-demo:bootRun --args='--spring.profiles.active=demo,local,localauth'
 ```
 
 ### Scenario 3: Plugin + Epistola container

@@ -61,6 +61,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The admin page's contract check warns on a different pre-release.** Alpha releases change in
   place, so `2.0.0-alpha.2` and `2.0.0-alpha.3` may disagree within one minor; only an exact match
   is OK while either side is a pre-release.
+- **Demo app (test-app): its process links name the catalog in full**
+  (`local/demo/municipality-demo`), as a link saved against 2.0 does, so the admin overview no
+  longer flags them. The training template (`form-flow-demo`) keeps the bare key on purpose: each
+  trainee's clone resolves it to the catalog in the trainee's own tenant.
 
 ### Added
 
