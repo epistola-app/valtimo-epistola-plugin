@@ -20,6 +20,8 @@ package com.ritense.valtimo.epistola.plugin;
 import app.epistola.client.api.GenerationApi;
 import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.GenerationJobResponse;
+import app.epistola.client.model.GenerationJobStatus;
+import app.epistola.client.model.GenerationJobType;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.domain.DocumentStorageTarget;
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
@@ -83,7 +85,7 @@ class EpistolaPluginRichTextTest {
         execution = mock(DelegateExecution.class);
         when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
         when(generationApi.generateDocument(any(), any())).thenReturn(new GenerationJobResponse(
-                UUID.randomUUID(), GenerationJobResponse.Status.pending, GenerationJobResponse.JobType.single, 1,
+                UUID.randomUUID(), GenerationJobStatus.pending, GenerationJobType.single, 1,
                 OffsetDateTime.now()));
         when(jsonataMappingService.evaluate(any())).thenReturn(Map.of("toelichting", HTML));
         when(jsonataMappingService.evaluateScalar(any())).thenReturn("besluit.pdf");

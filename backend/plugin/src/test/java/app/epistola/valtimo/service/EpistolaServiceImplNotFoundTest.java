@@ -84,7 +84,7 @@ class EpistolaServiceImplNotFoundTest {
     void getVariants_keepsTheNotFoundStatus() {
         VariantsApi variantsApi = mock(VariantsApi.class);
         when(factory.createVariantsApi(anyString(), anyString())).thenReturn(variantsApi);
-        when(variantsApi.listVariants(eq(TENANT), eq("local"), eq("valtimo"), eq(CATALOG), eq("1.0.0"), eq(TEMPLATE), anyInt(), anyInt(), any(), any()))
+        when(variantsApi.listVariants(eq(TENANT), eq("local"), eq("valtimo"), eq(CATALOG), eq("1.0.0"), eq(TEMPLATE), anyInt(), anyInt()))
                 .thenThrow(notFound("Template Not Found"));
 
         assertNotFound(() -> service.getVariants(BASE_URL, API_KEY, TENANT, CATALOG, TEMPLATE));
@@ -104,7 +104,7 @@ class EpistolaServiceImplNotFoundTest {
     void getAttributes_keepsTheNotFoundStatus() {
         AttributesApi attributesApi = mock(AttributesApi.class);
         when(factory.createAttributesApi(anyString(), anyString())).thenReturn(attributesApi);
-        when(attributesApi.listAttributes(eq(TENANT), eq("local"), eq("valtimo"), eq(CATALOG), eq("1.0.0"), anyInt(), anyInt(), any(), any()))
+        when(attributesApi.listAttributes(eq(TENANT), eq("local"), eq("valtimo"), eq(CATALOG), eq("1.0.0"), anyInt(), anyInt()))
                 .thenThrow(notFound("Catalog Not Found"));
 
         assertNotFound(() -> service.getAttributes(BASE_URL, API_KEY, TENANT, CATALOG));

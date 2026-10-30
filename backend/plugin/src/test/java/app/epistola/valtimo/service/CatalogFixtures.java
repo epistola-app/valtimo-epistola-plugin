@@ -57,7 +57,7 @@ final class CatalogFixtures {
     static CatalogsApi stubCatalogs(EpistolaApiClientFactory factory, String tenant, CatalogDto... catalogs) {
         CatalogsApi catalogsApi = mock(CatalogsApi.class);
         lenient().when(factory.createCatalogsApi(any(), any())).thenReturn(catalogsApi);
-        lenient().when(catalogsApi.listCatalogs(eq(tenant), anyInt(), anyInt(), isNull(), isNull()))
+        lenient().when(catalogsApi.listCatalogs(eq(tenant), anyInt(), anyInt()))
                 .thenReturn(new CatalogListResponse(List.of(catalogs), new PageMeta(0, 100, catalogs.length, 1)));
         return catalogsApi;
     }

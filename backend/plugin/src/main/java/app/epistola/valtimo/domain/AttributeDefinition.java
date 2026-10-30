@@ -25,5 +25,5 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record AttributeDefinition(
         String key,
-        String description
+        String name
 ) {}

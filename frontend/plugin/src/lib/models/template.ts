@@ -106,7 +106,7 @@ export interface VariantInfo {
  */
 export interface AttributeDefinition {
   key: string;
-  description?: string;
+  name?: string;
 }
 
 /**

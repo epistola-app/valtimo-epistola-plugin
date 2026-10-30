@@ -252,7 +252,7 @@ val oldestSupportedServerTest by tasks.registering(Test::class) {
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     filter { includeTestsMatching("app.epistola.valtimo.service.EpistolaServiceImplTest") }
-    systemProperty("epistola.mock-server.version", "2.0.0-alpha.3")
+    systemProperty("epistola.mock-server.version", "2.0.0-alpha.5")
 }
 
 tasks.check {

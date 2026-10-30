@@ -148,7 +148,7 @@ class EpistolaAdminServiceTest {
             // The contract version the plugin ships, read from epistola-contract-version.txt
             // inside the client jar. Pinned deliberately: bumping the contract dependency
             // should be a conscious update here, not a silent drift.
-            assertThat(status.contractVersion()).isEqualTo("2.0.0-alpha.3");
+            assertThat(status.contractVersion()).isEqualTo("2.0.0-alpha.5");
             assertThat(status.serverContractVersion()).isNull();
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
@@ -160,14 +160,14 @@ class EpistolaAdminServiceTest {
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("2.0.0", "2.0.0-alpha.3"));
+                    .thenReturn(new EpistolaService.SystemInfo("2.0.0", "2.0.0-alpha.5"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
             ConnectionStatus status = results.get(0);
             assertThat(status.serverVersion()).isEqualTo("2.0.0");
-            assertThat(status.contractVersion()).isEqualTo("2.0.0-alpha.3");
-            assertThat(status.serverContractVersion()).isEqualTo("2.0.0-alpha.3");
+            assertThat(status.contractVersion()).isEqualTo("2.0.0-alpha.5");
+            assertThat(status.serverContractVersion()).isEqualTo("2.0.0-alpha.5");
             assertThat(status.contractCompatibilitySeverity()).isEqualTo(ContractCompatibilitySeverity.OK);
         }
 
@@ -279,7 +279,7 @@ class EpistolaAdminServiceTest {
             ConnectionStatus status = results.get(0);
             assertThat(status.reachable()).isFalse();
             assertThat(status.errorMessage()).isEqualTo("Connection refused");
-            assertThat(status.contractVersion()).isEqualTo("2.0.0-alpha.3");
+            assertThat(status.contractVersion()).isEqualTo("2.0.0-alpha.5");
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
         }

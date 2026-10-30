@@ -28,6 +28,8 @@ import app.epistola.client.model.DeploymentDto;
 import app.epistola.client.model.DeploymentListResponse;
 import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.GenerationJobResponse;
+import app.epistola.client.model.GenerationJobStatus;
+import app.epistola.client.model.GenerationJobType;
 import app.epistola.client.model.PageMeta;
 import app.epistola.client.model.TemplateListResponse;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
@@ -180,7 +182,7 @@ class EpistolaServiceImplVersionRangeTest {
         GenerationApi generationApi = mock(GenerationApi.class);
         when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
         when(generationApi.generateDocument(eq(TENANT), any())).thenReturn(new GenerationJobResponse(
-                UUID.randomUUID(), GenerationJobResponse.Status.pending, GenerationJobResponse.JobType.single, 1,
+                UUID.randomUUID(), GenerationJobStatus.pending, GenerationJobType.single, 1,
                 OffsetDateTime.now()));
 
         service.submitGenerationJob(BASE_URL, API_KEY, TENANT, CATALOG, "besluit", null, null, ENV, " ^1.4.0 ",

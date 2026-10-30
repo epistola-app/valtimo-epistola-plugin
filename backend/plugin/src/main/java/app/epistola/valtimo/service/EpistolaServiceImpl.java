@@ -47,9 +47,11 @@ import app.epistola.client.model.CatalogReleaseStatus;
 import app.epistola.client.model.DeploymentDto;
 import app.epistola.client.model.DeploymentListResponse;
 import app.epistola.client.model.DocumentGenerationItemDto;
+import app.epistola.client.model.DocumentGenerationJobDto;
 import app.epistola.client.model.EnvironmentDto;
 import app.epistola.client.model.EnvironmentListResponse;
 import app.epistola.client.model.GenerateDocumentRequest;
+import app.epistola.client.model.GenerationJobItemListResponse;
 import app.epistola.client.model.GenerationJobResponse;
 import app.epistola.client.error.ProblemDetailException;
 import app.epistola.client.model.ImportCatalogResponse;
@@ -212,7 +214,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         return fetchAllPages(
                 "catalogs",
                 page -> withRetry("listCatalogs",
-                        () -> catalogsApi.listCatalogs(tenantId, page, LIST_PAGE_SIZE, null, null)),
+                        () -> catalogsApi.listCatalogs(tenantId, page, LIST_PAGE_SIZE)),
                 response -> response.getItems(),
                 response -> response.getPage()
         );
@@ -572,13 +574,13 @@ public class EpistolaServiceImpl implements EpistolaService {
             var attributes = fetchAllPages(
                     "attributes",
                     page -> attributesApi.listAttributes(tenantId, catalog.registry(), catalog.namespace(),
-                            catalog.key(), catalog.release(), page, LIST_PAGE_SIZE, null, null),
+                            catalog.key(), catalog.release(), page, LIST_PAGE_SIZE),
                     response -> response.getItems(),
                     response -> response.getPage()
             );
 
             return attributes.stream()
-                    .map(dto -> new AttributeDefinition(dto.getKey(), dto.getDescription()))
+                    .map(dto -> new AttributeDefinition(dto.getKey(), dto.getName()))
                     .toList();
         } catch (EpistolaApiException e) {
             throw e;
@@ -595,7 +597,7 @@ public class EpistolaServiceImpl implements EpistolaService {
             EnvironmentsApi environmentsApi = apiClientFactory.createEnvironmentsApi(baseUrl, apiKey);
             var environments = fetchAllPages(
                     "environments",
-                    page -> environmentsApi.listEnvironments(tenantId, page, LIST_PAGE_SIZE, null, null),
+                    page -> environmentsApi.listEnvironments(tenantId, page, LIST_PAGE_SIZE),
                     EnvironmentListResponse::getItems,
                     EnvironmentListResponse::getPage
             );
@@ -621,7 +623,7 @@ public class EpistolaServiceImpl implements EpistolaService {
             var variants = fetchAllPages(
                     "variants",
                     page -> variantsApi.listVariants(tenantId, catalog.registry(), catalog.namespace(),
-                            catalog.key(), catalog.release(), templateId, page, LIST_PAGE_SIZE, null, null),
+                            catalog.key(), catalog.release(), templateId, page, LIST_PAGE_SIZE),
                     VariantListResponse::getItems,
                     VariantListResponse::getPage
             );
@@ -710,14 +712,21 @@ public class EpistolaServiceImpl implements EpistolaService {
         try {
             GenerationApi generationApi = apiClientFactory.createGenerationApi(baseUrl, apiKey);
             UUID requestUuid = UUID.fromString(requestId);
-            app.epistola.client.model.GenerationJobDetail response = withRetry("getJobStatus",
-                    () -> generationApi.getGenerationJobStatus(tenantId, requestUuid));
-
-            if (response == null) {
-                throw new EpistolaApiException("Job not found: " + requestId);
+            // The plugin submits one document per job, so its first item is the letter: its status,
+            // document and error. A job lists its items apart from its status since contract
+            // 2.0.0-alpha.4; before an item is listed, the job's own status stands in.
+            GenerationJobItemListResponse items = withRetry("getJobStatus",
+                    () -> generationApi.listGenerationJobItems(tenantId, requestUuid, null, 0, 1));
+            if (items != null && items.getItems() != null && !items.getItems().isEmpty()) {
+                return mapToGenerationJobDetail(items.getItems().get(0), requestId);
             }
 
-            return mapToGenerationJobDetail(response, requestId);
+            DocumentGenerationJobDto job = withRetry("getJobStatus",
+                    () -> generationApi.getGenerationJobStatus(tenantId, requestUuid));
+            if (job == null) {
+                throw new EpistolaApiException("Job not found: " + requestId);
+            }
+            return mapToGenerationJobDetail(job, requestId);
         } catch (EpistolaApiException e) {
             throw e;
         } catch (Exception e) {
@@ -894,7 +903,8 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     private TemplateDetails mapToTemplateDetails(TemplateDto dto) {
-        Object schemaSource = dto.getDataModel() != null ? dto.getDataModel() : dto.getSchema();
+        // Required since contract 2.0.0-alpha.4: {} for a template without constraints.
+        Object schemaSource = dto.getDataModel();
         JsonSchemaMappingAnalyzer.Analysis schemaAnalysis = new JsonSchemaMappingAnalyzer().analyze(schemaSource);
 
         return new TemplateDetails(
@@ -925,44 +935,38 @@ public class EpistolaServiceImpl implements EpistolaService {
         return new VariantInfo(
                 dto.getKey(),
                 dto.getTemplateKey(),
-                dto.getTitle() != null ? dto.getTitle() : dto.getKey(),  // fallback to key if no title
+                dto.getName() != null ? dto.getName() : dto.getKey(),  // fallback to key if no name
                 dto.getAttributes() != null ? dto.getAttributes() : Map.of()
         );
     }
 
-    private GenerationJobDetail mapToGenerationJobDetail(app.epistola.client.model.GenerationJobDetail response, String requestId) {
-        // Get the first item from the response (for single document generation)
-        GenerationJobStatus status = GenerationJobStatus.PENDING;
-        String documentId = null;
-        String errorMessage = null;
-        Instant createdAt = null;
-        Instant completedAt = null;
-
-        if (response.getItems() != null && !response.getItems().isEmpty()) {
-            var item = response.getItems().get(0);
-            status = mapToJobStatus(item.getStatus());
-            UUID docId = item.getDocumentId();
-            documentId = docId != null ? docId.toString() : null;
-            errorMessage = item.getErrorMessage();
-            createdAt = toInstant(item.getCreatedAt());
-            completedAt = toInstant(item.getCompletedAt());
-        }
-
+    private GenerationJobDetail mapToGenerationJobDetail(DocumentGenerationItemDto item, String requestId) {
+        UUID documentId = item.getDocumentId();
         return GenerationJobDetail.builder()
                 .requestId(requestId)
-                .status(status)
-                .documentId(documentId)
-                .errorMessage(errorMessage)
-                .createdAt(createdAt)
-                .completedAt(completedAt)
+                .status(mapToJobStatus(item.getStatus() != null ? item.getStatus().getValue() : null))
+                .documentId(documentId != null ? documentId.toString() : null)
+                .errorMessage(item.getErrorMessage())
+                .createdAt(toInstant(item.getCreatedAt()))
+                .completedAt(toInstant(item.getCompletedAt()))
                 .build();
     }
 
-    private GenerationJobStatus mapToJobStatus(DocumentGenerationItemDto.Status status) {
+    private GenerationJobDetail mapToGenerationJobDetail(DocumentGenerationJobDto job, String requestId) {
+        return GenerationJobDetail.builder()
+                .requestId(requestId)
+                .status(mapToJobStatus(job.getStatus() != null ? job.getStatus().getValue() : null))
+                .errorMessage(job.getErrorMessage())
+                .createdAt(toInstant(job.getCreatedAt()))
+                .completedAt(toInstant(job.getCompletedAt()))
+                .build();
+    }
+
+    private GenerationJobStatus mapToJobStatus(String status) {
         if (status == null) {
             return GenerationJobStatus.PENDING;
         }
-        return GenerationJobStatus.fromApi(status.getValue());
+        return GenerationJobStatus.fromApi(status);
     }
 
     private Instant toInstant(OffsetDateTime dateTime) {

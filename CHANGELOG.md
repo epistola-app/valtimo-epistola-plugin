@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Upgrading
 
-- **The plugin speaks Epistola contract 2.0 (`2.0.0-alpha.3`) and needs an Epistola Suite that
+- **The plugin speaks Epistola contract 2.0 (`2.0.0-alpha.5`) and needs an Epistola Suite that
   serves it.** A 2.x client sends the `application/vnd.epistola.v2+json` media type, which every
   1.x Suite refuses (406/415), so no 1.x Suite works with this build. No Suite 2.0 is released
   yet: this is preparation for it, tested against the contract's mock server. See
@@ -47,12 +47,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Epistola contract client `1.4.0` → `2.0.0-alpha.3`** (`app.epistola.contract:client-spring3-restclient`,
+- **Epistola contract client `1.4.0` → `2.0.0-alpha.5`** (`app.epistola.contract:client-spring3-restclient`,
   and `epistola-catalog` for the rich-text schema tests). Templates, variants and attributes are
   read from the catalog's highest release, or its newest draft when it has never been released;
   generation and preview render the highest release (the environment's, when one is configured).
   A dotted attribute criterion saved against 1.4 (`system.locale`) is sent as `catalogKey` +
   `key`, which 2.0 requires.
+  Since `2.0.0-alpha.4` a job's status no longer lists its items, so `check-job-status` and the
+  result fallback read the letter (its status, document and error) from the job's first item
+  (`listGenerationJobItems`), and fall back to the job's own status until an item is listed.
 - **Catalogs are labelled with their namespace**, and with their registry when it is not the
   tenant's own (`Brieven (vng · exchange.epistola.app)`), in the generate-document configurator and
   the letter composer's letter set: since 2.0 two catalogs may share a name. The tenant's own are

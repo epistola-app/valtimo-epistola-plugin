@@ -161,6 +161,8 @@ class EpistolaResultCollectorRunnerTest {
                 /* namespace */ "valtimo",
                 /* catalogKey */ "demo",
                 /* version */ null,
+                /* releaseId */ null,
+                /* releaseName */ null,
                 /* filename */ null,
                 /* contentType */ null,
                 /* sizeBytes */ null,
