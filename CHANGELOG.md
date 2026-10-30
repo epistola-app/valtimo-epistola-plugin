@@ -90,6 +90,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A pre-release can be released** (`X.Y.Z-alpha.1`, `-beta.N`, `-rc.N`). The release workflow
+  publishes it to npm under a dist-tag named after it (`alpha`) instead of `latest`, gives the
+  images only their exact tag (no moving `X.Y`), leaves the public demo on the released line, and
+  marks the GitHub release as a pre-release. A pre-release must start with a name: `0.22.0-1` is
+  refused, so npm never receives a numeric dist-tag.
 - **Demo app (test-app): a page longer than the window scrolls again while the demo banner is
   shown.** The banner's wrapper clipped everything below the fold, such as the Epistola admin
   page's list of plugin actions and their problems. The content area now scrolls under Valtimo's
