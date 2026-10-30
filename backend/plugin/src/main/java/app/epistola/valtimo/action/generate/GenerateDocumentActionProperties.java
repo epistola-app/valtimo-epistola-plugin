@@ -24,6 +24,7 @@ public record GenerateDocumentActionProperties(
         String variantId,
         Object variantAttributes,
         String environmentId,
+        String versionRange,
         String dataMapping,
         String outputFormat,
         String filename,

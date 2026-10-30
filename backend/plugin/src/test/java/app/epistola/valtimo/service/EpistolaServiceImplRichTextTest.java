@@ -20,6 +20,8 @@ package app.epistola.valtimo.service;
 import app.epistola.client.api.GenerationApi;
 import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.GenerationJobResponse;
+import app.epistola.client.model.GenerationJobStatus;
+import app.epistola.client.model.GenerationJobType;
 import app.epistola.client.model.PreviewDocumentRequest;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.domain.FileFormat;
@@ -67,7 +69,7 @@ class EpistolaServiceImplRichTextTest {
         when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
         when(factory.createLongRunningGenerationApi(anyString(), anyString())).thenReturn(longRunningApi);
         when(generationApi.generateDocument(eq(TENANT), any())).thenReturn(new GenerationJobResponse(
-                UUID.randomUUID(), GenerationJobResponse.Status.PENDING, GenerationJobResponse.JobType.SINGLE, 1,
+                UUID.randomUUID(), GenerationJobStatus.pending, GenerationJobType.single, 1,
                 OffsetDateTime.now()));
         when(longRunningApi.previewDocument(eq(TENANT), any())).thenReturn(new ByteArrayResource(new byte[] {1}));
         service = new EpistolaServiceImpl(factory, 0, new RichTextValues(RichTextFixtures.converter("html")));
@@ -84,7 +86,7 @@ class EpistolaServiceImplRichTextTest {
     }
 
     private void submit(Map<String, Object> data) {
-        service.submitGenerationJob("http://x", "key", TENANT, "catalog", "besluit", null, null, null, data,
+        service.submitGenerationJob("http://x", "key", TENANT, "local/valtimo/catalog", "besluit", null, null, null, null, data,
                 FileFormat.PDF, "besluit.pdf", null, null);
     }
 
@@ -118,7 +120,7 @@ class EpistolaServiceImplRichTextTest {
 
     @Test
     void previewsWhatAnEditorTypedAsADocument() {
-        service.previewDocument("http://x", "key", TENANT, "catalog", "besluit", null, null,
+        service.previewDocument("http://x", "key", TENANT, "local/valtimo/catalog", "besluit", null, null, null,
                 Map.of("motivation", tagged("html", "BLOCK", HTML)));
 
         ArgumentCaptor<PreviewDocumentRequest> request = ArgumentCaptor.forClass(PreviewDocumentRequest.class);

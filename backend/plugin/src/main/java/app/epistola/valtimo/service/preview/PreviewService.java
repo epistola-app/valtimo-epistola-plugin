@@ -200,7 +200,7 @@ public class PreviewService {
         try {
             return epistolaService.previewDocument(
                     plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(),
-                    catalogId, templateId, variantId, environmentId, resolvedData);
+                    catalogId, templateId, variantId, environmentId, actionConfig.versionRange(), resolvedData);
         } catch (Exception e) {
             throw new PreviewException(PreviewException.Reason.RENDER_FAILED, e.getMessage(), e);
         }

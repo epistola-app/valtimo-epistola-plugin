@@ -132,7 +132,6 @@ class TraineeDossierProvisioner(
                 epistolaBaseUrl,
                 tenant.apiKey,
                 tenant.tenantId,
-                CATALOG_TYPE,
             )
         }.onSuccess { result ->
             if (!result.isFullySuccessful) {
@@ -169,8 +168,5 @@ class TraineeDossierProvisioner(
 
     companion object {
         private const val EPISTOLA_PLUGIN_DEFINITION_KEY = "epistola"
-
-        /** Same catalog type the startup trigger imports with. */
-        private const val CATALOG_TYPE = "AUTHORED"
     }
 }

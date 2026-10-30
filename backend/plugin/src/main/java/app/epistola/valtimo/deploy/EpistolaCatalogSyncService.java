@@ -17,6 +17,7 @@
  */
 package app.epistola.valtimo.deploy;
 
+import app.epistola.valtimo.domain.CatalogRef;
 import app.epistola.valtimo.service.EpistolaApiException;
 import app.epistola.valtimo.service.EpistolaService;
 import lombok.extern.slf4j.Slf4j;
@@ -41,7 +42,16 @@ import java.util.zip.ZipOutputStream;
  * import endpoint.
  * <p>
  * Deployed versions are tracked in memory per plugin configuration. On restart,
- * all catalogs are re-imported (idempotent — the import API handles create-or-update).
+ * all catalogs are re-imported. Since contract 2.0 an import installs the release the archive
+ * carries beside the catalog's others; the same version with the same content is already present
+ * and changes nothing, so a re-import is idempotent. A changed catalog therefore needs a new
+ * {@code release.version}: the same version with other content is refused
+ * ({@code release-number-taken}).
+ * <p>
+ * A manifest from before catalog wire v8 does not name its catalog's registry and namespace, which
+ * contract 2.0 requires; it is installed under the configured defaults
+ * ({@code epistola.catalog-sync.registry} / {@code namespace}), by default {@code local} and the
+ * tenant's own namespace ({@link CatalogRef#asMigrated}).
  */
 @Slf4j
 public class EpistolaCatalogSyncService {
@@ -55,9 +65,20 @@ public class EpistolaCatalogSyncService {
      */
     private final Map<String, Map<String, String>> deployedVersions = new HashMap<>();
 
+    private final String defaultRegistry;
+    /** Null for the tenant's own namespace. */
+    private final String defaultNamespace;
+
     public EpistolaCatalogSyncService(CatalogScanner scanner, EpistolaService epistolaService) {
+        this(scanner, epistolaService, CatalogRef.LOCAL_REGISTRY, null);
+    }
+
+    public EpistolaCatalogSyncService(
+            CatalogScanner scanner, EpistolaService epistolaService, String defaultRegistry, String defaultNamespace) {
         this.scanner = scanner;
         this.epistolaService = epistolaService;
+        this.defaultRegistry = defaultRegistry;
+        this.defaultNamespace = defaultNamespace == null || defaultNamespace.isBlank() ? null : defaultNamespace;
     }
 
     /**
@@ -67,10 +88,9 @@ public class EpistolaCatalogSyncService {
      * @param baseUrl     The Epistola API base URL
      * @param apiKey      The API key for authentication
      * @param tenantId    The tenant ID in Epistola
-     * @param catalogType The catalog type to pass to the import endpoint (e.g. "full", "templates-only")
      * @return Sync result summary
      */
-    public SyncResult syncCatalogs(String configId, String baseUrl, String apiKey, String tenantId, String catalogType) {
+    public SyncResult syncCatalogs(String configId, String baseUrl, String apiKey, String tenantId) {
         List<CatalogScanner.CatalogOnClasspath> allCatalogs = scanner.scan();
 
         if (allCatalogs.isEmpty()) {
@@ -103,15 +123,14 @@ public class EpistolaCatalogSyncService {
             try {
                 byte[] zipBytes = buildCatalogZip(catalog);
 
-                EpistolaService.ImportCatalogResult result = epistolaService.importCatalog(
-                        baseUrl, apiKey, tenantId, zipBytes, catalogType);
+                EpistolaService.ImportCatalogResult result = importCatalog(catalog, baseUrl, apiKey, tenantId, zipBytes);
 
                 updatedVersions.put(catalog.slug(), catalog.version());
                 successCount++;
-                log.info("Catalog '{}' v{} imported: key={}, installed={}, updated={}, failed={}, total={}",
+                log.info("Catalog '{}' v{} imported: catalog={}/{}/{}, newlyInstalled={}, total={}",
                         catalog.slug(), catalog.version(),
-                        result.catalogKey(), result.installed(), result.updated(),
-                        result.failed(), result.total());
+                        result.registry(), result.namespace(), result.catalogKey(),
+                        result.newlyInstalled(), result.total());
             } catch (Exception e) {
                 failCount++;
                 log.error("Failed to sync catalog '{}' v{}: {}",
@@ -147,14 +166,13 @@ public class EpistolaCatalogSyncService {
      * @param baseUrl     The Epistola API base URL
      * @param apiKey      The API key for authentication
      * @param tenantId    The tenant ID in Epistola
-     * @param catalogType The catalog type passed to the import endpoint
      * @param slug        The slug of the classpath catalog to redeploy
      * @return Per-catalog outcome (never throws for an import failure — see
      *         {@link RedeployOutcome#success()}); throws {@link IllegalArgumentException}
      *         only when no classpath catalog has the given slug
      */
     public RedeployOutcome redeployCatalog(String configId, String baseUrl, String apiKey,
-                                           String tenantId, String catalogType, String slug) {
+                                           String tenantId, String slug) {
         CatalogScanner.CatalogOnClasspath catalog = scanner.scan().stream()
                 .filter(c -> c.slug().equals(slug))
                 .findFirst()
@@ -164,34 +182,54 @@ public class EpistolaCatalogSyncService {
         try {
             byte[] zipBytes = buildCatalogZip(catalog);
 
-            EpistolaService.ImportCatalogResult result = epistolaService.importCatalog(
-                    baseUrl, apiKey, tenantId, zipBytes, catalogType);
+            EpistolaService.ImportCatalogResult result = importCatalog(catalog, baseUrl, apiKey, tenantId, zipBytes);
 
             deployedVersions
                     .computeIfAbsent(configId, k -> new HashMap<>())
                     .put(catalog.slug(), catalog.version());
 
-            log.info("Manual redeploy of catalog '{}' v{} to tenant '{}': "
-                            + "key={}, installed={}, updated={}, failed={}, total={}",
-                    catalog.slug(), catalog.version(), tenantId, result.catalogKey(),
-                    result.installed(), result.updated(), result.failed(), result.total());
+            String catalogId = new CatalogRef(result.registry(), result.namespace(), result.catalogKey()).toString();
+            log.info("Manual redeploy of catalog '{}' v{} to tenant '{}': catalog={}, newlyInstalled={}, total={}",
+                    catalog.slug(), catalog.version(), tenantId, catalogId,
+                    result.newlyInstalled(), result.total());
 
             return new RedeployOutcome(catalog.slug(), catalog.version(), true,
-                    result.catalogKey(), result.installed(), result.updated(),
-                    result.failed(), result.total(), null, null);
+                    catalogId, result.newlyInstalled(), result.total(), null, null);
         } catch (EpistolaApiException e) {
             String message = translateRedeployError(catalog, e);
             log.error("Manual redeploy of catalog '{}' v{} failed ({}): {}",
                     catalog.slug(), catalog.version(),
                     e.getHttpStatus() != null ? e.getHttpStatus() : "no-status", message, e);
             return new RedeployOutcome(catalog.slug(), catalog.version(), false,
-                    null, 0, 0, 0, 0, message, e.getHttpStatus());
+                    null, false, 0, message, e.getHttpStatus());
         } catch (Exception e) {
             log.error("Manual redeploy of catalog '{}' v{} failed: {}",
                     catalog.slug(), catalog.version(), e.getMessage(), e);
             return new RedeployOutcome(catalog.slug(), catalog.version(), false,
-                    null, 0, 0, 0, 0, e.getMessage(), null);
+                    null, false, 0, e.getMessage(), null);
         }
+    }
+
+    /**
+     * The catalog a classpath catalog is installed as for {@code tenantId}: the registry and
+     * namespace its v8 manifest names, or the configured defaults for an older one.
+     */
+    public CatalogRef importedAs(CatalogScanner.CatalogOnClasspath catalog, String tenantId) {
+        return catalog.isNamed()
+                ? new CatalogRef(catalog.registry(), catalog.namespace(), catalog.slug())
+                : new CatalogRef(defaultRegistry, namespaceFor(tenantId), catalog.slug());
+    }
+
+    private String namespaceFor(String tenantId) {
+        return defaultNamespace != null ? defaultNamespace : CatalogRef.migratedNamespace(tenantId);
+    }
+
+    private EpistolaService.ImportCatalogResult importCatalog(
+            CatalogScanner.CatalogOnClasspath catalog, String baseUrl, String apiKey, String tenantId, byte[] zipBytes) {
+        // A v8 archive names its catalog itself; naming it again in the request could only disagree.
+        return catalog.isNamed()
+                ? epistolaService.importCatalog(baseUrl, apiKey, tenantId, zipBytes, null, null)
+                : epistolaService.importCatalog(baseUrl, apiKey, tenantId, zipBytes, defaultRegistry, namespaceFor(tenantId));
     }
 
     /**
@@ -337,10 +375,8 @@ public class EpistolaCatalogSyncService {
             String slug,
             String version,
             boolean success,
-            String catalogKey,
-            int installed,
-            int updated,
-            int failed,
+            String catalogId,
+            boolean newlyInstalled,
             int total,
             String errorMessage,
             Integer httpStatus

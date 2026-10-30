@@ -21,6 +21,10 @@ import app.epistola.client.EpistolaJson;
 import app.epistola.client.api.CatalogsApi;
 import app.epistola.client.api.GenerationApi;
 import app.epistola.client.error.ProblemDetailException;
+import app.epistola.client.model.DocumentGenerationItemDto;
+import app.epistola.client.model.DocumentGenerationJobDto;
+import app.epistola.client.model.GenerationItemStatus;
+import app.epistola.client.model.GenerationJobItemListResponse;
 import app.epistola.client.model.ProblemDetail;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.domain.GenerationJobDetail;
@@ -45,6 +49,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -66,19 +71,46 @@ class EpistolaServiceImplRetryTest {
         GenerationApi generationApi = mock(GenerationApi.class);
         when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
 
-        // A response with no items maps to a PENDING detail — enough to prove the call returned.
-        app.epistola.client.model.GenerationJobDetail response =
-                mock(app.epistola.client.model.GenerationJobDetail.class);
-        when(generationApi.getGenerationJobStatus(eq(TENANT), any(UUID.class)))
+        // A job with no item listed yet falls back to the job's own status — enough to prove the
+        // call returned.
+        GenerationJobItemListResponse noItems = mock(GenerationJobItemListResponse.class);
+        when(noItems.getItems()).thenReturn(List.of());
+        when(generationApi.listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1)))
                 .thenThrow(new ResourceAccessException("connect timeout"))
-                .thenReturn(response);
+                .thenReturn(noItems);
+        when(generationApi.getGenerationJobStatus(eq(TENANT), any(UUID.class)))
+                .thenReturn(mock(DocumentGenerationJobDto.class));
 
         EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 2);
         GenerationJobDetail detail = service.getJobStatus("http://x", "key", TENANT, REQUEST_ID);
 
         assertNotNull(detail);
         assertEquals(REQUEST_ID, detail.getRequestId());
-        verify(generationApi, times(2)).getGenerationJobStatus(eq(TENANT), any(UUID.class));
+        verify(generationApi, times(2)).listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1));
+    }
+
+    @Test
+    void getJobStatus_readsTheLetterFromTheJobsFirstItem() {
+        EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
+        GenerationApi generationApi = mock(GenerationApi.class);
+        when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
+
+        UUID documentId = UUID.randomUUID();
+        DocumentGenerationItemDto item = mock(DocumentGenerationItemDto.class);
+        when(item.getStatus()).thenReturn(GenerationItemStatus.completed);
+        when(item.getDocumentId()).thenReturn(documentId);
+        GenerationJobItemListResponse items = mock(GenerationJobItemListResponse.class);
+        when(items.getItems()).thenReturn(List.of(item));
+        when(generationApi.listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1)))
+                .thenReturn(items);
+
+        GenerationJobDetail detail = new EpistolaServiceImpl(factory, 0)
+                .getJobStatus("http://x", "key", TENANT, REQUEST_ID);
+
+        assertEquals(app.epistola.valtimo.domain.GenerationJobStatus.COMPLETED, detail.getStatus());
+        assertEquals(documentId.toString(), detail.getDocumentId());
+        // The item answered; the job's own status is not asked for.
+        verify(generationApi, times(0)).getGenerationJobStatus(any(), any());
     }
 
     @Test
@@ -86,7 +118,7 @@ class EpistolaServiceImplRetryTest {
         EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
         GenerationApi generationApi = mock(GenerationApi.class);
         when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
-        when(generationApi.getGenerationJobStatus(eq(TENANT), any(UUID.class)))
+        when(generationApi.listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1)))
                 .thenThrow(new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE));
 
         EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 2);
@@ -94,7 +126,7 @@ class EpistolaServiceImplRetryTest {
                 () -> service.getJobStatus("http://x", "key", TENANT, REQUEST_ID));
 
         // first try + 2 retries = 3 invocations
-        verify(generationApi, times(3)).getGenerationJobStatus(eq(TENANT), any(UUID.class));
+        verify(generationApi, times(3)).listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1));
     }
 
     @Test
@@ -102,7 +134,7 @@ class EpistolaServiceImplRetryTest {
         EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
         GenerationApi generationApi = mock(GenerationApi.class);
         when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
-        when(generationApi.getGenerationJobStatus(eq(TENANT), any(UUID.class)))
+        when(generationApi.listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1)))
                 .thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
 
         EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 2);
@@ -110,7 +142,7 @@ class EpistolaServiceImplRetryTest {
                 () -> service.getJobStatus("http://x", "key", TENANT, REQUEST_ID));
 
         // 4xx is a definitive answer — exactly one invocation, no retry
-        verify(generationApi, times(1)).getGenerationJobStatus(eq(TENANT), any(UUID.class));
+        verify(generationApi, times(1)).listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1));
     }
 
     @Test
@@ -148,7 +180,7 @@ class EpistolaServiceImplRetryTest {
 
         EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 2);
         EpistolaApiException ex = assertThrows(EpistolaApiException.class,
-                () -> service.importCatalog("http://x", "key", TENANT, new byte[]{1, 2, 3}, "AUTHORED"));
+                () -> service.importCatalog("http://x", "key", TENANT, new byte[]{1, 2, 3}, "local", "valtimo"));
 
         assertEquals(400, ex.getHttpStatus());
         assertEquals("catalog-schema-too-old", ex.getProblemTypeSlug());
@@ -178,14 +210,14 @@ class EpistolaServiceImplRetryTest {
         EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
         GenerationApi generationApi = mock(GenerationApi.class);
         when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
-        when(generationApi.getGenerationJobStatus(eq(TENANT), any(UUID.class))).thenThrow(serverProblem);
+        when(generationApi.listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1))).thenThrow(serverProblem);
 
         EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 2);
         assertThrows(EpistolaApiException.class,
                 () -> service.getJobStatus("http://x", "key", TENANT, REQUEST_ID));
 
         // 1 initial attempt + 2 retries
-        verify(generationApi, times(3)).getGenerationJobStatus(eq(TENANT), any(UUID.class));
+        verify(generationApi, times(3)).listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1));
     }
 
     @Test
@@ -205,12 +237,12 @@ class EpistolaServiceImplRetryTest {
         EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
         GenerationApi generationApi = mock(GenerationApi.class);
         when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
-        when(generationApi.getGenerationJobStatus(eq(TENANT), any(UUID.class))).thenThrow(clientProblem);
+        when(generationApi.listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1))).thenThrow(clientProblem);
 
         EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 2);
         assertThrows(EpistolaApiException.class,
                 () -> service.getJobStatus("http://x", "key", TENANT, REQUEST_ID));
 
-        verify(generationApi, times(1)).getGenerationJobStatus(eq(TENANT), any(UUID.class));
+        verify(generationApi, times(1)).listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1));
     }
 }

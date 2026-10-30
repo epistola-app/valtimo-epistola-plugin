@@ -76,6 +76,12 @@ dependencies {
     implementation(libs.commonmark)
     implementation(libs.commonmark.ext.strikethrough)
 
+    // Catalog version ranges: a process link may pin a release or a range of them, in npm's SemVer
+    // range grammar (contract 2.0, "Versions and version ranges"). The server resolves a range when
+    // rendering; the plugin matches the same range to read the release a configurator shows. Pure
+    // Java, no dependencies, and not shaded for the reasons given for jsoup above.
+    implementation(libs.semver4j)
+
     // Valtimo dependencies (compileOnly - provided by implementing application)
     compileOnly(libs.valtimo.core)
     compileOnly(libs.valtimo.contract)
@@ -229,20 +235,24 @@ tasks.processTestResources {
 tasks.test {
     // Don't fail if there are no tests yet
     failOnNoDiscoveredTests.set(false)
+    // The mock-server integration test runs against the contract the client is pinned to.
+    systemProperty("epistola.mock-server.version", libs.versions.epistola.client.get())
 }
 
 // The contract client has to keep reading servers older than the contract it was generated from.
 // Contract 1.3.0's client could not: it made a response field that older servers never send
 // required. So the mock-server integration test also runs against the oldest contract a supported
-// Epistola Suite serves — Suite 1.0.0 serves contract 0.16.1 (COMPATIBILITY.md). Raise this with
-// the Suite floor. Part of `check`, so `build` runs it; `test` alone does not.
+// Epistola Suite serves (COMPATIBILITY.md). Since contract 2.0 that is a 2.x contract: the client
+// sends the v2 media type, which every 1.x server refuses, so no 1.x Suite is supported. While 2.0
+// is in alpha the floor is the pinned alpha itself; raise it with the Suite floor. Part of `check`,
+// so `build` runs it; `test` alone does not.
 val oldestSupportedServerTest by tasks.registering(Test::class) {
     description = "Runs the mock-server integration test against the oldest supported Epistola contract."
     group = LifecycleBasePlugin.VERIFICATION_GROUP
     testClassesDirs = sourceSets.test.get().output.classesDirs
     classpath = sourceSets.test.get().runtimeClasspath
     filter { includeTestsMatching("app.epistola.valtimo.service.EpistolaServiceImplTest") }
-    systemProperty("epistola.mock-server.version", "0.16.1")
+    systemProperty("epistola.mock-server.version", "2.0.0-alpha.5")
 }
 
 tasks.check {

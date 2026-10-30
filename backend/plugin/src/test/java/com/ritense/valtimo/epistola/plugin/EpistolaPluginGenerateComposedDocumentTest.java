@@ -75,7 +75,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
         resultCollectorRunner = mock(EpistolaResultCollectorRunner.class);
         execution = mock(DelegateExecution.class);
         when(epistolaService.submitGenerationJob(anyString(), anyString(), anyString(), anyString(),
-                anyString(), any(), any(), any(), any(), any(), any(), any(), any()))
+                anyString(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(GenerationJobResult.builder().requestId("req-1").status("PENDING").build());
     }
 
@@ -149,6 +149,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
                 eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
                 eq("gemeente"), eq("besluit-bezwaar"),
                 isNull(), isNull(), eq("prod"),
+                any(),
                 data.capture(), eq(FileFormat.PDF), eq("besluit-bezwaar.pdf"), isNull(), any());
         assertThat(data.getValue()).containsEntry("naam", "Jansen");
     }
@@ -157,7 +158,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
     void recordsTheRefusalWhereTheProcessCanReadIt() {
         composerWrote(letter());
         when(epistolaService.submitGenerationJob(anyString(), anyString(), anyString(), anyString(),
-                anyString(), any(), any(), any(), any(), any(), any(), any(), any()))
+                anyString(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new RuntimeException("Template 'besluit-bezwaar' not found in catalog 'gemeente'"));
 
         org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () ->
@@ -183,6 +184,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
                 eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
                 eq("gemeente"), eq("besluit-bezwaar"),
                 isNull(), isNull(), eq("prod"),
+                any(),
                 data.capture(), eq(FileFormat.PDF), eq("besluit-bezwaar.pdf"), isNull(), any());
         assertThat(data.getValue()).containsEntry("naam", "Jansen");
     }
@@ -194,7 +196,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
         plugin().generateComposedDocument(execution, "mijnBrief", null, null, RESULT_VAR);
 
         verify(epistolaService).submitGenerationJob(anyString(), anyString(), anyString(),
-                eq("gemeente"), eq("besluit-bezwaar"), any(), any(), any(), any(), any(), any(), any(), any());
+                eq("gemeente"), eq("besluit-bezwaar"), any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -222,7 +224,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
         plugin().generateComposedDocument(execution, null, "\"brief.pdf\"", "$pv.zaakId", RESULT_VAR);
 
         verify(epistolaService).submitGenerationJob(anyString(), anyString(), anyString(),
-                anyString(), anyString(), any(), any(), any(), any(), any(),
+                anyString(), anyString(), any(), any(), any(), any(), any(), any(),
                 eq("brief.pdf"), eq("zaak-42"), any());
     }
 

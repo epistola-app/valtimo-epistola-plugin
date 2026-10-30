@@ -22,7 +22,7 @@ The frontend plugin must be built BEFORE the test-app frontend:
 
 3. **Start test-app backend** (can run independently):
    ```bash
-   ./gradlew :test-app:backend:bootRun
+   ./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev'
    ```
 
 ## Development Scenarios
@@ -35,16 +35,17 @@ Best for cross-repo development when changing both Epistola and the plugin.
 # Epistola infrastructure (Postgres 4001, Keycloak 8080)
 cd repos/epistola-suite/apps/epistola/docker && docker compose up -d
 
-# Epistola app (port 4000)
+# Epistola app (port 4000). Since 2.0 demo mode is an app of its own (:apps:epistola-demo),
+# and `local` points it at the infrastructure above.
 cd repos/epistola-suite
 pnpm install && pnpm build
-./gradlew :apps:epistola:bootRun --args='--spring.profiles.active=demo,localauth'
+./gradlew :apps:epistola-demo:bootRun --args='--spring.profiles.active=demo,local,localauth'
 
 # Plugin infrastructure (Postgres 5432, Keycloak 8081)
 cd repos/valtimo-epistola-plugin/docker && docker compose up -d
 
 # Valtimo backend (port 8080, connects to Epistola on 4000)
-cd repos/valtimo-epistola-plugin && ./gradlew :test-app:backend:bootRun
+cd repos/valtimo-epistola-plugin && ./gradlew :test-app:backend:bootRun --args='--spring.profiles.active=dev'
 
 # Valtimo frontend (port 4200)
 cd repos/valtimo-epistola-plugin/frontend/plugin && pnpm build
@@ -57,7 +58,7 @@ For working on Epistola without the plugin.
 
 ```bash
 cd repos/epistola-suite/apps/epistola/docker && docker compose up -d
-./gradlew :apps:epistola:bootRun --args='--spring.profiles.active=demo,localauth'
+./gradlew :apps:epistola-demo:bootRun --args='--spring.profiles.active=demo,local,localauth'
 ```
 
 ### Scenario 3: Plugin + Epistola container
@@ -119,7 +120,32 @@ docker/            # Docker compose for local dependencies
   And because only the **completing** step's submission is mapped, a value chosen on an earlier step needs the hidden same-key carrier described above to reach it — `kies-brief-flow` uses both, and without either the generate task fails with _"No composed letter on process variable"_ and the task never completes.
 - **Stale `epistola-suite:latest`**: a locally cached image can predate the pinned contract client (`epistola-client` in `gradle/libs.versions.toml`). The symptom is not a version error but a **500 on `/templates`** — the older response omits `page`, which the generated client requires as non-nullable. `docker pull` before blaming the plugin, and check `docker inspect <container> --format '{{index .Config.Labels "org.opencontainers.image.version"}}'` against [COMPATIBILITY.md](COMPATIBILITY.md).
 - **Demo mode is a separate image**: the compose stack and the README's `docker run` flow both run `SPRING_PROFILES_ACTIVE=demo,localauth`, and since Suite **1.3.0** demo mode ships only in `epistola-suite:{version}-demo` — the plain image refuses to start ("this image does not contain demo mode"), on purpose, so a production install cannot be demoted by configuration. A locally cached 1.2.0 `:latest` still has demo built in, so this breaks only where the image is pulled fresh: a new machine, or CI. Use `latest-demo`.
-- **Newer contract client, older server**: the reverse trap, with the same symptom. A contract release can add a response field older servers never send, and if it is `required` the generated models reject the whole response. Contract `1.3.0` did this with `slug` (fixed in `1.3.1`, which makes it optional), so read a resource's address from `id` (`key` on attributes), which every supported server sends — not from `slug` — until the Suite floor serves contract `1.3.0` or later. `oldestSupportedServerTest` runs `EpistolaServiceImplTest` against the oldest contract a supported Suite serves; it is part of `check`/`build`, not `test`, so run `./gradlew :backend:plugin:build` on a contract bump.
+- **Contract 2.0 (alpha) and catalog references**: the client is `2.0.0-alpha.5`, and a 2.x client
+  sends the v2 media type, which every 1.x Suite refuses (406/415) — so this build needs a Suite
+  serving 2.0, and none is released yet (point compose's `EPISTOLA_SUITE_IMAGE` at a `release/2.0`
+  build). A catalog is named `registry/namespace/key` (`CatalogRef`); a process link's `catalogId`
+  saved against 1.x is the bare key and is resolved by listing the tenant's catalogs
+  (`EpistolaServiceImpl.findCatalog`): of several with that key, `local/<tenant key padded to 3>/<key>`,
+  which is what the Suite's 2.0 upgrade names a tenant's own catalogs (`CatalogRef.select`), else 409. The admin usage overview flags a bare key with what it resolves to, and the catalog sync names
+  a pre-v8 bundled catalog the same way by default, so it lands on the migrated catalog. Every `EpistolaService`
+  method still takes that one `catalogId` string — don't thread registry/namespace through callers.
+  Reads go through a **release**; there is no "latest" alias in the path. With an environment
+  (the configurator's `environmentId`, else the configuration's `defaultEnvironmentId`;
+  `anyEnvironment=true` for an expression) catalogs are what `listEnvironmentDeployments` serves and
+  the release is its deployed draft, else its highest deployed release (`ReleaseVersions`) —
+  dependencies are used by an environment without being deployed, so they are not offered. Without
+  one, every catalog, read from the highest release, else the newest draft; the contract cannot
+  tell a dependency-only catalog apart there. A generate link's `versionRange` (plain text, not
+  JSONata: the configurator reads the template through it) selects the highest released release
+  that satisfies it, of those deployed when there is an environment, never a draft. Generation and
+  preview send it for the server to resolve; reads resolve it in the plugin (`VersionRanges`,
+  `/releases`). semver4j's default parser also accepts Ivy ranges and `latest`, which the contract
+  does not: `VersionRanges` restricts it to npm's processors and refuses a range semver4j would
+  silently read as matching nothing. Statuses arrive lowercase (`in-progress`) and are normalised to the
+  1.x form on process variables (`GenerationJobStatus.normalize`), because BPMN gateways compare
+  against `COMPLETED`. Resource addresses are `key` everywhere; `id`/`slug` are gone.
+  `oldestSupportedServerTest` runs the mock-server test against the pinned alpha until a Suite
+  floor exists; it is part of `check`/`build`, not `test`.
 - **Plugin properties**: Backend `@PluginProperty` keys must match frontend field names exactly
 - **Translations**: Add both `nl` and `en` translations in `epistola.specification.ts`
 - **Letter composer** (`epistola-letter-composer`, **alpha**): pick a letter from a configured

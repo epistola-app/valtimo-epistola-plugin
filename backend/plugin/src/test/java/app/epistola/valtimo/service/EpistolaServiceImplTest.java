@@ -18,6 +18,8 @@
 package app.epistola.valtimo.service;
 
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
+import app.epistola.valtimo.domain.CatalogInfo;
+import app.epistola.valtimo.domain.CatalogReleases;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
@@ -50,34 +52,76 @@ import static org.junit.jupiter.api.Assertions.*;
  * {@code test} runs this against the contract the plugin pins. {@code oldestSupportedServerTest}
  * runs it again against the oldest contract a supported Epistola Suite serves, because the client
  * must keep reading an older server's responses: contract 1.3.0's client could not, having made a
- * field that older servers never send required.
+ * field that older servers never send required. Since contract 2.0 that is a 2.x contract: a 2.x
+ * client sends the v2 media type, which a 1.x server refuses.
+ * <p>
+ * The catalog is named by its bare key, as a process link saved against contract 1.x names it, so
+ * every read here also resolves it among the tenant's catalogs; {@link #getCatalogs_namesEachCatalogInFull}
+ * covers the qualified form.
  */
 @Testcontainers
 class EpistolaServiceImplTest {
 
-    private static final String MOCK_SERVER_VERSION = System.getProperty("epistola.mock-server.version", "1.4.0");
+    private static final String MOCK_SERVER_VERSION = System.getProperty("epistola.mock-server.version", "2.0.0-alpha.3");
 
     @Container
     private static final GenericContainer<?> MOCK_SERVER = new GenericContainer<>(
             "ghcr.io/epistola-app/epistola-contract/mock-server:" + MOCK_SERVER_VERSION
     )
             .withExposedPorts(4010)
-            .waitingFor(Wait.forHttp("/tenants/test/catalogs/default/templates")
+            .waitingFor(Wait.forHttp("/tenants/test/catalogs")
                     .forStatusCode(200)
-                    .withHeader("X-API-Key", "test"));
+                    .withHeader("Authorization", "ApiKey test")
+                    .withHeader("Accept", "application/vnd.epistola.v2+json"));
 
     private static EpistolaServiceImpl service;
     private static String baseUrl;
 
     private static final String API_KEY = "test-api-key";
     private static final String TENANT_ID = "test-tenant";
-    private static final String CATALOG_ID = "default";
+    /** The catalog the mock server lists, by its key alone. */
+    private static final String CATALOG_ID = "letters";
 
     @BeforeAll
     static void setUp() {
         baseUrl = "http://" + MOCK_SERVER.getHost() + ":" + MOCK_SERVER.getMappedPort(4010);
         EpistolaApiClientFactory factory = new EpistolaApiClientFactory();
         service = new EpistolaServiceImpl(factory);
+    }
+
+    @Test
+    void getCatalogs_namesEachCatalogInFull() {
+        List<CatalogInfo> catalogs = service.getCatalogs(baseUrl, API_KEY, TENANT_ID);
+
+        assertFalse(catalogs.isEmpty());
+        CatalogInfo first = catalogs.get(0);
+        assertEquals(first.registry() + "/" + first.namespace() + "/" + first.key(), first.id());
+        // The id is what a configurator stores, so it must read back as the same catalog.
+        assertFalse(service.getTemplates(baseUrl, API_KEY, TENANT_ID, first.id()).isEmpty());
+    }
+
+    @Test
+    void getCatalogs_inAnEnvironment_offersWhatIsDeployedThere() {
+        // The contract's examples deploy the one catalog it lists, so the environment offers it.
+        List<CatalogInfo> catalogs = service.getCatalogs(baseUrl, API_KEY, TENANT_ID, "production");
+
+        assertFalse(catalogs.isEmpty());
+        // Read from the release the environment serves, by the id its deployment names.
+        assertFalse(service.getTemplates(baseUrl, API_KEY, TENANT_ID, catalogs.get(0).id(), "production", null).isEmpty());
+    }
+
+    @Test
+    void getReleases_offersTheReleasedVersions_andAPinnedOneReadsBack() {
+        List<CatalogInfo> catalogs = service.getCatalogs(baseUrl, API_KEY, TENANT_ID);
+        String catalog = catalogs.get(0).id();
+
+        CatalogReleases releases = service.getReleases(baseUrl, API_KEY, TENANT_ID, catalog, null, null);
+
+        assertFalse(releases.versions().isEmpty());
+        String pinned = releases.versions().get(0);
+        assertEquals(pinned, service.getReleases(baseUrl, API_KEY, TENANT_ID, catalog, null, pinned).selected());
+        // Read from the pinned release, by its version in the path.
+        assertFalse(service.getTemplates(baseUrl, API_KEY, TENANT_ID, catalog, null, pinned).isEmpty());
     }
 
     @Test
@@ -158,6 +202,7 @@ class EpistolaServiceImplTest {
                 variantId,
                 null,  // no variant attributes when using explicit variantId
                 "production",
+                "^1.0.0", // validated by the mock server against the contract's request schema
                 Map.of("customer", Map.of("name", "Test Customer", "email", "test@example.com")),
                 FileFormat.PDF,
                 "invoice-001.pdf",

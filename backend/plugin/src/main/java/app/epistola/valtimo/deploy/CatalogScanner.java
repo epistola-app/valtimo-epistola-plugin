@@ -35,7 +35,9 @@ import java.util.List;
  * Catalogs are expected at:
  * {@code config/epistola/catalogs/{slug}/catalog.json}
  * <p>
- * Each {@code catalog.json} must contain at least {@code catalog.slug} and {@code release.version}.
+ * Each {@code catalog.json} must contain at least the catalog's key and {@code release.version}. The
+ * key is {@code catalog.key} from catalog wire v8 on, and {@code catalog.slug} before it; both are
+ * read. A v8 manifest also names its catalog's {@code catalog.registry} and {@code catalog.namespace}.
  */
 @Slf4j
 public class CatalogScanner {
@@ -49,13 +51,31 @@ public class CatalogScanner {
     }
 
     /**
-     * A catalog found on the classpath, with its slug, version, and base path for resource loading.
+     * A catalog found on the classpath, with its key, version, and base path for resource loading.
      *
-     * @param slug     The catalog slug from catalog.json (e.g. "valtimo-demo")
-     * @param version  The release version from catalog.json (e.g. "1.0.0")
-     * @param basePath The classpath directory containing the catalog (e.g. "config/epistola/catalogs/valtimo-demo")
+     * @param slug      The catalog key from catalog.json (e.g. "valtimo-demo"); named slug for the
+     *                  admin API, which keeps the name
+     * @param version   The release version from catalog.json (e.g. "1.0.0")
+     * @param basePath  The classpath directory containing the catalog (e.g. "config/epistola/catalogs/valtimo-demo")
+     * @param registry  The registry a wire v8 manifest names; {@code null} before v8
+     * @param namespace The namespace a wire v8 manifest names; {@code null} before v8
      */
-    public record CatalogOnClasspath(String slug, String version, String basePath) {}
+    public record CatalogOnClasspath(String slug, String version, String basePath, String registry, String namespace) {
+
+        /** A catalog whose manifest predates wire v8, and so names no registry or namespace. */
+        public CatalogOnClasspath(String slug, String version, String basePath) {
+            this(slug, version, basePath, null, null);
+        }
+
+        /** Whether the manifest names its own registry and namespace (catalog wire v8). */
+        public boolean isNamed() {
+            return registry != null && namespace != null;
+        }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
+    }
 
     /**
      * Scan the classpath for catalog.json files and extract metadata.
@@ -78,11 +98,16 @@ public class CatalogScanner {
             try (InputStream is = resource.getInputStream()) {
                 JsonNode root = objectMapper.readTree(is);
 
-                String slug = extractString(root, "catalog", "slug");
+                String slug = extractString(root, "catalog", "key");
+                if (slug == null || slug.isBlank()) {
+                    slug = extractString(root, "catalog", "slug");
+                }
                 String version = extractString(root, "release", "version");
+                String registry = extractString(root, "catalog", "registry");
+                String namespace = extractString(root, "catalog", "namespace");
 
                 if (slug == null || slug.isBlank()) {
-                    log.warn("Skipping catalog without catalog.slug: {}", resource.getDescription());
+                    log.warn("Skipping catalog without catalog.key or catalog.slug: {}", resource.getDescription());
                     continue;
                 }
                 if (version == null || version.isBlank()) {
@@ -100,7 +125,7 @@ public class CatalogScanner {
                     continue;
                 }
 
-                catalogs.add(new CatalogOnClasspath(slug, version, basePath));
+                catalogs.add(new CatalogOnClasspath(slug, version, basePath, blankToNull(registry), blankToNull(namespace)));
                 log.debug("Found catalog on classpath: slug={}, version={}, basePath={}", slug, version, basePath);
             } catch (IOException e) {
                 log.warn("Failed to parse catalog.json from {}: {}", resource.getDescription(), e.getMessage());

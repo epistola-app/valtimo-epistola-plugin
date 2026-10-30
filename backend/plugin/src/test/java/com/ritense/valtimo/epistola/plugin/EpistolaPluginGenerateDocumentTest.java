@@ -92,7 +92,7 @@ class EpistolaPluginGenerateDocumentTest {
         });
         when(epistolaService.submitGenerationJob(
                 anyString(), anyString(), anyString(), anyString(), anyString(),
-                isNull(), isNull(), any(), anyMap(), eq(FileFormat.PDF), anyString(), isNull(), isNull()))
+                isNull(), isNull(), any(), any(), anyMap(), eq(FileFormat.PDF), anyString(), isNull(), isNull()))
                 .thenReturn(GenerationJobResult.builder().requestId("request-1").status("PENDING").build());
     }
 
@@ -103,6 +103,7 @@ class EpistolaPluginGenerateDocumentTest {
                 null,
                 "catalog",
                 "template",
+                null,
                 null,
                 null,
                 null,
@@ -131,6 +132,7 @@ class EpistolaPluginGenerateDocumentTest {
                 null,
                 null,
                 "$pv.environmentId",
+                null,
                 "{}",
                 "PDF",
                 "document.pdf",
@@ -139,7 +141,33 @@ class EpistolaPluginGenerateDocumentTest {
 
         verify(epistolaService).submitGenerationJob(
                 eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), eq("catalog"), eq("template"),
-                isNull(), isNull(), eq("production"), anyMap(), eq(FileFormat.PDF),
+                isNull(), isNull(), eq("production"), any(), anyMap(), eq(FileFormat.PDF),
+                eq("document.pdf"), isNull(), isNull());
+    }
+
+    @Test
+    void generateDocumentRendersTheReleaseItsVersionRangeSelects() {
+        stubSuccessfulGeneration("production");
+
+        plugin().generateDocument(
+                execution,
+                null,
+                "catalog",
+                "template",
+                null,
+                null,
+                null,
+                " ^1.4.0 ",
+                "{}",
+                "PDF",
+                "document.pdf",
+                null,
+                "epistolaResult");
+
+        // Sent as written: the server picks the release, among what the environment serves.
+        verify(epistolaService).submitGenerationJob(
+                eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), eq("catalog"), eq("template"),
+                isNull(), isNull(), eq("default"), eq("^1.4.0"), anyMap(), eq(FileFormat.PDF),
                 eq("document.pdf"), isNull(), isNull());
     }
 
@@ -155,6 +183,7 @@ class EpistolaPluginGenerateDocumentTest {
                 null,
                 null,
                 "$doc.environmentId",
+                null,
                 "{}",
                 "PDF",
                 "document.pdf",
@@ -163,7 +192,7 @@ class EpistolaPluginGenerateDocumentTest {
 
         verify(epistolaService).submitGenerationJob(
                 eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), eq("catalog"), eq("template"),
-                isNull(), isNull(), eq("default"), anyMap(), eq(FileFormat.PDF),
+                isNull(), isNull(), eq("default"), any(), anyMap(), eq(FileFormat.PDF),
                 eq("document.pdf"), isNull(), isNull());
     }
 
@@ -179,6 +208,7 @@ class EpistolaPluginGenerateDocumentTest {
                 null,
                 null,
                 null,
+                null,
                 "{}",
                 "PDF",
                 "template-segment.pdf",
@@ -187,7 +217,7 @@ class EpistolaPluginGenerateDocumentTest {
 
         verify(epistolaService).submitGenerationJob(
                 eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), eq("catalog"), eq("template"),
-                isNull(), isNull(), eq("default"), anyMap(), eq(FileFormat.PDF),
+                isNull(), isNull(), eq("default"), any(), anyMap(), eq(FileFormat.PDF),
                 eq("template-segment.pdf"), isNull(), isNull());
     }
 
@@ -205,7 +235,7 @@ class EpistolaPluginGenerateDocumentTest {
         });
         when(epistolaService.submitGenerationJob(
                 anyString(), anyString(), anyString(), anyString(), anyString(),
-                isNull(), isNull(), any(), anyMap(), eq(FileFormat.PDF), anyString(),
+                isNull(), isNull(), any(), any(), anyMap(), eq(FileFormat.PDF), anyString(),
                 eq("request-123"), isNull()))
                 .thenReturn(GenerationJobResult.builder().requestId("request-1").status("PENDING").build());
 
@@ -217,6 +247,7 @@ class EpistolaPluginGenerateDocumentTest {
                 null,
                 null,
                 null,
+                null,
                 "{}",
                 "\"PDF\"",
                 "\"document.pdf\"",
@@ -225,7 +256,7 @@ class EpistolaPluginGenerateDocumentTest {
 
         verify(epistolaService).submitGenerationJob(
                 eq(BASE_URL), eq(API_KEY), eq(TENANT_ID), eq("catalog"), eq("template"),
-                isNull(), isNull(), eq("default"), anyMap(), eq(FileFormat.PDF),
+                isNull(), isNull(), eq("default"), any(), anyMap(), eq(FileFormat.PDF),
                 eq("document.pdf"), eq("request-123"), isNull());
     }
 
@@ -242,6 +273,7 @@ class EpistolaPluginGenerateDocumentTest {
                 1,
                 "catalog",
                 "template",
+                null,
                 null,
                 null,
                 null,

@@ -69,8 +69,7 @@ public class EpistolaCatalogSyncTrigger {
                             config.getId().toString(),
                             plugin.getBaseUrl(),
                             plugin.getApiKey(),
-                            plugin.getTenantId(),
-                            "AUTHORED"
+                            plugin.getTenantId()
                     );
 
                     if (result.totalCatalogs() == 0) {

@@ -13,7 +13,7 @@ when the JVM starts, when a job is submitted, and when a result arrives.
 | Class                               | Role                                                                                       |
 | ----------------------------------- | ------------------------------------------------------------------------------------------ |
 | `EpistolaPluginAutoConfiguration`   | Wires the singletons.                                                                      |
-| `EpistolaApiClientFactory`          | Builds Spring `RestClient`s with `X-API-Key` + `ClientIdentity` interceptor.               |
+| `EpistolaApiClientFactory`          | Builds Spring `RestClient`s with `Authorization: ApiKey` + `ClientIdentity` interceptor.   |
 | `EpistolaResultCollectorRunner`     | The single managed bean — owns all running collectors and the reconcile loop.              |
 | `ResultCollector` (contract helper) | One per active plugin configuration; runs the actual NDJSON poll loop on a virtual thread. |
 | `EpistolaPlugin#generateDocument`   | Plugin action invoked by BPMN service tasks; submits the generation.                       |
@@ -55,7 +55,7 @@ reconcile()                                         ← synchronized (safe acros
 `startCollector(...)`:
 
 1. `apiClientFactory.createRestClient(baseUrl, apiKey)` — produces a `RestClient`
-   pre-wired with the `X-API-Key` header and the `ClientIdentity` interceptor
+   pre-wired with the `Authorization: ApiKey` header and the `ClientIdentity` interceptor
    (`User-Agent: epistola-contract/<ver> valtimo-epistola-plugin/<ver>` and
    `X-EP-Node-Id`).
 2. Build a `ResultCollector` via the contract helper's builder. Pass our

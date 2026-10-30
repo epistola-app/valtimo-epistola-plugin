@@ -106,16 +106,36 @@ export interface VariantInfo {
  */
 export interface AttributeDefinition {
   key: string;
-  description?: string;
+  name?: string;
 }
 
 /**
  * Information about an Epistola catalog.
+ *
+ * `id` is what a process link stores: `registry/namespace/key` (contract 2.0 names a catalog by all
+ * three). A link saved against contract 1.x holds only the key; see `matchCatalogId`.
  */
 export interface CatalogInfo {
   id: string;
   name: string;
-  type: string;
+  registry: string;
+  namespace: string;
+  key: string;
+  editable: boolean;
+}
+
+/**
+ * The released versions of a catalog a process link may pin, and the one it renders.
+ *
+ * Mirrors `CatalogReleases` on the backend.
+ */
+export interface CatalogReleases {
+  /** Released versions, highest first: in an environment, those deployed to it. */
+  versions: string[];
+  /** The version the link renders with its range, or `null` when none satisfies it. */
+  selected: string | null;
+  /** True when, without a range, the environment renders the catalog's deployed draft. */
+  draft: boolean;
 }
 
 /**

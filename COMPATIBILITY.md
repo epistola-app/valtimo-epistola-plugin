@@ -43,12 +43,13 @@ bundled classpath catalogs it imports carry a catalog **wire `schemaVersion`**, 
 gates imports against its own `[baseline, current]` window. A catalog below the suite's baseline
 is rejected with RFC-9457 `400 catalog-schema-too-old`.
 
-| Plugin build | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema | Compatible Epistola Suite        |
-| ------------ | --------------------------------------------- | --------------------------- | -------------------------------- |
-| 0.21.0       | `1.4.0`                                       | `4`                         | `>= 1.0.0`                       |
-| 0.20.0       | `1.3.1`                                       | `4`                         | `>= 1.0.0`                       |
-| 0.12.0       | `0.8.0`                                       | `4`                         | `>= 0.26.0`                      |
-| ≤ 0.11.x     | `0.6.0`                                       | `2`                         | `<= 0.25.x` (broken on ≥ 0.26.0) |
+| Plugin build  | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema           | Compatible Epistola Suite          |
+| ------------- | --------------------------------------------- | ------------------------------------- | ---------------------------------- |
+| 1.0.0-alpha.1 | `2.0.0-alpha.5`                               | `4` (imported under `local/<tenant>`) | Suite 2.0 (unreleased); **no 1.x** |
+| 0.21.0        | `1.4.0`                                       | `4`                                   | `>= 1.0.0`                         |
+| 0.20.0        | `1.3.1`                                       | `4`                                   | `>= 1.0.0`                         |
+| 0.12.0        | `0.8.0`                                       | `4`                                   | `>= 0.26.0`                        |
+| ≤ 0.11.x      | `0.6.0`                                       | `2`                                   | `<= 0.25.x` (broken on ≥ 0.26.0)   |
 
 Notes:
 
@@ -67,6 +68,23 @@ Notes:
   than `1.3.0`; this plugin skips it for `1.3.1`, which makes the field optional. The floor is
   guarded by `oldestSupportedServerTest`, which runs the mock-server integration test against
   contract `0.16.1` — the one Epistola Suite `1.0.0` serves. Raise it with the Suite floor.
+- Contract **`2.0` is a break on the API, not on the wire floor.** The media type carries the major
+  (`application/vnd.epistola.v2+json`), so a 2.x client is refused by every 1.x Suite with 406/415
+  and there is no mixed range: the Suite floor _is_ the first Suite serving 2.0. While 2.0 is in
+  alpha that is no released Suite at all, and `oldestSupportedServerTest` runs against the pinned
+  alpha (`2.0.0-alpha.5`) itself; an alpha changes in place, so the admin page warns on any other
+  pre-release. The catalog wire baseline is still `4` (`CatalogSchemaMigrator.BASELINE_VERSION`),
+  so the bundled catalogs stay at wire 4 and the Suite migrates them to v8 on import, which needs
+  a registry and namespace the v4 manifest does not have: the plugin sends
+  `epistola.catalog-sync.registry`/`namespace` (default `local` and the tenant key padded to 3
+  characters, which is what the Suite's 2.0 upgrade names the catalogs a tenant had; `local` needs
+  no namespace grant). Verified against the contract's mock server only: no Suite 2.0 image is
+  published yet, so the Suite's v4→v8 import of these catalogs is still to be exercised.
+- Stored process links survive 2.0 by lookup, not by migration: their `catalogId` is the 1.x key,
+  and the plugin resolves it among the tenant's catalogs (`EpistolaServiceImpl.findCatalog`). Of
+  several with that key it takes `local/<tenant key>/<key>`, the name the Suite's 2.0 upgrade gives
+  a tenant's own catalog (`CatalogRef.select`), and refuses the key without it. New links store
+  `registry/namespace/key` (`CatalogRef`).
 - Contract `1.4.0` is **additive on both counts**: its new problem type
   (`template-data-invalid`, with `missingFields`/`invalidFields`), its `validateTemplateData`
   operation and its new schemas are all optional, and its catalog change only _loosens_ the

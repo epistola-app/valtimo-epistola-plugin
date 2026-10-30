@@ -25,5 +25,27 @@ public enum GenerationJobStatus {
     IN_PROGRESS,
     COMPLETED,
     FAILED,
-    CANCELLED
+    CANCELLED;
+
+    /**
+     * Read a status as Epistola sends it. Contract 2.0 sends lowercase kebab-case
+     * ({@code in-progress}); 1.x sent the constant's name ({@code IN_PROGRESS}). Both are read.
+     *
+     * @throws IllegalArgumentException for a status this plugin does not know
+     */
+    public static GenerationJobStatus fromApi(String status) {
+        return valueOf(normalize(status));
+    }
+
+    /**
+     * The status as the plugin writes it onto process variables: always the 1.x form
+     * ({@code COMPLETED}), whatever the server sent, so the BPMN gateways installers have written
+     * against it keep matching. An unknown status is normalised the same way rather than refused.
+     */
+    public static String normalize(String status) {
+        if (status == null) {
+            return null;
+        }
+        return status.trim().replace('-', '_').toUpperCase(java.util.Locale.ROOT);
+    }
 }

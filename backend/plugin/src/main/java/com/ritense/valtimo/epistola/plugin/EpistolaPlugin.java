@@ -255,6 +255,9 @@ public class EpistolaPlugin {
      *                              Expression values can use the JSONata context ($doc, $pv, $case).
      * @param environmentId         The environment ID or JSONata expression (optional, uses plugin default
      *                              when not specified or when the expression resolves to null/blank)
+     * @param versionRange          The release of the catalog to render, as a version range such as
+     *                              {@code 1.4.0} or {@code ^1.4.0} (optional — omitted, the
+     *                              environment's draft, else the highest release it serves)
      * @param dataMapping           JSONata expression that produces the template data payload.
      *                              Has access to $doc (document data), $pv (process variables), $case (case data).
      * @param outputFormat          The output-format value in v0 or JSONata expression in v1.
@@ -277,6 +280,7 @@ public class EpistolaPlugin {
             @PluginActionProperty String variantId,
             @PluginActionProperty List<Map<String, Object>> variantAttributes,
             @PluginActionProperty String environmentId,
+            @PluginActionProperty String versionRange,
             @PluginActionProperty String dataMapping,
             @PluginActionProperty String outputFormat,
             @PluginActionProperty String filename,
@@ -291,6 +295,7 @@ public class EpistolaPlugin {
                         variantId,
                         variantAttributes,
                         environmentId,
+                        versionRange,
                         dataMapping,
                         outputFormat,
                         filename,
@@ -381,10 +386,9 @@ public class EpistolaPlugin {
         // Build variant selection attributes, resolving each value as a JSONata expression
         List<VariantSelectionAttribute> resolvedAttributes = hasAttributes
                 ? actionConfig.variantAttributes().stream()
-                        .map(attr -> new VariantSelectionAttribute(
+                        .map(attr -> variantSelectionAttribute(
                                 attr.key(),
                                 attr.value().resolve(jsonataMappingService, scalarEvalContext),
-                                null,
                                 attr.required()))
                         .toList()
                 : null;
@@ -397,6 +401,7 @@ public class EpistolaPlugin {
                         resolvedVariantId,
                         resolvedAttributes,
                         effectiveEnvironmentId,
+                        actionConfig.versionRange(),
                         resolvedData,
                         effectiveOutputFormat,
                         resolvedFilename,
@@ -460,6 +465,7 @@ public class EpistolaPlugin {
                         null,
                         null,
                         defaultEnvironmentId,
+                        null, // the composer pins no release yet: the environment's, as before
                         letter.data(),
                         FileFormat.PDF,
                         resolvedFilename,
@@ -481,6 +487,7 @@ public class EpistolaPlugin {
      * @param variantId          Explicit variant, or null
      * @param variantAttributes  Attribute-based variant selection, or null
      * @param environmentId      Environment to render in
+     * @param versionRange       Release of the catalog to render, as a version range, or null
      * @param data               The template data
      * @param outputFormat       The file format (PDF)
      * @param filename           Filename for the generated document
@@ -493,6 +500,7 @@ public class EpistolaPlugin {
             String variantId,
             List<VariantSelectionAttribute> variantAttributes,
             String environmentId,
+            String versionRange,
             Map<String, Object> data,
             FileFormat outputFormat,
             String filename,
@@ -526,6 +534,7 @@ public class EpistolaPlugin {
                     request.variantId(),
                     request.variantAttributes(),
                     request.environmentId(),
+                    request.versionRange(),
                     request.data(),
                     request.outputFormat(),
                     request.filename(),
@@ -768,4 +777,18 @@ public class EpistolaPlugin {
                 .build();
     }
 
+
+    /**
+     * An attribute criterion as contract 2.0 takes it. Contract 1.4 also accepted the attribute of
+     * another catalog as a dotted key, {@code <catalog>.<key>} ({@code system.locale}), and process
+     * links saved then may hold one; 2.0 refuses a dotted key and names the catalog in a member of
+     * its own, so the two are split here. A key without a dot is the template's own catalog's.
+     */
+    static VariantSelectionAttribute variantSelectionAttribute(String key, String value, Boolean required) {
+        int dot = key.indexOf('.');
+        if (dot > 0 && dot < key.length() - 1) {
+            return new VariantSelectionAttribute(key.substring(dot + 1), value, key.substring(0, dot), required);
+        }
+        return new VariantSelectionAttribute(key, value, null, required);
+    }
 }

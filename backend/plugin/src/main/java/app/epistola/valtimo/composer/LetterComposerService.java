@@ -208,6 +208,7 @@ public class LetterComposerService {
                     templateId,
                     null,
                     plugin.getDefaultEnvironmentId(),
+                    null, // the composer pins no release yet
                     data == null ? Map.of() : data);
         } catch (RuntimeException e) {
             throw new ComposerException(ComposerException.Reason.RENDER_FAILED,
@@ -314,12 +315,15 @@ public class LetterComposerService {
             String templateId
     ) {
         EpistolaPlugin plugin = plugin(configuration);
+        // Read from what the default environment serves, which is where the composer renders.
         return epistolaService.getTemplateDetails(
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
                 catalogId,
-                templateId);
+                templateId,
+                plugin.getDefaultEnvironmentId(),
+                null);
     }
 
     private EpistolaPlugin plugin(LetterComposerConfiguration configuration) {

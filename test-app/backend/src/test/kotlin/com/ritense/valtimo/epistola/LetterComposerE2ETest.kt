@@ -22,6 +22,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.verify
@@ -88,7 +89,7 @@ class LetterComposerE2ETest {
     fun stubTemplateContracts() {
         TEMPLATES.forEach { templateId ->
             whenever(
-                epistolaService.getTemplateDetails(any(), any(), any(), eq(CATALOG), eq(templateId)),
+                epistolaService.getTemplateDetails(any(), any(), any(), eq(CATALOG), eq(templateId), anyOrNull(), anyOrNull()),
             ).thenReturn(bundledTemplateDetails(templateId))
         }
         whenever(
@@ -98,6 +99,7 @@ class LetterComposerE2ETest {
                 any(),
                 any(),
                 any(),
+                anyOrNull(),
                 anyOrNull(),
                 anyOrNull(),
                 anyOrNull(),
@@ -195,6 +197,7 @@ class LetterComposerE2ETest {
             any(),
             eq(CATALOG),
             eq(DECISION),
+            anyOrNull(),
             anyOrNull(),
             anyOrNull(),
             anyOrNull(),
