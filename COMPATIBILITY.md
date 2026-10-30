@@ -43,13 +43,13 @@ bundled classpath catalogs it imports carry a catalog **wire `schemaVersion`**, 
 gates imports against its own `[baseline, current]` window. A catalog below the suite's baseline
 is rejected with RFC-9457 `400 catalog-schema-too-old`.
 
-| Plugin build | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema           | Compatible Epistola Suite          |
-| ------------ | --------------------------------------------- | ------------------------------------- | ---------------------------------- |
-| Unreleased   | `2.0.0-alpha.5`                               | `4` (imported under `local/<tenant>`) | Suite 2.0 (unreleased); **no 1.x** |
-| 0.21.0       | `1.4.0`                                       | `4`                                   | `>= 1.0.0`                         |
-| 0.20.0       | `1.3.1`                                       | `4`                                   | `>= 1.0.0`                         |
-| 0.12.0       | `0.8.0`                                       | `4`                                   | `>= 0.26.0`                        |
-| ≤ 0.11.x     | `0.6.0`                                       | `2`                                   | `<= 0.25.x` (broken on ≥ 0.26.0)   |
+| Plugin build  | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema           | Compatible Epistola Suite          |
+| ------------- | --------------------------------------------- | ------------------------------------- | ---------------------------------- |
+| 1.0.0-alpha.1 | `2.0.0-alpha.5`                               | `4` (imported under `local/<tenant>`) | Suite 2.0 (unreleased); **no 1.x** |
+| 0.21.0        | `1.4.0`                                       | `4`                                   | `>= 1.0.0`                         |
+| 0.20.0        | `1.3.1`                                       | `4`                                   | `>= 1.0.0`                         |
+| 0.12.0        | `0.8.0`                                       | `4`                                   | `>= 0.26.0`                        |
+| ≤ 0.11.x      | `0.6.0`                                       | `2`                                   | `<= 0.25.x` (broken on ≥ 0.26.0)   |
 
 Notes:
 
