@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ci.yml` on Forgejo's runners. GitHub ignores the file, and on Forgejo it replaces the
   `.github/workflows` that were being started there (and failing) for every synced push.
 
+### Fixed
+
+- **The nightly browser suites run again.** GitHub's `ubuntu-latest` runner moved to Ubuntu 26.04,
+  which Playwright 1.58 refuses ("does not support chromium on ubuntu26.04-x64"), so every run
+  since 2026-10-28 failed while installing the browser. Playwright is now 1.64.1, which supports it.
+
 ## [0.21.0] - 2026-10-14
 
 ### Upgrading
