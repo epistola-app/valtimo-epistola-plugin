@@ -198,7 +198,7 @@ class EpistolaServiceImplRetryTest {
         ProblemDetailException serverProblem = new ProblemDetailException(
                 new ProblemDetail(
                         URI.create("https://epistola.app/errors/internal-error"),
-                        "Internal Server Error", 503, "Upstream unavailable", null, Map.of()),
+                        "Internal Server Error", 503, "Upstream unavailable", null, null, Map.of()),
                 List.of(),
                 Map.of(),
                 HttpStatus.SERVICE_UNAVAILABLE,
@@ -225,7 +225,7 @@ class EpistolaServiceImplRetryTest {
         ProblemDetailException clientProblem = new ProblemDetailException(
                 new ProblemDetail(
                         URI.create("https://epistola.app/errors/not-found"),
-                        "Not Found", 404, "No such job", null, Map.of()),
+                        "Not Found", 404, "No such job", null, null, Map.of()),
                 List.of(),
                 Map.of(),
                 HttpStatus.NOT_FOUND,

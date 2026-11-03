@@ -154,7 +154,7 @@ class EpistolaServiceImplNotFoundTest {
     private static ProblemDetailException notFound(String title) {
         return new ProblemDetailException(
                 new ProblemDetail(URI.create("https://epistola.app/errors/not-found"), title, 404,
-                        title + " for tenant " + TENANT, null, Map.of()),
+                        title + " for tenant " + TENANT, null, null, Map.of()),
                 List.of(),
                 Map.of(),
                 HttpStatus.NOT_FOUND,
