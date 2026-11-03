@@ -17,11 +17,11 @@
  */
 
 import {
-  CKEDITOR_LIST_STYLES,
-  CKEDITOR_LIST_STYLES_ID,
-  installCkEditorListStyles,
+  CKEDITOR_CONTENT_STYLES,
+  CKEDITOR_CONTENT_STYLES_ID,
+  installCkEditorContentStyles,
   type StyleHost,
-} from './ckeditor-list-styles';
+} from './ckeditor-content-styles';
 
 function fakeDocument() {
   const appended: { id: string; textContent: string | null }[] = [];
@@ -33,34 +33,46 @@ function fakeDocument() {
   return { host, appended };
 }
 
-describe('installCkEditorListStyles', () => {
-  it('adds the list styles to the page', () => {
+describe('installCkEditorContentStyles', () => {
+  it('adds the content styles to the page', () => {
     const { host, appended } = fakeDocument();
 
-    installCkEditorListStyles(host);
+    installCkEditorContentStyles(host);
 
-    expect(appended).toEqual([{ id: CKEDITOR_LIST_STYLES_ID, textContent: CKEDITOR_LIST_STYLES }]);
+    expect(appended).toEqual([
+      { id: CKEDITOR_CONTENT_STYLES_ID, textContent: CKEDITOR_CONTENT_STYLES },
+    ]);
   });
 
   it('adds them once, however often it is called', () => {
     const { host, appended } = fakeDocument();
 
-    installCkEditorListStyles(host);
-    installCkEditorListStyles(host);
+    installCkEditorContentStyles(host);
+    installCkEditorContentStyles(host);
 
     expect(appended).toHaveLength(1);
   });
 
   it('does nothing without a document', () => {
-    expect(() => installCkEditorListStyles(undefined)).not.toThrow();
+    expect(() => installCkEditorContentStyles(undefined)).not.toThrow();
+  });
+
+  it('restores what Carbon strips: list markers and italics', () => {
+    expect(CKEDITOR_CONTENT_STYLES).toContain('.ck-content ul { list-style: disc;');
+    expect(CKEDITOR_CONTENT_STYLES).toContain('.ck-content ol { list-style: decimal;');
+    expect(CKEDITOR_CONTENT_STYLES).toContain(
+      '.ck-content em, .ck-content i { font-style: italic; }',
+    );
   });
 
   it('touches only CKEditor content', () => {
-    const selectors = CKEDITOR_LIST_STYLES.split('}')
+    const selectors = CKEDITOR_CONTENT_STYLES.split('}')
       .map((rule) => rule.split('{')[0].trim())
       .filter(Boolean);
 
     expect(selectors.length).toBeGreaterThan(0);
-    selectors.forEach((selector) => expect(selector).toMatch(/^\.ck-content /));
+    selectors
+      .flatMap((selector) => selector.split(','))
+      .forEach((selector) => expect(selector.trim()).toMatch(/^\.ck-content /));
   });
 });

@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ci.yml` on Forgejo's runners. GitHub ignores the file, and on Forgejo it replaces the
   `.github/workflows` that were being started there (and failing) for every synced push.
 
+### Fixed
+
+- **Italic text shows as italic in a rich-text editor** (#214). Valtimo's global Carbon reset drops
+  `font-style` from `em` and `i`, so italics stood upright in CKEditor while the preview and the
+  letter showed them correctly. The plugin restores them inside `.ck-content` beside the list
+  markers it already restored, which also fixes Valtimo's own WYSIWYG text areas.
+
 ## [0.21.0] - 2026-10-14
 
 ### Upgrading
