@@ -66,7 +66,6 @@ jest.mock('../smart-expression-editor/smart-expression-editor.component', () => 
 import {
   environmentScopeOf,
   GenerateDocumentConfigurationComponent,
-  releaseHintOf,
 } from './generate-document-configuration.component';
 import { ANY_ENVIRONMENT } from '../../services';
 
@@ -805,51 +804,5 @@ describe('environmentScopeOf', () => {
 
   it('narrows nothing for an environment only known at run time', () => {
     expect(environmentScopeOf('$pv.environment')).toBe(ANY_ENVIRONMENT);
-  });
-});
-
-describe('releaseHintOf', () => {
-  const state = (range: string, data: object | null, error: string | null = null) => ({
-    range,
-    resource: { data: data as any, loading: false, error },
-  });
-
-  it('names the release a range selects', () => {
-    expect(
-      releaseHintOf(state('^1.0.0', { versions: ['1.9.0'], selected: '1.9.0', draft: false })),
-    ).toEqual({
-      key: 'versionRangeSelects',
-      version: '1.9.0',
-      problem: false,
-    });
-  });
-
-  it('warns when no release satisfies the range', () => {
-    expect(
-      releaseHintOf(state('^3.0.0', { versions: ['1.9.0'], selected: null, draft: false })),
-    ).toEqual({
-      key: 'versionRangeMatchesNothing',
-      problem: true,
-    });
-  });
-
-  it('without a range, says the environment renders its draft, else the highest release', () => {
-    expect(
-      releaseHintOf(state('', { versions: ['1.9.0'], selected: null, draft: true }))?.key,
-    ).toBe('versionRangeNoneDraft');
-    expect(
-      releaseHintOf(state('', { versions: ['1.9.0'], selected: '1.9.0', draft: false })),
-    ).toEqual({
-      key: 'versionRangeNoneHighest',
-      version: '1.9.0',
-      problem: false,
-    });
-  });
-
-  it('says nothing while loading, or when the lookup failed for another reason', () => {
-    expect(
-      releaseHintOf({ range: '1.0.0', resource: { data: null, loading: true, error: null } }),
-    ).toBeNull();
-    expect(releaseHintOf(state('1.0.0', null, 'Failed to load releases'))).toBeNull();
   });
 });

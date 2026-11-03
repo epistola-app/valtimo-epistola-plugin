@@ -175,6 +175,13 @@ docker/            # Docker compose for local dependencies
   - **A catalog belongs to the letter, not the set**: `letterSet.catalogId` is only the default,
     and `templates[].catalogId` overrides it. Use `configuration.catalogFor(templateId)` or the
     offered letter's own `catalogId()` — never `configuration.catalogId()`, which is the default.
+  - **So does a release; the environment belongs to the set.** `letterSet.environmentId` (else the
+    plugin's `defaultEnvironmentId`) is where every letter renders; `letterSet.versionRange` is a
+    range over the **set's catalog** and reaches only letters in it, `templates[].versionRange`
+    overrides it. The parser resolves both onto `OfferedTemplate.versionRange` and
+    `configuration.environmentOr(default)`; prepare returns them and the browser copies them onto the
+    letter variable, because `generate-dynamic-document` cannot consult the composer. Template
+    reads, preview and generation must all use the same pair (schema 3).
   - See [docs/letter-composer.md](docs/letter-composer.md) and
     [ADR 0006](docs/adr/0006-letter-composer-configuration.md).
 - **Rich text** ([docs/rich-text.md](docs/rich-text.md), [ADR 0008](docs/adr/0008-rich-text-inputs.md)):

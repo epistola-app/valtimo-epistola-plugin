@@ -83,6 +83,14 @@ import { FULL_SIMPLE_MAPPING_SUPPORT, supportsSimpleMapping } from '../../schema
 import { isBuilderCompatible } from '../../utils/jsonata-converter';
 import { catalogLabel, matchCatalogId, sortCatalogs } from '../../utils/catalog-ref';
 import { decodeJsonataStringLiteral } from '../../utils/jsonata-literal';
+import {
+  INVALID_RANGE,
+  loadReleases,
+  noReleases,
+  ReleaseHint,
+  releaseHintOf,
+  ReleasesState,
+} from '../../utils/release-hint';
 import { ANY_ENVIRONMENT, EnvironmentScope, EpistolaPluginService } from '../../services';
 import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
 import { ExpectedStructureComponent } from '../expected-structure/expected-structure.component';
@@ -754,26 +762,19 @@ export class GenerateDocumentConfigurationComponent
         takeUntil(this.destroy$),
         switchMap(([configurationId, catalogId, environment, range]) =>
           !catalogId
-            ? of<ReleasesState>({ range, resource: initialResource(null) })
-            : this.epistolaPluginService
-                .getReleases(configurationId, catalogId, environment, range)
-                .pipe(
-                  map(
-                    (releases): ReleasesState => ({ range, resource: successResource(releases) }),
+            ? of(noReleases(range))
+            : loadReleases(
+                (catalog, scope, versionRange) =>
+                  this.epistolaPluginService.getReleases(
+                    configurationId,
+                    catalog,
+                    scope,
+                    versionRange,
                   ),
-                  catchError((error: unknown) =>
-                    of<ReleasesState>({
-                      range,
-                      resource: errorResource<CatalogReleases | null>(
-                        null,
-                        (error as { status?: number } | null)?.status === 400
-                          ? INVALID_RANGE
-                          : 'Failed to load releases',
-                      ),
-                    }),
-                  ),
-                  startWith<ReleasesState>({ range, resource: loadingResource(null) }),
-                ),
+                catalogId,
+                environment,
+                range,
+              ),
         ),
       )
       .subscribe((state) => {
@@ -1060,44 +1061,6 @@ export function environmentScopeOf(expression: string | null | undefined): Envir
   if (!expression || !expression.trim()) return undefined;
   const literal = decodeJsonataStringLiteral(expression);
   return literal !== undefined && literal.trim() ? literal.trim() : ANY_ENVIRONMENT;
-}
-
-/** The error a release lookup reports for a range that is not one (the server answers 400). */
-const INVALID_RANGE = 'invalidRange';
-
-/** The catalog's releases as last loaded, with the range they were loaded for. */
-interface ReleasesState {
-  range: string;
-  resource: AsyncResource<CatalogReleases | null>;
-}
-
-/** What the version range field says the link renders: a translation key and the version it names. */
-export interface ReleaseHint {
-  key: string;
-  version?: string;
-  /** True when saving this would fail, or render nothing, at run time. */
-  problem: boolean;
-}
-
-/**
- * What a link with this range renders, as the field explains it: the release it selects, the
- * draft an environment serves, or why it renders nothing. Null while loading, and when a lookup
- * failed for another reason than the range itself (the template field reports that).
- */
-export function releaseHintOf(state: ReleasesState): ReleaseHint | null {
-  const { range, resource } = state;
-  if (resource.error === INVALID_RANGE) return { key: 'versionRangeInvalid', problem: true };
-  const releases = resource.data;
-  if (resource.loading || !releases) return null;
-  if (range) {
-    return releases.selected
-      ? { key: 'versionRangeSelects', version: releases.selected, problem: false }
-      : { key: 'versionRangeMatchesNothing', problem: true };
-  }
-  if (releases.draft) return { key: 'versionRangeNoneDraft', problem: false };
-  return releases.selected
-    ? { key: 'versionRangeNoneHighest', version: releases.selected, problem: false }
-    : null;
 }
 
 /**

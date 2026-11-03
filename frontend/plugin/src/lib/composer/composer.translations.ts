@@ -99,6 +99,17 @@ export const COMPOSER_TRANSLATIONS = {
     letterSetTemplateMissing:
       'Deze brieven staan nog in deze component, maar bestaan niet meer in de catalogus. Een medewerker die er een kiest, krijgt een foutmelding.',
     letterSetTemplateMissingDrop: 'Verwijderen uit de set',
+    letterSetEnvironment: 'Omgeving',
+    letterSetEnvironmentTooltip:
+      'Waar de brieven gegenereerd worden, en waaruit hun sjablonen gelezen worden. De catalogi hieronder zijn die in deze omgeving staan.',
+    letterSetEnvironmentDefault: '— standaardomgeving van de verbinding —',
+    letterSetCatalogNotInEnvironment:
+      'Deze catalogus staat niet in de gekozen omgeving. Rol hem daar uit in Epistola, of kies een andere omgeving of catalogus.',
+    letterSetVersionRangeTooltip:
+      'Welke release van de catalogus de brieven gebruiken. Een versie (1.4.0) zet hem vast; een bereik (^1.4.0) neemt de hoogste release die eraan voldoet. Leeg: de release die in de omgeving staat.',
+    letterSetTemplateVersionRange: 'Eigen release voor deze brief',
+    letterSetTemplateVersionRangeTooltip:
+      'Optioneel. Een versie of bereik alleen voor deze brief, in plaats van die van de set. Laat leeg om de release van de set te gebruiken.',
     letterSetConfigure: 'Instellen',
     letterSetConfigureClose: 'Sluiten',
     letterSetTemplateMapping: 'Eigen mapping voor deze brief',
@@ -178,6 +189,17 @@ export const COMPOSER_TRANSLATIONS = {
     letterSetTemplateMissing:
       'These letters are still configured here but no longer exist in the catalog. An employee who picks one gets an error.',
     letterSetTemplateMissingDrop: 'Remove from the set',
+    letterSetEnvironment: 'Environment',
+    letterSetEnvironmentTooltip:
+      'Where the letters are generated, and where their templates are read from. The catalogs below are those deployed to this environment.',
+    letterSetEnvironmentDefault: "— the connection's default environment —",
+    letterSetCatalogNotInEnvironment:
+      'This catalog is not deployed to the chosen environment. Deploy it there in Epistola, or choose another environment or catalog.',
+    letterSetVersionRangeTooltip:
+      'Which release of the catalog the letters use. A version (1.4.0) pins one; a range (^1.4.0) takes the highest release that satisfies it. Blank: the release deployed to the environment.',
+    letterSetTemplateVersionRange: 'Release for this letter',
+    letterSetTemplateVersionRangeTooltip:
+      "Optional. A version or range for this letter only, instead of the set's. Leave blank to use the set's release.",
     letterSetConfigure: 'Configure',
     letterSetConfigureClose: 'Close',
     letterSetTemplateMapping: 'Mapping for this letter only',
