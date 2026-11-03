@@ -49,6 +49,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   registered problem type for every status, a `forbidden` problem that names the permission it
   refused, a `code` on each field of a validation error, and a `help` link on a problem.
 
+### Fixed
+
+- **Italic text shows as italic in a rich-text editor** (#214). Valtimo's global Carbon reset drops
+  `font-style` from `em` and `i`, so italics stood upright in CKEditor while the preview and the
+  letter showed them correctly. The plugin restores them inside `.ck-content` beside the list
+  markers it already restored, which also fixes Valtimo's own WYSIWYG text areas.
+- **The nightly browser suites run again.** GitHub's `ubuntu-latest` runner moved to Ubuntu 26.04,
+  which Playwright 1.58 refuses ("does not support chromium on ubuntu26.04-x64"), so every run
+  since 2026-10-28 failed while installing the browser. Playwright is now 1.64.1, which supports it.
+
 ## [1.0.0-alpha.1] - 2026-10-30
 
 ### Upgrading
