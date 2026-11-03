@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Upgrading
+
+- **Give the plugin's Epistola API key `document-generator` beside `content-viewer`.** From contract
+  `2.0.0-beta.1`, reading a generated document (`DOCUMENT_VIEW`, which `download-document` needs)
+  is granted by `document-generator`, no longer by `content-viewer`. A key issued with both, which
+  the plugin already needed to read templates and generate, is unaffected.
+
+### Changed
+
+- **Epistola contract client `2.0.0-alpha.5` → `2.0.0-beta.1`** (`client-spring3-restclient`,
+  `epistola-catalog`, and the mock server in `docker/docker-compose.yml` and
+  `oldestSupportedServerTest`). Everything else between them is additive for the plugin: quality
+  profiles (templates and releases gain an optional `quality` binding), tenant search, a
+  registered problem type for every status, and a `forbidden` problem that names the permission
+  it refused.
+
 ## [1.0.0-alpha.1] - 2026-10-30
 
 ### Upgrading

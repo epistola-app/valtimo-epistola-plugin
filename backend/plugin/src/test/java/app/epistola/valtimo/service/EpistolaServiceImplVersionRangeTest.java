@@ -203,7 +203,7 @@ class EpistolaServiceImplVersionRangeTest {
         List<CatalogReleaseDto> releases = java.util.Arrays.stream(versions)
                 .map(version -> new CatalogReleaseDto(version, "rel-" + version, CatalogReleaseStatus.released,
                         List.of(), List.of(), List.of(), null, null, null, OffsetDateTime.now(), OffsetDateTime.now(),
-                        null, null, null, null, List.of()))
+                        null, null, null, null, List.of(), null))
                 .toList();
         when(catalogsApi.listCatalogReleases(eq(TENANT), eq("local"), eq("valtimo"), eq("brieven"),
                 eq(CatalogReleaseStatus.released), isNull(), anyInt(), anyInt()))
