@@ -182,11 +182,26 @@ ul { list-style: disc }` and so on, in `@valtimo/layout`. No rule in any publish
   without Valtimo's CSS shows bullets and nested circles.
 
 The plugin therefore restores them itself: at startup it adds a style element
-(`epistola-ckeditor-list-styles`, from `utils/ckeditor-list-styles.ts`) with Valtimo's text-widget
-rules scoped to `.ck-content`, CKEditor's content area, editable or read-only. Nothing outside an
-editor changes. It applies to every CKEditor in the host, Valtimo's own included, since they have the
-same defect, and it is skipped when the plugin is disabled (`EPISTOLA_ENABLED=false`). Remove it once
-Valtimo restores the markers itself.
+(`epistola-ckeditor-content-styles`, from `utils/ckeditor-content-styles.ts`) with Valtimo's
+text-widget rules scoped to `.ck-content`, CKEditor's content area, editable or read-only. Nothing
+outside an editor changes. It applies to every CKEditor in the host, Valtimo's own included, since
+they have the same defect, and it is skipped when the plugin is disabled (`EPISTOLA_ENABLED=false`).
+Remove it once Valtimo restores the markers itself.
+
+### Italics that stand upright in Valtimo
+
+The same reset lists `em` and `i` with `font: inherit`, which drops the browser's
+`font-style: italic`, so text made italic in CKEditor stood upright while typing; the preview and
+the letter showed it in italics (#214). Bold survives because a stylesheet loaded after the reset
+gives `strong` its weight back (it computes `700` in the editor); nothing does so for `em` or `i`.
+Of the rest of the toolbar, font colour is an inline style and a link is not drawn with `font`, so
+italics are the only other casualty. The same style element restores them,
+`.ck-content em, .ck-content i { font-style: italic; }`. Both tags are needed: Form.io's CKEditor
+writes `<i>`, and `em` arrives in HTML from elsewhere.
+
+Measured in the test-app's case form builder, on `assess-objection`'s `pv:motivation` (the plugin's
+own editor configuration), with text made italic through the toolbar: `font-style` computes
+`italic` with the style element and `normal` once it is removed from the page.
 
 ### In the demo
 
