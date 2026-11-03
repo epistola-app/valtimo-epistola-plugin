@@ -454,8 +454,10 @@ public class EpistolaPlugin {
                 ? null
                 : jsonataMappingService.evaluateScalar(scalarEvalContext.withExpression(correlationId));
 
-        log.debug("Generating composed letter from '{}': catalogId={}, templateId={}",
-                variableName, letter.catalogId(), letter.templateId());
+        log.debug("Generating composed letter from '{}': catalogId={}, templateId={}, environmentId={}, "
+                        + "versionRange={}",
+                variableName, letter.catalogId(), letter.templateId(), letter.environmentId(),
+                letter.versionRange());
 
         submitAndRecord(
                 execution,
@@ -464,8 +466,10 @@ public class EpistolaPlugin {
                         letter.templateId(),
                         null,
                         null,
-                        defaultEnvironmentId,
-                        null, // the composer pins no release yet: the environment's, as before
+                        // Where the letter was previewed: the composer writes both, and a letter
+                        // that names neither renders in the default environment, as before.
+                        letter.environmentId() != null ? letter.environmentId() : defaultEnvironmentId,
+                        letter.versionRange(),
                         letter.data(),
                         FileFormat.PDF,
                         resolvedFilename,

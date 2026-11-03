@@ -154,6 +154,46 @@ class EpistolaPluginGenerateComposedDocumentTest {
         assertThat(data.getValue()).containsEntry("naam", "Jansen");
     }
 
+    /**
+     * A letter renders where it was previewed: in the environment and release the composer wrote on
+     * it, not the plugin configuration's default. Nothing at generation time could look either up —
+     * the composer that chose the letter is not consulted — so the variable is the only place they
+     * can come from.
+     */
+    @Test
+    void rendersInTheEnvironmentAndReleaseTheLetterNames() {
+        composerWrote(Map.of(
+                "catalogId", "gemeente",
+                "templateId", "besluit-bezwaar",
+                "environmentId", "acceptatie",
+                "versionRange", "^1.4.0",
+                "data", Map.of("naam", "Jansen")));
+        when(execution.getBusinessKey()).thenReturn(java.util.UUID.randomUUID().toString());
+
+        plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
+
+        verify(epistolaService).submitGenerationJob(
+                eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
+                eq("gemeente"), eq("besluit-bezwaar"),
+                isNull(), isNull(), eq("acceptatie"), eq("^1.4.0"),
+                any(), eq(FileFormat.PDF), eq("besluit-bezwaar.pdf"), isNull(), any());
+    }
+
+    /** A letter naming neither renders as it always did: the default environment, no range. */
+    @Test
+    void aLetterNamingNeitherRendersInTheDefaultEnvironment() {
+        composerWrote(letter());
+        when(execution.getBusinessKey()).thenReturn(java.util.UUID.randomUUID().toString());
+
+        plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
+
+        verify(epistolaService).submitGenerationJob(
+                eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
+                eq("gemeente"), eq("besluit-bezwaar"),
+                isNull(), isNull(), eq("prod"), isNull(),
+                any(), eq(FileFormat.PDF), eq("besluit-bezwaar.pdf"), isNull(), any());
+    }
+
     @Test
     void recordsTheRefusalWhereTheProcessCanReadIt() {
         composerWrote(letter());

@@ -154,6 +154,34 @@ class RetryFormServiceTest {
                     .evaluate(any(app.epistola.valtimo.mapping.EvaluationContext.class));
         }
 
+        /** The fields to correct are those of the release that is generated, not the newest one. */
+        @Test
+        void readsTheFieldsOfTheReleaseTheDocumentRenders() {
+            mockProcessInstanceLookup(BUSINESS_KEY);
+            PluginProcessLink link = mockDynamicDocumentLink(ACTIVITY_ID, null);
+            mockProcessLinkServiceForActivity(PROCESS_DEFINITION_ID, ACTIVITY_ID, link);
+            mockPluginInstance(link);
+            mockTaskQueryReturnsEmpty();
+
+            when(runtimeService.getVariable(PROCESS_INSTANCE_ID, "epistolaLetter")).thenReturn(Map.of(
+                    "catalogId", CATALOG_ID,
+                    "templateId", TEMPLATE_ID,
+                    "environmentId", "acceptatie",
+                    "versionRange", "1.4.0",
+                    "data", Map.of("name", "Jansen")));
+            when(epistolaService.getTemplateDetails(
+                    BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, "acceptatie", "1.4.0"))
+                    .thenReturn(new TemplateDetails(TEMPLATE_ID, "Besluit", List.of()));
+            when(formioFormGenerator.generateForm(any(), any())).thenReturn(objectMapper.createObjectNode()
+                    .set("components", objectMapper.createArrayNode()));
+
+            assertThat(retryFormService.generateRetryForm(PROCESS_INSTANCE_ID, null, ACTIVITY_ID))
+                    .isNotNull();
+
+            verify(epistolaService).getTemplateDetails(
+                    BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, "acceptatie", "1.4.0");
+        }
+
         @Test
         void saysSoWhenTheDocumentIsNoLongerOnTheVariable() {
             mockProcessInstanceLookup(BUSINESS_KEY);

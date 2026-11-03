@@ -109,6 +109,11 @@ public class LetterComposerService {
      * @param data         What the baseline mapping produced for this case
      * @param form         A Formio form asking for the fields the mapping left empty
      * @param complete     True when the mapping filled everything and nothing has to be asked
+     * @param environmentId The environment the composer renders in, or null for the plugin
+     *                      configuration's default; the browser puts it on the letter, so generation
+     *                      renders where the preview did
+     * @param versionRange  The catalog release the letter renders, as a version range, or null for
+     *                      the one the environment renders; carried onto the letter the same way
      */
     public record PreparedLetter(
             String templateId,
@@ -116,8 +121,16 @@ public class LetterComposerService {
             String catalogId,
             Map<String, Object> data,
             ObjectNode form,
-            boolean complete
+            boolean complete,
+            String environmentId,
+            String versionRange
     ) {
+        /** A letter rendered in the default environment's release. */
+        public PreparedLetter(
+                String templateId, String label, String catalogId,
+                Map<String, Object> data, ObjectNode form, boolean complete) {
+            this(templateId, label, catalogId, data, form, complete, null, null);
+        }
     }
 
     /**
@@ -160,7 +173,7 @@ public class LetterComposerService {
 
         TemplateDetails template;
         try {
-            template = templateDetails(configuration, offered.catalogId(), templateId);
+            template = templateDetails(configuration, offered);
         } catch (ComposerException e) {
             throw e;
         } catch (RuntimeException e) {
@@ -184,7 +197,9 @@ public class LetterComposerService {
                 offered.catalogId(),
                 data,
                 form,
-                selection.complete());
+                selection.complete(),
+                configuration.environmentId(),
+                offered.versionRange());
     }
 
     /**
@@ -207,8 +222,8 @@ public class LetterComposerService {
                     resolved.letter().catalogId(),
                     templateId,
                     null,
-                    plugin.getDefaultEnvironmentId(),
-                    null, // the composer pins no release yet
+                    resolved.configuration().environmentOr(plugin.getDefaultEnvironmentId()),
+                    resolved.letter().versionRange(),
                     data == null ? Map.of() : data);
         } catch (RuntimeException e) {
             throw new ComposerException(ComposerException.Reason.RENDER_FAILED,
@@ -311,19 +326,19 @@ public class LetterComposerService {
 
     private TemplateDetails templateDetails(
             LetterComposerConfiguration configuration,
-            String catalogId,
-            String templateId
+            LetterComposerConfiguration.OfferedTemplate letter
     ) {
         EpistolaPlugin plugin = plugin(configuration);
-        // Read from what the default environment serves, which is where the composer renders.
+        // Read from the release the letter renders: the composer's environment and the letter's
+        // range, so the fields asked for are the fields of the template that is generated.
         return epistolaService.getTemplateDetails(
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
-                catalogId,
-                templateId,
-                plugin.getDefaultEnvironmentId(),
-                null);
+                letter.catalogId(),
+                letter.templateId(),
+                configuration.environmentOr(plugin.getDefaultEnvironmentId()),
+                letter.versionRange());
     }
 
     private EpistolaPlugin plugin(LetterComposerConfiguration configuration) {

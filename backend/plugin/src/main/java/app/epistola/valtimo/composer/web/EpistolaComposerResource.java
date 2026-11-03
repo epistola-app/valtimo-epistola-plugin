@@ -88,7 +88,10 @@ public class EpistolaComposerResource {
              * task form, where there is none. Sent back so the preview, which fires on every edit,
              * names the process instead of making the backend search for it again.
              */
-            String processDefinitionKey
+            String processDefinitionKey,
+            /** Where the letter renders: the browser puts both on the letter it hands to generation. */
+            String environmentId,
+            String versionRange
     ) {
         static PrepareResponse of(PreparedLetter letter) {
             return of(letter, null);
@@ -102,7 +105,9 @@ public class EpistolaComposerResource {
                     letter.data(),
                     letter.form(),
                     letter.complete(),
-                    processDefinitionKey);
+                    processDefinitionKey,
+                    letter.environmentId(),
+                    letter.versionRange());
         }
     }
 

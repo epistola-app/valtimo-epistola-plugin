@@ -52,8 +52,14 @@ public final class ComposerSchema {
      * editor's format ({@code {"$richText": {"format", "kind", "value"}}}, see
      * {@code RichTextValues}) rather than a bare string. An older plugin would send the tag to
      * Epistola as it is, which is why it must refuse the letter instead.
+     *
+     * <p>3 — a letter set names an environment ({@code letterSet.environmentId}) and a release of its
+     * catalog ({@code letterSet.versionRange}, or {@code templates[].versionRange} per letter), and a
+     * composed letter carries both ({@code environmentId}, {@code versionRange}). An older plugin
+     * would ignore them and render the default environment's release, which is a different letter
+     * than the one previewed.
      */
-    public static final int CURRENT = 2;
+    public static final int CURRENT = 3;
 
     /**
      * The version field on a <b>composed letter</b>, which lives in a process variable of its own.
