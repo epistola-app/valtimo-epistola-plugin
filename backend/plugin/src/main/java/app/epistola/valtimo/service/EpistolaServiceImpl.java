@@ -59,6 +59,8 @@ import app.epistola.client.model.VariantListResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
@@ -540,6 +542,13 @@ public class EpistolaServiceImpl implements EpistolaService {
      * (for example {@code version} / {@code baselineVersion} on {@code catalog-schema-too-old})
      * arrive already parsed; callers translate them and map the failure to a correct status
      * class. A non-problem error body keeps its status but carries no type or extensions.
+     * <p>
+     * Any other failure says what it was after the fallback message — a status and content type
+     * for an error that is no problem response (a proxy's error page reads {@code HTTP 502 Bad
+     * Gateway (text/html)}), the exception types otherwise — so the letter composer, which shows
+     * this message, tells an unreachable host from a gateway from an unreadable response. Never a
+     * response body or a downstream message: this message reaches logs, and either may quote case
+     * data (see "Never log personal data" in {@code CLAUDE.md}).
      */
     private EpistolaApiException toApiException(String fallbackMessage, Throwable cause) {
         if (cause instanceof ProblemDetailException problem) {
@@ -553,13 +562,29 @@ public class EpistolaServiceImpl implements EpistolaService {
         }
         if (cause instanceof RestClientResponseException response) {
             return new EpistolaApiException(
-                    fallbackMessage,
+                    fallbackMessage + ": " + describeStatus(response),
                     response,
                     response.getStatusCode().value(),
                     null,
                     Map.of());
         }
-        return new EpistolaApiException(fallbackMessage, cause);
+        return new EpistolaApiException(fallbackMessage + ": " + Failures.describe(cause), cause);
+    }
+
+    /** {@code HTTP 502 Bad Gateway (text/html)}: the status line and content type, never the body. */
+    private static String describeStatus(RestClientResponseException response) {
+        int code = response.getStatusCode().value();
+        String reason = response.getStatusText();
+        if (reason == null || reason.isBlank()) {
+            // HTTP/2 carries no reason phrase.
+            HttpStatus known = HttpStatus.resolve(code);
+            reason = known != null ? known.getReasonPhrase() : "";
+        }
+        MediaType contentType = response.getResponseHeaders() != null
+                ? response.getResponseHeaders().getContentType()
+                : null;
+        return ("HTTP " + code + " " + reason).strip()
+                + (contentType != null ? " (" + contentType.getType() + "/" + contentType.getSubtype() + ")" : "");
     }
 
     // Mapping methods
