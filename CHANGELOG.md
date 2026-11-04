@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-beta.1] - 2026-11-04
+
 ### Upgrading
 
 - **Coming from 0.21.x?** Read the [1.0.0-alpha.1](#100-alpha1---2026-10-30) upgrading notes first:

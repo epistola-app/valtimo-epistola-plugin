@@ -45,7 +45,7 @@ is rejected with RFC-9457 `400 catalog-schema-too-old`.
 
 | Plugin build  | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema           | Compatible Epistola Suite                                                              |
 | ------------- | --------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------- |
-| Unreleased    | `2.0.0-beta.2`                                | `4` (imported under `local/<tenant>`) | a Suite serving contract `2.0.0-beta.2` (`release/2.0`, none released yet); **no 1.x** |
+| 1.0.0-beta.1  | `2.0.0-beta.2`                                | `4` (imported under `local/<tenant>`) | a Suite serving contract `2.0.0-beta.2` (`release/2.0`, none released yet); **no 1.x** |
 | 1.0.0-alpha.1 | `2.0.0-alpha.5`                               | `4` (imported under `local/<tenant>`) | `2.0.0-alpha.1`; **no 1.x**                                                            |
 | 0.21.0        | `1.4.0`                                       | `4`                                   | `>= 1.0.0`                                                                             |
 | 0.20.0        | `1.3.1`                                       | `4`                                   | `>= 1.0.0`                                                                             |
