@@ -29,6 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The nightly browser suites run again.** GitHub's `ubuntu-latest` runner moved to Ubuntu 26.04,
   which Playwright 1.58 refuses ("does not support chromium on ubuntu26.04-x64"), so every run
   since 2026-10-28 failed while installing the browser. Playwright is now 1.64.1, which supports it.
+- **A failed call to Epistola says what went wrong.** When Epistola did not answer with one of its
+  own error descriptions, the composer showed only _"Epistola could not describe template … :
+  Failed to fetch template details"_, and the cause was in the Valtimo log alone. The message now
+  ends with the HTTP status and content type, such as `HTTP 502 Bad Gateway (text/html)` for a
+  proxy's error page, or with the exception types, such as
+  `ResourceAccessException caused by ConnectException` for a host that cannot be reached. Response
+  bodies and downstream messages stay out because they may quote case data. The same applies to
+  listing templates, attributes and variants, previewing, downloading and importing a catalog.
 
 ## [0.21.0] - 2026-10-14
 
