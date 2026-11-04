@@ -69,6 +69,7 @@ public final class GenerateDocumentActionConfigurationRegistry {
                 textOrNull(properties, "variantId"),
                 attributesOrNull(properties.get("variantAttributes")),
                 textOrNull(properties, "environmentId"),
+                textOrNull(properties, "versionRange"),
                 requiredText(properties, "dataMapping"),
                 textOrNull(properties, "outputFormat"),
                 textOrNull(properties, "filename"),

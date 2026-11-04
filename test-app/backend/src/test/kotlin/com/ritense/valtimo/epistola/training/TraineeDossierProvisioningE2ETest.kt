@@ -106,9 +106,10 @@ class TraineeDossierProvisioningE2ETest {
         assertThat(pluginConfigurationB.properties?.get("baseUrl")?.asText()).isEqualTo("http://localhost:1/api")
 
         // The demo catalog is installed into each trainee's own, new tenant — not only into the
-        // shared one at startup. Without it every template lookup in their dossier failed.
-        verify(epistolaService, atLeastOnce()).importCatalog(any(), eq("epk_test_a"), eq("trainee-a"), any(), eq("AUTHORED"))
-        verify(epistolaService, atLeastOnce()).importCatalog(any(), eq("epk_test_b"), eq("trainee-b"), any(), eq("AUTHORED"))
+        // shared one at startup. Without it every template lookup in their dossier failed. It is
+        // named in the trainee's own local namespace, as the 2.0 upgrade names a tenant's catalogs.
+        verify(epistolaService, atLeastOnce()).importCatalog(any(), eq("epk_test_a"), eq("trainee-a"), any(), eq("local"), eq("trainee-a"))
+        verify(epistolaService, atLeastOnce()).importCatalog(any(), eq("epk_test_b"), eq("trainee-b"), any(), eq("local"), eq("trainee-b"))
         // Sync-enabled, so a restart re-syncs the trainee's tenant like the shared one.
         assertThat(pluginConfigurationA.properties?.get("templateSyncEnabled")?.asBoolean()).isTrue()
     }

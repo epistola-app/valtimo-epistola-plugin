@@ -100,6 +100,10 @@ public final class ComposerParser {
         // The set's catalog is a default, not the answer: a letter may name its own, which is what
         // lets one picker offer letters from more than one catalog.
         String defaultCatalogId = text(letterSet.path("catalogId"));
+        // Where every letter renders, and the release of the set's catalog. A range selects a
+        // release of one catalog, so a letter from another catalog does not inherit it.
+        String environmentId = text(letterSet.path("environmentId"));
+        String defaultVersionRange = text(letterSet.path("versionRange"));
         String dataMapping = text(settings.path("dataMapping"));
         String componentKey = text(component.path("key"));
         Map<String, String> writeBack = writeBackOn(settings, componentKey);
@@ -122,11 +126,16 @@ public final class ComposerParser {
                 continue;
             }
             String label = text(template.path("label"));
+            String versionRange = text(template.path("versionRange"));
+            if (versionRange == null && catalogId.equals(defaultCatalogId)) {
+                versionRange = defaultVersionRange;
+            }
             templates.add(new LetterComposerConfiguration.OfferedTemplate(
                     catalogId,
                     templateId,
                     label != null ? label : templateId,
-                    text(template.path("dataMapping"))));
+                    text(template.path("dataMapping")),
+                    versionRange));
         }
 
         if (withoutCatalog > 0) {
@@ -153,7 +162,8 @@ public final class ComposerParser {
                 dataMapping,
                 List.copyOf(templates),
                 settings.path("askOptionalFields").asBoolean(false),
-                writeBack);
+                writeBack,
+                environmentId);
     }
 
     /**

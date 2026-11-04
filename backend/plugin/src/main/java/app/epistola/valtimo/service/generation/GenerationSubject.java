@@ -78,4 +78,14 @@ public record GenerationSubject(
     public Map<String, Object> data() {
         return document.data();
     }
+
+    /** The environment the document renders in, or null for the plugin configuration's default. */
+    public String environmentId() {
+        return document.environmentId();
+    }
+
+    /** The catalog release the document renders, as a version range, or null for the environment's. */
+    public String versionRange() {
+        return document.versionRange();
+    }
 }

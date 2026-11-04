@@ -119,7 +119,7 @@ class LetterComposerServiceTest {
     }
 
     private void templateRequires(String templateId, TemplateField... fields) {
-        when(epistolaService.getTemplateDetails(anyString(), anyString(), anyString(), eq("gemeente"), eq(templateId)))
+        when(epistolaService.getTemplateDetails(anyString(), anyString(), anyString(), eq("gemeente"), eq(templateId), any(), any()))
                 .thenReturn(new TemplateDetails(templateId, templateId, List.of(fields), null,
                         SimpleMappingSupport.full()));
     }
@@ -141,7 +141,7 @@ class LetterComposerServiceTest {
     void saysSoWhenEpistolaCannotDescribeTheTemplate() {
         offering(configuration(offered("besluit", "Besluit", null)), "besluit");
         when(jsonataMappingService.evaluate(any())).thenReturn(Map.of("naam", "Jansen"));
-        when(epistolaService.getTemplateDetails(anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit")))
+        when(epistolaService.getTemplateDetails(anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit"), any(), any()))
                 .thenThrow(new RuntimeException("Catalog 'gemeente' not found"));
 
         assertThatThrownBy(() -> service.prepare(CONTEXT, null, "besluit"))
@@ -248,14 +248,64 @@ class LetterComposerServiceTest {
     void previewsWithTheCatalogAndTenantOfTheConfiguredPlugin() {
         offering(configuration(offered("besluit", "Besluit", null)), "besluit");
         when(epistolaService.previewDocument(anyString(), anyString(), anyString(), anyString(),
-                anyString(), any(), any(), any()))
+                anyString(), any(), any(), any(), any()))
                 .thenReturn(new ByteArrayInputStream("%PDF".getBytes()));
 
         service.preview(CONTEXT, null, "besluit", Map.of("naam", "Jansen"));
 
         org.mockito.Mockito.verify(epistolaService).previewDocument(
                 eq("http://epistola"), eq("key"), eq("gemeente"), eq("gemeente"), eq("besluit"),
-                eq(null), eq("prod"), eq(Map.of("naam", "Jansen")));
+                eq(null), eq("prod"), any(), eq(Map.of("naam", "Jansen")));
+    }
+
+    /**
+     * One release, read three times: the fields the employee is asked for, the preview they see,
+     * and — through the letter the browser stores — the document that is generated. Each reads the
+     * composer's environment and the letter's range, so a field added in a newer release is not
+     * asked for while an older one renders.
+     */
+    @Test
+    void readsPreviewsAndHandsOnTheComposersEnvironmentAndTheLettersRelease() {
+        LetterComposerConfiguration inAcceptance = new LetterComposerConfiguration(
+                "pv:epistolaLetter", null, PLUGIN_CONFIGURATION_ID, "gemeente", "{\"naam\": $doc.naam}",
+                List.of(new LetterComposerConfiguration.OfferedTemplate(
+                        "gemeente", "besluit", "Besluit", null, "^2.0.0")),
+                false, Map.of(), "acceptatie");
+        offering(inAcceptance, "besluit");
+        templateRequires("besluit", required("naam"));
+        when(epistolaService.previewDocument(anyString(), anyString(), anyString(), anyString(),
+                anyString(), any(), any(), any(), any()))
+                .thenReturn(new ByteArrayInputStream("%PDF".getBytes()));
+
+        PreparedLetter letter = service.prepare(CONTEXT, null, "besluit");
+        service.preview(CONTEXT, null, "besluit", Map.of("naam", "Jansen"));
+
+        org.mockito.Mockito.verify(epistolaService).getTemplateDetails(
+                anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit"),
+                eq("acceptatie"), eq("^2.0.0"));
+        org.mockito.Mockito.verify(epistolaService).previewDocument(
+                anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit"),
+                eq(null), eq("acceptatie"), eq("^2.0.0"), any());
+        assertThat(letter.environmentId()).isEqualTo("acceptatie");
+        assertThat(letter.versionRange()).isEqualTo("^2.0.0");
+    }
+
+    /**
+     * A composer naming no environment reads and previews in the plugin configuration's default, but
+     * hands on none: the letter then renders in whatever the default is when it is generated, as a
+     * process link naming no environment does.
+     */
+    @Test
+    void aComposerNamingNoEnvironmentUsesTheDefaultAndHandsOnNone() {
+        offering(configuration(offered("besluit", "Besluit", null)), "besluit");
+        templateRequires("besluit", required("naam"));
+
+        PreparedLetter letter = service.prepare(CONTEXT, null, "besluit");
+
+        org.mockito.Mockito.verify(epistolaService).getTemplateDetails(
+                anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit"), eq("prod"), eq(null));
+        assertThat(letter.environmentId()).isNull();
+        assertThat(letter.versionRange()).isNull();
     }
 
     @Test
@@ -271,7 +321,7 @@ class LetterComposerServiceTest {
     void reportsARefusedRenderAsSuch() {
         offering(configuration(offered("besluit", "Besluit", null)), "besluit");
         when(epistolaService.previewDocument(anyString(), anyString(), anyString(), anyString(),
-                anyString(), any(), any(), any()))
+                anyString(), any(), any(), any(), any()))
                 .thenThrow(new IllegalStateException("422 from Epistola"));
 
         assertThatThrownBy(() -> service.preview(CONTEXT, null, "besluit", Map.of()))

@@ -127,6 +127,7 @@ class TraineeScopingE2ETest {
                 anyOrNull(),
                 anyOrNull(),
                 anyOrNull(),
+                anyOrNull(),
             ),
         ).thenReturn(
             GenerationJobResult

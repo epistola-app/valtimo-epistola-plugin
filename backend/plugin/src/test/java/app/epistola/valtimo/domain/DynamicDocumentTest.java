@@ -119,6 +119,32 @@ class DynamicDocumentTest {
                 .isEmpty();
     }
 
+    /** Where a letter renders survives the variable, both ways round. */
+    @Test
+    void aPreparedDocumentKeepsWhereItRenders() {
+        Map<String, Object> prepared = DynamicDocument.of(
+                "gemeente", "besluit-bezwaar", Map.of(), "acceptatie", "^1.4.0");
+
+        DynamicDocument letter = DynamicDocument.from(prepared, "epistolaLetter", objectMapper);
+
+        assertThat(letter.environmentId()).isEqualTo("acceptatie");
+        assertThat(letter.versionRange()).isEqualTo("^1.4.0");
+    }
+
+    /**
+     * Naming neither is the shape every letter had before, and a process still writing it gets
+     * what it always got: no keys at all, rather than nulls a reader might take for a choice.
+     */
+    @Test
+    void aDocumentNamingNeitherRendersTheDefault() {
+        Map<String, Object> prepared = DynamicDocument.of("gemeente", "besluit-bezwaar", Map.of());
+
+        assertThat(prepared).doesNotContainKeys("environmentId", "versionRange");
+        DynamicDocument letter = DynamicDocument.from(prepared, "epistolaLetter", objectMapper);
+        assertThat(letter.environmentId()).isNull();
+        assertThat(letter.versionRange()).isNull();
+    }
+
     @Test
     void refusesAPreparedDocumentThatNamesNoTemplate() {
         assertThatThrownBy(() -> DynamicDocument.of("gemeente", " ", Map.of()))

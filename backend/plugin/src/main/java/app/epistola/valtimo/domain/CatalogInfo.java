@@ -20,16 +20,23 @@ package app.epistola.valtimo.domain;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
- * Information about an Epistola catalog.
+ * An Epistola catalog as the configurators list it.
  *
- * @param id   The unique identifier of the catalog
- * @param name The display name of the catalog
- * @param type The type of the catalog (e.g. "standard", "custom")
+ * @param id        the reference a process link stores: {@code registry/namespace/key}, see
+ *                  {@link CatalogRef}
+ * @param name      the catalog's display name
+ * @param registry  the registry the catalog is named in (a DNS name, or {@code local})
+ * @param namespace the namespace within that registry
+ * @param key       the catalog's key within its namespace
+ * @param editable  whether the catalog can be changed in that Epistola installation
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record CatalogInfo(
         String id,
         String name,
-        String type
+        String registry,
+        String namespace,
+        String key,
+        boolean editable
 ) {
 }

@@ -23,6 +23,13 @@ import app.epistola.valtimo.mapping.JsonataMappingService;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * @param versionRange the release of the catalog to render, as a version range
+ *                     ({@code app.epistola.valtimo.service.VersionRanges}), or null for the
+ *                     environment's draft, else its highest release. Deliberately not an expression:
+ *                     the configurator reads the template's fields through it, so it is known when
+ *                     the link is configured, as the catalog and template are
+ */
 public record GenerateDocumentActionConfiguration(
         int version,
         String catalogId,
@@ -30,6 +37,7 @@ public record GenerateDocumentActionConfiguration(
         ConfiguredScalar variantId,
         List<VariantAttribute> variantAttributes,
         ConfiguredScalar environmentId,
+        String versionRange,
         String dataMapping,
         ConfiguredScalar outputFormat,
         ConfiguredScalar filename,

@@ -101,6 +101,13 @@ process-link/process-document-link lookups already key off. This is a real Valti
 a gap — but it does mean a bare process-definition **key** is ambiguous across every trainee's
 clone; only full process-definition/process-instance/execution/document **ids** are not.
 
+**The template's process link names its catalog by key alone** (`municipality-demo`), where every
+other demo link names it in full (`local/demo/municipality-demo`). The clone keeps that value and
+points at the trainee's own tenant, where the sync installs the catalog as
+`local/<trainee tenant>/municipality-demo`; a bare key resolves to the tenant's own catalog there,
+and a full name would point every clone at a catalog its tenant does not have. The admin overview
+lists the link as not named in full, which is expected.
+
 ## Authorization model
 
 ```

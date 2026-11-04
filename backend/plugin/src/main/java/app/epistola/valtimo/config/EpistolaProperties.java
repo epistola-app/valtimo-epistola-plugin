@@ -42,6 +42,29 @@ public class EpistolaProperties {
     private final Client client = new Client();
     private final VersionCheck versionCheck = new VersionCheck();
     private final RichText richText = new RichText();
+    private final CatalogSync catalogSync = new CatalogSync();
+
+    /**
+     * Where the plugin installs a bundled classpath catalog whose manifest predates catalog wire
+     * v8. Since contract 2.0 a catalog is named by registry, namespace and key, and such a manifest
+     * has only the key; a v8 manifest names its own, and these are not used for it.
+     */
+    @Data
+    public static class CatalogSync {
+        /**
+         * Registry to name the catalog in. {@code local} needs no grant: it names catalogs that
+         * never leave the organisation, which is what a catalog compiled into an application is.
+         */
+        private String registry = "local";
+
+        /**
+         * Namespace to name the catalog in, within {@link #registry}. Unset, the tenant's own: its key,
+         * padded with {@code 0} to 3 characters, which is what Epistola's 2.0 upgrade named the
+         * catalogs a tenant had, so the first sync after the upgrade adds to the catalog it migrated
+         * instead of installing a second one beside it.
+         */
+        private String namespace;
+    }
 
     @Data
     public static class RichText {

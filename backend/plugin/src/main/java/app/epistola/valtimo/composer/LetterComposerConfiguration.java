@@ -39,6 +39,9 @@ import java.util.UUID;
  * @param dataMapping   The baseline JSONata mapping, applied for every offered template
  * @param templates     The templates this component offers, in display order
  * @param askOptionalFields Whether to also ask for optional template fields the mapping left empty
+ * @param writeBack     Where a letter's values also belong in the case: destination to expression
+ * @param environmentId The environment every letter renders in and is read from, or null for the
+ *                      plugin configuration's default
  */
 public record LetterComposerConfiguration(
         String componentKey,
@@ -48,8 +51,32 @@ public record LetterComposerConfiguration(
         String dataMapping,
         List<OfferedTemplate> templates,
         boolean askOptionalFields,
-        Map<String, String> writeBack
+        Map<String, String> writeBack,
+        String environmentId
 ) {
+
+    /** A composer that names no environment: its letters render in the configuration's default. */
+    public LetterComposerConfiguration(
+            String componentKey,
+            Integer schemaVersion,
+            UUID pluginConfigurationId,
+            String catalogId,
+            String dataMapping,
+            List<OfferedTemplate> templates,
+            boolean askOptionalFields,
+            Map<String, String> writeBack) {
+        this(componentKey, schemaVersion, pluginConfigurationId, catalogId, dataMapping, templates,
+                askOptionalFields, writeBack, null);
+    }
+
+    /**
+     * The environment this composer renders in: its own, else the plugin configuration's default.
+     *
+     * @param defaultEnvironmentId the plugin configuration's default, which may itself be null
+     */
+    public String environmentOr(String defaultEnvironmentId) {
+        return environmentId != null ? environmentId : defaultEnvironmentId;
+    }
     /**
      * One selectable letter.
      *
@@ -58,12 +85,25 @@ public record LetterComposerConfiguration(
      * none is resolved against the set's catalog when it is read, so this is always the catalog to
      * use — callers never have to fall back themselves.
      *
-     * @param catalogId   The catalog this letter lives in, already resolved
-     * @param templateId  The Epistola template id
-     * @param label       What the employee sees in the picker; falls back to the template id
-     * @param dataMapping An optional JSONata fragment merged over the baseline for this template
+     * <p>So is the release, for the same reason: a version range selects a release <em>of a
+     * catalog</em>. A letter that names none takes the set's range only when it lives in the set's
+     * catalog; a letter from another catalog renders that catalog's release as the environment
+     * does, rather than being held to a range written for a different version line.
+     *
+     * @param catalogId    The catalog this letter lives in, already resolved
+     * @param templateId   The Epistola template id
+     * @param label        What the employee sees in the picker; falls back to the template id
+     * @param dataMapping  An optional JSONata fragment merged over the baseline for this template
+     * @param versionRange The catalog release to render, as a version range, already resolved; null
+     *                     for the release the environment renders
      */
-    public record OfferedTemplate(String catalogId, String templateId, String label, String dataMapping) {
+    public record OfferedTemplate(
+            String catalogId, String templateId, String label, String dataMapping, String versionRange) {
+
+        /** A letter that pins no release. */
+        public OfferedTemplate(String catalogId, String templateId, String label, String dataMapping) {
+            this(catalogId, templateId, label, dataMapping, null);
+        }
     }
 
     /**

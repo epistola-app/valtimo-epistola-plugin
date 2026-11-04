@@ -127,7 +127,7 @@ function validateCommonShape(config: Record<string, unknown>): void {
       throw new GenerateDocumentConfigVersionError(`${field} must be a string.`);
     }
   }
-  for (const field of ['variantId', 'environmentId', 'correlationId'] as const) {
+  for (const field of ['variantId', 'environmentId', 'versionRange', 'correlationId'] as const) {
     if (config[field] != null && typeof config[field] !== 'string') {
       throw new GenerateDocumentConfigVersionError(`${field} must be a string when present.`);
     }

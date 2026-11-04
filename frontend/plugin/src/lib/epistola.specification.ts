@@ -73,9 +73,24 @@ const epistolaPluginSpecification: PluginSpecification = {
       legacyGenerateConfigurationDescription:
         'Deze actie is alleen in de editor bijgewerkt naar versie 1. Sla de proceskoppeling op om de bijgewerkte configuratie te bewaren; annuleren laat de opgeslagen configuratie ongewijzigd.',
       catalogId: 'Catalogus',
-      catalogIdTooltip: 'Selecteer de catalogus waaruit een template gekozen wordt',
+      catalogIdTooltip:
+        'Selecteer de catalogus waaruit een template gekozen wordt. Getoond worden de catalogi die zijn uitgerold naar de omgeving van deze actie (of de standaardomgeving); zonder omgeving alle catalogi van de tenant.',
+      catalogNotOffered:
+        'Deze catalogus is niet uitgerold naar de omgeving waarin deze actie genereert. Rol hem daar uit in Epistola, of kies een andere catalogus.',
+      versionRange: 'Release',
+      versionRangeTooltip:
+        'Welke release van de catalogus deze actie gebruikt. Een versie (1.4.0) zet hem vast; een bereik (^1.4.0) neemt de hoogste release die eraan voldoet. Leeg: de concept-release die in de omgeving staat, anders de hoogste release.',
+      versionRangePlaceholder: 'Hoogste release',
+      versionRangeSelects: 'Gebruikt release',
+      versionRangeNoneHighest: 'Gebruikt de hoogste release:',
+      versionRangeNoneDraft: 'Gebruikt de concept-release die in de omgeving staat.',
+      versionRangeMatchesNothing:
+        'Geen release van deze catalogus (in deze omgeving) voldoet hieraan. Genereren mislukt tot er een is.',
+      versionRangeInvalid: 'Dit is geen versie of versiebereik, zoals 1.4.0 of ^1.4.0.',
       templateId: 'Template',
       templateIdTooltip: 'Selecteer het template dat gebruikt wordt voor documentgeneratie',
+      templateNotOffered:
+        'Dit template staat niet in de release die deze actie gebruikt. Kies een andere release of een ander template.',
       variantId: 'Variant',
       variantIdTooltip: 'Selecteer de template variant',
       variantSelectionMode: 'Variant selectie',
@@ -347,9 +362,24 @@ const epistolaPluginSpecification: PluginSpecification = {
       legacyGenerateConfigurationDescription:
         'This action has only been upgraded to version 1 inside the editor. Save the process link to persist the upgraded configuration; cancelling leaves the stored configuration unchanged.',
       catalogId: 'Catalog',
-      catalogIdTooltip: 'Select the catalog to choose a template from',
+      catalogIdTooltip:
+        "Select the catalog to choose a template from. Offered are the catalogs deployed to this action's environment (or the default environment); without an environment, every catalog of the tenant.",
+      catalogNotOffered:
+        'This catalog is not deployed to the environment this action generates in. Deploy it there in Epistola, or choose another catalog.',
+      versionRange: 'Release',
+      versionRangeTooltip:
+        'Which release of the catalog this action uses. A version (1.4.0) pins it; a range (^1.4.0) takes the highest release that satisfies it. Empty: the draft deployed to the environment, else the highest release.',
+      versionRangePlaceholder: 'Highest release',
+      versionRangeSelects: 'Uses release',
+      versionRangeNoneHighest: 'Uses the highest release:',
+      versionRangeNoneDraft: 'Uses the draft deployed to the environment.',
+      versionRangeMatchesNothing:
+        'No release of this catalog (in this environment) satisfies this. Generation fails until one does.',
+      versionRangeInvalid: 'This is not a version or version range, such as 1.4.0 or ^1.4.0.',
       templateId: 'Template',
       templateIdTooltip: 'Select the template to use for document generation',
+      templateNotOffered:
+        'This template is not in the release this action uses. Choose another release or another template.',
       variantId: 'Variant',
       variantIdTooltip: 'Select the template variant',
       variantSelectionMode: 'Variant selection',

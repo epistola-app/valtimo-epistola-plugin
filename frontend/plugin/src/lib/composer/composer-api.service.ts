@@ -20,7 +20,13 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { ConfigService } from '@valtimo/shared';
-import { CatalogInfo, LetterReader, TemplateInfo } from '../models';
+import {
+  CatalogInfo,
+  CatalogReleases,
+  EnvironmentInfo,
+  LetterReader,
+  TemplateInfo,
+} from '../models';
 import { EpistolaPluginService } from '../services';
 
 /** One configured Epistola connection, as offered to an author. */
@@ -57,6 +63,13 @@ export interface ComposerPrepareResponse {
   form: any;
   /** True when the mapping filled everything, so the employee is asked nothing. */
   complete: boolean;
+  /**
+   * Where the letter renders: the composer's environment (absent for the plugin configuration's
+   * default) and the letter's version range (absent for the release that environment renders). Put
+   * on the letter as they come, so generation renders what the preview showed.
+   */
+  environmentId?: string | null;
+  versionRange?: string | null;
   /**
    * On a start form, which process this composer turned out to belong to. Null on a task form.
    *
@@ -183,12 +196,52 @@ export class EpistolaComposerApiService {
     });
   }
 
-  getCatalogs(pluginConfigurationId: string): Observable<CatalogInfo[]> {
-    return this.epistolaPluginService.getCatalogs(pluginConfigurationId);
+  /**
+   * The catalogs a letter set may offer from: those the environment serves, or, without one, those
+   * the plugin configuration's default environment serves, which is where the composer renders.
+   */
+  getCatalogs(
+    pluginConfigurationId: string,
+    environmentId?: string | null,
+  ): Observable<CatalogInfo[]> {
+    return this.epistolaPluginService.getCatalogs(
+      pluginConfigurationId,
+      environmentId || undefined,
+    );
   }
 
-  /** The templates of a catalog, as the settings widget offers them. */
-  getTemplates(pluginConfigurationId: string, catalogId: string): Observable<TemplateInfo[]> {
-    return this.epistolaPluginService.getTemplates(pluginConfigurationId, catalogId);
+  /** The templates of a catalog, as the settings widget offers them: of the release it renders. */
+  getTemplates(
+    pluginConfigurationId: string,
+    catalogId: string,
+    environmentId?: string | null,
+    versionRange?: string | null,
+  ): Observable<TemplateInfo[]> {
+    return this.epistolaPluginService.getTemplates(
+      pluginConfigurationId,
+      catalogId,
+      environmentId || undefined,
+      versionRange || undefined,
+    );
+  }
+
+  /** The environments a letter set may render in. */
+  getEnvironments(pluginConfigurationId: string): Observable<EnvironmentInfo[]> {
+    return this.epistolaPluginService.getEnvironments(pluginConfigurationId);
+  }
+
+  /** A catalog's releases, and the one `versionRange` selects in the environment. */
+  getReleases(
+    pluginConfigurationId: string,
+    catalogId: string,
+    environmentId: string | null | undefined,
+    versionRange: string,
+  ): Observable<CatalogReleases> {
+    return this.epistolaPluginService.getReleases(
+      pluginConfigurationId,
+      catalogId,
+      environmentId || undefined,
+      versionRange,
+    );
   }
 }

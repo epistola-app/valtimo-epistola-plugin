@@ -18,6 +18,7 @@
 package app.epistola.valtimo.service.completion;
 
 import app.epistola.client.collect.ResultCollector;
+import app.epistola.valtimo.domain.GenerationJobStatus;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.config.EpistolaProperties;
 import com.ritense.plugin.domain.PluginConfiguration;
@@ -223,7 +224,7 @@ public class EpistolaResultCollectorRunner {
 
         ResultCollector collector = ResultCollector.Companion.builder()
                 .restClient(apiClientFactory.createRestClient(plugin.getBaseUrl(), plugin.getApiKey()))
-                .tenantId(plugin.getTenantId())
+                .tenantKey(plugin.getTenantId())
                 .batchSize(cfg.getBatchSize())
                 .minInterval(Duration.ofMillis(cfg.getMinIntervalMs()))
                 .maxInterval(Duration.ofMillis(cfg.getMaxIntervalMs()))
@@ -283,10 +284,12 @@ public class EpistolaResultCollectorRunner {
 
     void handleResult(String tenantId, ResultCollector.GenerationResult result) {
         try {
+            // Contract 2.0 sends lowercase statuses ("completed"); the process variables keep the
+            // 1.x form ("COMPLETED") that BPMN gateways compare against.
             int correlated = correlationService.correlateCompletion(
                     tenantId,
                     result.getRequestId(),
-                    result.getStatus(),
+                    GenerationJobStatus.normalize(result.getStatus()),
                     result.getDocumentId(),
                     result.getError()
             );

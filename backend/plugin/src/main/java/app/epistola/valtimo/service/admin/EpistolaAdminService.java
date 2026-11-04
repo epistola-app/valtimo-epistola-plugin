@@ -23,10 +23,13 @@ import app.epistola.valtimo.action.generate.GenerateDocumentActionConfigurationR
 import app.epistola.valtimo.deploy.EpistolaCatalogSyncService;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.domain.CatalogInfo;
+import app.epistola.valtimo.domain.CatalogReleases;
+import app.epistola.valtimo.domain.CatalogRef;
 import app.epistola.valtimo.domain.GenerationJobDetail;
 import app.epistola.valtimo.domain.GenerationJobStatus;
 import app.epistola.valtimo.domain.TemplateInfo;
 import app.epistola.valtimo.domain.VariantInfo;
+import app.epistola.valtimo.service.EpistolaApiException;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService;
 import app.epistola.valtimo.service.versioncheck.VersionCheckService;
@@ -64,11 +67,13 @@ import org.operaton.bpm.model.bpmn.instance.FlowElement;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -86,9 +91,8 @@ public class EpistolaAdminService {
     ).collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     /** Catalog import type — mirrors the value used by the startup sync trigger. */
-    private static final String CATALOG_SYNC_TYPE = "AUTHORED";
     private static final String CONTRACT_VERSION_RESOURCE = "epistola-contract-version.txt";
-    private static final Pattern SEMVER_PREFIX = Pattern.compile("^(\\d+)\\.(\\d+)(?:\\.(\\d+))?.*");
+    private static final Pattern SEMVER_PREFIX = Pattern.compile("^(\\d+)\\.(\\d+)(?:\\.(\\d+))?(-[^+]*)?.*");
 
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
@@ -128,7 +132,7 @@ public class EpistolaAdminService {
 
             long start = System.currentTimeMillis();
             try {
-                epistolaService.getCatalogs(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId());
+                epistolaService.getCatalogs(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(), null);
                 EpistolaService.SystemInfo systemInfo = fetchSystemInfo(plugin);
                 String contractVersion = getContractVersion();
                 ContractCompatibilitySeverity compatibilitySeverity = classifyContractCompatibility(
@@ -187,7 +191,13 @@ public class EpistolaAdminService {
         }
     }
 
-    private ContractCompatibilitySeverity classifyContractCompatibility(
+    /**
+     * How the plugin's contract and the server's go together: another major is an error (since
+     * contract 2.0 the media type carries the major, so the server refuses every request), a server
+     * a minor behind a warning. A pre-release on either side is a warning unless both are exactly
+     * the same: alpha releases change in place, so 2.0.0-alpha.2 and 2.0.0-alpha.3 may disagree.
+     */
+    static ContractCompatibilitySeverity classifyContractCompatibility(
             String contractVersion,
             String serverContractVersion
     ) {
@@ -200,6 +210,10 @@ public class EpistolaAdminService {
             return ContractCompatibilitySeverity.ERROR;
         }
         if (server.get().minor() < local.get().minor()) {
+            return ContractCompatibilitySeverity.WARNING;
+        }
+        if ((local.get().preRelease() || server.get().preRelease())
+                && !contractVersion.trim().equals(serverContractVersion.trim())) {
             return ContractCompatibilitySeverity.WARNING;
         }
         return ContractCompatibilitySeverity.OK;
@@ -502,25 +516,39 @@ public class EpistolaAdminService {
      */
     public List<ClasspathCatalog> listClasspathCatalogs(String configurationId) {
         EpistolaPlugin plugin = findConfigEntry(configurationId).plugin();
-        Optional<Set<String>> epistolaCatalogIds = fetchEpistolaCatalogIds(plugin);
+        Optional<List<CatalogInfo>> epistolaCatalogs = fetchEpistolaCatalogs(plugin);
 
         return catalogSyncService.listClasspathCatalogs().stream()
                 .map(c -> new ClasspathCatalog(
                         c.slug(),
                         c.version(),
-                        epistolaCatalogIds
-                                .map(ids -> ids.contains(c.slug())
+                        epistolaCatalogs
+                                .map(catalogs -> !catalogsNamed(catalogs, catalogSyncService.importedAs(c, plugin.getTenantId()).toString(),
+                                        plugin.getTenantId()).isEmpty()
                                         ? ClasspathCatalog.IN_EPISTOLA
                                         : ClasspathCatalog.NOT_IN_EPISTOLA)
                                 .orElse(ClasspathCatalog.UNKNOWN)))
                 .toList();
     }
 
-    private Optional<Set<String>> fetchEpistolaCatalogIds(EpistolaPlugin plugin) {
+    /**
+     * The catalogs among {@code catalogs} a stored catalog reference names, as generation picks them
+     * ({@link CatalogRef#select}): more than one means it is ambiguous.
+     */
+    private static List<CatalogInfo> catalogsNamed(List<CatalogInfo> catalogs, String catalogId, String tenantId) {
+        CatalogRef ref;
+        try {
+            ref = CatalogRef.parse(catalogId);
+        } catch (IllegalArgumentException e) {
+            return List.of();
+        }
+        return ref.select(catalogs, c -> new CatalogRef(c.registry(), c.namespace(), c.key()), tenantId);
+    }
+
+    private Optional<List<CatalogInfo>> fetchEpistolaCatalogs(EpistolaPlugin plugin) {
         try {
             return Optional.of(epistolaService
-                    .getCatalogs(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId())
-                    .stream().map(CatalogInfo::id).collect(Collectors.toSet()));
+                    .getCatalogs(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(), null));
         } catch (Exception e) {
             log.debug("Could not list Epistola catalogs for existence check: {}", e.getMessage());
             return Optional.empty();
@@ -540,16 +568,13 @@ public class EpistolaAdminService {
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
-                CATALOG_SYNC_TYPE,
                 slug);
         return new CatalogRedeployResult(
                 outcome.slug(),
                 outcome.version(),
                 outcome.success(),
-                outcome.catalogKey(),
-                outcome.installed(),
-                outcome.updated(),
-                outcome.failed(),
+                outcome.catalogId(),
+                outcome.newlyInstalled(),
                 outcome.total(),
                 outcome.errorMessage(),
                 outcome.httpStatus());
@@ -679,24 +704,47 @@ public class EpistolaAdminService {
             // a JSONata expression resolves at runtime and cannot be verified statically.
             if (catalogConfigured && templateConfigured) {
                 String configId = link.getPluginConfigurationId().toString();
+                // The environment the link generates in, as generation picks it; null when it is
+                // an expression only known at run time, and then every catalog of the tenant counts.
+                String environmentId = environmentOf(actionConfig, plugin);
+                String where = environmentId == null ? "in Epistola" : "in environment '" + environmentId + "'";
 
-                Optional<Set<String>> catalogIds = refCache.catalogIds(configId, plugin);
-                if (catalogIds.isPresent()) {
-                    if (!catalogIds.get().contains(catalogId)) {
-                        problems.add("Catalog '" + catalogId + "' does not exist in Epistola");
+                Optional<List<CatalogInfo>> catalogs = refCache.catalogs(configId, environmentId, plugin);
+                if (catalogs.isEmpty() && environmentId != null && refCache.isMissingEnvironment(configId, environmentId)) {
+                    problems.add("Environment '" + environmentId + "' does not exist in Epistola");
+                } else if (catalogs.isPresent()) {
+                    List<CatalogInfo> matching = catalogsNamed(catalogs.get(), catalogId, plugin.getTenantId());
+                    if (matching.isEmpty()) {
+                        problems.add(environmentId == null
+                                ? "Catalog '" + catalogId + "' does not exist in Epistola"
+                                : "Catalog '" + catalogId + "' is not deployed to environment '" + environmentId + "'");
+                    } else if (matching.size() > 1) {
+                        problems.add("Catalog '" + catalogId + "' is ambiguous " + where + ": "
+                                + "it names catalogs in several namespaces; select it again to name it in full");
                     } else {
-                        Optional<Set<String>> templateIds =
-                                refCache.templateIds(configId, catalogId, plugin);
-                        if (templateIds.isPresent()) {
-                            if (!templateIds.get().contains(templateId)) {
-                                problems.add("Template '" + templateId
-                                        + "' does not exist in catalog '" + catalogId + "'");
-                            } else if (variantId != null && !variantId.isBlank()) {
-                                Optional<Set<String>> variantIds =
-                                        refCache.variantIds(configId, catalogId, templateId, plugin);
-                                if (variantIds.isPresent() && !variantIds.get().contains(variantId)) {
-                                    problems.add("Variant '" + variantId
-                                            + "' does not exist for template '" + templateId + "'");
+                        if (!CatalogRef.parse(catalogId).isQualified()) {
+                            problems.add("Catalog '" + catalogId + "' is not named in full; it resolves to '"
+                                    + matching.get(0).id() + "'. Select the catalog again in this action to store its full name");
+                        }
+                        // With no release to read, a template check would only mislead.
+                        if (rangeSatisfied(refCache, configId, catalogId, environmentId,
+                                actionConfig.versionRange(), plugin, problems)) {
+                            String versionRange = actionConfig.versionRange();
+                            Optional<Set<String>> templateIds =
+                                    refCache.templateIds(configId, catalogId, environmentId, versionRange, plugin);
+                            if (templateIds.isPresent()) {
+                                if (!templateIds.get().contains(templateId)) {
+                                    problems.add("Template '" + templateId
+                                            + "' does not exist in catalog '" + catalogId + "'"
+                                                    + (environmentId == null ? "" : " as deployed to environment '" + environmentId + "'")
+                                            + (versionRange == null ? "" : " in the release '" + versionRange + "' selects"));
+                                } else if (variantId != null && !variantId.isBlank()) {
+                                    Optional<Set<String>> variantIds =
+                                            refCache.variantIds(configId, catalogId, templateId, environmentId, versionRange, plugin);
+                                    if (variantIds.isPresent() && !variantIds.get().contains(variantId)) {
+                                        problems.add("Variant '" + variantId
+                                                + "' does not exist for template '" + templateId + "'");
+                                    }
                                 }
                             }
                         }
@@ -709,6 +757,28 @@ public class EpistolaAdminService {
     }
 
     /**
+     * Whether the link's version range selects a release, adding a problem when it does not. True
+     * without a range, and when the releases cannot be read (the check is then skipped, as every
+     * existence check here is).
+     */
+    private static boolean rangeSatisfied(
+            EpistolaReferenceCache refCache, String configId, String catalogId, String environmentId,
+            String versionRange, EpistolaPlugin plugin, List<String> problems) {
+        if (versionRange == null) {
+            return true;
+        }
+        Optional<CatalogReleases> releases =
+                refCache.releases(configId, catalogId, environmentId, versionRange, plugin);
+        if (releases.isEmpty() || releases.get().selected() != null) {
+            return true;
+        }
+        problems.add("No release of catalog '" + catalogId + "'"
+                + (environmentId == null ? "" : " deployed to environment '" + environmentId + "'")
+                + " satisfies version range '" + versionRange + "'");
+        return false;
+    }
+
+    /**
      * Per-{@link #getPluginUsage()}-invocation memo of which catalog/template/variant
      * ids exist in the connected Epistola installation. Created fresh per call so an
      * admin refresh sees current state. A failed fetch is memoized as
@@ -718,17 +788,42 @@ public class EpistolaAdminService {
      */
     private final class EpistolaReferenceCache {
 
-        private final Map<String, Optional<Set<String>>> catalogIdsByConfig = new HashMap<>();
+        private final Map<String, Optional<List<CatalogInfo>>> catalogsByConfig = new HashMap<>();
+        private final Set<String> missingEnvironments = new HashSet<>();
         private final Map<String, Optional<Set<String>>> templateIdsByConfigCatalog = new HashMap<>();
         private final Map<String, Optional<Set<String>>> variantIdsByConfigCatalogTemplate = new HashMap<>();
+        private final Map<String, Optional<CatalogReleases>> releasesByConfigCatalog = new HashMap<>();
 
-        /** Present = the existing-id set; empty = lookup failed (caller must skip the check). */
-        Optional<Set<String>> catalogIds(String configId, EpistolaPlugin plugin) {
-            return catalogIdsByConfig.computeIfAbsent(configId, k -> {
+        Optional<CatalogReleases> releases(
+                String configId, String catalogId, String environmentId, String versionRange, EpistolaPlugin plugin) {
+            return releasesByConfigCatalog.computeIfAbsent(
+                    configId + '|' + catalogId + '|' + environmentId + '|' + versionRange, k -> {
+                        try {
+                            return Optional.of(epistolaService.getReleases(plugin.getBaseUrl(), plugin.getApiKey(),
+                                    plugin.getTenantId(), catalogId, environmentId, versionRange));
+                        } catch (Exception e) {
+                            log.debug("Release check skipped for config {} catalog {}: {}",
+                                    configId, catalogId, e.getMessage());
+                            return Optional.empty();
+                        }
+                    });
+        }
+
+        /**
+         * Present = the catalogs a link may name (those deployed to {@code environmentId}, or all
+         * of them when it is null); empty = lookup failed (caller must skip the check).
+         */
+        Optional<List<CatalogInfo>> catalogs(String configId, String environmentId, EpistolaPlugin plugin) {
+            return catalogsByConfig.computeIfAbsent(configId + '|' + environmentId, k -> {
                 try {
-                    return Optional.of(epistolaService
-                            .getCatalogs(plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId())
-                            .stream().map(CatalogInfo::id).collect(Collectors.toSet()));
+                    return Optional.of(epistolaService.getCatalogs(
+                            plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(), environmentId));
+                } catch (EpistolaApiException e) {
+                    if (environmentId != null && Integer.valueOf(404).equals(e.getHttpStatus())) {
+                        missingEnvironments.add(k);
+                    }
+                    log.debug("Catalog existence check skipped for config {}: {}", configId, e.getMessage());
+                    return Optional.empty();
                 } catch (Exception e) {
                     log.debug("Catalog existence check skipped for config {}: {}",
                             configId, e.getMessage());
@@ -737,12 +832,19 @@ public class EpistolaAdminService {
             });
         }
 
-        Optional<Set<String>> templateIds(String configId, String catalogId, EpistolaPlugin plugin) {
-            return templateIdsByConfigCatalog.computeIfAbsent(configId + '|' + catalogId, k -> {
+        /** True when looking up {@code environmentId}'s catalogs found no such environment. */
+        boolean isMissingEnvironment(String configId, String environmentId) {
+            return missingEnvironments.contains(configId + '|' + environmentId);
+        }
+
+        Optional<Set<String>> templateIds(
+                String configId, String catalogId, String environmentId, String versionRange, EpistolaPlugin plugin) {
+            return templateIdsByConfigCatalog.computeIfAbsent(
+                    configId + '|' + catalogId + '|' + environmentId + '|' + versionRange, k -> {
                 try {
                     return Optional.of(epistolaService
                             .getTemplates(plugin.getBaseUrl(), plugin.getApiKey(),
-                                    plugin.getTenantId(), catalogId)
+                                    plugin.getTenantId(), catalogId, environmentId, versionRange)
                             .stream().map(TemplateInfo::id).collect(Collectors.toSet()));
                 } catch (Exception e) {
                     log.debug("Template existence check skipped for config {} catalog {}: {}",
@@ -753,13 +855,14 @@ public class EpistolaAdminService {
         }
 
         Optional<Set<String>> variantIds(String configId, String catalogId,
-                                          String templateId, EpistolaPlugin plugin) {
+                                          String templateId, String environmentId, String versionRange,
+                                          EpistolaPlugin plugin) {
             return variantIdsByConfigCatalogTemplate.computeIfAbsent(
-                    configId + '|' + catalogId + '|' + templateId, k -> {
+                    configId + '|' + catalogId + '|' + templateId + '|' + environmentId + '|' + versionRange, k -> {
                         try {
                             return Optional.of(epistolaService
                                     .getVariants(plugin.getBaseUrl(), plugin.getApiKey(),
-                                            plugin.getTenantId(), catalogId, templateId)
+                                            plugin.getTenantId(), catalogId, templateId, environmentId, versionRange)
                                     .stream().map(VariantInfo::id).collect(Collectors.toSet()));
                         } catch (Exception e) {
                             log.debug("Variant existence check skipped for config {} "
@@ -770,6 +873,28 @@ public class EpistolaAdminService {
                     });
         }
     }
+
+    /**
+     * The environment a generate-document link renders in, as {@code EpistolaPlugin} picks it: the
+     * action's own, else the configuration's default. Null when the action names it with an
+     * expression evaluated at run time — no single environment applies then — or when neither is set.
+     */
+    @SuppressWarnings("removal")
+    static String environmentOf(GenerateDocumentActionConfiguration actionConfig, EpistolaPlugin plugin) {
+        var configured = actionConfig.environmentId();
+        if (configured != null && configured.isConfigured()) {
+            if (configured instanceof LiteralScalar literal) {
+                return literal.source().trim();
+            }
+            Matcher literal = ENVIRONMENT_LITERAL.matcher(configured.source());
+            return literal.matches() ? literal.group(2) : null;
+        }
+        String fallback = plugin.getDefaultEnvironmentId();
+        return fallback == null || fallback.isBlank() ? null : fallback;
+    }
+
+    /** A JSONata string literal holding an environment key, which can be read without evaluating. */
+    private static final Pattern ENVIRONMENT_LITERAL = Pattern.compile("^\\s*([\"'])([a-z0-9][a-z0-9-]*)\\1\\s*$");
 
     private String getPluginVersion() {
         // Implementation-Version is set on the jar manifest by the build (see
@@ -796,7 +921,7 @@ public class EpistolaAdminService {
         }
     }
 
-    private record SemanticVersion(int major, int minor) {
+    private record SemanticVersion(int major, int minor, boolean preRelease) {
         static Optional<SemanticVersion> parse(String version) {
             if (version == null || version.isBlank()) {
                 return Optional.empty();
@@ -807,7 +932,8 @@ public class EpistolaAdminService {
             }
             return Optional.of(new SemanticVersion(
                     Integer.parseInt(matcher.group(1)),
-                    Integer.parseInt(matcher.group(2))
+                    Integer.parseInt(matcher.group(2)),
+                    matcher.group(4) != null
             ));
         }
     }

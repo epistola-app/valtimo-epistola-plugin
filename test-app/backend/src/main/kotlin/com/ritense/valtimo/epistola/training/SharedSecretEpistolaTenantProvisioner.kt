@@ -44,7 +44,7 @@ class SharedSecretEpistolaTenantProvisioner(
     override fun ensureTenant(traineeIdentity: String): EpistolaTenantCredentials {
         val tenantId = tenantIdFor(traineeIdentity)
         try {
-            tenantsApi.createTenant(CreateTenantRequest(id = tenantId, name = "Trainee $traineeIdentity"))
+            tenantsApi.createTenant(CreateTenantRequest(key = tenantId, name = "Trainee $traineeIdentity"))
         } catch (e: RestClientResponseException) {
             // Two requests from the same trainee racing to provision — the loser's tenant already
             // exists, which is exactly what it wanted. Anything else is a real failure.

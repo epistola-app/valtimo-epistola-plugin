@@ -153,6 +153,45 @@ class ComposerParserTest {
         assertThat(found.get(0).requireOne(null, "aanmaning").catalogId()).isEqualTo("landelijk");
     }
 
+    /**
+     * Where a composer renders, and which release. The set's range is a range over the set's
+     * catalog, so it reaches the letters in that catalog — whether they name it or inherit it — and
+     * not a letter from another catalog, whose versions mean something else. A letter's own range
+     * wins over the set's.
+     */
+    @Test
+    void readsTheEnvironmentAndTheReleaseOfEachLetter() {
+        var found = parse("""
+                {"components":[{"type":"epistola-letter-composer","key":"pv:brief",
+                  "epistola":{"letterSet":{"pluginConfigurationId":"%s","catalogId":"gemeente",
+                    "environmentId":"acceptatie","versionRange":"^2.0.0",
+                    "templates":[
+                      {"templateId":"besluit"},
+                      {"templateId":"herinnering","catalogId":"gemeente"},
+                      {"templateId":"aanmaning","versionRange":"2.1.0"},
+                      {"templateId":"landelijk-besluit","catalogId":"landelijk"},
+                      {"templateId":"landelijk-aanmaning","catalogId":"landelijk","versionRange":"~1.3.0"}]}}}]}
+                """.formatted(PLUGIN_CONFIGURATION_ID)).get(0);
+
+        assertThat(found.environmentId()).isEqualTo("acceptatie");
+        assertThat(found.requireOne(null, "besluit").versionRange()).isEqualTo("^2.0.0");
+        assertThat(found.requireOne(null, "herinnering").versionRange()).isEqualTo("^2.0.0");
+        assertThat(found.requireOne(null, "aanmaning").versionRange()).isEqualTo("2.1.0");
+        assertThat(found.requireOne(null, "landelijk-besluit").versionRange())
+                .describedAs("a range over the set's catalog says nothing about another catalog")
+                .isNull();
+        assertThat(found.requireOne(null, "landelijk-aanmaning").versionRange()).isEqualTo("~1.3.0");
+    }
+
+    @Test
+    void aComposerNamingNeitherRendersTheDefaultEnvironmentsRelease() {
+        var found = parse(composer("")).get(0);
+
+        assertThat(found.environmentId()).isNull();
+        assertThat(found.environmentOr("productie")).isEqualTo("productie");
+        assertThat(found.requireOne(null, "besluit").versionRange()).isNull();
+    }
+
     @Test
     void dropsALetterWithNoCatalogAnywhere() {
         // Which catalog a letter comes from decides what is rendered; there is nothing to guess.

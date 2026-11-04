@@ -70,25 +70,25 @@ class EpistolaAdminResourceAuthorizationTest {
         // Success → 200.
         when(adminService.redeployCatalog("cfg", "demo")).thenReturn(
                 new app.epistola.valtimo.web.rest.dto.CatalogRedeployResult(
-                        "demo", "1.1", true, "demo", 8, 0, 0, 8, null, null));
+                        "demo", "1.1", true, "local/valtimo/demo", true, 8, null, null));
         assertThat(resource.redeployCatalog("cfg", "demo").getStatusCode().value()).isEqualTo(200);
 
         // Downstream client-class (4xx) failure → 422 (operator must ship a fixed catalog).
         when(adminService.redeployCatalog("cfg", "demo")).thenReturn(
                 new app.epistola.valtimo.web.rest.dto.CatalogRedeployResult(
-                        "demo", "1.1", false, null, 0, 0, 0, 0, "wire schema too old", 400));
+                        "demo", "1.1", false, null, false, 0, "wire schema too old", 400));
         assertThat(resource.redeployCatalog("cfg", "demo").getStatusCode().value()).isEqualTo(422);
 
         // Downstream 5xx → 502 (retry might help).
         when(adminService.redeployCatalog("cfg", "demo")).thenReturn(
                 new app.epistola.valtimo.web.rest.dto.CatalogRedeployResult(
-                        "demo", "1.1", false, null, 0, 0, 0, 0, "suite unavailable", 503));
+                        "demo", "1.1", false, null, false, 0, "suite unavailable", 503));
         assertThat(resource.redeployCatalog("cfg", "demo").getStatusCode().value()).isEqualTo(502);
 
         // No downstream status (build/connectivity failure) → 502.
         when(adminService.redeployCatalog("cfg", "demo")).thenReturn(
                 new app.epistola.valtimo.web.rest.dto.CatalogRedeployResult(
-                        "demo", "1.1", false, null, 0, 0, 0, 0, "connection refused", null));
+                        "demo", "1.1", false, null, false, 0, "connection refused", null));
         assertThat(resource.redeployCatalog("cfg", "demo").getStatusCode().value()).isEqualTo(502);
     }
 
