@@ -26,6 +26,7 @@
     "headers:check": "pnpm license:headers:check",
     "singletons:check": "node scripts/check-frontend-singletons.mjs",
     "typecheck": "pnpm --filter @epistola.app/valtimo-plugin typecheck",
+    "setup:discourse-mcp": "pnpm --filter @epistola/valtimo-discourse-mcp run setup",
     "clean": "rm -rf node_modules && pnpm -r exec rm -rf node_modules dist"
   },
   "devDependencies": {

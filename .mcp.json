@@ -3,6 +3,10 @@
     "playwright": {
       "command": "npx",
       "args": ["@playwright/mcp@latest"]
+    },
+    "discourse": {
+      "command": "node",
+      "args": ["./.agents/mcp/discourse/wrapper.mjs"]
     }
   }
 }

@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   example a security fix before its disclosure. Those branches now run the same checks as
   `ci.yml` on Forgejo's runners. GitHub ignores the file, and on Forgejo it replaces the
   `.github/workflows` that were being started there (and failing) for every synced push.
+- **Releases are announced on the community forum.** The release command ends with a post in
+  Aankondigingen on [community.epistola.app](https://community.epistola.app), drafted by the agent
+  and posted after approval. It posts through a Discourse MCP server (`.agents/mcp/discourse/`, the
+  same as epistola-suite's) that signs in through the browser and keeps its key in the OS
+  credential store.
 
 ### Fixed
 
