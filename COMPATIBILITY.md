@@ -45,6 +45,7 @@ is rejected with RFC-9457 `400 catalog-schema-too-old`.
 
 | Plugin build  | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema           | Compatible Epistola Suite                                                              |
 | ------------- | --------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------- |
+| Unreleased    | `2.0.0-rc.1`                                  | `4` (imported under `local/<tenant>`) | a Suite serving contract `2.0.0-rc.1` (Suite `main`, none released yet); **no 1.x**    |
 | 1.0.0-beta.1  | `2.0.0-beta.2`                                | `4` (imported under `local/<tenant>`) | a Suite serving contract `2.0.0-beta.2` (`release/2.0`, none released yet); **no 1.x** |
 | 1.0.0-alpha.1 | `2.0.0-alpha.5`                               | `4` (imported under `local/<tenant>`) | `2.0.0-alpha.1`; **no 1.x**                                                            |
 | 0.21.0        | `1.4.0`                                       | `4`                                   | `>= 1.0.0`                                                                             |
@@ -73,7 +74,7 @@ Notes:
   (`application/vnd.epistola.v2+json`), so a 2.x client is refused by every 1.x Suite with 406/415
   and there is no mixed range: the Suite floor _is_ the first Suite serving 2.0. While 2.0 is a
   pre-release that is no released Suite at all, and `oldestSupportedServerTest` runs against the
-  pinned pre-release (`2.0.0-beta.2`) itself; a pre-release changes in place, so the admin page warns
+  pinned pre-release (`2.0.0-rc.1`) itself; a pre-release changes in place, so the admin page warns
   on any other pre-release. The catalog wire baseline is still `4` (`CatalogSchemaMigrator.BASELINE_VERSION`),
   so the bundled catalogs stay at wire 4 and the Suite migrates them to v8 on import, which needs
   a registry and namespace the v4 manifest does not have: the plugin sends
