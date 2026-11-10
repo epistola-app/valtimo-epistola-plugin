@@ -102,8 +102,12 @@ public final class ComposerParser {
         String defaultCatalogId = text(letterSet.path("catalogId"));
         // Where every letter renders, and the release of the set's catalog. A range selects a
         // release of one catalog, so a letter from another catalog does not inherit it.
-        String environmentId = text(letterSet.path("environmentId"));
-        String defaultVersionRange = text(letterSet.path("versionRange"));
+        // Both JSONata since schema 4; what an older schema stored plainly reads as a literal, so
+        // everything past this point handles expressions only (ADR 0009).
+        boolean plainValues = !settings.has(ComposerSchema.COMPONENT_FIELD)
+                || settings.path(ComposerSchema.COMPONENT_FIELD).asInt(1) < ComposerSchema.CHANGED_TO_EXPRESSIONS;
+        String environmentId = expression(text(letterSet.path("environmentId")), plainValues);
+        String defaultVersionRange = expression(text(letterSet.path("versionRange")), plainValues);
         String dataMapping = text(settings.path("dataMapping"));
         String componentKey = text(component.path("key"));
         Map<String, String> writeBack = writeBackOn(settings, componentKey);
@@ -126,7 +130,7 @@ public final class ComposerParser {
                 continue;
             }
             String label = text(template.path("label"));
-            String versionRange = text(template.path("versionRange"));
+            String versionRange = expression(text(template.path("versionRange")), plainValues);
             if (versionRange == null && catalogId.equals(defaultCatalogId)) {
                 versionRange = defaultVersionRange;
             }
@@ -164,6 +168,17 @@ public final class ComposerParser {
                 settings.path("askOptionalFields").asBoolean(false),
                 writeBack,
                 environmentId);
+    }
+
+    /**
+     * A setting as JSONata: as stored from schema 4 on, and before that a plain value, read as the
+     * string literal it meant.
+     */
+    static String expression(String value, boolean plain) {
+        if (value == null || !plain) {
+            return value;
+        }
+        return "\"" + value.replace("\\", "\\\\").replace("\"", "\\\"") + "\"";
     }
 
     /**

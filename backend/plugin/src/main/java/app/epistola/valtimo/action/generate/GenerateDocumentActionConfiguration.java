@@ -86,22 +86,12 @@ public record GenerateDocumentActionConfiguration(
                         version, "versionRange", versionRange.source(), context, exception);
             }
         }
-        if (value == null) {
-            return null;
+        try {
+            return VersionRanges.ofExpressionResult(value).orElse(null);
+        } catch (IllegalArgumentException refused) {
+            throw GenerateDocumentExpressionException.invalidResult(
+                    version, "versionRange", versionRange.source(), refused.getMessage());
         }
-        if (!(value instanceof String text)) {
-            throw GenerateDocumentExpressionException.invalidResult(version, "versionRange", versionRange.source(),
-                    "must evaluate to a string such as \"^1.4.0\", not a " + typeOf(value));
-        }
-        if (text.isBlank()) {
-            return null;
-        }
-        String range = text.strip();
-        if (VersionRanges.problem(range).isPresent()) {
-            throw GenerateDocumentExpressionException.invalidResult(version, "versionRange", versionRange.source(),
-                    "evaluated to a string that is not a version range");
-        }
-        return range;
     }
 
     /**
@@ -129,22 +119,6 @@ public record GenerateDocumentActionConfiguration(
 
     /** A JSONata string literal without escapes, which a version range never needs. */
     private static final Pattern STRING_LITERAL = Pattern.compile("^\\s*([\"'])([^\"'\\\\]*)\\1\\s*$");
-
-    private static String typeOf(Object value) {
-        if (value instanceof Number) {
-            return "number";
-        }
-        if (value instanceof Boolean) {
-            return "boolean";
-        }
-        if (value instanceof java.util.List<?>) {
-            return "array";
-        }
-        if (value instanceof Map<?, ?>) {
-            return "object";
-        }
-        return value.getClass().getSimpleName();
-    }
 
     public sealed interface ConfiguredScalar permits LiteralScalar, JsonataScalar {
 

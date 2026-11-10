@@ -173,14 +173,41 @@ class ComposerParserTest {
                       {"templateId":"landelijk-aanmaning","catalogId":"landelijk","versionRange":"~1.3.0"}]}}}]}
                 """.formatted(PLUGIN_CONFIGURATION_ID)).get(0);
 
-        assertThat(found.environmentId()).isEqualTo("acceptatie");
-        assertThat(found.requireOne(null, "besluit").versionRange()).isEqualTo("^2.0.0");
-        assertThat(found.requireOne(null, "herinnering").versionRange()).isEqualTo("^2.0.0");
-        assertThat(found.requireOne(null, "aanmaning").versionRange()).isEqualTo("2.1.0");
+        // Saved without a schema version, so before 4: plain values, read as the literals they meant.
+        assertThat(found.environmentId()).isEqualTo("\"acceptatie\"");
+        assertThat(found.requireOne(null, "besluit").versionRange()).isEqualTo("\"^2.0.0\"");
+        assertThat(found.requireOne(null, "herinnering").versionRange()).isEqualTo("\"^2.0.0\"");
+        assertThat(found.requireOne(null, "aanmaning").versionRange()).isEqualTo("\"2.1.0\"");
         assertThat(found.requireOne(null, "landelijk-besluit").versionRange())
                 .describedAs("a range over the set's catalog says nothing about another catalog")
                 .isNull();
-        assertThat(found.requireOne(null, "landelijk-aanmaning").versionRange()).isEqualTo("~1.3.0");
+        assertThat(found.requireOne(null, "landelijk-aanmaning").versionRange()).isEqualTo("\"~1.3.0\"");
+    }
+
+    /** From schema 4 the environment and the ranges are JSONata, stored as written (ADR 0009). */
+    @Test
+    void fromSchema4_readsTheEnvironmentAndTheReleasesAsJsonata() {
+        var found = parse("""
+                {"components":[{"type":"epistola-letter-composer","key":"pv:brief",
+                  "epistola":{"schemaVersion":4,"letterSet":{"pluginConfigurationId":"%s","catalogId":"gemeente",
+                    "environmentId":"$pv.omgeving","versionRange":"\\"^2.0.0\\"",
+                    "templates":[{"templateId":"besluit"},{"templateId":"aanmaning","versionRange":"$pv.versie"}]}}}]}
+                """.formatted(PLUGIN_CONFIGURATION_ID)).get(0);
+
+        assertThat(found.environmentId()).isEqualTo("$pv.omgeving");
+        assertThat(found.requireOne(null, "besluit").versionRange()).isEqualTo("\"^2.0.0\"");
+        assertThat(found.requireOne(null, "aanmaning").versionRange()).isEqualTo("$pv.versie");
+    }
+
+    @Test
+    void atSchema3_aPlainValueIsQuotedAsTheLiteralItMeant_escapesAndAll() {
+        var found = parse("""
+                {"components":[{"type":"epistola-letter-composer","key":"pv:brief",
+                  "epistola":{"schemaVersion":3,"letterSet":{"pluginConfigurationId":"%s","catalogId":"gemeente",
+                    "environmentId":"pro\\"d\\\\uctie","templates":[{"templateId":"besluit"}]}}}]}
+                """.formatted(PLUGIN_CONFIGURATION_ID)).get(0);
+
+        assertThat(found.environmentId()).isEqualTo("\"pro\\\"d\\\\uctie\"");
     }
 
     @Test
@@ -188,7 +215,6 @@ class ComposerParserTest {
         var found = parse(composer("")).get(0);
 
         assertThat(found.environmentId()).isNull();
-        assertThat(found.environmentOr("productie")).isEqualTo("productie");
         assertThat(found.requireOne(null, "besluit").versionRange()).isNull();
     }
 

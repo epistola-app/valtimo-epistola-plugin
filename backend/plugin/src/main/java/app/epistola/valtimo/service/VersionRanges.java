@@ -72,6 +72,50 @@ public final class VersionRanges {
     }
 
     /**
+     * The range an expression produced, as a request sends it: empty for nothing or a blank string,
+     * and refused for anything but a string that is a range. A number in particular is refused rather
+     * than converted: the bare {@code 1.0} evaluates to the number 1, which as a range would mean
+     * {@code 1.x} rather than {@code 1.0.x} (ADR 0009).
+     * <p>
+     * The refusal's message describes the result, never repeats it: an expression may read the case.
+     *
+     * @throws IllegalArgumentException when the result cannot be used as a range
+     */
+    public static Optional<String> ofExpressionResult(Object value) {
+        if (value == null) {
+            return Optional.empty();
+        }
+        if (!(value instanceof String text)) {
+            throw new IllegalArgumentException(
+                    "must evaluate to a string such as \"^1.4.0\", not a " + typeOf(value));
+        }
+        if (text.isBlank()) {
+            return Optional.empty();
+        }
+        String range = text.strip();
+        if (problem(range).isPresent()) {
+            throw new IllegalArgumentException("evaluated to a string that is not a version range");
+        }
+        return Optional.of(range);
+    }
+
+    private static String typeOf(Object value) {
+        if (value instanceof Number) {
+            return "number";
+        }
+        if (value instanceof Boolean) {
+            return "boolean";
+        }
+        if (value instanceof java.util.List<?>) {
+            return "array";
+        }
+        if (value instanceof java.util.Map<?, ?>) {
+            return "object";
+        }
+        return value.getClass().getSimpleName();
+    }
+
+    /**
      * The parsed range, refused with a 400 when it is not one the contract accepts.
      */
     static RangeList parse(String range) {

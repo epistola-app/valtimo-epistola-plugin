@@ -43,6 +43,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -269,9 +270,11 @@ class LetterComposerServiceTest {
         LetterComposerConfiguration inAcceptance = new LetterComposerConfiguration(
                 "pv:epistolaLetter", null, PLUGIN_CONFIGURATION_ID, "gemeente", "{\"naam\": $doc.naam}",
                 List.of(new LetterComposerConfiguration.OfferedTemplate(
-                        "gemeente", "besluit", "Besluit", null, "^2.0.0")),
-                false, Map.of(), "acceptatie");
+                        "gemeente", "besluit", "Besluit", null, "\"^2.0.0\"")),
+                false, Map.of(), "\"acceptatie\"");
         offering(inAcceptance, "besluit");
+        evaluating("\"acceptatie\"", "acceptatie");
+        evaluating("\"^2.0.0\"", "^2.0.0");
         templateRequires("besluit", required("naam"));
         when(epistolaService.previewDocument(anyString(), anyString(), anyString(), anyString(),
                 anyString(), any(), any(), any(), any()))
@@ -306,6 +309,49 @@ class LetterComposerServiceTest {
                 anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit"), eq("prod"), eq(null));
         assertThat(letter.environmentId()).isNull();
         assertThat(letter.versionRange()).isNull();
+    }
+
+    /**
+     * The environment and the release are JSONata evaluated with the case (ADR 0009): an environment
+     * expression that produces nothing falls back to the default, as no environment does.
+     */
+    @Test
+    void anEnvironmentExpressionProducingNothing_rendersInTheDefaultAndHandsOnNone() {
+        offering(new LetterComposerConfiguration(
+                "pv:epistolaLetter", null, PLUGIN_CONFIGURATION_ID, "gemeente", "{}",
+                List.of(offered("besluit", "Besluit", null)), false, Map.of(), "$pv.omgeving"), "besluit");
+        templateRequires("besluit", required("naam"));
+        evaluating("$pv.omgeving", null);
+
+        PreparedLetter letter = service.prepare(CONTEXT, null, "besluit");
+
+        org.mockito.Mockito.verify(epistolaService).getTemplateDetails(
+                anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit"), eq("prod"), eq(null));
+        assertThat(letter.environmentId()).isNull();
+    }
+
+    @Test
+    void aReleaseExpressionProducingANumber_isRefused_ratherThanReadAsAnotherRange() {
+        offering(configuration(new LetterComposerConfiguration.OfferedTemplate(
+                "gemeente", "besluit", "Besluit", null, "1.0")), "besluit");
+        templateRequires("besluit", required("naam"));
+        when(jsonataMappingService.evaluateValue(argThat(ctx -> ctx != null && "1.0".equals(ctx.getExpression()))))
+                .thenReturn(1);
+
+        assertThatThrownBy(() -> service.prepare(CONTEXT, null, "besluit"))
+                .isInstanceOfSatisfying(ComposerException.class, e -> {
+                    assertThat(e.getReason()).isEqualTo(ComposerException.Reason.MAPPING_FAILED);
+                    assertThat(e.getMessage()).contains("letter 'besluit'")
+                            .contains("must evaluate to a string such as \"^1.4.0\", not a number");
+                });
+    }
+
+    /** What the mapping service gives for one expression, as scalar and as value alike. */
+    private void evaluating(String expression, String result) {
+        when(jsonataMappingService.evaluateScalar(argThat(ctx -> ctx != null && expression.equals(ctx.getExpression()))))
+                .thenReturn(result);
+        when(jsonataMappingService.evaluateValue(argThat(ctx -> ctx != null && expression.equals(ctx.getExpression()))))
+                .thenReturn(result);
     }
 
     @Test

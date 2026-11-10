@@ -40,8 +40,10 @@ import java.util.UUID;
  * @param templates     The templates this component offers, in display order
  * @param askOptionalFields Whether to also ask for optional template fields the mapping left empty
  * @param writeBack     Where a letter's values also belong in the case: destination to expression
- * @param environmentId The environment every letter renders in and is read from, or null for the
- *                      plugin configuration's default
+ * @param environmentId The environment every letter renders in and is read from, as JSONata
+ *                      evaluated with the case when a letter is prepared (a fixed one is the literal
+ *                      {@code "productie"}), or null for the plugin configuration's default. Settings
+ *                      saved before schema 4 held a plain key; the parser turns it into that literal
  */
 public record LetterComposerConfiguration(
         String componentKey,
@@ -70,14 +72,6 @@ public record LetterComposerConfiguration(
     }
 
     /**
-     * The environment this composer renders in: its own, else the plugin configuration's default.
-     *
-     * @param defaultEnvironmentId the plugin configuration's default, which may itself be null
-     */
-    public String environmentOr(String defaultEnvironmentId) {
-        return environmentId != null ? environmentId : defaultEnvironmentId;
-    }
-    /**
      * One selectable letter.
      *
      * <p>The catalog is held per letter rather than per set: a catalog is a property of the letter,
@@ -94,8 +88,9 @@ public record LetterComposerConfiguration(
      * @param templateId   The Epistola template id
      * @param label        What the employee sees in the picker; falls back to the template id
      * @param dataMapping  An optional JSONata fragment merged over the baseline for this template
-     * @param versionRange The catalog release to render, as a version range, already resolved; null
-     *                     for the release the environment renders
+     * @param versionRange The catalog release to render, as JSONata evaluating to a version range,
+     *                     already defaulted from the set's; null for the release the environment
+     *                     renders. Like the environment, a literal from before schema 4 is quoted
      */
     public record OfferedTemplate(
             String catalogId, String templateId, String label, String dataMapping, String versionRange) {

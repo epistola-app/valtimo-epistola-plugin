@@ -199,9 +199,9 @@ Stored, that half looks like this — under `epistola`, the one key this compone
 "epistola": {
   "letterSet": {
     "pluginConfigurationId": "…",
-    "environmentId": "acceptatie",
+    "environmentId": "\"acceptatie\"",
     "catalogId": "municipality-demo",
-    "versionRange": "^1.4.0",
+    "versionRange": "\"^1.4.0\"",
     "templates": [{ "templateId": "besluit-bezwaar", "label": "Besluit op bezwaar" }]
   }
 }
@@ -213,16 +213,23 @@ letter of this case type needs and the fragment only what makes this one differe
 ### Environment and release
 
 Since Epistola 2.0 a catalog is rendered through a **release**, and an environment is where a
-release is deployed. A composer chooses both, as a `generate-document` link does:
+release is deployed. A composer chooses both, as a `generate-document` link does, and both are
+**JSONata** evaluated with the case when a letter is prepared
+([ADR 0009](adr/0009-environment-and-release-as-expressions.md)): a fixed value is a string literal,
+`"acceptatie"` or `"^1.4.0"`, and `$pv.omgeving` picks one per case. Settings saved before schema 4
+held plain values; they are read as the literals they meant, so nothing has to be re-saved.
 
 - **`environmentId`** on the letter set: where every letter is generated, and where the widget
   lists catalogs and the composer reads templates from. Left out, the plugin configuration's
-  `defaultEnvironmentId` — what every composer used before the field existed. A catalog the chosen
-  environment does not serve stays selected with a notice, rather than being cleared.
+  `defaultEnvironmentId` — what every composer used before the field existed. The widget lists
+  every catalog and marks those the environment does not serve; one of those can still be chosen,
+  with a warning, so a letter set can be prepared before its catalog is rolled out.
 - **`versionRange`** on the letter set: the release of the **set's catalog** its letters render —
-  `1.4.0` pins one, `^1.4.0` takes the highest release that satisfies it. Left out, the release the
-  environment renders (its deployed draft, else its highest release). The widget lists the
-  catalog's releases as suggestions and says which release the range selects.
+  `"1.4.0"` pins one, `"^1.4.0"` takes the highest release that satisfies it. Left out, the release
+  the environment renders (its deployed draft, else its highest release). The expression must
+  produce a string that is a range (a number is refused: `1.0` would read as `1.x`). The widget
+  lists the catalog's releases as suggestions and says which release it designs against — when the
+  range or the environment is an expression, the highest one, and it says so.
 - **`templates[].versionRange`**: one letter's own release, under **Configure** in the widget. It
   wins over the set's.
 
@@ -358,7 +365,7 @@ The whole contract is three fields:
 
 `environmentId` and `versionRange` are optional and mean what they mean on a `generate-document`
 link: no environment is the plugin configuration's default, no range is the release that
-environment renders.
+environment renders. On the letter they are plain, evaluated values, not expressions.
 
 `schemaVersion` may be omitted (absent means 1). A JSON _string_ works as well as an object, since
 the engine hands back whichever the writer stored. From JVM code, build it rather than copying this
@@ -578,20 +585,20 @@ deployable as config-as-code, editable in the builder:
   "key": "pv:epistolaLetter",
   "prefill": false,
   "epistola": {
-    "schemaVersion": 1,
+    "schemaVersion": 4,
     "askOptionalFields": false,
     "dataMapping": "<baseline JSONata>",
     "letterSet": {
       "pluginConfigurationId": "…",
-      "environmentId": "<optional>",
+      "environmentId": "<optional JSONata>",
       "catalogId": "municipality-demo",
-      "versionRange": "<optional, over municipality-demo>",
+      "versionRange": "<optional JSONata, over municipality-demo>",
       "templates": [
         {
           "templateId": "besluit",
           "label": "…",
           "dataMapping": "<fragment>",
-          "versionRange": "<optional>"
+          "versionRange": "<optional JSONata>"
         }
       ]
     }
@@ -630,7 +637,7 @@ itself when it is not.
 
 ```json
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "templateId": "…",
   "catalogId": "…",
   "environmentId": "<when the composer names one>",
@@ -642,7 +649,8 @@ itself when it is not.
 
 `environmentId` and `versionRange` are left off when the composer names neither, so such a letter
 looks as it did before they existed. Version 3 is what introduced them: an older plugin would ignore
-both and render another release than the one previewed, so it refuses the letter instead.
+both and render another release than the one previewed, so it refuses the letter instead. Version 4
+made the letter set's values JSONata; the letter itself carries what they evaluated to.
 
 `data` is everything the letter renders with; `inputs` is only what a human typed, kept so it stays
 visible what was changed by hand — and it is what write-back will read. This is the structure with
