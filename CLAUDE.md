@@ -139,7 +139,11 @@ docker/            # Docker compose for local dependencies
   tell a dependency-only catalog apart there. A generate link's `versionRange` is **JSONata**, like
   `environmentId` (ADR 0009; a fixed range is `"^1.4.0"`): it selects the highest released release
   that satisfies it, of those deployed when there is an environment, never a draft, and must
-  evaluate to a string (`VersionRanges.ofExpressionResult` refuses a number). Generation and
+  evaluate to a string (`VersionRanges.ofExpressionResult` refuses a number). For environment and
+  range alike, `""` is the deliberate "none" and an expression producing **no value fails**
+  (`EXPRESSION_EMPTY`) — never a silent fallback; `$plugin.defaultEnvironmentId` (`PluginBinding`) is
+  the explicit one. A top-level JSONata `null` is indistinguishable from a missing path, so it cannot
+  carry meaning (ADR 0009, second addendum). Generation and
   preview send it for the server to resolve. **Configurators never resolve per lookup**: they ask
   `/design-scope` once (falling back catalog-wide where the link would render nothing, with
   `problems`), and every lookup sends its `read` selection. A catalog-wide `read` must go out as

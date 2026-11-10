@@ -227,7 +227,11 @@ held plain values; they are read as the literals they meant, so nothing has to b
 - **`versionRange`** on the letter set: the release of the **set's catalog** its letters render —
   `"1.4.0"` pins one, `"^1.4.0"` takes the highest release that satisfies it. Left out, the release
   the environment renders (its deployed draft, else its highest release). The expression must
-  produce a string that is a range (a number is refused: `1.0` would read as `1.x`). The widget
+  produce a string that is a range (a number is refused: `1.0` would read as `1.x`). For both the
+  environment and the release, `""` means deliberately none and no value is refused with a message
+  to the employee; `$pv.omgeving ?: $plugin.defaultEnvironmentId` falls back to the plugin's
+  default. A letter rendered in no environment carries `"environmentId": ""`, which generation keeps
+  apart from an absent one (the default). The widget
   lists the catalog's releases as suggestions and says which release it designs against — when the
   range or the environment is an expression, the highest one, and it says so.
 - **`templates[].versionRange`**: one letter's own release, under **Configure** in the widget. It

@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Upgrading
 
+- **An environment or version-range expression that produces no value now fails** instead of falling
+  back. `$pv.omgeving` on a case without that variable, or `someEnv` without quotes, used to render
+  silently in the plugin's default environment (or with no range). It is now `FAILED` with
+  `errorReason: EXPRESSION_EMPTY`. Write the fallback into the expression:
+  `$pv.omgeving ?: $plugin.defaultEnvironmentId`, or `""` for deliberately none. An empty field
+  still means the default.
 - **A generate link's `versionRange` is now JSONata, like its environment.** A fixed range is the
   string literal `"^1.4.0"`. A v1 link saved as a bare range (`^1.4.0`, only possible on
   `1.0.0-alpha.1`/`beta.1`) is refused when it runs, with a message showing the literal to write.
@@ -20,6 +26,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`$plugin.defaultEnvironmentId` in expressions**: the plugin configuration's default environment,
+  or `""` when none is configured, for an explicit fallback. `""` from an environment or range
+  expression means deliberately none. A failing expression (`$error` included) is `FAILED` with
+  `EXPRESSION_FAILED` at once rather than retried, and the expression editor flags a bare path such
+  as `someEnv`, which can never produce a value.
 - **The release can be an expression.** A generate link's and a letter set's release is JSONata
   evaluated with the case (`$pv.briefversie`), as the environment already was; a letter set's
   environment can be an expression too. The result must be a string that is a version range; a

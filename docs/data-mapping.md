@@ -31,11 +31,20 @@ model.
 
 The JSONata expression receives these variables:
 
-| Variable | Source                                                   |
-| -------- | -------------------------------------------------------- |
-| `$doc`   | The Valtimo document/case data, lazily resolved by path. |
-| `$pv`    | Process variables from the current execution.            |
-| `$case`  | Case metadata exposed by the plugin's context provider.  |
+| Variable  | Source                                                                                      |
+| --------- | ------------------------------------------------------------------------------------------- |
+| `$doc`    | The Valtimo document/case data, lazily resolved by path.                                    |
+| `$pv`     | Process variables from the current execution.                                               |
+| `$case`   | Case metadata exposed by the plugin's context provider.                                     |
+| `$plugin` | The plugin configuration, read-only: `defaultEnvironmentId` (`""` when none is configured). |
+
+`$plugin` is there to fall back on explicitly in an environment expression:
+`$pv.omgeving ?: $plugin.defaultEnvironmentId` renders in the case's environment, else the default,
+else none. Nothing else of the configuration is exposed — never the base URL or the API key.
+
+**Every expression reads data through these variables, and nothing else.** The input is empty, so a
+bare path such as `someEnv` or `omgeving.key` never finds anything and always produces no value. It
+is a forgotten quote (`"someEnv"`) or a forgotten `$pv.`; the expression editor flags it.
 
 The expression must evaluate to an object matching the Epistola template schema.
 This example matches the permit confirmation process link in the test app:
