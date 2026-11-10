@@ -19,7 +19,7 @@ package app.epistola.valtimo.web.rest;
 
 import app.epistola.valtimo.domain.AttributeDefinition;
 import app.epistola.valtimo.domain.CatalogInfo;
-import app.epistola.valtimo.domain.CatalogReleases;
+import app.epistola.valtimo.domain.DesignScope;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateInfo;
@@ -99,13 +99,14 @@ public class EpistolaTemplateResource {
     }
 
     /**
-     * Get the catalogs a process link may name for a plugin configuration: those deployed to the
-     * environment it generates in (see {@link #environmentFor}), or all of the tenant's when no
-     * environment applies.
+     * Get the catalogs a process link may name for a plugin configuration: every catalog of the
+     * tenant, each marked whether it is deployed to the environment the link generates in (see
+     * {@link #environmentFor}). Not narrowed to that environment: a link may name a catalog before it
+     * is rolled out there (ADR 0009).
      *
      * @param configurationId The plugin configuration ID
      * @param environmentId   The environment the link generates in; the configuration's default when absent
-     * @param anyEnvironment  True when the link's environment is only known at run time: no filter
+     * @param anyEnvironment  True when the link's environment is only known at run time: nothing marked
      * @return List of available catalogs
      */
     @GetMapping("/configurations/{configurationId}/catalogs")
@@ -117,7 +118,7 @@ public class EpistolaTemplateResource {
         log.debug("Fetching catalogs for plugin configuration: {}", configurationId);
 
         EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        return okOrNotFound(() -> epistolaService.getCatalogs(
+        return okOrNotFound(() -> epistolaService.getCatalogsMarkingDeployment(
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
@@ -273,32 +274,38 @@ public class EpistolaTemplateResource {
     }
 
     /**
-     * The released versions of a catalog a process link may pin, highest first — in the environment
-     * the link generates in, those deployed there — and the one the link's range selects.
+     * The release a configurator designs a link against, resolved once: every further lookup sends
+     * the returned {@code read} selection, so they all read the same release. A catalog the link's
+     * environment does not serve, or a range nothing satisfies, falls back and says so in
+     * {@code problems} rather than failing (ADR 0009).
      *
      * @param configurationId The plugin configuration ID
-     * @param catalogId       The catalog ID
-     * @param versionRange    The link's version range, if any; answered with 400 when it is not one
-     * @return the versions and the one selected, which is null when nothing satisfies the range
+     * @param catalogId       The catalog ID, qualified or a bare key saved against contract 1.x
+     * @param environmentId   The environment the link generates in; the configuration's default when absent
+     * @param anyEnvironment  True when the link's environment is an expression: read catalog-wide
+     * @param versionRange    The link's range, if it is a literal; answered with 400 when it is not one
+     * @param anyRange        True when the link's range is an expression: no range applies
+     * @return the scope, or 404 when the catalog does not exist or has nothing to read
      */
-    @GetMapping("/configurations/{configurationId}/releases")
-    public ResponseEntity<CatalogReleases> getReleases(
+    @GetMapping("/configurations/{configurationId}/design-scope")
+    public ResponseEntity<DesignScope> getDesignScope(
             @PathVariable("configurationId") UUID configurationId,
             @RequestParam("catalogId") String catalogId,
             @RequestParam(value = "environmentId", required = false) String environmentId,
             @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment,
-            @RequestParam(value = "versionRange", required = false) String versionRange
+            @RequestParam(value = "versionRange", required = false) String versionRange,
+            @RequestParam(value = "anyRange", defaultValue = "false") boolean anyRange
     ) {
-        log.debug("Fetching releases for plugin configuration: {}, catalog: {}", configurationId, catalogId);
+        log.debug("Resolving design scope for plugin configuration: {}, catalog: {}", configurationId, catalogId);
 
         EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        return okOrNotFound(() -> epistolaService.getReleases(
+        return okOrNotFound(() -> epistolaService.getDesignScope(
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
                 catalogId,
                 environmentFor(plugin, environmentId, anyEnvironment),
-                versionRange
+                anyRange ? null : versionRange
         ));
     }
 

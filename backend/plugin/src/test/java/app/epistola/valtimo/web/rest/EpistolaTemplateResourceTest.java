@@ -19,7 +19,7 @@ package app.epistola.valtimo.web.rest;
 
 import app.epistola.valtimo.domain.AttributeDefinition;
 import app.epistola.valtimo.domain.CatalogInfo;
-import app.epistola.valtimo.domain.CatalogReleases;
+import app.epistola.valtimo.domain.DesignScope;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateInfo;
@@ -78,13 +78,13 @@ class EpistolaTemplateResourceTest {
     @Test
     void getCatalogs_delegatesWithConnectionDetails() {
         List<CatalogInfo> catalogs = List.of();
-        when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null)).thenReturn(catalogs);
+        when(epistolaService.getCatalogsMarkingDeployment(BASE_URL, API_KEY, TENANT_ID, null)).thenReturn(catalogs);
 
         ResponseEntity<List<CatalogInfo>> response = resource.getCatalogs(CONFIG_ID, null, false);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isSameAs(catalogs);
-        verify(epistolaService).getCatalogs(BASE_URL, API_KEY, TENANT_ID, null);
+        verify(epistolaService).getCatalogsMarkingDeployment(BASE_URL, API_KEY, TENANT_ID, null);
     }
 
     @Test
@@ -199,13 +199,13 @@ class EpistolaTemplateResourceTest {
     }
 
     @Test
-    void lookupsAreNarrowedToTheEnvironmentTheLinkNames() {
+    void lookupsAreScopedToTheEnvironmentTheLinkNames() {
         when(plugin.getDefaultEnvironmentId()).thenReturn("acceptatie");
 
         resource.getCatalogs(CONFIG_ID, "productie", false);
         resource.getTemplates(CONFIG_ID, CATALOG_ID, "productie", false, null);
 
-        verify(epistolaService).getCatalogs(BASE_URL, API_KEY, TENANT_ID, "productie");
+        verify(epistolaService).getCatalogsMarkingDeployment(BASE_URL, API_KEY, TENANT_ID, "productie");
         verify(epistolaService).getTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, "productie", null);
     }
 
@@ -216,25 +216,18 @@ class EpistolaTemplateResourceTest {
         resource.getCatalogs(CONFIG_ID, null, false);
         resource.getVariants(CONFIG_ID, TEMPLATE_ID, CATALOG_ID, " ", false, null);
 
-        verify(epistolaService).getCatalogs(BASE_URL, API_KEY, TENANT_ID, "acceptatie");
+        verify(epistolaService).getCatalogsMarkingDeployment(BASE_URL, API_KEY, TENANT_ID, "acceptatie");
         verify(epistolaService).getVariants(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, TEMPLATE_ID, "acceptatie", null);
     }
 
     @Test
-    void anEnvironmentOnlyKnownAtRunTimeNarrowsNothing() {
+    void anEnvironmentOnlyKnownAtRunTimeMarksNothing() {
         // The link names its environment with an expression: no default stands in for it.
         when(plugin.getDefaultEnvironmentId()).thenReturn("acceptatie");
 
         resource.getCatalogs(CONFIG_ID, null, true);
 
-        verify(epistolaService).getCatalogs(BASE_URL, API_KEY, TENANT_ID, null);
-    }
-
-    @Test
-    void getCatalogs_answersNotFoundWhenTheEnvironmentDoesNotExist() {
-        when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, "weg")).thenThrow(upstream(404));
-
-        assertThat(resource.getCatalogs(CONFIG_ID, "weg", false).getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        verify(epistolaService).getCatalogsMarkingDeployment(BASE_URL, API_KEY, TENANT_ID, null);
     }
 
     @Test
@@ -251,23 +244,41 @@ class EpistolaTemplateResourceTest {
     }
 
     @Test
-    void getReleases_answersWithTheVersionsAndTheOneTheRangeSelects() {
-        CatalogReleases releases = new CatalogReleases(List.of("2.0.0", "1.9.0"), "1.9.0", false);
+    void getDesignScope_resolvesInTheLinksEnvironment_elseTheConfigurationsDefault() {
+        DesignScope scope = new DesignScope(CATALOG_ID, List.of("2.0.0", "1.9.0"), "1.9.0", false, "prod",
+                List.of(), new DesignScope.Read("prod", "1.9.0"));
         when(plugin.getDefaultEnvironmentId()).thenReturn("prod");
-        when(epistolaService.getReleases(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, "prod", "^1.0.0")).thenReturn(releases);
+        when(epistolaService.getDesignScope(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, "prod", "^1.0.0")).thenReturn(scope);
 
-        ResponseEntity<CatalogReleases> response = resource.getReleases(CONFIG_ID, CATALOG_ID, null, false, "^1.0.0");
+        ResponseEntity<DesignScope> response = resource.getDesignScope(CONFIG_ID, CATALOG_ID, null, false, "^1.0.0", false);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        assertThat(response.getBody()).isSameAs(releases);
+        assertThat(response.getBody()).isSameAs(scope);
+    }
+
+    @Test
+    void getDesignScope_withExpressions_appliesNeitherEnvironmentNorRange() {
+        when(plugin.getDefaultEnvironmentId()).thenReturn("prod");
+
+        resource.getDesignScope(CONFIG_ID, CATALOG_ID, "staging", true, "^1.0.0", true);
+
+        verify(epistolaService).getDesignScope(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null, null);
+    }
+
+    @Test
+    void getDesignScope_answersNotFoundForACatalogThatDoesNotExist() {
+        when(epistolaService.getDesignScope(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null, null)).thenThrow(upstream(404));
+
+        assertThat(resource.getDesignScope(CONFIG_ID, CATALOG_ID, null, false, null, false).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void aVersionRangeThatIsNotOne_isABadRequestRatherThanAServerFault() {
-        when(epistolaService.getReleases(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null, "latest")).thenThrow(upstream(400));
+        when(epistolaService.getDesignScope(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null, "latest")).thenThrow(upstream(400));
         when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null, "latest")).thenThrow(upstream(400));
 
-        assertThat(resource.getReleases(CONFIG_ID, CATALOG_ID, null, false, "latest").getStatusCode())
+        assertThat(resource.getDesignScope(CONFIG_ID, CATALOG_ID, null, false, "latest", false).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(resource.getTemplates(CONFIG_ID, CATALOG_ID, null, false, "latest").getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);

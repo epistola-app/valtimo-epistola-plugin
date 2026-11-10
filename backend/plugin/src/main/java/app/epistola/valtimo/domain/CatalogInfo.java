@@ -29,6 +29,10 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * @param namespace the namespace within that registry
  * @param key       the catalog's key within its namespace
  * @param editable  whether the catalog can be changed in that Epistola installation
+ * @param deployedToEnvironment whether a release of it is deployed to the environment the list was
+ *                  asked for, or null when it was asked for without one. A configurator lists a
+ *                  catalog that is not deployed too, marked, so a link can be configured before
+ *                  its catalog is rolled out (ADR 0009)
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record CatalogInfo(
@@ -37,6 +41,17 @@ public record CatalogInfo(
         String registry,
         String namespace,
         String key,
-        boolean editable
+        boolean editable,
+        Boolean deployedToEnvironment
 ) {
+
+    /** A catalog listed without an environment to mark it against. */
+    public CatalogInfo(String id, String name, String registry, String namespace, String key, boolean editable) {
+        this(id, name, registry, namespace, key, editable, null);
+    }
+
+    /** This catalog, marked as deployed to the environment the list was asked for, or not. */
+    public CatalogInfo deployedToEnvironment(boolean deployed) {
+        return new CatalogInfo(id, name, registry, namespace, key, editable, deployed);
+    }
 }

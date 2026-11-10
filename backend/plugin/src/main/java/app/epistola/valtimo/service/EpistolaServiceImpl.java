@@ -22,6 +22,7 @@ import app.epistola.valtimo.domain.AttributeDefinition;
 import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.domain.CatalogReleases;
 import app.epistola.valtimo.domain.CatalogRef;
+import app.epistola.valtimo.domain.DesignScope;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
@@ -81,6 +82,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -374,14 +376,24 @@ public class EpistolaServiceImpl implements EpistolaService {
      */
     private List<DeploymentDto> deploymentsOf(
             String baseUrl, String apiKey, String tenantId, CatalogRef ref, String environmentId) {
-        List<DeploymentDto> deployments = ref.select(
-                listDeployments(baseUrl, apiKey, tenantId, environmentId), EpistolaServiceImpl::refOf, tenantId);
-        List<String> catalogs = deployments.stream().map(dto -> refOf(dto).toString()).distinct().sorted().toList();
-        if (catalogs.isEmpty()) {
+        List<DeploymentDto> deployments = selectDeployments(
+                listDeployments(baseUrl, apiKey, tenantId, environmentId), ref, tenantId, environmentId);
+        if (deployments.isEmpty()) {
             throw new EpistolaApiException(
                     "Catalog '" + ref + "' is not deployed to environment '" + environmentId + "'",
                     null, 404, null, Map.of());
         }
+        return deployments;
+    }
+
+    /**
+     * The deployments of the one catalog {@code ref} names among an environment's: empty when none is
+     * deployed there, and refused with a 409 when a bare key matches catalogs in two namespaces.
+     */
+    private static List<DeploymentDto> selectDeployments(
+            List<DeploymentDto> all, CatalogRef ref, String tenantId, String environmentId) {
+        List<DeploymentDto> deployments = ref.select(all, EpistolaServiceImpl::refOf, tenantId);
+        List<String> catalogs = deployments.stream().map(dto -> refOf(dto).toString()).distinct().sorted().toList();
         if (catalogs.size() > 1) {
             throw new EpistolaApiException(
                     "Catalog '" + ref + "' is ambiguous in environment '" + environmentId
@@ -446,6 +458,144 @@ public class EpistolaServiceImpl implements EpistolaService {
             log.error("Failed to fetch releases for tenant {}: {}", tenantId, e.getMessage());
             throw toApiException("Failed to fetch catalog releases", e);
         }
+    }
+
+    @Override
+    public List<CatalogInfo> getCatalogsMarkingDeployment(
+            String baseUrl, String apiKey, String tenantId, String environmentId) {
+        String environment = blankToNull(environmentId);
+        log.debug("Fetching catalogs for tenant: {}, marked against environment: {}", tenantId, environment);
+        List<CatalogInfo> catalogs = getCatalogs(baseUrl, apiKey, tenantId, null);
+        if (environment == null) {
+            return catalogs;
+        }
+        try {
+            Set<String> deployed = listDeployments(baseUrl, apiKey, tenantId, environment).stream()
+                    .map(dto -> refOf(dto).toString())
+                    .collect(Collectors.toSet());
+            return catalogs.stream()
+                    .map(catalog -> catalog.deployedToEnvironment(deployed.contains(catalog.id())))
+                    .toList();
+        } catch (EpistolaApiException e) {
+            if (Integer.valueOf(404).equals(e.getHttpStatus())) {
+                // An environment that does not exist marks nothing; the design scope says why.
+                return catalogs;
+            }
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to fetch deployments for tenant {}: {}", tenantId, e.getMessage());
+            throw toApiException("Failed to fetch environment deployments", e);
+        }
+    }
+
+    @Override
+    public DesignScope getDesignScope(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId, String versionRange) {
+        String environment = blankToNull(environmentId);
+        String rangeSource = rangeOrNull(versionRange);
+        log.debug("Resolving design scope for tenant: {}, catalog: {}, environment: {}, range: {}",
+                tenantId, catalogId, environment, rangeSource);
+        try {
+            CatalogRef ref = parseCatalogRef(catalogId);
+            RangeList range = rangeSource == null ? null : VersionRanges.parse(rangeSource);
+            List<DesignScope.Problem> problems = new ArrayList<>();
+            if (environment != null) {
+                DesignScope inEnvironment = designInEnvironment(
+                        baseUrl, apiKey, tenantId, ref, environment, range, problems);
+                if (inEnvironment != null) {
+                    return inEnvironment;
+                }
+            }
+            return designCatalogWide(baseUrl, apiKey, tenantId, ref, range, problems);
+        } catch (EpistolaApiException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to resolve design scope for tenant {}: {}", tenantId, e.getMessage());
+            throw toApiException("Failed to resolve the catalog release", e);
+        }
+    }
+
+    /**
+     * What {@code environment} renders of the catalog for {@code range}, as generation would pick it,
+     * or null — with the reason added to {@code problems} — when it renders nothing of it.
+     */
+    private DesignScope designInEnvironment(
+            String baseUrl, String apiKey, String tenantId, CatalogRef ref, String environment,
+            RangeList range, List<DesignScope.Problem> problems) {
+        List<DeploymentDto> all;
+        try {
+            all = listDeployments(baseUrl, apiKey, tenantId, environment);
+        } catch (EpistolaApiException e) {
+            if (Integer.valueOf(404).equals(e.getHttpStatus())) {
+                problems.add(DesignScope.Problem.UNKNOWN_ENVIRONMENT);
+                return null;
+            }
+            throw e;
+        }
+        List<DeploymentDto> deployments = selectDeployments(all, ref, tenantId, environment);
+        if (deployments.isEmpty()) {
+            problems.add(DesignScope.Problem.NOT_DEPLOYED);
+            return null;
+        }
+        String qualified = refOf(deployments.get(0)).toString();
+        List<DeploymentDto> released = deployments.stream()
+                .filter(dto -> dto.getStatus() == CatalogReleaseStatus.released)
+                .toList();
+        List<String> versions = highestFirst(released.stream().map(DeploymentDto::getVersion).toList());
+        if (range != null) {
+            // A range never matches a draft (resolveInEnvironment).
+            Optional<String> version = versions.stream()
+                    .filter(candidate -> VersionRanges.satisfies(candidate, range))
+                    .findFirst();
+            if (version.isEmpty()) {
+                problems.add(DesignScope.Problem.RANGE_NOT_DEPLOYED);
+                return null;
+            }
+            return new DesignScope(qualified, versions, version.get(), false, environment,
+                    List.copyOf(problems), new DesignScope.Read(environment, version.get()));
+        }
+        Optional<DeploymentDto> draft = deployments.stream()
+                .filter(dto -> dto.getStatus() == CatalogReleaseStatus.draft)
+                .findFirst();
+        if (draft.isPresent()) {
+            return new DesignScope(qualified, versions, null, true, environment,
+                    List.copyOf(problems), new DesignScope.Read(environment, null));
+        }
+        String highest = deployments.stream()
+                .map(DeploymentDto::getVersion)
+                .max(ReleaseVersions.PRECEDENCE)
+                .orElseThrow();
+        return new DesignScope(qualified, versions, highest, false, environment,
+                List.copyOf(problems), new DesignScope.Read(environment, null));
+    }
+
+    /**
+     * The catalog read regardless of environment: the highest release satisfying {@code range}, else
+     * — with {@code RANGE_UNSATISFIED} — its highest release, else its newest draft.
+     */
+    private DesignScope designCatalogWide(
+            String baseUrl, String apiKey, String tenantId, CatalogRef ref, RangeList range,
+            List<DesignScope.Problem> problems) {
+        CatalogDto catalog = findCatalog(baseUrl, apiKey, tenantId, ref, null);
+        String qualified = refOf(catalog).toString();
+        List<String> versions = releasedVersions(baseUrl, apiKey, tenantId, catalog);
+        if (range != null) {
+            Optional<String> version = versions.stream()
+                    .filter(candidate -> VersionRanges.satisfies(candidate, range))
+                    .findFirst();
+            if (version.isPresent()) {
+                return new DesignScope(qualified, versions, version.get(), false, null,
+                        List.copyOf(problems), new DesignScope.Read(null, version.get()));
+            }
+            problems.add(DesignScope.Problem.RANGE_UNSATISFIED);
+        }
+        if (!versions.isEmpty()) {
+            return new DesignScope(qualified, versions, versions.get(0), false, null,
+                    List.copyOf(problems), new DesignScope.Read(null, versions.get(0)));
+        }
+        newestDraft(baseUrl, apiKey, tenantId, catalog); // refuses a catalog with nothing to read
+        return new DesignScope(qualified, versions, null, true, null,
+                List.copyOf(problems), new DesignScope.Read(null, null));
     }
 
     private String newestDraft(String baseUrl, String apiKey, String tenantId, CatalogDto catalog) {

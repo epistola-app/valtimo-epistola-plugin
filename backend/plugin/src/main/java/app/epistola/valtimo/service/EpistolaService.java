@@ -187,6 +187,28 @@ public interface EpistolaService {
             String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId, String versionRange);
 
     /**
+     * Every catalog of the tenant, each marked whether a release of it is deployed to
+     * {@code environmentId} — what a configurator lists, so a link can name a catalog before it is
+     * rolled out there (ADR 0009). Unlike {@link #getCatalogs(String, String, String, String)} it
+     * narrows nothing.
+     *
+     * @param environmentId the environment to mark against, or null to mark nothing
+     */
+    List<CatalogInfo> getCatalogsMarkingDeployment(
+            String baseUrl, String apiKey, String tenantId, String environmentId);
+
+    /**
+     * The release a configurator designs a link against, resolved once for every lookup it makes,
+     * falling back rather than failing where the link would not render (see {@link DesignScope}).
+     *
+     * @param environmentId the link's environment, or null when it has none or it is an expression
+     * @param versionRange  the link's range, or null when it has none or it is an expression;
+     *                      refused with a 400 when it is not a range
+     */
+    DesignScope getDesignScope(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId, String versionRange);
+
+    /**
      * Generate a document using a template.
      * <p>
      * Variant selection modes (mutually exclusive):
