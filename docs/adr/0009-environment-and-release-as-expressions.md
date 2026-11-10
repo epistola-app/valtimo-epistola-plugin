@@ -178,3 +178,66 @@ as something it did not mean. Verified against the JSONata parser for `1.4`,
   every release the expression reaches. This is visible, not prevented.
 - The composer's stored shape moves to schema 4; an older plugin refuses a schema-4 letter set with
   the existing "newer than I read" message rather than half-reading it.
+
+## Addendum (2026-11-10): templates across releases, and errors that say what is missing
+
+Agreed, not yet built.
+
+### Which templates a configurator offers
+
+| Release field                            | Template list                                                                     |
+| ---------------------------------------- | --------------------------------------------------------------------------------- |
+| a literal range                          | the templates of the release it selects                                           |
+| empty                                    | the templates of the release that renders (the environment's draft, else highest) |
+| an expression, or the environment is one | every template in a release it can reach, each with the releases it is in         |
+
+Without a range, generation still renders exactly one release, so templates of other releases are
+not offered there: they could only fail. In the expression case each template is marked with where
+it exists ("vanaf 2.0.0", "t/m 1.9.0"), and its fields and variants come from the highest release
+that contains it. A saved template the one release does not contain stays selected with its notice,
+and its fields and variants are then read from the highest release that has it, rather than failing
+with generic load errors.
+
+### Errors at generation
+
+Epistola refuses a generation it cannot resolve with 404 `not-found` before accepting anything. The
+plugin turns that into a reason (`ENVIRONMENT_NOT_FOUND`, `NOT_DEPLOYED`, `RANGE_UNSATISFIED`,
+`TEMPLATE_NOT_IN_RELEASE`, `VARIANT_NOT_IN_RELEASE`) and a translated message naming what was asked
+for — catalog, template, variant, release, environment, range — with Epistola's `detail` appended.
+
+- On the result variable: `status: FAILED`, a new `errorReason` (a stable code a gateway or retry
+  form can switch on) and `errorMessage`.
+- 400, 404 and 422 are permanent: no retries, an incident with that message. Timeouts and 5xx keep
+  their retries. A catchable BPMN error may be added as an opt-in later; an incident is the default.
+- Logged: the configuration and the reason only. Epistola's `detail` is a downstream message and goes
+  onto the case, never into a log ("Never log personal data", CLAUDE.md).
+- The same for `generate-document`, `generate-dynamic-document`, the preview, and the composer's
+  prepare and preview.
+
+### Proposed contract additions (epistola-contract, before 2.0.0 final)
+
+All additive, so allowed in a 2.x minor.
+
+1. **`NotFoundProblemDetail`** for `not-found`, after `ForbiddenProblemDetail`: one extension member,
+   `missing`, an object — `kind` (`tenant | catalog | environment | release | template | variant`,
+   may gain values) and the context the request named (`catalog` as `CatalogRef`, `environment`,
+   `versionRange`, `release`, `template`, `variant`). One named member with a structured value is
+   what RFC 9457 does with `errors` (§3); it defines no generic `details` wrapper, and a name next to
+   `detail` would invite confusion. The point is §3.1.4: _"Consumers SHOULD NOT parse the "detail"
+   member for information; extensions are more suitable and less error-prone ways to obtain such
+   information."_ The Suite's exceptions (`TemplateNotInReleaseException`,
+   `NoReleaseDeployedException`, `ReleaseNotFoundException`, `EnvironmentNotFoundException`) already
+   hold these values.
+2. **`help` learns `missing`**: `…/errors/not-found?operation=generateDocument&missing=template`, so
+   the error page gives hints per kind. Never a value: the contract keeps `help` free of anything from
+   the request or installation, so it can be shared and logged, and the page is on epistola.app. Not
+   in `type`, which must stay exactly the type URI.
+3. **`listCatalogTemplates`**: `GET /tenants/{t}/catalogs/{registry}/{namespace}/{catalogKey}/templates`,
+   optional `environmentKey`, returning each template with the releases that contain it (highest
+   first, drafts with a null version). One call instead of one listing per release.
+
+The plugin keeps a fallback for each, because a server may leave optional members out and answer an
+operation it does not implement yet with 501: its own diagnosis (re-checking environment,
+deployments, range, template and variant with the reads it already makes) when `missing` is absent,
+and one `listTemplates` per reachable release when `listCatalogTemplates` is not there — cached for
+released releases, which never change.
