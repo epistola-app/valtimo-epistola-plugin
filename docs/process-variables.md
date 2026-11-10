@@ -35,7 +35,9 @@ an API key without access — or the case's rich text cannot be converted, retry
 The step then completes with `status: FAILED`, an `errorMessage` naming what was asked for, and an
 `errorReason`: `ENVIRONMENT_NOT_FOUND`, `CATALOG_NOT_FOUND`, `NOT_DEPLOYED`, `NOT_RELEASED`,
 `RANGE_UNSATISFIED`, `TEMPLATE_NOT_IN_RELEASE`, `VARIANT_NOT_IN_RELEASE`, `NO_MATCHING_VARIANT`,
-`UNKNOWN`, `REQUEST_REFUSED` (any other 4xx) or `RICH_TEXT_NOT_CONVERTIBLE`. Its `requestId` starts
+`UNKNOWN`, `REQUEST_REFUSED` (any other 4xx), `RICH_TEXT_NOT_CONVERTIBLE`, `EXPRESSION_EMPTY` (an
+environment or release expression produced no value) or `EXPRESSION_FAILED` (an expression failed,
+`$error` included, or produced something unusable). Its `requestId` starts
 with `refused-`, because Epistola has no job for it; `check-job-status` reports such a request
 `FAILED` without asking. The catch event after the step self-heals on the already-terminal result, so
 the process takes the path it has for a failed letter. Timeouts, 5xx, 408 and 429 still fail the step

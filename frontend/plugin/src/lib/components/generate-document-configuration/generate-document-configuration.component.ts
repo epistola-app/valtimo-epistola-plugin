@@ -270,7 +270,13 @@ export class GenerateDocumentConfigurationComponent
   caseDefinitionKey: string | null = null;
   expressionFunctions: ExpressionFunctionInfo[] = [];
   /** Context variables for the JSONata editor's autocomplete ($doc/$pv/$case). */
-  editorContextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
+  /** `$plugin` is fixed: what an expression may know about the configuration (`PluginBinding`). */
+  editorContextVariables: Record<string, string[]> = {
+    doc: [],
+    pv: [],
+    case: [],
+    plugin: ['defaultEnvironmentId'],
+  };
   prefillDataMapping: Record<string, any> = {};
   validationErrors$ = new BehaviorSubject<JsonataFieldError[]>([]);
   configurationVersionError$ = new BehaviorSubject<string | null>(null);
@@ -680,6 +686,7 @@ export class GenerateDocumentConfigurationComponent
           doc: suggestions.doc || [],
           pv: suggestions.pv || [],
           case: [],
+          plugin: ['defaultEnvironmentId'],
         };
         this.cdr.markForCheck();
       });

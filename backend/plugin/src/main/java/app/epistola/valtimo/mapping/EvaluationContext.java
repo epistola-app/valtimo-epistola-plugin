@@ -83,6 +83,27 @@ public class EvaluationContext {
                 .processDefinitionId(this.processDefinitionId)
                 .processInstanceId(this.processInstanceId)
                 .activityId(this.activityId)
+                // Kept: a context's bindings are its own, whichever expression it evaluates next.
+                .extraBindings(this.extraBindings)
+                .build();
+    }
+
+    /** This context with {@code bindings} added to its own; a name it already binds is replaced. */
+    public EvaluationContext withExtraBindings(Map<String, Object> bindings) {
+        Map<String, Object> merged = new java.util.LinkedHashMap<>(this.extraBindings);
+        merged.putAll(bindings);
+        return builder()
+                .expression(this.expression)
+                .documentResolver(this.documentResolver)
+                .processVariableResolver(this.processVariableResolver)
+                .processVariableEnumerator(this.processVariableEnumerator)
+                .documentId(this.documentId)
+                .execution(this.execution)
+                .operation(this.operation)
+                .processDefinitionId(this.processDefinitionId)
+                .processInstanceId(this.processInstanceId)
+                .activityId(this.activityId)
+                .extraBindings(merged)
                 .build();
     }
 

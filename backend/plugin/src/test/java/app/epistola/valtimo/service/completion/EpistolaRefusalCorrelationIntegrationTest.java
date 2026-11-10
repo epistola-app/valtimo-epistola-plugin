@@ -169,6 +169,7 @@ class EpistolaRefusalCorrelationIntegrationTest {
     @AfterEach
     void tearDown() {
         plugin = null;
+        GenerateDelegate.environment = null;
         if (processEngine != null) {
             processEngine.close();
         }
@@ -210,6 +211,21 @@ class EpistolaRefusalCorrelationIntegrationTest {
         Map<String, Object> letter = (Map<String, Object>) runtimeService.getVariable(pi.getId(), "letter");
         assertThat(letter).containsEntry("errorReason", "REQUEST_REFUSED");
         assertThat((String) letter.get("errorMessage")).contains("HTTP 403").contains("no access");
+    }
+
+    @Test
+    void anEnvironmentExpressionProducingNothing_takesTheFailurePath_withoutAskingEpistola() {
+        // `someEnv` without quotes: a path to nothing, which used to render in the default unnoticed.
+        GenerateDelegate.environment = "someEnv";
+
+        ProcessInstance pi = startAsTheAppDoes();
+
+        assertThat(activeTaskName(pi)).isEqualTo("Brief mislukt");
+        @SuppressWarnings("unchecked")
+        Map<String, Object> letter = (Map<String, Object>) runtimeService.getVariable(pi.getId(), "letter");
+        assertThat(letter).containsEntry("status", "FAILED").containsEntry("errorReason", "EXPRESSION_EMPTY");
+        assertThat((String) letter.get("errorMessage")).contains("expression='someEnv'").contains("produced no value");
+        org.mockito.Mockito.verifyNoInteractions(epistolaService);
     }
 
     @Test
@@ -255,9 +271,12 @@ class EpistolaRefusalCorrelationIntegrationTest {
 
     /** The real generate-document action, as a process link would call it. */
     public static class GenerateDelegate implements JavaDelegate {
+        /** The link's environment expression; none by default. */
+        static String environment;
+
         @Override
         public void execute(DelegateExecution execution) {
-            plugin.generateDocument(execution, 1, "local/demo/brieven", "besluit", null, null, null, null,
+            plugin.generateDocument(execution, 1, "local/demo/brieven", "besluit", null, null, environment, null,
                     "{}", "\"PDF\"", "\"besluit.pdf\"", null, "letter");
         }
     }

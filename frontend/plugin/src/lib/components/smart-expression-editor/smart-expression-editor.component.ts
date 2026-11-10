@@ -16,6 +16,7 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
+import { barePathProblem } from '../../utils/jsonata-bare-path';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -727,7 +728,8 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   private loadExpression(source: string): void {
     const parsed = parseSimpleJsonataExpression(source);
     this.rawExpression = source;
-    this.rawError = parsed.error ?? null;
+    // A stored bare path (`someEnv`) is flagged as the link opens, not only once it is edited.
+    this.rawError = parsed.error ?? barePathProblem(source);
     this.rawRepresentable = parsed.representable;
     this.selectCompatible = this.computeSelectCompatibility(source);
     if (this.selectCompatible) {
@@ -737,7 +739,8 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
       this.simpleOriginalSource = source;
       this.simpleDirty = false;
       this.emitValidity(!this.required || !!this.selectedValue);
-    } else if (parsed.representable && parsed.expression) {
+    } else if (parsed.representable && parsed.expression && !barePathProblem(source)) {
+      // A bare path goes to Advanced, which shows why it can never produce a value.
       this.mode = 'simple';
       this.selectedValue = '';
       this.segments = parsed.expression.segments;
@@ -1100,10 +1103,12 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
 
     try {
       jsonata(value);
-      this.rawError = null;
+      // Valid JSONata that can never produce a value here: a forgotten quote or `$pv.`.
+      const barePath = barePathProblem(value);
+      this.rawError = barePath;
       this.rawRepresentable = parseSimpleJsonataExpression(value).representable;
       this.selectCompatible = this.computeSelectCompatibility(value);
-      this.emitValidity(true);
+      this.emitValidity(!barePath);
     } catch (error: any) {
       this.rawError = error?.message || 'Invalid JSONata expression';
       this.rawRepresentable = false;

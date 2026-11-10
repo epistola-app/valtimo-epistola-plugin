@@ -241,3 +241,41 @@ operation it does not implement yet with 501: its own diagnosis (re-checking env
 deployments, range, template and variant with the reads it already makes) when `missing` is absent,
 and one `listTemplates` per reachable release when `listCatalogTemplates` is not there — cached for
 released releases, which never change.
+
+## Second addendum (2026-11-10): what an expression that produces nothing means
+
+Found by hand: a link stored `"environmentId": "someEnv"` — without quotes. In JSONata that is a path,
+and the input is empty, so it produced no value; no value fell back to the configuration's default,
+which was none, and the letter rendered from the catalog's highest release without anyone noticing.
+Nothing could refuse it, because no environment was ever asked for.
+
+**Decision.** Once a field is an expression, it has three outcomes:
+
+| The expression yields | Environment                | Version range     |
+| --------------------- | -------------------------- | ----------------- |
+| a non-empty string    | that environment           | that range        |
+| `""`                  | deliberately none          | deliberately none |
+| no value              | fails (`EXPRESSION_EMPTY`) | fails             |
+
+- **No value is never a choice.** It is a typo, a forgotten quote, or a variable the case lacks.
+  Falling back silently put letters in another environment; failing puts them on the process's
+  failure path with a message saying how to write each deliberate outcome.
+- **`null` cannot be the deliberate "none".** Verified against the plugin's JSONata library: a
+  top-level `null` arrives exactly like a missing path. `""` is distinguishable, so it is the one.
+- **The fallback is written, not implied:** `$plugin.defaultEnvironmentId` — a new, read-only
+  `$plugin` binding beside `$doc`, `$pv` and `$case` — is the configured default, or `""` when there
+  is none. `$pv.omgeving ?: $plugin.defaultEnvironmentId` therefore always produces a deliberate
+  answer and never fails; `?: $error("…")` makes an environment required, with the author's message.
+- **An empty field** still means the plugin's default: that is the ordinary route to it.
+- **A failing expression** — `$error`, a JSONata error, an unusable result — fails the same way every
+  time, so it is recorded as `FAILED` (`EXPRESSION_FAILED`) at once, as a refusal is, rather than
+  retried into an incident.
+- **The composer** follows the same rules; its letter keeps `"environmentId": ""` apart from an absent
+  one, so generation renders where the preview did.
+- **A bare path** (anything not starting with `$`, a quote, a number or a bracket) can never produce
+  a value here; the expression editor flags it, with the likely fix, and blocks saving.
+- **V0 links** keep falling back: their parser is frozen compatibility code.
+
+**Consequence.** Breaking for a v1 link whose environment or range expression relied on the silent
+fallback: it now fails until `?: $plugin.defaultEnvironmentId` (or `""`) is written. Pre-1.0, and
+noted under _Upgrading_.

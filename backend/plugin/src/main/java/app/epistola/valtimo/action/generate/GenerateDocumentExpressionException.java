@@ -27,8 +27,40 @@ public final class GenerateDocumentExpressionException extends RuntimeException 
 
     private static final int MAX_EXPRESSION_LENGTH = 240;
 
-    private GenerateDocumentExpressionException(String message, Throwable cause) {
+    /** What went wrong with the expression: it failed, produced something unusable, or nothing. */
+    public enum Kind {
+        /** The expression could not be evaluated: a JSONata error, or {@code $error(...)}. */
+        EVALUATION_FAILED,
+        /** It produced a value its field cannot use, such as a number for a version range. */
+        INVALID_RESULT,
+        /**
+         * It produced no value: a path to nothing, a misspelled variable, a bare name without quotes.
+         * Distinct from {@code ""}, which an author writes on purpose (ADR 0009, second addendum).
+         */
+        NO_VALUE
+    }
+
+    private final Kind kind;
+
+    private GenerateDocumentExpressionException(Kind kind, String message, Throwable cause) {
         super(message, cause);
+        this.kind = kind;
+    }
+
+    public Kind getKind() {
+        return kind;
+    }
+
+    /**
+     * An expression that produced no value where its field needs a deliberate one. Says how to write
+     * each deliberate outcome, because the usual cause is a forgotten quote or a variable the case
+     * does not have.
+     */
+    public static GenerateDocumentExpressionException noValue(
+            int version, String field, String expression, String deliberateEmpty) {
+        return new GenerateDocumentExpressionException(Kind.NO_VALUE, "JSONata for epistola-generate-document v"
+                + version + " field '" + field + "' (expression='" + expressionSnippet(expression)
+                + "') produced no value. " + deliberateEmpty, null);
     }
 
     public static GenerateDocumentExpressionException evaluationFailed(
@@ -54,7 +86,7 @@ public final class GenerateDocumentExpressionException extends RuntimeException 
             message.append(": ").append(cause.getMessage());
         }
 
-        return new GenerateDocumentExpressionException(message.toString(), cause);
+        return new GenerateDocumentExpressionException(Kind.EVALUATION_FAILED, message.toString(), cause);
     }
 
     /**
@@ -67,8 +99,9 @@ public final class GenerateDocumentExpressionException extends RuntimeException 
             String expression,
             String problem
     ) {
-        return new GenerateDocumentExpressionException("JSONata for epistola-generate-document v" + version
-                + " field '" + field + "' (expression='" + expressionSnippet(expression) + "') " + problem, null);
+        return new GenerateDocumentExpressionException(Kind.INVALID_RESULT, "JSONata for epistola-generate-document v"
+                + version + " field '" + field + "' (expression='" + expressionSnippet(expression) + "') " + problem,
+                null);
     }
 
     public static String expressionSnippet(String expression) {
