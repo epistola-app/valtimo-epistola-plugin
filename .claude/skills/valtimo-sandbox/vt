@@ -1,0 +1,259 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: Epistola Nederland B.V.
+#
+# SPDX-License-Identifier: EUPL-1.2
+#
+# vt — drive a Valtimo test-app (local, demo, any deployment) over its REST API: import, export,
+# edit and delete example cases. See SKILL.md next to this file.
+set -euo pipefail
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VT_ENV="${VT_ENV:-local}"
+if [[ "${1:-}" == "-e" ]]; then VT_ENV="${2:?vt: -e needs an environment name}"; shift 2; fi
+SANDBOX_PREFIX="${SANDBOX_PREFIX:-sandbox-}"
+
+die() { echo "vt: $*" >&2; exit 1; }
+auth() { python3 -I "$HERE/vt_auth.py" "$@"; }
+# parse [python args] — python3 over stdin, skipped when the call feeding it failed (empty input),
+# so the call's own error is the only message instead of a JSON traceback after it.
+parse() { local in; in=$(cat); [[ -n "$in" ]] || exit 1; printf '%s' "$in" | python3 "$@"; }
+
+# Environments and tokens live in vt_auth.py: `local` is built in (password grant against the
+# local Keycloak); others are registered with `vt env add` and log in through the browser.
+token() { auth token "$VT_ENV"; }
+base_url() { auth url "$VT_ENV"; }
+
+# api METHOD PATH [curl args...] — prints the body; fails (with the body on stderr) on HTTP >= 400.
+api() {
+  local method=$1 path=$2; shift 2
+  local out code tok VALTIMO_URL
+  VALTIMO_URL=$(base_url) || exit 1
+  tok=$(token) || exit 1
+  out=$(mktemp)
+  code=$(curl -s -o "$out" -w '%{http_code}' -X "$method" -H "Authorization: Bearer $tok" "$@" "$VALTIMO_URL$path") || { rm -f "$out"; die "$VALTIMO_URL unreachable"; }
+  if (( code >= 400 )); then
+    # Valtimo's problem responses carry a full stack trace; keep the useful part.
+    python3 -c 'import sys,json
+try:
+  d=json.load(open(sys.argv[1]),strict=False); print("HTTP",sys.argv[2],d.get("title"),"-",d.get("detail"),file=sys.stderr)
+except Exception:
+  print("HTTP",sys.argv[2],open(sys.argv[1]).read()[:500],file=sys.stderr)' "$out" "$code"
+    rm -f "$out"; return 1
+  fi
+  cat "$out"; rm -f "$out"
+}
+
+json() { api "$@" -H 'Content-Type: application/json'; }
+
+require_sandbox() {
+  [[ "$1" == "$SANDBOX_PREFIX"* ]] || die "refusing: '$1' is not a sandbox case (key must start with '$SANDBOX_PREFIX')"
+}
+
+cmd_cases() {
+  api GET "/api/management/v1/case-definition?size=200" | parse -c '
+import sys,json
+for c in json.load(sys.stdin)["content"]:
+  print("%-28s %-8s final=%-5s active=%-5s %s" % (c["caseDefinitionKey"], c["caseDefinitionVersionTag"], str(c["final"]).lower(), str(c["active"]).lower(), c["name"]))'
+}
+
+cmd_export() {
+  local key=$1 version=${2:-1.0.0} out=${3:-$1-$version.case.zip}
+  api GET "/api/management/v1/case/$key/version/$version/export" > "$out"
+  echo "$out"
+}
+
+# import ZIP|DIR [KEY [NAME]] — a directory is zipped first; it must contain config/case/<key>/<version>/...
+cmd_import() {
+  local src=$1 key=${2:-} name=${3:-} zip
+  if [[ -d "$src" ]]; then
+    zip=$(mktemp -d)/case.zip
+    (cd "$src" && zip -qr "$zip" .)
+  else
+    zip=$src
+  fi
+  local args=(-F "file=@$zip")
+  [[ -n "$key" ]] && args+=(-F "key=$key")
+  [[ -n "$name" ]] && args+=(-F "name=$name")
+  api POST /api/management/v1/case/import "${args[@]}"
+  echo
+}
+
+# copy SOURCE_KEY NEW_KEY [NAME] [SOURCE_VERSION] — export a case and import it under a new key.
+cmd_copy() {
+  local src=$1 key=$2 name=${3:-$2} version=${4:-1.0.0} tmp
+  require_sandbox "$key"
+  tmp=$(mktemp -d)/src.zip
+  cmd_export "$src" "$version" "$tmp" > /dev/null
+  cmd_import "$tmp" "$key" "$name"
+}
+
+# start KEY PROCESS_KEY [CONTENT_JSON] [VERSION]
+cmd_start() {
+  local key=$1 process=$2 content=${3:-'{}'} version=${4:-1.0.0}
+  json POST /api/v1/process-document/operation/new-document-and-start-process -d "$(python3 -c '
+import sys,json
+key,process,content,version=sys.argv[1:]
+print(json.dumps({"processDefinitionKey":process,"request":{"definition":key,"caseDefinitionKey":key,"caseDefinitionVersionTag":version,"content":json.loads(content)}}))' "$key" "$process" "$content" "$version")" \
+  | parse -c 'import sys,json;d=json.load(sys.stdin);print(json.dumps({"documentId":d["document"]["id"],"processInstanceId":d.get("processInstanceId"),"errors":d.get("errors")}))'
+}
+
+# delete KEY [VERSION] — deletes the case's documents first (Valtimo leaves them orphaned otherwise).
+cmd_delete() {
+  local key=$1 version=${2:-1.0.0}
+  require_sandbox "$key"
+  local ids
+  ids=$(json POST "/api/v1/document-search?size=500" -d "{\"documentDefinitionName\":\"$key\"}" | parse -c 'import sys,json;[print(d["id"]) for d in json.load(sys.stdin)["content"]]')
+  for id in $ids; do api DELETE "/api/v1/document/$id" > /dev/null && echo "deleted document $id"; done
+  api DELETE "/api/management/v1/case-definition/$key/version/$version" > /dev/null
+  echo "deleted case definition $key:$version"
+}
+
+# forms KEY [VERSION]
+cmd_forms() {
+  local key=$1 version=${2:-1.0.0}
+  api GET "/api/management/v1/case-definition/$key/version/$version/form?size=200" | parse -c '
+import sys,json
+for f in json.load(sys.stdin)["content"]: print(f["id"], f["name"])'
+}
+
+# form-get KEY FORM_NAME [VERSION] — prints the Form.io definition only.
+cmd_form_get() {
+  local key=$1 name=$2 version=${3:-1.0.0} id
+  id=$(cmd_forms "$key" "$version" | awk -v n="$name" '$2==n{print $1}')
+  [[ -n "$id" ]] || die "no form '$name' on $key:$version"
+  api GET "/api/management/v1/case-definition/$key/version/$version/form/$id" | parse -c 'import sys,json;print(json.dumps(json.load(sys.stdin)["formDefinition"],indent=2))'
+}
+
+# form-put KEY FORM_NAME FILE [VERSION] — creates the form when it does not exist yet.
+cmd_form_put() {
+  local key=$1 name=$2 file=$3 version=${4:-1.0.0} id base
+  base="/api/management/v1/case-definition/$key/version/$version/form"
+  id=$(cmd_forms "$key" "$version" | awk -v n="$name" '$2==n{print $1}')
+  local body
+  body=$(python3 -c '
+import sys,json
+id,name,file=sys.argv[1:]
+d={"name":name,"formDefinition":json.dumps(json.load(open(file)))}
+if id: d["id"]=id
+else: d["isReadOnly"]=False
+print(json.dumps(d))' "$id" "$name" "$file")
+  if [[ -n "$id" ]]; then json PUT "$base" -d "$body" > /dev/null; echo "updated form $name"
+  else json POST "$base" -d "$body" > /dev/null; echo "created form $name"; fi
+}
+
+# processes KEY [VERSION]
+cmd_processes() {
+  local key=$1 version=${2:-1.0.0}
+  api GET "/api/management/v1/case-definition/$key/version/$version/process-definition" | parse -c '
+import sys,json
+for p in json.loads(sys.stdin.read(),strict=False):
+  pd=p["processDefinition"]; print("%-32s v%-4s %s  links=%d" % (pd["key"], pd["version"], pd["name"], len(p["processLinks"])))'
+}
+
+# bpmn-get KEY PROCESS_KEY OUTDIR [VERSION] — writes <process>.bpmn and <process>.links.json
+cmd_bpmn_get() {
+  local key=$1 process=$2 dir=$3 version=${4:-1.0.0}
+  mkdir -p "$dir"
+  api GET "/api/management/v1/case-definition/$key/version/$version/process-definition/key/$process" | parse -c '
+import sys,json
+d=json.loads(sys.stdin.read(),strict=False)  # bpmn20Xml arrives with raw control characters
+out,process=sys.argv[1:]
+open(out+"/"+process+".bpmn","w").write(d["bpmn20Xml"])
+json.dump({"processDefinitionId":d["processDefinition"]["id"],
+           "canInitializeDocument":d["processCaseLink"]["canInitializeDocument"],
+           "startableByUser":d["processCaseLink"]["startableByUser"],
+           "processLinks":d["processLinks"]},open(out+"/"+process+".links.json","w"),indent=2)
+print(out+"/"+process+".bpmn\n"+out+"/"+process+".links.json")' "$dir" "$process"
+}
+
+# bpmn-put KEY PROCESS_KEY DIR [VERSION] — redeploys DIR/<process>.bpmn with DIR/<process>.links.json.
+# The links file replaces ALL links of the process: edit it, do not trim it. Refreshes DIR afterwards.
+cmd_bpmn_put() {
+  local key=$1 process=$2 dir=$3 version=${4:-1.0.0} tmp
+  tmp=$(mktemp -d)
+  python3 -c '
+import sys,json
+meta=json.load(open(sys.argv[1])); out=sys.argv[2]
+json.dump([{k:v for k,v in l.items() if k!="id"} for l in meta["processLinks"]],open(out+"/links.json","w"))
+for k in ("processDefinitionId","canInitializeDocument","startableByUser"): open(out+"/"+k,"w").write(str(meta[k]).lower())' "$dir/$process.links.json" "$tmp"
+  api PUT "/api/management/v1/case-definition/$key/version/$version/process-definition" \
+    -F "file=@$dir/$process.bpmn;type=text/xml" -F "processLinks=@$tmp/links.json;type=application/json" \
+    -F "processDefinitionId=$(cat "$tmp/processDefinitionId")" \
+    -F "canInitializeDocument=$(cat "$tmp/canInitializeDocument")" -F "startableByUser=$(cat "$tmp/startableByUser")" > /dev/null
+  echo "redeployed $process"
+  # A redeploy creates a new process definition version with new link ids: refresh the files so a
+  # following link-put targets the new version, not the old one.
+  cmd_bpmn_get "$key" "$process" "$dir" "$version" > /dev/null
+}
+
+# link-put FILE — updates one process link; FILE is a link as bpmn-get writes it (one array element).
+cmd_link_put() {
+  json PUT /api/v1/process-link -d "$(python3 -c '
+import sys,json
+l=json.load(open(sys.argv[1]))
+for k in ("processDefinitionId","activityId","activityType"): l.pop(k,None)  # not part of the update DTO
+print(json.dumps(l))' "$1")" > /dev/null
+  echo "updated process link"
+}
+
+cmd_tasks() {
+  api GET "/api/v1/task?filter=all&size=200" | parse -c '
+import sys,json
+pi=sys.argv[1]
+for t in json.load(sys.stdin):
+  if t.get("processInstanceId")==pi: print(t["id"], t["name"])' "$1"
+}
+
+usage() {
+  cat <<EOF
+usage: vt [-e ENV] <command> [args]   (environment: $VT_ENV → $(base_url 2>/dev/null || echo '?'))
+  env add NAME URL [--password]           register an environment by its frontend URL
+  env list                                list environments
+  login | logout                          log in (browser for non-local environments) / forget the token
+  cases                                   list case definitions
+  export   KEY [VERSION] [OUT.zip]        export a case (default version 1.0.0)
+  import   ZIP|DIR [KEY [NAME]]           import a case zip or directory, optionally under a new key
+  copy     SRC_KEY NEW_KEY [NAME] [VER]   export + import under a new ${SANDBOX_PREFIX}* key
+  start    KEY PROCESS_KEY [JSON] [VER]   create a case document and start a process
+  tasks    PROCESS_INSTANCE_ID            open tasks of a process instance
+  delete   KEY [VERSION]                  delete a ${SANDBOX_PREFIX}* case and its documents
+  forms    KEY [VERSION]                  list forms
+  form-get KEY NAME [VERSION]             print a form's Form.io JSON
+  form-put KEY NAME FILE [VERSION]        create or replace a form
+  processes KEY [VERSION]                 list BPMN processes
+  bpmn-get KEY PROCESS DIR [VERSION]      write DIR/PROCESS.bpmn + DIR/PROCESS.links.json
+  bpmn-put KEY PROCESS DIR [VERSION]      redeploy both
+  link-put FILE                           update one process link
+  api      METHOD PATH [curl args]        raw authenticated call
+EOF
+}
+
+c=${1:-help}; shift || true
+case "$c" in
+  cases) cmd_cases ;;
+  export) cmd_export "$@" ;;
+  import) cmd_import "$@" ;;
+  copy) cmd_copy "$@" ;;
+  start) cmd_start "$@" ;;
+  tasks) cmd_tasks "$@" ;;
+  delete) cmd_delete "$@" ;;
+  forms) cmd_forms "$@" ;;
+  form-get) cmd_form_get "$@" ;;
+  form-put) cmd_form_put "$@" ;;
+  processes) cmd_processes "$@" ;;
+  bpmn-get) cmd_bpmn_get "$@" ;;
+  bpmn-put) cmd_bpmn_put "$@" ;;
+  link-put) cmd_link_put "$@" ;;
+  api) api "$@" ;;
+  token) token ;;
+  login) auth login "$VT_ENV" ;;
+  logout) auth logout "$VT_ENV" ;;
+  env)
+    sub=${1:-list}; shift || true
+    case "$sub" in
+      add) auth env-add "$@" ;;
+      list) auth env-list ;;
+      *) die "usage: vt env add NAME URL | vt env list" ;;
+    esac ;;
+  *) usage ;;
+esac
