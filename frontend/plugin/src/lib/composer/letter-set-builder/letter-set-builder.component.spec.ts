@@ -37,6 +37,13 @@ jest.mock('../composer-api.service', () => ({ EpistolaComposerApiService: class 
 
 import { of, throwError } from 'rxjs';
 import { EpistolaLetterSetBuilderComponent } from './letter-set-builder.component';
+import { ANY_ENVIRONMENT, ANY_RANGE } from '../../services/release-scope';
+
+/** The selection the fake design scope hands out, which the letters must then be read with. */
+const read = (environmentId: string | null = null, versionRange = '2.1.0') => ({
+  environmentId,
+  versionRange,
+});
 
 describe('EpistolaLetterSetBuilderComponent', () => {
   function createComponent(initial: any = null, overrides: any = {}) {
@@ -44,12 +51,74 @@ describe('EpistolaLetterSetBuilderComponent', () => {
       getConfigurations: jest.fn(() =>
         of([{ id: 'config-1', title: 'Epistola productie', tenantId: 'gemeente' }]),
       ),
-      getCatalogs: jest.fn(() => of([{ id: 'gemeente', name: 'Gemeente', type: 'default' }])),
+      getCatalogs: jest.fn(() =>
+        of([
+          {
+            id: 'local/valtimo/gemeente',
+            name: 'Gemeente',
+            registry: 'local',
+            namespace: 'valtimo',
+            key: 'gemeente',
+            editable: true,
+          },
+        ]),
+      ),
       getTemplates: jest.fn(() =>
         of([
           { id: 'besluit', name: 'Besluit op bezwaar', catalogId: 'gemeente' },
           { id: 'herinnering', name: 'Herinnering', catalogId: 'gemeente' },
         ]),
+      ),
+      getEnvironments: jest.fn(() =>
+        of([
+          { id: 'productie', name: 'Productie' },
+          { id: 'acceptatie', name: 'Acceptatie' },
+        ]),
+      ),
+      // Like the backend: the highest release, or 2.0.0 for a literal range, read as an exact
+      // version in the environment it was read in.
+      getDesignScope: jest.fn((_c: string, catalog: string, env: unknown, range: unknown) => {
+        const environment = typeof env === 'string' ? env : null;
+        const version = typeof range === 'string' ? '2.0.0' : '2.1.0';
+        return of({
+          catalogId: catalog,
+          versions: ['2.1.0', '2.0.0'],
+          version,
+          draft: false,
+          environment,
+          problems: [],
+          read: { environmentId: environment, versionRange: version },
+        });
+      }),
+      // Across releases: besluit everywhere, herinnering only up to 2.0.0, nieuw only from 2.1.0.
+      getCatalogTemplates: jest.fn((_c: string, catalog: string) =>
+        of({
+          catalogId: catalog,
+          truncated: false,
+          templates: [
+            {
+              id: 'besluit',
+              name: 'Besluit op bezwaar',
+              description: null,
+              releases: ['2.1.0', '2.0.0'],
+              read: read(),
+            },
+            {
+              id: 'herinnering',
+              name: 'Herinnering',
+              description: null,
+              releases: ['2.0.0'],
+              read: read(null, '2.0.0'),
+            },
+            {
+              id: 'nieuw',
+              name: 'Nieuwe brief',
+              description: null,
+              releases: ['2.1.0'],
+              read: read(),
+            },
+          ],
+        }),
       ),
       ...overrides,
     };
@@ -133,6 +202,20 @@ describe('EpistolaLetterSetBuilderComponent', () => {
     });
   });
 
+  describe('a set saved against contract 1.x', () => {
+    // It holds the catalog's key alone; catalogs are listed as `registry/namespace/key` since 2.0.
+    it('shows its catalog as selected', () => {
+      const { component } = createComponent({
+        pluginConfigurationId: 'config-1',
+        catalogId: 'gemeente',
+        templates: [{ templateId: 'besluit', label: 'Besluit' }],
+      });
+      component.ngOnChanges();
+
+      expect(component.selectedCatalogId).toBe('local/valtimo/gemeente');
+    });
+  });
+
   describe('a letter that is no longer in the catalog', () => {
     /**
      * The table is drawn from what Epistola returns now, ticking the letters this composer stores.
@@ -204,15 +287,29 @@ describe('EpistolaLetterSetBuilderComponent', () => {
     const { component, service } = createComponent(null, {
       getCatalogs: jest.fn(() =>
         of([
-          { id: 'gemeente', name: 'Gemeente', type: 'default' },
-          { id: 'provincie', name: 'Provincie', type: 'default' },
+          {
+            id: 'local/valtimo/gemeente',
+            name: 'Gemeente',
+            registry: 'local',
+            namespace: 'valtimo',
+            key: 'gemeente',
+            editable: true,
+          },
+          {
+            id: 'local/valtimo/provincie',
+            name: 'Provincie',
+            registry: 'local',
+            namespace: 'valtimo',
+            key: 'provincie',
+            editable: true,
+          },
         ]),
       ),
     });
 
     component.onConfigurationSelected('config-1');
 
-    expect(service.getCatalogs).toHaveBeenCalledWith('config-1');
+    expect(service.getCatalogs).toHaveBeenCalledWith('config-1', undefined);
     expect(component.value).toEqual({
       pluginConfigurationId: 'config-1',
       catalogId: null,
@@ -231,8 +328,22 @@ describe('EpistolaLetterSetBuilderComponent', () => {
       {
         getCatalogs: jest.fn(() =>
           of([
-            { id: 'gemeente', name: 'Gemeente', type: 'default' },
-            { id: 'provincie', name: 'Provincie', type: 'default' },
+            {
+              id: 'local/valtimo/gemeente',
+              name: 'Gemeente',
+              registry: 'local',
+              namespace: 'valtimo',
+              key: 'gemeente',
+              editable: true,
+            },
+            {
+              id: 'local/valtimo/provincie',
+              name: 'Provincie',
+              registry: 'local',
+              namespace: 'valtimo',
+              key: 'provincie',
+              editable: true,
+            },
           ]),
         ),
       },
@@ -357,10 +468,14 @@ describe('EpistolaLetterSetBuilderComponent', () => {
 
       expect(component.value).toEqual({
         pluginConfigurationId: 'config-1',
-        catalogId: 'gemeente',
+        catalogId: 'local/valtimo/gemeente',
         templates: [],
       });
-      expect(service.getTemplates).toHaveBeenCalledWith('config-1', 'gemeente');
+      expect(service.getTemplates).toHaveBeenCalledWith(
+        'config-1',
+        'local/valtimo/gemeente',
+        read(),
+      );
     });
 
     it('leaves the choice to the author when there is more than one', () => {
@@ -402,7 +517,13 @@ describe('EpistolaLetterSetBuilderComponent', () => {
 
     component.onCatalogSelected('gemeente');
 
-    expect(service.getTemplates).toHaveBeenCalledWith('config-1', 'gemeente');
+    expect(service.getDesignScope).toHaveBeenCalledWith(
+      'config-1',
+      'gemeente',
+      undefined,
+      undefined,
+    );
+    expect(service.getTemplates).toHaveBeenCalledWith('config-1', 'gemeente', read());
     expect(component.value?.catalogId).toBe('gemeente');
   });
 
@@ -451,6 +572,319 @@ describe('EpistolaLetterSetBuilderComponent', () => {
     expect(component.labelOf('besluit')).toBe('Besluit op uw bezwaar');
   });
 
+  describe('where the letters render', () => {
+    const saved = () => ({
+      pluginConfigurationId: 'config-1',
+      catalogId: 'local/valtimo/gemeente',
+      templates: [{ templateId: 'besluit', label: 'Besluit' }],
+    });
+
+    it('lists the environments of the connection, and reads catalogs and letters for the chosen one', () => {
+      const { component, service } = createComponent(saved());
+      component.ngOnChanges();
+
+      component.onEnvironmentSelected('acceptatie');
+
+      expect(component.environments.map((environment) => environment.id)).toEqual([
+        'productie',
+        'acceptatie',
+      ]);
+      // Stored as JSONata since schema 4: the literal naming it (ADR 0009).
+      expect(component.value?.environmentId).toBe('"acceptatie"');
+      expect(component.environmentSelection).toBe('acceptatie');
+      expect(service.getCatalogs).toHaveBeenLastCalledWith('config-1', 'acceptatie');
+      expect(service.getTemplates).toHaveBeenLastCalledWith(
+        'config-1',
+        'local/valtimo/gemeente',
+        read('acceptatie'),
+      );
+      // Another environment is not another set of letters: what the author chose stays.
+      expect(component.value?.catalogId).toBe('local/valtimo/gemeente');
+      expect(component.value?.templates).toEqual([{ templateId: 'besluit', label: 'Besluit' }]);
+    });
+
+    it('takes an environment expression, decided per case, and reads catalog-wide for it', () => {
+      const { component, service } = createComponent(saved());
+      component.ngOnChanges();
+
+      component.onEnvironmentSelected(component.EXPRESSION);
+      expect(component.environmentExpressionMode).toBe(true);
+      expect(component.value).not.toHaveProperty('environmentId');
+
+      component.onEnvironmentExpressionChange(' $pv.omgeving ');
+
+      expect(component.value?.environmentId).toBe('$pv.omgeving');
+      expect(service.getCatalogs).toHaveBeenLastCalledWith('config-1', ANY_ENVIRONMENT);
+      expect(service.getDesignScope).toHaveBeenLastCalledWith(
+        'config-1',
+        'local/valtimo/gemeente',
+        ANY_ENVIRONMENT,
+        undefined,
+      );
+      expect(component.designHints.release).toContainEqual({
+        key: 'designBasedOnAssumption',
+        problem: false,
+      });
+    });
+
+    it('reopens a stored expression as one', () => {
+      const { component } = createComponent({ ...saved(), environmentId: '$pv.omgeving' });
+      component.ngOnChanges();
+
+      expect(component.environmentSelection).toBe(component.EXPRESSION);
+    });
+
+    it('stores no environment at all for the default, as a set saved before the field did', () => {
+      const { component } = createComponent({ ...saved(), environmentId: '"acceptatie"' });
+      component.ngOnChanges();
+
+      component.onEnvironmentSelected('');
+
+      expect(component.value).not.toHaveProperty('environmentId');
+    });
+
+    it('keeps a catalog that is gone, and says so', () => {
+      const { component } = createComponent(
+        { ...saved(), catalogId: 'local/valtimo/provincie' },
+        {},
+      );
+      component.ngOnChanges();
+
+      expect(component.catalogNotListed).toBe(true);
+      expect(component.selectedCatalogId).toBe('local/valtimo/provincie');
+      expect(component.value?.catalogId).toBe('local/valtimo/provincie');
+    });
+
+    it('warns once about a catalog the environment does not serve, and still lists its letters', () => {
+      const { component, service } = createComponent(
+        { ...saved(), environmentId: '"acceptatie"' },
+        {
+          getDesignScope: jest.fn(() =>
+            of({
+              catalogId: 'local/valtimo/gemeente',
+              versions: ['2.1.0'],
+              version: '2.1.0',
+              draft: false,
+              environment: null,
+              problems: ['NOT_DEPLOYED'],
+              read: { environmentId: null, versionRange: '2.1.0' },
+            }),
+          ),
+        },
+      );
+      component.ngOnChanges();
+
+      expect(component.designHints.catalog).toEqual([
+        { key: 'designCatalogNotDeployed', problem: true },
+      ]);
+      expect(service.getTemplates).toHaveBeenLastCalledWith(
+        'config-1',
+        'local/valtimo/gemeente',
+        read(),
+      );
+      expect(component.templates.map((template) => template.id)).toEqual([
+        'besluit',
+        'herinnering',
+      ]);
+      expect(component.error).toBeNull();
+    });
+
+    it('pins the set to a release, reads its letters from it, and says which release it is', () => {
+      const { component, service } = createComponent(saved());
+      component.ngOnChanges();
+
+      component.onVersionRangeChange(' ^2.0.0 ');
+
+      // Typed as a range, stored as the literal; shown as typed.
+      expect(component.value?.versionRange).toBe('"^2.0.0"');
+      expect(component.rangeText(component.SET_RANGE, component.value?.versionRange)).toBe(
+        '^2.0.0',
+      );
+      expect(service.getDesignScope).toHaveBeenLastCalledWith(
+        'config-1',
+        'local/valtimo/gemeente',
+        undefined,
+        '^2.0.0',
+      );
+      expect(service.getTemplates).toHaveBeenLastCalledWith(
+        'config-1',
+        'local/valtimo/gemeente',
+        read(null, '2.0.0'),
+      );
+      expect(component.designHints.release).toEqual([
+        { key: 'designBasedOnRelease', version: '2.0.0', problem: false },
+      ]);
+      expect(component.releaseVersions).toEqual(['2.1.0', '2.0.0']);
+    });
+
+    it('takes a range expression once switched to one, and clears it switching back', () => {
+      const { component, service } = createComponent(saved());
+      component.ngOnChanges();
+
+      component.toggleSetRangeExpression(true);
+      component.onVersionRangeChange('$pv.briefversie');
+
+      expect(component.value?.versionRange).toBe('$pv.briefversie');
+      expect(service.getDesignScope).toHaveBeenLastCalledWith(
+        'config-1',
+        'local/valtimo/gemeente',
+        undefined,
+        ANY_RANGE,
+      );
+
+      // A literal survives the switch back; an expression has no range to show and is cleared.
+      component.toggleSetRangeExpression(false);
+      expect(component.value).not.toHaveProperty('versionRange');
+    });
+
+    it('lists every reachable letter for an expression range, marked beside its name, labelled without it', () => {
+      const { component, service } = createComponent(saved());
+      component.ngOnChanges();
+
+      component.toggleSetRangeExpression(true);
+      component.onVersionRangeChange('$pv.briefversie');
+
+      expect(service.getCatalogTemplates).toHaveBeenLastCalledWith(
+        'config-1',
+        'local/valtimo/gemeente',
+        undefined,
+      );
+      expect(component.templates.map((template) => template.id)).toEqual([
+        'besluit',
+        'herinnering',
+        'nieuw',
+      ]);
+      expect(component.templateMarks.get('besluit')).toBeUndefined();
+      expect(component.templateMarks.get('herinnering')).toBe('templateUntilRelease 2.0.0');
+      expect(component.templateMarks.get('nieuw')).toBe('templateFromRelease 2.1.0');
+
+      component.toggleTemplate('herinnering', true);
+      expect(component.value?.templates).toContainEqual({
+        templateId: 'herinnering',
+        label: 'Herinnering',
+      });
+    });
+
+    it('does not call a letter missing that only an older reachable release has', () => {
+      const { component } = createComponent({
+        ...saved(),
+        versionRange: '$pv.briefversie',
+        templates: [{ templateId: 'herinnering' }, { templateId: 'verdwenen' }],
+      });
+      component.ngOnChanges();
+
+      expect(component.missingTemplates.map((template) => template.templateId)).toEqual([
+        'verdwenen',
+      ]);
+    });
+
+    it('lists the one release that renders for a literal range, without marks', () => {
+      const { component, service } = createComponent(saved());
+      component.ngOnChanges();
+
+      component.onVersionRangeChange('^2.0.0');
+
+      expect(service.getCatalogTemplates).not.toHaveBeenCalled();
+      expect(component.templateMarks.size).toBe(0);
+    });
+
+    it('lets the range hint explain a range no release satisfies, not a failed catalog read', () => {
+      const { component } = createComponent(saved(), {
+        getDesignScope: jest.fn(() =>
+          of({
+            catalogId: 'local/valtimo/gemeente',
+            versions: ['1.4.0'],
+            version: '1.4.0',
+            draft: false,
+            environment: null,
+            problems: ['RANGE_UNSATISFIED'],
+            read: { environmentId: null, versionRange: '1.4.0' },
+          }),
+        ),
+      });
+      component.ngOnChanges();
+
+      component.onVersionRangeChange('^3.0.0');
+
+      expect(component.error).toBeNull();
+      expect(component.designHints.release[0]).toEqual({
+        key: 'designRangeUnsatisfied',
+        problem: true,
+      });
+    });
+
+    it('says only that a range is not one, without also reporting a failed catalog read', () => {
+      const { component, service } = createComponent(saved(), {
+        getDesignScope: jest.fn(() => throwError(() => ({ status: 400 }))),
+      });
+      component.ngOnChanges();
+      service.getTemplates.mockClear();
+
+      component.onVersionRangeChange('1.x.y');
+
+      expect(component.error).toBeNull();
+      expect(component.designHints.release).toEqual([
+        { key: 'versionRangeInvalid', problem: true },
+      ]);
+      expect(service.getTemplates).not.toHaveBeenCalled();
+    });
+
+    it('drops the range with the catalog it was written for, and both with the connection', () => {
+      const { component } = createComponent({
+        ...saved(),
+        environmentId: '"acceptatie"',
+        versionRange: '"^2.0.0"',
+      });
+      component.ngOnChanges();
+
+      component.onCatalogSelected('local/valtimo/provincie');
+      expect(component.value).toEqual({
+        pluginConfigurationId: 'config-1',
+        environmentId: '"acceptatie"',
+        catalogId: 'local/valtimo/provincie',
+        templates: [],
+      });
+
+      // The new connection's only catalog is chosen for the author, as ever; the environment and
+      // the range belonged to the old one and are gone.
+      component.onConfigurationSelected('config-2');
+      expect(component.value?.pluginConfigurationId).toBe('config-2');
+      expect(component.value).not.toHaveProperty('environmentId');
+      expect(component.value).not.toHaveProperty('versionRange');
+    });
+
+    it('pins one letter to a release of its own, and drops the pin when it is cleared', () => {
+      const { component } = createComponent(saved());
+
+      component.setTemplateVersionRange('besluit', ' 1.4.0 ');
+      expect(component.versionRangeOf('besluit')).toBe('"1.4.0"');
+      expect(component.rangeText('besluit', component.versionRangeOf('besluit'))).toBe('1.4.0');
+      expect(component.value?.templates[0]).toEqual({
+        templateId: 'besluit',
+        label: 'Besluit',
+        versionRange: '"1.4.0"',
+      });
+
+      component.setTemplateVersionRange('besluit', '');
+      expect(component.value?.templates[0]).toEqual({ templateId: 'besluit', label: 'Besluit' });
+    });
+
+    it("does not call a letter pinned to another release missing from the set's release", () => {
+      const { component } = createComponent({
+        ...saved(),
+        templates: [
+          { templateId: 'oud-besluit', versionRange: '1.0.0' },
+          { templateId: 'verdwenen' },
+        ],
+      });
+      component.ngOnChanges();
+
+      expect(component.missingTemplates.map((template) => template.templateId)).toEqual([
+        'verdwenen',
+      ]);
+    });
+  });
+
   it('continues the cascade from what was already saved', () => {
     const { component, service } = createComponent({
       pluginConfigurationId: 'config-1',
@@ -461,8 +895,8 @@ describe('EpistolaLetterSetBuilderComponent', () => {
     // Formio sets the saved value after construction, so the restore hangs off the input change.
     component.ngOnChanges();
 
-    expect(service.getCatalogs).toHaveBeenCalledWith('config-1');
-    expect(service.getTemplates).toHaveBeenCalledWith('config-1', 'gemeente');
+    expect(service.getCatalogs).toHaveBeenCalledWith('config-1', undefined);
+    expect(service.getTemplates).toHaveBeenCalledWith('config-1', 'gemeente', read());
   });
 
   it('restores only once, so a later change does not refetch everything', () => {

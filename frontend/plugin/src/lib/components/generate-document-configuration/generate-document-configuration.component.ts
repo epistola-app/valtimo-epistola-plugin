@@ -33,17 +33,29 @@ import {
   FunctionConfigurationData,
   PluginConfigurationData,
   PluginTranslatePipeModule,
+  PluginTranslationService,
 } from '@valtimo/plugin';
 import { FormModule, FormOutput, InputModule, SelectItem, SelectModule } from '@valtimo/components';
 import { CaseManagementParams, ManagementContext } from '@valtimo/shared';
 import { ProcessLinkStateService } from '@valtimo/process-link';
-import { BehaviorSubject, combineLatest, merge, Observable, of, Subject, Subscription } from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  merge,
+  Observable,
+  of,
+  ReplaySubject,
+  Subject,
+  Subscription,
+} from 'rxjs';
 import {
   catchError,
+  debounceTime,
   distinctUntilChanged,
   filter,
   map,
   shareReplay,
+  skip,
   startWith,
   switchMap,
   take,
@@ -52,6 +64,8 @@ import {
 } from 'rxjs/operators';
 import {
   AsyncResource,
+  CatalogInfo,
+  ReadSelection,
   errorResource,
   ExpressionFunctionInfo,
   GenerateDocumentConfig,
@@ -68,7 +82,26 @@ import {
 } from '../../models';
 import { FULL_SIMPLE_MAPPING_SUPPORT, supportsSimpleMapping } from '../../schema/template-schema';
 import { isBuilderCompatible } from '../../utils/jsonata-converter';
-import { EpistolaPluginService } from '../../services';
+import { catalogLabel, matchCatalogId, sortCatalogs } from '../../utils/catalog-ref';
+import { decodeJsonataStringLiteral } from '../../utils/jsonata-literal';
+import {
+  DesignHints,
+  DesignScopeState,
+  INVALID_RANGE,
+  NO_DESIGN_SCOPE,
+  designHintsOf,
+  environmentScopeOf,
+  loadDesignScope,
+  offersTemplatesAcrossReleases,
+  templateReleaseMark,
+  rangeScopeOf,
+} from '../../utils/design-scope';
+import {
+  ANY_ENVIRONMENT,
+  EnvironmentScope,
+  EpistolaPluginService,
+  RangeScope,
+} from '../../services';
 import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
 import { ExpectedStructureComponent } from '../expected-structure/expected-structure.component';
 import { MappingBuilderComponent } from '../mapping-builder/mapping-builder.component';
@@ -140,6 +173,17 @@ export class GenerateDocumentConfigurationComponent
     new EventEmitter<FunctionConfigurationData>();
 
   catalogs$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
+  /** The catalogs as listed, to match a reference saved against contract 1.x (`matchCatalogId`). */
+  private readonly catalogInfos$ = new BehaviorSubject<CatalogInfo[]>([]);
+  /** The catalog to show as selected: the prefilled reference, matched to the listed catalogs. */
+  prefillCatalogId$!: Observable<string | null>;
+  /**
+   * The environment the link generates in, which scopes what is read: the release it renders, and
+   * which catalogs are marked as deployed there. Follows the environment field (`environmentScopeOf`).
+   */
+  readonly environmentScope$ = new BehaviorSubject<EnvironmentScope>(undefined);
+  /** The release range the link renders, following the release field (`rangeScopeOf`). */
+  readonly rangeScope$ = new BehaviorSubject<RangeScope>(undefined);
   templates$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   variants$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   environments$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
@@ -155,6 +199,58 @@ export class GenerateDocumentConfigurationComponent
   readonly selectedCatalogId$ = new BehaviorSubject<string>('');
   /** Composite ID: "catalogId/templateId" */
   readonly selectedTemplateId$ = new BehaviorSubject<string>('');
+
+  /**
+   * The catalogs the select lists: every catalog of the tenant (ADR 0009), plus the selected one
+   * while the list reloads. `v-select` clears a value its items no longer hold, and the form would
+   * take that for the author clearing the catalog — wiping the template with it.
+   */
+  readonly catalogItems$ = keepingSelected(this.catalogs$, this.selectedCatalogId$);
+
+  /**
+   * The templates the select lists, keeping the selected one for the same reason as the catalogs:
+   * a new environment or version range reloads them, and a list that is empty while it loads, or
+   * read from a release without the template, would otherwise clear it and the mapping with it.
+   */
+  readonly templateItems$ = keepingSelected(this.templates$, this.selectedTemplateId$);
+  /** True when the selected template is not in the release the link renders. */
+  readonly templateNotOffered$ = notOffered(this.selectedTemplateId$, this.templates$);
+
+  /**
+   * The link's version range, as JSONata like the environment (ADR 0009): `"1.4.0"` pins a release,
+   * `"^1.4.0"` takes the highest that satisfies it, an expression is known at run time. Blank is
+   * none.
+   */
+  versionRangeExpression = '';
+  /**
+   * The release the configurator designs against, resolved once per catalog, environment and
+   * range; templates, attributes, variants and fields are all read through its `read` selection
+   * (see `initCascade`), so they come from the same release by construction.
+   */
+  readonly designScope$ = new BehaviorSubject<DesignScopeState>(NO_DESIGN_SCOPE);
+  /** The catalog's releases, offered as the release field's options. */
+  readonly releaseOptions$: Observable<SelectItem[]> = this.designScope$.pipe(
+    map((state) => (state.data?.versions ?? []).map((version) => ({ id: version, text: version }))),
+  );
+  /** What the catalog and release fields say about the scope: its problems, and what it is based on. */
+  readonly designHints$: Observable<DesignHints> = combineLatest([
+    this.designScope$,
+    this.environmentScope$,
+    this.rangeScope$,
+  ]).pipe(map(([state, environment, range]) => designHintsOf(state, environment, range)));
+  /**
+   * Where each listed template is read from, when the list spans releases (the release or the
+   * environment is an expression): the highest release containing it. Empty otherwise, and every
+   * template is read from the design scope's release.
+   */
+  private readonly templateReads$ = new BehaviorSubject<Map<string, ReadSelection>>(new Map());
+  /** True when the list spans releases and only the newest of them were read. */
+  readonly templatesTruncated$ = new BehaviorSubject<boolean>(false);
+
+  /** A failure to resolve the scope other than an invalid range, e.g. a catalog that is gone. */
+  readonly designScopeError$: Observable<string | null> = this.designScope$.pipe(
+    map((state) => (state.error && state.error !== INVALID_RANGE ? state.error : null)),
+  );
 
   /**
    * Force-clears the templateId v-select. Triggered when the catalog changes —
@@ -174,7 +270,13 @@ export class GenerateDocumentConfigurationComponent
   caseDefinitionKey: string | null = null;
   expressionFunctions: ExpressionFunctionInfo[] = [];
   /** Context variables for the JSONata editor's autocomplete ($doc/$pv/$case). */
-  editorContextVariables: Record<string, string[]> = { doc: [], pv: [], case: [] };
+  /** `$plugin` is fixed: what an expression may know about the configuration (`PluginBinding`). */
+  editorContextVariables: Record<string, string[]> = {
+    doc: [],
+    pv: [],
+    case: [],
+    plugin: ['defaultEnvironmentId'],
+  };
   prefillDataMapping: Record<string, any> = {};
   validationErrors$ = new BehaviorSubject<JsonataFieldError[]>([]);
   configurationVersionError$ = new BehaviorSubject<string | null>(null);
@@ -192,6 +294,11 @@ export class GenerateDocumentConfigurationComponent
   private readonly formValue$ = new BehaviorSubject<Partial<GenerateDocumentConfig> | null>(null);
   private readonly valid$ = new BehaviorSubject<boolean>(false);
   private pluginConfigurationId$ = new BehaviorSubject<string>('');
+  /**
+   * The configuration's tenant, null when it cannot be read: a catalog key saved against contract
+   * 1.x that several namespaces share names the tenant's own catalog ({@link matchCatalogId}).
+   */
+  private readonly tenantId$ = new ReplaySubject<string | null>(1);
   private readonly expressionValidity = new Map<string, boolean>();
   private nextAttributeEditorId = 0;
   private templateFieldsLoadedForTemplateId: string | null = null;
@@ -208,16 +315,26 @@ export class GenerateDocumentConfigurationComponent
     private readonly epistolaPluginService: EpistolaPluginService,
     private readonly processLinkStateService: ProcessLinkStateService,
     private readonly cdr: ChangeDetectorRef,
+    private readonly pluginTranslationService: PluginTranslationService,
   ) {}
 
   ngOnInit(): void {
     this.prefill$ = this.resolvePrefill$();
     this.effectivePrefill$ = this.prefill$;
+    this.prefillCatalogId$ = combineLatest([
+      this.prefill$,
+      this.catalogInfos$,
+      this.tenantId$,
+    ]).pipe(
+      map(([config, catalogs, tenantId]) => matchCatalogId(config?.catalogId, catalogs, tenantId)),
+    );
 
     this.initContext();
     this.initPluginConfiguration();
-    this.initCascade();
+    // Before the cascade: the first lookups then read from the saved environment and release,
+    // rather than from the default ones and again once these arrive.
     this.initEnvironmentPrefill();
+    this.initCascade();
     this.initVariantPrefill();
     this.initCorrelationIdPrefill();
     this.loadExpressionFunctions();
@@ -364,6 +481,28 @@ export class GenerateDocumentConfigurationComponent
 
   onEnvironmentIdExpressionChange(value: string): void {
     this.environmentIdExpression = value;
+    this.environmentScope$.next(environmentScopeOf(value));
+    this.revalidate();
+  }
+
+  /** A template as a list spanning releases shows it: marked with where it exists, if not everywhere. */
+  private templateItemLabel(name: string, mark: { key: string; version?: string } | null): string {
+    if (!mark) return name;
+    const word = this.pluginTranslationService.instant(mark.key, this.pluginId);
+    return `${name} · ${word}${mark.version ? ' ' + mark.version : ''}`;
+  }
+
+  /** A catalog as the select lists it: marked when the link's environment does not serve it. */
+  private catalogItemLabel(catalog: CatalogInfo): string {
+    const label = catalogLabel(catalog);
+    return catalog.deployedToEnvironment === false
+      ? `${label} — ${this.pluginTranslationService.instant('catalogNotDeployedMark', this.pluginId)}`
+      : label;
+  }
+
+  onVersionRangeExpressionChange(value: string): void {
+    this.versionRangeExpression = value;
+    this.rangeScope$.next(rangeScopeOf(value));
     this.revalidate();
   }
 
@@ -481,6 +620,9 @@ export class GenerateDocumentConfigurationComponent
   private initEnvironmentPrefill(): void {
     this.prefill$.pipe(takeUntil(this.destroy$), take(1)).subscribe((config) => {
       this.environmentIdExpression = config?.environmentId || '';
+      this.environmentScope$.next(environmentScopeOf(this.environmentIdExpression));
+      this.versionRangeExpression = config?.versionRange || '';
+      this.rangeScope$.next(rangeScopeOf(this.versionRangeExpression));
       this.cdr.markForCheck();
     });
   }
@@ -544,6 +686,7 @@ export class GenerateDocumentConfigurationComponent
           doc: suggestions.doc || [],
           pv: suggestions.pv || [],
           case: [],
+          plugin: ['defaultEnvironmentId'],
         };
         this.cdr.markForCheck();
       });
@@ -591,14 +734,40 @@ export class GenerateDocumentConfigurationComponent
       distinctUntilChanged(),
     );
 
-    // ── Catalogs: load when pluginConfigurationId changes ──
     configId$
       .pipe(
         takeUntil(this.destroy$),
+        switchMap((configId) =>
+          this.epistolaPluginService.getTenantId(configId).pipe(catchError(() => of(null))),
+        ),
+      )
+      .subscribe((tenantId) => this.tenantId$.next(tenantId));
+
+    // Typing an expression changes the scope per keystroke; settle before reloading. The first
+    // scope is taken at once, so loading does not wait on it.
+    const environment$ = merge(
+      this.environmentScope$.pipe(take(1)),
+      this.environmentScope$.pipe(skip(1), debounceTime(250)),
+    ).pipe(distinctUntilChanged());
+    // Likewise for the version range.
+    const range$ = merge(
+      this.rangeScope$.pipe(take(1)),
+      this.rangeScope$.pipe(skip(1), debounceTime(250)),
+    ).pipe(distinctUntilChanged());
+
+    // ── Catalogs: load when pluginConfigurationId or the environment changes ──
+    combineLatest([configId$, environment$])
+      .pipe(
+        takeUntil(this.destroy$),
         tap(() => this.catalogs$.next(loadingResource(this.catalogs$.getValue().data))),
-        switchMap((configurationId) =>
-          this.epistolaPluginService.getCatalogs(configurationId).pipe(
-            map((catalogs) => successResource(catalogs.map((c) => ({ id: c.id, text: c.name })))),
+        switchMap(([configurationId, environment]) =>
+          this.epistolaPluginService.getCatalogs(configurationId, environment).pipe(
+            tap((catalogs) => this.catalogInfos$.next(catalogs)),
+            map((catalogs) =>
+              successResource(
+                sortCatalogs(catalogs).map((c) => ({ id: c.id, text: this.catalogItemLabel(c) })),
+              ),
+            ),
             catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load catalogs'))),
           ),
         ),
@@ -623,42 +792,120 @@ export class GenerateDocumentConfigurationComponent
     combineLatest([
       this.prefill$.pipe(filter((config) => !!config?.catalogId)),
       this.catalogs$.pipe(filter((c) => !c.loading && c.data.length > 0)),
+      this.tenantId$,
     ])
       .pipe(takeUntil(this.destroy$), take(1))
-      .subscribe(([config]) => {
-        this.selectedCatalogId$.next(config!.catalogId);
+      .subscribe(([config, , tenantId]) => {
+        this.selectedCatalogId$.next(
+          matchCatalogId(config!.catalogId, this.catalogInfos$.getValue(), tenantId) ??
+            config!.catalogId,
+        );
       });
 
     // An empty id is no selection: it resets what depends on it, and nothing is fetched.
     const catalogId$ = this.selectedCatalogId$.pipe(distinctUntilChanged());
 
-    // ── Templates: load when catalogId changes ──
-    combineLatest([configId$, catalogId$])
+    // ── Design scope: the one release every lookup below reads (ADR 0009) ──
+    combineLatest([configId$, catalogId$, environment$, range$])
       .pipe(
         takeUntil(this.destroy$),
-        switchMap(([configurationId, catalogId]) =>
+        switchMap(([configurationId, catalogId, environment, range]) =>
           !catalogId
-            ? of(initialResource<SelectItem[]>([]))
-            : this.epistolaPluginService.getTemplates(configurationId, catalogId).pipe(
-                map((templates) =>
-                  successResource(templates.map((t) => ({ id: t.id, text: t.name }))),
+            ? of(NO_DESIGN_SCOPE)
+            : loadDesignScope(() =>
+                this.epistolaPluginService.getDesignScope(
+                  configurationId,
+                  catalogId,
+                  environment,
+                  range,
                 ),
-                catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load templates'))),
-                startWith(loadingResource<SelectItem[]>([])),
               ),
         ),
       )
-      .subscribe((resource) => this.templates$.next(resource));
+      .subscribe((state) => {
+        this.designScope$.next(state);
+        // A range that is not one would fail every generation: it blocks saving until corrected.
+        this.expressionValidity.set('versionRange', state.error !== INVALID_RANGE);
+        this.revalidate();
+        this.cdr.markForCheck();
+      });
 
-    // ── Attributes: load when catalogId changes ──
-    combineLatest([configId$, catalogId$])
+    // What the lookups read: the scope's catalog (qualified, also for a 1.x bare key) and its
+    // selection. Null while it loads or when it could not be resolved — its own hint says why, so
+    // nothing below is fetched only to fail the same way again.
+    const read$ = this.designScope$.pipe(
+      map((state) =>
+        state.data && !state.loading
+          ? { catalogId: state.data.catalogId, read: state.data.read }
+          : null,
+      ),
+      distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+    );
+    const scopeLoading$ = this.designScope$.pipe(
+      map((state) => state.loading),
+      distinctUntilChanged(),
+    );
+
+    // ── Templates: the design scope's release, or — for an expression — every reachable one ──
+    combineLatest([configId$, read$, scopeLoading$, environment$, range$])
       .pipe(
         takeUntil(this.destroy$),
-        switchMap(([configurationId, catalogId]) =>
-          !catalogId
+        switchMap(([configurationId, scope, loading, environment, range]) => {
+          if (!scope) {
+            this.templateReads$.next(new Map());
+            this.templatesTruncated$.next(false);
+            return of(
+              loading ? loadingResource<SelectItem[]>([]) : initialResource<SelectItem[]>([]),
+            );
+          }
+          if (offersTemplatesAcrossReleases(environment, range)) {
+            const reachable = this.designScope$.getValue().data?.versions ?? [];
+            return this.epistolaPluginService
+              .getCatalogTemplates(configurationId, scope.catalogId, environment)
+              .pipe(
+                tap((listed) => {
+                  this.templateReads$.next(new Map(listed.templates.map((t) => [t.id, t.read])));
+                  this.templatesTruncated$.next(listed.truncated);
+                }),
+                map((listed) =>
+                  successResource(
+                    listed.templates.map((t) => ({
+                      id: t.id,
+                      text: this.templateItemLabel(
+                        t.name,
+                        templateReleaseMark(t.releases, reachable),
+                      ),
+                    })),
+                  ),
+                ),
+                catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load templates'))),
+                startWith(loadingResource<SelectItem[]>([])),
+              );
+          }
+          this.templateReads$.next(new Map());
+          this.templatesTruncated$.next(false);
+          return this.epistolaPluginService
+            .getTemplates(configurationId, scope.catalogId, scope.read)
+            .pipe(
+              map((templates) =>
+                successResource(templates.map((t) => ({ id: t.id, text: t.name }))),
+              ),
+              catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load templates'))),
+              startWith(loadingResource<SelectItem[]>([])),
+            );
+        }),
+      )
+      .subscribe((resource) => this.templates$.next(resource));
+
+    // ── Attributes: load when the design scope changes ──
+    combineLatest([configId$, read$])
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap(([configurationId, scope]) =>
+          !scope
             ? of([])
             : this.epistolaPluginService
-                .getAttributes(configurationId, catalogId)
+                .getAttributes(configurationId, scope.catalogId, scope.read)
                 .pipe(catchError(() => of([]))),
         ),
       )
@@ -680,31 +927,86 @@ export class GenerateDocumentConfigurationComponent
     // The template loaders key on catalog and template together. A template id means
     // nothing outside its catalog, and changeCatalog() clears the template before the
     // catalog moves, so no emission pairs a template with a catalog it is not in.
+    // Where the selected template is read from: across releases, the highest release containing
+    // it; otherwise the design scope's release — once the list says the template is in it. A saved
+    // template that release does not have is looked up across releases instead (below), so no
+    // request is made that can only fail with a 404 (ADR 0009, addendum).
     const templateSelection$ = combineLatest([
       configId$,
-      catalogId$,
+      read$,
       this.selectedTemplateId$.pipe(distinctUntilChanged()),
-    ]);
+      this.templateReads$,
+      this.templates$,
+    ]).pipe(
+      map(([configurationId, scope, templateId, reads, templates]) => {
+        if (!scope || !templateId) return [configurationId, null, templateId] as const;
+        if (reads.has(templateId)) {
+          return [
+            configurationId,
+            { catalogId: scope.catalogId, read: reads.get(templateId)! },
+            templateId,
+          ] as const;
+        }
+        const listed =
+          !templates.loading && !templates.error && templates.data.some((t) => t.id === templateId);
+        return [configurationId, listed ? scope : null, templateId] as const;
+      }),
+      distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+    );
+
+    // A saved template the design scope's release does not contain: find the highest release that
+    // does, so its fields and mapping stay usable; its notice says it will not render as configured.
+    // Asked on every load of the list, because each load starts from no reads.
+    combineLatest([configId$, read$, this.templates$, environment$, range$])
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap(([configurationId, scope, templates, environment, range]) => {
+          const templateId = this.selectedTemplateId$.getValue();
+          const notOffered =
+            !templates.loading &&
+            !templates.error &&
+            !templates.data.some((t) => t.id === templateId);
+          if (
+            !scope ||
+            !notOffered ||
+            !templateId ||
+            offersTemplatesAcrossReleases(environment, range)
+          ) {
+            return of(null);
+          }
+          return this.epistolaPluginService
+            .getCatalogTemplates(configurationId, scope.catalogId, environment)
+            .pipe(
+              map((listed) => listed.templates.find((t) => t.id === templateId) ?? null),
+              catchError(() => of(null)),
+            );
+        }),
+      )
+      .subscribe((found) => {
+        if (found) this.templateReads$.next(new Map([[found.id, found.read]]));
+      });
 
     // ── Variants: load when the template selection changes ──
     templateSelection$
       .pipe(
         takeUntil(this.destroy$),
-        switchMap(([configurationId, catalogId, templateId]) =>
-          !catalogId || !templateId
+        switchMap(([configurationId, scope, templateId]) =>
+          !scope || !templateId
             ? of(initialResource<SelectItem[]>([]))
-            : this.epistolaPluginService.getVariants(configurationId, templateId, catalogId).pipe(
-                map((variants) =>
-                  successResource(
-                    variants.map((v) => ({
-                      id: v.id,
-                      text: v.name + formatVariantAttributes(v.attributes),
-                    })),
+            : this.epistolaPluginService
+                .getVariants(configurationId, templateId, scope.catalogId, scope.read)
+                .pipe(
+                  map((variants) =>
+                    successResource(
+                      variants.map((v) => ({
+                        id: v.id,
+                        text: v.name + formatVariantAttributes(v.attributes),
+                      })),
+                    ),
                   ),
+                  catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load variants'))),
+                  startWith(loadingResource<SelectItem[]>([])),
                 ),
-                catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load variants'))),
-                startWith(loadingResource<SelectItem[]>([])),
-              ),
         ),
       )
       .subscribe((resource) => this.variants$.next(resource));
@@ -718,11 +1020,11 @@ export class GenerateDocumentConfigurationComponent
           this.templateSchema$.next(null);
           this.simpleMappingSupport$.next(FULL_SIMPLE_MAPPING_SUPPORT);
         }),
-        switchMap(([configurationId, catalogId, templateId]) =>
-          !catalogId || !templateId
+        switchMap(([configurationId, scope, templateId]) =>
+          !scope || !templateId
             ? of(initialResource<TemplateField[]>([]))
             : this.epistolaPluginService
-                .getTemplateDetails(configurationId, templateId, catalogId)
+                .getTemplateDetails(configurationId, templateId, scope.catalogId, scope.read)
                 .pipe(
                   tap((details) => this.applyTemplateSchemaDetails(details)),
                   map((details) => successResource(details.fields || [])),
@@ -855,6 +1157,7 @@ export class GenerateDocumentConfigurationComponent
               correlationIdExpression: this.correlationIdExpression,
               resultProcessVariable: formValue.resultProcessVariable!,
               environmentExpression: this.environmentIdExpression,
+              versionRangeExpression: this.versionRangeExpression,
               variantSelectionMode: this.variantSelectionMode,
               variantExpression: this.variantIdExpression,
               variantAttributes: this.variantAttributeEntries,
@@ -890,4 +1193,56 @@ export class GenerateDocumentConfigurationComponent
         }
       });
   }
+}
+
+/** Kept exported from here for callers that imported it before it moved to `utils/design-scope`. */
+export { environmentScopeOf };
+
+/**
+ * A select's items with the selected one kept among them. `v-select` clears a value its items no
+ * longer hold — including while a reload leaves them empty — and the form would take that for the
+ * author clearing it. A kept item keeps the label it was last listed with.
+ */
+function keepingSelected(
+  items$: Observable<AsyncResource<SelectItem[]>>,
+  selected$: Observable<string>,
+): Observable<AsyncResource<SelectItem[]>> {
+  const labels = new Map<string, string>();
+  return combineLatest([items$, selected$.pipe(distinctUntilChanged())]).pipe(
+    tap(([items]) => items.data.forEach((item) => labels.set(String(item.id), item.text ?? ''))),
+    map(([items, selected]) =>
+      !selected || items.data.some((item) => item.id === selected)
+        ? items
+        : {
+            ...items,
+            data: [...items.data, { id: selected, text: labels.get(selected) || selected }],
+          },
+    ),
+    // Only a new list re-applies the select's default; an unchanged one must not.
+    distinctUntilChanged(
+      (previous, current) =>
+        previous === current ||
+        (previous.loading === current.loading &&
+          previous.error === current.error &&
+          previous.data.length === current.data.length &&
+          previous.data.every((item, i) => item.id === current.data[i].id)),
+    ),
+  );
+}
+
+/** True when a selection is made but the loaded items do not offer it. */
+function notOffered(
+  selected$: Observable<string>,
+  items$: Observable<AsyncResource<SelectItem[]>>,
+): Observable<boolean> {
+  return combineLatest([selected$, items$]).pipe(
+    map(
+      ([selected, items]) =>
+        !!selected &&
+        !items.loading &&
+        !items.error &&
+        !items.data.some((item) => item.id === selected),
+    ),
+    distinctUntilChanged(),
+  );
 }

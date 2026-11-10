@@ -75,7 +75,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
         resultCollectorRunner = mock(EpistolaResultCollectorRunner.class);
         execution = mock(DelegateExecution.class);
         when(epistolaService.submitGenerationJob(anyString(), anyString(), anyString(), anyString(),
-                anyString(), any(), any(), any(), any(), any(), any(), any(), any()))
+                anyString(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(GenerationJobResult.builder().requestId("req-1").status("PENDING").build());
     }
 
@@ -149,27 +149,75 @@ class EpistolaPluginGenerateComposedDocumentTest {
                 eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
                 eq("gemeente"), eq("besluit-bezwaar"),
                 isNull(), isNull(), eq("prod"),
+                any(),
                 data.capture(), eq(FileFormat.PDF), eq("besluit-bezwaar.pdf"), isNull(), any());
         assertThat(data.getValue()).containsEntry("naam", "Jansen");
     }
 
+    /**
+     * A letter renders where it was previewed: in the environment and release the composer wrote on
+     * it, not the plugin configuration's default. Nothing at generation time could look either up —
+     * the composer that chose the letter is not consulted — so the variable is the only place they
+     * can come from.
+     */
     @Test
-    void recordsTheRefusalWhereTheProcessCanReadIt() {
+    void rendersInTheEnvironmentAndReleaseTheLetterNames() {
+        composerWrote(Map.of(
+                "catalogId", "gemeente",
+                "templateId", "besluit-bezwaar",
+                "environmentId", "acceptatie",
+                "versionRange", "^1.4.0",
+                "data", Map.of("naam", "Jansen")));
+        when(execution.getBusinessKey()).thenReturn(java.util.UUID.randomUUID().toString());
+
+        plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
+
+        verify(epistolaService).submitGenerationJob(
+                eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
+                eq("gemeente"), eq("besluit-bezwaar"),
+                isNull(), isNull(), eq("acceptatie"), eq("^1.4.0"),
+                any(), eq(FileFormat.PDF), eq("besluit-bezwaar.pdf"), isNull(), any());
+    }
+
+    /** A letter naming neither renders as it always did: the default environment, no range. */
+    @Test
+    void aLetterNamingNeitherRendersInTheDefaultEnvironment() {
+        composerWrote(letter());
+        when(execution.getBusinessKey()).thenReturn(java.util.UUID.randomUUID().toString());
+
+        plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
+
+        verify(epistolaService).submitGenerationJob(
+                eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
+                eq("gemeente"), eq("besluit-bezwaar"),
+                isNull(), isNull(), eq("prod"), isNull(),
+                any(), eq(FileFormat.PDF), eq("besluit-bezwaar.pdf"), isNull(), any());
+    }
+
+    /**
+     * A refused generation cannot start, so the step raises an incident — retried once the cause is
+     * fixed — rather than recording a result (ADR 0009, third addendum). The incident's text says
+     * what is missing, from configuration alone; Epistola's own text stays out, because the engine
+     * logs the incident and a downstream message may quote the request.
+     */
+    @Test
+    void aRefusalRaisesAnIncidentSayingWhatIsMissing_withoutEpistolasText() {
         composerWrote(letter());
         when(epistolaService.submitGenerationJob(anyString(), anyString(), anyString(), anyString(),
-                anyString(), any(), any(), any(), any(), any(), any(), any(), any()))
-                .thenThrow(new RuntimeException("Template 'besluit-bezwaar' not found in catalog 'gemeente'"));
+                anyString(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenThrow(new app.epistola.valtimo.service.EpistolaTargetNotFoundException(
+                        new app.epistola.valtimo.domain.GenerationTargetProblem(
+                                app.epistola.valtimo.domain.GenerationTargetProblem.Reason.TEMPLATE_NOT_IN_RELEASE,
+                                "gemeente", "besluit-bezwaar", null, "prod", null, "2.0.0"),
+                        "Template 'besluit-bezwaar' not found for case of Jansen",
+                        "https://epistola.app/errors/not-found"));
 
-        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () ->
-                plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR));
-
-        ArgumentCaptor<Map<String, Object>> result = ArgumentCaptor.forClass(Map.class);
-        verify(execution).setVariable(eq(RESULT_VAR), result.capture());
-        assertThat(result.getValue())
-                .containsEntry(EpistolaProcessVariables.RESULT_KEY_STATUS, "FAILED");
-        assertThat(String.valueOf(result.getValue().get(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE)))
-                .describedAs("the reason Epistola gave, not a generic failure")
-                .contains("not found in catalog");
+        assertThatThrownBy(() -> plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR))
+                .isInstanceOf(app.epistola.valtimo.service.DocumentGenerationRefusedException.class)
+                .hasMessageStartingWith("Template 'besluit-bezwaar' is not in catalog 'gemeente' in release 2.0.0")
+                .hasMessageNotContaining("Jansen")
+                .hasNoCause();
+        org.mockito.Mockito.verify(execution, org.mockito.Mockito.never()).setVariable(eq(RESULT_VAR), any());
     }
 
     @Test
@@ -183,6 +231,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
                 eq(BASE_URL), eq(API_KEY), eq(TENANT_ID),
                 eq("gemeente"), eq("besluit-bezwaar"),
                 isNull(), isNull(), eq("prod"),
+                any(),
                 data.capture(), eq(FileFormat.PDF), eq("besluit-bezwaar.pdf"), isNull(), any());
         assertThat(data.getValue()).containsEntry("naam", "Jansen");
     }
@@ -194,7 +243,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
         plugin().generateComposedDocument(execution, "mijnBrief", null, null, RESULT_VAR);
 
         verify(epistolaService).submitGenerationJob(anyString(), anyString(), anyString(),
-                eq("gemeente"), eq("besluit-bezwaar"), any(), any(), any(), any(), any(), any(), any(), any());
+                eq("gemeente"), eq("besluit-bezwaar"), any(), any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -222,7 +271,7 @@ class EpistolaPluginGenerateComposedDocumentTest {
         plugin().generateComposedDocument(execution, null, "\"brief.pdf\"", "$pv.zaakId", RESULT_VAR);
 
         verify(epistolaService).submitGenerationJob(anyString(), anyString(), anyString(),
-                anyString(), anyString(), any(), any(), any(), any(), any(),
+                anyString(), anyString(), any(), any(), any(), any(), any(), any(),
                 eq("brief.pdf"), eq("zaak-42"), any());
     }
 

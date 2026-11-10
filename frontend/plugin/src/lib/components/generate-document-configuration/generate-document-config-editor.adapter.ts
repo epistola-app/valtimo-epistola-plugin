@@ -38,6 +38,8 @@ export interface BuildGenerateDocumentConfigInput {
   filenameExpression: string;
   correlationIdExpression: string;
   environmentExpression: string;
+  /** The version range as JSONata, like the environment (ADR 0009); blank is none. */
+  versionRangeExpression: string;
   variantSelectionMode: VariantSelectionMode;
   variantExpression: string;
   variantAttributes: VariantAttributeEditorEntry[];
@@ -60,6 +62,7 @@ export function buildGenerateDocumentConfig(
     catalogId: input.catalogId,
     templateId: input.templateId,
     environmentId: input.environmentExpression || undefined,
+    versionRange: input.versionRangeExpression.trim() || undefined,
     dataMapping: input.dataMapping,
     outputFormat: encodeJsonataStringLiteral('PDF'),
     filename: input.filenameExpression,

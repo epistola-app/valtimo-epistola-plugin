@@ -28,6 +28,16 @@ The **single source of truth** for a generation. You name it per `generate-docum
 
 Read in BPMN with JUEL dot-notation: `${epistolaResult.status}`, `${epistolaResult.documentId}`, etc.
 
+**A generation that cannot start raises an incident, and `FAILED` is a letter that did not
+render.** When Epistola refuses the request itself — nothing accepted, no job: a template not in the
+release, nothing deployed, a range nothing satisfies, an API key without access — or an expression
+of the link fails or produces nothing, or the case's rich text cannot be converted, the step throws
+and the engine raises an incident whose text says what is missing. Nothing is written to the result
+variable. Fix the cause (the configuration, or the case's data) and retry the incident: the step runs
+again with what was corrected. `status: FAILED` on the result variable is reserved for a job Epistola
+accepted that then failed to render, delivered through the catch event
+([ADR 0009](adr/0009-environment-and-release-as-expressions.md), third addendum).
+
 ## 2. Correlation plumbing
 
 | Variable                                                                                  | Scope                                                           | Purpose                                                                                                                                                                                                                                                                                                             | Needed |

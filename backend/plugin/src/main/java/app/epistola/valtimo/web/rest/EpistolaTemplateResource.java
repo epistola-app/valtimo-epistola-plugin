@@ -19,6 +19,8 @@ package app.epistola.valtimo.web.rest;
 
 import app.epistola.valtimo.domain.AttributeDefinition;
 import app.epistola.valtimo.domain.CatalogInfo;
+import app.epistola.valtimo.domain.CatalogTemplates;
+import app.epistola.valtimo.domain.DesignScope;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateInfo;
@@ -98,25 +100,31 @@ public class EpistolaTemplateResource {
     }
 
     /**
-     * Get all available catalogs for a plugin configuration.
+     * Get the catalogs a process link may name for a plugin configuration: every catalog of the
+     * tenant, each marked whether it is deployed to the environment the link generates in (see
+     * {@link #environmentFor}). Not narrowed to that environment: a link may name a catalog before it
+     * is rolled out there (ADR 0009).
      *
      * @param configurationId The plugin configuration ID
+     * @param environmentId   The environment the link generates in; the configuration's default when absent
+     * @param anyEnvironment  True when the link's environment is only known at run time: nothing marked
      * @return List of available catalogs
      */
     @GetMapping("/configurations/{configurationId}/catalogs")
     public ResponseEntity<List<CatalogInfo>> getCatalogs(
-            @PathVariable("configurationId") UUID configurationId
+            @PathVariable("configurationId") UUID configurationId,
+            @RequestParam(value = "environmentId", required = false) String environmentId,
+            @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment
     ) {
         log.debug("Fetching catalogs for plugin configuration: {}", configurationId);
 
         EpistolaPlugin plugin = pluginService.createInstance(configurationId);
-        List<CatalogInfo> catalogs = epistolaService.getCatalogs(
+        return okOrNotFound(() -> epistolaService.getCatalogsMarkingDeployment(
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
-                plugin.getTenantId()
-        );
-
-        return ResponseEntity.ok(catalogs);
+                plugin.getTenantId(),
+                environmentFor(plugin, environmentId, anyEnvironment)
+        ));
     }
 
     /**
@@ -124,12 +132,16 @@ public class EpistolaTemplateResource {
      *
      * @param configurationId The plugin configuration ID
      * @param catalogId       The catalog ID
+     * @param versionRange    The link's version range: content is read from the release it selects
      * @return List of available templates
      */
     @GetMapping("/configurations/{configurationId}/templates")
     public ResponseEntity<List<TemplateInfo>> getTemplates(
             @PathVariable("configurationId") UUID configurationId,
-            @RequestParam("catalogId") String catalogId
+            @RequestParam("catalogId") String catalogId,
+            @RequestParam(value = "environmentId", required = false) String environmentId,
+            @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment,
+            @RequestParam(value = "versionRange", required = false) String versionRange
     ) {
         log.debug("Fetching templates for plugin configuration: {}, catalog: {}", configurationId, catalogId);
 
@@ -138,7 +150,9 @@ public class EpistolaTemplateResource {
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
-                catalogId
+                catalogId,
+                environmentFor(plugin, environmentId, anyEnvironment),
+                versionRange
         ));
     }
 
@@ -148,13 +162,17 @@ public class EpistolaTemplateResource {
      * @param configurationId The plugin configuration ID
      * @param catalogId       The catalog ID
      * @param templateId      The template ID
+     * @param versionRange    The link's version range: content is read from the release it selects
      * @return Template details with fields
      */
     @GetMapping("/configurations/{configurationId}/templates/{templateId}")
     public ResponseEntity<TemplateDetails> getTemplateDetails(
             @PathVariable("configurationId") UUID configurationId,
             @PathVariable("templateId") String templateId,
-            @RequestParam("catalogId") String catalogId
+            @RequestParam("catalogId") String catalogId,
+            @RequestParam(value = "environmentId", required = false) String environmentId,
+            @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment,
+            @RequestParam(value = "versionRange", required = false) String versionRange
     ) {
         log.debug("Fetching template details for plugin configuration: {}, catalog: {}, template: {}",
                 configurationId, catalogId, templateId);
@@ -165,7 +183,9 @@ public class EpistolaTemplateResource {
                 plugin.getApiKey(),
                 plugin.getTenantId(),
                 catalogId,
-                templateId
+                templateId,
+                environmentFor(plugin, environmentId, anyEnvironment),
+                versionRange
         ));
     }
 
@@ -175,12 +195,16 @@ public class EpistolaTemplateResource {
      *
      * @param configurationId The plugin configuration ID
      * @param catalogId       The catalog ID
+     * @param versionRange    The link's version range: content is read from the release it selects
      * @return List of attribute definitions
      */
     @GetMapping("/configurations/{configurationId}/attributes")
     public ResponseEntity<List<AttributeDefinition>> getAttributes(
             @PathVariable("configurationId") UUID configurationId,
-            @RequestParam("catalogId") String catalogId
+            @RequestParam("catalogId") String catalogId,
+            @RequestParam(value = "environmentId", required = false) String environmentId,
+            @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment,
+            @RequestParam(value = "versionRange", required = false) String versionRange
     ) {
         log.debug("Fetching attribute definitions for plugin configuration: {}, catalog: {}", configurationId, catalogId);
 
@@ -189,7 +213,9 @@ public class EpistolaTemplateResource {
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
-                catalogId
+                catalogId,
+                environmentFor(plugin, environmentId, anyEnvironment),
+                versionRange
         ));
     }
 
@@ -221,13 +247,17 @@ public class EpistolaTemplateResource {
      * @param configurationId The plugin configuration ID
      * @param catalogId       The catalog ID
      * @param templateId      The template ID
+     * @param versionRange    The link's version range: content is read from the release it selects
      * @return List of variants for the template
      */
     @GetMapping("/configurations/{configurationId}/templates/{templateId}/variants")
     public ResponseEntity<List<VariantInfo>> getVariants(
             @PathVariable("configurationId") UUID configurationId,
             @PathVariable("templateId") String templateId,
-            @RequestParam("catalogId") String catalogId
+            @RequestParam("catalogId") String catalogId,
+            @RequestParam(value = "environmentId", required = false) String environmentId,
+            @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment,
+            @RequestParam(value = "versionRange", required = false) String versionRange
     ) {
         log.debug("Fetching variants for plugin configuration: {}, catalog: {}, template: {}",
                 configurationId, catalogId, templateId);
@@ -238,14 +268,101 @@ public class EpistolaTemplateResource {
                 plugin.getApiKey(),
                 plugin.getTenantId(),
                 catalogId,
-                templateId
+                templateId,
+                environmentFor(plugin, environmentId, anyEnvironment),
+                versionRange
         ));
     }
 
     /**
+     * The release a configurator designs a link against, resolved once: every further lookup sends
+     * the returned {@code read} selection, so they all read the same release. A catalog the link's
+     * environment does not serve, or a range nothing satisfies, falls back and says so in
+     * {@code problems} rather than failing (ADR 0009).
+     *
+     * @param configurationId The plugin configuration ID
+     * @param catalogId       The catalog ID, qualified or a bare key saved against contract 1.x
+     * @param environmentId   The environment the link generates in; the configuration's default when absent
+     * @param anyEnvironment  True when the link's environment is an expression: read catalog-wide
+     * @param versionRange    The link's range, if it is a literal; answered with 400 when it is not one
+     * @param anyRange        True when the link's range is an expression: no range applies
+     * @return the scope, or 404 when the catalog does not exist or has nothing to read
+     */
+    @GetMapping("/configurations/{configurationId}/design-scope")
+    public ResponseEntity<DesignScope> getDesignScope(
+            @PathVariable("configurationId") UUID configurationId,
+            @RequestParam("catalogId") String catalogId,
+            @RequestParam(value = "environmentId", required = false) String environmentId,
+            @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment,
+            @RequestParam(value = "versionRange", required = false) String versionRange,
+            @RequestParam(value = "anyRange", defaultValue = "false") boolean anyRange
+    ) {
+        log.debug("Resolving design scope for plugin configuration: {}, catalog: {}", configurationId, catalogId);
+
+        EpistolaPlugin plugin = pluginService.createInstance(configurationId);
+        return okOrNotFound(() -> epistolaService.getDesignScope(
+                plugin.getBaseUrl(),
+                plugin.getApiKey(),
+                plugin.getTenantId(),
+                catalogId,
+                environmentFor(plugin, environmentId, anyEnvironment),
+                anyRange ? null : versionRange
+        ));
+    }
+
+    /**
+     * Every template in the releases of a catalog the link can reach, with the releases each is in,
+     * for a link whose release is an expression (ADR 0009, addendum). Each template carries the
+     * {@code read} selection of the highest release containing it, for its fields and variants.
+     *
+     * @param configurationId The plugin configuration ID
+     * @param catalogId       The catalog ID
+     * @param environmentId   The environment the link generates in; the configuration's default when absent
+     * @param anyEnvironment  True when the link's environment is an expression: every released release
+     */
+    @GetMapping("/configurations/{configurationId}/catalog-templates")
+    public ResponseEntity<CatalogTemplates> getCatalogTemplates(
+            @PathVariable("configurationId") UUID configurationId,
+            @RequestParam("catalogId") String catalogId,
+            @RequestParam(value = "environmentId", required = false) String environmentId,
+            @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment
+    ) {
+        log.debug("Listing templates across releases for plugin configuration: {}, catalog: {}",
+                configurationId, catalogId);
+
+        EpistolaPlugin plugin = pluginService.createInstance(configurationId);
+        return okOrNotFound(() -> epistolaService.getCatalogTemplates(
+                plugin.getBaseUrl(),
+                plugin.getApiKey(),
+                plugin.getTenantId(),
+                catalogId,
+                environmentFor(plugin, environmentId, anyEnvironment)
+        ));
+    }
+
+    /**
+     * The environment a configurator's lookups are narrowed to, mirroring how generation picks
+     * one: the link's own environment, else the configuration's default. {@code anyEnvironment}
+     * says the link's environment is an expression evaluated at run time, so no single one applies
+     * and nothing is narrowed. Null means every catalog of the tenant.
+     */
+    static String environmentFor(EpistolaPlugin plugin, String environmentId, boolean anyEnvironment) {
+        if (anyEnvironment) {
+            return null;
+        }
+        if (environmentId != null && !environmentId.isBlank()) {
+            return environmentId;
+        }
+        String fallback = plugin.getDefaultEnvironmentId();
+        return fallback == null || fallback.isBlank() ? null : fallback;
+    }
+
+    /**
      * Answers with the lookup's result, or 404 when Epistola reports the catalog or template as
-     * missing. That is a stale selection — a template looked up in a catalog it is not in — rather
-     * than a server fault, so it must not surface as a 500. Every other failure propagates.
+     * missing. That is a stale selection — a template looked up in a catalog it is not in, or a
+     * version range no release satisfies — rather than a server fault, so it must not surface as a
+     * 500. A 400 (a version range that is not one) is answered as such. Every other failure
+     * propagates.
      */
     private static <T> ResponseEntity<T> okOrNotFound(Supplier<T> lookup) {
         try {
@@ -254,6 +371,11 @@ public class EpistolaTemplateResource {
             if (Integer.valueOf(HttpStatus.NOT_FOUND.value()).equals(e.getHttpStatus())) {
                 log.debug("Epistola reported the requested resource as not found: {}", e.getMessage());
                 return ResponseEntity.notFound().build();
+            }
+            if (Integer.valueOf(HttpStatus.BAD_REQUEST.value()).equals(e.getHttpStatus())) {
+                // A version range that is not one: the author's to correct, not a server fault.
+                log.debug("Refused a lookup as a bad request: {}", e.getMessage());
+                return ResponseEntity.badRequest().build();
             }
             throw e;
         }

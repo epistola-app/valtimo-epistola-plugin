@@ -52,8 +52,24 @@ public final class ComposerSchema {
      * editor's format ({@code {"$richText": {"format", "kind", "value"}}}, see
      * {@code RichTextValues}) rather than a bare string. An older plugin would send the tag to
      * Epistola as it is, which is why it must refuse the letter instead.
+     *
+     * <p>3 — a letter set names an environment ({@code letterSet.environmentId}) and a release of its
+     * catalog ({@code letterSet.versionRange}, or {@code templates[].versionRange} per letter), and a
+     * composed letter carries both ({@code environmentId}, {@code versionRange}). An older plugin
+     * would ignore them and render the default environment's release, which is a different letter
+     * than the one previewed.
+     *
+     * <p>4 — a letter set's {@code environmentId}, {@code versionRange} and
+     * {@code templates[].versionRange} are JSONata, evaluated with the case when the letter is
+     * prepared (ADR 0009); a fixed value is a string literal ({@code "productie"}, {@code "^1.4.0"}).
+     * Settings saved at 3 or earlier hold plain values and are read as literals
+     * ({@link #CHANGED_TO_EXPRESSIONS}). A composed letter still carries the evaluated values. An
+     * older plugin would send an expression to Epistola as an environment key or a range.
      */
-    public static final int CURRENT = 2;
+    public static final int CURRENT = 4;
+
+    /** The first schema whose letter-set environment and ranges are JSONata rather than plain values. */
+    public static final int CHANGED_TO_EXPRESSIONS = 4;
 
     /**
      * The version field on a <b>composed letter</b>, which lives in a process variable of its own.

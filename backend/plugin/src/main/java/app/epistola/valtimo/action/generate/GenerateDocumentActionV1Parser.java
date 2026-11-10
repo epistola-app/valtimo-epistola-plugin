@@ -21,6 +21,8 @@ import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.JsonataScalar;
 import app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration.VariantAttribute;
 
+import app.epistola.valtimo.service.VersionRanges;
+
 import java.util.List;
 import java.util.Map;
 
@@ -58,6 +60,7 @@ final class GenerateDocumentActionV1Parser implements GenerateDocumentActionVers
                 variantId,
                 attributes,
                 scalar("environmentId", properties.environmentId()),
+                versionRange(properties.versionRange()),
                 properties.dataMapping(),
                 scalar("outputFormat", properties.outputFormat()),
                 scalar("filename", properties.filename()),
@@ -78,6 +81,30 @@ final class GenerateDocumentActionV1Parser implements GenerateDocumentActionVers
                             + GenerateDocumentExpressionException.expressionSnippet(value) + "')",
                     exception);
         }
+    }
+
+    /**
+     * The version range as JSONata, like the environment (ADR 0009). A bare range saved before it
+     * became an expression is not JSONata and is refused with the literal form to write instead;
+     * a string literal is checked to be a range here, so it fails when saved rather than when run.
+     */
+    private ConfiguredScalar versionRange(String value) {
+        if (value == null || value.isBlank()) {
+            return new JsonataScalar(version(), "versionRange", value);
+        }
+        try {
+            jsonata(value);
+        } catch (RuntimeException exception) {
+            throw invalid("versionRange must contain valid JSONata; write a fixed range as a string literal, "
+                    + "such as \"" + value.strip() + "\" (expression='"
+                    + GenerateDocumentExpressionException.expressionSnippet(value) + "')", exception);
+        }
+        GenerateDocumentActionConfiguration.stringLiteral(value)
+                .flatMap(VersionRanges::problem)
+                .ifPresent(problem -> {
+                    throw invalid("versionRange: " + problem);
+                });
+        return new JsonataScalar(version(), "versionRange", value);
     }
 
     private void requireNonBlank(String value, String message) {

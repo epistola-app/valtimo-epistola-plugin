@@ -433,7 +433,9 @@ export class EpistolaAdminPageComponent implements OnInit {
         this.catalogFeedback = {
           slug: catalog.slug,
           type: 'success',
-          message: `OK — installed ${result.installed}, updated ${result.updated}, failed ${result.failed} (of ${result.total})`,
+          message: result.newlyInstalled
+            ? `OK — release ${result.version} installed in ${result.catalogId} (${result.total} resources)`
+            : `OK — release ${result.version} was already installed in ${result.catalogId}`,
         };
         this.loadCatalogs(configurationId);
       },

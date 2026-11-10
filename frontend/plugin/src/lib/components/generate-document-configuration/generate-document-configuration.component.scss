@@ -24,6 +24,48 @@
   }
 }
 
+.version-range {
+  margin-bottom: 1rem;
+}
+
+.version-range-label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: 0.75rem;
+  color: #525252;
+}
+
+.version-range-help {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  color: #6f6f6f;
+}
+
+.version-range-input {
+  width: 100%;
+  max-width: 20rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.875rem;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  outline: none;
+
+  &:focus {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 1px #2563eb;
+  }
+}
+
+.version-range-hint {
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+  color: #525252;
+
+  &.version-range-problem {
+    color: #dc3545;
+  }
+}
+
 .field-validation-error {
   margin: -0.5rem 0 0.75rem;
   padding: 0 0.75rem;

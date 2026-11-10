@@ -566,9 +566,14 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(EpistolaCatalogSyncService.class)
     public EpistolaCatalogSyncService epistolaCatalogSyncService(
             CatalogScanner scanner,
-            EpistolaService epistolaService
+            EpistolaService epistolaService,
+            EpistolaProperties properties
     ) {
-        return new EpistolaCatalogSyncService(scanner, epistolaService);
+        return new EpistolaCatalogSyncService(
+                scanner,
+                epistolaService,
+                properties.getCatalogSync().getRegistry(),
+                properties.getCatalogSync().getNamespace());
     }
 
     @Bean

@@ -34,7 +34,7 @@ import { FormioModule } from '@formio/angular';
 import { TranslateService } from '@ngx-translate/core';
 import { Subject, Subscription } from 'rxjs';
 import { debounceTime } from 'rxjs/operators';
-import { EpistolaComposerApiService } from '../composer-api.service';
+import { ComposerPrepareResponse, EpistolaComposerApiService } from '../composer-api.service';
 import {
   ComposerData,
   hasValuesFor,
@@ -85,6 +85,13 @@ export interface ComposerValue {
   data: ComposerData;
   /** Only what the employee typed, kept separately so it is visible what was changed by hand. */
   inputs: ComposerData;
+  /**
+   * The environment the letter renders in, when the composer names one; absent, generation uses
+   * the plugin configuration's default. Generation cannot ask the composer, so the letter carries it.
+   */
+  environmentId?: string;
+  /** The catalog release the letter renders, as a version range, when one is pinned. */
+  versionRange?: string;
 }
 
 /**
@@ -396,6 +403,8 @@ export class EpistolaLetterComposerComponent
 
   selectedTemplateId: string | null = null;
   catalogId: string | null = null;
+  /** Where the prepared letter renders, as the backend resolved it; copied onto the letter. */
+  private renderedIn: Pick<ComposerValue, 'environmentId' | 'versionRange'> = {};
   formDefinition: any = null;
   complete = false;
   loading = false;
@@ -579,6 +588,7 @@ export class EpistolaLetterComposerComponent
       catalogId: this.catalogId ?? '',
       data,
       inputs,
+      ...this.renderedIn,
     });
     this.latestData = data;
     if (this.autoRefreshEnabled) {
@@ -660,6 +670,7 @@ export class EpistolaLetterComposerComponent
       next: (prepared) => {
         this.mappedData = prepared.data ?? {};
         this.catalogId = prepared.catalogId;
+        this.renderedIn = renderedIn(prepared);
         this.resolvedProcessDefinitionKey = prepared.processDefinitionKey ?? null;
         this.formDefinition = sectionForm(
           withLocaleDates(
@@ -678,6 +689,7 @@ export class EpistolaLetterComposerComponent
           catalogId: prepared.catalogId,
           data: this.mappedData,
           inputs: {},
+          ...this.renderedIn,
         });
         // Show the letter as the case alone would produce it — but only when the case can
         // actually produce it. Rendering a letter whose required fields are still empty just
@@ -876,4 +888,20 @@ export class EpistolaLetterComposerComponent
     this.previewUrl = null;
     this.previewRawUrl = null;
   }
+}
+
+/**
+ * Where a prepared letter renders, as the letter stores it: only what is named, so a letter that
+ * pins neither looks exactly as it did before either existed. An environment of `""` is named: the
+ * composer was told to render in none, which is not the default (ADR 0009, second addendum).
+ */
+export function renderedIn(
+  prepared: Pick<ComposerPrepareResponse, 'environmentId' | 'versionRange'>,
+): Pick<ComposerValue, 'environmentId' | 'versionRange'> {
+  return {
+    ...(typeof prepared.environmentId === 'string'
+      ? { environmentId: prepared.environmentId }
+      : {}),
+    ...(prepared.versionRange ? { versionRange: prepared.versionRange } : {}),
+  };
 }

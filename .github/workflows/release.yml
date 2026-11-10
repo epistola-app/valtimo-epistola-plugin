@@ -26,6 +26,8 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       major_minor: ${{ steps.version.outputs.major_minor }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      npm_tag: ${{ steps.version.outputs.npm_tag }}
     steps:
       - name: Extract version
         id: version
@@ -47,10 +49,31 @@ jobs:
             exit 1
           fi
 
-          MAJOR_MINOR="${VERSION%.*}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-          echo "major_minor=${MAJOR_MINOR}" >> "$GITHUB_OUTPUT"
-          echo "Release version: ${VERSION}"
+          # A pre-release (X.Y.Z-alpha.1) is published beside the stable line, never in its place:
+          # npm gets a dist-tag named after its identifier (alpha, beta, rc) instead of `latest`,
+          # the images keep their exact tag only (no moving X.Y), and the demo stays where it is.
+          CORE="${VERSION%%-*}"
+          MAJOR_MINOR="${CORE%.*}"
+          if [ "$CORE" != "$VERSION" ]; then
+            PRERELEASE=true
+            PRE="${VERSION#*-}"
+            NPM_TAG="${PRE%%.*}"
+            if ! printf '%s\n' "$NPM_TAG" | grep -Eq '^[A-Za-z][0-9A-Za-z-]*$' || [ "$NPM_TAG" = "latest" ]; then
+              echo "::error::Pre-release ${VERSION} must start with a name (alpha, beta, rc), not '${NPM_TAG}'"
+              exit 1
+            fi
+          else
+            PRERELEASE=false
+            NPM_TAG=latest
+          fi
+
+          {
+            echo "version=${VERSION}"
+            echo "major_minor=${MAJOR_MINOR}"
+            echo "prerelease=${PRERELEASE}"
+            echo "npm_tag=${NPM_TAG}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Release version: ${VERSION} (pre-release: ${PRERELEASE}, npm dist-tag: ${NPM_TAG})"
 
   build:
     name: Build & Test
@@ -151,7 +174,7 @@ jobs:
         working-directory: frontend/plugin/dist
         run: |
           npm version "${{ needs.version.outputs.version }}" --no-git-tag-version --allow-same-version
-          npm publish --provenance --access public
+          npm publish --provenance --access public --tag "${{ needs.version.outputs.npm_tag }}"
 
   docker-backend:
     name: Docker Backend
@@ -185,7 +208,7 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE }}:${{ needs.version.outputs.version }}
-            ${{ env.IMAGE }}:${{ needs.version.outputs.major_minor }}
+            ${{ needs.version.outputs.prerelease != 'true' && format('{0}:{1}', env.IMAGE, needs.version.outputs.major_minor) || '' }}
             ${{ env.IMAGE }}:sha-${{ github.sha }}
 
       - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
@@ -234,7 +257,7 @@ jobs:
           push: true
           tags: |
             ${{ env.IMAGE }}:${{ needs.version.outputs.version }}
-            ${{ env.IMAGE }}:${{ needs.version.outputs.major_minor }}
+            ${{ needs.version.outputs.prerelease != 'true' && format('{0}:{1}', env.IMAGE, needs.version.outputs.major_minor) || '' }}
             ${{ env.IMAGE }}:sha-${{ github.sha }}
 
       - uses: sigstore/cosign-installer@398d4b0eeef1380460a10c8013a76f728fb906ac # v3
@@ -301,6 +324,8 @@ jobs:
   promote-demo:
     name: Trigger demo pin bump
     needs: [version, docker-backend, docker-frontend]
+    # The demo runs the released line; a pre-release may need a Suite the demo does not have.
+    if: needs.version.outputs.prerelease != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Trigger infra pin bump
@@ -377,6 +402,16 @@ jobs:
           gh release edit "${RELEASE_TAG}" \
             --repo "${{ github.repository }}" \
             --notes-file release-notes.md
+
+      - name: Mark a pre-release as one
+        if: needs.version.outputs.prerelease == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Kept off "Latest" even when it was published without the box ticked.
+          gh release edit "v${{ needs.version.outputs.version }}" \
+            --repo "${{ github.repository }}" \
+            --prerelease --latest=false
 
       - name: Download SBOMs
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8

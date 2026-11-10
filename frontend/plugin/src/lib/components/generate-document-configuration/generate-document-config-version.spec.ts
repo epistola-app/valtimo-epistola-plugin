@@ -64,6 +64,31 @@ describe('generate-document action configuration versioning', () => {
     },
   );
 
+  it('quotes a v0 version range, which was never an expression there', () => {
+    expect(migrateGenerateDocumentConfig(v0Config({ versionRange: ' ^1.4.0 ' })).versionRange).toBe(
+      '"^1.4.0"',
+    );
+    expect(migrateGenerateDocumentConfig(v0Config()).versionRange).toBeUndefined();
+  });
+
+  it('reads a v1 range saved as a bare range as the literal it meant (ADR 0009)', () => {
+    const v1 = (versionRange: string) =>
+      migrateGenerateDocumentConfig(
+        v0Config({
+          actionConfigVersion: 1,
+          outputFormat: '"PDF"',
+          filename: '"value.pdf"',
+          versionRange,
+        }),
+      ).versionRange;
+
+    expect(v1('^1.4.0')).toBe('"^1.4.0"');
+    expect(v1('>=1.3 <2')).toBe('">=1.3 <2"');
+    // Already JSONata: left as written.
+    expect(v1('"^1.4.0"')).toBe('"^1.4.0"');
+    expect(v1('$pv.briefversie')).toBe('$pv.briefversie');
+  });
+
   it('identifies only missing, null, and zero versions as legacy', () => {
     expect(isLegacyGenerateDocumentConfig(v0Config())).toBe(true);
     expect(isLegacyGenerateDocumentConfig(v0Config({ actionConfigVersion: null }))).toBe(true);

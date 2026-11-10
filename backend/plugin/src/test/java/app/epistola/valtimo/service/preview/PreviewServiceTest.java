@@ -52,6 +52,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -282,7 +283,7 @@ class PreviewServiceTest {
 
             when(epistolaService.previewDocument(
                     anyString(), anyString(), anyString(), anyString(),
-                    anyString(), any(), anyString(), any()))
+                    anyString(), any(), anyString(), any(), any()))
                     .thenThrow(new RuntimeException("Connection refused"));
 
             PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
@@ -327,7 +328,7 @@ class PreviewServiceTest {
 
             when(epistolaService.previewDocument(
                     anyString(), anyString(), anyString(), anyString(),
-                    anyString(), any(), anyString(), any()))
+                    anyString(), any(), anyString(), any(), any()))
                     .thenReturn(new ByteArrayInputStream(new byte[]{0x25, 0x50, 0x44, 0x46}));
 
             return processLink;
@@ -422,7 +423,7 @@ class PreviewServiceTest {
             ArgumentCaptor<String> variantIdCaptor = ArgumentCaptor.forClass(String.class);
             verify(epistolaService).previewDocument(
                     anyString(), anyString(), anyString(), anyString(),
-                    anyString(), variantIdCaptor.capture(), anyString(), any());
+                    anyString(), variantIdCaptor.capture(), anyString(), any(), any());
 
             assertEquals("letter-formal", variantIdCaptor.getValue());
         }
@@ -444,9 +445,32 @@ class PreviewServiceTest {
             ArgumentCaptor<String> environmentIdCaptor = ArgumentCaptor.forClass(String.class);
             verify(epistolaService).previewDocument(
                     anyString(), anyString(), anyString(), anyString(),
-                    anyString(), any(), environmentIdCaptor.capture(), any());
+                    anyString(), any(), environmentIdCaptor.capture(), any(), any());
 
             assertEquals("production", environmentIdCaptor.getValue());
+        }
+
+        @Test
+        void previewsTheReleaseTheLinksVersionRangeSelects_asGenerationWould() {
+            PluginProcessLink processLink = mockFullChain("instance-1", "my-process:1:abc");
+            // A v1 action: there the range is JSONata (v0 keeps it a plain range).
+            processLink.getActionProperties()
+                    .put("actionConfigVersion", 1)
+                    .put("outputFormat", "\"PDF\"")
+                    .put("filename", "\"preview.pdf\"")
+                    .put("versionRange", "$pv.briefversie");
+
+            when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
+                    .thenReturn(new LinkedHashMap<>());
+            when(jsonataMappingService.evaluateValue(argThat(ctx -> "$pv.briefversie".equals(ctx.getExpression()))))
+                    .thenReturn("~1.9.0");
+
+            previewService.generatePreview(new PreviewRequest("task-id-test", null, null, null), "doc-123", "instance-1");
+
+            // Evaluated as generation evaluates it, so the preview shows the release that will render.
+            verify(epistolaService).previewDocument(
+                    anyString(), anyString(), anyString(), anyString(),
+                    anyString(), any(), any(), eq("~1.9.0"), any());
         }
 
         @Test
@@ -464,7 +488,7 @@ class PreviewServiceTest {
 
             verify(epistolaService).previewDocument(
                     anyString(), anyString(), anyString(), anyString(),
-                    anyString(), any(), eq("env-1"), any());
+                    anyString(), any(), eq("env-1"), any(), any());
         }
 
         @Test
@@ -501,7 +525,7 @@ class PreviewServiceTest {
                     ArgumentCaptor.forClass(Map.class);
             verify(epistolaService).previewDocument(
                     anyString(), anyString(), anyString(), anyString(),
-                    anyString(), any(), anyString(), dataCaptor.capture());
+                    anyString(), any(), anyString(), any(), dataCaptor.capture());
 
             Map<String, Object> finalData = dataCaptor.getValue();
             assertEquals("from-input-override", finalData.get("name"));
@@ -544,7 +568,7 @@ class PreviewServiceTest {
 
             when(epistolaService.previewDocument(
                     anyString(), anyString(), anyString(), anyString(),
-                    anyString(), any(), anyString(), any()))
+                    anyString(), any(), anyString(), any(), any()))
                     .thenReturn(new ByteArrayInputStream(new byte[]{0x25, 0x50, 0x44, 0x46}));
 
             when(jsonataMappingService.evaluate(any(app.epistola.valtimo.mapping.EvaluationContext.class)))

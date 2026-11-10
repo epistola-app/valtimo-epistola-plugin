@@ -7,18 +7,149 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Upgrading
+
+- **An environment or version-range expression that produces no value now fails** instead of falling
+  back. `$pv.omgeving` on a case without that variable, or `someEnv` without quotes, used to render
+  silently in the plugin's default environment (or with no range). It now raises an incident at the
+  step saying the expression produced no value. Write the fallback into the expression:
+  `$pv.omgeving ?: $plugin.defaultEnvironmentId`, or `""` for deliberately none. An empty field
+  still means the default.
+- **A generate link's `versionRange` is now JSONata, like its environment.** A fixed range is the
+  string literal `"^1.4.0"`. A v1 link saved as a bare range (`^1.4.0`, only possible on
+  `1.0.0-alpha.1`/`beta.1`) is refused when it runs, with a message showing the literal to write.
+  Opening the link in the process-link editor quotes it for you, so saving it fixes it.
+- **Letter composer settings are at schema version 4.** A letter set's environment and ranges are
+  JSONata. Older settings are read as the literals they meant and keep working unchanged; opening a
+  composer in the form builder brings it to 4. An older plugin refuses schema-4 settings and letters,
+  with a message naming both versions.
+
 ### Added
 
-- **Forgejo CI for private internal branches** (`.forgejo/workflows/ci.yml`). Epistola's internal
-  Forgejo keeps a synced copy of this repository plus private branches under `internal/`, for
-  example a security fix before its disclosure. Those branches now run the same checks as
-  `ci.yml` on Forgejo's runners. GitHub ignores the file, and on Forgejo it replaces the
-  `.github/workflows` that were being started there (and failing) for every synced push.
+- **`$plugin.defaultEnvironmentId` in expressions**: the plugin configuration's default environment,
+  or `""` when none is configured, for an explicit fallback. `""` from an environment or range
+  expression means deliberately none. A failing expression raises an incident naming the field and
+  the expression; for `$error("…")` it carries the author's own text. The expression editor flags a
+  bare path such as `someEnv`, which can never produce a value.
+- **The release can be an expression.** A generate link's and a letter set's release is JSONata
+  evaluated with the case (`$pv.briefversie`), as the environment already was; a letter set's
+  environment can be an expression too. The result must be a string that is a version range; a
+  number is refused rather than read as another range (`1.0` would mean `1.x`).
+  ([ADR 0009](docs/adr/0009-environment-and-release-as-expressions.md))
+- **Templates across releases, for an expression.** When a generate link's or letter set's release
+  (or environment) is an expression, any release it reaches may render, so the configurator and the
+  letter-set builder list every template in those releases, marked with where it exists ("vanaf
+  2.0.0", "t/m 1.9.0", "alleen concept"), and read a chosen template's fields from the highest release
+  containing it. A saved template the selected release lacks is read from a release that has it
+  instead of failing with generic load errors. Uses `listCatalogTemplates` when the Suite offers it,
+  else one cached listing per release (at most the newest 25).
+- **The configurators say which release they design against.** "Template and fields come from
+  release 2.1.0", the deployed draft, or the newest draft; and when the environment or release is
+  an expression, that this is the highest release and an assumption.
 - **Releases are announced on the community forum.** The release command ends with a post in
   Aankondigingen on [community.epistola.app](https://community.epistola.app), drafted by the agent
   and posted after approval. It posts through a Discourse MCP server (`.agents/mcp/discourse/`, the
   same as epistola-suite's) that signs in through the browser and keeps its key in the OS
   credential store.
+
+### Changed
+
+- **Every catalog is listed, whatever the environment.** A catalog not deployed to the link's or
+  letter set's environment is marked in the list and can be chosen, with one warning that it will
+  not render there until deployed, so a link can be configured before its catalog is rolled out.
+  Previously the list was narrowed to the environment.
+- **A configurator resolves its release once.** A new `GET …/configurations/{id}/design-scope`
+  replaces `/releases`: it picks the release to design against, falling back (catalog-wide, then
+  without the range) where the link would render nothing, and reports why. Templates, fields,
+  variants and attributes are all read from that one release.
+
+- **Epistola contract client `2.0.0-rc.1` → `2.0.0-rc.2`** (`client-spring3-restclient`,
+  `epistola-catalog`, and the mock server in `docker/docker-compose.yml`). rc.2 adds two things the
+  plugin now uses when the Suite offers them: `listCatalogTemplates`, which lists a catalog's templates
+  across its releases in one call, and the `missing` member of a `not-found` problem, which says what a
+  refused generation lacked. A Suite on rc.1 (Suite `main` today) lacks both, and the plugin falls
+  back: one template listing per release, and its own diagnosis. `oldestSupportedServerTest` keeps
+  running against rc.1 for that reason.
+- **Epistola contract client `2.0.0-beta.2` → `2.0.0-rc.1`** (`client-spring3-restclient`,
+  `epistola-catalog`, and the mock server in `docker/docker-compose.yml` and
+  `oldestSupportedServerTest`). This build needs a Suite serving contract `2.0.0-rc.1`; none is
+  released yet (Suite `main` pins it). On a Suite serving another pre-release, the admin page
+  warns, as before. Nothing the plugin calls changed shape. The rest is outside what the plugin
+  uses: paged `listAvailableCatalogReleases`, support-request permissions in place of feedback
+  ones, per-resource consumer permission updates, bounded request inputs, and QR-code alt text.
+
+### Fixed
+
+- **A refused generation raises an incident that says what is missing.** When Epistola refuses a
+  generation (a missing template, release, variant or environment, nothing deployed, no access), the
+  incident read only "Failed to submit document generation request to Epistola". It now names what
+  was asked for and the first part that does not exist, for example _"Template 'besluit' is not in
+  catalog 'local/demo/brieven' in release 2.0.0 (selected by "^2.0.0" in environment 'staging')"_.
+  The same for a composed letter and for rich text that cannot be converted. Fix the cause (the
+  configuration, or the case's data) and retry the incident: the step runs again. The text never
+  carries Epistola's own message or a value from the case, because the engine logs it.
+- **Choosing an environment a catalog is not deployed to no longer errors.** Every lookup for that
+  catalog answered 404 with an empty body and showed its own untranslated "Failed to load …"
+  message (templates, fields, variants, the release field), burying the one notice that explained
+  it. It is now one translated warning, and the template and mapping stay usable.
+
+- **A job status that a newer 2.x server adds no longer fails the status check.** From `rc.1` the
+  client reads an unknown enum value as `unknown_default_open_api` instead of failing the whole
+  response. `check-job-status` now reads that as `IN_PROGRESS`, so the process keeps waiting.
+  Every finished status (`COMPLETED`, `FAILED`, `CANCELLED`) is already known, so this cannot hide
+  a job that has finished.
+- **A failed call to Epistola says what went wrong.** When Epistola did not answer with one of its
+  own error descriptions, the composer showed only _"Epistola could not describe template … :
+  Failed to fetch template details"_, and the cause was in the Valtimo log alone. The message now
+  ends with the HTTP status and content type, such as `HTTP 502 Bad Gateway (text/html)` for a
+  proxy's error page, or with the exception types, such as
+  `ResourceAccessException caused by ConnectException` for a host that cannot be reached. Response
+  bodies and downstream messages stay out because they may quote case data. The same applies to
+  listing templates, attributes and variants, previewing, downloading and importing a catalog.
+
+## [1.0.0-beta.1] - 2026-11-04
+
+### Upgrading
+
+- **Coming from 0.21.x?** Read the [1.0.0-alpha.1](#100-alpha1---2026-10-30) upgrading notes first:
+  this line needs an Epistola Suite serving contract 2.0 (every 1.x Suite refuses it), and a
+  catalog import no longer deploys the release to an environment, so a process link or composer
+  that names an environment renders nothing until the imported release is deployed there in
+  Epistola.
+- **Letters composed by this version cannot be generated by `1.0.0-alpha.1`.** The letter composer's
+  stored shapes are at schema version 3, and an older plugin refuses them, with a message naming both
+  versions, rather than rendering a different release than the one previewed. Upgrading needs nothing;
+  rolling back leaves letters composed in between waiting on their generate task until the upgrade
+  is redone.
+
+- **Give the plugin's Epistola API key `document-generator` beside `content-viewer`.** From contract
+  `2.0.0-beta.1`, reading a generated document (`DOCUMENT_VIEW`, which `download-document` needs)
+  is granted by `document-generator`, no longer by `content-viewer`. A key issued with both, which
+  the plugin already needed to read templates and generate, is unaffected.
+
+### Added
+
+- **A letter composer chooses its environment and release**, as a `generate-document` link does. In
+  the letter-set widget: an environment (else the plugin configuration's default, as before), a
+  version range over the set's catalog with its releases as suggestions and the release it selects
+  shown, and under **Configure** a range for one letter. The fields asked for, the preview and the
+  generated document all use that environment and release: the composer hands both to the browser,
+  which puts them on the letter variable, and `generate-dynamic-document` renders with them. A
+  catalog the chosen environment does not serve stays selected with a notice. A letter from another
+  catalog than the set's does not inherit the set's range. A process that writes the letter variable
+  itself may set `environmentId` and `versionRange` too (`DynamicDocument.of` takes both). See
+  [docs/letter-composer.md](docs/letter-composer.md#environment-and-release).
+
+### Changed
+
+- **The retry form reads a dynamic document's fields from the release it renders**, in its
+  environment, rather than from the catalog's highest release.
+- **Epistola contract client `2.0.0-alpha.5` → `2.0.0-beta.2`** (`client-spring3-restclient`,
+  `epistola-catalog`, and the mock server in `docker/docker-compose.yml` and
+  `oldestSupportedServerTest`). Everything else between them is additive for the plugin: quality
+  profiles (templates and releases gain an optional `quality` binding), tenant search, a
+  registered problem type for every status, a `forbidden` problem that names the permission it
+  refused, a `code` on each field of a validation error, and a `help` link on a problem.
 
 ### Fixed
 
@@ -29,14 +160,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The nightly browser suites run again.** GitHub's `ubuntu-latest` runner moved to Ubuntu 26.04,
   which Playwright 1.58 refuses ("does not support chromium on ubuntu26.04-x64"), so every run
   since 2026-10-28 failed while installing the browser. Playwright is now 1.64.1, which supports it.
-- **A failed call to Epistola says what went wrong.** When Epistola did not answer with one of its
-  own error descriptions, the composer showed only _"Epistola could not describe template … :
-  Failed to fetch template details"_, and the cause was in the Valtimo log alone. The message now
-  ends with the HTTP status and content type, such as `HTTP 502 Bad Gateway (text/html)` for a
-  proxy's error page, or with the exception types, such as
-  `ResourceAccessException caused by ConnectException` for a host that cannot be reached. Response
-  bodies and downstream messages stay out because they may quote case data. The same applies to
-  listing templates, attributes and variants, previewing, downloading and importing a catalog.
+
+## [1.0.0-alpha.1] - 2026-10-30
+
+### Upgrading
+
+- **The plugin speaks Epistola contract 2.0 (`2.0.0-alpha.5`) and needs an Epistola Suite that
+  serves it.** A 2.x client sends the `application/vnd.epistola.v2+json` media type, which every
+  1.x Suite refuses (406/415), so no 1.x Suite works with this build. No Suite 2.0 is released
+  yet: this is preparation for it, tested against the contract's mock server. See
+  [COMPATIBILITY.md](COMPATIBILITY.md).
+- **Process links keep working unchanged.** Contract 2.0 names a catalog by registry, namespace and
+  key; a link saved before holds the key alone, and the plugin looks it up among the tenant's
+  catalogs. Epistola 2.0's upgrade names the catalogs a tenant authored `local/<tenant key>/<key>`
+  (the key padded with `0` to 3 characters), so when several namespaces have that key it is that
+  one; without it the call is refused (409) with the full names to choose from. The admin page's
+  usage overview lists each such link with the catalog it resolves to: open it and pick the catalog
+  again, which stores `registry/namespace/key`.
+- **Bundled classpath catalogs are installed under `local/<tenant key>`**, the name Epistola 2.0's
+  upgrade gives the catalogs a tenant had, so the first sync after the upgrade adds to the migrated
+  catalog instead of installing a second one beside it. A manifest from before catalog wire v8 names
+  no registry or namespace; `epistola.catalog-sync.registry` and `epistola.catalog-sync.namespace`
+  override them. A v8 manifest names its own, and those are used. An import installs the
+  archive's release beside the catalog's others, so a changed catalog needs a new
+  `release.version`: the same version with other content is refused (`release-number-taken`).
+- **An import no longer makes a release live in an environment.** A process link that names an
+  environment renders the release deployed there; deploy the imported release in Epistola first.
+  Without an environment the catalog's highest release is rendered, as before.
+- **Generation statuses on process variables are unchanged.** Contract 2.0 sends `completed` and
+  `in-progress`; the plugin keeps writing `COMPLETED` and `IN_PROGRESS`, so BPMN gateways need no
+  change.
+- **Catalog choices follow the environment.** A configurator now offers the catalogs deployed to
+  the environment the action generates in — its own, else the plugin configuration's default — and
+  reads templates, variants and attributes from the release that environment renders (its deployed
+  draft, else its highest deployed release). Catalogs it only uses as another catalog's dependency
+  are not offered. Without an environment every catalog of the tenant is offered, dependencies
+  included, because the contract does not tell them apart. A link whose environment is an
+  expression is checked against every catalog. The admin page checks each link against its
+  environment the same way, and reports a catalog that is not deployed there.
+- **The admin page's redeploy reports the installed release** (`catalogId`, `newlyInstalled`,
+  `total`) instead of per-resource `installed`/`updated`/`failed` counts, which 2.0 no longer has.
+
+### Changed
+
+- **Epistola contract client `1.4.0` → `2.0.0-alpha.5`** (`app.epistola.contract:client-spring3-restclient`,
+  and `epistola-catalog` for the rich-text schema tests). Templates, variants and attributes are
+  read from the catalog's highest release, or its newest draft when it has never been released;
+  generation and preview render the highest release (the environment's, when one is configured).
+  A dotted attribute criterion saved against 1.4 (`system.locale`) is sent as `catalogKey` +
+  `key`, which 2.0 requires.
+  Since `2.0.0-alpha.4` a job's status no longer lists its items, so `check-job-status` and the
+  result fallback read the letter (its status, document and error) from the job's first item
+  (`listGenerationJobItems`), and fall back to the job's own status until an item is listed.
+- **Catalogs are labelled with their namespace**, and with their registry when it is not the
+  tenant's own (`Brieven (vng · exchange.epistola.app)`), in the generate-document configurator and
+  the letter composer's letter set: since 2.0 two catalogs may share a name. The tenant's own are
+  listed first. A selected catalog the environment does not serve stays selected, with a notice,
+  rather than being cleared when the environment changes.
+- **The admin page's contract check warns on a different pre-release.** Alpha releases change in
+  place, so `2.0.0-alpha.2` and `2.0.0-alpha.3` may disagree within one minor; only an exact match
+  is OK while either side is a pre-release.
+- **Demo app (test-app): its process links name the catalog in full**
+  (`local/demo/municipality-demo`), as a link saved against 2.0 does, so the admin overview no
+  longer flags them. The training template (`form-flow-demo`) keeps the bare key on purpose: each
+  trainee's clone resolves it to the catalog in the trainee's own tenant.
+
+### Added
+
+- **A generate-document action can pin a catalog release, or a range of them** (`versionRange`).
+  A version (`1.4.0`) pins one release; a range in npm's SemVer grammar (`^1.4.0`, `~1.4.0`,
+  `>=1.0.0 <2.0.0`) takes the highest release that satisfies it, among those deployed to the
+  action's environment when it has one. Empty keeps today's behaviour: the environment's deployed
+  draft, else its highest release. Generation and preview send the range, so Epistola picks the
+  release; the configurator reads the template, its fields and variants from the release the range
+  selects, offers the catalog's versions to pick from, and says which release the action will use
+  or that none satisfies the range. A range that is not one cannot be saved, and fails the action
+  rather than rendering something else. The admin page reports a range no release satisfies.
+  Plain text, not an expression: the configurator needs it to read the template. The letter
+  composer does not take one yet.
+- **Forgejo CI for private internal branches** (`.forgejo/workflows/ci.yml`). Epistola's internal
+  Forgejo keeps a synced copy of this repository plus private branches under `internal/`, for
+  example a security fix before its disclosure. Those branches now run the same checks as
+  `ci.yml` on Forgejo's runners. GitHub ignores the file, and on Forgejo it replaces the
+  `.github/workflows` that were being started there (and failing) for every synced push.
+
+### Fixed
+
+- **A pre-release can be released** (`X.Y.Z-alpha.1`, `-beta.N`, `-rc.N`). The release workflow
+  publishes it to npm under a dist-tag named after it (`alpha`) instead of `latest`, gives the
+  images only their exact tag (no moving `X.Y`), leaves the public demo on the released line, and
+  marks the GitHub release as a pre-release. A pre-release must start with a name: `0.22.0-1` is
+  refused, so npm never receives a numeric dist-tag.
+- **Demo app (test-app): a page longer than the window scrolls again while the demo banner is
+  shown.** The banner's wrapper clipped everything below the fold, such as the Epistola admin
+  page's list of plugin actions and their problems. The content area now scrolls under Valtimo's
+  top bar and side nav, which stay in place.
 
 ## [0.21.0] - 2026-10-14
 

@@ -19,10 +19,13 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ConfigService } from '@valtimo/shared';
-import { Observable } from 'rxjs';
+import { Observable, map } from 'rxjs';
 import {
   AttributeDefinition,
   CatalogInfo,
+  CatalogTemplates,
+  DesignScope,
+  ReadSelection,
   EnvironmentInfo,
   ExpressionFunctionInfo,
   JsonataValidationResult,
@@ -34,6 +37,10 @@ import {
   VariableSuggestions,
   VariantInfo,
 } from '../models';
+import { ANY_ENVIRONMENT, ANY_RANGE, EnvironmentScope, RangeScope } from './release-scope';
+
+export { ANY_ENVIRONMENT, ANY_RANGE } from './release-scope';
+export type { EnvironmentScope, RangeScope } from './release-scope';
 
 /**
  * Body of a {@link EpistolaPluginService.previewToBlob} call. Mirrors the
@@ -87,6 +94,30 @@ export interface DownloadDocumentRequest {
  * Provides methods to fetch templates, environments, variants,
  * process variables, and validate mappings.
  */
+function environmentParams(environment: EnvironmentScope): Record<string, string> {
+  if (environment === ANY_ENVIRONMENT) return { anyEnvironment: 'true' };
+  return environment ? { environmentId: environment } : {};
+}
+
+function rangeParams(range: RangeScope): Record<string, string> {
+  if (range === ANY_RANGE) return { anyRange: 'true' };
+  const trimmed = range?.trim();
+  return trimmed ? { versionRange: trimmed } : {};
+}
+
+/**
+ * A design scope's selection as a lookup sends it. A catalog-wide read must say so: sent without
+ * an environment, the server would put the configuration's default environment in its place, which
+ * is exactly where the catalog may not be deployed.
+ */
+function readParams(read: ReadSelection): Record<string, string> {
+  const params: Record<string, string> = read.environmentId
+    ? { environmentId: read.environmentId }
+    : { anyEnvironment: 'true' };
+  if (read.versionRange) params['versionRange'] = read.versionRange;
+  return params;
+}
+
 @Injectable()
 export class EpistolaPluginService {
   private readonly apiEndpoint: string;
@@ -99,20 +130,43 @@ export class EpistolaPluginService {
   }
 
   /**
-   * Get all available catalogs for a plugin configuration.
+   * The tenant a plugin configuration connects to, or null when it cannot be read.
    */
-  getCatalogs(pluginConfigurationId: string): Observable<CatalogInfo[]> {
+  getTenantId(pluginConfigurationId: string): Observable<string | null> {
+    return this.http
+      .get<{ id: string; tenantId: string | null }[]>(`${this.apiEndpoint}/configurations`)
+      .pipe(
+        map(
+          (configurations) =>
+            configurations.find((configuration) => configuration.id === pluginConfigurationId)
+              ?.tenantId ?? null,
+        ),
+      );
+  }
+
+  /**
+   * Every catalog of a plugin configuration's tenant, each marked whether it is deployed to the
+   * environment (`deployedToEnvironment`); not narrowed to it.
+   */
+  getCatalogs(
+    pluginConfigurationId: string,
+    environment?: EnvironmentScope,
+  ): Observable<CatalogInfo[]> {
     return this.http.get<CatalogInfo[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/catalogs`,
+      { params: environmentParams(environment) },
     );
   }
 
   /**
    * Get all available templates for a plugin configuration and catalog.
    */
-  getTemplates(pluginConfigurationId: string, catalogId?: string): Observable<TemplateInfo[]> {
-    const params: Record<string, string> = {};
-    if (catalogId) params['catalogId'] = catalogId;
+  getTemplates(
+    pluginConfigurationId: string,
+    catalogId: string,
+    read: ReadSelection,
+  ): Observable<TemplateInfo[]> {
+    const params: Record<string, string> = { ...readParams(read), catalogId };
     return this.http.get<TemplateInfo[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates`,
       { params },
@@ -126,10 +180,11 @@ export class EpistolaPluginService {
     pluginConfigurationId: string,
     templateId: string,
     catalogId: string,
+    read: ReadSelection,
   ): Observable<TemplateDetails> {
     return this.http.get<TemplateDetails>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}`,
-      { params: { catalogId } },
+      { params: { ...readParams(read), catalogId } },
     );
   }
 
@@ -139,9 +194,9 @@ export class EpistolaPluginService {
   getAttributes(
     pluginConfigurationId: string,
     catalogId: string,
+    read: ReadSelection,
   ): Observable<AttributeDefinition[]> {
-    const params: Record<string, string> = {};
-    if (catalogId) params['catalogId'] = catalogId;
+    const params: Record<string, string> = { ...readParams(read), catalogId };
     return this.http.get<AttributeDefinition[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/attributes`,
       { params },
@@ -164,12 +219,44 @@ export class EpistolaPluginService {
     pluginConfigurationId: string,
     templateId: string,
     catalogId: string,
+    read: ReadSelection,
   ): Observable<VariantInfo[]> {
-    const params: Record<string, string> = {};
-    if (catalogId) params['catalogId'] = catalogId;
+    const params: Record<string, string> = { ...readParams(read), catalogId };
     return this.http.get<VariantInfo[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}/variants`,
       { params },
+    );
+  }
+
+  /**
+   * The release a configurator designs a link against, resolved once: every further lookup sends
+   * its `read`. Falls back where the link would render nothing and says why in `problems`; answers
+   * 400 when a literal range is not one (ADR 0009).
+   */
+  getDesignScope(
+    pluginConfigurationId: string,
+    catalogId: string,
+    environment: EnvironmentScope,
+    range: RangeScope,
+  ): Observable<DesignScope> {
+    return this.http.get<DesignScope>(
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/design-scope`,
+      { params: { ...environmentParams(environment), ...rangeParams(range), catalogId } },
+    );
+  }
+
+  /**
+   * Every template in the releases of a catalog the link can reach, with the releases each is in;
+   * for a link whose release (or environment) is an expression.
+   */
+  getCatalogTemplates(
+    pluginConfigurationId: string,
+    catalogId: string,
+    environment: EnvironmentScope,
+  ): Observable<CatalogTemplates> {
+    return this.http.get<CatalogTemplates>(
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/catalog-templates`,
+      { params: { ...environmentParams(environment), catalogId } },
     );
   }
 

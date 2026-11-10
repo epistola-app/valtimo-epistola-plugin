@@ -42,6 +42,21 @@ class DynamicDocumentTest {
      * only reason this was not hit; a letter written by a process, by an older plugin version, or
      * by a form that stores an explicit null is enough to reach it.
      */
+    /**
+     * "" is a letter rendered in no environment, as the composer was told; absent is the plugin's
+     * default. Kept apart on the way out and on the way back in (ADR 0009, second addendum).
+     */
+    @Test
+    void anEmptyEnvironment_isNone_notTheDefault_bothWays() {
+        Map<String, Object> none = DynamicDocument.of("local/demo/brieven", "besluit", Map.of(), "", null);
+        Map<String, Object> unnamed = DynamicDocument.of("local/demo/brieven", "besluit", Map.of(), null, null);
+
+        assertThat(none).containsEntry("environmentId", "");
+        assertThat(unnamed).doesNotContainKey("environmentId");
+        assertThat(DynamicDocument.from(none, "pv:brief", objectMapper).environmentId()).isEmpty();
+        assertThat(DynamicDocument.from(unnamed, "pv:brief", objectMapper).environmentId()).isNull();
+    }
+
     @Test
     void readsALetterWhoseInputWasCleared() {
         Map<String, Object> inputs = new java.util.HashMap<>();
@@ -117,6 +132,32 @@ class DynamicDocumentTest {
         assertThat(asComposer.inputs())
                 .describedAs("a document a process prepared has no typed input")
                 .isEmpty();
+    }
+
+    /** Where a letter renders survives the variable, both ways round. */
+    @Test
+    void aPreparedDocumentKeepsWhereItRenders() {
+        Map<String, Object> prepared = DynamicDocument.of(
+                "gemeente", "besluit-bezwaar", Map.of(), "acceptatie", "^1.4.0");
+
+        DynamicDocument letter = DynamicDocument.from(prepared, "epistolaLetter", objectMapper);
+
+        assertThat(letter.environmentId()).isEqualTo("acceptatie");
+        assertThat(letter.versionRange()).isEqualTo("^1.4.0");
+    }
+
+    /**
+     * Naming neither is the shape every letter had before, and a process still writing it gets
+     * what it always got: no keys at all, rather than nulls a reader might take for a choice.
+     */
+    @Test
+    void aDocumentNamingNeitherRendersTheDefault() {
+        Map<String, Object> prepared = DynamicDocument.of("gemeente", "besluit-bezwaar", Map.of());
+
+        assertThat(prepared).doesNotContainKeys("environmentId", "versionRange");
+        DynamicDocument letter = DynamicDocument.from(prepared, "epistolaLetter", objectMapper);
+        assertThat(letter.environmentId()).isNull();
+        assertThat(letter.versionRange()).isNull();
     }
 
     @Test

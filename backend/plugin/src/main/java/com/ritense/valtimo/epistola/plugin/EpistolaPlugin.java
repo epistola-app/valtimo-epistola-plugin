@@ -32,7 +32,13 @@ import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService
 import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
 import app.epistola.valtimo.service.download.DocumentStorageStrategy;
 
+import app.epistola.valtimo.richtext.RichTextConversionException;
+import app.epistola.valtimo.action.generate.GenerateDocumentExpressionException;
+import app.epistola.valtimo.mapping.PluginBinding;
 import app.epistola.valtimo.service.EpistolaService;
+import app.epistola.valtimo.service.DocumentGenerationRefusedException;
+import app.epistola.valtimo.service.EpistolaTargetNotFoundException;
+import app.epistola.valtimo.service.EpistolaApiException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.annotation.*;
@@ -255,6 +261,9 @@ public class EpistolaPlugin {
      *                              Expression values can use the JSONata context ($doc, $pv, $case).
      * @param environmentId         The environment ID or JSONata expression (optional, uses plugin default
      *                              when not specified or when the expression resolves to null/blank)
+     * @param versionRange          The release of the catalog to render, as a version range such as
+     *                              {@code 1.4.0} or {@code ^1.4.0} (optional — omitted, the
+     *                              environment's draft, else the highest release it serves)
      * @param dataMapping           JSONata expression that produces the template data payload.
      *                              Has access to $doc (document data), $pv (process variables), $case (case data).
      * @param outputFormat          The output-format value in v0 or JSONata expression in v1.
@@ -277,6 +286,7 @@ public class EpistolaPlugin {
             @PluginActionProperty String variantId,
             @PluginActionProperty List<Map<String, Object>> variantAttributes,
             @PluginActionProperty String environmentId,
+            @PluginActionProperty String versionRange,
             @PluginActionProperty String dataMapping,
             @PluginActionProperty String outputFormat,
             @PluginActionProperty String filename,
@@ -291,6 +301,7 @@ public class EpistolaPlugin {
                         variantId,
                         variantAttributes,
                         environmentId,
+                        versionRange,
                         dataMapping,
                         outputFormat,
                         filename,
@@ -343,11 +354,40 @@ public class EpistolaPlugin {
                     .execution(execution)
                     .documentId(execution.getBusinessKey())
                     .operation("execution")
+                    .extraBindings(PluginBinding.of(defaultEnvironmentId))
                     .build();
-            resolvedData = actionConfig.evaluateDataMapping(jsonataMappingService, evalCtx);
+            try {
+                resolvedData = actionConfig.evaluateDataMapping(jsonataMappingService, evalCtx);
+            } catch (GenerateDocumentExpressionException e) {
+                throw refusedBy(e);
+            }
         }
 
         var scalarEvalContext = buildEvalCtx(execution, null);
+        // A configured expression that fails, or produces nothing where a deliberate value is needed,
+        // cannot start the generation: an incident, which is retried once the case or the link is
+        // corrected (ADR 0009, third addendum).
+        try {
+            generateWithResolvedScalars(execution, actionConfig, resolvedData, scalarEvalContext,
+                    hasVariantId, hasAttributes, configuredResultVariable);
+        } catch (GenerateDocumentExpressionException e) {
+            throw refusedBy(e);
+        }
+    }
+
+    /** An expression failure as the incident says it: field and expression, never a case value. */
+    private static DocumentGenerationRefusedException refusedBy(GenerateDocumentExpressionException failure) {
+        return new DocumentGenerationRefusedException(failure.safeDescription());
+    }
+
+    private void generateWithResolvedScalars(
+            DelegateExecution execution,
+            app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration actionConfig,
+            Map<String, Object> resolvedData,
+            app.epistola.valtimo.mapping.EvaluationContext scalarEvalContext,
+            boolean hasVariantId,
+            boolean hasAttributes,
+            String configuredResultVariable) {
         String resolvedOutputFormat = actionConfig.outputFormat().resolve(jsonataMappingService, scalarEvalContext);
         FileFormat effectiveOutputFormat;
         try {
@@ -361,14 +401,10 @@ public class EpistolaPlugin {
         }
         String resolvedFilename = actionConfig.filename().resolve(jsonataMappingService, scalarEvalContext);
 
-        // Resolve a dynamic action-level environment and fall back to the plugin default
-        // when no usable override is configured or produced.
-        String resolvedEnvironmentId = actionConfig.environmentId().isConfigured()
-                ? actionConfig.environmentId().resolve(jsonataMappingService, scalarEvalContext)
-                : null;
-        String effectiveEnvironmentId = (resolvedEnvironmentId != null && !resolvedEnvironmentId.isBlank())
-                ? resolvedEnvironmentId
-                : defaultEnvironmentId;
+        // None configured: the plugin default. An expression: what it says, "" for none, and no
+        // value is refused (see resolveEnvironment).
+        String effectiveEnvironmentId =
+                actionConfig.resolveEnvironment(jsonataMappingService, scalarEvalContext, defaultEnvironmentId);
 
         // Resolve variantId if it uses a JSONata expression
         String resolvedVariantId = hasVariantId
@@ -381,10 +417,9 @@ public class EpistolaPlugin {
         // Build variant selection attributes, resolving each value as a JSONata expression
         List<VariantSelectionAttribute> resolvedAttributes = hasAttributes
                 ? actionConfig.variantAttributes().stream()
-                        .map(attr -> new VariantSelectionAttribute(
+                        .map(attr -> variantSelectionAttribute(
                                 attr.key(),
                                 attr.value().resolve(jsonataMappingService, scalarEvalContext),
-                                null,
                                 attr.required()))
                         .toList()
                 : null;
@@ -397,6 +432,7 @@ public class EpistolaPlugin {
                         resolvedVariantId,
                         resolvedAttributes,
                         effectiveEnvironmentId,
+                        actionConfig.resolveVersionRange(jsonataMappingService, scalarEvalContext),
                         resolvedData,
                         effectiveOutputFormat,
                         resolvedFilename,
@@ -449,8 +485,10 @@ public class EpistolaPlugin {
                 ? null
                 : jsonataMappingService.evaluateScalar(scalarEvalContext.withExpression(correlationId));
 
-        log.debug("Generating composed letter from '{}': catalogId={}, templateId={}",
-                variableName, letter.catalogId(), letter.templateId());
+        log.debug("Generating composed letter from '{}': catalogId={}, templateId={}, environmentId={}, "
+                        + "versionRange={}",
+                variableName, letter.catalogId(), letter.templateId(), letter.environmentId(),
+                letter.versionRange());
 
         submitAndRecord(
                 execution,
@@ -459,7 +497,12 @@ public class EpistolaPlugin {
                         letter.templateId(),
                         null,
                         null,
-                        defaultEnvironmentId,
+                        // Where the letter was previewed: the composer writes both, and a letter
+                        // that names neither renders in the default environment, as before.
+                        // null: none was configured, the default; "": the composer said none.
+                        letter.environmentId() == null ? defaultEnvironmentId
+                                : letter.environmentId().isBlank() ? null : letter.environmentId(),
+                        letter.versionRange(),
                         letter.data(),
                         FileFormat.PDF,
                         resolvedFilename,
@@ -481,6 +524,7 @@ public class EpistolaPlugin {
      * @param variantId          Explicit variant, or null
      * @param variantAttributes  Attribute-based variant selection, or null
      * @param environmentId      Environment to render in
+     * @param versionRange       Release of the catalog to render, as a version range, or null
      * @param data               The template data
      * @param outputFormat       The file format (PDF)
      * @param filename           Filename for the generated document
@@ -493,12 +537,38 @@ public class EpistolaPlugin {
             String variantId,
             List<VariantSelectionAttribute> variantAttributes,
             String environmentId,
+            String versionRange,
             Map<String, Object> data,
             FileFormat outputFormat,
             String filename,
             String correlationId,
             String resultProcessVariable
     ) {}
+
+    /**
+     * Whether Epistola refused the request itself (ADR 0009, third addendum): a 4xx answer to the submit, so
+     * nothing was accepted and asking again changes nothing — a template not in the release, nothing
+     * deployed, a range nothing satisfies, an API key without access. 408 and 429 are the exceptions,
+     * being about timing rather than the request.
+     */
+    private static boolean isRefusal(EpistolaApiException e) {
+        Integer status = e.getHttpStatus();
+        return status != null && status >= 400 && status < 500 && status != 408 && status != 429;
+    }
+
+    /**
+     * Epistola's refusal as the incident says it: the plugin's diagnosis of what is missing
+     * ({@link EpistolaTargetNotFoundException}), else the status alone. Never Epistola's own text,
+     * which may quote the request, and no cause: the message reaches every log of the incident.
+     */
+    private static DocumentGenerationRefusedException refusedBy(EpistolaApiException refusal) {
+        if (refusal instanceof EpistolaTargetNotFoundException notFound) {
+            return new DocumentGenerationRefusedException(notFound.getMessage());
+        }
+        return new DocumentGenerationRefusedException("Epistola refused the generation request (HTTP "
+                + refusal.getHttpStatus() + ")" + (refusal.getProblemTypeSlug() == null
+                        ? "" : ": " + refusal.getProblemTypeSlug()) + ".");
+    }
 
     /**
      * Submit a generation job and record it on the execution: the rich result object, the tenant,
@@ -526,26 +596,27 @@ public class EpistolaPlugin {
                     request.variantId(),
                     request.variantAttributes(),
                     request.environmentId(),
+                    request.versionRange(),
                     request.data(),
                     request.outputFormat(),
                     request.filename(),
                     request.correlationId(),
                     routingKey
             );
+        } catch (EpistolaApiException e) {
+            if (!isRefusal(e)) {
+                // Transient (5xx, timeout, 408, 429): let the engine retry the step.
+                throw new RuntimeException("Failed to submit document generation request to Epistola", e);
+            }
+            throw refusedBy(e);
+        } catch (RichTextConversionException e) {
+            // The case's rich text cannot become what the template takes. Its message names the
+            // field and the format, never the text (RichTextValues), so the incident may carry it.
+            throw new DocumentGenerationRefusedException(
+                    "The case's rich text cannot be sent to Epistola: " + e.getMessage());
         } catch (Exception e) {
-            // Submit-time failure: write a FAILED rich object on resultProcessVariable so
-            // downstream BPMN (or a Formio retry form) can read the error via
-            // ${<resultProcessVariable>.errorMessage} just like a post-submit failure.
-            Map<String, Object> failureData = new LinkedHashMap<>();
-            failureData.put(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID, null);
-            failureData.put(EpistolaProcessVariables.RESULT_KEY_STATUS, "FAILED");
-            failureData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
-            failureData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE,
-                    "Document generation request failed: " + e.getMessage());
-            execution.setVariable(request.resultProcessVariable(), failureData);
             throw new RuntimeException("Failed to submit document generation request to Epistola", e);
         }
-
         // Store a rich result object on the user-configured process variable. The
         // collector updates the same variable in-place when the result lands; users
         // read individual fields via JUEL: ${var.status}, ${var.documentId}, etc.
@@ -765,7 +836,22 @@ public class EpistolaPlugin {
                 .execution(execution)
                 .documentId(execution.getBusinessKey())
                 .operation("execution")
+                .extraBindings(PluginBinding.of(defaultEnvironmentId))
                 .build();
     }
 
+
+    /**
+     * An attribute criterion as contract 2.0 takes it. Contract 1.4 also accepted the attribute of
+     * another catalog as a dotted key, {@code <catalog>.<key>} ({@code system.locale}), and process
+     * links saved then may hold one; 2.0 refuses a dotted key and names the catalog in a member of
+     * its own, so the two are split here. A key without a dot is the template's own catalog's.
+     */
+    static VariantSelectionAttribute variantSelectionAttribute(String key, String value, Boolean required) {
+        int dot = key.indexOf('.');
+        if (dot > 0 && dot < key.length() - 1) {
+            return new VariantSelectionAttribute(key.substring(dot + 1), value, key.substring(0, dot), required);
+        }
+        return new VariantSelectionAttribute(key, value, null, required);
+    }
 }

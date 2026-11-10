@@ -169,6 +169,29 @@ describe('EpistolaLetterComposerComponent', () => {
     });
   });
 
+  it('puts where the letter renders on it, as the backend resolved it, so generation renders there too', () => {
+    const { component } = createComponent({ environmentId: 'acceptatie', versionRange: '^2.0.0' });
+    component.onTemplateSelected('besluit');
+
+    expect(component.value).toEqual(
+      expect.objectContaining({ environmentId: 'acceptatie', versionRange: '^2.0.0' }),
+    );
+
+    component.onInputsChanged({ data: { motivatie: 'omdat' } });
+
+    expect(component.value).toEqual(
+      expect.objectContaining({ environmentId: 'acceptatie', versionRange: '^2.0.0' }),
+    );
+  });
+
+  it("leaves both off a letter that renders the default environment's release", () => {
+    const { component } = createComponent({ environmentId: null, versionRange: null });
+    component.onTemplateSelected('besluit');
+
+    expect(component.value).not.toHaveProperty('environmentId');
+    expect(component.value).not.toHaveProperty('versionRange');
+  });
+
   it('tags what was typed into a rich-text editor with its format, in the letter and the preview', () => {
     const { component, service } = createComponent({
       data: { naam: 'Jansen' },

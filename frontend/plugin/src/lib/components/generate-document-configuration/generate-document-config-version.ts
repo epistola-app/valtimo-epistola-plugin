@@ -61,6 +61,7 @@ export function migrateGenerateDocumentConfig(raw: unknown): GenerateDocumentCon
     const v1 = {
       ...current,
       dataMapping: normalizeDataMapping(current.dataMapping),
+      versionRange: quoteBareVersionRange(current.versionRange),
     };
     validateV1Scalars(v1);
     return v1;
@@ -78,6 +79,10 @@ function migrateV0ToV1(v0: GenerateDocumentConfigV0): GenerateDocumentConfigV1 {
     filename: migrateV0Scalar(v0.filename),
     variantId: migrateOptionalV0Scalar(v0.variantId),
     environmentId: migrateOptionalV0Scalar(v0.environmentId),
+    // A v0 range is always plain: it never was an expression there.
+    versionRange: v0.versionRange?.trim()
+      ? encodeJsonataStringLiteral(v0.versionRange.trim())
+      : undefined,
     correlationId:
       v0.correlationId === undefined ? undefined : encodeJsonataStringLiteral(v0.correlationId),
     variantAttributes: v0.variantAttributes?.map((attribute) => ({
@@ -127,7 +132,7 @@ function validateCommonShape(config: Record<string, unknown>): void {
       throw new GenerateDocumentConfigVersionError(`${field} must be a string.`);
     }
   }
-  for (const field of ['variantId', 'environmentId', 'correlationId'] as const) {
+  for (const field of ['variantId', 'environmentId', 'versionRange', 'correlationId'] as const) {
     if (config[field] != null && typeof config[field] !== 'string') {
       throw new GenerateDocumentConfigVersionError(`${field} must be a string when present.`);
     }
@@ -162,7 +167,7 @@ function validateV1Scalars(config: GenerateDocumentConfigV1): void {
     );
   }
   validateJsonata('filename', config.filename);
-  for (const field of ['variantId', 'environmentId', 'correlationId'] as const) {
+  for (const field of ['variantId', 'environmentId', 'versionRange', 'correlationId'] as const) {
     const value = config[field];
     if (typeof value === 'string' && value.trim()) {
       validateJsonata(field, value);
@@ -178,6 +183,23 @@ function validateJsonata(field: string, expression: string): void {
     jsonata(expression);
   } catch {
     throw new GenerateDocumentConfigVersionError(`${field} must contain valid JSONata.`);
+  }
+}
+
+/**
+ * A v1 version range saved before it became JSONata (1.0.0-alpha.1/beta.1) is a bare range such as
+ * `^1.4.0`, which is not JSONata; the editor reads it as the literal it meant, so saving the link
+ * fixes what is stored. The backend refuses the bare form until then (ADR 0009). A bare range that
+ * does parse — the number `1.4`, or `x` — is left as it is, and the field's own validation says
+ * what is wrong with it.
+ */
+function quoteBareVersionRange(value: string | undefined): string | undefined {
+  if (typeof value !== 'string' || !value.trim()) return value;
+  try {
+    jsonata(value);
+    return value;
+  } catch {
+    return encodeJsonataStringLiteral(value.trim());
   }
 }
 

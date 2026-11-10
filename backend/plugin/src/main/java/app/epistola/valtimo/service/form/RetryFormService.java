@@ -109,9 +109,18 @@ public class RetryFormService {
 
         EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
                 originalLink.getPluginConfigurationId());
-        TemplateDetails template = epistolaService.getTemplateDetails(
-                plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(),
-                subject.catalogId(), templateId);
+        // The fields of the release that is generated: a document names its own environment and
+        // range, as a composer writes them. A process link's subject names neither and is read as
+        // it always was.
+        TemplateDetails template = subject.environmentId() == null && subject.versionRange() == null
+                ? epistolaService.getTemplateDetails(
+                        plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(),
+                        subject.catalogId(), templateId)
+                : epistolaService.getTemplateDetails(
+                        plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(),
+                        subject.catalogId(), templateId,
+                        subject.environmentId() != null ? subject.environmentId() : plugin.getDefaultEnvironmentId(),
+                        subject.versionRange());
 
         ObjectNode form = formioFormGenerator.generateForm(template.fields(), resolvedData);
 

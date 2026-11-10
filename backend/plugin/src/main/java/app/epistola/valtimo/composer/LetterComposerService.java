@@ -21,8 +21,10 @@ import app.epistola.valtimo.domain.TemplateDetails;
 import app.epistola.valtimo.domain.TemplateField;
 import app.epistola.valtimo.logging.Failures;
 import app.epistola.valtimo.mapping.EvaluationContext;
+import app.epistola.valtimo.service.VersionRanges;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.mapping.MapMerge;
+import app.epistola.valtimo.mapping.PluginBinding;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.form.FormioFormGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -109,6 +111,11 @@ public class LetterComposerService {
      * @param data         What the baseline mapping produced for this case
      * @param form         A Formio form asking for the fields the mapping left empty
      * @param complete     True when the mapping filled everything and nothing has to be asked
+     * @param environmentId The environment the composer renders in, or null for the plugin
+     *                      configuration's default; the browser puts it on the letter, so generation
+     *                      renders where the preview did
+     * @param versionRange  The catalog release the letter renders, as a version range, or null for
+     *                      the one the environment renders; carried onto the letter the same way
      */
     public record PreparedLetter(
             String templateId,
@@ -116,8 +123,16 @@ public class LetterComposerService {
             String catalogId,
             Map<String, Object> data,
             ObjectNode form,
-            boolean complete
+            boolean complete,
+            String environmentId,
+            String versionRange
     ) {
+        /** A letter rendered in the default environment's release. */
+        public PreparedLetter(
+                String templateId, String label, String catalogId,
+                Map<String, Object> data, ObjectNode form, boolean complete) {
+            this(templateId, label, catalogId, data, form, complete, null, null);
+        }
     }
 
     /**
@@ -158,9 +173,12 @@ public class LetterComposerService {
                             + "': " + e.getMessage(), e);
         }
 
+        EpistolaPlugin plugin = plugin(configuration);
+        Placement placement = place(ctx, configuration, offered);
+
         TemplateDetails template;
         try {
-            template = templateDetails(configuration, offered.catalogId(), templateId);
+            template = templateDetails(plugin, offered, placement);
         } catch (ComposerException e) {
             throw e;
         } catch (RuntimeException e) {
@@ -184,7 +202,10 @@ public class LetterComposerService {
                 offered.catalogId(),
                 data,
                 form,
-                selection.complete());
+                selection.complete(),
+                // On the letter as evaluated: null for the default, "" for deliberately none.
+                placement.environmentId(),
+                placement.versionRange());
     }
 
     /**
@@ -198,6 +219,7 @@ public class LetterComposerService {
             ComposerContext ctx, String catalogId, String templateId, Map<String, Object> data) {
         ResolvedLetter resolved = resolve(ctx, catalogId, templateId);
         EpistolaPlugin plugin = plugin(resolved.configuration());
+        Placement placement = place(ctx, resolved.configuration(), resolved.letter());
 
         try {
             return epistolaService.previewDocument(
@@ -207,7 +229,8 @@ public class LetterComposerService {
                     resolved.letter().catalogId(),
                     templateId,
                     null,
-                    plugin.getDefaultEnvironmentId(),
+                    placement.environmentOr(plugin.getDefaultEnvironmentId()),
+                    placement.versionRange(),
                     data == null ? Map.of() : data);
         } catch (RuntimeException e) {
             throw new ComposerException(ComposerException.Reason.RENDER_FAILED,
@@ -290,8 +313,101 @@ public class LetterComposerService {
         if (mapping == null || mapping.isBlank()) {
             return Map.of();
         }
-        var evalCtx = EvaluationContext.builder()
-                .expression(mapping)
+        return jsonataMappingService.evaluate(evaluationContext(ctx, mapping));
+    }
+
+    /**
+     * Where a letter renders: the composer's environment and the letter's range, both JSONata
+     * evaluated with this case (ADR 0009). Prepare, preview and the template read all use it, and
+     * prepare hands it to the browser to put on the letter, so generation renders where the preview
+     * did.
+     *
+     * @param environmentId the environment; null for the plugin configuration's default (none
+     *                      configured), {@code ""} for deliberately none (the expression said so)
+     * @param versionRange  the range, or null for the release the environment renders
+     */
+    private record Placement(String environmentId, String versionRange) {
+        /** The environment to render in: this one, none for {@code ""}, else the default. */
+        String environmentOr(String defaultEnvironmentId) {
+            if (environmentId == null) {
+                return defaultEnvironmentId;
+            }
+            return environmentId.isBlank() ? null : environmentId;
+        }
+    }
+
+    /**
+     * The composer's environment and the letter's range, evaluated with the case (ADR 0009). An
+     * expression producing nothing is refused rather than read as the default: that is a typo or a
+     * variable the case lacks, never a choice. {@code ""} is the deliberate "none", and
+     * {@code $plugin.defaultEnvironmentId} the default to fall back to (second addendum).
+     */
+    private Placement place(
+            ComposerContext ctx,
+            LetterComposerConfiguration configuration,
+            LetterComposerConfiguration.OfferedTemplate letter
+    ) {
+        String defaultEnvironmentId = plugin(configuration).getDefaultEnvironmentId();
+        String environmentId = null;
+        String versionRange = null;
+        String environmentExpression = configuration.environmentId();
+        if (environmentExpression != null && !environmentExpression.isBlank()) {
+            Object value;
+            try {
+                value = jsonataMappingService.evaluateValue(
+                        evaluationContext(ctx, environmentExpression, defaultEnvironmentId));
+            } catch (RuntimeException e) {
+                throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                        // Shown to the employee, never logged (see prepare).
+                        "The letter composer's environment could not be evaluated: " + e.getMessage(), e);
+            }
+            if (value == null) {
+                throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                        "The letter composer's environment (expression '" + environmentExpression
+                                + "') produced no value. Write \"\" for no environment, or fall back with "
+                                + "?: $plugin.defaultEnvironmentId.");
+            }
+            if (!(value instanceof String text)) {
+                throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                        "The letter composer's environment (expression '" + environmentExpression
+                                + "') must evaluate to a string, such as \"productie\".");
+            }
+            environmentId = text.strip();
+        }
+        String rangeExpression = letter.versionRange();
+        if (rangeExpression != null && !rangeExpression.isBlank()) {
+            Object range;
+            try {
+                range = jsonataMappingService.evaluateValue(
+                        evaluationContext(ctx, rangeExpression, defaultEnvironmentId));
+            } catch (RuntimeException e) {
+                throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                        "The release of letter '" + letter.templateId() + "' could not be evaluated: "
+                                + e.getMessage(), e);
+            }
+            if (range == null) {
+                throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                        "The release of letter '" + letter.templateId() + "' (expression '" + rangeExpression
+                                + "') produced no value. Write \"\" for no range.");
+            }
+            try {
+                versionRange = VersionRanges.ofExpressionResult(range).orElse(null);
+            } catch (IllegalArgumentException e) {
+                throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                        "The release of letter '" + letter.templateId() + "' (expression '" + rangeExpression
+                                + "') " + e.getMessage(), e);
+            }
+        }
+        return new Placement(environmentId, versionRange);
+    }
+
+    private EvaluationContext evaluationContext(ComposerContext ctx, String expression, String defaultEnvironmentId) {
+        return evaluationContext(ctx, expression).withExtraBindings(PluginBinding.of(defaultEnvironmentId));
+    }
+
+    private EvaluationContext evaluationContext(ComposerContext ctx, String expression) {
+        return EvaluationContext.builder()
+                .expression(expression)
                 .documentResolver(this::loadDocumentContent)
                 .processVariableResolver(name -> ctx.processInstanceId() == null
                         ? null
@@ -305,21 +421,23 @@ public class LetterComposerService {
                 .processInstanceId(ctx.processInstanceId())
                 .activityId(ctx.activityId())
                 .build();
-        return jsonataMappingService.evaluate(evalCtx);
     }
 
     private TemplateDetails templateDetails(
-            LetterComposerConfiguration configuration,
-            String catalogId,
-            String templateId
+            EpistolaPlugin plugin,
+            LetterComposerConfiguration.OfferedTemplate letter,
+            Placement placement
     ) {
-        EpistolaPlugin plugin = plugin(configuration);
+        // Read from the release the letter renders: the composer's environment and the letter's
+        // range, so the fields asked for are the fields of the template that is generated.
         return epistolaService.getTemplateDetails(
                 plugin.getBaseUrl(),
                 plugin.getApiKey(),
                 plugin.getTenantId(),
-                catalogId,
-                templateId);
+                letter.catalogId(),
+                letter.templateId(),
+                placement.environmentOr(plugin.getDefaultEnvironmentId()),
+                placement.versionRange());
     }
 
     private EpistolaPlugin plugin(LetterComposerConfiguration configuration) {

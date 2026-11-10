@@ -162,15 +162,15 @@ data belongs in a case form, not in one letter.
 
 ## Configuring the component
 
-| Setting                                                           | Meaning                                                                                                                                                                                                                                           |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Name for the chosen letter** (`key`)                            | A name for the process variable the letter is stored in, e.g. `epistolaLetter`. The `pv:` prefix is added on save, so the author types a name rather than a key; typing `pv:epistolaLetter` also works. Each picker on a form needs its own name. |
-| **Which letters, from where**                                     | Pick the Epistola connection and catalog, then tick the letters to offer and name each one as the employee should see it. The three cascade: changing the connection clears the catalog and the ticks, because those ids mean nothing elsewhere.  |
-| **Baseline mapping**                                              | One JSONata mapping over `$doc`/`$pv` for every offered letter. Whatever it does not fill is asked of the employee.                                                                                                                               |
-| **Split into steps above this many fields**                       | Empty for the default of 6. A letter asking for more than this many fields is shown as steps, one per section of the letter, rather than one long column. Raise it to keep more on one screen; set it very high to never split.                   |
-| **Also ask for optional fields**                                  | Off by default: only fields the template marks required are asked for.                                                                                                                                                                            |
-| **Update the preview as the letter is filled in** (`autoRefresh`) | On by default. Turn off for a letter that is slow to render: the employee then updates the preview with **Vernieuwen**, and can still switch it on for themselves.                                                                                |
-| **Process to start**                                              | Normally left empty — see [Where it is used](#where-it-is-used). Fill it in only when the backend says two processes offer the same letter.                                                                                                       |
+| Setting                                                           | Meaning                                                                                                                                                                                                                                                                                                  |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Name for the chosen letter** (`key`)                            | A name for the process variable the letter is stored in, e.g. `epistolaLetter`. The `pv:` prefix is added on save, so the author types a name rather than a key; typing `pv:epistolaLetter` also works. Each picker on a form needs its own name.                                                        |
+| **Which letters, from where**                                     | Pick the Epistola connection, the environment and the catalog, then tick the letters to offer and name each one as the employee should see it. They cascade: changing the connection clears the rest, because those ids mean nothing elsewhere. See [Environment and release](#environment-and-release). |
+| **Baseline mapping**                                              | One JSONata mapping over `$doc`/`$pv` for every offered letter. Whatever it does not fill is asked of the employee.                                                                                                                                                                                      |
+| **Split into steps above this many fields**                       | Empty for the default of 6. A letter asking for more than this many fields is shown as steps, one per section of the letter, rather than one long column. Raise it to keep more on one screen; set it very high to never split.                                                                          |
+| **Also ask for optional fields**                                  | Off by default: only fields the template marks required are asked for.                                                                                                                                                                                                                                   |
+| **Update the preview as the letter is filled in** (`autoRefresh`) | On by default. Turn off for a letter that is slow to render: the employee then updates the preview with **Vernieuwen**, and can still switch it on for themselves.                                                                                                                                       |
+| **Process to start**                                              | Normally left empty — see [Where it is used](#where-it-is-used). Fill it in only when the backend says two processes offer the same letter.                                                                                                                                                              |
 
 **The `pv:` prefix is the component's, not the author's.** There is no case where the key could be
 anything else: the only thing that reads a composed letter is the generate action, which reads a
@@ -199,7 +199,9 @@ Stored, that half looks like this — under `epistola`, the one key this compone
 "epistola": {
   "letterSet": {
     "pluginConfigurationId": "…",
+    "environmentId": "\"acceptatie\"",
     "catalogId": "municipality-demo",
+    "versionRange": "\"^1.4.0\"",
     "templates": [{ "templateId": "besluit-bezwaar", "label": "Besluit op bezwaar" }]
   }
 }
@@ -207,6 +209,45 @@ Stored, that half looks like this — under `epistola`, the one key this compone
 
 A per-letter `dataMapping` fragment is merged over the baseline, so the baseline says what every
 letter of this case type needs and the fragment only what makes this one different.
+
+### Environment and release
+
+Since Epistola 2.0 a catalog is rendered through a **release**, and an environment is where a
+release is deployed. A composer chooses both, as a `generate-document` link does, and both are
+**JSONata** evaluated with the case when a letter is prepared
+([ADR 0009](adr/0009-environment-and-release-as-expressions.md)): a fixed value is a string literal,
+`"acceptatie"` or `"^1.4.0"`, and `$pv.omgeving` picks one per case. Settings saved before schema 4
+held plain values; they are read as the literals they meant, so nothing has to be re-saved.
+
+- **`environmentId`** on the letter set: where every letter is generated, and where the widget
+  lists catalogs and the composer reads templates from. Left out, the plugin configuration's
+  `defaultEnvironmentId` — what every composer used before the field existed. The widget lists
+  every catalog and marks those the environment does not serve; one of those can still be chosen,
+  with a warning, so a letter set can be prepared before its catalog is rolled out.
+- **`versionRange`** on the letter set: the release of the **set's catalog** its letters render —
+  `"1.4.0"` pins one, `"^1.4.0"` takes the highest release that satisfies it. Left out, the release
+  the environment renders (its deployed draft, else its highest release). The expression must
+  produce a string that is a range (a number is refused: `1.0` would read as `1.x`). For both the
+  environment and the release, `""` means deliberately none and no value is refused with a message
+  to the employee; `$pv.omgeving ?: $plugin.defaultEnvironmentId` falls back to the plugin's
+  default. A letter rendered in no environment carries `"environmentId": ""`, which generation keeps
+  apart from an absent one (the default). The widget
+  lists the catalog's releases as suggestions and says which release it designs against — when the
+  range or the environment is an expression, the highest one, and it says so.
+- **`templates[].versionRange`**: one letter's own release, under **Configure** in the widget. It
+  wins over the set's.
+
+A range is a range over one catalog's versions, so the set's range reaches the letters in the set's
+catalog and **not** a letter from another catalog, which renders that catalog's release as the
+environment does unless it names its own. Changing the catalog in the widget clears the range for
+the same reason.
+
+The fields the employee is asked for, the preview and the generated document all come from the same
+environment and range. The composer returns both with the prepared letter and the browser puts them
+on the letter variable, because the generate action cannot consult the composer
+([What it stores](#what-it-stores)). It carries the **range**, not the release it resolved to, which
+is what a `generate-document` link does too: a release deployed between the preview and the
+generate task is picked up by a range that admits it, and an exact version (`1.4.0`) rules that out.
 
 ### The preview
 
@@ -326,6 +367,10 @@ The whole contract is three fields:
 }
 ```
 
+`environmentId` and `versionRange` are optional and mean what they mean on a `generate-document`
+link: no environment is the plugin configuration's default, no range is the release that
+environment renders. On the letter they are plain, evaluated values, not expressions.
+
 `schemaVersion` may be omitted (absent means 1). A JSON _string_ works as well as an object, since
 the engine hands back whichever the writer stored. From JVM code, build it rather than copying this
 literal — `DynamicDocument.of(catalogId, templateId, data)` is the same contract, kept
@@ -334,10 +379,12 @@ in step with the reader by a round-trip test:
 ```java
 execution.setVariable("epistolaLetter",
         DynamicDocument.of("gemeente", "besluit-bezwaar", Map.of("naam", "Jansen")));
+// or, rendered in a given environment and release:
+        DynamicDocument.of("gemeente", "besluit-bezwaar", data, "acceptatie", "^1.4.0");
 ```
 
 Everything else behaves as it does for a composed letter: the filename defaults to the template's
-id, the environment comes from the plugin configuration, and the rich result variable and the
+id, the environment is the document's or else the plugin configuration's, and the rich result variable and the
 `jobPath` correlation locator are written the same way, so the async catch-event pattern works
 unchanged.
 
@@ -542,13 +589,22 @@ deployable as config-as-code, editable in the builder:
   "key": "pv:epistolaLetter",
   "prefill": false,
   "epistola": {
-    "schemaVersion": 1,
+    "schemaVersion": 4,
     "askOptionalFields": false,
     "dataMapping": "<baseline JSONata>",
     "letterSet": {
       "pluginConfigurationId": "…",
+      "environmentId": "<optional JSONata>",
       "catalogId": "municipality-demo",
-      "templates": [{ "templateId": "besluit", "label": "…", "dataMapping": "<fragment>" }]
+      "versionRange": "<optional JSONata, over municipality-demo>",
+      "templates": [
+        {
+          "templateId": "besluit",
+          "label": "…",
+          "dataMapping": "<fragment>",
+          "versionRange": "<optional JSONata>"
+        }
+      ]
     }
   }
 }
@@ -584,8 +640,21 @@ itself when it is not.
 **2. The chosen letter**, on the process variable the component's `pv:` key names:
 
 ```json
-{ "schemaVersion": 1, "templateId": "…", "catalogId": "…", "data": { … }, "inputs": { … } }
+{
+  "schemaVersion": 4,
+  "templateId": "…",
+  "catalogId": "…",
+  "environmentId": "<when the composer names one>",
+  "versionRange": "<when the letter has one>",
+  "data": { … },
+  "inputs": { … }
+}
 ```
+
+`environmentId` and `versionRange` are left off when the composer names neither, so such a letter
+looks as it did before they existed. Version 3 is what introduced them: an older plugin would ignore
+both and render another release than the one previewed, so it refuses the letter instead. Version 4
+made the letter set's values JSONata; the letter itself carries what they evaluated to.
 
 `data` is everything the letter renders with; `inputs` is only what a human typed, kept so it stays
 visible what was changed by hand — and it is what write-back will read. This is the structure with
@@ -781,6 +850,8 @@ the promise the composer makes. The rest are open.
   server-side at generation and ignoring what the browser sent — which would break the promise the
   whole design rests on, that what was previewed is what gets generated. It is a consequence of the
   composer computing while the employee watches, not an oversight, and it is not expected to change.
+  The same holds for where the letter renders: `environmentId` and `versionRange` reach the letter
+  variable through the browser, from the prepare response, exactly as `catalogId` does.
 
 - **Every composed letter uses the template's default variant.** Neither the preview nor the
   generate action names a variant, so the three selection modes `generate-document` offers —

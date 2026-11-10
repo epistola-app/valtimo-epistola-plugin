@@ -40,17 +40,33 @@ import java.util.Map;
  * a process instance can sit in the database for months, and the plugin that generates the letter
  * may not be the one that composed it. See {@link ComposerSchema} for which way that is tolerated.
  *
+ * <p>Where it renders travels with it, because nothing at generation time can look it up: the
+ * generate action reads this variable and nothing else, and the composer that chose the letter is
+ * long gone. Both are optional and mean what they mean on a process link: no environment is the
+ * plugin configuration's default, no range is the release that environment renders.
+ *
  * @param schemaVersion The version it was written with; 1 for anything predating the field
- * @param catalogId  The catalog the chosen template lives in
- * @param templateId The chosen template
- * @param data       Everything the letter is rendered with
+ * @param catalogId     The catalog the chosen template lives in
+ * @param templateId    The chosen template
+ * @param data          Everything the letter is rendered with
+ * @param environmentId The environment to render in; null for the plugin configuration's default, {@code ""}
+ *                      for deliberately none
+ * @param versionRange  The catalog release to render, as a version range, or null for the one the
+ *                      environment renders
  */
 public record DynamicDocument(
         int schemaVersion,
         String catalogId,
         String templateId,
-        Map<String, Object> data
+        Map<String, Object> data,
+        String environmentId,
+        String versionRange
 ) {
+
+    /** A document that names no environment or release: the default environment's, as before. */
+    public DynamicDocument(int schemaVersion, String catalogId, String templateId, Map<String, Object> data) {
+        this(schemaVersion, catalogId, templateId, data, null, null);
+    }
 
     /**
      * The input for the <b>Generate Dynamic Document</b> action, as the variable must hold it.
@@ -72,6 +88,20 @@ public record DynamicDocument(
      */
     public static Map<String, Object> of(
             String catalogId, String templateId, Map<String, Object> data) {
+        return of(catalogId, templateId, data, null, null);
+    }
+
+    /**
+     * As {@link #of(String, String, Map)}, rendered in a given environment and release.
+     *
+     * @param environmentId the environment to render in; null for the plugin configuration's default, {@code ""}
+     *                      for deliberately none
+     * @param versionRange  the catalog release to render, as a version range (an exact version pins
+     *                      one), or null for the one the environment renders
+     */
+    public static Map<String, Object> of(
+            String catalogId, String templateId, Map<String, Object> data,
+            String environmentId, String versionRange) {
         if (catalogId == null || catalogId.isBlank() || templateId == null || templateId.isBlank()) {
             throw new IllegalArgumentException(
                     "A document to render names a catalog and a template");
@@ -81,6 +111,13 @@ public record DynamicDocument(
         prepared.put("catalogId", catalogId);
         prepared.put("templateId", templateId);
         prepared.put("data", data == null ? Map.of() : data);
+        // "" is kept: the composer was told to render in no environment, which is not the default.
+        if (environmentId != null) {
+            prepared.put("environmentId", environmentId.isBlank() ? "" : environmentId);
+        }
+        if (versionRange != null && !versionRange.isBlank()) {
+            prepared.put("versionRange", versionRange);
+        }
         return java.util.Collections.unmodifiableMap(prepared);
     }
 
@@ -175,7 +212,9 @@ public record DynamicDocument(
                 schemaVersion,
                 catalogId,
                 templateId,
-                copyOf(value.get("data")));
+                copyOf(value.get("data")),
+                environmentOf(value.get("environmentId")),
+                text(value.get("versionRange")));
     }
 
     /**
@@ -214,6 +253,17 @@ public record DynamicDocument(
             }
         }
         return null;
+    }
+
+    /**
+     * The environment a letter names: null when it names none (the plugin configuration's default),
+     * {@code ""} when the composer was told to render in no environment (ADR 0009, second addendum).
+     */
+    private static String environmentOf(Object value) {
+        if (!(value instanceof String string)) {
+            return null;
+        }
+        return string.isBlank() ? "" : string;
     }
 
     private static String text(Object value) {

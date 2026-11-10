@@ -20,6 +20,8 @@ package com.ritense.valtimo.epistola.plugin;
 import app.epistola.client.api.GenerationApi;
 import app.epistola.client.model.GenerateDocumentRequest;
 import app.epistola.client.model.GenerationJobResponse;
+import app.epistola.client.model.GenerationJobStatus;
+import app.epistola.client.model.GenerationJobType;
 import app.epistola.valtimo.client.EpistolaApiClientFactory;
 import app.epistola.valtimo.domain.DocumentStorageTarget;
 import app.epistola.valtimo.domain.EpistolaProcessVariables;
@@ -83,7 +85,7 @@ class EpistolaPluginRichTextTest {
         execution = mock(DelegateExecution.class);
         when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
         when(generationApi.generateDocument(any(), any())).thenReturn(new GenerationJobResponse(
-                UUID.randomUUID(), GenerationJobResponse.Status.PENDING, GenerationJobResponse.JobType.SINGLE, 1,
+                UUID.randomUUID(), GenerationJobStatus.pending, GenerationJobType.single, 1,
                 OffsetDateTime.now()));
         when(jsonataMappingService.evaluate(any())).thenReturn(Map.of("toelichting", HTML));
         when(jsonataMappingService.evaluateScalar(any())).thenReturn("besluit.pdf");
@@ -105,7 +107,8 @@ class EpistolaPluginRichTextTest {
     }
 
     private void generate(EpistolaPlugin plugin) {
-        plugin.generateDocument(execution, null, "catalog", "besluit", null, null, null,
+        plugin.generateDocument(execution, null, "local/valtimo/catalog", "besluit", null, null, null,
+                null,
                 "{\"toelichting\": $doc.toelichting}", "PDF", "besluit.pdf", null, "epistolaResult");
     }
 
@@ -142,7 +145,7 @@ class EpistolaPluginRichTextTest {
     @Test
     void sendsAComposedLetterAsADocument() {
         when(execution.getVariable(EpistolaProcessVariables.COMPOSED_LETTER)).thenReturn(Map.of(
-                "catalogId", "catalog", "templateId", "besluit", "data", Map.of("toelichting",
+                "catalogId", "local/valtimo/catalog", "templateId", "besluit", "data", Map.of("toelichting",
                         Map.of(RichTextValues.TAG, Map.of("format", "html", "kind", "BLOCK", "value", HTML)))));
 
         plugin(RichTextFixtures.converter("html")).generateComposedDocument(execution, null, null, null,
@@ -167,13 +170,16 @@ class EpistolaPluginRichTextTest {
         };
         when(execution.getVariable(EpistolaProcessVariables.EDITED_DATA)).thenReturn(TAGGED_JSON);
 
+        // The text cannot become what the template takes: the step cannot start, an incident whose
+        // text names the field and the format — never the text itself (ADR 0009, third addendum).
         assertThatThrownBy(() -> generate(plugin(new RichTextConverter(List.of(broken), "html"))))
-                .isInstanceOf(RuntimeException.class);
-
-        ArgumentCaptor<Object> result = ArgumentCaptor.forClass(Object.class);
-        verify(execution).setVariable(eq("epistolaResult"), result.capture());
-        String errorMessage = String.valueOf(((Map<String, Object>) result.getValue()).get("errorMessage"));
-        assertThat(errorMessage).contains("'toelichting'", "'html'").doesNotContain("123456782", "Jansen");
+                .isInstanceOf(app.epistola.valtimo.service.DocumentGenerationRefusedException.class)
+                .hasMessageContaining("'toelichting'")
+                .hasMessageContaining("'html'")
+                .hasMessageNotContaining("123456782")
+                .hasMessageNotContaining("Jansen")
+                .hasNoCause();
+        verify(execution, never()).setVariable(eq("epistolaResult"), any());
         verify(generationApi, never()).generateDocument(any(), any());
     }
 }

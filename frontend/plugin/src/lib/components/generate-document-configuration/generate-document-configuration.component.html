@@ -5,11 +5,18 @@
     disabled: disabled$ | async,
     prefill: effectivePrefill$ ? (effectivePrefill$ | async) : null,
     catalogs: catalogs$ | async,
+    catalogItems: catalogItems$ | async,
+    prefillCatalogId: prefillCatalogId$ | async,
     templates: templates$ | async,
+    templateItems: templateItems$ | async,
+    templateNotOffered: templateNotOffered$ | async,
     variants: variants$ | async,
     environments: environments$ | async,
     templateFields: templateFields$ | async,
     selectedCatalogId: selectedCatalogId$ | async,
+    designHints: designHints$ | async,
+    designScopeError: designScopeError$ | async,
+    releaseOptions: releaseOptions$ | async,
     selectedTemplateId: selectedTemplateId$ | async,
     validationErrors: validationErrors$ | async,
     configurationVersionError: configurationVersionError$ | async,
@@ -46,16 +53,39 @@
       </li>
     </ul>
   </div>
+  <epistola-smart-expression-editor
+    [expression]="environmentIdExpression"
+    [contextVariables]="editorContextVariables"
+    [functions]="expressionFunctions"
+    [selectOptions]="obs.environments.data"
+    [selectLoading]="obs.environments.loading"
+    [title]="'environmentId' | pluginTranslate: pluginId | async"
+    [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
+    [placeholder]="'$pv.environmentId'"
+    [allowTypedValues]="false"
+    [disabled]="obs.disabled || obs.environments.loading"
+    testId="epistola-generate-environment-id"
+    (expressionChange)="onEnvironmentIdExpressionChange($event)"
+    (validChange)="onExpressionValidityChange('environmentId', $event)"
+  ></epistola-smart-expression-editor>
+  <div
+    *ngIf="obs.environments.error"
+    class="loading-error"
+    data-testid="epistola-generate-environment-error"
+  >
+    {{ obs.environments.error }}
+  </div>
+
   <v-select
     name="catalogId"
     data-testid="epistola-generate-catalog-id"
     [title]="'catalogId' | pluginTranslate: pluginId | async"
     [tooltip]="'catalogIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
-    [items]="obs.catalogs.data"
+    [items]="obs.catalogItems.data"
     [appendInline]="false"
     [dropUp]="false"
-    [defaultSelectionId]="obs.prefill?.catalogId"
+    [defaultSelectionId]="obs.selectedCatalogId || obs.prefillCatalogId"
     [disabled]="obs.disabled || obs.catalogs.loading"
     [required]="true"
     [loading]="obs.catalogs.loading"
@@ -68,6 +98,51 @@
   >
     {{ obs.catalogs.error }}
   </div>
+  <div
+    *ngFor="let hint of obs.designHints?.catalog"
+    class="loading-error"
+    data-testid="epistola-generate-catalog-warning"
+    role="status"
+  >
+    {{ hint.key | pluginTranslate: pluginId | async }}
+  </div>
+  <div
+    *ngIf="obs.designScopeError"
+    class="loading-error"
+    data-testid="epistola-generate-design-scope-error"
+  >
+    {{ obs.designScopeError }}
+  </div>
+
+  <div
+    *ngIf="obs.selectedCatalogId"
+    class="version-range"
+    data-testid="epistola-generate-version-range"
+  >
+    <epistola-smart-expression-editor
+      [expression]="versionRangeExpression"
+      [contextVariables]="editorContextVariables"
+      [functions]="expressionFunctions"
+      [selectOptions]="obs.releaseOptions"
+      [title]="'versionRange' | pluginTranslate: pluginId | async"
+      [tooltip]="'versionRangeTooltip' | pluginTranslate: pluginId | async"
+      [placeholder]="'versionRangePlaceholder' | pluginTranslate: pluginId | async"
+      [disabled]="obs.disabled"
+      testId="epistola-generate-version-range-input"
+      (expressionChange)="onVersionRangeExpressionChange($event)"
+      (validChange)="onExpressionValidityChange('versionRangeSyntax', $event)"
+    ></epistola-smart-expression-editor>
+    <div
+      *ngFor="let hint of obs.designHints?.release"
+      class="version-range-hint"
+      [class.version-range-problem]="hint.problem"
+      data-testid="epistola-generate-version-range-hint"
+      role="status"
+    >
+      {{ hint.key | pluginTranslate: pluginId | async }}
+      <strong *ngIf="hint.version">{{ hint.version }}</strong>
+    </div>
+  </div>
 
   <v-select
     name="templateId"
@@ -75,10 +150,10 @@
     [title]="'templateId' | pluginTranslate: pluginId | async"
     [tooltip]="'templateIdTooltip' | pluginTranslate: pluginId | async"
     [margin]="true"
-    [items]="obs.templates.data"
+    [items]="obs.templateItems.data"
     [appendInline]="false"
     [dropUp]="false"
-    [defaultSelectionId]="obs.prefill?.templateId"
+    [defaultSelectionId]="obs.selectedTemplateId || obs.prefill?.templateId"
     [clearSelectionSubject$]="clearTemplateId$"
     [disabled]="obs.disabled || obs.templates.loading || !obs.selectedCatalogId"
     [required]="true"
@@ -91,6 +166,22 @@
     data-testid="epistola-generate-template-error"
   >
     {{ obs.templates.error }}
+  </div>
+  <div
+    *ngIf="templatesTruncated$ | async"
+    class="version-range-hint"
+    data-testid="epistola-generate-templates-truncated"
+    role="status"
+  >
+    {{ 'templatesTruncated' | pluginTranslate: pluginId | async }}
+  </div>
+  <div
+    *ngIf="obs.templateNotOffered"
+    class="loading-error"
+    data-testid="epistola-generate-template-not-offered"
+    role="status"
+  >
+    {{ 'templateNotOffered' | pluginTranslate: pluginId | async }}
   </div>
 
   <!-- Variant selection mode toggle -->
@@ -252,29 +343,6 @@
     >
       + {{ 'addAttribute' | pluginTranslate: pluginId | async }}
     </button>
-  </div>
-
-  <epistola-smart-expression-editor
-    [expression]="environmentIdExpression"
-    [contextVariables]="editorContextVariables"
-    [functions]="expressionFunctions"
-    [selectOptions]="obs.environments.data"
-    [selectLoading]="obs.environments.loading"
-    [title]="'environmentId' | pluginTranslate: pluginId | async"
-    [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
-    [placeholder]="'$pv.environmentId'"
-    [allowTypedValues]="false"
-    [disabled]="obs.disabled || obs.environments.loading"
-    testId="epistola-generate-environment-id"
-    (expressionChange)="onEnvironmentIdExpressionChange($event)"
-    (validChange)="onExpressionValidityChange('environmentId', $event)"
-  ></epistola-smart-expression-editor>
-  <div
-    *ngIf="obs.environments.error"
-    class="loading-error"
-    data-testid="epistola-generate-environment-error"
-  >
-    {{ obs.environments.error }}
   </div>
 
   <epistola-smart-expression-editor

@@ -49,7 +49,9 @@ class EpistolaServiceImplFailureMessageTest {
     private static final String BASE_URL = "http://epistola";
     private static final String API_KEY = "key";
     private static final String TENANT = "demo";
-    private static final String CATALOG = "default";
+    // Contract 2.0: a qualified catalog, whose template is read through its highest release.
+    private static final String CATALOG = "local/valtimo/brieven";
+    private static final String RELEASE = "2.1.0";
     private static final String TEMPLATE = "besluit-bezwaar";
 
     private TemplatesApi templatesApi;
@@ -58,6 +60,7 @@ class EpistolaServiceImplFailureMessageTest {
     @BeforeEach
     void setUp() {
         EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
+        CatalogFixtures.stubCatalogs(factory, TENANT, CatalogFixtures.catalog("local", "valtimo", "brieven", RELEASE));
         templatesApi = mock(TemplatesApi.class);
         when(factory.createTemplatesApi(anyString(), anyString())).thenReturn(templatesApi);
         service = new EpistolaServiceImpl(factory);
@@ -65,7 +68,7 @@ class EpistolaServiceImplFailureMessageTest {
 
     @Test
     void anErrorPageThatIsNoProblemResponse_namesItsStatusAndContentType() {
-        when(templatesApi.getTemplate(TENANT, CATALOG, TEMPLATE)).thenThrow(errorPage("Bad Gateway"));
+        when(templatesApi.getTemplate(TENANT, "local", "valtimo", "brieven", RELEASE, TEMPLATE)).thenThrow(errorPage("Bad Gateway"));
 
         EpistolaApiException ex = fetch();
 
@@ -76,14 +79,14 @@ class EpistolaServiceImplFailureMessageTest {
     @Test
     void aStatusLineWithoutReasonPhrase_fallsBackToTheStandardOne() {
         // HTTP/2 has no reason phrase, so the status text arrives empty.
-        when(templatesApi.getTemplate(TENANT, CATALOG, TEMPLATE)).thenThrow(errorPage(""));
+        when(templatesApi.getTemplate(TENANT, "local", "valtimo", "brieven", RELEASE, TEMPLATE)).thenThrow(errorPage(""));
 
         assertEquals("Failed to fetch template details: HTTP 502 Bad Gateway (text/html)", fetch().getMessage());
     }
 
     @Test
     void aTransportFailure_namesTheFailureAndItsRootCause() {
-        when(templatesApi.getTemplate(TENANT, CATALOG, TEMPLATE)).thenThrow(
+        when(templatesApi.getTemplate(TENANT, "local", "valtimo", "brieven", RELEASE, TEMPLATE)).thenThrow(
                 new ResourceAccessException("I/O error on GET request", new ConnectException("Connection refused")));
 
         assertEquals("Failed to fetch template details: ResourceAccessException caused by ConnectException",
@@ -92,7 +95,7 @@ class EpistolaServiceImplFailureMessageTest {
 
     @Test
     void aDownstreamMessage_isNotQuoted() {
-        when(templatesApi.getTemplate(TENANT, CATALOG, TEMPLATE)).thenThrow(
+        when(templatesApi.getTemplate(TENANT, "local", "valtimo", "brieven", RELEASE, TEMPLATE)).thenThrow(
                 new IllegalStateException("Cannot read value 'Jansen'"));
 
         EpistolaApiException ex = fetch();
@@ -103,7 +106,7 @@ class EpistolaServiceImplFailureMessageTest {
 
     @Test
     void aResponseBody_isNotQuoted() {
-        when(templatesApi.getTemplate(TENANT, CATALOG, TEMPLATE)).thenThrow(errorPage("Bad Gateway"));
+        when(templatesApi.getTemplate(TENANT, "local", "valtimo", "brieven", RELEASE, TEMPLATE)).thenThrow(errorPage("Bad Gateway"));
 
         assertFalse(fetch().getMessage().contains("nginx"));
     }

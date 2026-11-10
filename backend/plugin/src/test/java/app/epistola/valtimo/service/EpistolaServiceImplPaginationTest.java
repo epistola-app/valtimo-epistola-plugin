@@ -47,13 +47,14 @@ class EpistolaServiceImplPaginationTest {
         EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
         TemplatesApi templatesApi = mock(TemplatesApi.class);
         when(factory.createTemplatesApi(BASE_URL, API_KEY)).thenReturn(templatesApi);
+        CatalogFixtures.stubCatalogs(factory, TENANT, CatalogFixtures.catalog(CATALOG));
 
-        when(templatesApi.listTemplates(eq(TENANT), eq(CATALOG), isNull(), eq(0), eq(100), isNull(), isNull()))
+        when(templatesApi.listTemplates(eq(TENANT), eq("local"), eq("valtimo"), eq(CATALOG), eq("1.0.0"), isNull(), eq(0), eq(100), isNull(), isNull()))
                 .thenReturn(new TemplateListResponse(
                         List.of(template("template-1", "Template 1")),
                         new PageMeta(0, 100, 2, 2)
                 ));
-        when(templatesApi.listTemplates(eq(TENANT), eq(CATALOG), isNull(), eq(1), eq(100), isNull(), isNull()))
+        when(templatesApi.listTemplates(eq(TENANT), eq("local"), eq("valtimo"), eq(CATALOG), eq("1.0.0"), isNull(), eq(1), eq(100), isNull(), isNull()))
                 .thenReturn(new TemplateListResponse(
                         List.of(template("template-2", "Template 2")),
                         new PageMeta(1, 100, 2, 2)
@@ -64,8 +65,8 @@ class EpistolaServiceImplPaginationTest {
         List<TemplateInfo> templates = service.getTemplates(BASE_URL, API_KEY, TENANT, CATALOG);
 
         assertEquals(List.of("template-1", "template-2"), templates.stream().map(TemplateInfo::id).toList());
-        verify(templatesApi).listTemplates(eq(TENANT), eq(CATALOG), isNull(), eq(0), eq(100), isNull(), isNull());
-        verify(templatesApi).listTemplates(eq(TENANT), eq(CATALOG), isNull(), eq(1), eq(100), isNull(), isNull());
+        verify(templatesApi).listTemplates(eq(TENANT), eq("local"), eq("valtimo"), eq(CATALOG), eq("1.0.0"), isNull(), eq(0), eq(100), isNull(), isNull());
+        verify(templatesApi).listTemplates(eq(TENANT), eq("local"), eq("valtimo"), eq(CATALOG), eq("1.0.0"), isNull(), eq(1), eq(100), isNull(), isNull());
     }
 
     private static TemplateSummaryDto template(String id, String name) {

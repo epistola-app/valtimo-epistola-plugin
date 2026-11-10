@@ -55,6 +55,12 @@ export interface GenerateDocumentConfigV0 {
   variantId?: string;
   variantAttributes?: VariantAttributeEntry[];
   environmentId?: string;
+  /**
+   * The release of the catalog to render, as a version range in npm's grammar (`1.4.0` pins one,
+   * `^1.4.0` takes the highest 1.x from 1.4.0 on). Plain text, not JSONata: the configurator reads
+   * the template's fields through it. Absent: the environment's draft, else its highest release.
+   */
+  versionRange?: string;
   dataMapping: string;
   outputFormat: 'PDF' | 'HTML';
   filename: string;

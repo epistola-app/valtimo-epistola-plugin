@@ -106,16 +106,65 @@ export interface VariantInfo {
  */
 export interface AttributeDefinition {
   key: string;
-  description?: string;
+  name?: string;
 }
 
 /**
  * Information about an Epistola catalog.
+ *
+ * `id` is what a process link stores: `registry/namespace/key` (contract 2.0 names a catalog by all
+ * three). A link saved against contract 1.x holds only the key; see `matchCatalogId`.
  */
 export interface CatalogInfo {
   id: string;
   name: string;
-  type: string;
+  registry: string;
+  namespace: string;
+  key: string;
+  editable: boolean;
+  /**
+   * Whether a release of it is deployed to the environment the list was asked for; null (or
+   * absent) when asked without one. A catalog that is not deployed is still listed, marked, so a
+   * link can be configured before it is rolled out (ADR 0009).
+   */
+  deployedToEnvironment?: boolean | null;
+}
+
+/** Why a design scope is not where, or not how, a link renders. Mirrors `DesignScope.Problem`. */
+export type DesignProblem =
+  | 'UNKNOWN_ENVIRONMENT'
+  | 'NOT_DEPLOYED'
+  | 'RANGE_NOT_DEPLOYED'
+  | 'RANGE_UNSATISFIED';
+
+/**
+ * What a lookup sends to read a design scope's release: always concrete, an environment's draft or
+ * an exact version. A null environment reads catalog-wide.
+ */
+export interface ReadSelection {
+  environmentId: string | null;
+  versionRange: string | null;
+}
+
+/**
+ * The release a configurator designs a link against, resolved once so every lookup reads the same
+ * one (ADR 0009). Mirrors `DesignScope` on the backend.
+ */
+export interface DesignScope {
+  /** The catalog, qualified also when it was named by a bare 1.x key. */
+  catalogId: string;
+  /** Released versions to suggest for the range, highest first. */
+  versions: string[];
+  /** The release designed against, or null for a draft. */
+  version: string | null;
+  /** True when a draft is designed against. */
+  draft: boolean;
+  /** The environment it was read in, or null when read catalog-wide. */
+  environment: string | null;
+  /** Why it was not read where, or how, the link renders. */
+  problems: DesignProblem[];
+  /** What every further lookup sends. */
+  read: ReadSelection;
 }
 
 /**
@@ -127,4 +176,25 @@ export interface LetterReader {
   processDefinitionKey: string;
   processDefinitionName: string;
   activityId: string;
+}
+
+/**
+ * Every template in the releases a link can reach, with the releases each is in, for a link whose
+ * release is an expression (ADR 0009, addendum). Mirrors `CatalogTemplates` on the backend.
+ */
+export interface CatalogTemplates {
+  catalogId: string;
+  templates: CatalogTemplate[];
+  /** True when only the newest releases were read, so a template only in an older one is missing. */
+  truncated: boolean;
+}
+
+export interface CatalogTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  /** The releases that contain it, highest first: `draft` first, then versions. */
+  releases: string[];
+  /** How to read it from the highest of those, for its fields and variants. */
+  read: ReadSelection;
 }

@@ -153,6 +153,71 @@ class ComposerParserTest {
         assertThat(found.get(0).requireOne(null, "aanmaning").catalogId()).isEqualTo("landelijk");
     }
 
+    /**
+     * Where a composer renders, and which release. The set's range is a range over the set's
+     * catalog, so it reaches the letters in that catalog — whether they name it or inherit it — and
+     * not a letter from another catalog, whose versions mean something else. A letter's own range
+     * wins over the set's.
+     */
+    @Test
+    void readsTheEnvironmentAndTheReleaseOfEachLetter() {
+        var found = parse("""
+                {"components":[{"type":"epistola-letter-composer","key":"pv:brief",
+                  "epistola":{"letterSet":{"pluginConfigurationId":"%s","catalogId":"gemeente",
+                    "environmentId":"acceptatie","versionRange":"^2.0.0",
+                    "templates":[
+                      {"templateId":"besluit"},
+                      {"templateId":"herinnering","catalogId":"gemeente"},
+                      {"templateId":"aanmaning","versionRange":"2.1.0"},
+                      {"templateId":"landelijk-besluit","catalogId":"landelijk"},
+                      {"templateId":"landelijk-aanmaning","catalogId":"landelijk","versionRange":"~1.3.0"}]}}}]}
+                """.formatted(PLUGIN_CONFIGURATION_ID)).get(0);
+
+        // Saved without a schema version, so before 4: plain values, read as the literals they meant.
+        assertThat(found.environmentId()).isEqualTo("\"acceptatie\"");
+        assertThat(found.requireOne(null, "besluit").versionRange()).isEqualTo("\"^2.0.0\"");
+        assertThat(found.requireOne(null, "herinnering").versionRange()).isEqualTo("\"^2.0.0\"");
+        assertThat(found.requireOne(null, "aanmaning").versionRange()).isEqualTo("\"2.1.0\"");
+        assertThat(found.requireOne(null, "landelijk-besluit").versionRange())
+                .describedAs("a range over the set's catalog says nothing about another catalog")
+                .isNull();
+        assertThat(found.requireOne(null, "landelijk-aanmaning").versionRange()).isEqualTo("\"~1.3.0\"");
+    }
+
+    /** From schema 4 the environment and the ranges are JSONata, stored as written (ADR 0009). */
+    @Test
+    void fromSchema4_readsTheEnvironmentAndTheReleasesAsJsonata() {
+        var found = parse("""
+                {"components":[{"type":"epistola-letter-composer","key":"pv:brief",
+                  "epistola":{"schemaVersion":4,"letterSet":{"pluginConfigurationId":"%s","catalogId":"gemeente",
+                    "environmentId":"$pv.omgeving","versionRange":"\\"^2.0.0\\"",
+                    "templates":[{"templateId":"besluit"},{"templateId":"aanmaning","versionRange":"$pv.versie"}]}}}]}
+                """.formatted(PLUGIN_CONFIGURATION_ID)).get(0);
+
+        assertThat(found.environmentId()).isEqualTo("$pv.omgeving");
+        assertThat(found.requireOne(null, "besluit").versionRange()).isEqualTo("\"^2.0.0\"");
+        assertThat(found.requireOne(null, "aanmaning").versionRange()).isEqualTo("$pv.versie");
+    }
+
+    @Test
+    void atSchema3_aPlainValueIsQuotedAsTheLiteralItMeant_escapesAndAll() {
+        var found = parse("""
+                {"components":[{"type":"epistola-letter-composer","key":"pv:brief",
+                  "epistola":{"schemaVersion":3,"letterSet":{"pluginConfigurationId":"%s","catalogId":"gemeente",
+                    "environmentId":"pro\\"d\\\\uctie","templates":[{"templateId":"besluit"}]}}}]}
+                """.formatted(PLUGIN_CONFIGURATION_ID)).get(0);
+
+        assertThat(found.environmentId()).isEqualTo("\"pro\\\"d\\\\uctie\"");
+    }
+
+    @Test
+    void aComposerNamingNeitherRendersTheDefaultEnvironmentsRelease() {
+        var found = parse(composer("")).get(0);
+
+        assertThat(found.environmentId()).isNull();
+        assertThat(found.requireOne(null, "besluit").versionRange()).isNull();
+    }
+
     @Test
     void dropsALetterWithNoCatalogAnywhere() {
         // Which catalog a letter comes from decides what is rendered; there is nothing to guess.

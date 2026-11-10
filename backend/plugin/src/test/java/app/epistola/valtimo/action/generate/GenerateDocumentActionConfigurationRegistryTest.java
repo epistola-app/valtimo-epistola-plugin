@@ -195,6 +195,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
                     valid.variantId(),
                     valid.variantAttributes(),
                     valid.environmentId(),
+                    null,
                     "<mapping>",
                     valid.outputFormat(),
                     valid.filename(),
@@ -235,6 +236,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 valid.variantId(),
                 valid.variantAttributes(),
                 valid.environmentId(),
+                null,
                 valid.dataMapping(),
                 valid.outputFormat(),
                 "<filename>",
@@ -337,6 +339,270 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 .hasMessageContaining("expression='$pv.language'");
     }
 
+    @Test
+    void v0_keepsAVersionRangeAsWritten_withoutItsSurroundingWhitespace() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(0, "value.pdf", null, null), " ^1.4.0 "));
+
+        assertThat(config.literalVersionRange()).contains("^1.4.0");
+        assertThat(config.resolveVersionRange(null, null)).isEqualTo("^1.4.0");
+    }
+
+    @Test
+    void v1_aVersionRangeIsJsonata_aFixedOneAStringLiteral() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(1, "\"value.pdf\"", null, null), " \"^1.4.0\" "));
+
+        assertThat(config.literalVersionRange()).contains("^1.4.0");
+        assertThat(config.resolveVersionRange(mappingService(), context(Map.of()))).isEqualTo("^1.4.0");
+    }
+
+    @Test
+    void v1_refusesABareVersionRange_namingTheLiteralToWriteInstead() {
+        // Saved before the range became an expression (1.0.0-alpha.1/beta.1): not JSONata, so not guessed at.
+        var bare = withVersionRange(properties(1, "\"value.pdf\"", null, null), "^1.4.0");
+
+        assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(bare))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("versionRange must contain valid JSONata")
+                .hasMessageContaining("such as \"^1.4.0\"");
+    }
+
+    @Test
+    void aBlankVersionRangeIsNoRange() {
+        for (int version : List.of(0, 1)) {
+            var config = GenerateDocumentActionConfigurationRegistry.parse(
+                    withVersionRange(properties(version, version == 0 ? "value.pdf" : "\"value.pdf\"", null, null), "  "));
+
+            assertThat(config.literalVersionRange()).as("v" + version).isEmpty();
+            assertThat(config.resolveVersionRange(mappingService(), context(Map.of()))).as("v" + version).isNull();
+        }
+    }
+
+    @Test
+    void rejectsAVersionRangeTheContractDoesNotAccept_whenItIsALiteral() {
+        // Refused when the link is read, rather than rendering whatever a typo happens to match.
+        for (int version : List.of(0, 1)) {
+            var invalid = withVersionRange(
+                    properties(version, version == 0 ? "value.pdf" : "\"value.pdf\"", null, null),
+                    version == 0 ? "1.x.y.z" : "\"1.x.y.z\"");
+
+            assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(invalid))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("configuration v" + version)
+                    .hasMessageContaining("versionRange: Invalid version range '1.x.y.z'");
+        }
+    }
+
+    @Test
+    void anExpressionRange_isOnlyKnownAtRunTime_andEvaluatesToTheRangeItProduces() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(1, "\"value.pdf\"", null, null), "$pv.briefversie"));
+
+        assertThat(config.literalVersionRange()).isEmpty();
+        assertThat(config.resolveVersionRange(mappingService(), context(Map.of("briefversie", " ^2.0.0 "))))
+                .isEqualTo("^2.0.0");
+    }
+
+    @Test
+    void anExpressionThatProducesABlankString_isDeliberatelyNoRange() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(1, "\"value.pdf\"", null, null), "$pv.briefversie"));
+
+        assertThat(config.resolveVersionRange(mappingService(), context(Map.of("briefversie", " ")))).isNull();
+    }
+
+    @Test
+    void anExpressionThatProducesNothing_isRefused_notReadAsNoRange() {
+        // A missing variable or a bare name: never a choice (ADR 0009, second addendum).
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(1, "\"value.pdf\"", null, null), "$pv.briefversie"));
+
+        assertThatThrownBy(() -> config.resolveVersionRange(mappingService(), context(Map.of())))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e ->
+                        assertThat(e.getKind()).isEqualTo(GenerateDocumentExpressionException.Kind.NO_VALUE))
+                .hasMessageContaining("field 'versionRange'")
+                .hasMessageContaining("produced no value")
+                .hasMessageContaining("Write \"\" for no range");
+    }
+
+    // ── The environment: none configured, a value, "" for none, nothing refused ──
+
+    @Test
+    void noEnvironmentConfigured_isThePluginsDefault() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(properties(1, "\"value.pdf\"", null, null));
+
+        assertThat(config.resolveEnvironment(mappingService(), context(Map.of()), "productie")).isEqualTo("productie");
+        assertThat(config.resolveEnvironment(mappingService(), context(Map.of()), null)).isNull();
+    }
+
+    @Test
+    void anEnvironmentExpression_isWhatItSays_andAnEmptyStringIsDeliberatelyNone() {
+        var config = withEnvironment("$pv.omgeving");
+
+        assertThat(config.resolveEnvironment(mappingService(), context(Map.of("omgeving", " acceptatie ")), "productie"))
+                .isEqualTo("acceptatie");
+        assertThat(config.resolveEnvironment(mappingService(), context(Map.of("omgeving", "")), "productie"))
+                .describedAs("\"\" is a choice: no environment, not the default")
+                .isNull();
+    }
+
+    @Test
+    void anEnvironmentExpressionProducingNothing_isRefused_ratherThanRenderedInTheDefault() {
+        // The bug this closes: `someEnv` without quotes is a path to nothing, and used to fall back
+        // silently to the default — another environment, unnoticed.
+        var config = withEnvironment("someEnv");
+
+        assertThatThrownBy(() -> config.resolveEnvironment(mappingService(), context(Map.of()), "productie"))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e ->
+                        assertThat(e.getKind()).isEqualTo(GenerateDocumentExpressionException.Kind.NO_VALUE))
+                .hasMessageContaining("expression='someEnv'")
+                .hasMessageContaining("?: $plugin.defaultEnvironmentId");
+    }
+
+    @Test
+    void theDefaultIsThereToFallBackOnExplicitly_andIsEmptyWhenNoneIsConfigured() {
+        var config = withEnvironment("$pv.omgeving ?: $plugin.defaultEnvironmentId");
+
+        assertThat(config.resolveEnvironment(mappingService(), contextWithDefault("productie"), "productie"))
+                .isEqualTo("productie");
+        assertThat(config.resolveEnvironment(mappingService(), contextWithDefault(null), null))
+                .describedAs("no default: the fallback is \"\", deliberately none — never a failure")
+                .isNull();
+    }
+
+    @Test
+    void anAuthorCanRequireAnEnvironment_withTheirOwnMessage() {
+        var config = withEnvironment("$pv.omgeving ?: $plugin.defaultEnvironmentId ?: $error(\"Geen omgeving voor deze zaak\")");
+
+        assertThatThrownBy(() -> config.resolveEnvironment(mappingService(), contextWithDefault(null), null))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e ->
+                        assertThat(e.getKind()).isEqualTo(GenerateDocumentExpressionException.Kind.EVALUATION_FAILED))
+                .hasMessageContaining("Geen omgeving voor deze zaak");
+    }
+
+    @Test
+    void anIncidentKeepsTheAuthorsErrorText_fromError() {
+        var config = withEnvironment("$pv.omgeving ?: $error(\"Geen omgeving voor deze zaak\")");
+
+        assertThatThrownBy(() -> config.resolveEnvironment(mappingService(), context(Map.of()), null))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e ->
+                        assertThat(e.safeDescription())
+                                .contains("field 'environmentId'")
+                                .endsWith("failed: Geen omgeving voor deze zaak"));
+    }
+
+    @Test
+    void anIncidentNeverQuotesWhatAnExpressionReadFromTheCase() {
+        // $number("Jansen") fails with `For input string: "Jansen"`: the case's value, in the message.
+        var config = withEnvironment("$string($number($pv.naam))");
+
+        assertThatThrownBy(() -> config.resolveEnvironment(mappingService(), context(Map.of("naam", "Jansen")), null))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e -> {
+                    assertThat(e.getMessage()).describedAs("the exception itself may carry it").contains("Jansen");
+                    assertThat(e.safeDescription())
+                            .describedAs("what the incident and its logs carry")
+                            .contains("expression='$string($number($pv.naam))'")
+                            .doesNotContain("Jansen");
+                });
+    }
+
+    @Test
+    void anEnvironmentThatIsNotAString_isRefused() {
+        assertThatThrownBy(() -> withEnvironment("42").resolveEnvironment(mappingService(), context(Map.of()), null))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e ->
+                        assertThat(e.getKind()).isEqualTo(GenerateDocumentExpressionException.Kind.INVALID_RESULT));
+    }
+
+    @Test
+    void aV0Link_keepsFallingBackToTheDefault() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(new GenerateDocumentActionProperties(
+                0, "catalog", "template", null, null, "$pv.omgeving", null, "{}", "PDF", "value.pdf", null, "result"));
+
+        assertThat(config.resolveEnvironment(mappingService(), context(Map.of()), "productie")).isEqualTo("productie");
+    }
+
+    private static GenerateDocumentActionConfiguration withEnvironment(String environment) {
+        GenerateDocumentActionProperties valid = properties(1, "\"value.pdf\"", null, null);
+        return GenerateDocumentActionConfigurationRegistry.parse(new GenerateDocumentActionProperties(
+                valid.actionConfigVersion(), valid.catalogId(), valid.templateId(), valid.variantId(),
+                valid.variantAttributes(), environment, null, valid.dataMapping(), valid.outputFormat(),
+                valid.filename(), valid.correlationId(), valid.resultProcessVariable()));
+    }
+
+    private static EvaluationContext contextWithDefault(String defaultEnvironmentId) {
+        return context(Map.of()).withExtraBindings(app.epistola.valtimo.mapping.PluginBinding.of(defaultEnvironmentId));
+    }
+
+    @Test
+    void anExpressionThatProducesANumber_isRefused_ratherThanReadAsADifferentRange() {
+        // The bare 1.0 is the number 1, which as a range would mean 1.x rather than 1.0.x.
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(1, "\"value.pdf\"", null, null), "1.0"));
+
+        assertThatThrownBy(() -> config.resolveVersionRange(mappingService(), context(Map.of())))
+                .isInstanceOf(GenerateDocumentExpressionException.class)
+                .hasMessageContaining("field 'versionRange'")
+                .hasMessageContaining("must evaluate to a string such as \"^1.4.0\", not a number");
+    }
+
+    @Test
+    void anExpressionThatProducesWhatIsNotARange_isRefused_withoutRepeatingTheValue() {
+        // The value may come from the case; the field and the expression are what diagnose it.
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(1, "\"value.pdf\"", null, null), "$pv.briefversie"));
+
+        assertThatThrownBy(() -> config.resolveVersionRange(mappingService(), context(Map.of("briefversie", "Jansen"))))
+                .isInstanceOf(GenerateDocumentExpressionException.class)
+                .hasMessageContaining("expression='$pv.briefversie'")
+                .hasMessageContaining("is not a version range")
+                .hasMessageNotContaining("Jansen");
+    }
+
+    @Test
+    void readsTheVersionRangeFromStoredProperties() {
+        var stored = JsonNodeFactory.instance.objectNode()
+                .put("actionConfigVersion", 1)
+                .put("catalogId", "local/valtimo/brieven")
+                .put("templateId", "besluit")
+                .put("versionRange", "\"1.9.0\"")
+                .put("dataMapping", "{}")
+                .put("outputFormat", "\"PDF\"")
+                .put("filename", "\"besluit.pdf\"")
+                .put("resultProcessVariable", "result");
+
+        assertThat(GenerateDocumentActionConfigurationRegistry.parse(stored).literalVersionRange()).contains("1.9.0");
+    }
+
+    private static JsonataMappingService mappingService() {
+        return new JsonataMappingService(new app.epistola.valtimo.expression.ExpressionFunctionRegistry(List.of()));
+    }
+
+    private static EvaluationContext context(Map<String, Object> processVariables) {
+        return EvaluationContext.builder()
+                .operation("execution")
+                .processVariableEnumerator(() -> processVariables)
+                .processVariableResolver(processVariables::get)
+                .build();
+    }
+
+    private static GenerateDocumentActionProperties withVersionRange(
+            GenerateDocumentActionProperties valid, String versionRange) {
+        return new GenerateDocumentActionProperties(
+                valid.actionConfigVersion(),
+                valid.catalogId(),
+                valid.templateId(),
+                valid.variantId(),
+                valid.variantAttributes(),
+                valid.environmentId(),
+                versionRange,
+                valid.dataMapping(),
+                valid.outputFormat(),
+                valid.filename(),
+                valid.correlationId(),
+                valid.resultProcessVariable());
+    }
+
     private static void assertMissingRequired(
             int version,
             String field,
@@ -353,6 +619,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 version,
                 field.equals("catalogId") ? " " : "catalog",
                 field.equals("templateId") ? null : "template",
+                null,
                 null,
                 null,
                 null,
@@ -375,6 +642,7 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 "template",
                 variantId,
                 variantAttributes,
+                null,
                 null,
                 "{}",
                 version == null || version == 0 ? "PDF" : "\"PDF\"",

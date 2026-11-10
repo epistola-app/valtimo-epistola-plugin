@@ -18,7 +18,7 @@
       "filename": "\"brief-a.pdf\"",
       "resultProcessVariable": "epistolaResult",
       "dataMapping": "{\n  \"firstName\": $doc.firstName\n}",
-      "catalogId": "municipality-demo"
+      "catalogId": "local/demo/municipality-demo"
     }
   }
 ]
