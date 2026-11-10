@@ -192,6 +192,30 @@ describe('SmartExpressionEditorComponent', () => {
     destroy();
   });
 
+  it('flags a stored bare path, which can never produce a value, and blocks saving', () => {
+    // `someEnv` without quotes: a path in an empty input. It used to render in the default
+    // environment unnoticed; generation now refuses it, so the editor says so first.
+    jest.useFakeTimers();
+    try {
+      const { component, destroy } = createComponent('someEnv');
+      jest.advanceTimersByTime(300);
+
+      expect(component.mode).toBe('advanced');
+      expect(component.rawError).toContain('Did you mean the text "someEnv"');
+      // What the editor last told its form: invalid, so the link cannot be saved like this.
+      expect((component as any).lastValidity).toBe(false);
+
+      // Quoted, it is the text it meant, and valid.
+      component.onRawInput('"someEnv"', document.createElement('textarea'));
+      jest.advanceTimersByTime(300);
+      expect(component.rawError).toBeNull();
+      expect((component as any).lastValidity).toBe(true);
+      destroy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('stores a selected option as a JSONata string literal', () => {
     const { component, destroy } = createComponent('', [{ id: 'production', text: 'Production' }]);
     const expressions: string[] = [];
