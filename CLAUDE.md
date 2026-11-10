@@ -141,7 +141,7 @@ docker/            # Docker compose for local dependencies
   that satisfies it, of those deployed when there is an environment, never a draft, and must
   evaluate to a string (`VersionRanges.ofExpressionResult` refuses a number). For environment and
   range alike, `""` is the deliberate "none" and an expression producing **no value fails**
-  (`EXPRESSION_EMPTY`) — never a silent fallback; `$plugin.defaultEnvironmentId` (`PluginBinding`) is
+  (an incident at the step) — never a silent fallback; `$plugin.defaultEnvironmentId` (`PluginBinding`) is
   the explicit one. A top-level JSONata `null` is indistinguishable from a missing path, so it cannot
   carry meaning (ADR 0009, second addendum). Generation and
   preview send it for the server to resolve. **Configurators never resolve per lookup**: they ask
@@ -285,9 +285,12 @@ granted anything on that case. A message shown to the employee composing the let
 onto the case as a process variable, does not — they are already authorized on exactly that data,
 and `"Epistola could not render template 'besluit': field 'bsn' is not a date"` is what makes the
 failure fixable. So a downstream message may be **shown or stored on the case**, and must not be
-**logged**. Three tests pin that intent (`recordsTheRefusalWhereTheProcessCanReadIt`,
-`saysSoWhenTheDocumentIsNoLongerOnTheVariable`, `epistolaApiFailure_throwsRenderFailed`) — they
-failed when an audit replaced those messages with a class name, which is how the boundary was found.
+**logged**. Two tests pin that intent (`saysSoWhenTheDocumentIsNoLongerOnTheVariable`,
+`epistolaApiFailure_throwsRenderFailed`) — they failed when an audit replaced those messages with a
+class name, which is how the boundary was found. A third, `recordsTheRefusalWhereTheProcessCanReadIt`,
+went when a refused generation became an incident (ADR 0009, third addendum): an incident's text is
+logged by the engine, so it now carries the plugin's own diagnosis and never Epistola's message —
+`aRefusalRaisesAnIncidentSayingWhatIsMissing_withoutEpistolasText` pins that side.
 
 `Failures.describe(Throwable)` (`app.epistola.valtimo.logging`) is the helper for the logging side,
 and `LogStatementPersonalDataTest` guards it: it scans the plugin's sources for a log statement that

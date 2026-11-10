@@ -49,8 +49,6 @@ import org.operaton.bpm.engine.delegate.JavaDelegate;
 import org.operaton.bpm.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.operaton.bpm.engine.runtime.ProcessInstance;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -66,14 +64,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
- * A generation Epistola refuses — nothing accepted, no job — is recorded as a failed one, and the
- * process takes the path it has for a failed letter: the catch event after the step finds the result
- * already FAILED when it subscribes and self-heals (ADR 0009, addendum). Driven through the real
- * {@code generate-document} action in a real engine, because the point is what the engine does with
- * it: previously the step threw, was retried, became an incident, and the FAILED variable it had
- * written was rolled back with it.
+ * A generation that cannot start — Epistola refused it, or an expression produced nothing — raises
+ * an incident at the step: nothing is lost, it is visible, and once the cause is fixed (the
+ * configuration or the case's data) retrying it runs the step again with what was corrected (ADR
+ * 0009, third addendum). Driven through the real {@code generate-document} action in a real engine,
+ * behind the async boundary Valtimo deploys, because what matters is what the engine does with it.
  */
-class EpistolaRefusalCorrelationIntegrationTest {
+class EpistolaRefusalIncidentIntegrationTest {
 
     private static final String TENANT = "demo";
 
@@ -86,8 +83,8 @@ class EpistolaRefusalCorrelationIntegrationTest {
               <bpmn:process id="refused-generation" isExecutable="true" camunda:historyTimeToLive="P1D">
                 <bpmn:startEvent id="start"><bpmn:outgoing>f1</bpmn:outgoing></bpmn:startEvent>
                 <bpmn:sequenceFlow id="f1" sourceRef="start" targetRef="generate" />
-                <bpmn:serviceTask id="generate" camunda:expression="${null}"
-                    camunda:class="app.epistola.valtimo.service.completion.EpistolaRefusalCorrelationIntegrationTest$GenerateDelegate">
+                <bpmn:serviceTask id="generate" camunda:asyncBefore="true"
+                    camunda:class="app.epistola.valtimo.service.completion.EpistolaRefusalIncidentIntegrationTest$GenerateDelegate">
                   <bpmn:incoming>f1</bpmn:incoming><bpmn:outgoing>f2</bpmn:outgoing>
                 </bpmn:serviceTask>
                 <bpmn:sequenceFlow id="f2" sourceRef="generate" targetRef="wait" />
@@ -176,87 +173,87 @@ class EpistolaRefusalCorrelationIntegrationTest {
     }
 
     @Test
-    void aRefusedGeneration_takesTheFailurePath_withTheReasonOnTheCase() {
+    void aRefusal_raisesAnIncidentAtTheStep_sayingWhatIsMissing() {
         refuseWith(new EpistolaTargetNotFoundException(new GenerationTargetProblem(Reason.TEMPLATE_NOT_IN_RELEASE,
                 "local/demo/brieven", "besluit", null, "staging", "^2.0.0", "2.0.0"),
-                "Release brieven@2.0.0 does not contain template 'besluit'", "https://epistola.app/errors/not-found"));
+                "Release brieven@2.0.0 does not contain template 'besluit' (case of Jansen)",
+                "https://epistola.app/errors/not-found"));
 
         ProcessInstance pi = startAsTheAppDoes();
+        org.operaton.bpm.engine.runtime.Incident incident = failUntilIncident(pi);
 
-        assertThat(activeTaskName(pi)).isEqualTo("Brief mislukt");
-        @SuppressWarnings("unchecked")
-        Map<String, Object> letter = (Map<String, Object>) runtimeService.getVariable(pi.getId(), "letter");
-        assertThat(letter)
-                .containsEntry("status", "FAILED")
-                .containsEntry("errorReason", "TEMPLATE_NOT_IN_RELEASE")
-                .containsEntry("documentId", null);
-        assertThat((String) letter.get("errorMessage"))
+        assertThat(incident.getActivityId()).isEqualTo("generate");
+        assertThat(incident.getIncidentMessage())
                 .startsWith("Template 'besluit' is not in catalog 'local/demo/brieven' in release 2.0.0")
-                .endsWith("Epistola: Release brieven@2.0.0 does not contain template 'besluit'");
-        assertThat((String) letter.get("requestId")).startsWith("refused-");
-        // Nothing to retry, and nothing left in the engine as a failing job.
-        assertThat(processEngine.getManagementService().createJobQuery().count()).isZero();
-        assertThat(runtimeService.createIncidentQuery().count()).isZero();
+                .doesNotContain("Jansen");
+        assertThat(runtimeService.getActiveActivityIds(pi.getId())).containsExactly("generate");
+        assertThat(runtimeService.getVariable(pi.getId(), "letter")).isNull();
     }
 
     @Test
-    void anyOtherRefusal_isFailedToo_asRequestRefused() {
-        refuseWith(new EpistolaApiException("API key has no access to tenant 'demo'", null, 403,
-                "https://epistola.app/errors/forbidden", Map.of()));
-
+    void onceTheCauseIsFixed_retryingTheIncident_runsTheStepAgain() {
+        refuseWith(new EpistolaTargetNotFoundException(new GenerationTargetProblem(Reason.NOT_DEPLOYED,
+                "local/demo/brieven", "besluit", null, "staging", null, null), null, null));
         ProcessInstance pi = startAsTheAppDoes();
+        failUntilIncident(pi);
 
-        assertThat(activeTaskName(pi)).isEqualTo("Brief mislukt");
+        // Someone deploys the catalog to staging; the admin retries the incident.
+        org.mockito.Mockito.reset(epistolaService);
+        when(epistolaService.submitGenerationJob(anyString(), anyString(), anyString(), anyString(), anyString(),
+                any(), any(), any(), any(), any(), any(FileFormat.class), any(), any(), any()))
+                .thenReturn(app.epistola.valtimo.domain.GenerationJobResult.builder()
+                        .requestId("01a1c60d-0000-0000-0000-000000000001").status("PENDING").build());
+        org.operaton.bpm.engine.runtime.Job job = jobOf(pi);
+        processEngine.getManagementService().setJobRetries(job.getId(), 1);
+        processEngine.getManagementService().executeJob(job.getId());
+
+        assertThat(runtimeService.getActiveActivityIds(pi.getId())).containsExactly("wait");
+        assertThat(runtimeService.createIncidentQuery().processInstanceId(pi.getId()).count()).isZero();
         @SuppressWarnings("unchecked")
         Map<String, Object> letter = (Map<String, Object>) runtimeService.getVariable(pi.getId(), "letter");
-        assertThat(letter).containsEntry("errorReason", "REQUEST_REFUSED");
-        assertThat((String) letter.get("errorMessage")).contains("HTTP 403").contains("no access");
+        assertThat(letter).containsEntry("status", "PENDING");
     }
 
     @Test
-    void anEnvironmentExpressionProducingNothing_takesTheFailurePath_withoutAskingEpistola() {
-        // `someEnv` without quotes: a path to nothing, which used to render in the default unnoticed.
+    void anEnvironmentExpressionProducingNothing_raisesAnIncident_withoutAskingEpistola() {
+        // `someEnv` without quotes: a path to nothing, which once rendered in the default unnoticed.
         GenerateDelegate.environment = "someEnv";
 
-        ProcessInstance pi = startAsTheAppDoes();
+        org.operaton.bpm.engine.runtime.Incident incident = failUntilIncident(startAsTheAppDoes());
 
-        assertThat(activeTaskName(pi)).isEqualTo("Brief mislukt");
-        @SuppressWarnings("unchecked")
-        Map<String, Object> letter = (Map<String, Object>) runtimeService.getVariable(pi.getId(), "letter");
-        assertThat(letter).containsEntry("status", "FAILED").containsEntry("errorReason", "EXPRESSION_EMPTY");
-        assertThat((String) letter.get("errorMessage")).contains("expression='someEnv'").contains("produced no value");
+        assertThat(incident.getIncidentMessage()).contains("expression='someEnv'").contains("produced no value");
         org.mockito.Mockito.verifyNoInteractions(epistolaService);
     }
 
     @Test
-    void aTransientFailure_stillFailsTheStep_soTheEngineRetriesIt() {
+    void aTransientFailure_isRetried_asAnyFailingStepIs() {
         refuseWith(new EpistolaApiException("Service Unavailable", null, 503, null, Map.of()));
 
-        assertThatThrownBy(this::startAsTheAppDoes)
-                .hasMessageContaining("Failed to submit document generation request to Epistola");
-        assertThat(runtimeService.createProcessInstanceQuery().count()).isZero();
+        org.operaton.bpm.engine.runtime.Incident incident = failUntilIncident(startAsTheAppDoes());
+
+        assertThat(incident.getIncidentMessage()).contains("Failed to submit document generation request to Epistola");
     }
 
-    /**
-     * Start the process inside a Spring transaction synchronization scope and run its after-commit
-     * callbacks once it returns, as Spring does when the engine's transaction commits. The catch
-     * event's self-heal is armed through exactly that hook ({@code EpistolaCatchEventStartListener}),
-     * and the standalone engine has no Spring transaction of its own, so without this it would be
-     * skipped — and the test would prove nothing about what the app does.
-     */
-    private ProcessInstance startAsTheAppDoes() {
-        TransactionSynchronizationManager.initSynchronization();
-        try {
-            ProcessInstance pi = runtimeService.startProcessInstanceByKey("refused-generation");
-            List<TransactionSynchronization> callbacks = TransactionSynchronizationManager.getSynchronizations();
-            TransactionSynchronizationManager.clearSynchronization();
-            callbacks.forEach(TransactionSynchronization::afterCommit);
-            return pi;
-        } finally {
-            if (TransactionSynchronizationManager.isSynchronizationActive()) {
-                TransactionSynchronizationManager.clearSynchronization();
+    /** Run the step's job until the engine gives up and raises an incident, as the job executor would. */
+    private org.operaton.bpm.engine.runtime.Incident failUntilIncident(ProcessInstance pi) {
+        for (int attempt = 0; attempt < 5 && runtimeService.createIncidentQuery()
+                .processInstanceId(pi.getId()).count() == 0; attempt++) {
+            org.operaton.bpm.engine.runtime.Job job = jobOf(pi);
+            try {
+                processEngine.getManagementService().executeJob(job.getId());
+            } catch (RuntimeException expected) {
+                // The step failed; the engine records it on the job.
             }
         }
+        return runtimeService.createIncidentQuery().processInstanceId(pi.getId()).singleResult();
+    }
+
+    private org.operaton.bpm.engine.runtime.Job jobOf(ProcessInstance pi) {
+        return processEngine.getManagementService().createJobQuery().processInstanceId(pi.getId()).singleResult();
+    }
+
+    private ProcessInstance startAsTheAppDoes() {
+        return runtimeService.startProcessInstanceByKey("refused-generation");
     }
 
     private void refuseWith(RuntimeException refusal) {

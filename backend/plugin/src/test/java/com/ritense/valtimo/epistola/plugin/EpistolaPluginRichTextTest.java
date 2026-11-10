@@ -170,17 +170,16 @@ class EpistolaPluginRichTextTest {
         };
         when(execution.getVariable(EpistolaProcessVariables.EDITED_DATA)).thenReturn(TAGGED_JSON);
 
-        // Not retried: the text cannot become what the template takes, however often it is asked. The
-        // step completes with the failure recorded, so the record survives (ADR 0009, addendum).
-        generate(plugin(new RichTextConverter(List.of(broken), "html")));
-
-        ArgumentCaptor<Object> result = ArgumentCaptor.forClass(Object.class);
-        verify(execution).setVariable(eq("epistolaResult"), result.capture());
-        assertThat((Map<String, Object>) result.getValue())
-                .containsEntry("status", "FAILED")
-                .containsEntry("errorReason", "RICH_TEXT_NOT_CONVERTIBLE");
-        String errorMessage = String.valueOf(((Map<String, Object>) result.getValue()).get("errorMessage"));
-        assertThat(errorMessage).contains("'toelichting'", "'html'").doesNotContain("123456782", "Jansen");
+        // The text cannot become what the template takes: the step cannot start, an incident whose
+        // text names the field and the format — never the text itself (ADR 0009, third addendum).
+        assertThatThrownBy(() -> generate(plugin(new RichTextConverter(List.of(broken), "html"))))
+                .isInstanceOf(app.epistola.valtimo.service.DocumentGenerationRefusedException.class)
+                .hasMessageContaining("'toelichting'")
+                .hasMessageContaining("'html'")
+                .hasMessageNotContaining("123456782")
+                .hasMessageNotContaining("Jansen")
+                .hasNoCause();
+        verify(execution, never()).setVariable(eq("epistolaResult"), any());
         verify(generationApi, never()).generateDocument(any(), any());
     }
 }
