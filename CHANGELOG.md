@@ -46,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **The configurators say which release they design against.** "Template and fields come from
   release 2.1.0", the deployed draft, or the newest draft; and when the environment or release is
   an expression, that this is the highest release and an assumption.
+- **Releases are announced on the community forum.** The release command ends with a post in
+  Aankondigingen on [community.epistola.app](https://community.epistola.app), drafted by the agent
+  and posted after approval. It posts through a Discourse MCP server (`.agents/mcp/discourse/`, the
+  same as epistola-suite's) that signs in through the browser and keeps its key in the OS
+  credential store.
 
 ### Changed
 
@@ -94,6 +99,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   response. `check-job-status` now reads that as `IN_PROGRESS`, so the process keeps waiting.
   Every finished status (`COMPLETED`, `FAILED`, `CANCELLED`) is already known, so this cannot hide
   a job that has finished.
+- **A failed call to Epistola says what went wrong.** When Epistola did not answer with one of its
+  own error descriptions, the composer showed only _"Epistola could not describe template … :
+  Failed to fetch template details"_, and the cause was in the Valtimo log alone. The message now
+  ends with the HTTP status and content type, such as `HTTP 502 Bad Gateway (text/html)` for a
+  proxy's error page, or with the exception types, such as
+  `ResourceAccessException caused by ConnectException` for a host that cannot be reached. Response
+  bodies and downstream messages stay out because they may quote case data. The same applies to
+  listing templates, attributes and variants, previewing, downloading and importing a catalog.
 
 ## [1.0.0-beta.1] - 2026-11-04
 

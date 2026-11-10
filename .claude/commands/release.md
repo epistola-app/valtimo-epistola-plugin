@@ -70,6 +70,40 @@ Display:
   - GitHub Release: `vX.Y.Z`
 - Link to monitor: `https://github.com/epistola-app/valtimo-epistola-plugin/actions/workflows/release.yml`
 
+### 7. Announce on the community forum
+
+Once the release workflow has published, post the release (a pre-release too) on
+[community.epistola.app](https://community.epistola.app) through the Discourse MCP
+(`.agents/mcp/discourse/`; it posts as the signed-in user). Draft the post, show it to the user
+and post only after they approve it: once posted it is public, and everyone following
+Aankondigingen gets it by email.
+
+- **Read first:** the previous plugin announcement (`discourse_search` for `GZAC-plugin`) for tone
+  and layout, and the GitHub release body for what readers can follow up.
+- **A Suite release alongside?** Check `gh release list -R epistola-app/epistola-suite -L 3`. When
+  this release needs a Suite release that came out at the same time, write one post for both,
+  titled `Epistola X.Y.Z en GZAC-plugin A.B.C: <headline>`. If the Suite's post is already up, ask
+  the user whether to add the plugin to it (`discourse_update_post`) rather than open a second
+  topic.
+- **Verify compatibility claims** in the code and `COMPATIBILITY.md`, not just the release notes:
+  the contract version the plugin pins against the one the Suite serves, and the roles its API key
+  needs. Notes written before the Suite released can be stale.
+- **Category:** Aankondigingen (id 5), a new topic. **Title:** `GZAC-plugin X.Y.Z: <Dutch headline>`.
+- **Body:** Dutch first, in the u-form, then the same text in English inside
+  `[details="English"]…[/details]`. Write it for whoever configures the plugin, not as a copy of
+  the changelog:
+  - Open with `⚠️ **Controleer dit vóór de upgrade:**` when the CHANGELOG has an Upgrading section
+    or a breaking change; leave it out otherwise. Name the Epistola Suite versions it needs.
+  - `**Nieuw in deze versie:**`, a short bullet list of the headline changes, each with a bold
+    lead-in. Leave out CI and test-infrastructure changes.
+  - A pre-release opens with `⚠️ **Dit is een bèta.**` (or alpha/RC): what to try, and that it is
+    not for production.
+  - If the next Community Call (category Community Call) will cover it, link that topic — ask the
+    user first.
+  - End with `[Volledige release notes op GitHub](…/releases/tag/vX.Y.Z)`.
+- **Verify:** read the topic back (`discourse_read_topic`): category Aankondigingen, the expected
+  author, the English `[details]` block rendered, and every link pointing at an existing release.
+
 ## Important
 
 - NEVER force-push
