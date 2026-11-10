@@ -244,8 +244,9 @@ tasks.test {
 // required. So the mock-server integration test also runs against the oldest contract a supported
 // Epistola Suite serves (COMPATIBILITY.md). Since contract 2.0 that is a 2.x contract: the client
 // sends the v2 media type, which every 1.x server refuses, so no 1.x Suite is supported. While 2.0
-// is a pre-release the floor is the pinned pre-release itself; raise it with the Suite floor. Part of `check`,
-// so `build` runs it; `test` alone does not.
+// is a pre-release the floor is the pre-release Suite's main serves (rc.1, while the client is
+// rc.2: rc.2 only adds, and the plugin falls back where an rc.1 server lacks it); raise it with the
+// Suite floor. Part of `check`, so `build` runs it; `test` alone does not.
 val oldestSupportedServerTest by tasks.registering(Test::class) {
     description = "Runs the mock-server integration test against the oldest supported Epistola contract."
     group = LifecycleBasePlugin.VERIFICATION_GROUP

@@ -23,6 +23,9 @@ import app.epistola.client.api.TemplatesApi;
 import app.epistola.client.model.CatalogReleaseDto;
 import app.epistola.client.model.CatalogReleaseListResponse;
 import app.epistola.client.model.CatalogReleaseStatus;
+import app.epistola.client.model.CatalogTemplateDto;
+import app.epistola.client.model.CatalogTemplateListResponse;
+import app.epistola.client.model.CatalogTemplateRelease;
 import app.epistola.client.model.DeploymentDto;
 import app.epistola.client.model.DeploymentListResponse;
 import app.epistola.client.model.PageMeta;
@@ -77,7 +80,74 @@ class EpistolaServiceImplCatalogTemplatesTest {
         when(factory.createEnvironmentsApi(anyString(), anyString())).thenReturn(environmentsApi);
         templatesApi = mock(TemplatesApi.class);
         when(factory.createTemplatesApi(anyString(), anyString())).thenReturn(templatesApi);
+        // Like every Suite so far: the per-release listing below is what these tests exercise.
+        when(templatesApi.listCatalogTemplates(any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenThrow(problem(501));
     }
+
+    // ── A server that lists them itself (contract 2.0.0-rc.2) ──
+
+    @Test
+    void asksTheServerFirst_oneCallInsteadOfOnePerRelease() {
+        org.mockito.Mockito.reset(templatesApi);
+        when(templatesApi.listCatalogTemplates(eq(TENANT), eq("local"), eq("valtimo"), eq("brieven"), isNull(),
+                isNull(), anyInt(), anyInt()))
+                .thenReturn(new CatalogTemplateListResponse(List.of(
+                        new CatalogTemplateDto("oud", "Oud", List.of(release("1.9.0")), null),
+                        new CatalogTemplateDto("besluit", "Besluit",
+                                List.of(release("2.1.0"), release("1.9.0")), null)),
+                        new PageMeta(0, 100, 2, 1)));
+
+        CatalogTemplates result = service.getCatalogTemplates(BASE_URL, API_KEY, TENANT, CATALOG, null);
+
+        assertThat(result.templates()).containsExactly(
+                new CatalogTemplates.Template("besluit", "Besluit", null, List.of("2.1.0", "1.9.0"),
+                        new Read(null, "2.1.0")),
+                new CatalogTemplates.Template("oud", "Oud", null, List.of("1.9.0"), new Read(null, "1.9.0")));
+        verify(templatesApi, org.mockito.Mockito.never()).listTemplates(any(), any(), any(), any(), any(), any(),
+                anyInt(), anyInt(), any(), any());
+    }
+
+    @Test
+    void theServersDraft_isReadFromTheEnvironment() {
+        org.mockito.Mockito.reset(templatesApi);
+        when(templatesApi.listCatalogTemplates(eq(TENANT), eq("local"), eq("valtimo"), eq("brieven"), eq(ENV),
+                isNull(), anyInt(), anyInt()))
+                .thenReturn(new CatalogTemplateListResponse(List.of(new CatalogTemplateDto("concept", "Concept",
+                        List.of(new CatalogTemplateRelease(null, "draft-1", CatalogReleaseStatus.draft)), null)),
+                        new PageMeta(0, 100, 1, 1)));
+
+        assertThat(service.getCatalogTemplates(BASE_URL, API_KEY, TENANT, CATALOG, ENV).templates())
+                .containsExactly(new CatalogTemplates.Template("concept", "Concept", null, List.of("draft"),
+                        new Read(ENV, null)));
+    }
+
+    @Test
+    void anEnvironmentTheServerListsNothingIn_isListedCatalogWide() {
+        org.mockito.Mockito.doReturn(new CatalogTemplateListResponse(List.of(), new PageMeta(0, 100, 0, 1)))
+                .when(templatesApi).listCatalogTemplates(any(), any(), any(), any(), eq(ENV), any(), any(), any());
+        deployed();
+        released("2.1.0");
+        templatesIn("2.1.0", "besluit");
+
+        assertThat(service.getCatalogTemplates(BASE_URL, API_KEY, TENANT, CATALOG, ENV).templates())
+                .extracting(CatalogTemplates.Template::read)
+                .containsExactly(new Read(null, "2.1.0"));
+    }
+
+    @Test
+    void aServerThatDoesNotKnowTheRoute_isListedPerRelease() {
+        org.mockito.Mockito.reset(templatesApi);
+        when(templatesApi.listCatalogTemplates(any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenThrow(problem(404));
+        released("2.1.0");
+        templatesIn("2.1.0", "besluit");
+
+        assertThat(service.getCatalogTemplates(BASE_URL, API_KEY, TENANT, CATALOG, null).templates())
+                .extracting(CatalogTemplates.Template::id).containsExactly("besluit");
+    }
+
+    // ── A server that does not, yet: one listing per release ──
 
     @Test
     void listsEveryTemplate_withTheReleasesItIsIn_andReadsItFromTheHighest() {
@@ -160,6 +230,18 @@ class EpistolaServiceImplCatalogTemplatesTest {
         assertThat(result.truncated()).isTrue();
         assertThat(result.templates().get(0).releases()).hasSize(EpistolaServiceImpl.MAX_TEMPLATE_RELEASES)
                 .first().isEqualTo("30.0.0");
+    }
+
+    private static CatalogTemplateRelease release(String version) {
+        return new CatalogTemplateRelease(version, "rel-" + version, CatalogReleaseStatus.released);
+    }
+
+    private static app.epistola.client.error.ProblemDetailException problem(int status) {
+        return new app.epistola.client.error.ProblemDetailException(
+                new app.epistola.client.model.ProblemDetail(java.net.URI.create("https://epistola.app/errors/x"),
+                        "x", status, null, null, null, java.util.Map.of()),
+                List.of(), java.util.Map.of(), org.springframework.http.HttpStatus.valueOf(status), "x",
+                org.springframework.http.HttpHeaders.EMPTY, new byte[0], java.nio.charset.StandardCharsets.UTF_8);
     }
 
     private void templatesIn(String release, String... keys) {

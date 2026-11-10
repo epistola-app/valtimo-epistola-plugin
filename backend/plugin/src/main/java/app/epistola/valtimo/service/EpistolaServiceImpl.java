@@ -65,6 +65,9 @@ import app.epistola.client.model.PingRequest;
 import app.epistola.client.model.PongDetailsDto;
 import app.epistola.client.model.PongResponse;
 import app.epistola.client.model.VariantSelectionAttribute;
+import app.epistola.client.model.CatalogTemplateDto;
+import app.epistola.client.model.CatalogTemplateListResponse;
+import app.epistola.client.model.CatalogTemplateRelease;
 import app.epistola.client.model.TemplateDto;
 import app.epistola.client.model.TemplateListResponse;
 import app.epistola.client.model.TemplateSummaryDto;
@@ -629,6 +632,10 @@ public class EpistolaServiceImpl implements EpistolaService {
                 tenantId, catalogId, environment);
         try {
             CatalogRef ref = parseCatalogRef(catalogId);
+            CatalogTemplates listed = listedByServer(baseUrl, apiKey, tenantId, ref, environment);
+            if (listed != null) {
+                return listed;
+            }
             String registry;
             String namespace;
             String key;
@@ -697,6 +704,68 @@ public class EpistolaServiceImpl implements EpistolaService {
             log.error("Failed to list templates across releases for tenant {} ({})", tenantId, Failures.describe(e));
             throw toApiException("Failed to list templates across releases", e);
         }
+    }
+
+    /**
+     * The templates across releases as the server lists them ({@code listCatalogTemplates}, contract
+     * 2.0.0-rc.2): one call instead of one per release. Null — and the caller lists release by release
+     * — when the server does not implement it yet (501, or 404/405 from one that does not know the
+     * route), and when an environment lists nothing, which may only mean the catalog is not deployed
+     * there: that is read catalog-wide, as the design scope reads it.
+     */
+    private CatalogTemplates listedByServer(
+            String baseUrl, String apiKey, String tenantId, CatalogRef ref, String environment) {
+        CatalogRef catalog = ref.isQualified() ? ref : refOf(findCatalog(baseUrl, apiKey, tenantId, ref, null));
+        TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
+        List<CatalogTemplateDto> items;
+        try {
+            items = fetchAllPages(
+                    "catalog templates",
+                    page -> templatesApi.listCatalogTemplates(tenantId, catalog.registry(), catalog.namespace(),
+                            catalog.key(), environment, null, page, LIST_PAGE_SIZE),
+                    CatalogTemplateListResponse::getItems,
+                    CatalogTemplateListResponse::getPage);
+        } catch (Exception e) {
+            if (isNotImplemented(e)) {
+                log.debug("listCatalogTemplates not available on this server ({}); listing per release",
+                        Failures.describe(e));
+                return null;
+            }
+            throw e;
+        }
+        if (environment != null && items.isEmpty()) {
+            return null;
+        }
+        List<CatalogTemplates.Template> templates = items.stream()
+                .filter(dto -> dto.getReleases() != null && !dto.getReleases().isEmpty())
+                .map(dto -> {
+                    List<String> releases = dto.getReleases().stream()
+                            .map(release -> release.getStatus() == CatalogReleaseStatus.draft ? "draft" : release.getVersion())
+                            .toList();
+                    CatalogTemplateRelease highest = dto.getReleases().get(0);
+                    DesignScope.Read read = highest.getStatus() == CatalogReleaseStatus.draft
+                            ? new DesignScope.Read(environment, null)
+                            : new DesignScope.Read(environment, highest.getVersion());
+                    return new CatalogTemplates.Template(dto.getKey(), dto.getName(), dto.getDescription(), releases, read);
+                })
+                .sorted(Comparator.comparing(CatalogTemplates.Template::name,
+                        Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                .toList();
+        return new CatalogTemplates(catalog.toString(), templates, false);
+    }
+
+    /** A server answering that it does not implement an operation, or does not know its route. */
+    private static boolean isNotImplemented(Throwable failure) {
+        for (Throwable t = failure; t != null; t = t.getCause()) {
+            int status = t instanceof ProblemDetailException problem ? problem.getProblemStatus()
+                    : t instanceof RestClientResponseException response ? response.getStatusCode().value()
+                    : t instanceof EpistolaApiException api && api.getHttpStatus() != null ? api.getHttpStatus()
+                    : -1;
+            if (status == 501 || status == 404 || status == 405) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private List<TemplateSummaryDto> templatesOf(
