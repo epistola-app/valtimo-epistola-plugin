@@ -159,3 +159,36 @@ export function designHintsOf(
   }
   return { catalog, release };
 }
+
+/**
+ * Whether a configurator offers every template its link can reach rather than one release's: when
+ * the release or the environment is an expression, any release it reaches may render.
+ */
+export function offersTemplatesAcrossReleases(
+  environment: EnvironmentScope,
+  range: RangeScope,
+): boolean {
+  return environment === ANY_ENVIRONMENT || range === ANY_RANGE;
+}
+
+/**
+ * Where a template exists, as the template list marks it: nothing when it is in every reachable
+ * release, else a translation key and the version it starts or ends at.
+ *
+ * @param releases  the releases containing it, highest first (`draft` first, if any)
+ * @param reachable every reachable released version, highest first
+ */
+export function templateReleaseMark(
+  releases: string[],
+  reachable: string[],
+): { key: string; version?: string } | null {
+  const versions = releases.filter((release) => release !== 'draft');
+  if (versions.length === 0) return releases.length ? { key: 'templateOnlyDraft' } : null;
+  const newest = reachable[0];
+  const oldest = reachable[reachable.length - 1];
+  const inNewest = !newest || versions.includes(newest);
+  const inOldest = !oldest || versions.includes(oldest);
+  if (inNewest && inOldest) return null;
+  if (inNewest) return { key: 'templateFromRelease', version: versions[versions.length - 1] };
+  return { key: 'templateUntilRelease', version: versions[0] };
+}

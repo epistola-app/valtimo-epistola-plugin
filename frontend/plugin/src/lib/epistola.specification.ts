@@ -98,6 +98,11 @@ const epistolaPluginSpecification: PluginSpecification = {
       versionRangeInvalid: 'Dit is geen versie of versiebereik, zoals "1.4.0" of "^1.4.0".',
       templateId: 'Template',
       templateIdTooltip: 'Selecteer het template dat gebruikt wordt voor documentgeneratie',
+      templateFromRelease: 'vanaf',
+      templateUntilRelease: 't/m',
+      templateOnlyDraft: 'alleen concept',
+      templatesTruncated:
+        'Alleen de nieuwste 25 releases zijn doorzocht; een template dat alleen in een oudere staat, ontbreekt hier.',
       templateNotOffered:
         'Dit template staat niet in de release die deze actie gebruikt. Kies een andere release of een ander template.',
       variantId: 'Variant',
@@ -396,6 +401,11 @@ const epistolaPluginSpecification: PluginSpecification = {
       versionRangeInvalid: 'This is not a version or version range, such as "1.4.0" or "^1.4.0".',
       templateId: 'Template',
       templateIdTooltip: 'Select the template to use for document generation',
+      templateFromRelease: 'from',
+      templateUntilRelease: 'up to',
+      templateOnlyDraft: 'draft only',
+      templatesTruncated:
+        'Only the newest 25 releases were searched; a template that is only in an older one is not listed.',
       templateNotOffered:
         'This template is not in the release this action uses. Choose another release or another template.',
       variantId: 'Variant',

@@ -455,6 +455,30 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
           read: { environmentId: notDeployed ? null : environment, versionRange: version },
         });
       }),
+      // Across releases: invoice everywhere, reminder only up to 1.9.0, letter only from 2.0.0.
+      getCatalogTemplates: jest.fn((_c: string, catalog: string) =>
+        of({
+          catalogId: catalog,
+          truncated: false,
+          templates: [
+            {
+              id: 'invoice',
+              name: 'invoice',
+              description: null,
+              releases: ['2.0.0', '1.9.0'],
+              read: read(),
+            },
+            { id: 'letter', name: 'letter', description: null, releases: ['2.0.0'], read: read() },
+            {
+              id: 'reminder',
+              name: 'reminder',
+              description: null,
+              releases: ['1.9.0'],
+              read: read(null, '1.9.0'),
+            },
+          ],
+        }),
+      ),
       validateJsonata: jest.fn().mockReturnValue(of({ valid: true, errors: [] })),
     };
     const component = new GenerateDocumentConfigurationComponent(
@@ -771,6 +795,72 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
         { key: 'designBasedOnRelease', version: '2.0.0', problem: false },
         { key: 'designBasedOnAssumption', problem: false },
       ]);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('lists every reachable template for an expression range, marked, each read from its own release', () => {
+    jest.useFakeTimers();
+    try {
+      const { component, service } = createCascade();
+      selectInvoiceInCatalogA(component);
+
+      component.onVersionRangeExpressionChange('$pv.briefversie');
+      jest.advanceTimersByTime(250);
+
+      expect(service.getCatalogTemplates).toHaveBeenLastCalledWith(
+        'config',
+        'catalog-a',
+        undefined,
+      );
+      expect(component.templates$.value.data.map((item) => item.text)).toEqual([
+        'invoice',
+        'letter · templateFromRelease 2.0.0',
+        'reminder · templateUntilRelease 1.9.0',
+      ]);
+
+      formChange(component, { catalogId: 'catalog-a', templateId: 'reminder' });
+      expect(service.getTemplateDetails).toHaveBeenLastCalledWith(
+        'config',
+        'reminder',
+        'catalog-a',
+        read(null, '1.9.0'),
+      );
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('reads a saved template the release lacks from a release that has it, never asking for a 404', () => {
+    jest.useFakeTimers();
+    try {
+      const { component, service } = createCascade();
+      selectInvoiceInCatalogA(component);
+      formChange(component, { catalogId: 'catalog-a', templateId: 'reminder' });
+      service.getTemplateDetails.mockClear();
+
+      // "1.0.0" selects release 1.0.0, which does not contain reminder; 1.9.0 does.
+      service.getDesignScope.mockImplementation((_c: string, catalog: string) =>
+        of({
+          catalogId: catalog,
+          versions: ['2.0.0', '1.9.0', '1.0.0'],
+          version: '1.0.0',
+          draft: false,
+          environment: null,
+          problems: [],
+          read: read(null, '1.0.0'),
+        }),
+      );
+      service.getTemplates.mockImplementation(() => of([{ id: 'invoice', name: 'invoice' }]));
+      component.onVersionRangeExpressionChange('"1.0.0"');
+      jest.advanceTimersByTime(250);
+
+      const reads = service.getTemplateDetails.mock.calls.map((call: unknown[]) => call[3]);
+      expect(reads).not.toContainEqual(read(null, '1.0.0'));
+      expect(reads[reads.length - 1]).toEqual(read(null, '1.9.0'));
+      expect(component.templateFields$.value.error).toBeFalsy();
+      expect(component.selectedTemplateId$.value).toBe('reminder');
     } finally {
       jest.useRealTimers();
     }

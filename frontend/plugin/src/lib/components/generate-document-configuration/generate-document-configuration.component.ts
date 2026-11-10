@@ -65,6 +65,7 @@ import {
 import {
   AsyncResource,
   CatalogInfo,
+  ReadSelection,
   errorResource,
   ExpressionFunctionInfo,
   GenerateDocumentConfig,
@@ -91,6 +92,8 @@ import {
   designHintsOf,
   environmentScopeOf,
   loadDesignScope,
+  offersTemplatesAcrossReleases,
+  templateReleaseMark,
   rangeScopeOf,
 } from '../../utils/design-scope';
 import {
@@ -235,6 +238,15 @@ export class GenerateDocumentConfigurationComponent
     this.environmentScope$,
     this.rangeScope$,
   ]).pipe(map(([state, environment, range]) => designHintsOf(state, environment, range)));
+  /**
+   * Where each listed template is read from, when the list spans releases (the release or the
+   * environment is an expression): the highest release containing it. Empty otherwise, and every
+   * template is read from the design scope's release.
+   */
+  private readonly templateReads$ = new BehaviorSubject<Map<string, ReadSelection>>(new Map());
+  /** True when the list spans releases and only the newest of them were read. */
+  readonly templatesTruncated$ = new BehaviorSubject<boolean>(false);
+
   /** A failure to resolve the scope other than an invalid range, e.g. a catalog that is gone. */
   readonly designScopeError$: Observable<string | null> = this.designScope$.pipe(
     map((state) => (state.error && state.error !== INVALID_RANGE ? state.error : null)),
@@ -465,6 +477,13 @@ export class GenerateDocumentConfigurationComponent
     this.environmentIdExpression = value;
     this.environmentScope$.next(environmentScopeOf(value));
     this.revalidate();
+  }
+
+  /** A template as a list spanning releases shows it: marked with where it exists, if not everywhere. */
+  private templateItemLabel(name: string, mark: { key: string; version?: string } | null): string {
+    if (!mark) return name;
+    const word = this.pluginTranslationService.instant(mark.key, this.pluginId);
+    return `${name} · ${word}${mark.version ? ' ' + mark.version : ''}`;
   }
 
   /** A catalog as the select lists it: marked when the link's environment does not serve it. */
@@ -820,23 +839,54 @@ export class GenerateDocumentConfigurationComponent
       distinctUntilChanged(),
     );
 
-    // ── Templates: load when the design scope changes ──
-    combineLatest([configId$, read$, scopeLoading$])
+    // ── Templates: the design scope's release, or — for an expression — every reachable one ──
+    combineLatest([configId$, read$, scopeLoading$, environment$, range$])
       .pipe(
         takeUntil(this.destroy$),
-        switchMap(([configurationId, scope, loading]) =>
-          !scope
-            ? of(loading ? loadingResource<SelectItem[]>([]) : initialResource<SelectItem[]>([]))
-            : this.epistolaPluginService
-                .getTemplates(configurationId, scope.catalogId, scope.read)
-                .pipe(
-                  map((templates) =>
-                    successResource(templates.map((t) => ({ id: t.id, text: t.name }))),
+        switchMap(([configurationId, scope, loading, environment, range]) => {
+          if (!scope) {
+            this.templateReads$.next(new Map());
+            this.templatesTruncated$.next(false);
+            return of(
+              loading ? loadingResource<SelectItem[]>([]) : initialResource<SelectItem[]>([]),
+            );
+          }
+          if (offersTemplatesAcrossReleases(environment, range)) {
+            const reachable = this.designScope$.getValue().data?.versions ?? [];
+            return this.epistolaPluginService
+              .getCatalogTemplates(configurationId, scope.catalogId, environment)
+              .pipe(
+                tap((listed) => {
+                  this.templateReads$.next(new Map(listed.templates.map((t) => [t.id, t.read])));
+                  this.templatesTruncated$.next(listed.truncated);
+                }),
+                map((listed) =>
+                  successResource(
+                    listed.templates.map((t) => ({
+                      id: t.id,
+                      text: this.templateItemLabel(
+                        t.name,
+                        templateReleaseMark(t.releases, reachable),
+                      ),
+                    })),
                   ),
-                  catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load templates'))),
-                  startWith(loadingResource<SelectItem[]>([])),
                 ),
-        ),
+                catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load templates'))),
+                startWith(loadingResource<SelectItem[]>([])),
+              );
+          }
+          this.templateReads$.next(new Map());
+          this.templatesTruncated$.next(false);
+          return this.epistolaPluginService
+            .getTemplates(configurationId, scope.catalogId, scope.read)
+            .pipe(
+              map((templates) =>
+                successResource(templates.map((t) => ({ id: t.id, text: t.name }))),
+              ),
+              catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load templates'))),
+              startWith(loadingResource<SelectItem[]>([])),
+            );
+        }),
       )
       .subscribe((resource) => this.templates$.next(resource));
 
@@ -870,11 +920,64 @@ export class GenerateDocumentConfigurationComponent
     // The template loaders key on catalog and template together. A template id means
     // nothing outside its catalog, and changeCatalog() clears the template before the
     // catalog moves, so no emission pairs a template with a catalog it is not in.
+    // Where the selected template is read from: across releases, the highest release containing
+    // it; otherwise the design scope's release — once the list says the template is in it. A saved
+    // template that release does not have is looked up across releases instead (below), so no
+    // request is made that can only fail with a 404 (ADR 0009, addendum).
     const templateSelection$ = combineLatest([
       configId$,
       read$,
       this.selectedTemplateId$.pipe(distinctUntilChanged()),
-    ]);
+      this.templateReads$,
+      this.templates$,
+    ]).pipe(
+      map(([configurationId, scope, templateId, reads, templates]) => {
+        if (!scope || !templateId) return [configurationId, null, templateId] as const;
+        if (reads.has(templateId)) {
+          return [
+            configurationId,
+            { catalogId: scope.catalogId, read: reads.get(templateId)! },
+            templateId,
+          ] as const;
+        }
+        const listed =
+          !templates.loading && !templates.error && templates.data.some((t) => t.id === templateId);
+        return [configurationId, listed ? scope : null, templateId] as const;
+      }),
+      distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+    );
+
+    // A saved template the design scope's release does not contain: find the highest release that
+    // does, so its fields and mapping stay usable; its notice says it will not render as configured.
+    // Asked on every load of the list, because each load starts from no reads.
+    combineLatest([configId$, read$, this.templates$, environment$, range$])
+      .pipe(
+        takeUntil(this.destroy$),
+        switchMap(([configurationId, scope, templates, environment, range]) => {
+          const templateId = this.selectedTemplateId$.getValue();
+          const notOffered =
+            !templates.loading &&
+            !templates.error &&
+            !templates.data.some((t) => t.id === templateId);
+          if (
+            !scope ||
+            !notOffered ||
+            !templateId ||
+            offersTemplatesAcrossReleases(environment, range)
+          ) {
+            return of(null);
+          }
+          return this.epistolaPluginService
+            .getCatalogTemplates(configurationId, scope.catalogId, environment)
+            .pipe(
+              map((listed) => listed.templates.find((t) => t.id === templateId) ?? null),
+              catchError(() => of(null)),
+            );
+        }),
+      )
+      .subscribe((found) => {
+        if (found) this.templateReads$.next(new Map([[found.id, found.read]]));
+      });
 
     // ── Variants: load when the template selection changes ──
     templateSelection$

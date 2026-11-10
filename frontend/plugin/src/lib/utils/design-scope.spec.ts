@@ -24,7 +24,9 @@ import {
   environmentScopeOf,
   INVALID_RANGE,
   loadDesignScope,
+  offersTemplatesAcrossReleases,
   rangeScopeOf,
+  templateReleaseMark,
 } from './design-scope';
 import { successResource } from '../models';
 
@@ -141,5 +143,41 @@ describe('designHintsOf', () => {
         '1.x.y',
       ),
     ).toEqual({ catalog: [], release: [{ key: 'versionRangeInvalid', problem: true }] });
+  });
+});
+
+describe('templateReleaseMark', () => {
+  const reachable = ['2.1.0', '2.0.0', '1.9.0'];
+
+  it('marks nothing for a template in every reachable release', () => {
+    expect(templateReleaseMark(['2.1.0', '2.0.0', '1.9.0'], reachable)).toBeNull();
+    expect(templateReleaseMark(['draft', '2.1.0', '1.9.0'], reachable)).toBeNull();
+  });
+
+  it('says from which release a newer template exists', () => {
+    expect(templateReleaseMark(['2.1.0', '2.0.0'], reachable)).toEqual({
+      key: 'templateFromRelease',
+      version: '2.0.0',
+    });
+  });
+
+  it('says up to which release a removed template exists', () => {
+    expect(templateReleaseMark(['2.0.0', '1.9.0'], reachable)).toEqual({
+      key: 'templateUntilRelease',
+      version: '2.0.0',
+    });
+  });
+
+  it('says when a template exists only in the draft', () => {
+    expect(templateReleaseMark(['draft'], reachable)).toEqual({ key: 'templateOnlyDraft' });
+  });
+});
+
+describe('offersTemplatesAcrossReleases', () => {
+  it('when the release or the environment is an expression, and only then', () => {
+    expect(offersTemplatesAcrossReleases(undefined, ANY_RANGE)).toBe(true);
+    expect(offersTemplatesAcrossReleases(ANY_ENVIRONMENT, '^1.0.0')).toBe(true);
+    expect(offersTemplatesAcrossReleases('staging', '^1.0.0')).toBe(false);
+    expect(offersTemplatesAcrossReleases(undefined, undefined)).toBe(false);
   });
 });

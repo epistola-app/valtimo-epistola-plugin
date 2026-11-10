@@ -23,6 +23,7 @@ import { Observable, map } from 'rxjs';
 import {
   AttributeDefinition,
   CatalogInfo,
+  CatalogTemplates,
   DesignScope,
   ReadSelection,
   EnvironmentInfo,
@@ -241,6 +242,21 @@ export class EpistolaPluginService {
     return this.http.get<DesignScope>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/design-scope`,
       { params: { ...environmentParams(environment), ...rangeParams(range), catalogId } },
+    );
+  }
+
+  /**
+   * Every template in the releases of a catalog the link can reach, with the releases each is in;
+   * for a link whose release (or environment) is an expression.
+   */
+  getCatalogTemplates(
+    pluginConfigurationId: string,
+    catalogId: string,
+    environment: EnvironmentScope,
+  ): Observable<CatalogTemplates> {
+    return this.http.get<CatalogTemplates>(
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/catalog-templates`,
+      { params: { ...environmentParams(environment), catalogId } },
     );
   }
 

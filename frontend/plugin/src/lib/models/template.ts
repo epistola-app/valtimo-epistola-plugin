@@ -177,3 +177,24 @@ export interface LetterReader {
   processDefinitionName: string;
   activityId: string;
 }
+
+/**
+ * Every template in the releases a link can reach, with the releases each is in, for a link whose
+ * release is an expression (ADR 0009, addendum). Mirrors `CatalogTemplates` on the backend.
+ */
+export interface CatalogTemplates {
+  catalogId: string;
+  templates: CatalogTemplate[];
+  /** True when only the newest releases were read, so a template only in an older one is missing. */
+  truncated: boolean;
+}
+
+export interface CatalogTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  /** The releases that contain it, highest first: `draft` first, then versions. */
+  releases: string[];
+  /** How to read it from the highest of those, for its fields and variants. */
+  read: ReadSelection;
+}

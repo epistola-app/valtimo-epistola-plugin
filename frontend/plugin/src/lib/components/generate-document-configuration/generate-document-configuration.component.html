@@ -168,6 +168,14 @@
     {{ obs.templates.error }}
   </div>
   <div
+    *ngIf="templatesTruncated$ | async"
+    class="version-range-hint"
+    data-testid="epistola-generate-templates-truncated"
+    role="status"
+  >
+    {{ 'templatesTruncated' | pluginTranslate: pluginId | async }}
+  </div>
+  <div
     *ngIf="obs.templateNotOffered"
     class="loading-error"
     data-testid="epistola-generate-template-not-offered"
