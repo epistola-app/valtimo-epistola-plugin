@@ -727,9 +727,10 @@ public class EpistolaAdminService {
                                     + matching.get(0).id() + "'. Select the catalog again in this action to store its full name");
                         }
                         // With no release to read, a template check would only mislead.
+                        // A range only known at run time cannot be checked: the highest release is.
+                        String versionRange = actionConfig.literalVersionRange().orElse(null);
                         if (rangeSatisfied(refCache, configId, catalogId, environmentId,
-                                actionConfig.versionRange(), plugin, problems)) {
-                            String versionRange = actionConfig.versionRange();
+                                versionRange, plugin, problems)) {
                             Optional<Set<String>> templateIds =
                                     refCache.templateIds(configId, catalogId, environmentId, versionRange, plugin);
                             if (templateIds.isPresent()) {

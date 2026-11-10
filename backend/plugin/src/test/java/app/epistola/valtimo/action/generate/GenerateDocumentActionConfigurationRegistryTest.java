@@ -340,34 +340,102 @@ class GenerateDocumentActionConfigurationRegistryTest {
     }
 
     @Test
-    void aVersionRangeIsKeptAsWritten_withoutItsSurroundingWhitespace() {
-        for (int version : List.of(0, 1)) {
-            var config = GenerateDocumentActionConfigurationRegistry.parse(
-                    withVersionRange(properties(version, version == 0 ? "value.pdf" : "\"value.pdf\"", null, null), " ^1.4.0 "));
+    void v0_keepsAVersionRangeAsWritten_withoutItsSurroundingWhitespace() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(0, "value.pdf", null, null), " ^1.4.0 "));
 
-            assertThat(config.versionRange()).as("v" + version).isEqualTo("^1.4.0");
-        }
+        assertThat(config.literalVersionRange()).contains("^1.4.0");
+        assertThat(config.resolveVersionRange(null, null)).isEqualTo("^1.4.0");
+    }
+
+    @Test
+    void v1_aVersionRangeIsJsonata_aFixedOneAStringLiteral() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(1, "\"value.pdf\"", null, null), " \"^1.4.0\" "));
+
+        assertThat(config.literalVersionRange()).contains("^1.4.0");
+        assertThat(config.resolveVersionRange(mappingService(), context(Map.of()))).isEqualTo("^1.4.0");
+    }
+
+    @Test
+    void v1_refusesABareVersionRange_namingTheLiteralToWriteInstead() {
+        // Saved before the range became an expression (1.0.0-alpha.1/beta.1): not JSONata, so not guessed at.
+        var bare = withVersionRange(properties(1, "\"value.pdf\"", null, null), "^1.4.0");
+
+        assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(bare))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("versionRange must contain valid JSONata")
+                .hasMessageContaining("such as \"^1.4.0\"");
     }
 
     @Test
     void aBlankVersionRangeIsNoRange() {
-        var config = GenerateDocumentActionConfigurationRegistry.parse(
-                withVersionRange(properties(1, "\"value.pdf\"", null, null), "  "));
+        for (int version : List.of(0, 1)) {
+            var config = GenerateDocumentActionConfigurationRegistry.parse(
+                    withVersionRange(properties(version, version == 0 ? "value.pdf" : "\"value.pdf\"", null, null), "  "));
 
-        assertThat(config.versionRange()).isNull();
+            assertThat(config.literalVersionRange()).as("v" + version).isEmpty();
+            assertThat(config.resolveVersionRange(mappingService(), context(Map.of()))).as("v" + version).isNull();
+        }
     }
 
     @Test
-    void rejectsAVersionRangeTheContractDoesNotAccept() {
-        // Refused when the action runs, rather than rendering whatever a typo happens to match.
+    void rejectsAVersionRangeTheContractDoesNotAccept_whenItIsALiteral() {
+        // Refused when the link is read, rather than rendering whatever a typo happens to match.
         for (int version : List.of(0, 1)) {
-            var invalid = withVersionRange(properties(version, version == 0 ? "value.pdf" : "\"value.pdf\"", null, null), "latest");
+            var invalid = withVersionRange(
+                    properties(version, version == 0 ? "value.pdf" : "\"value.pdf\"", null, null),
+                    version == 0 ? "1.x.y.z" : "\"1.x.y.z\"");
 
             assertThatThrownBy(() -> GenerateDocumentActionConfigurationRegistry.parse(invalid))
                     .isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("configuration v" + version)
-                    .hasMessageContaining("versionRange: Invalid version range 'latest'");
+                    .hasMessageContaining("versionRange: Invalid version range '1.x.y.z'");
         }
+    }
+
+    @Test
+    void anExpressionRange_isOnlyKnownAtRunTime_andEvaluatesToTheRangeItProduces() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(1, "\"value.pdf\"", null, null), "$pv.briefversie"));
+
+        assertThat(config.literalVersionRange()).isEmpty();
+        assertThat(config.resolveVersionRange(mappingService(), context(Map.of("briefversie", " ^2.0.0 "))))
+                .isEqualTo("^2.0.0");
+    }
+
+    @Test
+    void anExpressionThatProducesNothing_orABlankString_isNoRange() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(1, "\"value.pdf\"", null, null), "$pv.briefversie"));
+
+        assertThat(config.resolveVersionRange(mappingService(), context(Map.of()))).isNull();
+        assertThat(config.resolveVersionRange(mappingService(), context(Map.of("briefversie", " ")))).isNull();
+    }
+
+    @Test
+    void anExpressionThatProducesANumber_isRefused_ratherThanReadAsADifferentRange() {
+        // The bare 1.0 is the number 1, which as a range would mean 1.x rather than 1.0.x.
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(1, "\"value.pdf\"", null, null), "1.0"));
+
+        assertThatThrownBy(() -> config.resolveVersionRange(mappingService(), context(Map.of())))
+                .isInstanceOf(GenerateDocumentExpressionException.class)
+                .hasMessageContaining("field 'versionRange'")
+                .hasMessageContaining("must evaluate to a string such as \"^1.4.0\", not a number");
+    }
+
+    @Test
+    void anExpressionThatProducesWhatIsNotARange_isRefused_withoutRepeatingTheValue() {
+        // The value may come from the case; the field and the expression are what diagnose it.
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(1, "\"value.pdf\"", null, null), "$pv.briefversie"));
+
+        assertThatThrownBy(() -> config.resolveVersionRange(mappingService(), context(Map.of("briefversie", "Jansen"))))
+                .isInstanceOf(GenerateDocumentExpressionException.class)
+                .hasMessageContaining("expression='$pv.briefversie'")
+                .hasMessageContaining("is not a version range")
+                .hasMessageNotContaining("Jansen");
     }
 
     @Test
@@ -376,13 +444,25 @@ class GenerateDocumentActionConfigurationRegistryTest {
                 .put("actionConfigVersion", 1)
                 .put("catalogId", "local/valtimo/brieven")
                 .put("templateId", "besluit")
-                .put("versionRange", "1.9.0")
+                .put("versionRange", "\"1.9.0\"")
                 .put("dataMapping", "{}")
                 .put("outputFormat", "\"PDF\"")
                 .put("filename", "\"besluit.pdf\"")
                 .put("resultProcessVariable", "result");
 
-        assertThat(GenerateDocumentActionConfigurationRegistry.parse(stored).versionRange()).isEqualTo("1.9.0");
+        assertThat(GenerateDocumentActionConfigurationRegistry.parse(stored).literalVersionRange()).contains("1.9.0");
+    }
+
+    private static JsonataMappingService mappingService() {
+        return new JsonataMappingService(new app.epistola.valtimo.expression.ExpressionFunctionRegistry(List.of()));
+    }
+
+    private static EvaluationContext context(Map<String, Object> processVariables) {
+        return EvaluationContext.builder()
+                .operation("execution")
+                .processVariableEnumerator(() -> processVariables)
+                .processVariableResolver(processVariables::get)
+                .build();
     }
 
     private static GenerateDocumentActionProperties withVersionRange(

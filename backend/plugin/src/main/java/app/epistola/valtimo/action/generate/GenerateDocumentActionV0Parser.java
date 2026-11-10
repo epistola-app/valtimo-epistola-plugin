@@ -92,15 +92,15 @@ final class GenerateDocumentActionV0Parser implements GenerateDocumentActionVers
         }
     }
 
-    private String versionRange(String value) {
+    private ConfiguredScalar versionRange(String value) {
         if (value == null || value.isBlank()) {
-            return null;
+            return new LiteralScalar(null);
         }
         String range = value.strip();
         VersionRanges.problem(range).ifPresent(problem -> {
             throw invalid("versionRange: " + problem);
         });
-        return range;
+        return new LiteralScalar(range);
     }
 
     private void requireNonBlank(String value, String message) {

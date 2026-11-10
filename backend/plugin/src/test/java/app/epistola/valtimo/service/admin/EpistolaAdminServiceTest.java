@@ -751,7 +751,7 @@ class EpistolaAdminServiceTest {
         void shouldReportAVersionRangeNoDeployedReleaseSatisfies() {
             ObjectNode props = createActionProps("local/valtimo/cat-1", "tmpl-1");
             props.put("environmentId", "\"productie\"");
-            props.put("versionRange", "^2.0.0");
+            props.put("versionRange", "\"^2.0.0\"");
             singleGenerateDocLink(props);
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, "productie"))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
@@ -769,7 +769,7 @@ class EpistolaAdminServiceTest {
         @Test
         void shouldCheckTheTemplateInTheReleaseTheVersionRangeSelects() {
             ObjectNode props = createActionProps("local/valtimo/cat-1", "tmpl-1");
-            props.put("versionRange", "1.9.0");
+            props.put("versionRange", "\"1.9.0\"");
             singleGenerateDocLink(props);
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
@@ -782,6 +782,24 @@ class EpistolaAdminServiceTest {
 
             assertThat(entries.get(0).problems()).containsExactly(
                     "Template 'tmpl-1' does not exist in catalog 'local/valtimo/cat-1' in the release '1.9.0' selects");
+        }
+
+        @Test
+        void shouldCheckTheTemplateInTheHighestRelease_whenTheVersionRangeIsAnExpression() {
+            // Only known at run time, so the configurator designs against the highest release; so does this check.
+            ObjectNode props = createActionProps("local/valtimo/cat-1", "tmpl-1");
+            props.put("versionRange", "$pv.briefversie");
+            singleGenerateDocLink(props);
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
+                    .thenReturn(List.of(new CatalogInfo("local/valtimo/cat-1", "Catalog", "local", "valtimo", "cat-1", true)));
+            when(epistolaService.getTemplates(BASE_URL, API_KEY, TENANT_ID, "local/valtimo/cat-1", null, null))
+                    .thenReturn(List.of());
+
+            List<PluginUsageEntry> entries = adminService.getPluginUsage();
+
+            assertThat(entries.get(0).problems()).containsExactly(
+                    "Template 'tmpl-1' does not exist in catalog 'local/valtimo/cat-1'");
+            verify(epistolaService, never()).getReleases(any(), any(), any(), any(), any(), any());
         }
 
         @Test

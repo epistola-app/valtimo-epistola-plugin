@@ -57,6 +57,20 @@ public final class GenerateDocumentExpressionException extends RuntimeException 
         return new GenerateDocumentExpressionException(message.toString(), cause);
     }
 
+    /**
+     * An expression that evaluated, but to something its field cannot use. The message names the
+     * field and the expression, not the value it produced, which may come from case data.
+     */
+    public static GenerateDocumentExpressionException invalidResult(
+            int version,
+            String field,
+            String expression,
+            String problem
+    ) {
+        return new GenerateDocumentExpressionException("JSONata for epistola-generate-document v" + version
+                + " field '" + field + "' (expression='" + expressionSnippet(expression) + "') " + problem, null);
+    }
+
     public static String expressionSnippet(String expression) {
         if (expression == null) {
             return "null";

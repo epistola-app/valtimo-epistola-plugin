@@ -83,15 +83,28 @@ final class GenerateDocumentActionV1Parser implements GenerateDocumentActionVers
         }
     }
 
-    private String versionRange(String value) {
+    /**
+     * The version range as JSONata, like the environment (ADR 0009). A bare range saved before it
+     * became an expression is not JSONata and is refused with the literal form to write instead;
+     * a string literal is checked to be a range here, so it fails when saved rather than when run.
+     */
+    private ConfiguredScalar versionRange(String value) {
         if (value == null || value.isBlank()) {
-            return null;
+            return new JsonataScalar(version(), "versionRange", value);
         }
-        String range = value.strip();
-        VersionRanges.problem(range).ifPresent(problem -> {
-            throw invalid("versionRange: " + problem);
-        });
-        return range;
+        try {
+            jsonata(value);
+        } catch (RuntimeException exception) {
+            throw invalid("versionRange must contain valid JSONata; write a fixed range as a string literal, "
+                    + "such as \"" + value.strip() + "\" (expression='"
+                    + GenerateDocumentExpressionException.expressionSnippet(value) + "')", exception);
+        }
+        GenerateDocumentActionConfiguration.stringLiteral(value)
+                .flatMap(VersionRanges::problem)
+                .ifPresent(problem -> {
+                    throw invalid("versionRange: " + problem);
+                });
+        return new JsonataScalar(version(), "versionRange", value);
     }
 
     private void requireNonBlank(String value, String message) {

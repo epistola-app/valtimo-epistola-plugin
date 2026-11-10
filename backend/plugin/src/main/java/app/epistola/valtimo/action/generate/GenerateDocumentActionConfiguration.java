@@ -20,15 +20,21 @@ package app.epistola.valtimo.action.generate;
 import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 
+import app.epistola.valtimo.service.VersionRanges;
+
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * @param versionRange the release of the catalog to render, as a version range
- *                     ({@code app.epistola.valtimo.service.VersionRanges}), or null for the
- *                     environment's draft, else its highest release. Deliberately not an expression:
- *                     the configurator reads the template's fields through it, so it is known when
- *                     the link is configured, as the catalog and template are
+ * @param versionRange the release of the catalog to render, as JSONata evaluating to a version range
+ *                     ({@code app.epistola.valtimo.service.VersionRanges}) — a fixed one is the string
+ *                     literal {@code "^1.4.0"} — or unset for the environment's draft, else its
+ *                     highest release. An expression like the environment: the configurator designs
+ *                     against one release and states which (ADR 0009). Read it through
+ *                     {@link #resolveVersionRange} or {@link #literalVersionRange}
  */
 public record GenerateDocumentActionConfiguration(
         int version,
@@ -37,7 +43,7 @@ public record GenerateDocumentActionConfiguration(
         ConfiguredScalar variantId,
         List<VariantAttribute> variantAttributes,
         ConfiguredScalar environmentId,
-        String versionRange,
+        ConfiguredScalar versionRange,
         String dataMapping,
         ConfiguredScalar outputFormat,
         ConfiguredScalar filename,
@@ -57,6 +63,87 @@ public record GenerateDocumentActionConfiguration(
             throw GenerateDocumentExpressionException.evaluationFailed(
                     version, "dataMapping", dataMapping, context, exception);
         }
+    }
+
+    /**
+     * The version range generation sends, evaluated: null when none is configured or the expression
+     * produces nothing (or a blank string). Refused when it produces anything but a string that is a
+     * range — a number in particular, because the bare {@code 1.0} evaluates to the number 1, which as
+     * a range would mean {@code 1.x} rather than {@code 1.0.x}.
+     */
+    public String resolveVersionRange(JsonataMappingService mappingService, EvaluationContext context) {
+        if (versionRange == null || !versionRange.isConfigured()) {
+            return null;
+        }
+        Object value;
+        if (versionRange instanceof LiteralScalar literal) {
+            value = literal.source();
+        } else {
+            try {
+                value = mappingService.evaluateValue(context.withExpression(versionRange.source()));
+            } catch (RuntimeException exception) {
+                throw GenerateDocumentExpressionException.evaluationFailed(
+                        version, "versionRange", versionRange.source(), context, exception);
+            }
+        }
+        if (value == null) {
+            return null;
+        }
+        if (!(value instanceof String text)) {
+            throw GenerateDocumentExpressionException.invalidResult(version, "versionRange", versionRange.source(),
+                    "must evaluate to a string such as \"^1.4.0\", not a " + typeOf(value));
+        }
+        if (text.isBlank()) {
+            return null;
+        }
+        String range = text.strip();
+        if (VersionRanges.problem(range).isPresent()) {
+            throw GenerateDocumentExpressionException.invalidResult(version, "versionRange", versionRange.source(),
+                    "evaluated to a string that is not a version range");
+        }
+        return range;
+    }
+
+    /**
+     * The version range when it is configured as a string literal, read without evaluating — what a
+     * static check can verify. Empty when none is configured or it is an expression only known at run
+     * time.
+     */
+    public Optional<String> literalVersionRange() {
+        if (versionRange == null || !versionRange.isConfigured()) {
+            return Optional.empty();
+        }
+        if (versionRange instanceof LiteralScalar literal) {
+            return Optional.of(literal.source().strip());
+        }
+        return stringLiteral(versionRange.source());
+    }
+
+    /** What a JSONata string literal holds, when {@code source} is one that a version range can be. */
+    static Optional<String> stringLiteral(String source) {
+        Matcher literal = STRING_LITERAL.matcher(source);
+        return literal.matches() && !literal.group(2).isBlank()
+                ? Optional.of(literal.group(2).strip())
+                : Optional.empty();
+    }
+
+    /** A JSONata string literal without escapes, which a version range never needs. */
+    private static final Pattern STRING_LITERAL = Pattern.compile("^\\s*([\"'])([^\"'\\\\]*)\\1\\s*$");
+
+    private static String typeOf(Object value) {
+        if (value instanceof Number) {
+            return "number";
+        }
+        if (value instanceof Boolean) {
+            return "boolean";
+        }
+        if (value instanceof java.util.List<?>) {
+            return "array";
+        }
+        if (value instanceof Map<?, ?>) {
+            return "object";
+        }
+        return value.getClass().getSimpleName();
     }
 
     public sealed interface ConfiguredScalar permits LiteralScalar, JsonataScalar {

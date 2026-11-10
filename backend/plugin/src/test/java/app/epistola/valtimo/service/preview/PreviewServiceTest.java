@@ -52,6 +52,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -452,13 +453,21 @@ class PreviewServiceTest {
         @Test
         void previewsTheReleaseTheLinksVersionRangeSelects_asGenerationWould() {
             PluginProcessLink processLink = mockFullChain("instance-1", "my-process:1:abc");
-            processLink.getActionProperties().put("versionRange", "~1.9.0");
+            // A v1 action: there the range is JSONata (v0 keeps it a plain range).
+            processLink.getActionProperties()
+                    .put("actionConfigVersion", 1)
+                    .put("outputFormat", "\"PDF\"")
+                    .put("filename", "\"preview.pdf\"")
+                    .put("versionRange", "$pv.briefversie");
 
             when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
                     .thenReturn(new LinkedHashMap<>());
+            when(jsonataMappingService.evaluateValue(argThat(ctx -> "$pv.briefversie".equals(ctx.getExpression()))))
+                    .thenReturn("~1.9.0");
 
             previewService.generatePreview(new PreviewRequest("task-id-test", null, null, null), "doc-123", "instance-1");
 
+            // Evaluated as generation evaluates it, so the preview shows the release that will render.
             verify(epistolaService).previewDocument(
                     anyString(), anyString(), anyString(), anyString(),
                     anyString(), any(), any(), eq("~1.9.0"), any());

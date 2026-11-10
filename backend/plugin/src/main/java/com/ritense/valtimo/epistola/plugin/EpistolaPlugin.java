@@ -401,7 +401,7 @@ public class EpistolaPlugin {
                         resolvedVariantId,
                         resolvedAttributes,
                         effectiveEnvironmentId,
-                        actionConfig.versionRange(),
+                        actionConfig.resolveVersionRange(jsonataMappingService, scalarEvalContext),
                         resolvedData,
                         effectiveOutputFormat,
                         resolvedFilename,

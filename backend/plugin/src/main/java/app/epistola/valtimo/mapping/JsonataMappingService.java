@@ -86,11 +86,26 @@ public class JsonataMappingService {
         if (expression == null || expression.isBlank()) {
             return expression;
         }
+        Object result = evaluateValue(ctx);
+        return result != null ? result.toString() : null;
+    }
 
+    /**
+     * Evaluates an expression to its value as JSONata produced it, without converting it to a
+     * string — for a field that must tell a string from a number, such as a version range, where
+     * the number {@code 1.0} would otherwise read as the range {@code 1}.
+     *
+     * @param ctx the evaluation context with expression and resolvers
+     * @return the result, or null for a blank expression or one that evaluates to nothing
+     */
+    public Object evaluateValue(EvaluationContext ctx) {
+        String expression = ctx.getExpression();
+        if (expression == null || expression.isBlank()) {
+            return null;
+        }
         Jsonata jsonataExpr = jsonata(expression);
         Frame frame = buildFrame(ctx, jsonataExpr);
-        Object result = jsonataExpr.evaluate(Map.of(), frame);
-        return result != null ? result.toString() : null;
+        return jsonataExpr.evaluate(Map.of(), frame);
     }
 
     /**
