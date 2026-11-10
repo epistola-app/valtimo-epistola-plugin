@@ -25,6 +25,7 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
+import org.mockito.kotlin.timeout
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.operaton.bpm.engine.RuntimeService
@@ -190,8 +191,10 @@ class LetterComposerE2ETest {
                 .singleResult()
         runWithoutAuthorization { engineTaskService.complete(task.id) }
 
+        // The generate step is asyncBefore — a refusal raises an incident only from a job of its own
+        // (ADR 0009, third addendum) — so it runs once the job executor picks it up, not inside complete().
         val dataCaptor = argumentCaptor<Map<String, Any>>()
-        verify(epistolaService).submitGenerationJob(
+        verify(epistolaService, timeout(20_000)).submitGenerationJob(
             any(),
             any(),
             any(),
