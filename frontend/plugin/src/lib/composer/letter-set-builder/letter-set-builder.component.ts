@@ -41,7 +41,9 @@ import {
   environmentScopeOf,
   loadDesignScope,
   NO_DESIGN_SCOPE,
+  offersTemplatesAcrossReleases,
   rangeScopeOf,
+  templateReleaseMark,
 } from '../../utils/design-scope';
 import {
   decodeJsonataStringLiteral,
@@ -269,6 +271,13 @@ export interface LetterSet {
       <label class="field-label">{{
         'letterSetLetters' | pluginTranslate: pluginId | async
       }}</label>
+      <div
+        *ngIf="templatesTruncated && !loadingTemplates"
+        class="field-note"
+        data-testid="epistola-letter-set-templates-truncated"
+      >
+        {{ 'templatesTruncated' | pluginTranslate: pluginId | async }}
+      </div>
       <div *ngIf="loadingTemplates" class="field-note">
         {{ 'letterSetLoadingTemplates' | pluginTranslate: pluginId | async }}
       </div>
@@ -293,7 +302,15 @@ export interface LetterSet {
                   [disabled]="disabled"
                 />
               </td>
-              <td class="letter-name">{{ template.name || template.id }}</td>
+              <td class="letter-name">
+                {{ template.name || template.id }}
+                <span
+                  *ngIf="templateMarks.get(template.id) as mark"
+                  class="letter-mark"
+                  [attr.data-testid]="'epistola-letter-set-mark-' + template.id"
+                  >· {{ mark }}</span
+                >
+              </td>
               <td class="letter-label">
                 <input
                   type="text"
@@ -460,6 +477,10 @@ export interface LetterSet {
         display: inline-flex;
         gap: 0.25rem;
         align-items: center;
+        white-space: nowrap;
+      }
+      .letter-mark {
+        color: var(--cds-text-secondary, #525252);
         white-space: nowrap;
       }
       .field-expression {
@@ -680,6 +701,8 @@ export class EpistolaLetterSetBuilderComponent
   loadingEnvironments = false;
   /** The set's catalog's released versions, offered as suggestions for a range. */
   releaseVersions: string[] = [];
+  /** True when the letters span releases and only the newest of them were read. */
+  templatesTruncated = false;
   /** What the catalog and range fields say about the release the letters are read from. */
   designHints: DesignHints = { catalog: [], release: [] };
   private catalogsLoaded = false;
@@ -1173,30 +1196,82 @@ export class EpistolaLetterSetBuilderComponent
           this.cdr.markForCheck();
           return of(null);
         }
-        return this.composerApi
-          .getTemplates(scope.configurationId, state.data.catalogId, state.data.read)
-          .pipe(
-            map((templates) => {
-              this.templates = templates;
-              this.templatesLoaded = true;
-              this.loadingTemplates = false;
-              this.cdr.markForCheck();
-              return templates;
-            }),
-            catchError(() => {
-              this.templates = [];
-              this.loadingTemplates = false;
-              this.templatesLoaded = false;
-              this.error = this.pluginTranslationService.instant(
-                'letterSetTemplatesFailed',
-                this.pluginId,
+        const environment = environmentScopeOf(scope.environmentId);
+        const reachable = state.data.versions;
+        // An expression may render any release the set reaches: offer every letter in them,
+        // marked with where it exists (ADR 0009, addendum). Otherwise the one release that renders.
+        const listed$: Observable<TemplateInfo[]> = offersTemplatesAcrossReleases(
+          environment,
+          rangeScopeOf(scope.versionRange),
+        )
+          ? this.composerApi
+              .getCatalogTemplates(scope.configurationId, state.data.catalogId, environment)
+              .pipe(
+                tap((across) => {
+                  this.templatesTruncated = across.truncated;
+                  this.templateMarks = new Map(
+                    across.templates
+                      .map(
+                        (t) =>
+                          [
+                            t.id,
+                            this.markText(templateReleaseMark(t.releases, reachable)),
+                          ] as const,
+                      )
+                      .filter(([, mark]) => !!mark) as [string, string][],
+                  );
+                }),
+                map((across) =>
+                  across.templates.map((template) => ({
+                    id: template.id,
+                    name: template.name,
+                    description: template.description ?? undefined,
+                    catalogId: across.catalogId,
+                  })),
+                ),
+              )
+          : this.composerApi
+              .getTemplates(scope.configurationId, state.data.catalogId, state.data.read)
+              .pipe(
+                tap(() => {
+                  this.templatesTruncated = false;
+                  this.templateMarks = new Map();
+                }),
               );
-              this.cdr.markForCheck();
-              return of(null);
-            }),
-          );
+        return listed$.pipe(
+          map((templates) => {
+            this.templates = templates;
+            this.templatesLoaded = true;
+            this.loadingTemplates = false;
+            this.cdr.markForCheck();
+            return templates;
+          }),
+          catchError(() => {
+            this.templates = [];
+            this.loadingTemplates = false;
+            this.templatesLoaded = false;
+            this.error = this.pluginTranslationService.instant(
+              'letterSetTemplatesFailed',
+              this.pluginId,
+            );
+            this.cdr.markForCheck();
+            return of(null);
+          }),
+        );
       }),
     );
+  }
+
+  /**
+   * Where a letter exists, when the list spans releases and it is not in every one: shown beside its
+   * name, never put into it, because the name is also the label a ticked letter starts with.
+   */
+  templateMarks = new Map<string, string>();
+
+  private markText(mark: { key: string; version?: string } | null): string {
+    if (!mark) return '';
+    const word = this.pluginTranslationService.instant(mark.key, this.pluginId);
+    return `${word}${mark.version ? ' ' + mark.version : ''}`;
   }
 
   private applyDesignScope(state: DesignScopeState, scope: TemplateScope | null): void {

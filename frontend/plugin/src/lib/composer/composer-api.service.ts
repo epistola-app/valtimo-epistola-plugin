@@ -22,6 +22,7 @@ import { Observable } from 'rxjs';
 import { ConfigService } from '@valtimo/shared';
 import {
   CatalogInfo,
+  CatalogTemplates,
   DesignScope,
   ReadSelection,
   EnvironmentInfo,
@@ -215,6 +216,22 @@ export class EpistolaComposerApiService {
     read: ReadSelection,
   ): Observable<TemplateInfo[]> {
     return this.epistolaPluginService.getTemplates(pluginConfigurationId, catalogId, read);
+  }
+
+  /**
+   * Every template in the releases a letter set can reach, with the releases each is in; for a set
+   * whose release or environment is an expression.
+   */
+  getCatalogTemplates(
+    pluginConfigurationId: string,
+    catalogId: string,
+    environment: EnvironmentScope,
+  ): Observable<CatalogTemplates> {
+    return this.epistolaPluginService.getCatalogTemplates(
+      pluginConfigurationId,
+      catalogId,
+      environment,
+    );
   }
 
   /** The environments a letter set may render in. */

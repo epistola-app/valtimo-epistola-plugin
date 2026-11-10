@@ -90,6 +90,36 @@ describe('EpistolaLetterSetBuilderComponent', () => {
           read: { environmentId: environment, versionRange: version },
         });
       }),
+      // Across releases: besluit everywhere, herinnering only up to 2.0.0, nieuw only from 2.1.0.
+      getCatalogTemplates: jest.fn((_c: string, catalog: string) =>
+        of({
+          catalogId: catalog,
+          truncated: false,
+          templates: [
+            {
+              id: 'besluit',
+              name: 'Besluit op bezwaar',
+              description: null,
+              releases: ['2.1.0', '2.0.0'],
+              read: read(),
+            },
+            {
+              id: 'herinnering',
+              name: 'Herinnering',
+              description: null,
+              releases: ['2.0.0'],
+              read: read(null, '2.0.0'),
+            },
+            {
+              id: 'nieuw',
+              name: 'Nieuwe brief',
+              description: null,
+              releases: ['2.1.0'],
+              read: read(),
+            },
+          ],
+        }),
+      ),
       ...overrides,
     };
     const cdr = { markForCheck: jest.fn() };
@@ -705,6 +735,57 @@ describe('EpistolaLetterSetBuilderComponent', () => {
       // A literal survives the switch back; an expression has no range to show and is cleared.
       component.toggleSetRangeExpression(false);
       expect(component.value).not.toHaveProperty('versionRange');
+    });
+
+    it('lists every reachable letter for an expression range, marked beside its name, labelled without it', () => {
+      const { component, service } = createComponent(saved());
+      component.ngOnChanges();
+
+      component.toggleSetRangeExpression(true);
+      component.onVersionRangeChange('$pv.briefversie');
+
+      expect(service.getCatalogTemplates).toHaveBeenLastCalledWith(
+        'config-1',
+        'local/valtimo/gemeente',
+        undefined,
+      );
+      expect(component.templates.map((template) => template.id)).toEqual([
+        'besluit',
+        'herinnering',
+        'nieuw',
+      ]);
+      expect(component.templateMarks.get('besluit')).toBeUndefined();
+      expect(component.templateMarks.get('herinnering')).toBe('templateUntilRelease 2.0.0');
+      expect(component.templateMarks.get('nieuw')).toBe('templateFromRelease 2.1.0');
+
+      component.toggleTemplate('herinnering', true);
+      expect(component.value?.templates).toContainEqual({
+        templateId: 'herinnering',
+        label: 'Herinnering',
+      });
+    });
+
+    it('does not call a letter missing that only an older reachable release has', () => {
+      const { component } = createComponent({
+        ...saved(),
+        versionRange: '$pv.briefversie',
+        templates: [{ templateId: 'herinnering' }, { templateId: 'verdwenen' }],
+      });
+      component.ngOnChanges();
+
+      expect(component.missingTemplates.map((template) => template.templateId)).toEqual([
+        'verdwenen',
+      ]);
+    });
+
+    it('lists the one release that renders for a literal range, without marks', () => {
+      const { component, service } = createComponent(saved());
+      component.ngOnChanges();
+
+      component.onVersionRangeChange('^2.0.0');
+
+      expect(service.getCatalogTemplates).not.toHaveBeenCalled();
+      expect(component.templateMarks.size).toBe(0);
     });
 
     it('lets the range hint explain a range no release satisfies, not a failed catalog read', () => {

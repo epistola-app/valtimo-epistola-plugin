@@ -25,6 +25,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   environment can be an expression too. The result must be a string that is a version range; a
   number is refused rather than read as another range (`1.0` would mean `1.x`).
   ([ADR 0009](docs/adr/0009-environment-and-release-as-expressions.md))
+- **Templates across releases, for an expression.** When a generate link's or letter set's release
+  (or environment) is an expression, any release it reaches may render, so the configurator and the
+  letter-set builder list every template in those releases, marked with where it exists ("vanaf
+  2.0.0", "t/m 1.9.0", "alleen concept"), and read a chosen template's fields from the highest release
+  containing it. A saved template the selected release lacks is read from a release that has it
+  instead of failing with generic load errors. Uses `listCatalogTemplates` when the Suite offers it,
+  else one cached listing per release (at most the newest 25).
 - **The configurators say which release they design against.** "Template and fields come from
   release 2.1.0", the deployed draft, or the newest draft; and when the environment or release is
   an expression, that this is the highest release and an assumption.
