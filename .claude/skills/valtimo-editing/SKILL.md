@@ -1,16 +1,16 @@
 ---
-name: valtimo-sandbox
+name: valtimo-editing
 description: Create, tweak and remove example cases (dossiers) in a running Valtimo test-app (local or a deployed environment such as the demo) — document schema, BPMN, forms, process links (including Epistola actions) — over Valtimo's REST API with the `vt` helper script. Use when the user wants to quickly try out a case, form, process or process-link configuration, copy an existing demo case to experiment on, make a small change to a case's form/BPMN/link without restarting, or clean up such experiments.
 ---
 
-# Valtimo sandbox
+# Valtimo editing
 
 Drive a running Valtimo test-app — local or deployed, such as the demo — to build throwaway example cases. Everything goes
 through `vt` (next to this file), a bash wrapper around Valtimo's own management REST API — the same
 endpoints the admin UI uses. Nothing is added to the backend.
 
 ```bash
-VT=.claude/skills/valtimo-sandbox/vt
+VT=.claude/skills/valtimo-editing/vt
 $VT help
 ```
 
