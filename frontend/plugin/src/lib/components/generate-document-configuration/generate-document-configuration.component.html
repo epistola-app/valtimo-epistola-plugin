@@ -10,13 +10,13 @@
     templates: templates$ | async,
     templateItems: templateItems$ | async,
     templateNotOffered: templateNotOffered$ | async,
-    releaseVersions: releaseVersions$ | async,
-    releaseHint: releaseHint$ | async,
     variants: variants$ | async,
     environments: environments$ | async,
     templateFields: templateFields$ | async,
     selectedCatalogId: selectedCatalogId$ | async,
-    catalogNotOffered: catalogNotOffered$ | async,
+    designHints: designHints$ | async,
+    designScopeError: designScopeError$ | async,
+    releaseOptions: releaseOptions$ | async,
     selectedTemplateId: selectedTemplateId$ | async,
     validationErrors: validationErrors$ | async,
     configurationVersionError: configurationVersionError$ | async,
@@ -53,6 +53,29 @@
       </li>
     </ul>
   </div>
+  <epistola-smart-expression-editor
+    [expression]="environmentIdExpression"
+    [contextVariables]="editorContextVariables"
+    [functions]="expressionFunctions"
+    [selectOptions]="obs.environments.data"
+    [selectLoading]="obs.environments.loading"
+    [title]="'environmentId' | pluginTranslate: pluginId | async"
+    [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
+    [placeholder]="'$pv.environmentId'"
+    [allowTypedValues]="false"
+    [disabled]="obs.disabled || obs.environments.loading"
+    testId="epistola-generate-environment-id"
+    (expressionChange)="onEnvironmentIdExpressionChange($event)"
+    (validChange)="onExpressionValidityChange('environmentId', $event)"
+  ></epistola-smart-expression-editor>
+  <div
+    *ngIf="obs.environments.error"
+    class="loading-error"
+    data-testid="epistola-generate-environment-error"
+  >
+    {{ obs.environments.error }}
+  </div>
+
   <v-select
     name="catalogId"
     data-testid="epistola-generate-catalog-id"
@@ -76,12 +99,19 @@
     {{ obs.catalogs.error }}
   </div>
   <div
-    *ngIf="obs.catalogNotOffered"
+    *ngFor="let hint of obs.designHints?.catalog"
     class="loading-error"
-    data-testid="epistola-generate-catalog-not-offered"
+    data-testid="epistola-generate-catalog-warning"
     role="status"
   >
-    {{ 'catalogNotOffered' | pluginTranslate: pluginId | async }}
+    {{ hint.key | pluginTranslate: pluginId | async }}
+  </div>
+  <div
+    *ngIf="obs.designScopeError"
+    class="loading-error"
+    data-testid="epistola-generate-design-scope-error"
+  >
+    {{ obs.designScopeError }}
   </div>
 
   <div
@@ -89,30 +119,21 @@
     class="version-range"
     data-testid="epistola-generate-version-range"
   >
-    <label class="version-range-label" for="epistola-generate-version-range-input">{{
-      'versionRange' | pluginTranslate: pluginId | async
-    }}</label>
-    <p class="version-range-help">
-      {{ 'versionRangeTooltip' | pluginTranslate: pluginId | async }}
-    </p>
-    <input
-      id="epistola-generate-version-range-input"
-      type="text"
-      class="version-range-input"
-      data-testid="epistola-generate-version-range-input"
-      list="epistola-generate-version-range-releases"
-      autocomplete="off"
-      [value]="versionRange"
+    <epistola-smart-expression-editor
+      [expression]="versionRangeExpression"
+      [contextVariables]="editorContextVariables"
+      [functions]="expressionFunctions"
+      [selectOptions]="obs.releaseOptions"
+      [title]="'versionRange' | pluginTranslate: pluginId | async"
+      [tooltip]="'versionRangeTooltip' | pluginTranslate: pluginId | async"
       [placeholder]="'versionRangePlaceholder' | pluginTranslate: pluginId | async"
       [disabled]="obs.disabled"
-      (input)="onVersionRangeChange($any($event.target).value)"
-    />
-    <!-- The catalog's released versions, offered to pin one; a range is typed. -->
-    <datalist id="epistola-generate-version-range-releases">
-      <option *ngFor="let version of obs.releaseVersions" [value]="version"></option>
-    </datalist>
+      testId="epistola-generate-version-range-input"
+      (expressionChange)="onVersionRangeExpressionChange($event)"
+      (validChange)="onExpressionValidityChange('versionRangeSyntax', $event)"
+    ></epistola-smart-expression-editor>
     <div
-      *ngIf="obs.releaseHint as hint"
+      *ngFor="let hint of obs.designHints?.release"
       class="version-range-hint"
       [class.version-range-problem]="hint.problem"
       data-testid="epistola-generate-version-range-hint"
@@ -314,29 +335,6 @@
     >
       + {{ 'addAttribute' | pluginTranslate: pluginId | async }}
     </button>
-  </div>
-
-  <epistola-smart-expression-editor
-    [expression]="environmentIdExpression"
-    [contextVariables]="editorContextVariables"
-    [functions]="expressionFunctions"
-    [selectOptions]="obs.environments.data"
-    [selectLoading]="obs.environments.loading"
-    [title]="'environmentId' | pluginTranslate: pluginId | async"
-    [tooltip]="'environmentIdTooltip' | pluginTranslate: pluginId | async"
-    [placeholder]="'$pv.environmentId'"
-    [allowTypedValues]="false"
-    [disabled]="obs.disabled || obs.environments.loading"
-    testId="epistola-generate-environment-id"
-    (expressionChange)="onEnvironmentIdExpressionChange($event)"
-    (validChange)="onExpressionValidityChange('environmentId', $event)"
-  ></epistola-smart-expression-editor>
-  <div
-    *ngIf="obs.environments.error"
-    class="loading-error"
-    data-testid="epistola-generate-environment-error"
-  >
-    {{ obs.environments.error }}
   </div>
 
   <epistola-smart-expression-editor

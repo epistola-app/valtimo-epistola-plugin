@@ -31,7 +31,7 @@ const baseInput = () => ({
   filenameExpression: '"letter.pdf"',
   correlationIdExpression: 'customer.id',
   environmentExpression: '"production"',
-  versionRange: '',
+  versionRangeExpression: '',
   variantSelectionMode: 'explicit' as const,
   variantExpression: '"formal"',
   variantAttributes: [],
@@ -55,11 +55,11 @@ describe('generate-document editor adapter', () => {
 
   it('stores the version range as plain text, trimmed, and leaves it out when blank', () => {
     expect(
-      buildGenerateDocumentConfig({ ...baseInput(), versionRange: ' ^1.4.0 ' }),
-    ).toHaveProperty('versionRange', '^1.4.0');
-    expect(buildGenerateDocumentConfig({ ...baseInput(), versionRange: '  ' }).versionRange).toBe(
-      undefined,
-    );
+      buildGenerateDocumentConfig({ ...baseInput(), versionRangeExpression: ' "^1.4.0" ' }),
+    ).toHaveProperty('versionRange', '"^1.4.0"');
+    expect(
+      buildGenerateDocumentConfig({ ...baseInput(), versionRangeExpression: '  ' }).versionRange,
+    ).toBe(undefined);
   });
 
   it('serializes attribute selection without leaking editor state', () => {

@@ -23,7 +23,8 @@ import { Observable, map } from 'rxjs';
 import {
   AttributeDefinition,
   CatalogInfo,
-  CatalogReleases,
+  DesignScope,
+  ReadSelection,
   EnvironmentInfo,
   ExpressionFunctionInfo,
   JsonataValidationResult,
@@ -35,6 +36,10 @@ import {
   VariableSuggestions,
   VariantInfo,
 } from '../models';
+import { ANY_ENVIRONMENT, ANY_RANGE, EnvironmentScope, RangeScope } from './release-scope';
+
+export { ANY_ENVIRONMENT, ANY_RANGE } from './release-scope';
+export type { EnvironmentScope, RangeScope } from './release-scope';
 
 /**
  * Body of a {@link EpistolaPluginService.previewToBlob} call. Mirrors the
@@ -88,33 +93,28 @@ export interface DownloadDocumentRequest {
  * Provides methods to fetch templates, environments, variants,
  * process variables, and validate mappings.
  */
-/**
- * The environment a configurator's lookups are narrowed to: what generation in it renders.
- * `undefined` defers to the plugin configuration's default environment (the server applies it), a
- * key names one, and {@link ANY_ENVIRONMENT} says the link's environment is an expression only
- * known at run time, so nothing is narrowed.
- */
-export type EnvironmentScope = string | typeof ANY_ENVIRONMENT | undefined;
-
-/** No single environment applies: every catalog of the tenant, read from its highest release. */
-export const ANY_ENVIRONMENT = Symbol('anyEnvironment');
-
 function environmentParams(environment: EnvironmentScope): Record<string, string> {
   if (environment === ANY_ENVIRONMENT) return { anyEnvironment: 'true' };
   return environment ? { environmentId: environment } : {};
 }
 
+function rangeParams(range: RangeScope): Record<string, string> {
+  if (range === ANY_RANGE) return { anyRange: 'true' };
+  const trimmed = range?.trim();
+  return trimmed ? { versionRange: trimmed } : {};
+}
+
 /**
- * Where a configurator reads a catalog's content from: the environment the link generates in and
- * the link's version range, which selects a release of what that environment serves.
+ * A design scope's selection as a lookup sends it. A catalog-wide read must say so: sent without
+ * an environment, the server would put the configuration's default environment in its place, which
+ * is exactly where the catalog may not be deployed.
  */
-function releaseParams(
-  environment: EnvironmentScope,
-  versionRange?: string,
-): Record<string, string> {
-  const params = environmentParams(environment);
-  const range = versionRange?.trim();
-  return range ? { ...params, versionRange: range } : params;
+function readParams(read: ReadSelection): Record<string, string> {
+  const params: Record<string, string> = read.environmentId
+    ? { environmentId: read.environmentId }
+    : { anyEnvironment: 'true' };
+  if (read.versionRange) params['versionRange'] = read.versionRange;
+  return params;
 }
 
 @Injectable()
@@ -144,7 +144,8 @@ export class EpistolaPluginService {
   }
 
   /**
-   * Get all available catalogs for a plugin configuration.
+   * Every catalog of a plugin configuration's tenant, each marked whether it is deployed to the
+   * environment (`deployedToEnvironment`); not narrowed to it.
    */
   getCatalogs(
     pluginConfigurationId: string,
@@ -161,12 +162,10 @@ export class EpistolaPluginService {
    */
   getTemplates(
     pluginConfigurationId: string,
-    catalogId?: string,
-    environment?: EnvironmentScope,
-    versionRange?: string,
+    catalogId: string,
+    read: ReadSelection,
   ): Observable<TemplateInfo[]> {
-    const params: Record<string, string> = releaseParams(environment, versionRange);
-    if (catalogId) params['catalogId'] = catalogId;
+    const params: Record<string, string> = { ...readParams(read), catalogId };
     return this.http.get<TemplateInfo[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates`,
       { params },
@@ -180,12 +179,11 @@ export class EpistolaPluginService {
     pluginConfigurationId: string,
     templateId: string,
     catalogId: string,
-    environment?: EnvironmentScope,
-    versionRange?: string,
+    read: ReadSelection,
   ): Observable<TemplateDetails> {
     return this.http.get<TemplateDetails>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}`,
-      { params: { ...releaseParams(environment, versionRange), catalogId } },
+      { params: { ...readParams(read), catalogId } },
     );
   }
 
@@ -195,11 +193,9 @@ export class EpistolaPluginService {
   getAttributes(
     pluginConfigurationId: string,
     catalogId: string,
-    environment?: EnvironmentScope,
-    versionRange?: string,
+    read: ReadSelection,
   ): Observable<AttributeDefinition[]> {
-    const params: Record<string, string> = releaseParams(environment, versionRange);
-    if (catalogId) params['catalogId'] = catalogId;
+    const params: Record<string, string> = { ...readParams(read), catalogId };
     return this.http.get<AttributeDefinition[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/attributes`,
       { params },
@@ -222,11 +218,9 @@ export class EpistolaPluginService {
     pluginConfigurationId: string,
     templateId: string,
     catalogId: string,
-    environment?: EnvironmentScope,
-    versionRange?: string,
+    read: ReadSelection,
   ): Observable<VariantInfo[]> {
-    const params: Record<string, string> = releaseParams(environment, versionRange);
-    if (catalogId) params['catalogId'] = catalogId;
+    const params: Record<string, string> = { ...readParams(read), catalogId };
     return this.http.get<VariantInfo[]>(
       `${this.apiEndpoint}/configurations/${pluginConfigurationId}/templates/${templateId}/variants`,
       { params },
@@ -234,18 +228,19 @@ export class EpistolaPluginService {
   }
 
   /**
-   * The released versions of a catalog a process link may pin, and the one its range selects.
-   * Answers 400 when the range is not one.
+   * The release a configurator designs a link against, resolved once: every further lookup sends
+   * its `read`. Falls back where the link would render nothing and says why in `problems`; answers
+   * 400 when a literal range is not one (ADR 0009).
    */
-  getReleases(
+  getDesignScope(
     pluginConfigurationId: string,
     catalogId: string,
-    environment?: EnvironmentScope,
-    versionRange?: string,
-  ): Observable<CatalogReleases> {
-    return this.http.get<CatalogReleases>(
-      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/releases`,
-      { params: { ...releaseParams(environment, versionRange), catalogId } },
+    environment: EnvironmentScope,
+    range: RangeScope,
+  ): Observable<DesignScope> {
+    return this.http.get<DesignScope>(
+      `${this.apiEndpoint}/configurations/${pluginConfigurationId}/design-scope`,
+      { params: { ...environmentParams(environment), ...rangeParams(range), catalogId } },
     );
   }
 

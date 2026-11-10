@@ -33,6 +33,7 @@ import {
   FunctionConfigurationData,
   PluginConfigurationData,
   PluginTranslatePipeModule,
+  PluginTranslationService,
 } from '@valtimo/plugin';
 import { FormModule, FormOutput, InputModule, SelectItem, SelectModule } from '@valtimo/components';
 import { CaseManagementParams, ManagementContext } from '@valtimo/shared';
@@ -64,7 +65,6 @@ import {
 import {
   AsyncResource,
   CatalogInfo,
-  CatalogReleases,
   errorResource,
   ExpressionFunctionInfo,
   GenerateDocumentConfig,
@@ -84,14 +84,21 @@ import { isBuilderCompatible } from '../../utils/jsonata-converter';
 import { catalogLabel, matchCatalogId, sortCatalogs } from '../../utils/catalog-ref';
 import { decodeJsonataStringLiteral } from '../../utils/jsonata-literal';
 import {
+  DesignHints,
+  DesignScopeState,
   INVALID_RANGE,
-  loadReleases,
-  noReleases,
-  ReleaseHint,
-  releaseHintOf,
-  ReleasesState,
-} from '../../utils/release-hint';
-import { ANY_ENVIRONMENT, EnvironmentScope, EpistolaPluginService } from '../../services';
+  NO_DESIGN_SCOPE,
+  designHintsOf,
+  environmentScopeOf,
+  loadDesignScope,
+  rangeScopeOf,
+} from '../../utils/design-scope';
+import {
+  ANY_ENVIRONMENT,
+  EnvironmentScope,
+  EpistolaPluginService,
+  RangeScope,
+} from '../../services';
 import { JsonataEditorComponent } from '../jsonata-editor/jsonata-editor.component';
 import { ExpectedStructureComponent } from '../expected-structure/expected-structure.component';
 import { MappingBuilderComponent } from '../mapping-builder/mapping-builder.component';
@@ -168,10 +175,12 @@ export class GenerateDocumentConfigurationComponent
   /** The catalog to show as selected: the prefilled reference, matched to the listed catalogs. */
   prefillCatalogId$!: Observable<string | null>;
   /**
-   * The environment the link generates in, which narrows what is offered: the catalogs deployed
-   * there, read from the release it serves. Follows the environment field (see `environmentScopeOf`).
+   * The environment the link generates in, which scopes what is read: the release it renders, and
+   * which catalogs are marked as deployed there. Follows the environment field (`environmentScopeOf`).
    */
   readonly environmentScope$ = new BehaviorSubject<EnvironmentScope>(undefined);
+  /** The release range the link renders, following the release field (`rangeScopeOf`). */
+  readonly rangeScope$ = new BehaviorSubject<RangeScope>(undefined);
   templates$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   variants$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
   environments$ = new BehaviorSubject<AsyncResource<SelectItem[]>>(initialResource([]));
@@ -189,14 +198,11 @@ export class GenerateDocumentConfigurationComponent
   readonly selectedTemplateId$ = new BehaviorSubject<string>('');
 
   /**
-   * The catalogs the select lists: those offered, plus the selected one when it is not among them.
-   * `v-select` clears a value its items no longer hold, and the form would take that for the
-   * author clearing the catalog — wiping the template with it — when only the environment changed.
-   * Kept listed (by its reference), it stays selected, and `catalogNotOffered$` says why it is odd.
+   * The catalogs the select lists: every catalog of the tenant (ADR 0009), plus the selected one
+   * while the list reloads. `v-select` clears a value its items no longer hold, and the form would
+   * take that for the author clearing the catalog — wiping the template with it.
    */
   readonly catalogItems$ = keepingSelected(this.catalogs$, this.selectedCatalogId$);
-  /** True when the selected catalog is not among those offered, e.g. not deployed to the environment. */
-  readonly catalogNotOffered$ = notOffered(this.selectedCatalogId$, this.catalogs$);
 
   /**
    * The templates the select lists, keeping the selected one for the same reason as the catalogs:
@@ -208,21 +214,31 @@ export class GenerateDocumentConfigurationComponent
   readonly templateNotOffered$ = notOffered(this.selectedTemplateId$, this.templates$);
 
   /**
-   * The link's version range as typed: the release of the catalog it renders, `1.4.0` to pin one or
-   * `^1.4.0` for the highest that satisfies it. Blank is none. Templates, attributes, variants and
-   * fields are read from the release it selects (see `initCascade`).
+   * The link's version range, as JSONata like the environment (ADR 0009): `"1.4.0"` pins a release,
+   * `"^1.4.0"` takes the highest that satisfies it, an expression is known at run time. Blank is
+   * none.
    */
-  versionRange = '';
-  private readonly versionRange$ = new BehaviorSubject<string>('');
-  /** The catalog's releases and the one the range selects, for the range field's suggestions and hint. */
-  readonly releases$ = new BehaviorSubject<ReleasesState>({
-    range: '',
-    resource: initialResource(null),
-  });
-  readonly releaseVersions$: Observable<string[]> = this.releases$.pipe(
-    map((state) => state.resource.data?.versions ?? []),
+  versionRangeExpression = '';
+  /**
+   * The release the configurator designs against, resolved once per catalog, environment and
+   * range; templates, attributes, variants and fields are all read through its `read` selection
+   * (see `initCascade`), so they come from the same release by construction.
+   */
+  readonly designScope$ = new BehaviorSubject<DesignScopeState>(NO_DESIGN_SCOPE);
+  /** The catalog's releases, offered as the release field's options. */
+  readonly releaseOptions$: Observable<SelectItem[]> = this.designScope$.pipe(
+    map((state) => (state.data?.versions ?? []).map((version) => ({ id: version, text: version }))),
   );
-  readonly releaseHint$: Observable<ReleaseHint | null> = this.releases$.pipe(map(releaseHintOf));
+  /** What the catalog and release fields say about the scope: its problems, and what it is based on. */
+  readonly designHints$: Observable<DesignHints> = combineLatest([
+    this.designScope$,
+    this.environmentScope$,
+    this.rangeScope$,
+  ]).pipe(map(([state, environment, range]) => designHintsOf(state, environment, range)));
+  /** A failure to resolve the scope other than an invalid range, e.g. a catalog that is gone. */
+  readonly designScopeError$: Observable<string | null> = this.designScope$.pipe(
+    map((state) => (state.error && state.error !== INVALID_RANGE ? state.error : null)),
+  );
 
   /**
    * Force-clears the templateId v-select. Triggered when the catalog changes —
@@ -281,6 +297,7 @@ export class GenerateDocumentConfigurationComponent
     private readonly epistolaPluginService: EpistolaPluginService,
     private readonly processLinkStateService: ProcessLinkStateService,
     private readonly cdr: ChangeDetectorRef,
+    private readonly pluginTranslationService: PluginTranslationService,
   ) {}
 
   ngOnInit(): void {
@@ -450,9 +467,18 @@ export class GenerateDocumentConfigurationComponent
     this.revalidate();
   }
 
-  onVersionRangeChange(value: string): void {
-    this.versionRange = value;
-    this.versionRange$.next(value);
+  /** A catalog as the select lists it: marked when the link's environment does not serve it. */
+  private catalogItemLabel(catalog: CatalogInfo): string {
+    const label = catalogLabel(catalog);
+    return catalog.deployedToEnvironment === false
+      ? `${label} — ${this.pluginTranslationService.instant('catalogNotDeployedMark', this.pluginId)}`
+      : label;
+  }
+
+  onVersionRangeExpressionChange(value: string): void {
+    this.versionRangeExpression = value;
+    this.rangeScope$.next(rangeScopeOf(value));
+    this.revalidate();
   }
 
   onCorrelationIdExpressionChange(value: string): void {
@@ -570,8 +596,8 @@ export class GenerateDocumentConfigurationComponent
     this.prefill$.pipe(takeUntil(this.destroy$), take(1)).subscribe((config) => {
       this.environmentIdExpression = config?.environmentId || '';
       this.environmentScope$.next(environmentScopeOf(this.environmentIdExpression));
-      this.versionRange = config?.versionRange || '';
-      this.versionRange$.next(this.versionRange);
+      this.versionRangeExpression = config?.versionRange || '';
+      this.rangeScope$.next(rangeScopeOf(this.versionRangeExpression));
       this.cdr.markForCheck();
     });
   }
@@ -697,14 +723,11 @@ export class GenerateDocumentConfigurationComponent
       this.environmentScope$.pipe(take(1)),
       this.environmentScope$.pipe(skip(1), debounceTime(250)),
     ).pipe(distinctUntilChanged());
-    // Likewise for the version range, which is typed.
+    // Likewise for the version range.
     const range$ = merge(
-      this.versionRange$.pipe(take(1)),
-      this.versionRange$.pipe(skip(1), debounceTime(250)),
-    ).pipe(
-      map((range) => range.trim()),
-      distinctUntilChanged(),
-    );
+      this.rangeScope$.pipe(take(1)),
+      this.rangeScope$.pipe(skip(1), debounceTime(250)),
+    ).pipe(distinctUntilChanged());
 
     // ── Catalogs: load when pluginConfigurationId or the environment changes ──
     combineLatest([configId$, environment$])
@@ -716,7 +739,7 @@ export class GenerateDocumentConfigurationComponent
             tap((catalogs) => this.catalogInfos$.next(catalogs)),
             map((catalogs) =>
               successResource(
-                sortCatalogs(catalogs).map((c) => ({ id: c.id, text: catalogLabel(c) })),
+                sortCatalogs(catalogs).map((c) => ({ id: c.id, text: this.catalogItemLabel(c) })),
               ),
             ),
             catchError(() => of(errorResource<SelectItem[]>([], 'Failed to load catalogs'))),
@@ -756,44 +779,56 @@ export class GenerateDocumentConfigurationComponent
     // An empty id is no selection: it resets what depends on it, and nothing is fetched.
     const catalogId$ = this.selectedCatalogId$.pipe(distinctUntilChanged());
 
-    // ── Releases: the catalog's, and the one the version range selects ──
+    // ── Design scope: the one release every lookup below reads (ADR 0009) ──
     combineLatest([configId$, catalogId$, environment$, range$])
       .pipe(
         takeUntil(this.destroy$),
         switchMap(([configurationId, catalogId, environment, range]) =>
           !catalogId
-            ? of(noReleases(range))
-            : loadReleases(
-                (catalog, scope, versionRange) =>
-                  this.epistolaPluginService.getReleases(
-                    configurationId,
-                    catalog,
-                    scope,
-                    versionRange,
-                  ),
-                catalogId,
-                environment,
-                range,
+            ? of(NO_DESIGN_SCOPE)
+            : loadDesignScope(() =>
+                this.epistolaPluginService.getDesignScope(
+                  configurationId,
+                  catalogId,
+                  environment,
+                  range,
+                ),
               ),
         ),
       )
       .subscribe((state) => {
-        this.releases$.next(state);
+        this.designScope$.next(state);
         // A range that is not one would fail every generation: it blocks saving until corrected.
-        this.expressionValidity.set('versionRange', state.resource.error !== INVALID_RANGE);
+        this.expressionValidity.set('versionRange', state.error !== INVALID_RANGE);
         this.revalidate();
         this.cdr.markForCheck();
       });
 
-    // ── Templates: load when catalogId, the environment or the version range changes ──
-    combineLatest([configId$, catalogId$, environment$, range$])
+    // What the lookups read: the scope's catalog (qualified, also for a 1.x bare key) and its
+    // selection. Null while it loads or when it could not be resolved — its own hint says why, so
+    // nothing below is fetched only to fail the same way again.
+    const read$ = this.designScope$.pipe(
+      map((state) =>
+        state.data && !state.loading
+          ? { catalogId: state.data.catalogId, read: state.data.read }
+          : null,
+      ),
+      distinctUntilChanged((a, b) => JSON.stringify(a) === JSON.stringify(b)),
+    );
+    const scopeLoading$ = this.designScope$.pipe(
+      map((state) => state.loading),
+      distinctUntilChanged(),
+    );
+
+    // ── Templates: load when the design scope changes ──
+    combineLatest([configId$, read$, scopeLoading$])
       .pipe(
         takeUntil(this.destroy$),
-        switchMap(([configurationId, catalogId, environment, range]) =>
-          !catalogId
-            ? of(initialResource<SelectItem[]>([]))
+        switchMap(([configurationId, scope, loading]) =>
+          !scope
+            ? of(loading ? loadingResource<SelectItem[]>([]) : initialResource<SelectItem[]>([]))
             : this.epistolaPluginService
-                .getTemplates(configurationId, catalogId, environment, range)
+                .getTemplates(configurationId, scope.catalogId, scope.read)
                 .pipe(
                   map((templates) =>
                     successResource(templates.map((t) => ({ id: t.id, text: t.name }))),
@@ -805,15 +840,15 @@ export class GenerateDocumentConfigurationComponent
       )
       .subscribe((resource) => this.templates$.next(resource));
 
-    // ── Attributes: load when catalogId changes ──
-    combineLatest([configId$, catalogId$, environment$, range$])
+    // ── Attributes: load when the design scope changes ──
+    combineLatest([configId$, read$])
       .pipe(
         takeUntil(this.destroy$),
-        switchMap(([configurationId, catalogId, environment, range]) =>
-          !catalogId
+        switchMap(([configurationId, scope]) =>
+          !scope
             ? of([])
             : this.epistolaPluginService
-                .getAttributes(configurationId, catalogId, environment, range)
+                .getAttributes(configurationId, scope.catalogId, scope.read)
                 .pipe(catchError(() => of([]))),
         ),
       )
@@ -837,21 +872,19 @@ export class GenerateDocumentConfigurationComponent
     // catalog moves, so no emission pairs a template with a catalog it is not in.
     const templateSelection$ = combineLatest([
       configId$,
-      catalogId$,
+      read$,
       this.selectedTemplateId$.pipe(distinctUntilChanged()),
-      environment$,
-      range$,
     ]);
 
     // ── Variants: load when the template selection changes ──
     templateSelection$
       .pipe(
         takeUntil(this.destroy$),
-        switchMap(([configurationId, catalogId, templateId, environment, range]) =>
-          !catalogId || !templateId
+        switchMap(([configurationId, scope, templateId]) =>
+          !scope || !templateId
             ? of(initialResource<SelectItem[]>([]))
             : this.epistolaPluginService
-                .getVariants(configurationId, templateId, catalogId, environment, range)
+                .getVariants(configurationId, templateId, scope.catalogId, scope.read)
                 .pipe(
                   map((variants) =>
                     successResource(
@@ -877,11 +910,11 @@ export class GenerateDocumentConfigurationComponent
           this.templateSchema$.next(null);
           this.simpleMappingSupport$.next(FULL_SIMPLE_MAPPING_SUPPORT);
         }),
-        switchMap(([configurationId, catalogId, templateId, environment, range]) =>
-          !catalogId || !templateId
+        switchMap(([configurationId, scope, templateId]) =>
+          !scope || !templateId
             ? of(initialResource<TemplateField[]>([]))
             : this.epistolaPluginService
-                .getTemplateDetails(configurationId, templateId, catalogId, environment, range)
+                .getTemplateDetails(configurationId, templateId, scope.catalogId, scope.read)
                 .pipe(
                   tap((details) => this.applyTemplateSchemaDetails(details)),
                   map((details) => successResource(details.fields || [])),
@@ -1014,7 +1047,7 @@ export class GenerateDocumentConfigurationComponent
               correlationIdExpression: this.correlationIdExpression,
               resultProcessVariable: formValue.resultProcessVariable!,
               environmentExpression: this.environmentIdExpression,
-              versionRange: this.versionRange,
+              versionRangeExpression: this.versionRangeExpression,
               variantSelectionMode: this.variantSelectionMode,
               variantExpression: this.variantIdExpression,
               variantAttributes: this.variantAttributeEntries,
@@ -1052,16 +1085,8 @@ export class GenerateDocumentConfigurationComponent
   }
 }
 
-/**
- * The environment an action's environment expression names, as generation picks it: none set
- * defers to the plugin configuration's default, a string literal names one, and anything else is
- * evaluated at run time, so no single environment applies.
- */
-export function environmentScopeOf(expression: string | null | undefined): EnvironmentScope {
-  if (!expression || !expression.trim()) return undefined;
-  const literal = decodeJsonataStringLiteral(expression);
-  return literal !== undefined && literal.trim() ? literal.trim() : ANY_ENVIRONMENT;
-}
+/** Kept exported from here for callers that imported it before it moved to `utils/design-scope`. */
+export { environmentScopeOf };
 
 /**
  * A select's items with the selected one kept among them. `v-select` clears a value its items no

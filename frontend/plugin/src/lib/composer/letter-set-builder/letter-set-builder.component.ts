@@ -31,16 +31,22 @@ import { FormsModule } from '@angular/forms';
 import { FormioCustomComponent } from '@valtimo/components';
 import { PluginTranslatePipeModule, PluginTranslationService } from '@valtimo/plugin';
 import { Observable, of, Subject, Subscription } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { catchError, filter, map, switchMap, tap } from 'rxjs/operators';
 import { EpistolaComposerApiService } from '../composer-api.service';
 import { CatalogInfo, EnvironmentInfo, LetterReader, TemplateInfo } from '../../models';
 import {
-  loadReleases,
-  noReleases,
-  ReleaseHint,
-  releaseHintOf,
-  ReleasesState,
-} from '../../utils/release-hint';
+  DesignHints,
+  designHintsOf,
+  DesignScopeState,
+  environmentScopeOf,
+  loadDesignScope,
+  NO_DESIGN_SCOPE,
+  rangeScopeOf,
+} from '../../utils/design-scope';
+import {
+  decodeJsonataStringLiteral,
+  encodeJsonataStringLiteral,
+} from '../../utils/jsonata-literal';
 import { catalogLabel, matchCatalogId, sortCatalogs } from '../../utils/catalog-ref';
 
 /** One letter on offer, as stored in the composer's settings. */
@@ -56,8 +62,9 @@ export interface OfferedTemplate {
   label?: string;
   dataMapping?: string;
   /**
-   * The release of this letter's catalog to render, overriding the set's. Absent: the set's range
-   * when the letter lives in the set's catalog, else the release the environment renders.
+   * The release of this letter's catalog to render, overriding the set's, as JSONata (a fixed
+   * range is the literal `"^1.4.0"`). Absent: the set's range when the letter lives in the set's
+   * catalog, else the release the environment renders.
    */
   versionRange?: string;
 }
@@ -65,10 +72,13 @@ export interface OfferedTemplate {
 /** What the builder produces: the whole "which letters, from where" half of the configuration. */
 export interface LetterSet {
   pluginConfigurationId: string | null;
-  /** Where every letter renders and is read from; absent for the configuration's default. */
+  /**
+   * Where every letter renders and is read from, as JSONata (a fixed environment is the literal
+   * `"acceptatie"`); absent for the configuration's default.
+   */
   environmentId?: string | null;
   catalogId: string | null;
-  /** The release of the set's catalog its letters render; absent for the environment's. */
+  /** The release of the set's catalog its letters render, as JSONata; absent for the environment's. */
   versionRange?: string | null;
   templates: OfferedTemplate[];
 }
@@ -121,7 +131,7 @@ export interface LetterSet {
       <select
         class="field-input"
         data-testid="epistola-letter-set-environment"
-        [ngModel]="value?.environmentId || ''"
+        [ngModel]="environmentSelection"
         (ngModelChange)="onEnvironmentSelected($event)"
         [disabled]="disabled || !value?.pluginConfigurationId"
       >
@@ -136,10 +146,24 @@ export interface LetterSet {
           {{ environment.name || environment.id }}
         </option>
         <!-- A stored environment the connection no longer lists stays visible, never silently swapped. -->
-        <option *ngIf="environmentNotListed" [value]="value?.environmentId">
-          {{ value?.environmentId }}
+        <option *ngIf="environmentNotListed" [value]="environmentSelection">
+          {{ environmentSelection }}
+        </option>
+        <option [value]="EXPRESSION">
+          {{ 'letterSetEnvironmentExpression' | pluginTranslate: pluginId | async }}
         </option>
       </select>
+      <input
+        *ngIf="environmentExpressionMode"
+        type="text"
+        class="field-input field-expression"
+        data-testid="epistola-letter-set-environment-expression"
+        autocomplete="off"
+        placeholder="$pv.omgeving"
+        [disabled]="disabled"
+        [ngModel]="value?.environmentId || ''"
+        (ngModelChange)="onEnvironmentExpressionChange($event)"
+      />
 
       <label class="field-label">{{
         'letterSetCatalog' | pluginTranslate: pluginId | async
@@ -159,18 +183,31 @@ export interface LetterSet {
           }}
         </option>
         <option *ngFor="let catalog of catalogs" [value]="catalog.id">
-          {{ catalogLabel(catalog) }}
+          {{ catalogLabel(catalog)
+          }}{{
+            catalog.deployedToEnvironment === false
+              ? ' — ' + (('catalogNotDeployedMark' | pluginTranslate: pluginId | async) || '')
+              : ''
+          }}
         </option>
-        <option *ngIf="catalogNotInEnvironment" [value]="value?.catalogId">
+        <option *ngIf="catalogNotListed" [value]="value?.catalogId">
           {{ value?.catalogId }}
         </option>
       </select>
       <div
-        *ngIf="catalogNotInEnvironment"
+        *ngIf="catalogNotListed"
         class="field-error"
-        data-testid="epistola-letter-set-catalog-not-in-environment"
+        data-testid="epistola-letter-set-catalog-not-listed"
       >
-        {{ 'letterSetCatalogNotInEnvironment' | pluginTranslate: pluginId | async }}
+        {{ 'letterSetCatalogNotListed' | pluginTranslate: pluginId | async }}
+      </div>
+      <div
+        *ngFor="let hint of designHints.catalog"
+        class="field-error"
+        data-testid="epistola-letter-set-catalog-warning"
+        role="status"
+      >
+        {{ hint.key | pluginTranslate: pluginId | async }}
       </div>
 
       <ng-container *ngIf="value?.catalogId">
@@ -180,24 +217,45 @@ export interface LetterSet {
         <p class="field-note">
           {{ 'letterSetVersionRangeTooltip' | pluginTranslate: pluginId | async }}
         </p>
-        <input
-          id="epistola-letter-set-version-range-input"
-          type="text"
-          class="field-input"
-          data-testid="epistola-letter-set-version-range"
-          list="epistola-letter-set-releases"
-          autocomplete="off"
-          [placeholder]="('versionRangePlaceholder' | pluginTranslate: pluginId | async) || ''"
-          [disabled]="disabled"
-          [ngModel]="value?.versionRange || ''"
-          (ngModelChange)="onVersionRangeChange($event)"
-        />
+        <div class="field-with-toggle">
+          <input
+            id="epistola-letter-set-version-range-input"
+            type="text"
+            class="field-input"
+            [class.field-expression]="isRangeExpression(SET_RANGE, value?.versionRange)"
+            data-testid="epistola-letter-set-version-range"
+            [attr.list]="
+              isRangeExpression(SET_RANGE, value?.versionRange)
+                ? null
+                : 'epistola-letter-set-releases'
+            "
+            autocomplete="off"
+            [placeholder]="
+              isRangeExpression(SET_RANGE, value?.versionRange)
+                ? '$pv.briefversie'
+                : ('versionRangePlaceholder' | pluginTranslate: pluginId | async) || ''
+            "
+            [disabled]="disabled"
+            [ngModel]="rangeText(SET_RANGE, value?.versionRange)"
+            (ngModelChange)="onVersionRangeChange($event)"
+          />
+          <label class="field-toggle">
+            <input
+              type="checkbox"
+              data-testid="epistola-letter-set-version-range-expression"
+              [disabled]="disabled"
+              [checked]="isRangeExpression(SET_RANGE, value?.versionRange)"
+              (change)="toggleSetRangeExpression($any($event.target).checked)"
+            />
+            {{ 'letterSetExpression' | pluginTranslate: pluginId | async }}
+          </label>
+        </div>
         <!-- The catalog's released versions, offered to pin one; a range is typed. -->
         <datalist id="epistola-letter-set-releases">
           <option *ngFor="let version of releaseVersions" [value]="version"></option>
         </datalist>
         <div
-          *ngIf="releaseHint as hint"
+          *ngFor="let hint of designHints.release"
           class="field-hint"
           [class.field-error]="hint.problem"
           data-testid="epistola-letter-set-version-range-hint"
@@ -294,18 +352,41 @@ export interface LetterSet {
                   <p class="field-note">
                     {{ 'letterSetTemplateVersionRangeTooltip' | pluginTranslate: pluginId | async }}
                   </p>
-                  <input
-                    type="text"
-                    class="field-input"
-                    list="epistola-letter-set-releases"
-                    autocomplete="off"
-                    [id]="'version-range-' + template.id"
-                    [attr.data-testid]="'epistola-letter-set-version-range-' + template.id"
-                    [placeholder]="value?.versionRange || ''"
-                    [disabled]="disabled"
-                    [ngModel]="versionRangeOf(template.id)"
-                    (ngModelChange)="setTemplateVersionRange(template.id, $event)"
-                  />
+                  <div class="field-with-toggle">
+                    <input
+                      type="text"
+                      class="field-input"
+                      [class.field-expression]="
+                        isRangeExpression(template.id, versionRangeOf(template.id))
+                      "
+                      [attr.list]="
+                        isRangeExpression(template.id, versionRangeOf(template.id))
+                          ? null
+                          : 'epistola-letter-set-releases'
+                      "
+                      autocomplete="off"
+                      [id]="'version-range-' + template.id"
+                      [attr.data-testid]="'epistola-letter-set-version-range-' + template.id"
+                      [placeholder]="rangeText(SET_RANGE, value?.versionRange)"
+                      [disabled]="disabled"
+                      [ngModel]="rangeText(template.id, versionRangeOf(template.id))"
+                      (ngModelChange)="setTemplateVersionRange(template.id, $event)"
+                    />
+                    <label class="field-toggle">
+                      <input
+                        type="checkbox"
+                        [attr.data-testid]="
+                          'epistola-letter-set-version-range-expression-' + template.id
+                        "
+                        [disabled]="disabled"
+                        [checked]="isRangeExpression(template.id, versionRangeOf(template.id))"
+                        (change)="
+                          toggleTemplateRangeExpression(template.id, $any($event.target).checked)
+                        "
+                      />
+                      {{ 'letterSetExpression' | pluginTranslate: pluginId | async }}
+                    </label>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -366,6 +447,23 @@ export interface LetterSet {
     `
       .letter-set {
         margin-bottom: 0.5rem;
+      }
+      .field-with-toggle {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .field-with-toggle .field-input {
+        flex: 1;
+      }
+      .field-toggle {
+        display: inline-flex;
+        gap: 0.25rem;
+        align-items: center;
+        white-space: nowrap;
+      }
+      .field-expression {
+        font-family: var(--cds-code-01-font-family, monospace);
       }
       .field-label {
         display: block;
@@ -482,18 +580,18 @@ export class EpistolaLetterSetBuilderComponent
    * catalog's key alone, and catalogs are now listed as `registry/namespace/key`.
    */
   get selectedCatalogId(): string {
-    if (this.catalogNotInEnvironment) {
+    if (this.catalogNotListed) {
       return this.value?.catalogId ?? '';
     }
     return this.matchedCatalogId() ?? '';
   }
 
   /**
-   * True when the stored catalog is not among those the environment serves. Kept selected, with a
-   * notice, rather than cleared: choosing an environment must not silently drop the letters an
-   * author picked, and the author may mean to deploy the catalog there next.
+   * True when the stored catalog is not among the tenant's catalogs at all. Every catalog is
+   * listed — one the environment does not serve is marked, not left out (ADR 0009) — so this is a
+   * catalog that is gone. Kept selected, with a notice, rather than cleared.
    */
-  get catalogNotInEnvironment(): boolean {
+  get catalogNotListed(): boolean {
     return (
       this.catalogsLoaded &&
       !this.loadingCatalogs &&
@@ -502,14 +600,67 @@ export class EpistolaLetterSetBuilderComponent
     );
   }
 
-  /** True when the stored environment is not one the connection lists (any more). */
+  /** The environment select's value for a stored expression: the "expression" option. */
+  readonly EXPRESSION = '__expression__';
+  /** The key the set's own range field goes by in {@link rangeExpressionMode}. */
+  readonly SET_RANGE = '__set__';
+
+  /**
+   * Whether the environment is edited as an expression. Follows what is stored when the widget
+   * opens — a value that is not a string literal can only be shown as one — and the author's choice
+   * after that.
+   */
+  environmentExpressionMode = false;
+
+  /** What the environment select shows: the default, a listed environment, or "expression". */
+  get environmentSelection(): string {
+    if (this.environmentExpressionMode) return this.EXPRESSION;
+    const stored = this.value?.environmentId;
+    return stored ? (decodeJsonataStringLiteral(stored) ?? '') : '';
+  }
+
+  /** True when the stored environment is a literal the connection does not list (any more). */
   get environmentNotListed(): boolean {
-    const environmentId = this.value?.environmentId;
+    const environmentId = this.environmentSelection;
     return (
       !!environmentId &&
+      environmentId !== this.EXPRESSION &&
       !this.loadingEnvironments &&
       !this.environments.some((environment) => environment.id === environmentId)
     );
+  }
+
+  /**
+   * Which range fields are edited as an expression, by field ({@link SET_RANGE} or a template id).
+   * A field not in it follows what is stored: an expression when it is not a string literal.
+   */
+  private readonly rangeExpressionMode = new Map<string, boolean>();
+
+  isRangeExpression(field: string, stored: string | null | undefined): boolean {
+    const chosen = this.rangeExpressionMode.get(field);
+    if (chosen !== undefined) return chosen;
+    return !!stored && decodeJsonataStringLiteral(stored) === undefined;
+  }
+
+  /**
+   * A range field's text: the expression as stored, or — as a range — the literal's content, so an
+   * author types `^1.4.0` and the quotes are written for them.
+   */
+  rangeText(field: string, stored: string | null | undefined): string {
+    if (!stored) return '';
+    if (this.isRangeExpression(field, stored)) return stored;
+    return decodeJsonataStringLiteral(stored) ?? '';
+  }
+
+  /** What a range field stores for what was typed: the expression, or the range as a literal. */
+  private rangeValue(
+    field: string,
+    text: string,
+    stored: string | null | undefined,
+  ): string | null {
+    const trimmed = text?.trim();
+    if (!trimmed) return null;
+    return this.isRangeExpression(field, stored) ? trimmed : encodeJsonataStringLiteral(trimmed);
   }
 
   /**
@@ -529,15 +680,14 @@ export class EpistolaLetterSetBuilderComponent
   loadingEnvironments = false;
   /** The set's catalog's released versions, offered as suggestions for a range. */
   releaseVersions: string[] = [];
-  /** What the set's range renders, as the range field explains it. */
-  releaseHint: ReleaseHint | null = null;
+  /** What the catalog and range fields say about the release the letters are read from. */
+  designHints: DesignHints = { catalog: [], release: [] };
   private catalogsLoaded = false;
   /**
-   * What the letters and the releases are read for. Each change replaces the previous lookup, so a
-   * slow answer for a range typed a moment ago can never overwrite the one for the range typed now.
+   * What the letters are read for. Each change replaces the previous lookup, so a slow answer for
+   * a range typed a moment ago can never overwrite the one for the range typed now.
    */
   private readonly templateScope$ = new Subject<TemplateScope | null>();
-  private readonly releaseScope$ = new Subject<TemplateScope | null>();
 
   loadingConfigurations = false;
   loadingCatalogs = false;
@@ -579,13 +729,6 @@ export class EpistolaLetterSetBuilderComponent
   ) {
     this.subscriptions.push(
       this.templateScope$.pipe(switchMap((scope) => this.fetchTemplates(scope))).subscribe(),
-      this.releaseScope$
-        .pipe(switchMap((scope) => this.fetchReleases(scope)))
-        .subscribe((state) => {
-          this.releaseHint = releaseHintOf(state);
-          this.releaseVersions = state.resource.data?.versions ?? [];
-          this.cdr.markForCheck();
-        }),
     );
     this.loadConfigurations();
   }
@@ -601,8 +744,11 @@ export class EpistolaLetterSetBuilderComponent
     // arrives — otherwise reopening the settings would show an empty catalog and no letters.
     if (!this.restored && this.value?.pluginConfigurationId) {
       this.restored = true;
+      this.environmentExpressionMode =
+        !!this.value.environmentId &&
+        decodeJsonataStringLiteral(this.value.environmentId) === undefined;
       this.loadEnvironments(this.value.pluginConfigurationId);
-      this.loadCatalogs(this.value.pluginConfigurationId, this.value.environmentId ?? null);
+      this.loadCatalogs(this.value.pluginConfigurationId);
       this.refreshTemplates();
     }
     // Either order is possible: the connections may land before Formio sets the value or after.
@@ -687,29 +833,72 @@ export class EpistolaLetterSetBuilderComponent
     this.catalogsLoaded = false;
     this.templates = [];
     this.environments = [];
+    this.environmentExpressionMode = false;
     this.refreshTemplates();
     if (pluginConfigurationId) {
       this.loadEnvironments(pluginConfigurationId);
-      this.loadCatalogs(pluginConfigurationId, null);
+      this.loadCatalogs(pluginConfigurationId);
     }
   }
 
   /**
-   * Render in another environment. The catalog and the letters stay: the catalogs are listed again
-   * for the new environment, and a catalog it does not serve is flagged rather than cleared.
+   * Render in another environment, stored as the literal naming it. The catalog and the letters
+   * stay: the catalogs are marked again for the new environment, and one it does not serve gets a
+   * warning rather than being cleared. "Expression" switches to typing one; what is stored stays
+   * until something is typed.
    */
-  onEnvironmentSelected(environmentId: string): void {
-    this.patch({ environmentId: environmentId || null });
+  onEnvironmentSelected(selection: string): void {
+    if (selection === this.EXPRESSION) {
+      this.environmentExpressionMode = true;
+      this.cdr.markForCheck();
+      return;
+    }
+    this.environmentExpressionMode = false;
+    this.patch({ environmentId: selection ? encodeJsonataStringLiteral(selection) : null });
+    this.environmentChanged();
+  }
+
+  /** An environment typed as JSONata, evaluated with the case when a letter is prepared. */
+  onEnvironmentExpressionChange(expression: string): void {
+    this.patch({ environmentId: expression?.trim() || null });
+    this.environmentChanged();
+  }
+
+  private environmentChanged(): void {
     if (this.value?.pluginConfigurationId) {
-      this.loadCatalogs(this.value.pluginConfigurationId, this.value.environmentId ?? null);
+      this.loadCatalogs(this.value.pluginConfigurationId);
     }
     this.refreshTemplates();
   }
 
   /** The release of the set's catalog its letters render; blank for the environment's. */
-  onVersionRangeChange(versionRange: string): void {
-    this.patch({ versionRange: versionRange?.trim() || null });
+  onVersionRangeChange(text: string): void {
+    this.patch({ versionRange: this.rangeValue(this.SET_RANGE, text, this.value?.versionRange) });
     this.refreshTemplates();
+  }
+
+  /**
+   * Edit the set's range as an expression, or as a range. Only the view changes: a literal is
+   * valid JSONata and is shown with its quotes; going back to a range keeps a literal and clears an
+   * expression, which no range field can show.
+   */
+  toggleSetRangeExpression(expression: boolean): void {
+    const stored = this.value?.versionRange;
+    this.rangeExpressionMode.set(this.SET_RANGE, expression);
+    if (!expression && stored && decodeJsonataStringLiteral(stored) === undefined) {
+      this.patch({ versionRange: null });
+      this.refreshTemplates();
+    }
+    this.cdr.markForCheck();
+  }
+
+  toggleTemplateRangeExpression(templateId: string, expression: boolean): void {
+    const stored = this.versionRangeOf(templateId);
+    this.rangeExpressionMode.set(templateId, expression);
+    if (!expression && stored && decodeJsonataStringLiteral(stored) === undefined) {
+      this.storeTemplateVersionRange(templateId, null);
+    }
+    this.cdr.markForCheck();
   }
 
   onCatalogSelected(catalogId: string): void {
@@ -800,14 +989,20 @@ export class EpistolaLetterSetBuilderComponent
   }
 
   /** Pin this letter to its own release, or drop the override when it is cleared. */
-  setTemplateVersionRange(templateId: string, versionRange: string): void {
-    const trimmed = versionRange?.trim();
+  setTemplateVersionRange(templateId: string, text: string): void {
+    this.storeTemplateVersionRange(
+      templateId,
+      this.rangeValue(templateId, text, this.versionRangeOf(templateId)),
+    );
+  }
+
+  private storeTemplateVersionRange(templateId: string, versionRange: string | null): void {
     const next = (this.value?.templates ?? []).map((template) => {
       if (template.templateId !== templateId) {
         return template;
       }
       const { versionRange: _dropped, ...rest } = template;
-      return trimmed ? { ...rest, versionRange: trimmed } : rest;
+      return versionRange ? { ...rest, versionRange } : rest;
     });
     this.patch({ templates: next });
   }
@@ -892,34 +1087,37 @@ export class EpistolaLetterSetBuilderComponent
     );
   }
 
-  private loadCatalogs(pluginConfigurationId: string, environmentId?: string | null): void {
+  /** Every catalog, marked against the set's environment as it now is. */
+  private loadCatalogs(pluginConfigurationId: string): void {
     this.loadingCatalogs = true;
     this.subscriptions.push(
-      this.composerApi.getCatalogs(pluginConfigurationId, environmentId).subscribe({
-        next: (catalogs) => {
-          this.catalogs = sortCatalogs(catalogs);
-          this.catalogsLoaded = true;
-          this.loadingCatalogs = false;
-          this.cdr.markForCheck();
-          // Safe without the value guard: catalogs are only ever loaded once a connection is
-          // known, so by now the form's own settings have arrived.
-          if (catalogs.length === 1 && !this.value?.catalogId) {
-            this.onCatalogSelected(catalogs[0].id);
-          }
-        },
-        error: () => {
-          this.loadingCatalogs = false;
-          this.error = this.pluginTranslationService.instant(
-            'letterSetCatalogsFailed',
-            this.pluginId,
-          );
-          this.cdr.markForCheck();
-        },
-      }),
+      this.composerApi
+        .getCatalogs(pluginConfigurationId, environmentScopeOf(this.value?.environmentId))
+        .subscribe({
+          next: (catalogs) => {
+            this.catalogs = sortCatalogs(catalogs);
+            this.catalogsLoaded = true;
+            this.loadingCatalogs = false;
+            this.cdr.markForCheck();
+            // Safe without the value guard: catalogs are only ever loaded once a connection is
+            // known, so by now the form's own settings have arrived.
+            if (catalogs.length === 1 && !this.value?.catalogId) {
+              this.onCatalogSelected(catalogs[0].id);
+            }
+          },
+          error: () => {
+            this.loadingCatalogs = false;
+            this.error = this.pluginTranslationService.instant(
+              'letterSetCatalogsFailed',
+              this.pluginId,
+            );
+            this.cdr.markForCheck();
+          },
+        }),
     );
   }
 
-  /** Read the letters, and what the range selects, for the set as it now is. */
+  /** Resolve the release the letters are read from, then read them, for the set as it now is. */
   private refreshTemplates(): void {
     const configurationId = this.value?.pluginConfigurationId;
     const catalogId = this.value?.catalogId;
@@ -929,41 +1127,44 @@ export class EpistolaLetterSetBuilderComponent
             configurationId,
             catalogId,
             environmentId: this.value?.environmentId ?? null,
-            versionRange: this.value?.versionRange ?? '',
+            versionRange: this.value?.versionRange ?? null,
           }
         : null;
     this.templateScope$.next(scope);
-    this.releaseScope$.next(scope);
   }
 
+  /**
+   * The design scope first (ADR 0009) — one lookup that says which release, and why it may not be
+   * where the letters render — then the letters of that release. A scope that cannot be resolved
+   * because of its range says so in the range's own hint, so that is not also reported as a failure
+   * to read the catalog.
+   */
   private fetchTemplates(scope: TemplateScope | null): Observable<unknown> {
     if (!scope) {
       this.templates = [];
       this.templatesLoaded = false;
       this.loadingTemplates = false;
-      this.cdr.markForCheck();
+      this.applyDesignScope(NO_DESIGN_SCOPE, scope);
       return of(null);
     }
     this.loadingTemplates = true;
     this.cdr.markForCheck();
-    return this.composerApi
-      .getTemplates(scope.configurationId, scope.catalogId, scope.environmentId, scope.versionRange)
-      .pipe(
-        map((templates) => {
-          this.templates = templates;
-          this.templatesLoaded = true;
-          this.loadingTemplates = false;
-          this.cdr.markForCheck();
-          return templates;
-        }),
-        catchError((error: unknown) => {
+    return loadDesignScope(() =>
+      this.composerApi.getDesignScope(
+        scope.configurationId,
+        scope.catalogId,
+        environmentScopeOf(scope.environmentId),
+        rangeScopeOf(scope.versionRange),
+      ),
+    ).pipe(
+      tap((state) => this.applyDesignScope(state, scope)),
+      filter((state) => !state.loading),
+      switchMap((state) => {
+        if (!state.data) {
           this.templates = [];
-          this.loadingTemplates = false;
           this.templatesLoaded = false;
-          const status = (error as { status?: number } | null)?.status;
-          // A range no release satisfies (404) or that is no range at all (400) is what the range's
-          // own hint says, so it is not also reported as a failure to read the catalog.
-          if (!(scope.versionRange && (status === 404 || status === 400))) {
+          this.loadingTemplates = false;
+          if (state.error && !this.designHints.release.length) {
             this.error = this.pluginTranslationService.instant(
               'letterSetTemplatesFailed',
               this.pluginId,
@@ -971,26 +1172,41 @@ export class EpistolaLetterSetBuilderComponent
           }
           this.cdr.markForCheck();
           return of(null);
-        }),
-      );
+        }
+        return this.composerApi
+          .getTemplates(scope.configurationId, state.data.catalogId, state.data.read)
+          .pipe(
+            map((templates) => {
+              this.templates = templates;
+              this.templatesLoaded = true;
+              this.loadingTemplates = false;
+              this.cdr.markForCheck();
+              return templates;
+            }),
+            catchError(() => {
+              this.templates = [];
+              this.loadingTemplates = false;
+              this.templatesLoaded = false;
+              this.error = this.pluginTranslationService.instant(
+                'letterSetTemplatesFailed',
+                this.pluginId,
+              );
+              this.cdr.markForCheck();
+              return of(null);
+            }),
+          );
+      }),
+    );
   }
 
-  private fetchReleases(scope: TemplateScope | null): Observable<ReleasesState> {
-    if (!scope) {
-      return of(noReleases(''));
-    }
-    return loadReleases(
-      (catalogId, environment, range) =>
-        this.composerApi.getReleases(
-          scope.configurationId,
-          catalogId,
-          environment as string,
-          range,
-        ),
-      scope.catalogId,
-      scope.environmentId ?? undefined,
-      scope.versionRange,
+  private applyDesignScope(state: DesignScopeState, scope: TemplateScope | null): void {
+    this.designHints = designHintsOf(
+      state,
+      environmentScopeOf(scope?.environmentId),
+      rangeScopeOf(scope?.versionRange),
     );
+    this.releaseVersions = state.data?.versions ?? [];
+    this.cdr.markForCheck();
   }
 
   /** Change part of the set, keeping the rest; an environment or range that is cleared is left out. */
@@ -1015,10 +1231,10 @@ export class EpistolaLetterSetBuilderComponent
   }
 }
 
-/** What a set's letters and releases are read for. */
+/** What a set's letters are read for: the set's settings as stored, JSONata and all. */
 interface TemplateScope {
   configurationId: string;
   catalogId: string;
   environmentId: string | null;
-  versionRange: string;
+  versionRange: string | null;
 }

@@ -101,12 +101,14 @@ export const COMPOSER_TRANSLATIONS = {
     letterSetTemplateMissingDrop: 'Verwijderen uit de set',
     letterSetEnvironment: 'Omgeving',
     letterSetEnvironmentTooltip:
-      'Waar de brieven gegenereerd worden, en waaruit hun sjablonen gelezen worden. De catalogi hieronder zijn die in deze omgeving staan.',
+      'Waar de brieven gegenereerd worden, en waaruit hun sjablonen gelezen worden. Een catalogus hieronder die niet in deze omgeving staat, is gemarkeerd. Kies "Expressie" om de omgeving per zaak te bepalen, bijvoorbeeld met $pv.omgeving.',
     letterSetEnvironmentDefault: '— standaardomgeving van de verbinding —',
-    letterSetCatalogNotInEnvironment:
-      'Deze catalogus staat niet in de gekozen omgeving. Rol hem daar uit in Epistola, of kies een andere omgeving of catalogus.',
+    letterSetEnvironmentExpression: 'Expressie (JSONata)…',
+    letterSetExpression: 'Expressie',
+    letterSetCatalogNotListed:
+      'Deze catalogus bestaat niet (meer) in Epistola. Kies een andere catalogus.',
     letterSetVersionRangeTooltip:
-      'Welke release van de catalogus de brieven gebruiken. Een versie (1.4.0) zet hem vast; een bereik (^1.4.0) neemt de hoogste release die eraan voldoet. Leeg: de release die in de omgeving staat.',
+      'Welke release van de catalogus de brieven gebruiken. Een versie (1.4.0) zet hem vast; een bereik (^1.4.0) neemt de hoogste release die eraan voldoet. Vink "Expressie" aan om hem per zaak te bepalen met JSONata. Leeg: de release die in de omgeving staat.',
     letterSetTemplateVersionRange: 'Eigen release voor deze brief',
     letterSetTemplateVersionRangeTooltip:
       'Optioneel. Een versie of bereik alleen voor deze brief, in plaats van die van de set. Laat leeg om de release van de set te gebruiken.',
@@ -191,12 +193,14 @@ export const COMPOSER_TRANSLATIONS = {
     letterSetTemplateMissingDrop: 'Remove from the set',
     letterSetEnvironment: 'Environment',
     letterSetEnvironmentTooltip:
-      'Where the letters are generated, and where their templates are read from. The catalogs below are those deployed to this environment.',
+      'Where the letters are generated, and where their templates are read from. A catalog below that is not deployed to this environment is marked. Choose "Expression" to decide the environment per case, for example with $pv.omgeving.',
     letterSetEnvironmentDefault: "— the connection's default environment —",
-    letterSetCatalogNotInEnvironment:
-      'This catalog is not deployed to the chosen environment. Deploy it there in Epistola, or choose another environment or catalog.',
+    letterSetEnvironmentExpression: 'Expression (JSONata)…',
+    letterSetExpression: 'Expression',
+    letterSetCatalogNotListed:
+      'This catalog does not exist in Epistola (any more). Choose another catalog.',
     letterSetVersionRangeTooltip:
-      'Which release of the catalog the letters use. A version (1.4.0) pins one; a range (^1.4.0) takes the highest release that satisfies it. Blank: the release deployed to the environment.',
+      'Which release of the catalog the letters use. A version (1.4.0) pins one; a range (^1.4.0) takes the highest release that satisfies it. Tick "Expression" to decide it per case with JSONata. Blank: the release deployed to the environment.',
     letterSetTemplateVersionRange: 'Release for this letter',
     letterSetTemplateVersionRangeTooltip:
       "Optional. A version or range for this letter only, instead of the set's. Leave blank to use the set's release.",

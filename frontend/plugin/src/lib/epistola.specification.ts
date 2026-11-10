@@ -74,19 +74,28 @@ const epistolaPluginSpecification: PluginSpecification = {
         'Deze actie is alleen in de editor bijgewerkt naar versie 1. Sla de proceskoppeling op om de bijgewerkte configuratie te bewaren; annuleren laat de opgeslagen configuratie ongewijzigd.',
       catalogId: 'Catalogus',
       catalogIdTooltip:
-        'Selecteer de catalogus waaruit een template gekozen wordt. Getoond worden de catalogi die zijn uitgerold naar de omgeving van deze actie (of de standaardomgeving); zonder omgeving alle catalogi van de tenant.',
-      catalogNotOffered:
-        'Deze catalogus is niet uitgerold naar de omgeving waarin deze actie genereert. Rol hem daar uit in Epistola, of kies een andere catalogus.',
+        'Selecteer de catalogus waaruit een template gekozen wordt. Alle catalogi van de tenant staan erin; een catalogus die niet is uitgerold naar de omgeving van deze actie is gemarkeerd, en kan toch gekozen worden.',
+      catalogNotDeployedMark: 'niet uitgerold naar deze omgeving',
+      designEnvironmentUnknown:
+        'Deze omgeving bestaat niet in Epistola. De template wordt gelezen uit de hoogste release van de catalogus.',
+      designCatalogNotDeployed:
+        'Deze catalogus is nog niet uitgerold naar de omgeving waarin gegenereerd wordt. Je kunt hem al instellen; genereren lukt pas als hij daar is uitgerold.',
+      designRangeNotDeployed:
+        'Geen release die in de omgeving staat voldoet aan deze release. Genereren lukt pas als er een is uitgerold.',
+      designRangeUnsatisfied:
+        'Geen release van deze catalogus voldoet hieraan. Genereren mislukt tot er een is.',
+      designBasedOnRelease: 'Template en velden komen uit release',
+      designBasedOnDeployedDraft:
+        'Template en velden komen uit de concept-release die in de omgeving staat.',
+      designBasedOnNewestDraft:
+        'Template en velden komen uit het nieuwste concept: deze catalogus heeft nog geen release.',
+      designBasedOnAssumption:
+        'De omgeving of release is een expressie die pas bij het genereren bekend is; hierboven staat de hoogste release. Een andere uitkomst kan andere velden hebben.',
       versionRange: 'Release',
       versionRangeTooltip:
-        'Welke release van de catalogus deze actie gebruikt. Een versie (1.4.0) zet hem vast; een bereik (^1.4.0) neemt de hoogste release die eraan voldoet. Leeg: de concept-release die in de omgeving staat, anders de hoogste release.',
+        'Welke release van de catalogus deze actie gebruikt, als JSONata zoals de omgeving. Een versie ("1.4.0") zet hem vast; een bereik ("^1.4.0") neemt de hoogste release die eraan voldoet; een expressie ($pv.briefversie) wordt bij het genereren bepaald. Leeg: de concept-release die in de omgeving staat, anders de hoogste release.',
       versionRangePlaceholder: 'Hoogste release',
-      versionRangeSelects: 'Gebruikt release',
-      versionRangeNoneHighest: 'Gebruikt de hoogste release:',
-      versionRangeNoneDraft: 'Gebruikt de concept-release die in de omgeving staat.',
-      versionRangeMatchesNothing:
-        'Geen release van deze catalogus (in deze omgeving) voldoet hieraan. Genereren mislukt tot er een is.',
-      versionRangeInvalid: 'Dit is geen versie of versiebereik, zoals 1.4.0 of ^1.4.0.',
+      versionRangeInvalid: 'Dit is geen versie of versiebereik, zoals "1.4.0" of "^1.4.0".',
       templateId: 'Template',
       templateIdTooltip: 'Selecteer het template dat gebruikt wordt voor documentgeneratie',
       templateNotOffered:
@@ -363,19 +372,28 @@ const epistolaPluginSpecification: PluginSpecification = {
         'This action has only been upgraded to version 1 inside the editor. Save the process link to persist the upgraded configuration; cancelling leaves the stored configuration unchanged.',
       catalogId: 'Catalog',
       catalogIdTooltip:
-        "Select the catalog to choose a template from. Offered are the catalogs deployed to this action's environment (or the default environment); without an environment, every catalog of the tenant.",
-      catalogNotOffered:
-        'This catalog is not deployed to the environment this action generates in. Deploy it there in Epistola, or choose another catalog.',
+        "Select the catalog to choose a template from. Every catalog of the tenant is listed; one not deployed to this action's environment is marked, and can still be chosen.",
+      catalogNotDeployedMark: 'not deployed to this environment',
+      designEnvironmentUnknown:
+        "This environment does not exist in Epistola. The template is read from the catalog's highest release.",
+      designCatalogNotDeployed:
+        'This catalog is not deployed to the environment it generates in yet. You can configure it already; generating works once it is deployed there.',
+      designRangeNotDeployed:
+        'No release deployed to the environment satisfies this release. Generating works once one is deployed.',
+      designRangeUnsatisfied:
+        'No release of this catalog satisfies this. Generating fails until one does.',
+      designBasedOnRelease: 'Template and fields come from release',
+      designBasedOnDeployedDraft:
+        'Template and fields come from the draft deployed to the environment.',
+      designBasedOnNewestDraft:
+        'Template and fields come from the newest draft: this catalog has no release yet.',
+      designBasedOnAssumption:
+        'The environment or release is an expression only known when generating; the release above is the highest. Another outcome may have other fields.',
       versionRange: 'Release',
       versionRangeTooltip:
-        'Which release of the catalog this action uses. A version (1.4.0) pins it; a range (^1.4.0) takes the highest release that satisfies it. Empty: the draft deployed to the environment, else the highest release.',
+        'Which release of the catalog this action uses, as JSONata like the environment. A version ("1.4.0") pins it; a range ("^1.4.0") takes the highest release that satisfies it; an expression ($pv.briefversie) is decided when generating. Empty: the draft deployed to the environment, else the highest release.',
       versionRangePlaceholder: 'Highest release',
-      versionRangeSelects: 'Uses release',
-      versionRangeNoneHighest: 'Uses the highest release:',
-      versionRangeNoneDraft: 'Uses the draft deployed to the environment.',
-      versionRangeMatchesNothing:
-        'No release of this catalog (in this environment) satisfies this. Generation fails until one does.',
-      versionRangeInvalid: 'This is not a version or version range, such as 1.4.0 or ^1.4.0.',
+      versionRangeInvalid: 'This is not a version or version range, such as "1.4.0" or "^1.4.0".',
       templateId: 'Template',
       templateIdTooltip: 'Select the template to use for document generation',
       templateNotOffered:

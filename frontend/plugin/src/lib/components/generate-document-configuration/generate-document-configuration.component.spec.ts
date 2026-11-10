@@ -67,7 +67,7 @@ import {
   environmentScopeOf,
   GenerateDocumentConfigurationComponent,
 } from './generate-document-configuration.component';
-import { ANY_ENVIRONMENT } from '../../services';
+import { ANY_ENVIRONMENT, ANY_RANGE } from '../../services/release-scope';
 
 describe('GenerateDocumentConfigurationComponent selectors', () => {
   it.each(['catalogId', 'templateId'])(
@@ -103,6 +103,7 @@ describe('GenerateDocumentConfigurationComponent versioning', () => {
       service as any,
       {} as any,
       { markForCheck: jest.fn(), detectChanges: jest.fn() } as any,
+      { instant: jest.fn((key: string) => key) } as any,
     );
     return { component, service };
   };
@@ -404,6 +405,13 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
     'catalog-b': ['letter'],
   };
 
+  const NOT_DEPLOYED_IN_PRODUCTIE = new Set<string>();
+  /** The selection the fake design scope hands out, which every lookup must then send. */
+  const read = (environmentId: string | null = null, versionRange = '2.0.0') => ({
+    environmentId,
+    versionRange,
+  });
+
   const createCascade = (
     prefill: unknown = null,
     catalogs: unknown[] = [
@@ -431,15 +439,29 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
           simpleMappingSupport: { level: 'FULL' },
         }),
       ),
-      getReleases: jest.fn((_c: string, _catalog: string, _env: unknown, range?: string) =>
-        of({ versions: ['2.0.0', '1.9.0'], selected: range ? '1.9.0' : '2.0.0', draft: false }),
-      ),
+      // Like the backend: the highest release, or 1.9.0 for a literal range, read as an exact
+      // version; a catalog in NOT_DEPLOYED_IN_PRODUCTIE is read catalog-wide there, and says so.
+      getDesignScope: jest.fn((_c: string, catalog: string, env: unknown, range: unknown) => {
+        const environment = typeof env === 'string' ? env : null;
+        const notDeployed = environment === 'productie' && NOT_DEPLOYED_IN_PRODUCTIE.has(catalog);
+        const version = typeof range === 'string' ? '1.9.0' : '2.0.0';
+        return of({
+          catalogId: catalog,
+          versions: ['2.0.0', '1.9.0'],
+          version,
+          draft: false,
+          environment: notDeployed ? null : environment,
+          problems: notDeployed ? ['NOT_DEPLOYED'] : [],
+          read: { environmentId: notDeployed ? null : environment, versionRange: version },
+        });
+      }),
       validateJsonata: jest.fn().mockReturnValue(of({ valid: true, errors: [] })),
     };
     const component = new GenerateDocumentConfigurationComponent(
       service as any,
       {} as any,
       { markForCheck: jest.fn(), detectChanges: jest.fn() } as any,
+      { instant: jest.fn((key: string) => key) } as any,
     );
     (component as any).prefill$ = of(prefill);
     (component as any).initEnvironmentPrefill();
@@ -461,8 +483,7 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       'config',
       'invoice',
       'catalog-a',
-      undefined,
-      '',
+      read(),
     );
     service.getTemplateDetails.mockClear();
     service.getVariants.mockClear();
@@ -470,7 +491,7 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
     // The form still carries the old template id in the emission that changes the catalog.
     formChange(component, { catalogId: 'catalog-b', templateId: 'invoice' });
 
-    expect(service.getTemplates).toHaveBeenLastCalledWith('config', 'catalog-b', undefined, '');
+    expect(service.getTemplates).toHaveBeenLastCalledWith('config', 'catalog-b', read());
     expect(service.getTemplateDetails).not.toHaveBeenCalled();
     expect(service.getVariants).not.toHaveBeenCalled();
     expect(component.selectedTemplateId$.value).toBe('');
@@ -512,8 +533,7 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       'config',
       'reminder',
       'catalog-a',
-      undefined,
-      '',
+      read(),
     );
     expect(component.variantIdExpression).toBe('');
     expect(component.variantSelectionMode).toBe('explicit');
@@ -602,7 +622,7 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
     expect(component.selectedCatalogId$.value).toBe('local/demo/brieven');
   });
 
-  it('narrows the lookups to the environment the action names', () => {
+  it('scopes the lookups to the environment the action names', () => {
     jest.useFakeTimers();
     try {
       const { component, service } = createCascade();
@@ -612,40 +632,87 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       jest.advanceTimersByTime(250);
 
       expect(service.getCatalogs).toHaveBeenLastCalledWith('config', 'productie');
-      expect(service.getTemplates).toHaveBeenLastCalledWith('config', 'catalog-a', 'productie', '');
+      expect(service.getDesignScope).toHaveBeenLastCalledWith(
+        'config',
+        'catalog-a',
+        'productie',
+        undefined,
+      );
+      expect(service.getTemplates).toHaveBeenLastCalledWith(
+        'config',
+        'catalog-a',
+        read('productie'),
+      );
       expect(service.getTemplateDetails).toHaveBeenLastCalledWith(
         'config',
         'invoice',
         'catalog-a',
-        'productie',
-        '',
+        read('productie'),
       );
     } finally {
       jest.useRealTimers();
     }
   });
 
-  it('keeps a catalog the environment does not serve selected, and says so', () => {
+  it('lists every catalog, marking the ones the environment does not serve', async () => {
     jest.useFakeTimers();
     try {
       const { component, service } = createCascade();
-      selectInvoiceInCatalogA(component);
-      const notices: boolean[] = [];
-      component.catalogNotOffered$.subscribe((notOffered) => notices.push(notOffered));
-      const items: string[][] = [];
-      component.catalogItems$.subscribe((resource) =>
-        items.push(resource.data.map((i) => String(i.id))),
+      service.getCatalogs.mockReturnValue(
+        of([
+          { id: 'catalog-a', name: 'Catalog A', deployedToEnvironment: true },
+          { id: 'catalog-b', name: 'Catalog B', deployedToEnvironment: false },
+        ]),
       );
 
-      service.getCatalogs.mockReturnValue(of([{ id: 'catalog-b', name: 'Catalog B' }]));
       component.onEnvironmentIdExpressionChange('"productie"');
       jest.advanceTimersByTime(250);
 
+      const items = await firstValueFrom(component.catalogItems$);
+      expect(items.data.map((item) => item.text)).toEqual([
+        expect.stringContaining('Catalog A'),
+        expect.stringMatching(/Catalog B.*catalogNotDeployedMark/),
+      ]);
+      expect(items.data[0].text).not.toContain('catalogNotDeployedMark');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('keeps a catalog the environment does not serve usable, warning once instead of failing', async () => {
+    // The defect behind ADR 0009: every lookup 404'd and showed its own generic error.
+    jest.useFakeTimers();
+    NOT_DEPLOYED_IN_PRODUCTIE.add('catalog-a');
+    try {
+      const { component, service } = createCascade();
+      selectInvoiceInCatalogA(component);
+      component.dataMapping$.next('{"name": $doc.name}');
+
+      component.onEnvironmentIdExpressionChange('"productie"');
+      jest.advanceTimersByTime(250);
+
+      // Read catalog-wide, from the release designed against: the lookups still answer.
+      expect(service.getTemplates).toHaveBeenLastCalledWith('config', 'catalog-a', read());
+      expect(service.getTemplateDetails).toHaveBeenLastCalledWith(
+        'config',
+        'invoice',
+        'catalog-a',
+        read(),
+      );
+      expect(component.templates$.value.error).toBeFalsy();
+      expect(component.templateFields$.value.error).toBeFalsy();
+      expect(component.templateFields$.value.data.length).toBeGreaterThan(0);
       expect(component.selectedCatalogId$.value).toBe('catalog-a');
       expect(component.selectedTemplateId$.value).toBe('invoice');
-      expect(items[items.length - 1]).toEqual(['catalog-b', 'catalog-a']);
-      expect(notices[notices.length - 1]).toBe(true);
+      expect(component.dataMapping$.value).toBe('{"name": $doc.name}');
+
+      const hints = await firstValueFrom(component.designHints$);
+      expect(hints.catalog).toEqual([{ key: 'designCatalogNotDeployed', problem: true }]);
+      expect(hints.release).toEqual([
+        { key: 'designBasedOnRelease', version: '2.0.0', problem: false },
+      ]);
     } finally {
+      NOT_DEPLOYED_IN_PRODUCTIE.clear();
       jest.useRealTimers();
     }
   });
@@ -657,10 +724,10 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       selectInvoiceInCatalogA(component);
       component.dataMapping$.next('{"name": $doc.name}');
 
-      component.onVersionRangeChange(' ^1.4.0 ');
+      component.onVersionRangeExpressionChange(' "^1.4.0" ');
       jest.advanceTimersByTime(250);
 
-      expect(service.getReleases).toHaveBeenLastCalledWith(
+      expect(service.getDesignScope).toHaveBeenLastCalledWith(
         'config',
         'catalog-a',
         undefined,
@@ -669,19 +736,41 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       expect(service.getTemplates).toHaveBeenLastCalledWith(
         'config',
         'catalog-a',
-        undefined,
-        '^1.4.0',
+        read(null, '1.9.0'),
       );
       expect(service.getTemplateDetails).toHaveBeenLastCalledWith(
         'config',
         'invoice',
         'catalog-a',
-        undefined,
-        '^1.4.0',
+        read(null, '1.9.0'),
       );
       // Another release of the same catalog: the template and its mapping stay.
       expect(component.selectedTemplateId$.value).toBe('invoice');
       expect(component.dataMapping$.value).toBe('{"name": $doc.name}');
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it('designs against the highest release when the range is an expression, and says so', async () => {
+    jest.useFakeTimers();
+    try {
+      const { component, service } = createCascade();
+      selectInvoiceInCatalogA(component);
+
+      component.onVersionRangeExpressionChange('$pv.briefversie');
+      jest.advanceTimersByTime(250);
+
+      expect(service.getDesignScope).toHaveBeenLastCalledWith(
+        'config',
+        'catalog-a',
+        undefined,
+        ANY_RANGE,
+      );
+      expect((await firstValueFrom(component.designHints$)).release).toEqual([
+        { key: 'designBasedOnRelease', version: '2.0.0', problem: false },
+        { key: 'designBasedOnAssumption', problem: false },
+      ]);
     } finally {
       jest.useRealTimers();
     }
@@ -700,7 +789,7 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       );
 
       service.getTemplates.mockImplementation(() => of([{ id: 'reminder', name: 'Reminder' }]));
-      component.onVersionRangeChange('1.0.0');
+      component.onVersionRangeExpressionChange('"1.0.0"');
       jest.advanceTimersByTime(250);
 
       expect(component.selectedTemplateId$.value).toBe('invoice');
@@ -712,23 +801,27 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
     }
   });
 
-  it('refuses to save a range that is not one, and says why', async () => {
+  it('refuses to save a range that is not one, says why, and fetches nothing else for it', async () => {
     jest.useFakeTimers();
     try {
       const { component, service } = createCascade();
       selectInvoiceInCatalogA(component);
       const validity: boolean[] = [];
       component.valid.subscribe((valid) => validity.push(valid));
-      service.getReleases.mockReturnValue(throwError(() => ({ status: 400 })));
+      service.getDesignScope.mockReturnValue(throwError(() => ({ status: 400 })));
+      service.getTemplates.mockClear();
+      service.getTemplateDetails.mockClear();
 
-      component.onVersionRangeChange('latest');
+      component.onVersionRangeExpressionChange('"latest"');
       jest.advanceTimersByTime(250);
 
       expect(validity[validity.length - 1]).toBe(false);
-      expect(await firstValueFrom(component.releaseHint$)).toEqual({
-        key: 'versionRangeInvalid',
-        problem: true,
-      });
+      expect((await firstValueFrom(component.designHints$)).release).toEqual([
+        { key: 'versionRangeInvalid', problem: true },
+      ]);
+      expect(await firstValueFrom(component.designScopeError$)).toBeNull();
+      expect(service.getTemplates).not.toHaveBeenCalled();
+      expect(service.getTemplateDetails).not.toHaveBeenCalled();
     } finally {
       jest.useRealTimers();
     }
@@ -739,14 +832,14 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       actionConfigVersion: 1,
       catalogId: 'catalog-a',
       templateId: 'invoice',
-      versionRange: '1.9.0',
+      versionRange: '"1.9.0"',
       dataMapping: '{}',
       outputFormat: '"PDF"',
       filename: '"letter.pdf"',
       resultProcessVariable: 'result',
     });
 
-    expect(component.versionRange).toBe('1.9.0');
+    expect(component.versionRangeExpression).toBe('"1.9.0"');
     formChange(component, { catalogId: 'catalog-a' });
     formChange(component, { catalogId: 'catalog-a', templateId: 'invoice' });
     // Read once, from the saved release: never first from the highest one.
@@ -755,8 +848,7 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       'config',
       'invoice',
       'catalog-a',
-      undefined,
-      '1.9.0',
+      read(null, '1.9.0'),
     );
   });
 
@@ -785,8 +877,7 @@ describe('GenerateDocumentConfigurationComponent catalog and template changes', 
       'config',
       'invoice',
       'catalog-a',
-      undefined,
-      '',
+      read(),
     );
   });
 });

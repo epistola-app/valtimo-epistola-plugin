@@ -18,6 +18,7 @@
 import { Injector } from '@angular/core';
 import { FormioCustomComponentInfo } from '@valtimo/components';
 import { EpistolaLetterSetBuilderComponent } from './letter-set-builder.component';
+import { COMPOSER_COMPONENT_NAMESPACE, migrateLetterSetToExpressions } from '../composer-schema';
 import {
   registerEpistolaFormioComponent,
   ValtimoFormioComponentConstructor,
@@ -62,6 +63,7 @@ function withComposerKey(
 
     attach(element: HTMLElement) {
       this.component.composerKey = this._composerKey();
+      this._migrateToExpressions();
 
       const result = super.attach(element);
 
@@ -83,6 +85,23 @@ function withComposerKey(
         this._keyChangeHandler = null;
       }
       return super.detach();
+    }
+
+    /**
+     * The builder writes the letter set's environment and ranges as JSONata (schema 4), so the
+     * component it edits is brought up to schema 4 before it shows anything: plain values from an
+     * older schema become the literals they meant, and the version moves with them. The edit dialog
+     * works on a copy, so cancelling leaves the stored form as it was. See
+     * `migrateLetterSetToExpressions` for why both must move together.
+     */
+    private _migrateToExpressions(): void {
+      const data = this.root?.data;
+      if (!data || typeof data !== 'object') return;
+      const settings = data[COMPOSER_COMPONENT_NAMESPACE];
+      const migrated = migrateLetterSetToExpressions(settings);
+      if (migrated && migrated !== settings) {
+        data[COMPOSER_COMPONENT_NAMESPACE] = migrated;
+      }
     }
 
     private _composerKey(): string {

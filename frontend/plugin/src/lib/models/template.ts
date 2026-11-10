@@ -122,20 +122,49 @@ export interface CatalogInfo {
   namespace: string;
   key: string;
   editable: boolean;
+  /**
+   * Whether a release of it is deployed to the environment the list was asked for; null (or
+   * absent) when asked without one. A catalog that is not deployed is still listed, marked, so a
+   * link can be configured before it is rolled out (ADR 0009).
+   */
+  deployedToEnvironment?: boolean | null;
+}
+
+/** Why a design scope is not where, or not how, a link renders. Mirrors `DesignScope.Problem`. */
+export type DesignProblem =
+  | 'UNKNOWN_ENVIRONMENT'
+  | 'NOT_DEPLOYED'
+  | 'RANGE_NOT_DEPLOYED'
+  | 'RANGE_UNSATISFIED';
+
+/**
+ * What a lookup sends to read a design scope's release: always concrete, an environment's draft or
+ * an exact version. A null environment reads catalog-wide.
+ */
+export interface ReadSelection {
+  environmentId: string | null;
+  versionRange: string | null;
 }
 
 /**
- * The released versions of a catalog a process link may pin, and the one it renders.
- *
- * Mirrors `CatalogReleases` on the backend.
+ * The release a configurator designs a link against, resolved once so every lookup reads the same
+ * one (ADR 0009). Mirrors `DesignScope` on the backend.
  */
-export interface CatalogReleases {
-  /** Released versions, highest first: in an environment, those deployed to it. */
+export interface DesignScope {
+  /** The catalog, qualified also when it was named by a bare 1.x key. */
+  catalogId: string;
+  /** Released versions to suggest for the range, highest first. */
   versions: string[];
-  /** The version the link renders with its range, or `null` when none satisfies it. */
-  selected: string | null;
-  /** True when, without a range, the environment renders the catalog's deployed draft. */
+  /** The release designed against, or null for a draft. */
+  version: string | null;
+  /** True when a draft is designed against. */
   draft: boolean;
+  /** The environment it was read in, or null when read catalog-wide. */
+  environment: string | null;
+  /** Why it was not read where, or how, the link renders. */
+  problems: DesignProblem[];
+  /** What every further lookup sends. */
+  read: ReadSelection;
 }
 
 /**

@@ -22,12 +22,13 @@ import { Observable } from 'rxjs';
 import { ConfigService } from '@valtimo/shared';
 import {
   CatalogInfo,
-  CatalogReleases,
+  DesignScope,
+  ReadSelection,
   EnvironmentInfo,
   LetterReader,
   TemplateInfo,
 } from '../models';
-import { EpistolaPluginService } from '../services';
+import { EnvironmentScope, EpistolaPluginService, RangeScope } from '../services';
 
 /** One configured Epistola connection, as offered to an author. */
 export interface PluginConfigurationInfo {
@@ -197,32 +198,23 @@ export class EpistolaComposerApiService {
   }
 
   /**
-   * The catalogs a letter set may offer from: those the environment serves, or, without one, those
-   * the plugin configuration's default environment serves, which is where the composer renders.
+   * Every catalog a letter set may offer from, each marked whether the environment serves it
+   * (ADR 0009); not narrowed to it.
    */
   getCatalogs(
     pluginConfigurationId: string,
-    environmentId?: string | null,
+    environment: EnvironmentScope,
   ): Observable<CatalogInfo[]> {
-    return this.epistolaPluginService.getCatalogs(
-      pluginConfigurationId,
-      environmentId || undefined,
-    );
+    return this.epistolaPluginService.getCatalogs(pluginConfigurationId, environment);
   }
 
-  /** The templates of a catalog, as the settings widget offers them: of the release it renders. */
+  /** The templates of a catalog, as the settings widget offers them: of the release a design scope reads. */
   getTemplates(
     pluginConfigurationId: string,
     catalogId: string,
-    environmentId?: string | null,
-    versionRange?: string | null,
+    read: ReadSelection,
   ): Observable<TemplateInfo[]> {
-    return this.epistolaPluginService.getTemplates(
-      pluginConfigurationId,
-      catalogId,
-      environmentId || undefined,
-      versionRange || undefined,
-    );
+    return this.epistolaPluginService.getTemplates(pluginConfigurationId, catalogId, read);
   }
 
   /** The environments a letter set may render in. */
@@ -230,18 +222,18 @@ export class EpistolaComposerApiService {
     return this.epistolaPluginService.getEnvironments(pluginConfigurationId);
   }
 
-  /** A catalog's releases, and the one `versionRange` selects in the environment. */
-  getReleases(
+  /** The release the letter set's configuration designs against (see `EpistolaPluginService`). */
+  getDesignScope(
     pluginConfigurationId: string,
     catalogId: string,
-    environmentId: string | null | undefined,
-    versionRange: string,
-  ): Observable<CatalogReleases> {
-    return this.epistolaPluginService.getReleases(
+    environment: EnvironmentScope,
+    range: RangeScope,
+  ): Observable<DesignScope> {
+    return this.epistolaPluginService.getDesignScope(
       pluginConfigurationId,
       catalogId,
-      environmentId || undefined,
-      versionRange,
+      environment,
+      range,
     );
   }
 }

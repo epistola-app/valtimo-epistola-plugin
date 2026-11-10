@@ -29,7 +29,11 @@
  */
 // 2: rich text in a letter's `data` and `inputs` is tagged with its editor's format (`tagRichText`).
 // 3: a letter set names an environment and a version range, and a composed letter carries both.
-export const COMPOSER_SCHEMA_VERSION = 3;
+// 4: the letter set's environment and ranges are JSONata (ADR 0009); see `migrateLetterSetToExpressions`.
+export const COMPOSER_SCHEMA_VERSION = 4;
+
+/** The first schema whose letter-set environment and ranges are JSONata. Mirrors `ComposerSchema`. */
+export const COMPOSER_SCHEMA_EXPRESSIONS = 4;
 
 /**
  * The version field on a **composed letter**, which lives in a process variable of its own.
@@ -52,3 +56,55 @@ export const COMPOSER_COMPONENT_NAMESPACE = 'epistola';
 
 /** Where the version sits inside that namespace. */
 export const COMPOSER_COMPONENT_SCHEMA_FIELD = 'schemaVersion';
+
+/**
+ * Bring a component's settings (the `epistola` namespace) written before schema 4 up to it: the
+ * letter set's environment and ranges were plain values and become the JSONata string literals they
+ * meant, and the version says so. Settings already at 4 or later are returned as they are.
+ *
+ * Done where the settings are edited, and only there. The builder writes JSONata, so a component
+ * it touches must say it is at 4 — and a component it does not touch keeps its version and its
+ * plain values, which the backend reads as literals (`ComposerParser`). Converting the values
+ * without the version, or the version without the values, would read `"acceptatie"` as an
+ * environment named with its quotes, or `acceptatie` as a path that evaluates to nothing.
+ */
+export function migrateLetterSetToExpressions(
+  settings: Record<string, unknown> | null | undefined,
+): Record<string, unknown> | null | undefined {
+  if (!settings || typeof settings !== 'object') return settings;
+  const declared = settings[COMPOSER_COMPONENT_SCHEMA_FIELD];
+  const version = typeof declared === 'number' ? declared : 1;
+  if (version >= COMPOSER_SCHEMA_EXPRESSIONS) return settings;
+
+  const letterSet = settings['letterSet'];
+  const migrated: Record<string, unknown> = {
+    ...settings,
+    [COMPOSER_COMPONENT_SCHEMA_FIELD]: COMPOSER_SCHEMA_EXPRESSIONS,
+  };
+  if (letterSet && typeof letterSet === 'object') {
+    const set = letterSet as Record<string, unknown>;
+    migrated['letterSet'] = {
+      ...set,
+      ...quoted(set, 'environmentId'),
+      ...quoted(set, 'versionRange'),
+      ...(Array.isArray(set['templates'])
+        ? {
+            templates: (set['templates'] as unknown[]).map((template) =>
+              template && typeof template === 'object'
+                ? {
+                    ...(template as object),
+                    ...quoted(template as Record<string, unknown>, 'versionRange'),
+                  }
+                : template,
+            ),
+          }
+        : {}),
+    };
+  }
+  return migrated;
+}
+
+function quoted(source: Record<string, unknown>, field: string): Record<string, unknown> {
+  const value = source[field];
+  return typeof value === 'string' && value.trim() ? { [field]: JSON.stringify(value.trim()) } : {};
+}
