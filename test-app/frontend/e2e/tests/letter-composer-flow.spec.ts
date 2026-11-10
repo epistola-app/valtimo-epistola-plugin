@@ -52,12 +52,29 @@ test.describe('Letter composer — on a form-flow step', () => {
 
     await startFromMenu(page, 'Brief kiezen in een form flow');
 
-    // The process has a start form of its own, before the task that carries the composer.
-    await page.getByRole('button', { name: 'Beginnen' }).click({ force: true });
+    // The process has a start form of its own, before the task that carries the composer. Its
+    // dialog closing is what says the process started: a click that lands while the form is still
+    // settling submits nothing, and the task below then never comes (seen in the nightly runs).
+    // The dialog opens a moment after the menu item is clicked, so wait for it before anything else.
+    const begin = page.getByRole('button', { name: 'Beginnen' });
+    await expect(begin).toBeVisible({ timeout: 30_000 });
+    await expect
+      .poll(
+        async () => {
+          if (await begin.isVisible().catch(() => false)) {
+            await begin.click().catch(() => undefined);
+            await page.waitForTimeout(1_500);
+          }
+          return !(await begin.isVisible().catch(() => false));
+        },
+        { timeout: 30_000, message: 'the start form never submitted' },
+      )
+      .toBe(true);
 
     // Step 1 of the flow. Valtimo polls the task list, so a click can land on a row that is being
-    // re-rendered and open nothing at all — retry until the flow's modal is actually up.
-    const chooseTask = page.getByText('Brief kiezen (form flow)').first();
+    // re-rendered and open nothing at all — retry until the flow's modal is actually up. Only a
+    // visible match is the task: Valtimo also renders task names into hidden markup.
+    const chooseTask = page.getByText('Brief kiezen (form flow)').filter({ visible: true }).first();
     await expect(chooseTask).toBeVisible({ timeout: 30_000 });
     const composer = page.getByTestId('epistola-composer');
 

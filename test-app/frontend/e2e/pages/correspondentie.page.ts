@@ -49,11 +49,15 @@ export async function createDossier(page: Page): Promise<void> {
  *
  * The menu fills in after the dossier loads, and clicking Start toggles it — so wait for the item
  * to be *visible* rather than merely present, or a retry closes the menu again and the click lands
- * on a hidden element.
+ * on a hidden element. The button is the *visible* one: a start form opened earlier leaves its own
+ * submit button ("Start correspondentie") in the page, hidden, and matching it clicks nothing.
  */
 export async function startFromMenu(page: Page, name: string): Promise<void> {
   const item = page.getByText(name, { exact: true });
-  const startButton = page.getByRole('button', { name: /^Start/ }).first();
+  const startButton = page
+    .getByRole('button', { name: /^Start/ })
+    .filter({ visible: true })
+    .first();
 
   await expect
     .poll(
