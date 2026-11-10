@@ -20,7 +20,7 @@
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${branch == 'b'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_choose_c" name="C (geen koppeling, default)" sourceRef="choose-branch" targetRef="st-plain-c" />
-    <bpmn:serviceTask id="st-gen-a" name="Genereer Brief A" camunda:expression="${null}">
+    <bpmn:serviceTask id="st-gen-a" camunda:asyncBefore="true" name="Genereer Brief A" camunda:expression="${null}">
       <bpmn:incoming>Flow_choose_a</bpmn:incoming>
       <bpmn:outgoing>Flow_a_merge</bpmn:outgoing>
     </bpmn:serviceTask>

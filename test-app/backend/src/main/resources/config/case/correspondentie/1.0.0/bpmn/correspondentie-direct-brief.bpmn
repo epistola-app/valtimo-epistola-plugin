@@ -8,7 +8,7 @@
       <bpmn:outgoing>Flow_start_generate</bpmn:outgoing>
     </bpmn:startEvent>
     <bpmn:sequenceFlow id="Flow_start_generate" sourceRef="startEvent" targetRef="generate-direct-letter" />
-    <bpmn:serviceTask id="generate-direct-letter" name="Genereer gekozen brief" camunda:expression="${null}">
+    <bpmn:serviceTask id="generate-direct-letter" camunda:asyncBefore="true" name="Genereer gekozen brief" camunda:expression="${null}">
       <bpmn:incoming>Flow_start_generate</bpmn:incoming>
       <bpmn:outgoing>Flow_generate_wait</bpmn:outgoing>
     </bpmn:serviceTask>

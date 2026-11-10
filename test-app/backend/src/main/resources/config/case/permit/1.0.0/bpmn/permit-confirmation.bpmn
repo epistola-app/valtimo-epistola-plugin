@@ -20,7 +20,7 @@
     </bpmn:startEvent>
 
     <!-- Generate confirmation letter; after a correction it runs again, with the mapping, on the corrected case -->
-    <bpmn:serviceTask id="generate-confirmation" name="Genereer Bevestigingsbrief" camunda:expression="${null}">
+    <bpmn:serviceTask id="generate-confirmation" camunda:asyncBefore="true" name="Genereer Bevestigingsbrief" camunda:expression="${null}">
       <bpmn:incoming>Flow_to_generate</bpmn:incoming>
       <bpmn:incoming>Flow_corrected_to_generate</bpmn:incoming>
       <bpmn:outgoing>Flow_to_wait</bpmn:outgoing>

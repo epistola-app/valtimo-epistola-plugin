@@ -311,6 +311,15 @@ Epistola's message; for an expression, the field and the expression, the author'
 `$error(...)` (JSONata error `D3137`) and otherwise only the error's class, because an evaluation error
 may quote the data it evaluated.
 
+**Only behind a job boundary.** The step throws into whatever transaction runs it. When that is a
+job — the generate activity marked `asyncBefore` — the job fails, its retries run out and the engine
+raises the incident. Without one, the exception goes back to whoever started the step (completing the
+previous task, starting the case), who gets an error while the transaction rolls back: no incident,
+and nobody sees the diagnosis. Valtimo adds no such boundary itself (13.50; verified in its jars), and
+the step cannot add one for itself at run time. So a generate step is modelled `asyncBefore`: the
+demo processes are, a test keeps them so (`DemoGenerateStepsAreAsyncTest`), and the admin usage
+overview flags a generate step that is not.
+
 **Not done, and open:** letting a modeller catch a refusal with an error boundary event (a BPMN error
 when caught, an incident otherwise). Self-heal still matters for a result that arrives before the
 catch event subscribes, and is to be investigated separately.

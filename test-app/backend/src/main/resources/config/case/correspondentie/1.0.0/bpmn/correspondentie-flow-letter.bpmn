@@ -13,7 +13,7 @@
       <bpmn:outgoing>Flow_choose_generate</bpmn:outgoing>
     </bpmn:userTask>
     <bpmn:sequenceFlow id="Flow_choose_generate" sourceRef="choose-letter-in-flow" targetRef="generate-flow-letter" />
-    <bpmn:serviceTask id="generate-flow-letter" name="Genereer gekozen brief" camunda:expression="${null}">
+    <bpmn:serviceTask id="generate-flow-letter" camunda:asyncBefore="true" name="Genereer gekozen brief" camunda:expression="${null}">
       <bpmn:incoming>Flow_choose_generate</bpmn:incoming>
       <bpmn:outgoing>Flow_generate_wait</bpmn:outgoing>
     </bpmn:serviceTask>

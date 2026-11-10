@@ -58,6 +58,7 @@ import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
 import org.operaton.bpm.engine.RepositoryService;
 import org.operaton.bpm.engine.RuntimeService;
 import org.operaton.bpm.engine.repository.ProcessDefinition;
@@ -592,6 +593,30 @@ class EpistolaAdminServiceTest {
 
             assertThat(entries).hasSize(1);
             assertThat(entries.get(0).processDefinitionName()).isEqualTo("my-process");
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @org.junit.jupiter.params.provider.ValueSource(strings = {"camunda", "operaton"})
+        void flagsAGenerateStepWithoutAsyncBefore_becauseARefusalWouldNotRaiseAnIncident(String namespace) {
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1"));
+            when(repositoryService.getBpmnModelInstance(any())).thenReturn(bpmnWithServiceTask(namespace, false));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
+                    .thenThrow(new RuntimeException("unreachable"));
+
+            assertThat(adminService.getPluginUsage().get(0).problems())
+                    .contains(EpistolaAdminService.NO_ASYNC_BOUNDARY);
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @org.junit.jupiter.params.provider.ValueSource(strings = {"camunda", "operaton"})
+        void acceptsAGenerateStepMarkedAsyncBefore(String namespace) {
+            singleGenerateDocLink(createActionProps("cat-1", "tmpl-1"));
+            when(repositoryService.getBpmnModelInstance(any())).thenReturn(bpmnWithServiceTask(namespace, true));
+            when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
+                    .thenThrow(new RuntimeException("unreachable"));
+
+            assertThat(adminService.getPluginUsage().get(0).problems())
+                    .doesNotContain(EpistolaAdminService.NO_ASYNC_BOUNDARY);
         }
 
         @Test
@@ -1433,6 +1458,21 @@ class EpistolaAdminServiceTest {
         props.put("outputFormat", "PDF");
         props.put("filename", "letter.pdf");
         return props;
+    }
+
+    /** A process whose service task {@code Activity_1} is, or is not, marked asyncBefore in {@code namespace}. */
+    private static BpmnModelInstance bpmnWithServiceTask(String namespace, boolean asyncBefore) {
+        String uri = "camunda".equals(namespace) ? "http://camunda.org/schema/1.0/bpmn" : "http://operaton.org/schema/1.0/bpmn";
+        String xml = """
+                <bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:%1$s="%2$s"
+                    id="d" targetNamespace="t">
+                  <bpmn:process id="my-process" isExecutable="true">
+                    <bpmn:serviceTask id="Activity_1" name="Generate" %1$s:expression="${true}" %3$s/>
+                  </bpmn:process>
+                </bpmn:definitions>
+                """.formatted(namespace, uri, asyncBefore ? namespace + ":asyncBefore=\"true\"" : "");
+        return org.operaton.bpm.model.bpmn.Bpmn.readModelFromStream(
+                new java.io.ByteArrayInputStream(xml.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
     }
 
     private void mockBpmnModel(String processDefinitionId, String activityId, String activityName) {

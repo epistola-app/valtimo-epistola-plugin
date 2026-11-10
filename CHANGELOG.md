@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Upgrading
 
+- **Mark every generate step `asyncBefore`** (_Asynchronous before_), for document generation and
+  for a composed letter alike. A refused generation raises an incident only when the step runs in a
+  job of its own; without one, the person completing the previous task (or starting the case) gets an
+  error, everything rolls back, and no incident is raised. Valtimo does not add the boundary. The
+  admin page's usage overview now flags a generate step without it, and the demo processes have it.
+
 - **An environment or version-range expression that produces no value now fails** instead of falling
   back. `$pv.omgeving` on a case without that variable, or `someEnv` without quotes, used to render
   silently in the plugin's default environment (or with no range). It now raises an incident at the
@@ -87,7 +93,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   catalog 'local/demo/brieven' in release 2.0.0 (selected by "^2.0.0" in environment 'staging')"_.
   The same for a composed letter and for rich text that cannot be converted. Fix the cause (the
   configuration, or the case's data) and retry the incident: the step runs again. The text never
-  carries Epistola's own message or a value from the case, because the engine logs it.
+  carries Epistola's own message, because the engine logs it. This needs the step marked
+  `asyncBefore` (see Upgrading).
 - **Choosing an environment a catalog is not deployed to no longer errors.** Every lookup for that
   catalog answered 404 with an empty body and showed its own untranslated "Failed to load …"
   message (templates, fields, variants, the release field), burying the one notice that explained

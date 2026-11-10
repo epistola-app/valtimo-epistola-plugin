@@ -57,12 +57,14 @@ import com.ritense.processlink.service.ProcessLinkService;
 import com.ritense.valtimo.epistola.plugin.EpistolaPlugin;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import app.epistola.valtimo.logging.Failures;
 import org.operaton.bpm.engine.RepositoryService;
 import org.operaton.bpm.engine.RuntimeService;
 import org.operaton.bpm.engine.repository.ProcessDefinition;
 import org.operaton.bpm.engine.runtime.Execution;
 import org.operaton.bpm.model.bpmn.BpmnModelInstance;
 import org.operaton.bpm.model.bpmn.instance.FlowElement;
+import org.operaton.bpm.model.bpmn.instance.FlowNode;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -272,6 +274,11 @@ public class EpistolaAdminService {
                 String activityName = resolveActivityName(processDef.getId(), link.getActivityId());
                 String configTitle = resolveConfigurationTitle(link.getPluginConfigurationId());
                 List<String> problems = detectProblems(link, refCache);
+                if (app.epistola.valtimo.domain.EpistolaProcessVariables.GENERATING_ACTION_KEYS
+                                .contains(link.getPluginActionDefinitionKey())
+                        && !runsAsynchronously(processDef.getId(), link.getActivityId())) {
+                    problems.add(NO_ASYNC_BOUNDARY);
+                }
 
                 entries.add(new PluginUsageEntry(
                         link.getId().toString(),
@@ -617,6 +624,28 @@ public class EpistolaAdminService {
             log.debug("Could not resolve process definition for key '{}': {}", processDefinitionKey, e.getMessage());
         }
         return null;
+    }
+
+    /**
+     * A generate step that Epistola refuses raises an incident only when it runs in a job of its own:
+     * without one the refusal goes back to whoever started the step (a task completed, a case started),
+     * who gets an error while the transaction rolls back, and no incident is raised (ADR 0009, third addendum).
+     */
+    static final String NO_ASYNC_BOUNDARY = "This step is not marked asynchronous before (asyncBefore): "
+            + "if Epistola refuses the generation, the person completing the previous step gets an error "
+            + "instead of an incident being raised. Mark the activity 'Asynchronous before' in the BPMN.";
+
+    /** Whether the activity starts a job of its own (asyncBefore); true when it cannot be told. */
+    boolean runsAsynchronously(String processDefinitionId, String activityId) {
+        try {
+            BpmnModelInstance model = repositoryService.getBpmnModelInstance(processDefinitionId);
+            if (model != null && model.getModelElementById(activityId) instanceof FlowNode node) {
+                return node.isOperatonAsyncBefore();
+            }
+        } catch (Exception e) {
+            log.debug("Could not read the async boundary of '{}': {}", activityId, Failures.describe(e));
+        }
+        return true;
     }
 
     private String resolveActivityName(String processDefinitionId, String activityId) {
