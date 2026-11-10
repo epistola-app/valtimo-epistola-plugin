@@ -195,12 +195,13 @@ class EpistolaPluginGenerateComposedDocumentTest {
     }
 
     /**
-     * A refused generation is a failed one, recorded where the process reads it — and the step
-     * completes, so the record survives: thrown, the engine would roll the variable back (ADR 0009,
-     * addendum). The reason Epistola gave goes onto the case; only the log must not carry it.
+     * A refused generation cannot start, so the step raises an incident — retried once the cause is
+     * fixed — rather than recording a result (ADR 0009, third addendum). The incident's text says
+     * what is missing, from configuration alone; Epistola's own text stays out, because the engine
+     * logs the incident and a downstream message may quote the request.
      */
     @Test
-    void recordsTheRefusalWhereTheProcessCanReadIt() {
+    void aRefusalRaisesAnIncidentSayingWhatIsMissing_withoutEpistolasText() {
         composerWrote(letter());
         when(epistolaService.submitGenerationJob(anyString(), anyString(), anyString(), anyString(),
                 anyString(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
@@ -208,19 +209,15 @@ class EpistolaPluginGenerateComposedDocumentTest {
                         new app.epistola.valtimo.domain.GenerationTargetProblem(
                                 app.epistola.valtimo.domain.GenerationTargetProblem.Reason.TEMPLATE_NOT_IN_RELEASE,
                                 "gemeente", "besluit-bezwaar", null, "prod", null, "2.0.0"),
-                        "Template 'besluit-bezwaar' not found in catalog 'gemeente'",
+                        "Template 'besluit-bezwaar' not found for case of Jansen",
                         "https://epistola.app/errors/not-found"));
 
-        plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
-
-        ArgumentCaptor<Map<String, Object>> result = ArgumentCaptor.forClass(Map.class);
-        verify(execution).setVariable(eq(RESULT_VAR), result.capture());
-        assertThat(result.getValue())
-                .containsEntry(EpistolaProcessVariables.RESULT_KEY_STATUS, "FAILED")
-                .containsEntry(EpistolaProcessVariables.RESULT_KEY_ERROR_REASON, "TEMPLATE_NOT_IN_RELEASE");
-        assertThat(String.valueOf(result.getValue().get(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE)))
-                .describedAs("the reason Epistola gave, not a generic failure")
-                .contains("not found in catalog");
+        assertThatThrownBy(() -> plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR))
+                .isInstanceOf(app.epistola.valtimo.service.DocumentGenerationRefusedException.class)
+                .hasMessageStartingWith("Template 'besluit-bezwaar' is not in catalog 'gemeente' in release 2.0.0")
+                .hasMessageNotContaining("Jansen")
+                .hasNoCause();
+        org.mockito.Mockito.verify(execution, org.mockito.Mockito.never()).setVariable(eq(RESULT_VAR), any());
     }
 
     @Test

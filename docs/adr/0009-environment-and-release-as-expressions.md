@@ -200,6 +200,9 @@ with generic load errors.
 
 ### Errors at generation
 
+_Superseded by the third addendum: a generation that cannot start raises an incident; the
+diagnosis below is what the incident says._
+
 Epistola refuses a generation it cannot resolve with 404 `not-found` before accepting anything. The
 plugin turns that into a reason (`ENVIRONMENT_NOT_FOUND`, `NOT_DEPLOYED`, `RANGE_UNSATISFIED`,
 `TEMPLATE_NOT_IN_RELEASE`, `VARIANT_NOT_IN_RELEASE`) and a translated message naming what was asked
@@ -251,11 +254,11 @@ Nothing could refuse it, because no environment was ever asked for.
 
 **Decision.** Once a field is an expression, it has three outcomes:
 
-| The expression yields | Environment                | Version range     |
-| --------------------- | -------------------------- | ----------------- |
-| a non-empty string    | that environment           | that range        |
-| `""`                  | deliberately none          | deliberately none |
-| no value              | fails (`EXPRESSION_EMPTY`) | fails             |
+| The expression yields | Environment         | Version range     |
+| --------------------- | ------------------- | ----------------- |
+| a non-empty string    | that environment    | that range        |
+| `""`                  | deliberately none   | deliberately none |
+| no value              | fails (an incident) | fails             |
 
 - **No value is never a choice.** It is a typo, a forgotten quote, or a variable the case lacks.
   Falling back silently put letters in another environment; failing puts them on the process's
@@ -267,9 +270,8 @@ Nothing could refuse it, because no environment was ever asked for.
   is none. `$pv.omgeving ?: $plugin.defaultEnvironmentId` therefore always produces a deliberate
   answer and never fails; `?: $error("…")` makes an environment required, with the author's message.
 - **An empty field** still means the plugin's default: that is the ordinary route to it.
-- **A failing expression** — `$error`, a JSONata error, an unusable result — fails the same way every
-  time, so it is recorded as `FAILED` (`EXPRESSION_FAILED`) at once, as a refusal is, rather than
-  retried into an incident.
+- **A failing expression** — `$error`, a JSONata error, an unusable result — cannot start the
+  generation either; see the third addendum for what that means.
 - **The composer** follows the same rules; its letter keeps `"environmentId": ""` apart from an absent
   one, so generation renders where the preview did.
 - **A bare path** (anything not starting with `$`, a quote, a number or a bracket) can never produce
@@ -279,3 +281,36 @@ Nothing could refuse it, because no environment was ever asked for.
 **Consequence.** Breaking for a v1 link whose environment or range expression relied on the silent
 fallback: it now fails until `?: $plugin.defaultEnvironmentId` (or `""`) is written. Pre-1.0, and
 noted under _Upgrading_.
+
+## Third addendum (2026-11-10): a generation that cannot start raises an incident
+
+The first addendum had a refused generation recorded as `FAILED` on the result variable, with an
+`errorReason`, so the catch event after the step would take the process's failure path. Built and
+tried by hand, it hung: the catch event is entered after the step, so the result had to be delivered
+to it by self-heal, which did not take effect in the running app. Delivering a synchronous failure to
+a step built to wait asynchronously needed either that timing trick or a check of the model for an
+error boundary event — and an uncaught BPMN error silently ends the process by default
+(`enableExceptionsAfterUnhandledBpmnError` is false), which is worse than hanging.
+
+**Decision.** A generation that cannot start throws from the step, and the engine raises an incident:
+
+- Epistola refused it (`EpistolaTargetNotFoundException`, or any other 4xx but 408/429);
+- an expression of the link failed or produced nothing where a deliberate value is needed;
+- the case's rich text cannot be converted.
+
+Not because these are configuration problems: an environment that comes from the case (`$pv.omgeving`)
+can name one that does not exist for that case only. Because an incident is the engine's own answer
+to "this step cannot run": nothing is lost, it is visible, and once the cause is fixed — the
+configuration or the case's data — retrying it runs the step again with what was corrected, which a
+failure path cannot do without a loop in the BPMN. `FAILED` on the result variable is reserved for a
+job Epistola accepted and failed to render, a business outcome delivered through the catch event.
+
+**The incident's text is logged by the engine**, so it is built from configuration only
+(`DocumentGenerationRefusedException`, no cause attached): the diagnosis of what is missing, never
+Epistola's message; for an expression, the field and the expression, the author's text for
+`$error(...)` (JSONata error `D3137`) and otherwise only the error's class, because an evaluation error
+may quote the data it evaluated.
+
+**Not done, and open:** letting a modeller catch a refusal with an error boundary event (a BPMN error
+when caught, an incident otherwise). Self-heal still matters for a result that arrives before the
+catch event subscribes, and is to be investigated separately.

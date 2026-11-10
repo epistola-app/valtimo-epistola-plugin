@@ -74,7 +74,7 @@ second addendum):
 | ----------------------- | ----------------------------------- | ------------------- |
 | a non-empty string      | that environment                    | that range          |
 | `""`                    | deliberately none (highest release) | deliberately none   |
-| no value (missing path) | **fails**: `EXPRESSION_EMPTY`       | **fails**: likewise |
+| no value (missing path) | **fails**: an incident at the step  | **fails**: likewise |
 
 No value is a typo, a forgotten quote or a variable the case lacks — never a
 choice, and falling back silently once rendered in another environment
@@ -82,8 +82,9 @@ unnoticed. A fallback is written into the expression instead:
 `$pv.omgeving ?: $plugin.defaultEnvironmentId`, where `$plugin.defaultEnvironmentId`
 is the configured default, or `""` when there is none. An author who requires an
 environment adds `?: $error("…")`. An empty field still means the plugin
-default. An expression that fails (`$error`, a JSONata error) is likewise
-recorded as `FAILED` (`EXPRESSION_FAILED`) at once rather than retried. V0 links
+default. An expression that fails (`$error`, a JSONata error) likewise raises an
+incident; its text names the field and the expression, and for `$error` the
+author's message — never a value the expression read. V0 links
 keep falling back. A number is refused
 rather than converted, because the bare `1.0` is the number 1, which as a range
 would mean `1.x`. A string literal is checked to be a range when the action is

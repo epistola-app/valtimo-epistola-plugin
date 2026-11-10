@@ -25,23 +25,18 @@ The **single source of truth** for a generation. You name it per `generate-docum
 | `documentId`         | Epistola PDF id (set on `COMPLETED`)                             | `download-document`, the download endpoint       | ✅     |
 | `errorMessage`       | failure text (set on `FAILED`)                                   | failure-handling gateways / retry form           | ✅     |
 | `jobPath`            | composite `epistola:job:{tenant}/{requestId}`                    | pins the catch-event token via `${<rv>.jobPath}` | ✅     |
-| `errorReason`        | why a generation that could not start failed (see below)         | gateways and forms that switch on the reason     | —      |
 
 Read in BPMN with JUEL dot-notation: `${epistolaResult.status}`, `${epistolaResult.documentId}`, etc.
 
-**A generation that cannot start is `FAILED` at once.** When Epistola refuses the request itself —
-nothing accepted, no job: a template not in the release, nothing deployed, a range nothing satisfies,
-an API key without access — or the case's rich text cannot be converted, retrying changes nothing.
-The step then completes with `status: FAILED`, an `errorMessage` naming what was asked for, and an
-`errorReason`: `ENVIRONMENT_NOT_FOUND`, `CATALOG_NOT_FOUND`, `NOT_DEPLOYED`, `NOT_RELEASED`,
-`RANGE_UNSATISFIED`, `TEMPLATE_NOT_IN_RELEASE`, `VARIANT_NOT_IN_RELEASE`, `NO_MATCHING_VARIANT`,
-`UNKNOWN`, `REQUEST_REFUSED` (any other 4xx), `RICH_TEXT_NOT_CONVERTIBLE`, `EXPRESSION_EMPTY` (an
-environment or release expression produced no value) or `EXPRESSION_FAILED` (an expression failed,
-`$error` included, or produced something unusable). Its `requestId` starts
-with `refused-`, because Epistola has no job for it; `check-job-status` reports such a request
-`FAILED` without asking. The catch event after the step self-heals on the already-terminal result, so
-the process takes the path it has for a failed letter. Timeouts, 5xx, 408 and 429 still fail the step
-so the engine retries it ([ADR 0009](adr/0009-environment-and-release-as-expressions.md), addendum).
+**A generation that cannot start raises an incident, and `FAILED` is a letter that did not
+render.** When Epistola refuses the request itself — nothing accepted, no job: a template not in the
+release, nothing deployed, a range nothing satisfies, an API key without access — or an expression
+of the link fails or produces nothing, or the case's rich text cannot be converted, the step throws
+and the engine raises an incident whose text says what is missing. Nothing is written to the result
+variable. Fix the cause (the configuration, or the case's data) and retry the incident: the step runs
+again with what was corrected. `status: FAILED` on the result variable is reserved for a job Epistola
+accepted that then failed to render, delivered through the catch event
+([ADR 0009](adr/0009-environment-and-release-as-expressions.md), third addendum).
 
 ## 2. Correlation plumbing
 

@@ -482,6 +482,32 @@ class GenerateDocumentActionConfigurationRegistryTest {
     }
 
     @Test
+    void anIncidentKeepsTheAuthorsErrorText_fromError() {
+        var config = withEnvironment("$pv.omgeving ?: $error(\"Geen omgeving voor deze zaak\")");
+
+        assertThatThrownBy(() -> config.resolveEnvironment(mappingService(), context(Map.of()), null))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e ->
+                        assertThat(e.safeDescription())
+                                .contains("field 'environmentId'")
+                                .endsWith("failed: Geen omgeving voor deze zaak"));
+    }
+
+    @Test
+    void anIncidentNeverQuotesWhatAnExpressionReadFromTheCase() {
+        // $number("Jansen") fails with `For input string: "Jansen"`: the case's value, in the message.
+        var config = withEnvironment("$string($number($pv.naam))");
+
+        assertThatThrownBy(() -> config.resolveEnvironment(mappingService(), context(Map.of("naam", "Jansen")), null))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e -> {
+                    assertThat(e.getMessage()).describedAs("the exception itself may carry it").contains("Jansen");
+                    assertThat(e.safeDescription())
+                            .describedAs("what the incident and its logs carry")
+                            .contains("expression='$string($number($pv.naam))'")
+                            .doesNotContain("Jansen");
+                });
+    }
+
+    @Test
     void anEnvironmentThatIsNotAString_isRefused() {
         assertThatThrownBy(() -> withEnvironment("42").resolveEnvironment(mappingService(), context(Map.of()), null))
                 .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e ->

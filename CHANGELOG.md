@@ -11,8 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **An environment or version-range expression that produces no value now fails** instead of falling
   back. `$pv.omgeving` on a case without that variable, or `someEnv` without quotes, used to render
-  silently in the plugin's default environment (or with no range). It is now `FAILED` with
-  `errorReason: EXPRESSION_EMPTY`. Write the fallback into the expression:
+  silently in the plugin's default environment (or with no range). It now raises an incident at the
+  step saying the expression produced no value. Write the fallback into the expression:
   `$pv.omgeving ?: $plugin.defaultEnvironmentId`, or `""` for deliberately none. An empty field
   still means the default.
 - **A generate link's `versionRange` is now JSONata, like its environment.** A fixed range is the
@@ -28,9 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **`$plugin.defaultEnvironmentId` in expressions**: the plugin configuration's default environment,
   or `""` when none is configured, for an explicit fallback. `""` from an environment or range
-  expression means deliberately none. A failing expression (`$error` included) is `FAILED` with
-  `EXPRESSION_FAILED` at once rather than retried, and the expression editor flags a bare path such
-  as `someEnv`, which can never produce a value.
+  expression means deliberately none. A failing expression raises an incident naming the field and
+  the expression; for `$error("…")` it carries the author's own text. The expression editor flags a
+  bare path such as `someEnv`, which can never produce a value.
 - **The release can be an expression.** A generate link's and a letter set's release is JSONata
   evaluated with the case (`$pv.briefversie`), as the environment already was; a letter set's
   environment can be an expression too. The result must be a string that is a version range; a
@@ -80,15 +80,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **A generation Epistola refuses is failed at once, with the reason, instead of retried into an
-  incident.** A missing template, release, variant or environment, nothing deployed, or an API key
-  without access cannot be fixed by asking again. The step used to throw: the engine retried it three
-  times, raised an incident reading only "Failed to submit document generation request to Epistola",
-  and rolled back the `FAILED` result it had written. Now the step completes with `status: FAILED`,
-  an `errorMessage` naming what was asked for (catalog, template, release, environment, range) and a
-  new `errorReason` code, and the catch event after it continues down the process's failure path. The
-  same for a composed letter, and for rich text that cannot be converted. Timeouts and 5xx are still
-  retried. See [process variables](docs/process-variables.md).
+- **A refused generation raises an incident that says what is missing.** When Epistola refuses a
+  generation (a missing template, release, variant or environment, nothing deployed, no access), the
+  incident read only "Failed to submit document generation request to Epistola". It now names what
+  was asked for and the first part that does not exist, for example _"Template 'besluit' is not in
+  catalog 'local/demo/brieven' in release 2.0.0 (selected by "^2.0.0" in environment 'staging')"_.
+  The same for a composed letter and for rich text that cannot be converted. Fix the cause (the
+  configuration, or the case's data) and retry the incident: the step runs again. The text never
+  carries Epistola's own message or a value from the case, because the engine logs it.
 - **Choosing an environment a catalog is not deployed to no longer errors.** Every lookup for that
   catalog answered 404 with an empty body and showed its own untranslated "Failed to load …"
   message (templates, fields, variants, the release field), burying the one notice that explained
