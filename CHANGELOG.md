@@ -40,6 +40,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without the range) where the link would render nothing, and reports why. Templates, fields,
   variants and attributes are all read from that one release.
 
+- **Epistola contract client `2.0.0-rc.1` → `2.0.0-rc.2`** (`client-spring3-restclient`,
+  `epistola-catalog`, and the mock server in `docker/docker-compose.yml`). rc.2 adds two things the
+  plugin now uses when the Suite offers them: `listCatalogTemplates`, which lists a catalog's templates
+  across its releases in one call, and the `missing` member of a `not-found` problem, which says what a
+  refused generation lacked. A Suite on rc.1 (Suite `main` today) lacks both, and the plugin falls
+  back: one template listing per release, and its own diagnosis. `oldestSupportedServerTest` keeps
+  running against rc.1 for that reason.
 - **Epistola contract client `2.0.0-beta.2` → `2.0.0-rc.1`** (`client-spring3-restclient`,
   `epistola-catalog`, and the mock server in `docker/docker-compose.yml` and
   `oldestSupportedServerTest`). This build needs a Suite serving contract `2.0.0-rc.1`; none is
