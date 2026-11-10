@@ -7,7 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Upgrading
+
+- **A generate link's `versionRange` is now JSONata, like its environment.** A fixed range is the
+  string literal `"^1.4.0"`. A v1 link saved as a bare range (`^1.4.0`, only possible on
+  `1.0.0-alpha.1`/`beta.1`) is refused when it runs, with a message showing the literal to write.
+  Opening the link in the process-link editor quotes it for you, so saving it fixes it.
+- **Letter composer settings are at schema version 4.** A letter set's environment and ranges are
+  JSONata. Older settings are read as the literals they meant and keep working unchanged; opening a
+  composer in the form builder brings it to 4. An older plugin refuses schema-4 settings and letters,
+  with a message naming both versions.
+
+### Added
+
+- **The release can be an expression.** A generate link's and a letter set's release is JSONata
+  evaluated with the case (`$pv.briefversie`), as the environment already was; a letter set's
+  environment can be an expression too. The result must be a string that is a version range; a
+  number is refused rather than read as another range (`1.0` would mean `1.x`).
+  ([ADR 0009](docs/adr/0009-environment-and-release-as-expressions.md))
+- **The configurators say which release they design against.** "Template and fields come from
+  release 2.1.0", the deployed draft, or the newest draft; and when the environment or release is
+  an expression, that this is the highest release and an assumption.
+
 ### Changed
+
+- **Every catalog is listed, whatever the environment.** A catalog not deployed to the link's or
+  letter set's environment is marked in the list and can be chosen, with one warning that it will
+  not render there until deployed, so a link can be configured before its catalog is rolled out.
+  Previously the list was narrowed to the environment.
+- **A configurator resolves its release once.** A new `GET …/configurations/{id}/design-scope`
+  replaces `/releases`: it picks the release to design against, falling back (catalog-wide, then
+  without the range) where the link would render nothing, and reports why. Templates, fields,
+  variants and attributes are all read from that one release.
 
 - **Epistola contract client `2.0.0-beta.2` → `2.0.0-rc.1`** (`client-spring3-restclient`,
   `epistola-catalog`, and the mock server in `docker/docker-compose.yml` and
@@ -18,6 +49,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ones, per-resource consumer permission updates, bounded request inputs, and QR-code alt text.
 
 ### Fixed
+
+- **Choosing an environment a catalog is not deployed to no longer errors.** Every lookup for that
+  catalog answered 404 with an empty body and showed its own untranslated "Failed to load …"
+  message (templates, fields, variants, the release field), burying the one notice that explained
+  it. It is now one translated warning, and the template and mapping stay usable.
 
 - **A job status that a newer 2.x server adds no longer fails the status check.** From `rc.1` the
   client reads an unknown enum value as `unknown_default_open_api` instead of failing the whole

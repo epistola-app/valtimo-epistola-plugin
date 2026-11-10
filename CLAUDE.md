@@ -135,11 +135,16 @@ docker/            # Docker compose for local dependencies
   the release is its deployed draft, else its highest deployed release (`ReleaseVersions`) —
   dependencies are used by an environment without being deployed, so they are not offered. Without
   one, every catalog, read from the highest release, else the newest draft; the contract cannot
-  tell a dependency-only catalog apart there. A generate link's `versionRange` (plain text, not
-  JSONata: the configurator reads the template through it) selects the highest released release
-  that satisfies it, of those deployed when there is an environment, never a draft. Generation and
-  preview send it for the server to resolve; reads resolve it in the plugin (`VersionRanges`,
-  `/releases`). semver4j's default parser also accepts Ivy ranges and `latest`, which the contract
+  tell a dependency-only catalog apart there. A generate link's `versionRange` is **JSONata**, like
+  `environmentId` (ADR 0009; a fixed range is `"^1.4.0"`): it selects the highest released release
+  that satisfies it, of those deployed when there is an environment, never a draft, and must
+  evaluate to a string (`VersionRanges.ofExpressionResult` refuses a number). Generation and
+  preview send it for the server to resolve. **Configurators never resolve per lookup**: they ask
+  `/design-scope` once (falling back catalog-wide where the link would render nothing, with
+  `problems`), and every lookup sends its `read` selection. A catalog-wide `read` must go out as
+  `anyEnvironment=true` — without an environment parameter the server substitutes the default
+  environment (`epistola-plugin.service.spec.ts`). `/catalogs` lists every catalog, marked with
+  `deployedToEnvironment`, not narrowed. semver4j's default parser also accepts Ivy ranges and `latest`, which the contract
   does not: `VersionRanges` restricts it to npm's processors and refuses a range semver4j would
   silently read as matching nothing. Statuses arrive lowercase (`in-progress`) and are normalised to the
   1.x form on process variables (`GenerationJobStatus.normalize`), because BPMN gateways compare
@@ -178,10 +183,14 @@ docker/            # Docker compose for local dependencies
   - **So does a release; the environment belongs to the set.** `letterSet.environmentId` (else the
     plugin's `defaultEnvironmentId`) is where every letter renders; `letterSet.versionRange` is a
     range over the **set's catalog** and reaches only letters in it, `templates[].versionRange`
-    overrides it. The parser resolves both onto `OfferedTemplate.versionRange` and
-    `configuration.environmentOr(default)`; prepare returns them and the browser copies them onto the
+    overrides it. The parser resolves the range onto `OfferedTemplate.versionRange`, and the service
+    evaluates both into a `Placement` (environment else the plugin default); prepare returns them and the browser copies them onto the
     letter variable, because `generate-dynamic-document` cannot consult the composer. Template
-    reads, preview and generation must all use the same pair (schema 3).
+    reads, preview and generation must all use the same pair. Since schema 4 both are JSONata,
+    evaluated with the case in `LetterComposerService.place`; the parser quotes a schema ≤3 plain
+    value, and the builder migrates a component to 4 when it is opened
+    (`migrateLetterSetToExpressions`) — values and version must move together, or `"acceptatie"`
+    reads as an environment named with its quotes.
   - See [docs/letter-composer.md](docs/letter-composer.md) and
     [ADR 0006](docs/adr/0006-letter-composer-configuration.md).
 - **Rich text** ([docs/rich-text.md](docs/rich-text.md), [ADR 0008](docs/adr/0008-rich-text-inputs.md)):
