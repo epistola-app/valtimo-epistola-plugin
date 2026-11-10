@@ -33,6 +33,8 @@ import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
 import app.epistola.valtimo.service.download.DocumentStorageStrategy;
 
 import app.epistola.valtimo.richtext.RichTextConversionException;
+import app.epistola.valtimo.action.generate.GenerateDocumentExpressionException;
+import app.epistola.valtimo.mapping.PluginBinding;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaTargetNotFoundException;
 import app.epistola.valtimo.service.EpistolaApiException;
@@ -351,11 +353,36 @@ public class EpistolaPlugin {
                     .execution(execution)
                     .documentId(execution.getBusinessKey())
                     .operation("execution")
+                    .extraBindings(PluginBinding.of(defaultEnvironmentId))
                     .build();
-            resolvedData = actionConfig.evaluateDataMapping(jsonataMappingService, evalCtx);
+            try {
+                resolvedData = actionConfig.evaluateDataMapping(jsonataMappingService, evalCtx);
+            } catch (GenerateDocumentExpressionException e) {
+                recordExpressionFailure(execution, actionConfig, configuredResultVariable, e);
+                return;
+            }
         }
 
         var scalarEvalContext = buildEvalCtx(execution, null);
+        // A configured expression that fails, or produces nothing where a deliberate value is needed,
+        // fails the same way every time: recorded as FAILED at once, as a refusal is, rather than
+        // retried into an incident (ADR 0009, second addendum).
+        try {
+            generateWithResolvedScalars(execution, actionConfig, resolvedData, scalarEvalContext,
+                    hasVariantId, hasAttributes, configuredResultVariable);
+        } catch (GenerateDocumentExpressionException e) {
+            recordExpressionFailure(execution, actionConfig, configuredResultVariable, e);
+        }
+    }
+
+    private void generateWithResolvedScalars(
+            DelegateExecution execution,
+            app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration actionConfig,
+            Map<String, Object> resolvedData,
+            app.epistola.valtimo.mapping.EvaluationContext scalarEvalContext,
+            boolean hasVariantId,
+            boolean hasAttributes,
+            String configuredResultVariable) {
         String resolvedOutputFormat = actionConfig.outputFormat().resolve(jsonataMappingService, scalarEvalContext);
         FileFormat effectiveOutputFormat;
         try {
@@ -369,14 +396,10 @@ public class EpistolaPlugin {
         }
         String resolvedFilename = actionConfig.filename().resolve(jsonataMappingService, scalarEvalContext);
 
-        // Resolve a dynamic action-level environment and fall back to the plugin default
-        // when no usable override is configured or produced.
-        String resolvedEnvironmentId = actionConfig.environmentId().isConfigured()
-                ? actionConfig.environmentId().resolve(jsonataMappingService, scalarEvalContext)
-                : null;
-        String effectiveEnvironmentId = (resolvedEnvironmentId != null && !resolvedEnvironmentId.isBlank())
-                ? resolvedEnvironmentId
-                : defaultEnvironmentId;
+        // None configured: the plugin default. An expression: what it says, "" for none, and no
+        // value is refused (see resolveEnvironment).
+        String effectiveEnvironmentId =
+                actionConfig.resolveEnvironment(jsonataMappingService, scalarEvalContext, defaultEnvironmentId);
 
         // Resolve variantId if it uses a JSONata expression
         String resolvedVariantId = hasVariantId
@@ -471,7 +494,9 @@ public class EpistolaPlugin {
                         null,
                         // Where the letter was previewed: the composer writes both, and a letter
                         // that names neither renders in the default environment, as before.
-                        letter.environmentId() != null ? letter.environmentId() : defaultEnvironmentId,
+                        // null: none was configured, the default; "": the composer said none.
+                        letter.environmentId() == null ? defaultEnvironmentId
+                                : letter.environmentId().isBlank() ? null : letter.environmentId(),
                         letter.versionRange(),
                         letter.data(),
                         FileFormat.PDF,
@@ -550,6 +575,21 @@ public class EpistolaPlugin {
                     + refusal.getMessage();
         }
         recordFailure(execution, request, reason, message);
+    }
+
+    /** Record an expression that cannot produce what its field needs as a failed generation. */
+    private void recordExpressionFailure(
+            DelegateExecution execution,
+            app.epistola.valtimo.action.generate.GenerateDocumentActionConfiguration actionConfig,
+            String resultProcessVariable,
+            GenerateDocumentExpressionException failure) {
+        String reason = failure.getKind() == GenerateDocumentExpressionException.Kind.NO_VALUE
+                ? EpistolaProcessVariables.EXPRESSION_EMPTY
+                : EpistolaProcessVariables.EXPRESSION_FAILED;
+        recordFailure(execution,
+                new SubmitRequest(actionConfig.catalogId(), actionConfig.templateId(), null, null, null, null,
+                        Map.of(), FileFormat.PDF, null, null, resultProcessVariable),
+                reason, failure.getMessage());
     }
 
     /**
@@ -857,6 +897,7 @@ public class EpistolaPlugin {
                 .execution(execution)
                 .documentId(execution.getBusinessKey())
                 .operation("execution")
+                .extraBindings(PluginBinding.of(defaultEnvironmentId))
                 .build();
     }
 

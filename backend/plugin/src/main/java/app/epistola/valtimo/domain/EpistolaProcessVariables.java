@@ -101,6 +101,15 @@ public final class EpistolaProcessVariables {
     /** {@link #RESULT_KEY_ERROR_REASON} for a refusal that is not about something missing (400, 401, 403, 422...). */
     public static final String REQUEST_REFUSED = "REQUEST_REFUSED";
 
+    /**
+     * {@link #RESULT_KEY_ERROR_REASON} when a link's expression produced no value where a deliberate one
+     * is needed — the environment or the release: a typo, a forgotten quote, a variable the case lacks.
+     */
+    public static final String EXPRESSION_EMPTY = "EXPRESSION_EMPTY";
+
+    /** {@link #RESULT_KEY_ERROR_REASON} when a link's expression failed ({@code $error}, a JSONata error) or produced something unusable. */
+    public static final String EXPRESSION_FAILED = "EXPRESSION_FAILED";
+
     /** {@link #RESULT_KEY_ERROR_REASON} when the case's rich text cannot become what the template takes. */
     public static final String RICH_TEXT_NOT_CONVERTIBLE = "RICH_TEXT_NOT_CONVERTIBLE";
 

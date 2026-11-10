@@ -42,6 +42,21 @@ class DynamicDocumentTest {
      * only reason this was not hit; a letter written by a process, by an older plugin version, or
      * by a form that stores an explicit null is enough to reach it.
      */
+    /**
+     * "" is a letter rendered in no environment, as the composer was told; absent is the plugin's
+     * default. Kept apart on the way out and on the way back in (ADR 0009, second addendum).
+     */
+    @Test
+    void anEmptyEnvironment_isNone_notTheDefault_bothWays() {
+        Map<String, Object> none = DynamicDocument.of("local/demo/brieven", "besluit", Map.of(), "", null);
+        Map<String, Object> unnamed = DynamicDocument.of("local/demo/brieven", "besluit", Map.of(), null, null);
+
+        assertThat(none).containsEntry("environmentId", "");
+        assertThat(unnamed).doesNotContainKey("environmentId");
+        assertThat(DynamicDocument.from(none, "pv:brief", objectMapper).environmentId()).isEmpty();
+        assertThat(DynamicDocument.from(unnamed, "pv:brief", objectMapper).environmentId()).isNull();
+    }
+
     @Test
     void readsALetterWhoseInputWasCleared() {
         Map<String, Object> inputs = new java.util.HashMap<>();

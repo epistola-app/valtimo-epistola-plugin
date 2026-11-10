@@ -85,6 +85,10 @@ public record GenerateDocumentActionConfiguration(
                 throw GenerateDocumentExpressionException.evaluationFailed(
                         version, "versionRange", versionRange.source(), context, exception);
             }
+            if (value == null) {
+                throw GenerateDocumentExpressionException.noValue(version, "versionRange", versionRange.source(),
+                        "Write \"\" for no range, or fall back with ?: \"^1.0.0\".");
+            }
         }
         try {
             return VersionRanges.ofExpressionResult(value).orElse(null);
@@ -92,6 +96,49 @@ public record GenerateDocumentActionConfiguration(
             throw GenerateDocumentExpressionException.invalidResult(
                     version, "versionRange", versionRange.source(), refused.getMessage());
         }
+    }
+
+    /**
+     * The environment generation renders in (ADR 0009, second addendum):
+     * <ul>
+     *   <li>none configured: the plugin configuration's default — the usual route to it;</li>
+     *   <li>an expression producing a non-empty string: that environment;</li>
+     *   <li>one producing {@code ""}: deliberately none, the catalog's highest release;</li>
+     *   <li>one producing no value: refused, because that is a typo or a variable the case lacks,
+     *       never a choice — falling back silently rendered in another environment unnoticed.</li>
+     * </ul>
+     * An author who wants a fallback writes it, with the default bound as
+     * {@code $plugin.defaultEnvironmentId}: {@code $pv.omgeving ?: $plugin.defaultEnvironmentId}.
+     * A v0 link keeps its frozen behaviour: anything blank falls back to the default.
+     *
+     * @return the environment, or null for none
+     */
+    public String resolveEnvironment(
+            JsonataMappingService mappingService, EvaluationContext context, String defaultEnvironmentId) {
+        String fallback = defaultEnvironmentId == null || defaultEnvironmentId.isBlank() ? null : defaultEnvironmentId;
+        if (environmentId == null || !environmentId.isConfigured()) {
+            return fallback;
+        }
+        if (environmentId instanceof LiteralScalar || version < 1) {
+            String resolved = environmentId.resolve(mappingService, context);
+            return resolved == null || resolved.isBlank() ? fallback : resolved;
+        }
+        Object value;
+        try {
+            value = mappingService.evaluateValue(context.withExpression(environmentId.source()));
+        } catch (RuntimeException exception) {
+            throw GenerateDocumentExpressionException.evaluationFailed(
+                    version, "environmentId", environmentId.source(), context, exception);
+        }
+        if (value == null) {
+            throw GenerateDocumentExpressionException.noValue(version, "environmentId", environmentId.source(),
+                    "Write \"\" for no environment, or fall back with ?: $plugin.defaultEnvironmentId.");
+        }
+        if (!(value instanceof String text)) {
+            throw GenerateDocumentExpressionException.invalidResult(version, "environmentId", environmentId.source(),
+                    "must evaluate to a string, such as \"productie\"");
+        }
+        return text.isBlank() ? null : text.strip();
     }
 
     /**

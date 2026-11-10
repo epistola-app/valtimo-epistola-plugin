@@ -135,8 +135,13 @@ public class PreviewService {
         var docOverrides = ctx.inputOverrides() != null ? ctx.inputOverrides().get("doc") : null;
         var pvOverrides = ctx.inputOverrides() != null ? ctx.inputOverrides().get("pv") : null;
 
+        // Before the mapping: $plugin is part of what every expression of the link may read.
+        EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
+                processLink.getPluginConfigurationId());
+
         var evalCtxBuilder = app.epistola.valtimo.mapping.EvaluationContext.builder()
                 .expression(dataMapping)
+                .extraBindings(app.epistola.valtimo.mapping.PluginBinding.of(plugin.getDefaultEnvironmentId()))
                 .documentResolver(docId -> {
                     // A start-event preview for a new case has no document at all. Guard explicitly:
                     // JsonataMappingService.buildDocumentMap calls the resolver with a null id rather
@@ -171,8 +176,12 @@ public class PreviewService {
             });
         }
 
-        Map<String, Object> resolvedData = actionConfig.evaluateDataMapping(
-                jsonataMappingService, evalCtxBuilder.build());
+        Map<String, Object> resolvedData;
+        try {
+            resolvedData = actionConfig.evaluateDataMapping(jsonataMappingService, evalCtxBuilder.build());
+        } catch (app.epistola.valtimo.action.generate.GenerateDocumentExpressionException e) {
+            throw expressionFailed(e);
+        }
 
         // Deep-merge with output-level overrides (overrides win) — used by retry-form.
         // Always null on the start path: StartPreviewRequest carries no such field.
@@ -180,31 +189,39 @@ public class PreviewService {
             resolvedData = deepMerge(resolvedData, ctx.outputOverrides());
         }
 
-        // Get plugin config
-        EpistolaPlugin plugin = (EpistolaPlugin) pluginService.createInstance(
-                processLink.getPluginConfigurationId());
-
         var scalarEvalContext = evalCtxBuilder.build();
         String variantId = actionConfig.variantId().isConfigured()
                 ? actionConfig.variantId().resolve(jsonataMappingService, scalarEvalContext)
                 : null;
-        String resolvedEnvironmentId = actionConfig.environmentId().isConfigured()
-                ? actionConfig.environmentId().resolve(jsonataMappingService, scalarEvalContext)
-                : null;
-        String environmentId =
-                resolvedEnvironmentId != null && !resolvedEnvironmentId.isBlank()
-                        ? resolvedEnvironmentId
-                        : plugin.getDefaultEnvironmentId();
+        // As generation resolves it: an expression producing nothing is refused, "" means none.
+        String environmentId;
+        String versionRange;
+        try {
+            environmentId = actionConfig.resolveEnvironment(
+                    jsonataMappingService, scalarEvalContext, plugin.getDefaultEnvironmentId());
+            versionRange = actionConfig.resolveVersionRange(jsonataMappingService, scalarEvalContext);
+        } catch (app.epistola.valtimo.action.generate.GenerateDocumentExpressionException e) {
+            throw expressionFailed(e);
+        }
 
         // Call Epistola preview API
         try {
             return epistolaService.previewDocument(
                     plugin.getBaseUrl(), plugin.getApiKey(), plugin.getTenantId(),
                     catalogId, templateId, variantId, environmentId,
-                    actionConfig.resolveVersionRange(jsonataMappingService, scalarEvalContext), resolvedData);
+                    versionRange, resolvedData);
         } catch (Exception e) {
             throw new PreviewException(PreviewException.Reason.RENDER_FAILED, e.getMessage(), e);
         }
+    }
+
+    /**
+     * A link expression that cannot produce what its field needs: the same failure generation records,
+     * shown to the person previewing — who is authorized on the case the expression read.
+     */
+    private static PreviewException expressionFailed(
+            app.epistola.valtimo.action.generate.GenerateDocumentExpressionException e) {
+        return new PreviewException(PreviewException.Reason.RENDER_FAILED, e.getMessage(), e);
     }
 
     private String resolveProcessDefinitionId(String processInstanceId) {

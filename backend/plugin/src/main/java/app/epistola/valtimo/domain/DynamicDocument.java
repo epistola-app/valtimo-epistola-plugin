@@ -49,7 +49,8 @@ import java.util.Map;
  * @param catalogId     The catalog the chosen template lives in
  * @param templateId    The chosen template
  * @param data          Everything the letter is rendered with
- * @param environmentId The environment to render in, or null for the plugin configuration's default
+ * @param environmentId The environment to render in; null for the plugin configuration's default, {@code ""}
+ *                      for deliberately none
  * @param versionRange  The catalog release to render, as a version range, or null for the one the
  *                      environment renders
  */
@@ -93,7 +94,8 @@ public record DynamicDocument(
     /**
      * As {@link #of(String, String, Map)}, rendered in a given environment and release.
      *
-     * @param environmentId the environment to render in, or null for the plugin configuration's default
+     * @param environmentId the environment to render in; null for the plugin configuration's default, {@code ""}
+     *                      for deliberately none
      * @param versionRange  the catalog release to render, as a version range (an exact version pins
      *                      one), or null for the one the environment renders
      */
@@ -109,8 +111,9 @@ public record DynamicDocument(
         prepared.put("catalogId", catalogId);
         prepared.put("templateId", templateId);
         prepared.put("data", data == null ? Map.of() : data);
-        if (environmentId != null && !environmentId.isBlank()) {
-            prepared.put("environmentId", environmentId);
+        // "" is kept: the composer was told to render in no environment, which is not the default.
+        if (environmentId != null) {
+            prepared.put("environmentId", environmentId.isBlank() ? "" : environmentId);
         }
         if (versionRange != null && !versionRange.isBlank()) {
             prepared.put("versionRange", versionRange);
@@ -210,7 +213,7 @@ public record DynamicDocument(
                 catalogId,
                 templateId,
                 copyOf(value.get("data")),
-                text(value.get("environmentId")),
+                environmentOf(value.get("environmentId")),
                 text(value.get("versionRange")));
     }
 
@@ -250,6 +253,17 @@ public record DynamicDocument(
             }
         }
         return null;
+    }
+
+    /**
+     * The environment a letter names: null when it names none (the plugin configuration's default),
+     * {@code ""} when the composer was told to render in no environment (ADR 0009, second addendum).
+     */
+    private static String environmentOf(Object value) {
+        if (!(value instanceof String string)) {
+            return null;
+        }
+        return string.isBlank() ? "" : string;
     }
 
     private static String text(Object value) {

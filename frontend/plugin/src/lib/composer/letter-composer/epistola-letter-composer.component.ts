@@ -892,13 +892,16 @@ export class EpistolaLetterComposerComponent
 
 /**
  * Where a prepared letter renders, as the letter stores it: only what is named, so a letter that
- * pins neither looks exactly as it did before either existed.
+ * pins neither looks exactly as it did before either existed. An environment of `""` is named: the
+ * composer was told to render in none, which is not the default (ADR 0009, second addendum).
  */
 export function renderedIn(
   prepared: Pick<ComposerPrepareResponse, 'environmentId' | 'versionRange'>,
 ): Pick<ComposerValue, 'environmentId' | 'versionRange'> {
   return {
-    ...(prepared.environmentId ? { environmentId: prepared.environmentId } : {}),
+    ...(typeof prepared.environmentId === 'string'
+      ? { environmentId: prepared.environmentId }
+      : {}),
     ...(prepared.versionRange ? { versionRange: prepared.versionRange } : {}),
   };
 }

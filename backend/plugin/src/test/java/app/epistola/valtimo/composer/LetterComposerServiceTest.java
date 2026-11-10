@@ -43,6 +43,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -312,22 +313,58 @@ class LetterComposerServiceTest {
     }
 
     /**
-     * The environment and the release are JSONata evaluated with the case (ADR 0009): an environment
-     * expression that produces nothing falls back to the default, as no environment does.
+     * The environment is JSONata evaluated with the case (ADR 0009). One that produces nothing is
+     * refused rather than read as the default — a typo or a variable the case lacks — and the
+     * employee is told how to write each deliberate outcome (second addendum).
      */
     @Test
-    void anEnvironmentExpressionProducingNothing_rendersInTheDefaultAndHandsOnNone() {
-        offering(new LetterComposerConfiguration(
-                "pv:epistolaLetter", null, PLUGIN_CONFIGURATION_ID, "gemeente", "{}",
-                List.of(offered("besluit", "Besluit", null)), false, Map.of(), "$pv.omgeving"), "besluit");
+    void anEnvironmentExpressionProducingNothing_isRefused_ratherThanRenderedInTheDefault() {
+        offering(composerRenderingIn("$pv.omgeving"), "besluit");
         templateRequires("besluit", required("naam"));
         evaluating("$pv.omgeving", null);
+
+        assertThatThrownBy(() -> service.prepare(CONTEXT, null, "besluit"))
+                .isInstanceOfSatisfying(ComposerException.class, e -> {
+                    assertThat(e.getReason()).isEqualTo(ComposerException.Reason.MAPPING_FAILED);
+                    assertThat(e.getMessage()).contains("produced no value")
+                            .contains("?: $plugin.defaultEnvironmentId");
+                });
+    }
+
+    @Test
+    void anEnvironmentExpressionProducingAnEmptyString_rendersInNone_andHandsThatOn() {
+        offering(composerRenderingIn("$pv.omgeving"), "besluit");
+        templateRequires("besluit", required("naam"));
+        evaluating("$pv.omgeving", "");
 
         PreparedLetter letter = service.prepare(CONTEXT, null, "besluit");
 
         org.mockito.Mockito.verify(epistolaService).getTemplateDetails(
-                anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit"), eq("prod"), eq(null));
-        assertThat(letter.environmentId()).isNull();
+                anyString(), anyString(), anyString(), eq("gemeente"), eq("besluit"), isNull(), eq(null));
+        assertThat(letter.environmentId())
+                .describedAs("\"\" on the letter: none, which generation must not read as the default")
+                .isEmpty();
+    }
+
+    @Test
+    void theComposersExpressionsCanFallBackOnThePluginsDefault() {
+        offering(composerRenderingIn("$pv.omgeving ?: $plugin.defaultEnvironmentId"), "besluit");
+        templateRequires("besluit", required("naam"));
+        when(jsonataMappingService.evaluateValue(argThat(ctx -> ctx != null
+                && ctx.getExpression().startsWith("$pv.omgeving")
+                && ctx.getExtraBindings().get("plugin") instanceof Map<?, ?> plugin
+                && "prod".equals(plugin.get("defaultEnvironmentId")))))
+                .thenReturn("prod");
+
+        PreparedLetter letter = service.prepare(CONTEXT, null, "besluit");
+
+        assertThat(letter.environmentId()).isEqualTo("prod");
+    }
+
+    private LetterComposerConfiguration composerRenderingIn(String environmentExpression) {
+        return new LetterComposerConfiguration(
+                "pv:epistolaLetter", null, PLUGIN_CONFIGURATION_ID, "gemeente", "{}",
+                List.of(offered("besluit", "Besluit", null)), false, Map.of(), environmentExpression);
     }
 
     @Test

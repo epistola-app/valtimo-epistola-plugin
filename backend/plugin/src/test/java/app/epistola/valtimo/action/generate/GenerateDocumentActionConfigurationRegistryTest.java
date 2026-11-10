@@ -405,12 +405,107 @@ class GenerateDocumentActionConfigurationRegistryTest {
     }
 
     @Test
-    void anExpressionThatProducesNothing_orABlankString_isNoRange() {
+    void anExpressionThatProducesABlankString_isDeliberatelyNoRange() {
         var config = GenerateDocumentActionConfigurationRegistry.parse(
                 withVersionRange(properties(1, "\"value.pdf\"", null, null), "$pv.briefversie"));
 
-        assertThat(config.resolveVersionRange(mappingService(), context(Map.of()))).isNull();
         assertThat(config.resolveVersionRange(mappingService(), context(Map.of("briefversie", " ")))).isNull();
+    }
+
+    @Test
+    void anExpressionThatProducesNothing_isRefused_notReadAsNoRange() {
+        // A missing variable or a bare name: never a choice (ADR 0009, second addendum).
+        var config = GenerateDocumentActionConfigurationRegistry.parse(
+                withVersionRange(properties(1, "\"value.pdf\"", null, null), "$pv.briefversie"));
+
+        assertThatThrownBy(() -> config.resolveVersionRange(mappingService(), context(Map.of())))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e ->
+                        assertThat(e.getKind()).isEqualTo(GenerateDocumentExpressionException.Kind.NO_VALUE))
+                .hasMessageContaining("field 'versionRange'")
+                .hasMessageContaining("produced no value")
+                .hasMessageContaining("Write \"\" for no range");
+    }
+
+    // ── The environment: none configured, a value, "" for none, nothing refused ──
+
+    @Test
+    void noEnvironmentConfigured_isThePluginsDefault() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(properties(1, "\"value.pdf\"", null, null));
+
+        assertThat(config.resolveEnvironment(mappingService(), context(Map.of()), "productie")).isEqualTo("productie");
+        assertThat(config.resolveEnvironment(mappingService(), context(Map.of()), null)).isNull();
+    }
+
+    @Test
+    void anEnvironmentExpression_isWhatItSays_andAnEmptyStringIsDeliberatelyNone() {
+        var config = withEnvironment("$pv.omgeving");
+
+        assertThat(config.resolveEnvironment(mappingService(), context(Map.of("omgeving", " acceptatie ")), "productie"))
+                .isEqualTo("acceptatie");
+        assertThat(config.resolveEnvironment(mappingService(), context(Map.of("omgeving", "")), "productie"))
+                .describedAs("\"\" is a choice: no environment, not the default")
+                .isNull();
+    }
+
+    @Test
+    void anEnvironmentExpressionProducingNothing_isRefused_ratherThanRenderedInTheDefault() {
+        // The bug this closes: `someEnv` without quotes is a path to nothing, and used to fall back
+        // silently to the default — another environment, unnoticed.
+        var config = withEnvironment("someEnv");
+
+        assertThatThrownBy(() -> config.resolveEnvironment(mappingService(), context(Map.of()), "productie"))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e ->
+                        assertThat(e.getKind()).isEqualTo(GenerateDocumentExpressionException.Kind.NO_VALUE))
+                .hasMessageContaining("expression='someEnv'")
+                .hasMessageContaining("?: $plugin.defaultEnvironmentId");
+    }
+
+    @Test
+    void theDefaultIsThereToFallBackOnExplicitly_andIsEmptyWhenNoneIsConfigured() {
+        var config = withEnvironment("$pv.omgeving ?: $plugin.defaultEnvironmentId");
+
+        assertThat(config.resolveEnvironment(mappingService(), contextWithDefault("productie"), "productie"))
+                .isEqualTo("productie");
+        assertThat(config.resolveEnvironment(mappingService(), contextWithDefault(null), null))
+                .describedAs("no default: the fallback is \"\", deliberately none — never a failure")
+                .isNull();
+    }
+
+    @Test
+    void anAuthorCanRequireAnEnvironment_withTheirOwnMessage() {
+        var config = withEnvironment("$pv.omgeving ?: $plugin.defaultEnvironmentId ?: $error(\"Geen omgeving voor deze zaak\")");
+
+        assertThatThrownBy(() -> config.resolveEnvironment(mappingService(), contextWithDefault(null), null))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e ->
+                        assertThat(e.getKind()).isEqualTo(GenerateDocumentExpressionException.Kind.EVALUATION_FAILED))
+                .hasMessageContaining("Geen omgeving voor deze zaak");
+    }
+
+    @Test
+    void anEnvironmentThatIsNotAString_isRefused() {
+        assertThatThrownBy(() -> withEnvironment("42").resolveEnvironment(mappingService(), context(Map.of()), null))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e ->
+                        assertThat(e.getKind()).isEqualTo(GenerateDocumentExpressionException.Kind.INVALID_RESULT));
+    }
+
+    @Test
+    void aV0Link_keepsFallingBackToTheDefault() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(new GenerateDocumentActionProperties(
+                0, "catalog", "template", null, null, "$pv.omgeving", null, "{}", "PDF", "value.pdf", null, "result"));
+
+        assertThat(config.resolveEnvironment(mappingService(), context(Map.of()), "productie")).isEqualTo("productie");
+    }
+
+    private static GenerateDocumentActionConfiguration withEnvironment(String environment) {
+        GenerateDocumentActionProperties valid = properties(1, "\"value.pdf\"", null, null);
+        return GenerateDocumentActionConfigurationRegistry.parse(new GenerateDocumentActionProperties(
+                valid.actionConfigVersion(), valid.catalogId(), valid.templateId(), valid.variantId(),
+                valid.variantAttributes(), environment, null, valid.dataMapping(), valid.outputFormat(),
+                valid.filename(), valid.correlationId(), valid.resultProcessVariable()));
+    }
+
+    private static EvaluationContext contextWithDefault(String defaultEnvironmentId) {
+        return context(Map.of()).withExtraBindings(app.epistola.valtimo.mapping.PluginBinding.of(defaultEnvironmentId));
     }
 
     @Test

@@ -24,6 +24,7 @@ import app.epistola.valtimo.mapping.EvaluationContext;
 import app.epistola.valtimo.service.VersionRanges;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.mapping.MapMerge;
+import app.epistola.valtimo.mapping.PluginBinding;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.form.FormioFormGenerator;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -202,6 +203,7 @@ public class LetterComposerService {
                 data,
                 form,
                 selection.complete(),
+                // On the letter as evaluated: null for the default, "" for deliberately none.
                 placement.environmentId(),
                 placement.versionRange());
     }
@@ -320,45 +322,87 @@ public class LetterComposerService {
      * prepare hands it to the browser to put on the letter, so generation renders where the preview
      * did.
      *
-     * @param environmentId the environment, or null for the plugin configuration's default
+     * @param environmentId the environment; null for the plugin configuration's default (none
+     *                      configured), {@code ""} for deliberately none (the expression said so)
      * @param versionRange  the range, or null for the release the environment renders
      */
     private record Placement(String environmentId, String versionRange) {
+        /** The environment to render in: this one, none for {@code ""}, else the default. */
         String environmentOr(String defaultEnvironmentId) {
-            return environmentId != null ? environmentId : defaultEnvironmentId;
+            if (environmentId == null) {
+                return defaultEnvironmentId;
+            }
+            return environmentId.isBlank() ? null : environmentId;
         }
     }
 
+    /**
+     * The composer's environment and the letter's range, evaluated with the case (ADR 0009). An
+     * expression producing nothing is refused rather than read as the default: that is a typo or a
+     * variable the case lacks, never a choice. {@code ""} is the deliberate "none", and
+     * {@code $plugin.defaultEnvironmentId} the default to fall back to (second addendum).
+     */
     private Placement place(
             ComposerContext ctx,
             LetterComposerConfiguration configuration,
             LetterComposerConfiguration.OfferedTemplate letter
     ) {
+        String defaultEnvironmentId = plugin(configuration).getDefaultEnvironmentId();
         String environmentId = null;
-        String versionRange;
-        try {
-            if (configuration.environmentId() != null && !configuration.environmentId().isBlank()) {
-                String resolved = jsonataMappingService.evaluateScalar(
-                        evaluationContext(ctx, configuration.environmentId()));
-                environmentId = resolved == null || resolved.isBlank() ? null : resolved.strip();
+        String versionRange = null;
+        String environmentExpression = configuration.environmentId();
+        if (environmentExpression != null && !environmentExpression.isBlank()) {
+            Object value;
+            try {
+                value = jsonataMappingService.evaluateValue(
+                        evaluationContext(ctx, environmentExpression, defaultEnvironmentId));
+            } catch (RuntimeException e) {
+                throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                        // Shown to the employee, never logged (see prepare).
+                        "The letter composer's environment could not be evaluated: " + e.getMessage(), e);
             }
-        } catch (RuntimeException e) {
-            throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
-                    // Shown to the employee, never logged (see prepare).
-                    "The letter composer's environment could not be evaluated: " + e.getMessage(), e);
+            if (value == null) {
+                throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                        "The letter composer's environment (expression '" + environmentExpression
+                                + "') produced no value. Write \"\" for no environment, or fall back with "
+                                + "?: $plugin.defaultEnvironmentId.");
+            }
+            if (!(value instanceof String text)) {
+                throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                        "The letter composer's environment (expression '" + environmentExpression
+                                + "') must evaluate to a string, such as \"productie\".");
+            }
+            environmentId = text.strip();
         }
-        try {
-            Object range = letter.versionRange() == null || letter.versionRange().isBlank()
-                    ? null
-                    : jsonataMappingService.evaluateValue(evaluationContext(ctx, letter.versionRange()));
-            versionRange = VersionRanges.ofExpressionResult(range).orElse(null);
-        } catch (RuntimeException e) {
-            throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
-                    "The release of letter '" + letter.templateId() + "' (expression '" + letter.versionRange()
-                            + "') " + (e instanceof IllegalArgumentException ? "" : "could not be evaluated: ")
-                            + e.getMessage(), e);
+        String rangeExpression = letter.versionRange();
+        if (rangeExpression != null && !rangeExpression.isBlank()) {
+            Object range;
+            try {
+                range = jsonataMappingService.evaluateValue(
+                        evaluationContext(ctx, rangeExpression, defaultEnvironmentId));
+            } catch (RuntimeException e) {
+                throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                        "The release of letter '" + letter.templateId() + "' could not be evaluated: "
+                                + e.getMessage(), e);
+            }
+            if (range == null) {
+                throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                        "The release of letter '" + letter.templateId() + "' (expression '" + rangeExpression
+                                + "') produced no value. Write \"\" for no range.");
+            }
+            try {
+                versionRange = VersionRanges.ofExpressionResult(range).orElse(null);
+            } catch (IllegalArgumentException e) {
+                throw new ComposerException(ComposerException.Reason.MAPPING_FAILED,
+                        "The release of letter '" + letter.templateId() + "' (expression '" + rangeExpression
+                                + "') " + e.getMessage(), e);
+            }
         }
         return new Placement(environmentId, versionRange);
+    }
+
+    private EvaluationContext evaluationContext(ComposerContext ctx, String expression, String defaultEnvironmentId) {
+        return evaluationContext(ctx, expression).withExtraBindings(PluginBinding.of(defaultEnvironmentId));
     }
 
     private EvaluationContext evaluationContext(ComposerContext ctx, String expression) {
