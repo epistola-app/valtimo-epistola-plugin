@@ -23,6 +23,8 @@ import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.domain.CatalogReleases;
 import app.epistola.valtimo.domain.CatalogRef;
 import app.epistola.valtimo.domain.DesignScope;
+import app.epistola.valtimo.domain.GenerationTargetProblem;
+import app.epistola.valtimo.domain.GenerationTargetProblem.Reason;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationJobResult;
@@ -850,12 +852,11 @@ public class EpistolaServiceImpl implements EpistolaService {
                     .requestId(response.getRequestId().toString())
                     .status(GenerationJobStatus.normalize(response.getStatus().getValue()))
                     .build();
-        } catch (EpistolaApiException e) {
-            log.error("Failed to submit document generation request ({})", Failures.describe(e));
-            throw e;
         } catch (Exception e) {
-            log.error("Failed to submit document generation request ({})", Failures.describe(e));
-            throw new EpistolaApiException("Failed to submit document generation request", e);
+            EpistolaApiException refused = refusal(e, "Failed to submit document generation request",
+                    baseUrl, apiKey, tenantId, catalogId, templateId, variantId, environmentId, versionRange);
+            log.error("Failed to submit document generation request ({})", describeRefusal(refused));
+            throw refused;
         }
     }
 
@@ -1000,15 +1001,226 @@ public class EpistolaServiceImpl implements EpistolaService {
 
             log.debug("Preview generated for tenant: {}, template: {}", tenantId, templateId);
             return new java.io.ByteArrayInputStream(content);
-        } catch (EpistolaApiException e) {
-            throw e;
-        } catch (RestClientResponseException e) {
-            log.debug("Preview API error for tenant {}: {}", tenantId, e.getStatusCode());
-            throw toApiException("Failed to preview document", e);
         } catch (Exception e) {
-            log.debug("Failed to preview document for tenant {} ({})", tenantId, Failures.describe(e));
-            throw new EpistolaApiException("Failed to preview document", e);
+            EpistolaApiException refused = refusal(e, "Failed to preview document",
+                    baseUrl, apiKey, tenantId, catalogId, templateId, variantId, environmentId, versionRange);
+            log.debug("Failed to preview document for tenant {} ({})", tenantId, describeRefusal(refused));
+            throw refused;
         }
+    }
+
+    /**
+     * What a failed submit or preview is. A <em>refusal</em> is Epistola answering the request itself
+     * with an error — nothing accepted, no job — as opposed to a job it accepted that fails later
+     * while rendering, which arrives as a {@code FAILED} result. A refusal of a target that does not
+     * exist becomes an
+     * {@link EpistolaTargetNotFoundException} saying which part (ADR 0009, addendum); anything else
+     * keeps Epistola's status and problem type, so a caller can tell permanent (4xx) from transient.
+     */
+    private EpistolaApiException refusal(
+            Exception failure, String fallbackMessage, String baseUrl, String apiKey, String tenantId,
+            String catalogId, String templateId, String variantId, String environmentId, String versionRange) {
+        EpistolaApiException api = failure instanceof EpistolaApiException known
+                ? known
+                : toApiException(fallbackMessage, failure);
+        if (failure instanceof EpistolaTargetNotFoundException || !Integer.valueOf(404).equals(api.getHttpStatus())) {
+            return api;
+        }
+        GenerationTargetProblem problem = diagnoseNotFound(baseUrl, apiKey, tenantId, catalogId, templateId,
+                variantId, blankToNull(environmentId), rangeOrNull(versionRange), api);
+        return new EpistolaTargetNotFoundException(problem, epistolaDetailOf(failure), api.getProblemType());
+    }
+
+    /** Epistola's own text about a failure, when it sent one: for the case, never for a log. */
+    private static String epistolaDetailOf(Throwable failure) {
+        for (Throwable t = failure; t != null; t = t.getCause()) {
+            if (t instanceof ProblemDetailException problem) {
+                return problem.getDetail() != null ? problem.getDetail() : problem.getTitle();
+            }
+        }
+        return null;
+    }
+
+    /** A refusal as a log may name it: the plugin's own reason, else the failure's class and status. */
+    private static String describeRefusal(EpistolaApiException refused) {
+        if (refused instanceof EpistolaTargetNotFoundException notFound) {
+            return notFound.getProblem().reason() + ": " + notFound.getMessage();
+        }
+        return Failures.describe(refused) + (refused.getHttpStatus() == null ? "" : ", status " + refused.getHttpStatus());
+    }
+
+    /**
+     * Which part of a generation target does not exist. Epistola's {@code not-found} names it in a
+     * {@code missing} member when the server is new enough (proposed for contract 2.0); otherwise
+     * the plugin checks the parts in the order Epistola resolves them — environment, catalog,
+     * release, template, variant — with the reads it already makes, and stops at the first that is
+     * not there. Only ever after a refusal, so the extra calls cost nothing on the normal path. A
+     * diagnosis that cannot be completed is {@link Reason#UNKNOWN}, never a second failure.
+     */
+    GenerationTargetProblem diagnoseNotFound(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String templateId,
+            String variantId, String environmentId, String versionRange, EpistolaApiException refusal) {
+        Diagnosis target = new Diagnosis(catalogId, templateId, variantId, environmentId, versionRange);
+        if ("no-matching-variant".equals(refusal.getProblemTypeSlug())) {
+            return target.problem(Reason.NO_MATCHING_VARIANT, null);
+        }
+        GenerationTargetProblem stated = fromMissingMember(target, refusal.getProblemExtensions().get("missing"));
+        if (stated != null) {
+            return stated;
+        }
+        try {
+            return diagnoseByReading(baseUrl, apiKey, tenantId, target);
+        } catch (Exception e) {
+            log.debug("Could not tell what Epistola did not find ({})", Failures.describe(e));
+            return target.problem(Reason.UNKNOWN, null);
+        }
+    }
+
+    private record Diagnosis(
+            String catalogId, String templateId, String variantId, String environmentId, String versionRange) {
+        GenerationTargetProblem problem(Reason reason, String release) {
+            return new GenerationTargetProblem(
+                    reason, catalogId, templateId, variantId, environmentId, versionRange, release);
+        }
+    }
+
+    private static GenerationTargetProblem fromMissingMember(Diagnosis target, Object missing) {
+        if (!(missing instanceof Map<?, ?> member) || !(member.get("kind") instanceof String kind)) {
+            return null;
+        }
+        String release = member.get("release") instanceof String named ? named : null;
+        Reason reason = switch (kind) {
+            case "environment" -> Reason.ENVIRONMENT_NOT_FOUND;
+            case "catalog" -> Reason.CATALOG_NOT_FOUND;
+            case "release" -> target.versionRange() != null
+                    ? Reason.RANGE_UNSATISFIED
+                    : target.environmentId() != null ? Reason.NOT_DEPLOYED : Reason.NOT_RELEASED;
+            case "template" -> Reason.TEMPLATE_NOT_IN_RELEASE;
+            case "variant" -> Reason.VARIANT_NOT_IN_RELEASE;
+            default -> null; // a kind this plugin does not know yet: check for itself
+        };
+        return reason == null ? null : target.problem(reason, release);
+    }
+
+    private GenerationTargetProblem diagnoseByReading(
+            String baseUrl, String apiKey, String tenantId, Diagnosis target) {
+        CatalogRef ref = parseCatalogRef(target.catalogId());
+        RangeList range = target.versionRange() == null ? null : VersionRanges.parse(target.versionRange());
+        String registry;
+        String namespace;
+        String key;
+        String releasePath;
+        String releaseLabel;
+        if (target.environmentId() != null) {
+            List<DeploymentDto> all;
+            try {
+                all = listDeployments(baseUrl, apiKey, tenantId, target.environmentId());
+            } catch (EpistolaApiException e) {
+                if (Integer.valueOf(404).equals(e.getHttpStatus())) {
+                    return target.problem(Reason.ENVIRONMENT_NOT_FOUND, null);
+                }
+                throw e;
+            }
+            List<DeploymentDto> deployments = selectDeployments(all, ref, tenantId, target.environmentId());
+            if (deployments.isEmpty()) {
+                boolean exists = !ref.select(listCatalogs(baseUrl, apiKey, tenantId),
+                        EpistolaServiceImpl::refOf, tenantId).isEmpty();
+                return target.problem(exists ? Reason.NOT_DEPLOYED : Reason.CATALOG_NOT_FOUND, null);
+            }
+            DeploymentDto served;
+            if (range != null) {
+                Optional<DeploymentDto> satisfying = deployments.stream()
+                        .filter(dto -> dto.getStatus() == CatalogReleaseStatus.released)
+                        .filter(dto -> VersionRanges.satisfies(dto.getVersion(), range))
+                        .max(Comparator.comparing(DeploymentDto::getVersion, ReleaseVersions.PRECEDENCE));
+                if (satisfying.isEmpty()) {
+                    return target.problem(Reason.RANGE_UNSATISFIED, null);
+                }
+                served = satisfying.get();
+            } else {
+                served = deployments.stream()
+                        .filter(dto -> dto.getStatus() == CatalogReleaseStatus.draft)
+                        .findFirst()
+                        .orElseGet(() -> deployments.stream()
+                                .max(Comparator.comparing(DeploymentDto::getVersion, ReleaseVersions.PRECEDENCE))
+                                .orElseThrow());
+            }
+            registry = served.getRegistry();
+            namespace = served.getNamespace();
+            key = served.getCatalogKey();
+            releasePath = served.getReleaseId();
+            releaseLabel = served.getStatus() == CatalogReleaseStatus.draft ? "draft" : served.getVersion();
+        } else {
+            List<CatalogDto> matches = ref.select(listCatalogs(baseUrl, apiKey, tenantId),
+                    EpistolaServiceImpl::refOf, tenantId);
+            if (matches.size() != 1) {
+                return target.problem(matches.isEmpty() ? Reason.CATALOG_NOT_FOUND : Reason.UNKNOWN, null);
+            }
+            CatalogDto catalog = matches.get(0);
+            List<String> versions = releasedVersions(baseUrl, apiKey, tenantId, catalog);
+            if (range != null) {
+                Optional<String> satisfying = versions.stream()
+                        .filter(version -> VersionRanges.satisfies(version, range))
+                        .findFirst();
+                if (satisfying.isEmpty()) {
+                    return target.problem(Reason.RANGE_UNSATISFIED, null);
+                }
+                releasePath = satisfying.get();
+                releaseLabel = releasePath;
+            } else if (!versions.isEmpty()) {
+                releasePath = versions.get(0);
+                releaseLabel = releasePath;
+            } else {
+                try {
+                    releasePath = newestDraft(baseUrl, apiKey, tenantId, catalog);
+                } catch (EpistolaApiException e) {
+                    return target.problem(Reason.NOT_RELEASED, null);
+                }
+                releaseLabel = "draft";
+            }
+            registry = catalog.getRegistry();
+            namespace = catalog.getNamespace();
+            key = catalog.getCatalogKey();
+        }
+
+        try {
+            apiClientFactory.createTemplatesApi(baseUrl, apiKey)
+                    .getTemplate(tenantId, registry, namespace, key, releasePath, target.templateId());
+        } catch (Exception e) {
+            if (isNotFound(e)) {
+                return target.problem(Reason.TEMPLATE_NOT_IN_RELEASE, releaseLabel);
+            }
+            throw e;
+        }
+        if (target.variantId() != null && !target.variantId().isBlank()) {
+            VariantsApi variantsApi = apiClientFactory.createVariantsApi(baseUrl, apiKey);
+            boolean present = fetchAllPages(
+                    "variants",
+                    page -> variantsApi.listVariants(tenantId, registry, namespace, key, releasePath,
+                            target.templateId(), page, LIST_PAGE_SIZE),
+                    VariantListResponse::getItems,
+                    VariantListResponse::getPage
+            ).stream().anyMatch(variant -> target.variantId().equals(variant.getKey()));
+            if (!present) {
+                return target.problem(Reason.VARIANT_NOT_IN_RELEASE, releaseLabel);
+            }
+        }
+        return target.problem(Reason.UNKNOWN, releaseLabel);
+    }
+
+    private static boolean isNotFound(Throwable failure) {
+        for (Throwable t = failure; t != null; t = t.getCause()) {
+            if (t instanceof ProblemDetailException problem && problem.getProblemStatus() == 404) {
+                return true;
+            }
+            if (t instanceof RestClientResponseException response && response.getStatusCode().value() == 404) {
+                return true;
+            }
+            if (t instanceof EpistolaApiException api && Integer.valueOf(404).equals(api.getHttpStatus())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
