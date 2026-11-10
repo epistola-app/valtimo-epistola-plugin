@@ -88,6 +88,19 @@ class EpistolaPluginCheckJobStatusTest {
     }
 
     @Test
+    void aRefusedRequest_isFailed_withItsReason_withoutAskingEpistolaAboutAJobItNeverHad() {
+        when(execution.getVariable(REQUEST_ID_VAR)).thenReturn(Map.of(
+                EpistolaProcessVariables.RESULT_KEY_REQUEST_ID, "refused-123",
+                EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE, "Template 'besluit' is not in catalog 'x'."));
+
+        plugin().checkJobStatus(execution, REQUEST_ID_VAR, STATUS_VAR, DOCUMENT_ID_VAR, ERROR_VAR);
+
+        verify(execution).setVariable(STATUS_VAR, "FAILED");
+        verify(execution).setVariable(ERROR_VAR, "Template 'besluit' is not in catalog 'x'.");
+        org.mockito.Mockito.verifyNoInteractions(epistolaService);
+    }
+
+    @Test
     void extractsRequestIdFromRichResultMap_andStoresStatusAndDocumentId() {
         when(execution.getVariable(REQUEST_ID_VAR))
                 .thenReturn(Map.of(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID, REQUEST_ID));

@@ -32,7 +32,10 @@ import app.epistola.valtimo.service.completion.EpistolaMessageCorrelationService
 import app.epistola.valtimo.service.completion.EpistolaResultCollectorRunner;
 import app.epistola.valtimo.service.download.DocumentStorageStrategy;
 
+import app.epistola.valtimo.richtext.RichTextConversionException;
 import app.epistola.valtimo.service.EpistolaService;
+import app.epistola.valtimo.service.EpistolaTargetNotFoundException;
+import app.epistola.valtimo.service.EpistolaApiException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ritense.plugin.annotation.*;
@@ -513,6 +516,69 @@ public class EpistolaPlugin {
     ) {}
 
     /**
+     * Whether Epistola refused the request itself (ADR 0009, addendum): a 4xx answer to the submit, so
+     * nothing was accepted and asking again changes nothing — a template not in the release, nothing
+     * deployed, a range nothing satisfies, an API key without access. 408 and 429 are the exceptions,
+     * being about timing rather than the request.
+     */
+    private static boolean isRefusal(EpistolaApiException e) {
+        Integer status = e.getHttpStatus();
+        return status != null && status >= 400 && status < 500 && status != 408 && status != 429;
+    }
+
+    /**
+     * Record a refused generation as a failed one, and let the step complete: the result variable is
+     * FAILED at once, with {@code errorReason} and {@code errorMessage}, under a request id of its
+     * own and the jobPath and locator a submitted job has. A catch event or receive task after the
+     * step then self-heals on it — the result is already terminal when it subscribes — and the
+     * process takes the path it has for a failed letter, rather than the step being retried three
+     * times into an incident with the variable rolled back.
+     * <p>
+     * Epistola's own text goes onto the case, in {@code errorMessage}; the log names the reason and
+     * the configuration only ("Never log personal data", CLAUDE.md).
+     */
+    private void recordRefusal(DelegateExecution execution, SubmitRequest request, EpistolaApiException refusal) {
+        String reason;
+        String message;
+        if (refusal instanceof EpistolaTargetNotFoundException notFound) {
+            reason = notFound.getProblem().reason().name();
+            message = notFound.getMessage()
+                    + (notFound.getEpistolaDetail() == null ? "" : " Epistola: " + notFound.getEpistolaDetail());
+        } else {
+            reason = EpistolaProcessVariables.REQUEST_REFUSED;
+            message = "Epistola refused the generation request (HTTP " + refusal.getHttpStatus() + "): "
+                    + refusal.getMessage();
+        }
+        recordFailure(execution, request, reason, message);
+    }
+
+    /**
+     * Record a generation that cannot succeed as FAILED, with {@code errorReason} and
+     * {@code errorMessage}, and let the step complete (see {@link #recordRefusal}).
+     */
+    private void recordFailure(DelegateExecution execution, SubmitRequest request, String reason, String message) {
+        String requestId = EpistolaProcessVariables.REFUSED_REQUEST_PREFIX + java.util.UUID.randomUUID();
+        String jobPath = EpistolaMessageCorrelationService.buildJobPath(tenantId, requestId);
+
+        Map<String, Object> resultData = new LinkedHashMap<>();
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID, requestId);
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_STATUS, "FAILED");
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE, message);
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_REASON, reason);
+        resultData.put(EpistolaProcessVariables.RESULT_KEY_JOB_PATH, jobPath);
+        execution.setVariable(request.resultProcessVariable(), resultData);
+        execution.setVariable(EpistolaProcessVariables.TENANT_ID, tenantId);
+        // The locator the catch event's self-heal resolves the result variable through.
+        execution.setVariable(jobPath, request.resultProcessVariable());
+
+        log.warn("Document generation cannot succeed: {} (catalog={}, template={}, variant={}, environment={}, "
+                        + "versionRange={}, activity={}); recorded as FAILED on '{}'",
+                reason, request.catalogId(), request.templateId(), request.variantId(), request.environmentId(),
+                request.versionRange(), execution.getCurrentActivityId(), request.resultProcessVariable());
+    }
+
+    /**
      * Submit a generation job and record it on the execution: the rich result object, the tenant,
      * and the jobPath-keyed locator the result collector correlates through.
      */
@@ -545,20 +611,21 @@ public class EpistolaPlugin {
                     request.correlationId(),
                     routingKey
             );
+        } catch (EpistolaApiException e) {
+            if (!isRefusal(e)) {
+                // Transient (5xx, timeout, 408, 429): let the engine retry the step.
+                throw new RuntimeException("Failed to submit document generation request to Epistola", e);
+            }
+            recordRefusal(execution, request, e);
+            return;
+        } catch (RichTextConversionException e) {
+            // The case's rich text cannot become what the template takes: no retry changes that.
+            // Its message names the field and the format, never the text (RichTextValues).
+            recordFailure(execution, request, EpistolaProcessVariables.RICH_TEXT_NOT_CONVERTIBLE, e.getMessage());
+            return;
         } catch (Exception e) {
-            // Submit-time failure: write a FAILED rich object on resultProcessVariable so
-            // downstream BPMN (or a Formio retry form) can read the error via
-            // ${<resultProcessVariable>.errorMessage} just like a post-submit failure.
-            Map<String, Object> failureData = new LinkedHashMap<>();
-            failureData.put(EpistolaProcessVariables.RESULT_KEY_REQUEST_ID, null);
-            failureData.put(EpistolaProcessVariables.RESULT_KEY_STATUS, "FAILED");
-            failureData.put(EpistolaProcessVariables.RESULT_KEY_DOCUMENT_ID, null);
-            failureData.put(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE,
-                    "Document generation request failed: " + e.getMessage());
-            execution.setVariable(request.resultProcessVariable(), failureData);
             throw new RuntimeException("Failed to submit document generation request to Epistola", e);
         }
-
         // Store a rich result object on the user-configured process variable. The
         // collector updates the same variable in-place when the result lands; users
         // read individual fields via JUEL: ${var.status}, ${var.documentId}, etc.
@@ -647,6 +714,18 @@ public class EpistolaPlugin {
 
         if (requestId == null || requestId.isBlank()) {
             throw new IllegalArgumentException("Request ID variable '" + requestIdVariable + "' is null or empty");
+        }
+
+        // A refused generation has no job in Epistola to ask about: it is FAILED, with the reason
+        // generate-document recorded (see recordRefusal).
+        if (EpistolaProcessVariables.isRefusedRequestId(requestId)) {
+            execution.setVariable(statusVariable, "FAILED");
+            if (rawValue instanceof Map<?, ?> map && errorMessageVariable != null && !errorMessageVariable.isBlank()
+                    && map.get(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE) != null) {
+                execution.setVariable(errorMessageVariable, map.get(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE));
+            }
+            log.debug("Request {} was refused at submit; reporting FAILED without asking Epistola", requestId);
+            return;
         }
 
         GenerationJobDetail jobDetail = epistolaService.getJobStatus(baseUrl, apiKey, tenantId, requestId);

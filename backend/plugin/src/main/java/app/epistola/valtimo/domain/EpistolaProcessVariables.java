@@ -90,6 +90,31 @@ public final class EpistolaProcessVariables {
     /** Result-object key for the failure message (set on FAILED, null otherwise). */
     public static final String RESULT_KEY_ERROR_MESSAGE = "errorMessage";
 
+    /**
+     * Rich-result key for why a generation Epistola refused failed, as a stable code a gateway or form
+     * can switch on rather than parsing {@link #RESULT_KEY_ERROR_MESSAGE}: a
+     * {@code GenerationTargetProblem.Reason} name (such as {@code TEMPLATE_NOT_IN_RELEASE}), or
+     * {@link #REQUEST_REFUSED} for any other refusal. Absent on results Epistola delivered.
+     */
+    public static final String RESULT_KEY_ERROR_REASON = "errorReason";
+
+    /** {@link #RESULT_KEY_ERROR_REASON} for a refusal that is not about something missing (400, 401, 403, 422...). */
+    public static final String REQUEST_REFUSED = "REQUEST_REFUSED";
+
+    /** {@link #RESULT_KEY_ERROR_REASON} when the case's rich text cannot become what the template takes. */
+    public static final String RICH_TEXT_NOT_CONVERTIBLE = "RICH_TEXT_NOT_CONVERTIBLE";
+
+    /**
+     * The prefix of the request id a refused generation is recorded under: Epistola created no job,
+     * so there is no id of its own, and polling for one would only ask Epistola about nothing.
+     */
+    public static final String REFUSED_REQUEST_PREFIX = "refused-";
+
+    /** Whether a request id is one a refused generation was recorded under, not a job Epistola has. */
+    public static boolean isRefusedRequestId(Object requestId) {
+        return requestId instanceof String id && id.startsWith(REFUSED_REQUEST_PREFIX);
+    }
+
     /** Whether a result-object {@code status} value is terminal (the generation has finished). */
     public static boolean isTerminalStatus(Object status) {
         return "COMPLETED".equals(status) || "FAILED".equals(status) || "CANCELLED".equals(status);

@@ -194,20 +194,30 @@ class EpistolaPluginGenerateComposedDocumentTest {
                 any(), eq(FileFormat.PDF), eq("besluit-bezwaar.pdf"), isNull(), any());
     }
 
+    /**
+     * A refused generation is a failed one, recorded where the process reads it — and the step
+     * completes, so the record survives: thrown, the engine would roll the variable back (ADR 0009,
+     * addendum). The reason Epistola gave goes onto the case; only the log must not carry it.
+     */
     @Test
     void recordsTheRefusalWhereTheProcessCanReadIt() {
         composerWrote(letter());
         when(epistolaService.submitGenerationJob(anyString(), anyString(), anyString(), anyString(),
                 anyString(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                .thenThrow(new RuntimeException("Template 'besluit-bezwaar' not found in catalog 'gemeente'"));
+                .thenThrow(new app.epistola.valtimo.service.EpistolaTargetNotFoundException(
+                        new app.epistola.valtimo.domain.GenerationTargetProblem(
+                                app.epistola.valtimo.domain.GenerationTargetProblem.Reason.TEMPLATE_NOT_IN_RELEASE,
+                                "gemeente", "besluit-bezwaar", null, "prod", null, "2.0.0"),
+                        "Template 'besluit-bezwaar' not found in catalog 'gemeente'",
+                        "https://epistola.app/errors/not-found"));
 
-        org.junit.jupiter.api.Assertions.assertThrows(RuntimeException.class, () ->
-                plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR));
+        plugin().generateComposedDocument(execution, null, null, null, RESULT_VAR);
 
         ArgumentCaptor<Map<String, Object>> result = ArgumentCaptor.forClass(Map.class);
         verify(execution).setVariable(eq(RESULT_VAR), result.capture());
         assertThat(result.getValue())
-                .containsEntry(EpistolaProcessVariables.RESULT_KEY_STATUS, "FAILED");
+                .containsEntry(EpistolaProcessVariables.RESULT_KEY_STATUS, "FAILED")
+                .containsEntry(EpistolaProcessVariables.RESULT_KEY_ERROR_REASON, "TEMPLATE_NOT_IN_RELEASE");
         assertThat(String.valueOf(result.getValue().get(EpistolaProcessVariables.RESULT_KEY_ERROR_MESSAGE)))
                 .describedAs("the reason Epistola gave, not a generic failure")
                 .contains("not found in catalog");

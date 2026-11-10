@@ -50,6 +50,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A generation Epistola refuses is failed at once, with the reason, instead of retried into an
+  incident.** A missing template, release, variant or environment, nothing deployed, or an API key
+  without access cannot be fixed by asking again. The step used to throw: the engine retried it three
+  times, raised an incident reading only "Failed to submit document generation request to Epistola",
+  and rolled back the `FAILED` result it had written. Now the step completes with `status: FAILED`,
+  an `errorMessage` naming what was asked for (catalog, template, release, environment, range) and a
+  new `errorReason` code, and the catch event after it continues down the process's failure path. The
+  same for a composed letter, and for rich text that cannot be converted. Timeouts and 5xx are still
+  retried. See [process variables](docs/process-variables.md).
 - **Choosing an environment a catalog is not deployed to no longer errors.** Every lookup for that
   catalog answered 404 with an empty body and showed its own untranslated "Failed to load …"
   message (templates, fields, variants, the release field), burying the one notice that explained
