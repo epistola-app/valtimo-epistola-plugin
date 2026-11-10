@@ -24,7 +24,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **A generate link's `versionRange` is now JSONata, like its environment.** A fixed range is the
   string literal `"^1.4.0"`. A v1 link saved as a bare range (`^1.4.0`, only possible on
   `1.0.0-alpha.1`/`beta.1`) is refused when it runs, with a message showing the literal to write.
-  Opening the link in the process-link editor quotes it for you, so saving it fixes it.
+  Opening the link in the process-link editor quotes it for you, so saving it fixes it. That
+  includes a bare range that happens to read as JSONata — `1`, `1.4`, `*`, `x` — which would
+  otherwise be a number or nothing and fail every generation.
 - **Letter composer settings are at schema version 4.** A letter set's environment and ranges are
   JSONata. Older settings are read as the literals they meant and keep working unchanged; opening a
   composer in the form builder brings it to 4. An older plugin refuses schema-4 settings and letters,
@@ -36,7 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or `""` when none is configured, for an explicit fallback. `""` from an environment or range
   expression means deliberately none. A failing expression raises an incident naming the field and
   the expression; for `$error("…")` it carries the author's own text. The expression editor flags a
-  bare path such as `someEnv`, which can never produce a value.
+  bare path such as `someEnv`, which can never produce a value, and for an environment, release or
+  variant a number such as `1`, which is not text. The letter-set builder checks its environment and
+  release expressions the same way.
 - **The release can be an expression.** A generate link's and a letter set's release is JSONata
   evaluated with the case (`$pv.briefversie`), as the environment already was; a letter set's
   environment can be an expression too. The result must be a string that is a version range; a

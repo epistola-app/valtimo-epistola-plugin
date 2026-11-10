@@ -26,6 +26,7 @@ import {
   decodeJsonataStringLiteral,
   encodeJsonataStringLiteral,
 } from '../../utils/jsonata-literal';
+import { isBareVersionRange } from '../../utils/jsonata-bare-path';
 
 const jsonata = (_jsonata as any).default || _jsonata;
 const LEGACY_JSONATA_MARKER = /[$&({?\[]/;
@@ -189,18 +190,13 @@ function validateJsonata(field: string, expression: string): void {
 /**
  * A v1 version range saved before it became JSONata (1.0.0-alpha.1/beta.1) is a bare range such as
  * `^1.4.0`, which is not JSONata; the editor reads it as the literal it meant, so saving the link
- * fixes what is stored. The backend refuses the bare form until then (ADR 0009). A bare range that
- * does parse — the number `1.4`, or `x` — is left as it is, and the field's own validation says
- * what is wrong with it.
+ * fixes what is stored. The backend refuses the bare form until then (ADR 0009). That includes a
+ * bare range that happens to parse — the number `1`, the wildcard `*`, the path `x` — which as
+ * JSONata would be a number or nothing, and fail every generation ({@link isBareVersionRange}).
  */
 function quoteBareVersionRange(value: string | undefined): string | undefined {
-  if (typeof value !== 'string' || !value.trim()) return value;
-  try {
-    jsonata(value);
-    return value;
-  } catch {
-    return encodeJsonataStringLiteral(value.trim());
-  }
+  if (typeof value !== 'string' || !isBareVersionRange(value)) return value;
+  return encodeJsonataStringLiteral(value.trim());
 }
 
 function migrateOptionalV0Scalar(value: string | undefined): string | undefined {

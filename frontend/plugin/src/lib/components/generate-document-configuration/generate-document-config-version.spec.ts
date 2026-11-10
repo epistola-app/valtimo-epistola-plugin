@@ -84,6 +84,12 @@ describe('generate-document action configuration versioning', () => {
 
     expect(v1('^1.4.0')).toBe('"^1.4.0"');
     expect(v1('>=1.3 <2')).toBe('">=1.3 <2"');
+    // A bare range that happens to parse as JSONata would be a number or nothing, and fail every
+    // generation: it is the range it was written as, too.
+    expect(v1('1')).toBe('"1"');
+    expect(v1('1.4')).toBe('"1.4"');
+    expect(v1('*')).toBe('"*"');
+    expect(v1('x')).toBe('"x"');
     // Already JSONata: left as written.
     expect(v1('"^1.4.0"')).toBe('"^1.4.0"');
     expect(v1('$pv.briefversie')).toBe('$pv.briefversie');

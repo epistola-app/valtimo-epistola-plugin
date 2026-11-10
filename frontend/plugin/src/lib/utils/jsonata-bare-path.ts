@@ -34,17 +34,50 @@ const jsonata = (_jsonata as any).default || _jsonata;
  */
 export function barePathProblem(expression: string): string | null {
   const source = expression.trim();
-  if (!source) return null;
-  let ast: { type?: string; value?: unknown; steps?: { type?: string; value?: unknown }[] };
-  try {
-    ast = jsonata(source).ast() as typeof ast;
-  } catch {
-    return null;
-  }
-  const first = ast.type === 'path' ? ast.steps?.[0] : ast;
-  if (!first || first.type !== 'name') return null;
+  const kind = source ? kindOf(source) : null;
+  if (kind !== 'path' && kind !== 'wildcard') return null;
   return (
     `${source} refers to nothing and always produces no value: an expression reads data through ` +
     `$doc, $pv or $case. Did you mean the text "${source}", or $pv.${source}?`
   );
+}
+
+/**
+ * As {@link barePathProblem}, for a field whose value must be text — an environment, a version
+ * range: a number (`1`, `1.4`) or a boolean is refused when the step runs, so it is caught here too.
+ */
+export function textExpressionProblem(expression: string): string | null {
+  const bare = barePathProblem(expression);
+  if (bare) return bare;
+  const source = expression.trim();
+  if (!source || kindOf(source) !== 'non-text literal') return null;
+  return `${source} is not text, and this field takes text. Did you mean "${source}"?`;
+}
+
+/**
+ * Whether a stored value is a bare version range rather than JSONata: one saved before ranges became
+ * expressions (1.0.0-alpha.1/beta.1). Either it does not parse (`^1.4.0`), or it parses into
+ * something no range expression is: a number (`1`, `1.4`), a wildcard (`*`) or a bare path (`x`).
+ */
+export function isBareVersionRange(value: string): boolean {
+  const source = value.trim();
+  return !!source && kindOf(source) !== 'other';
+}
+
+type ExpressionKind = 'unparsable' | 'path' | 'wildcard' | 'non-text literal' | 'other';
+
+function kindOf(source: string): ExpressionKind {
+  let ast: { type?: string; value?: unknown; steps?: { type?: string; value?: unknown }[] };
+  try {
+    ast = jsonata(source).ast() as typeof ast;
+  } catch {
+    return 'unparsable';
+  }
+  const first = ast.type === 'path' ? ast.steps?.[0] : ast;
+  if (first?.type === 'name') return 'path';
+  if (first?.type === 'wildcard' || first?.type === 'descendant') return 'wildcard';
+  if (ast.type === 'number' || (ast.type === 'value' && typeof ast.value === 'boolean')) {
+    return 'non-text literal';
+  }
+  return 'other';
 }
