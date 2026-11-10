@@ -645,7 +645,7 @@ public class EpistolaServiceImpl implements EpistolaService {
             String readEnvironment = null;
             List<DeploymentDto> deployments = environment == null
                     ? List.of()
-                    : selectDeployments(listDeployments(baseUrl, apiKey, tenantId, environment), ref, tenantId, environment);
+                    : selectDeployments(deploymentsOrNone(baseUrl, apiKey, tenantId, environment), ref, tenantId, environment);
             if (!deployments.isEmpty()) {
                 // What the environment serves; a catalog it does not serve is read catalog-wide, as
                 // the design scope does.
@@ -728,6 +728,13 @@ public class EpistolaServiceImpl implements EpistolaService {
                     CatalogTemplateListResponse::getItems,
                     CatalogTemplateListResponse::getPage);
         } catch (Exception e) {
+            if (environment != null && hasStatus(e, 404)) {
+                // An environment that does not exist renders nothing: read catalog-wide, as the
+                // design scope does (UNKNOWN_ENVIRONMENT). A server without the route answers 404
+                // again, and the caller lists per release.
+                log.debug("listCatalogTemplates found no environment '{}'; listing catalog-wide", environment);
+                return listedByServer(baseUrl, apiKey, tenantId, ref, null);
+            }
             if (isNotImplemented(e)) {
                 log.debug("listCatalogTemplates not available on this server ({}); listing per release",
                         Failures.describe(e));
@@ -758,16 +765,33 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     /** A server answering that it does not implement an operation, or does not know its route. */
     private static boolean isNotImplemented(Throwable failure) {
+        return hasStatus(failure, 501) || hasStatus(failure, 404) || hasStatus(failure, 405);
+    }
+
+    /** Whether {@code failure}, or a cause of it, is an HTTP answer with {@code status}. */
+    private static boolean hasStatus(Throwable failure, int status) {
         for (Throwable t = failure; t != null; t = t.getCause()) {
-            int status = t instanceof ProblemDetailException problem ? problem.getProblemStatus()
+            int answered = t instanceof ProblemDetailException problem ? problem.getProblemStatus()
                     : t instanceof RestClientResponseException response ? response.getStatusCode().value()
                     : t instanceof EpistolaApiException api && api.getHttpStatus() != null ? api.getHttpStatus()
                     : -1;
-            if (status == 501 || status == 404 || status == 405) {
+            if (answered == status) {
                 return true;
             }
         }
         return false;
+    }
+
+    /** What {@code environment} serves, or nothing when it does not exist (404). */
+    private List<DeploymentDto> deploymentsOrNone(String baseUrl, String apiKey, String tenantId, String environment) {
+        try {
+            return listDeployments(baseUrl, apiKey, tenantId, environment);
+        } catch (EpistolaApiException e) {
+            if (Integer.valueOf(404).equals(e.getHttpStatus())) {
+                return List.of();
+            }
+            throw e;
+        }
     }
 
     private List<TemplateSummaryDto> templatesOf(
