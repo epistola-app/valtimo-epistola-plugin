@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Epistola contract client `2.0.0-beta.2` → `2.0.0-rc.1`** (`client-spring3-restclient`,
+  `epistola-catalog`, and the mock server in `docker/docker-compose.yml` and
+  `oldestSupportedServerTest`). This build needs a Suite serving contract `2.0.0-rc.1`; none is
+  released yet (Suite `main` pins it). On a Suite serving another pre-release, the admin page
+  warns, as before. Nothing the plugin calls changed shape. The rest is outside what the plugin
+  uses: paged `listAvailableCatalogReleases`, support-request permissions in place of feedback
+  ones, per-resource consumer permission updates, bounded request inputs, and QR-code alt text.
+
+### Fixed
+
+- **A job status that a newer 2.x server adds no longer fails the status check.** From `rc.1` the
+  client reads an unknown enum value as `unknown_default_open_api` instead of failing the whole
+  response. `check-job-status` now reads that as `IN_PROGRESS`, so the process keeps waiting.
+  Every finished status (`COMPLETED`, `FAILED`, `CANCELLED`) is already known, so this cannot hide
+  a job that has finished.
+
 ## [1.0.0-beta.1] - 2026-11-04
 
 ### Upgrading

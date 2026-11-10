@@ -95,6 +95,9 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     private static final int LIST_PAGE_SIZE = 100;
     private static final int MAX_LIST_PAGES = 100;
+    /** What every generated client enum holds for a value it does not know (contract ≥ 2.0.0-rc.1). */
+    private static final String UNKNOWN_ENUM_VALUE =
+            app.epistola.client.model.GenerationItemStatus.unknown_default_open_api.getValue();
 
     private final EpistolaApiClientFactory apiClientFactory;
 
@@ -965,6 +968,12 @@ public class EpistolaServiceImpl implements EpistolaService {
     private GenerationJobStatus mapToJobStatus(String status) {
         if (status == null) {
             return GenerationJobStatus.PENDING;
+        }
+        // Since contract 2.0.0-rc.1 the client reads a status a newer 2.x server added as this
+        // sentinel rather than failing the response. Every terminal status is known, so an unknown
+        // one is read as "not finished yet": the process keeps waiting instead of the check failing.
+        if (UNKNOWN_ENUM_VALUE.equals(status)) {
+            return GenerationJobStatus.IN_PROGRESS;
         }
         return GenerationJobStatus.fromApi(status);
     }

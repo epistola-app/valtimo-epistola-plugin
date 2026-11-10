@@ -113,6 +113,30 @@ class EpistolaServiceImplRetryTest {
         verify(generationApi, times(0)).getGenerationJobStatus(any(), any());
     }
 
+    /**
+     * Since contract 2.0.0-rc.1 the client reads a status a newer 2.x server added as
+     * {@code unknown_default_open_api} instead of failing the response. The job is not finished as
+     * far as this plugin can tell, so the process keeps waiting rather than the check throwing.
+     */
+    @Test
+    void getJobStatus_readsAStatusANewerServerAddedAsNotFinished() {
+        EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
+        GenerationApi generationApi = mock(GenerationApi.class);
+        when(factory.createGenerationApi(anyString(), anyString())).thenReturn(generationApi);
+
+        DocumentGenerationItemDto item = mock(DocumentGenerationItemDto.class);
+        when(item.getStatus()).thenReturn(GenerationItemStatus.unknown_default_open_api);
+        GenerationJobItemListResponse items = mock(GenerationJobItemListResponse.class);
+        when(items.getItems()).thenReturn(List.of(item));
+        when(generationApi.listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1)))
+                .thenReturn(items);
+
+        GenerationJobDetail detail = new EpistolaServiceImpl(factory, 0)
+                .getJobStatus("http://x", "key", TENANT, REQUEST_ID);
+
+        assertEquals(app.epistola.valtimo.domain.GenerationJobStatus.IN_PROGRESS, detail.getStatus());
+    }
+
     @Test
     void getJobStatus_exhaustsRetriesOnPersistent5xx() {
         EpistolaApiClientFactory factory = mock(EpistolaApiClientFactory.class);
