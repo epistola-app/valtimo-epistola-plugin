@@ -209,6 +209,16 @@ public interface EpistolaService {
             String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId, String versionRange);
 
     /**
+     * Every template in the releases of a catalog a link can reach, with the releases each is in:
+     * those deployed to {@code environmentId}, or every released one (the newest draft when it was
+     * never released) without one. For a link whose release is an expression (ADR 0009, addendum).
+     *
+     * @param environmentId the link's environment, or null when it has none or it is an expression
+     */
+    CatalogTemplates getCatalogTemplates(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId);
+
+    /**
      * Generate a document using a template.
      * <p>
      * Variant selection modes (mutually exclusive):

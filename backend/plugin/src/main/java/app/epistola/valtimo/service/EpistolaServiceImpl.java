@@ -22,6 +22,7 @@ import app.epistola.valtimo.domain.AttributeDefinition;
 import app.epistola.valtimo.domain.CatalogInfo;
 import app.epistola.valtimo.domain.CatalogReleases;
 import app.epistola.valtimo.domain.CatalogRef;
+import app.epistola.valtimo.domain.CatalogTemplates;
 import app.epistola.valtimo.domain.DesignScope;
 import app.epistola.valtimo.domain.GenerationTargetProblem;
 import app.epistola.valtimo.domain.GenerationTargetProblem.Reason;
@@ -598,6 +599,126 @@ public class EpistolaServiceImpl implements EpistolaService {
         newestDraft(baseUrl, apiKey, tenantId, catalog); // refuses a catalog with nothing to read
         return new DesignScope(qualified, versions, null, true, null,
                 List.copyOf(problems), new DesignScope.Read(null, null));
+    }
+
+    /** How many of a catalog's reachable releases {@link #getCatalogTemplates} reads, newest first. */
+    static final int MAX_TEMPLATE_RELEASES = 25;
+
+    /**
+     * The templates of released releases, which never change once released: read once per
+     * installation, tenant, catalog and release. A draft is always read again. Bounded, so a
+     * long-running instance with many catalogs does not grow without end.
+     */
+    private final Map<String, List<TemplateSummaryDto>> releasedTemplates = Collections.synchronizedMap(
+            new java.util.LinkedHashMap<>(64, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, List<TemplateSummaryDto>> eldest) {
+                    return size() > 1000;
+                }
+            });
+
+    /** A release a link can reach: where to read it, how to name it, and whether it is a draft. */
+    private record ReachableRelease(String path, String label, boolean draft) {
+    }
+
+    @Override
+    public CatalogTemplates getCatalogTemplates(
+            String baseUrl, String apiKey, String tenantId, String catalogId, String environmentId) {
+        String environment = blankToNull(environmentId);
+        log.debug("Listing templates across releases for tenant: {}, catalog: {}, environment: {}",
+                tenantId, catalogId, environment);
+        try {
+            CatalogRef ref = parseCatalogRef(catalogId);
+            String registry;
+            String namespace;
+            String key;
+            List<ReachableRelease> reachable = new ArrayList<>();
+            String readEnvironment = null;
+            List<DeploymentDto> deployments = environment == null
+                    ? List.of()
+                    : selectDeployments(listDeployments(baseUrl, apiKey, tenantId, environment), ref, tenantId, environment);
+            if (!deployments.isEmpty()) {
+                // What the environment serves; a catalog it does not serve is read catalog-wide, as
+                // the design scope does.
+                readEnvironment = environment;
+                DeploymentDto first = deployments.get(0);
+                registry = first.getRegistry();
+                namespace = first.getNamespace();
+                key = first.getCatalogKey();
+                deployments.stream()
+                        .filter(dto -> dto.getStatus() == CatalogReleaseStatus.draft)
+                        .findFirst()
+                        .ifPresent(draft -> reachable.add(new ReachableRelease(draft.getReleaseId(), "draft", true)));
+                deployments.stream()
+                        .filter(dto -> dto.getStatus() == CatalogReleaseStatus.released)
+                        .sorted(Comparator.comparing(DeploymentDto::getVersion, ReleaseVersions.PRECEDENCE).reversed())
+                        .forEach(dto -> reachable.add(new ReachableRelease(dto.getReleaseId(), dto.getVersion(), false)));
+            } else {
+                CatalogDto catalog = findCatalog(baseUrl, apiKey, tenantId, ref, null);
+                registry = catalog.getRegistry();
+                namespace = catalog.getNamespace();
+                key = catalog.getCatalogKey();
+                List<String> versions = releasedVersions(baseUrl, apiKey, tenantId, catalog);
+                if (versions.isEmpty()) {
+                    reachable.add(new ReachableRelease(newestDraft(baseUrl, apiKey, tenantId, catalog), "draft", true));
+                } else {
+                    versions.forEach(version -> reachable.add(new ReachableRelease(version, version, false)));
+                }
+            }
+            boolean truncated = reachable.size() > MAX_TEMPLATE_RELEASES;
+            List<ReachableRelease> read = truncated ? reachable.subList(0, MAX_TEMPLATE_RELEASES) : reachable;
+
+            TemplatesApi templatesApi = apiClientFactory.createTemplatesApi(baseUrl, apiKey);
+            Map<String, CatalogTemplates.Template> byKey = new java.util.LinkedHashMap<>();
+            Map<String, List<String>> releasesByKey = new java.util.LinkedHashMap<>();
+            for (ReachableRelease release : read) {
+                for (TemplateSummaryDto dto : templatesOf(templatesApi, baseUrl, tenantId, registry, namespace, key, release)) {
+                    releasesByKey.computeIfAbsent(dto.getKey(), k -> new ArrayList<>()).add(release.label());
+                    if (!byKey.containsKey(dto.getKey())) {
+                        // The highest release containing it: where its name, fields and variants come from.
+                        DesignScope.Read readSelection = release.draft()
+                                ? new DesignScope.Read(readEnvironment, null)
+                                : new DesignScope.Read(readEnvironment, release.label());
+                        byKey.put(dto.getKey(), new CatalogTemplates.Template(
+                                dto.getKey(), dto.getName(), dto.getDescription(), List.of(), readSelection));
+                    }
+                }
+            }
+            List<CatalogTemplates.Template> templates = byKey.values().stream()
+                    .map(t -> new CatalogTemplates.Template(t.id(), t.name(), t.description(),
+                            List.copyOf(releasesByKey.get(t.id())), t.read()))
+                    .sorted(Comparator.comparing(CatalogTemplates.Template::name,
+                            Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                    .toList();
+            return new CatalogTemplates(new CatalogRef(registry, namespace, key).toString(), templates, truncated);
+        } catch (EpistolaApiException e) {
+            throw e;
+        } catch (Exception e) {
+            log.error("Failed to list templates across releases for tenant {} ({})", tenantId, Failures.describe(e));
+            throw toApiException("Failed to list templates across releases", e);
+        }
+    }
+
+    private List<TemplateSummaryDto> templatesOf(
+            TemplatesApi templatesApi, String baseUrl, String tenantId,
+            String registry, String namespace, String key, ReachableRelease release) {
+        java.util.function.Supplier<List<TemplateSummaryDto>> fetch = () -> fetchAllPages(
+                "templates",
+                page -> templatesApi.listTemplates(tenantId, registry, namespace, key, release.path(),
+                        null, page, LIST_PAGE_SIZE, null, null),
+                TemplateListResponse::getItems,
+                TemplateListResponse::getPage);
+        if (release.draft()) {
+            return fetch.get();
+        }
+        String cacheKey = String.join("|", baseUrl, tenantId, registry, namespace, key, release.path());
+        List<TemplateSummaryDto> cached = releasedTemplates.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        List<TemplateSummaryDto> fetched = List.copyOf(fetch.get());
+        releasedTemplates.put(cacheKey, fetched);
+        return fetched;
     }
 
     private String newestDraft(String baseUrl, String apiKey, String tenantId, CatalogDto catalog) {

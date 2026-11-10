@@ -257,6 +257,17 @@ class EpistolaTemplateResourceTest {
     }
 
     @Test
+    void getCatalogTemplates_listsInTheLinksEnvironment_elseTheDefault_andAcrossAllForAnExpression() {
+        when(plugin.getDefaultEnvironmentId()).thenReturn("prod");
+
+        resource.getCatalogTemplates(CONFIG_ID, CATALOG_ID, null, false);
+        resource.getCatalogTemplates(CONFIG_ID, CATALOG_ID, "staging", true);
+
+        verify(epistolaService).getCatalogTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, "prod");
+        verify(epistolaService).getCatalogTemplates(BASE_URL, API_KEY, TENANT_ID, CATALOG_ID, null);
+    }
+
+    @Test
     void getDesignScope_withExpressions_appliesNeitherEnvironmentNorRange() {
         when(plugin.getDefaultEnvironmentId()).thenReturn("prod");
 

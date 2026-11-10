@@ -19,6 +19,7 @@ package app.epistola.valtimo.web.rest;
 
 import app.epistola.valtimo.domain.AttributeDefinition;
 import app.epistola.valtimo.domain.CatalogInfo;
+import app.epistola.valtimo.domain.CatalogTemplates;
 import app.epistola.valtimo.domain.DesignScope;
 import app.epistola.valtimo.domain.EnvironmentInfo;
 import app.epistola.valtimo.domain.TemplateDetails;
@@ -306,6 +307,36 @@ public class EpistolaTemplateResource {
                 catalogId,
                 environmentFor(plugin, environmentId, anyEnvironment),
                 anyRange ? null : versionRange
+        ));
+    }
+
+    /**
+     * Every template in the releases of a catalog the link can reach, with the releases each is in,
+     * for a link whose release is an expression (ADR 0009, addendum). Each template carries the
+     * {@code read} selection of the highest release containing it, for its fields and variants.
+     *
+     * @param configurationId The plugin configuration ID
+     * @param catalogId       The catalog ID
+     * @param environmentId   The environment the link generates in; the configuration's default when absent
+     * @param anyEnvironment  True when the link's environment is an expression: every released release
+     */
+    @GetMapping("/configurations/{configurationId}/catalog-templates")
+    public ResponseEntity<CatalogTemplates> getCatalogTemplates(
+            @PathVariable("configurationId") UUID configurationId,
+            @RequestParam("catalogId") String catalogId,
+            @RequestParam(value = "environmentId", required = false) String environmentId,
+            @RequestParam(value = "anyEnvironment", defaultValue = "false") boolean anyEnvironment
+    ) {
+        log.debug("Listing templates across releases for plugin configuration: {}, catalog: {}",
+                configurationId, catalogId);
+
+        EpistolaPlugin plugin = pluginService.createInstance(configurationId);
+        return okOrNotFound(() -> epistolaService.getCatalogTemplates(
+                plugin.getBaseUrl(),
+                plugin.getApiKey(),
+                plugin.getTenantId(),
+                catalogId,
+                environmentFor(plugin, environmentId, anyEnvironment)
         ));
     }
 
