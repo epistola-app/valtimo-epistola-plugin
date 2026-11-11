@@ -19,6 +19,7 @@ package app.epistola.valtimo.service.completion;
 
 import app.epistola.valtimo.deployment.EpistolaCatchEventLinkResolver;
 import app.epistola.valtimo.deployment.EpistolaCatchEventParseListener;
+import app.epistola.valtimo.deployment.EpistolaIncidentMessagePlugin;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationTargetProblem;
 import app.epistola.valtimo.domain.GenerationTargetProblem.Reason;
@@ -50,7 +51,11 @@ import org.operaton.bpm.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.operaton.bpm.engine.runtime.ProcessInstance;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.UndeclaredThrowableException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -128,6 +133,7 @@ class EpistolaRefusalIncidentIntegrationTest {
         configuration.setEnforceHistoryTimeToLive(false);
         configuration.setJdbcUrl("jdbc:h2:mem:refused" + System.nanoTime());
         configuration.setCustomPostBPMNParseListeners(new ArrayList<>(List.of(new EpistolaCatchEventParseListener(deferred))));
+        configuration.getProcessEnginePlugins().add(new EpistolaIncidentMessagePlugin());
         processEngine = configuration.buildProcessEngine();
         runtimeService = processEngine.getRuntimeService();
 
@@ -266,15 +272,30 @@ class EpistolaRefusalIncidentIntegrationTest {
         return processEngine.getTaskService().createTaskQuery().processInstanceId(pi.getId()).singleResult().getName();
     }
 
-    /** The real generate-document action, as a process link would call it. */
+    /**
+     * The real generate-document action, called the way Valtimo calls a process link's action: by
+     * reflection ({@code PluginService.invoke}), from a Spring event listener
+     * ({@code ProcessLinkServiceTaskStartListener}). Neither unwraps, so what the action throws reaches
+     * the engine as an {@link InvocationTargetException} inside an {@link UndeclaredThrowableException}
+     * — which is what made every incident read "Failed to invoke event listener method" until
+     * {@link EpistolaIncidentMessagePlugin}. Calling the action directly here is how that went unseen.
+     */
     public static class GenerateDelegate implements JavaDelegate {
         /** The link's environment expression; none by default. */
         static String environment;
 
         @Override
-        public void execute(DelegateExecution execution) {
-            plugin.generateDocument(execution, 1, "local/demo/brieven", "besluit", null, null, environment, null,
-                    "{}", "\"PDF\"", "\"besluit.pdf\"", null, "letter");
+        public void execute(DelegateExecution execution) throws Exception {
+            Method action = Arrays.stream(EpistolaPlugin.class.getMethods())
+                    .filter(method -> method.getName().equals("generateDocument"))
+                    .findFirst().orElseThrow();
+            try {
+                action.invoke(plugin, execution, 1, "local/demo/brieven", "besluit", null, null, environment, null,
+                        "{}", "\"PDF\"", "\"besluit.pdf\"", null, "letter");
+            } catch (InvocationTargetException e) {
+                // What Spring's ApplicationListenerMethodAdapter does with a checked exception.
+                throw new UndeclaredThrowableException(e, "Failed to invoke event listener method");
+            }
         }
     }
 }
