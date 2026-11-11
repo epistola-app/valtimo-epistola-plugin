@@ -107,16 +107,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `LOCAL_AUTH_USER_PASSWORD`; nothing signs in with them.
 - **A refused generation raises an incident that says what is missing.** When Epistola refuses a
   generation (a missing template, release, variant or environment, nothing deployed, no access), the
-  incident read only "Failed to submit document generation request to Epistola". It now names what
+  failure said only "Failed to submit document generation request to Epistola". It now names what
   was asked for and the first part that does not exist, for example _"Template 'besluit' is not in
   catalog 'local/demo/brieven' in release 2.0.0 (selected by "^2.0.0" in environment 'staging')"_.
   The same for a composed letter and for rich text that cannot be converted. Fix the cause (the
   configuration, or the case's data) and retry the incident: the step runs again. The text never
   carries Epistola's own message, because the engine logs it. This needs the step marked
-  `asyncBefore` (see Upgrading). Valtimo wraps an action's exception twice on its way to the engine,
-  which put _"Failed to invoke event listener method"_ in the incident instead; the plugin now looks
-  through those wrappers for its own actions' failures (`EpistolaIncidentMessagePlugin`), so a
-  transient failure also reads _"Failed to submit document generation request to Epistola"_.
+  `asyncBefore` (see Upgrading). **Look in the incident's stack trace for it**: Valtimo wraps a
+  plugin action's exception twice on its way to the engine, so the incident's own message reads
+  _"Failed to invoke event listener method"_ for every plugin. That is a Valtimo defect, written up
+  with the fix in [docs/valtimo-upstream-issues.md](docs/valtimo-upstream-issues.md).
 - **Choosing an environment a catalog is not deployed to no longer errors.** Every lookup for that
   catalog answered 404 with an empty body and showed its own untranslated "Failed to load …"
   message (templates, fields, variants, the release field), burying the one notice that explained

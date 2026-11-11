@@ -141,9 +141,11 @@ docker/            # Docker compose for local dependencies
   that satisfies it, of those deployed when there is an environment, never a draft, and must
   evaluate to a string (`VersionRanges.ofExpressionResult` refuses a number). For environment,
   range and variant alike, `""` is the deliberate "none" and an expression producing **no value fails**
-  (an incident at the step) — never a silent fallback. The incident's text is the step's own
-  message only because `EpistolaIncidentMessagePlugin` looks through the two wrappers Valtimo's
-  reflective action call adds; a test that calls an action directly cannot see that; `$plugin.defaultEnvironmentId` (`PluginBinding`) is
+  (an incident at the step) — never a silent fallback. The step's diagnosis is in the incident's
+  **stack trace**; the incident's message is Valtimo's _"Failed to invoke event listener method"_,
+  because Valtimo's reflective action call wraps it twice (a Valtimo defect, deliberately not
+  worked around: [docs/valtimo-upstream-issues.md](docs/valtimo-upstream-issues.md)); a test that
+  calls an action directly cannot see that; `$plugin.defaultEnvironmentId` (`PluginBinding`) is
   the explicit one. A top-level JSONata `null` is indistinguishable from a missing path, so it cannot
   carry meaning (ADR 0009, second addendum). Generation and
   preview send it for the server to resolve. **Configurators never resolve per lookup**: they ask
@@ -290,9 +292,10 @@ failure fixable. So a downstream message may be **shown or stored on the case**,
 **logged**. Two tests pin that intent (`saysSoWhenTheDocumentIsNoLongerOnTheVariable`,
 `epistolaApiFailure_throwsRenderFailed`) — they failed when an audit replaced those messages with a
 class name, which is how the boundary was found. A third, `recordsTheRefusalWhereTheProcessCanReadIt`,
-went when a refused generation became an incident (ADR 0009, third addendum): an incident's text is
-logged by the engine, so it now carries the plugin's own diagnosis and never Epistola's message —
-`aRefusalRaisesAnIncidentSayingWhatIsMissing_withoutEpistolasText` pins that side.
+went when a refused generation became an incident (ADR 0009, third addendum): an incident's text and
+stack trace are logged by the engine, so they carry the plugin's own diagnosis and never Epistola's
+message — `aRefusal_raisesAnIncidentAtTheStep_sayingWhatIsMissing` (in
+`EpistolaRefusalIncidentIntegrationTest`) pins that side, on the stack trace.
 
 `Failures.describe(Throwable)` (`app.epistola.valtimo.logging`) is the helper for the logging side,
 and `LogStatementPersonalDataTest` guards it: it scans the plugin's sources for a log statement that

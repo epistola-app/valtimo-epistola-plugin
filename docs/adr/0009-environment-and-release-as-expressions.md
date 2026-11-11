@@ -325,11 +325,13 @@ after the tests above passed: every incident read _"Failed to invoke event liste
 calls a process-link action by reflection (`PluginService.invoke`) from a Spring event listener
 (`ProcessLinkServiceTaskStartListener`), and neither unwraps, so the step's exception arrives inside an
 `InvocationTargetException` inside an `UndeclaredThrowableException`, and the engine takes the
-outermost message. The tests had called the action directly. `EpistolaIncidentMessagePlugin`
-therefore records a failed job with the message the action threw and the original chain as its
-cause: it looks through those two wrappers only, and only for an exception thrown out of the
-Epistola plugin's actions, so another plugin's failure is recorded as before. The integration test
-now calls the action the way Valtimo does.
+outermost message. The tests had called the action directly. The plugin does not work around it:
+replacing the engine's failed-job handling to unwrap its own actions' failures was tried and
+removed, as engine-wide machinery for a one-line defect in Valtimo that every plugin shares. So the
+diagnosis this addendum is about is in the incident's **stack trace**, and the incident's own message
+is Valtimo's until Valtimo unwraps the reflective call; the defect and its fix are written up in
+[docs/valtimo-upstream-issues.md](../valtimo-upstream-issues.md). The integration test now calls the
+action the way Valtimo does and pins both halves.
 
 **The variant follows the second addendum's rule** (also found by hand): a variant expression that
 produced no value meant `null`, so the template's default variant, and a misspelt path sent every

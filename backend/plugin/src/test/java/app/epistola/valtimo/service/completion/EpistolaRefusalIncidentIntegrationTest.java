@@ -19,7 +19,6 @@ package app.epistola.valtimo.service.completion;
 
 import app.epistola.valtimo.deployment.EpistolaCatchEventLinkResolver;
 import app.epistola.valtimo.deployment.EpistolaCatchEventParseListener;
-import app.epistola.valtimo.deployment.EpistolaIncidentMessagePlugin;
 import app.epistola.valtimo.domain.FileFormat;
 import app.epistola.valtimo.domain.GenerationTargetProblem;
 import app.epistola.valtimo.domain.GenerationTargetProblem.Reason;
@@ -74,10 +73,19 @@ import static org.mockito.Mockito.when;
  * configuration or the case's data) retrying it runs the step again with what was corrected (ADR
  * 0009, third addendum). Driven through the real {@code generate-document} action in a real engine,
  * behind the async boundary Valtimo deploys, because what matters is what the engine does with it.
+ *
+ * <p>The incident's own message is Valtimo's, not the step's: Valtimo calls the action by reflection
+ * and does not unwrap what it throws (see {@link GenerateDelegate}), so the summary line reads
+ * {@value #VALTIMO_WRAPPER} and the step's diagnosis is in the incident's stack trace. That is a
+ * Valtimo defect, written down in {@code docs/valtimo-upstream-issues.md}; these tests pin both
+ * halves, so they say so when Valtimo fixes it.
  */
 class EpistolaRefusalIncidentIntegrationTest {
 
     private static final String TENANT = "demo";
+
+    /** What Spring's event-listener adapter says around the action's exception. */
+    private static final String VALTIMO_WRAPPER = "Failed to invoke event listener method";
 
     private static final String BPMN = """
             <?xml version="1.0" encoding="UTF-8"?>
@@ -133,7 +141,6 @@ class EpistolaRefusalIncidentIntegrationTest {
         configuration.setEnforceHistoryTimeToLive(false);
         configuration.setJdbcUrl("jdbc:h2:mem:refused" + System.nanoTime());
         configuration.setCustomPostBPMNParseListeners(new ArrayList<>(List.of(new EpistolaCatchEventParseListener(deferred))));
-        configuration.getProcessEnginePlugins().add(new EpistolaIncidentMessagePlugin());
         processEngine = configuration.buildProcessEngine();
         runtimeService = processEngine.getRuntimeService();
 
@@ -189,8 +196,9 @@ class EpistolaRefusalIncidentIntegrationTest {
         org.operaton.bpm.engine.runtime.Incident incident = failUntilIncident(pi);
 
         assertThat(incident.getActivityId()).isEqualTo("generate");
-        assertThat(incident.getIncidentMessage())
-                .startsWith("Template 'besluit' is not in catalog 'local/demo/brieven' in release 2.0.0")
+        assertThat(incident.getIncidentMessage()).isEqualTo(VALTIMO_WRAPPER);
+        assertThat(diagnosisOf(pi))
+                .contains("Template 'besluit' is not in catalog 'local/demo/brieven' in release 2.0.0")
                 .doesNotContain("Jansen");
         assertThat(runtimeService.getActiveActivityIds(pi.getId())).containsExactly("generate");
         assertThat(runtimeService.getVariable(pi.getId(), "letter")).isNull();
@@ -225,9 +233,10 @@ class EpistolaRefusalIncidentIntegrationTest {
         // `someEnv` without quotes: a path to nothing, which once rendered in the default unnoticed.
         GenerateDelegate.environment = "someEnv";
 
-        org.operaton.bpm.engine.runtime.Incident incident = failUntilIncident(startAsTheAppDoes());
+        ProcessInstance pi = startAsTheAppDoes();
+        failUntilIncident(pi);
 
-        assertThat(incident.getIncidentMessage()).contains("expression='someEnv'").contains("produced no value");
+        assertThat(diagnosisOf(pi)).contains("expression='someEnv'").contains("produced no value");
         org.mockito.Mockito.verifyNoInteractions(epistolaService);
     }
 
@@ -235,9 +244,10 @@ class EpistolaRefusalIncidentIntegrationTest {
     void aTransientFailure_isRetried_asAnyFailingStepIs() {
         refuseWith(new EpistolaApiException("Service Unavailable", null, 503, null, Map.of()));
 
-        org.operaton.bpm.engine.runtime.Incident incident = failUntilIncident(startAsTheAppDoes());
+        ProcessInstance pi = startAsTheAppDoes();
+        failUntilIncident(pi);
 
-        assertThat(incident.getIncidentMessage()).contains("Failed to submit document generation request to Epistola");
+        assertThat(diagnosisOf(pi)).contains("Failed to submit document generation request to Epistola");
     }
 
     /** Run the step's job until the engine gives up and raises an incident, as the job executor would. */
@@ -252,6 +262,11 @@ class EpistolaRefusalIncidentIntegrationTest {
             }
         }
         return runtimeService.createIncidentQuery().processInstanceId(pi.getId()).singleResult();
+    }
+
+    /** The failed job's stack trace: what Cockpit shows under the incident. */
+    private String diagnosisOf(ProcessInstance pi) {
+        return processEngine.getManagementService().getJobExceptionStacktrace(jobOf(pi).getId());
     }
 
     private org.operaton.bpm.engine.runtime.Job jobOf(ProcessInstance pi) {
@@ -277,8 +292,8 @@ class EpistolaRefusalIncidentIntegrationTest {
      * reflection ({@code PluginService.invoke}), from a Spring event listener
      * ({@code ProcessLinkServiceTaskStartListener}). Neither unwraps, so what the action throws reaches
      * the engine as an {@link InvocationTargetException} inside an {@link UndeclaredThrowableException}
-     * — which is what made every incident read "Failed to invoke event listener method" until
-     * {@link EpistolaIncidentMessagePlugin}. Calling the action directly here is how that went unseen.
+     * — which is why every incident reads "Failed to invoke event listener method". Calling the
+     * action directly here is how that went unseen.
      */
     public static class GenerateDelegate implements JavaDelegate {
         /** The link's environment expression; none by default. */

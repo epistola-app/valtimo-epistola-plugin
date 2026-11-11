@@ -26,7 +26,6 @@ import app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger;
 import app.epistola.valtimo.deployment.EpistolaCatchEventLinkResolver;
 import app.epistola.valtimo.deployment.EpistolaCatchEventParseListener;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
-import app.epistola.valtimo.deployment.EpistolaIncidentMessagePlugin;
 import app.epistola.valtimo.deployment.EpistolaProcessEnginePlugin;
 import app.epistola.valtimo.service.admin.EpistolaLegacyOverrideScanService; // TEMPORARY
 import app.epistola.valtimo.service.completion.EpistolaCatchEventStartListener;
@@ -152,16 +151,6 @@ public class EpistolaPluginAutoConfiguration {
             EpistolaCatchEventParseListener catchEventParseListener
     ) {
         return new EpistolaProcessEnginePlugin(catchEventParseListener);
-    }
-
-    /**
-     * An incident at an Epistola step carries the step's diagnosis rather than the wrapper Valtimo's
-     * reflective action call puts around it. Not under the catch-event flag: it is about every step.
-     */
-    @Bean
-    @ConditionalOnMissingBean(EpistolaIncidentMessagePlugin.class)
-    public EpistolaIncidentMessagePlugin epistolaIncidentMessagePlugin() {
-        return new EpistolaIncidentMessagePlugin();
     }
 
     @Bean
