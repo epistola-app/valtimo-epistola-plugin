@@ -90,6 +90,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The bulk demo (`bulk-tax-letters`) generates its letters.** It failed on start with
+  _"Cannot resolve identifier 'taxpayers'"_: its parsing script task named its language
+  `camunda:scriptFormat`, which the engine does not read, so the script ran as a JUEL string and set
+  nothing. Valtimo has no Groovy engine to run it anyway, so a delegate (`parseTaxpayers`) now parses
+  the list, and `DemoScriptTasksTest` keeps script tasks out of the demo. The letter's `taxAmount` is
+  now mapped from `amount`, the field the start form asks for.
 - **The compose stack's Epistola starts on a Suite 2.0 image.** Suite 2.0 refuses `localauth`
   while its local users keep their shipped passwords, so `docker compose --profile server` (and the
   browser E2E) stopped at boot. Compose now sets `LOCAL_AUTH_ADMIN_PASSWORD` and
