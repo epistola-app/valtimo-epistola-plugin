@@ -477,7 +477,10 @@ in `test-app/frontend/src/app/embedding/`; the published plugin library is untou
 
 ## Known Limitations
 
-- **Server version endpoint**: `EpistolaAdminService.getVersions()` returns the plugin version only. Blocked: Epistola does not yet expose a version/health API endpoint.
+- **Server version is per connection**: each configuration can point at a different Suite, so the
+  server's version and contract come with `/admin/health` (one card per connection, from the
+  Suite's system info) and the admin page shows them there. `getVersions()` is about the plugin;
+  its `epistolaServerVersion` stays null and nothing reads it.
 
 ## Test Coverage
 
