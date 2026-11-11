@@ -65,6 +65,21 @@ export class ProcessLinkPage {
         await this.page.reload();
         await this.page.waitForLoadState('domcontentloaded');
         await expect(processSelect).toBeVisible({ timeout: 20_000 });
+        // And the reloaded page can come back with that option already selected while it draws
+        // another process (seen in a full run: the dropdown named the process, the diagram was the
+        // first one). Selecting it then is again no change, so move away from it first.
+        const other = await processSelect
+          .locator('option')
+          .evaluateAll(
+            (options, label) =>
+              options
+                .map((option) => (option as HTMLOptionElement).label)
+                .find((text) => text.trim() !== '' && text.trim() !== label),
+            processLabel,
+          );
+        if (other) {
+          await processSelect.selectOption({ label: other });
+        }
       }
     }
   }
