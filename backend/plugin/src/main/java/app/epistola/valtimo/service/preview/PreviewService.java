@@ -190,13 +190,12 @@ public class PreviewService {
         }
 
         var scalarEvalContext = evalCtxBuilder.build();
-        String variantId = actionConfig.variantId().isConfigured()
-                ? actionConfig.variantId().resolve(jsonataMappingService, scalarEvalContext)
-                : null;
-        // As generation resolves it: an expression producing nothing is refused, "" means none.
+        // As generation resolves them: an expression producing nothing is refused, "" means none.
+        String variantId;
         String environmentId;
         String versionRange;
         try {
+            variantId = actionConfig.resolveVariant(jsonataMappingService, scalarEvalContext);
             environmentId = actionConfig.resolveEnvironment(
                     jsonataMappingService, scalarEvalContext, plugin.getDefaultEnvironmentId());
             versionRange = actionConfig.resolveVersionRange(jsonataMappingService, scalarEvalContext);

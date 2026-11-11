@@ -522,6 +522,55 @@ class GenerateDocumentActionConfigurationRegistryTest {
         assertThat(config.resolveEnvironment(mappingService(), context(Map.of()), "productie")).isEqualTo("productie");
     }
 
+    @Test
+    void aVariantExpression_isWhatItSays_andAnEmptyStringIsTheDefaultVariant() {
+        var config = withVariant("$pv.brieftype");
+
+        assertThat(config.resolveVariant(mappingService(), context(Map.of("brieftype", " formeel ")))).isEqualTo("formeel");
+        assertThat(config.resolveVariant(mappingService(), context(Map.of("brieftype", ""))))
+                .describedAs("\"\" is a choice: the template's default variant")
+                .isNull();
+        assertThat(withVariant(null).resolveVariant(mappingService(), context(Map.of())))
+                .describedAs("none configured: the default variant, or the attributes")
+                .isNull();
+    }
+
+    @Test
+    void aVariantExpressionProducingNothing_isRefused_ratherThanRenderedInTheDefaultVariant() {
+        // A misspelt path rendered every letter in the default variant, and nothing said so.
+        var config = withVariant("$pv.brieftpye");
+
+        assertThatThrownBy(() -> config.resolveVariant(mappingService(), context(Map.of("brieftype", "formeel"))))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e ->
+                        assertThat(e.getKind()).isEqualTo(GenerateDocumentExpressionException.Kind.NO_VALUE))
+                .hasMessageContaining("field 'variantId'")
+                .hasMessageContaining("expression='$pv.brieftpye'")
+                .hasMessageContaining("Write \"\" for the template's default variant");
+    }
+
+    @Test
+    void aVariantThatIsNotAString_isRefused() {
+        assertThatThrownBy(() -> withVariant("42").resolveVariant(mappingService(), context(Map.of())))
+                .isInstanceOfSatisfying(GenerateDocumentExpressionException.class, e ->
+                        assertThat(e.getKind()).isEqualTo(GenerateDocumentExpressionException.Kind.INVALID_RESULT));
+    }
+
+    @Test
+    void aV0Link_keepsReadingABlankVariantAsNone() {
+        var config = GenerateDocumentActionConfigurationRegistry.parse(new GenerateDocumentActionProperties(
+                0, "catalog", "template", "$pv.brieftype", null, null, null, "{}", "PDF", "value.pdf", null, "result"));
+
+        assertThat(config.resolveVariant(mappingService(), context(Map.of()))).isNull();
+    }
+
+    private static GenerateDocumentActionConfiguration withVariant(String variant) {
+        GenerateDocumentActionProperties valid = properties(1, "\"value.pdf\"", null, null);
+        return GenerateDocumentActionConfigurationRegistry.parse(new GenerateDocumentActionProperties(
+                valid.actionConfigVersion(), valid.catalogId(), valid.templateId(), variant,
+                valid.variantAttributes(), null, null, valid.dataMapping(), valid.outputFormat(),
+                valid.filename(), valid.correlationId(), valid.resultProcessVariable()));
+    }
+
     private static GenerateDocumentActionConfiguration withEnvironment(String environment) {
         GenerateDocumentActionProperties valid = properties(1, "\"value.pdf\"", null, null);
         return GenerateDocumentActionConfigurationRegistry.parse(new GenerateDocumentActionProperties(
