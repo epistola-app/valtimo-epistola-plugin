@@ -162,7 +162,7 @@ docker/            # Docker compose for local dependencies
   floor exists; it is part of `check`/`build`, not `test`.
 - **Plugin properties**: Backend `@PluginProperty` keys must match frontend field names exactly
 - **Translations**: Add both `nl` and `en` translations in `epistola.specification.ts`
-- **Letter composer** (`epistola-letter-composer`, **alpha**): pick a letter from a configured
+- **Letter composer** (`epistola-letter-composer`, stable since 1.0): pick a letter from a configured
   list, fill in what the case cannot supply, preview it, and let one
   `epistola-generate-dynamic-document` task render it. Where it is used is **derived, never
   authored** — a task form fills the `epistola:taskId` carrier and a start form does not, so one
@@ -170,11 +170,12 @@ docker/            # Docker compose for local dependencies
   start forms, narrowed to what the caller may start. It is a module of its own
   (`app.epistola.valtimo.composer`, `lib/composer/`), switchable with
   `epistola.composer.enabled=false`, and nothing else in the plugin depends on it.
-  - **Alpha means the stored shapes may still change.** The two that outlive the code that wrote
-    them — a component's settings in a form definition, and the chosen letter on a process variable
-    — carry a `schemaVersion`. Read it through `ComposerSchema` (mirrored in `composer-schema.ts`):
-    absent means 1, and anything newer than `CURRENT` is refused with a message naming both
-    versions rather than half-read. Raise `CURRENT` when a shape changes, and keep the two
+  - **The stored shapes are part of 1.x's stability promise.** The two that outlive the code that
+    wrote them — a component's settings in a form definition, and the chosen letter on a process
+    variable — carry a `schemaVersion`. Read it through `ComposerSchema` (mirrored in
+    `composer-schema.ts`): absent means 1, and anything newer than `CURRENT` is refused with a
+    message naming both versions rather than half-read. A shape change within 1.x raises `CURRENT`
+    **and keeps reading every older version** (as schema ≤3 settings are read today); keep the two
     constants in step. The version is written back in `getModifiedSchema`, like `prefill: false`
     and the hidden carriers — Form.io drops schema equal to the registered default, and losing it
     would make every saved component look like it predates the field.
@@ -208,13 +209,13 @@ docker/            # Docker compose for local dependencies
   hold it together:
   - **A value says its own format.** A mapping converts in `$richText(value, format)`; mapped data
     is never converted afterwards, so a bare string in a rich-text field is refused. The plugin's
-    own editors (the composer, the retry form) submit what was typed as a tagged value,
+    own editor, the composer, submits what was typed as a tagged value,
     `{"$richText": {"format", "kind", "value"}}`, built by the frontend's `tagRichText` from the
     `epistolaRichText` marker `FormioFormGenerator` puts on each rich-text component. The client
     (`EpistolaServiceImpl`, via `RichTextValues`) turns tags into documents while building the
     generate and preview requests, so every path is covered without a wrapper or a contract read.
-    Anything that hands typed rich text to a person or the case — write-back, a retry form's
-    prefill — unwraps it first (ADR 0008, Revision).
+    Anything that hands typed rich text to a person or the case — write-back — unwraps it first
+    (ADR 0008, Revision).
   - **Never guess a string's format.** It comes from `$richText(value, format)` or from the tag the
     editor wrote.
   - **Send only what passes `ProseMirrorSanitizer`.** Each format's tests validate its output
@@ -367,7 +368,6 @@ License headers on the Java backend are applied/gated by Spotless
 - **3 plugin actions**: `generate-document`, `check-job-status`, `download-document`
 - **Async completion**: `EpistolaResultCollectorRunner` manages one contract `ResultCollector` per active plugin configuration and correlates results via `EpistolaMessageCorrelationService`
 - **Catalog sync**: Automatic import of classpath-based catalogs on startup, plus a manual per-catalog force-redeploy from the admin page that bypasses the version-skip and `templateSyncEnabled` gate (`EpistolaCatalogSyncService`). Bundled catalogs are authored at Epistola **catalog wire `schemaVersion` 4** (Suite ≥ 0.26.0; see [COMPATIBILITY.md](COMPATIBILITY.md)); the floor is pinned by `BundledCatalogSchemaVersionTest`/`EpistolaCatalogSyncServiceTest`, and a too-old wire schema surfaces a translated, operator-actionable redeploy error (downstream 4xx → 422, not 502)
-- **Retry flow** (**deprecated** since 0.21.0): Dynamic Formio form generation for failed document retries (`RetryFormService`). It corrects the letter rather than the case; the demo and [docs/user-task-fallback.md](docs/user-task-fallback.md) now show correcting the case and generating again. Don't build on it, and don't add it to new examples
 - **Document preview**: Preview without creating generation jobs (`PreviewService`)
 - **Admin page**: Health checks, plugin usage overview (with dangling catalog/template/variant reference detection), per-config classpath-catalog redeploy, running version + bundled CHANGELOG tab (`EpistolaAdminResource`)
 - **Variant selection**: 3 modes — default, explicit variantId, or attribute-based automatic selection
@@ -381,7 +381,7 @@ License headers on the Java backend are applied/gated by Spotless
 - **23 Angular 19 components** including action configurators, data mapping builder, Formio components, and admin page
 - **4 services**: Plugin API client, Admin API client, Menu service, Template field utilities
 - **Full bilingual translations** (NL/EN) in `epistola.specification.ts`
-- **Formio integration**: Custom components for download, retry form, preview button, and document preview. The full list of registered Formio components — what each is for, palette visibility, and which are task-bound (read the prefilled `taskInstanceId`) — is in [docs/formio-components.md](docs/formio-components.md). **Keep that index in sync when adding/removing a component**, and apply any change to the task-id mechanism to all three task-bound components.
+- **Formio integration**: Custom components for download, preview button, and document preview. The full list of registered Formio components — what each is for, palette visibility, and which are task-bound (read the prefilled `taskInstanceId`) — is in [docs/formio-components.md](docs/formio-components.md). **Keep that index in sync when adding/removing a component**, and apply any change to the task-id mechanism to every task-bound component.
 
 ### Plugin Properties
 
@@ -395,7 +395,7 @@ License headers on the Java backend are applied/gated by Spotless
 
 Three layers of authorization apply to plugin endpoints:
 
-- **User-task endpoints** — `POST /preview` and `GET /retry-form` require only a `taskId` (preview/retry also take the component's `sourceActivityId`). The controller verifies `OperatonTask:VIEW` on the task (`requireTaskViewable`) and then **derives** the process instance and case document from the task itself — `processInstanceId = task.getProcessInstanceId()`, `documentId = task.getProcessInstance().getBusinessKey()` (Valtimo dossier-driven processes carry the case document UUID as the process business key). Because these are never client-supplied, there is no forgery vector and nothing to cross-check; a `taskId` the caller lacks `VIEW` on → 403, missing `taskId` → 400 (`sourceActivityId` is optional — auto-discovered when absent). `GET /documents/download` (query-param shape, replaces the old `/documents/{id}/download` path) follows the same task-derived pattern (`requireTaskViewable`) and additionally resolves the Epistola PDF id and tenant id from named process variables on the caller's task — the wire never carries a raw PDF id, so callers cannot forge access to documents outside their process. The Formio components obtain the active `taskInstanceId` from **server-side form prefill**: the `epistola:taskId` value resolver (`EpistolaTaskValueResolverFactory`) fills a hidden carrier field embedded in each component's schema, which the component reads back (`readPrefilledTaskId`) — works in every task-open flow. Embedding the carrier in the default schema is **not sufficient**: Formio's serializer drops schema equal to the registered default, so each task-bound component is also wrapped in `withPrefilledTaskIdCarrier` to keep the carrier in the saved form (see [docs/formio-components.md](docs/formio-components.md)). Outside a user task context (Formio builder, design mode) the components fail closed.
+- **User-task endpoints** — `POST /preview` requires only a `taskId` (it also takes the component's `sourceActivityId`). The controller verifies `OperatonTask:VIEW` on the task (`requireTaskViewable`) and then **derives** the process instance and case document from the task itself — `processInstanceId = task.getProcessInstanceId()`, `documentId = task.getProcessInstance().getBusinessKey()` (Valtimo dossier-driven processes carry the case document UUID as the process business key). Because these are never client-supplied, there is no forgery vector and nothing to cross-check; a `taskId` the caller lacks `VIEW` on → 403, missing `taskId` → 400 (`sourceActivityId` is optional — auto-discovered when absent). `GET /documents/download` (query-param shape, replaces the old `/documents/{id}/download` path) follows the same task-derived pattern (`requireTaskViewable`) and additionally resolves the Epistola PDF id and tenant id from named process variables on the caller's task — the wire never carries a raw PDF id, so callers cannot forge access to documents outside their process. The Formio components obtain the active `taskInstanceId` from **server-side form prefill**: the `epistola:taskId` value resolver (`EpistolaTaskValueResolverFactory`) fills a hidden carrier field embedded in each component's schema, which the component reads back (`readPrefilledTaskId`) — works in every task-open flow. Embedding the carrier in the default schema is **not sufficient**: Formio's serializer drops schema equal to the registered default, so each task-bound component is also wrapped in `withPrefilledTaskIdCarrier` to keep the carrier in the saved form (see [docs/formio-components.md](docs/formio-components.md)). Outside a user task context (Formio builder, design mode) the components fail closed.
 - **Admin endpoints** — `/admin/**`. Each method calls `requirePermission(EpistolaAdministration, MANAGE)`. The `EpistolaAdministration` resource type is plugin-defined (`app.epistola.valtimo.authorization`), seeded with a default `ROLE_ADMIN` grant via `config/epistola/permission/epistola-admin-default.permission.json` (deployed by Valtimo's `PermissionDeployer` on boot). To restrict admin access more tightly, revoke the default grant and assign `MANAGE` to a specific role.
 - **Configurator endpoints** — `/configurations/**`, `/process-variables`, `/variable-suggestions`, `/expression-functions`, `/validate-jsonata`, `/evaluate-mapping`. Gated at the HTTP layer by `ROLE_ADMIN`, which matches Valtimo's own process-link CRUD endpoints. There is no `ProcessLink` PBAC action in Valtimo 13.21, so `ROLE_ADMIN` is the de-facto "process-link author" authority.
 
@@ -482,8 +482,8 @@ in `test-app/frontend/src/app/embedding/`; the published plugin library is untou
 
 - **Server version is per connection**: each configuration can point at a different Suite, so the
   server's version and contract come with `/admin/health` (one card per connection, from the
-  Suite's system info) and the admin page shows them there. `getVersions()` is about the plugin;
-  its `epistolaServerVersion` stays null and nothing reads it.
+  Suite's system info) and the admin page shows them there. `getVersions()` is about the plugin
+  only.
 
 ## Test Coverage
 
@@ -495,7 +495,6 @@ in `test-app/frontend/src/app/embedding/`; the published plugin library is untou
 - `EpistolaResultCollectorRunner` — Result collector lifecycle and message delivery
 - `EpistolaMessageCorrelationService` — BPMN message correlation
 - `PreviewService` — Document preview functionality
-- `RetryFormService` — Dynamic retry form generation
 - `EpistolaAdminService` — Health checks, usage overview, and process-link reference validation (dangling catalog/template/variant detection)
 - `CatalogScanner` — Classpath catalog discovery
 - `EpistolaCatalogSyncService` — Catalog import with version tracking, forced single-catalog redeploy, and classpath discovery
@@ -541,10 +540,9 @@ The complete-step **body is the submission data itself**, not wrapped in a `subm
 Valtimo filters the posted object down to the step form's input fields, so a wrapper key is silently
 dropped and the step stores `{}` — the flow still advances, which makes this easy to miss when scripting.
 
-`PreviewRequest` (`POST /preview`) has **two** override fields and they are not interchangeable:
-`inputOverrides` is the `{doc, pv}` overlay applied **before** the JSONata mapping — this is what the
-preview component sends via its `overrideMapping` — while `overrides` applies **after** it, onto
-template fields. Passing the `{doc, pv}` shape as `overrides` is silently ignored.
+`PreviewRequest` (`POST /preview`) takes one override field, `inputOverrides`: the `{doc, pv}`
+overlay applied **before** the JSONata mapping — this is what the preview component sends via its
+`overrideMapping`. There is no way to override template fields after the mapping.
 
 ### Writing Valtimo browser E2E
 

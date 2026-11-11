@@ -91,7 +91,7 @@ unless the function is intentionally limited to process execution, and return an
 when required context is missing.
 
 Prefer the stable document and process accessors over direct `DelegateExecution` use. This keeps a
-function usable in generation, preview, and retry flows and reduces coupling to the process engine.
+function usable in generation and preview and reduces coupling to the process engine.
 
 ## Structured results and editor discovery
 

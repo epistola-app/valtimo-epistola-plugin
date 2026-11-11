@@ -20,7 +20,6 @@ import { Injectable, Injector } from '@angular/core';
 import { registerEpistolaDocumentComponent } from '../components/epistola-document/epistola-document.formio';
 import { registerEpistolaDocumentPreviewComponent } from '../components/epistola-document-preview/epistola-document-preview.formio';
 import { registerEpistolaComposerComponents } from '../composer/composer.registration';
-import { registerEpistolaRetryFormComponent } from '../components/epistola-retry-form/epistola-retry-form.formio';
 import { registerEpistolaOverrideBuilderComponent } from '../components/override-builder/override-builder.formio';
 import { registerEpistolaProcessLinkSelectorComponent } from '../components/process-link-selector/process-link-selector.formio';
 import { isEpistolaEnabled } from '../epistola-runtime-config';
@@ -44,7 +43,6 @@ export class EpistolaRegistrationService {
     this.registered = true;
     this.menuService.register();
     registerEpistolaDocumentComponent(this.injector);
-    registerEpistolaRetryFormComponent(this.injector);
     registerEpistolaOverrideBuilderComponent(this.injector);
     registerEpistolaProcessLinkSelectorComponent(this.injector);
     registerEpistolaDocumentPreviewComponent(this.injector);

@@ -26,7 +26,6 @@ import {
   ChangelogRelease,
   ClasspathCatalog,
   ConnectionStatus,
-  LegacyOverrideForm,
   PendingJob,
   PluginUsageEntry,
   ReconcileResult,
@@ -138,12 +137,5 @@ export class EpistolaAdminService {
     return this.http.get(`${this.apiEndpoint}/export/${encodeURIComponent(processLinkId)}`, {
       responseType: 'blob',
     });
-  }
-
-  // ---- TEMPORARY: legacy override-mapping format detection ----
-
-  /** Forms whose preview components still use the legacy override-mapping object format. */
-  getLegacyOverrideForms(): Observable<LegacyOverrideForm[]> {
-    return this.http.get<LegacyOverrideForm[]>(`${this.apiEndpoint}/forms/legacy-override`);
   }
 }

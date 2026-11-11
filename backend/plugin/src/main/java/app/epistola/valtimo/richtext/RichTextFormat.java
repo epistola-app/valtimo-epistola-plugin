@@ -55,7 +55,7 @@ public interface RichTextFormat {
 
     /**
      * The reverse: a ProseMirror document as a value in this format, to show an existing document
-     * in an editor for it (a retry form prefills with what was rendered).
+     * in an editor for it (the composer prefills a field with a document the case already holds).
      *
      * <p>Optional. A format that returns null cannot be edited from a document, and such a document
      * is offered in the HTML editor instead.

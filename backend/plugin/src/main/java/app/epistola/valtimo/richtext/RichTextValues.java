@@ -30,7 +30,7 @@ import java.util.Map;
 /**
  * Rich text that says what it is (ADR 0008).
  *
- * <p>What a person types into one of the plugin's editors — the letter composer, the retry form —
+ * <p>What a person types into one of the plugin's editors — the letter composer —
  * is submitted as a <b>tagged value</b> rather than a bare string:
  * <pre>{@code {"$richText": {"format": "html", "kind": "BLOCK", "value": "<p>Het bezwaar is …</p>"}}}</pre>
  * The editor that wrote it states the format, so nothing has to work out later which format a

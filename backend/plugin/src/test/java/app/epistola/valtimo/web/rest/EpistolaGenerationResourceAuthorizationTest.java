@@ -44,9 +44,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * Verifies the authorization contract for the user-task-bound endpoints (preview, retry-form).
+ * Verifies the authorization contract for the user-task-bound preview endpoint.
  *
- * <p>Both require {@code OperatonTask:VIEW} on the supplied {@code taskId} and derive the process
+ * <p>It requires {@code OperatonTask:VIEW} on the supplied {@code taskId} and derive the process
  * instance + case document <i>from that task</i> — the caller never supplies them, so there is no
  * forgery vector to cross-check. These tests assert: the {@code VIEW} permission is required; the
  * derived ids are what the service is called with; missing {@code taskId}/{@code sourceActivityId}
@@ -62,7 +62,6 @@ class EpistolaGenerationResourceAuthorizationTest {
     private AuthorizationService authorizationService;
     private OperatonTaskService operatonTaskService;
     private app.epistola.valtimo.service.preview.PreviewService previewService;
-    private app.epistola.valtimo.service.form.RetryFormService retryFormService;
     private EpistolaGenerationResource resource;
     private OperatonTask task;
     private OperatonExecution processInstance;
@@ -72,7 +71,6 @@ class EpistolaGenerationResourceAuthorizationTest {
         var pluginService = mock(PluginService.class);
         var epistolaService = mock(EpistolaService.class);
         previewService = mock(app.epistola.valtimo.service.preview.PreviewService.class);
-        retryFormService = mock(app.epistola.valtimo.service.form.RetryFormService.class);
         var jsonataMappingService = mock(app.epistola.valtimo.mapping.JsonataMappingService.class);
         var documentService = mock(com.ritense.document.service.DocumentService.class);
         var objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -87,7 +85,7 @@ class EpistolaGenerationResourceAuthorizationTest {
         when(operatonTaskService.findTaskById(TASK_ID)).thenReturn(task);
 
         resource = new EpistolaGenerationResource(pluginService, epistolaService,
-                previewService, retryFormService, jsonataMappingService,
+                previewService, jsonataMappingService,
                 documentService, objectMapper, authorizationService, operatonTaskService,
                 mock(org.operaton.bpm.engine.RuntimeService.class),
                 mock(org.operaton.bpm.engine.RepositoryService.class),
@@ -95,7 +93,7 @@ class EpistolaGenerationResourceAuthorizationTest {
     }
 
     private PreviewRequest validPreviewRequest() {
-        return new PreviewRequest(TASK_ID, SOURCE_ACTIVITY_ID, null, null);
+        return new PreviewRequest(TASK_ID, SOURCE_ACTIVITY_ID, null);
     }
 
     // ---- preview ----
@@ -121,7 +119,7 @@ class EpistolaGenerationResourceAuthorizationTest {
 
     @Test
     void preview_returns400WhenTaskIdMissing() {
-        var request = new PreviewRequest(null, SOURCE_ACTIVITY_ID, null, null);
+        var request = new PreviewRequest(null, SOURCE_ACTIVITY_ID, null);
 
         assertThat(resource.previewDocument(request).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
@@ -130,11 +128,11 @@ class EpistolaGenerationResourceAuthorizationTest {
     @Test
     void preview_allowsBlankSourceActivityId_forAutoDiscovery() {
         // sourceActivityId is optional — PreviewService auto-discovers the generate-document
-        // link when it is blank (used by the retry form's embedded preview).
+        // link when it is blank.
         when(previewService.generatePreview(any(PreviewRequest.class), eq(DOCUMENT_ID), eq(PROCESS_INSTANCE_ID)))
                 .thenReturn(new java.io.ByteArrayInputStream(new byte[]{0x25, 0x50, 0x44, 0x46}));
 
-        var response = resource.previewDocument(new PreviewRequest(TASK_ID, null, null, null));
+        var response = resource.previewDocument(new PreviewRequest(TASK_ID, null, null));
 
         assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
     }
@@ -142,7 +140,7 @@ class EpistolaGenerationResourceAuthorizationTest {
     @Test
     void preview_returns404WhenTaskNotFound() {
         when(operatonTaskService.findTaskById("missing")).thenThrow(new TaskNotFoundException("missing"));
-        var request = new PreviewRequest("missing", SOURCE_ACTIVITY_ID, null, null);
+        var request = new PreviewRequest("missing", SOURCE_ACTIVITY_ID, null);
 
         assertThat(resource.previewDocument(request).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
@@ -154,48 +152,6 @@ class EpistolaGenerationResourceAuthorizationTest {
                 .when(authorizationService).requirePermission(any());
 
         assertThatThrownBy(() -> resource.previewDocument(validPreviewRequest()))
-                .isInstanceOf(AccessDeniedException.class);
-    }
-
-    // ---- retry-form ----
-
-    @Test
-    void retryForm_requiresViewAndDerivesContextFromTask() {
-        when(retryFormService.generateRetryForm(PROCESS_INSTANCE_ID, DOCUMENT_ID, null))
-                .thenReturn(new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode());
-
-        var response = resource.getRetryForm(TASK_ID, null);
-
-        var captor = ArgumentCaptor.forClass(AuthorizationRequest.class);
-        verify(authorizationService).requirePermission(captor.capture());
-        var request = (EntityAuthorizationRequest<?>) captor.getValue();
-        assertThat(request.getResourceType()).isEqualTo(OperatonTask.class);
-        assertThat(request.getAction()).isEqualTo(OperatonTaskActionProvider.VIEW);
-        assertThat(response.getStatusCode().is2xxSuccessful()).isTrue();
-        // Built against the task-derived process instance + case document.
-        verify(retryFormService).generateRetryForm(PROCESS_INSTANCE_ID, DOCUMENT_ID, null);
-    }
-
-    @Test
-    void retryForm_returns400WhenTaskIdMissing() {
-        assertThat(resource.getRetryForm("", null).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
-    }
-
-    @Test
-    void retryForm_returns404WhenTaskNotFound() {
-        when(operatonTaskService.findTaskById("missing")).thenThrow(new TaskNotFoundException("missing"));
-
-        assertThat(resource.getRetryForm("missing", null).getStatusCode())
-                .isEqualTo(HttpStatus.NOT_FOUND);
-    }
-
-    @Test
-    void retryForm_propagatesAccessDeniedAs403() {
-        doThrow(new AccessDeniedException("nope"))
-                .when(authorizationService).requirePermission(any());
-
-        assertThatThrownBy(() -> resource.getRetryForm(TASK_ID, null))
                 .isInstanceOf(AccessDeniedException.class);
     }
 }

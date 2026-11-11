@@ -36,7 +36,7 @@ import java.util.function.Function;
  * Value resolver that exposes the <b>current user task's</b> identity to a Valtimo form at
  * server-side prefill time, under the {@code epistola:} prefix.
  *
- * <p>Why this exists: the Epistola Formio components (document preview, download, retry-form) need the
+ * <p>Why this exists: the Epistola Formio components (document preview, download) need the
  * id of the user task whose form they're rendered in, so the backend can authorize their requests
  * ({@code OperatonTask:VIEW} on the exact task). Valtimo 13.x does not expose the active task id to a
  * Formio component at runtime in every task-open flow — the task-list / case-detail flow bulk-fetches

@@ -35,15 +35,12 @@ import java.util.Map;
  * @param sourceActivityId    The generate-document activity to dry-run. When blank, the task path
  *                            auto-discovers a single one; the start path requires it.
  * @param inputOverrides      Overrides applied before the mapping, shaped {@code {"doc", "pv"}}.
- * @param outputOverrides     Post-mapping deep-merge, task path only (the retry form); null on the
- *                            start path.
  */
 record PreviewContext(
         String processDefinitionId,
         String documentId,
         String processInstanceId,
         String sourceActivityId,
-        Map<String, Map<String, Object>> inputOverrides,
-        Map<String, Object> outputOverrides
+        Map<String, Map<String, Object>> inputOverrides
 ) {
 }

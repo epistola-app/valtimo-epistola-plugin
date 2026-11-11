@@ -330,7 +330,6 @@ class EpistolaAdminServiceTest {
             VersionInfo info = adminService.getVersions();
 
             assertThat(info.pluginVersion()).isEqualTo("development");
-            assertThat(info.epistolaServerVersion()).isNull();
             verify(versionCheckService).status("development");
         }
     }

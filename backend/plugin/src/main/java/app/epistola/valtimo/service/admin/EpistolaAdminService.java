@@ -180,7 +180,7 @@ public class EpistolaAdminService {
      */
     public VersionInfo getVersions() {
         String pluginVersion = getPluginVersion();
-        return new VersionInfo(pluginVersion, null, versionCheckService.status(pluginVersion));
+        return new VersionInfo(pluginVersion, versionCheckService.status(pluginVersion));
     }
 
     private EpistolaService.SystemInfo fetchSystemInfo(EpistolaPlugin plugin) {

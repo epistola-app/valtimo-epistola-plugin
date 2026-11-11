@@ -18,10 +18,10 @@
 package app.epistola.valtimo.web.rest.dto;
 
 /**
- * Version information for the Epistola plugin and connected server.
+ * Version information for the Epistola plugin. A connected Suite's version is per connection and
+ * comes with the health check, not here.
  */
 public record VersionInfo(
         String pluginVersion,
-        String epistolaServerVersion,
         VersionCheckStatus versionCheck
 ) {}

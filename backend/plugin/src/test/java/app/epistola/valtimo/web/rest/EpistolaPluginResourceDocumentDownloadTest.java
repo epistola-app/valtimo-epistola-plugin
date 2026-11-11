@@ -81,7 +81,6 @@ class EpistolaPluginResourceDocumentDownloadTest {
         operatonTaskService = mock(OperatonTaskService.class);
         runtimeService = mock(RuntimeService.class);
         var previewService = mock(app.epistola.valtimo.service.preview.PreviewService.class);
-        var retryFormService = mock(app.epistola.valtimo.service.form.RetryFormService.class);
         var jsonataMappingService = mock(app.epistola.valtimo.mapping.JsonataMappingService.class);
         var documentService = mock(com.ritense.document.service.DocumentService.class);
         var objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -91,7 +90,7 @@ class EpistolaPluginResourceDocumentDownloadTest {
         when(operatonTaskService.findTaskById(TASK_ID)).thenReturn(task);
 
         resource = new EpistolaGenerationResource(pluginService, epistolaService,
-                previewService, retryFormService, jsonataMappingService,
+                previewService, jsonataMappingService,
                 documentService, objectMapper, authorizationService, operatonTaskService,
                 runtimeService, mock(org.operaton.bpm.engine.RepositoryService.class),
                 mock(StartEventAuthorization.class));

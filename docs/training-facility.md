@@ -201,10 +201,9 @@ has no per-resource identifier to scope by at all: the PBAC editor itself (a tra
 otherwise grant themselves any permission), translation management, choice fields, object
 management config, global forms/decision-tables CRUD, the case-_unlinked_ "system"
 process-definition surface, process migration, raw BPMN deployment, logs, case migration,
-dashboard management, and a few sub-resources of this plugin's own admin page (the engine-wide
-BPMN validation report and legacy-override form scan — every cloned dossier shares the same
-literal process-definition key, so these can't attribute results to one trainee over another even
-in principle).
+dashboard management, and one sub-resource of this plugin's own admin page (the engine-wide
+BPMN validation report — every cloned dossier shares the same literal process-definition key, so it
+can't attribute results to one trainee over another even in principle).
 
 Implemented as a filter (`addFilterBefore`), not more `authorizeHttpRequests` entries: Valtimo
 combines every registered `HttpSecurityConfigurer` bean's rules onto one shared,
@@ -237,8 +236,7 @@ What's left hard-blocked keeps a genuinely different reason each: process migrat
 deployment stay "arbitrary target" (a dossier is finalized at provisioning and never gets a second
 deployed version to migrate between, so migration has no legitimate trainee use case even though
 it's technically resolvable; deployment creates a brand-new process with no existing target at
-all), while the validation/legacy-override scans have no per-resource identifier to scope by in
-the first place.
+all), while the validation report has no per-resource identifier to scope by in the first place.
 
 ### Self-service dossier creation
 

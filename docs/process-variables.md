@@ -3,7 +3,7 @@
 Every process variable the Epistola plugin reads or writes, what it's for, how the pieces relate, and
 whether it's still needed. For the async/correlation flow specifically, see
 [async.md](async.md); this is the complete reference across generate → correlate → download, plus the
-retry and polling patterns.
+polling pattern.
 
 Two naming conventions appear below:
 
@@ -23,7 +23,7 @@ The **single source of truth** for a generation. You name it per `generate-docum
 | `requestId`          | Epistola request id (UUID)                                       | `check-job-status` re-query; diagnostics         | ✅     |
 | `status`             | `PENDING` / `IN_PROGRESS` / `COMPLETED` / `FAILED` / `CANCELLED` | downstream gateways `${rv.status}`               | ✅     |
 | `documentId`         | Epistola PDF id (set on `COMPLETED`)                             | `download-document`, the download endpoint       | ✅     |
-| `errorMessage`       | failure text (set on `FAILED`)                                   | failure-handling gateways / retry form           | ✅     |
+| `errorMessage`       | failure text (set on `FAILED`)                                   | failure-handling gateways, correction forms      | ✅     |
 | `jobPath`            | composite `epistola:job:{tenant}/{requestId}`                    | pins the catch-event token via `${<rv>.jobPath}` | ✅     |
 
 Read in BPMN with JUEL dot-notation: `${epistolaResult.status}`, `${epistolaResult.documentId}`, etc.
@@ -63,15 +63,9 @@ page's usage overview flags a generate step without it.
 
 ## 3. Standalone helpers
 
-| Variable                   | Set by                                                   | Purpose                                                                                                                                                                                                   | Needed     |
-| -------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| `epistolaTenantId`         | `generate-document`                                      | Tenant slug at process scope. The download endpoint reads it (default `tenantIdVariable`) to call Epistola; also handy for forms. Tenant is also embedded in `jobPath`, but a direct variable is cleaner. | ✅         |
-| `epistolaEditedData`       | retry form → `generate-document`                         | JSON of user-edited data from the retry form; consumed and cleared by `generate-document` on a retry pass.                                                                                                | ✅ (retry) |
-| `epistolaSourceActivityId` | BPMN `camunda:inputParameter` on the retry **user task** | Names the source `generate-document` activity so the retry form can resolve the original action's config.                                                                                                 | ✅ (retry) |
-
-> `epistolaSourceActivityId` does for the retry form what `EpistolaCatchEventLinkResolver` does
-> automatically for catch events (pair a catch event/task to its `generate-document`). The retry task
-> needs it explicitly because there's no auto-pairing hook there.
+| Variable           | Set by              | Purpose                                                                                                                                                                                                   | Needed |
+| ------------------ | ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| `epistolaTenantId` | `generate-document` | Tenant slug at process scope. The download endpoint reads it (default `tenantIdVariable`) to call Epistola; also handy for forms. Tenant is also embedded in `jobPath`, but a direct variable is cleaner. | ✅     |
 
 ## 4. Action-configured variables (author-named)
 

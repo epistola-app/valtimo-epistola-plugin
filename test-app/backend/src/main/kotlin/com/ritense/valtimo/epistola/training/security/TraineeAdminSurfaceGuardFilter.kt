@@ -74,10 +74,10 @@ import org.springframework.web.filter.OncePerRequestFilter
  *   catalog listing/redeploy, process-link export, and pending-job reconcile are scoped by
  *   [TraineeOwnershipInterceptor] instead, once it became clear each one identifies its target by
  *   a resolvable plugin-configuration/process-link/execution id, not an unowned arbitrary one. Only
- *   `/validations` and `/forms/legacy-override` stay hard-blocked here: both scan engine-wide with
- *   no per-resource identifier at all to scope by (every cloned dossier shares the same literal
- *   process-definition key, only the version tag differs, so `/validations`' violations can't be
- *   attributed to one trainee over another even in principle).
+ *   `/validations` stays hard-blocked here: it scans engine-wide with no per-resource identifier at
+ *   all to scope by (every cloned dossier shares the same literal process-definition key, only the
+ *   version tag differs, so its violations can't be attributed to one trainee over another even in
+ *   principle).
  *
  * Implemented as a filter — not more `authorizeHttpRequests` entries — deliberately: Valtimo
  * combines every registered [com.ritense.valtimo.contract.security.config.HttpSecurityConfigurer]
@@ -265,9 +265,8 @@ class TraineeAdminSurfaceGuardFilter : OncePerRequestFilter() {
                 // that interceptor's KDoc - so they're not blocked here either. /validations scans
                 // every deployed process definition engine-wide and can't distinguish trainees from
                 // it (every cloned dossier shares the same literal process-definition key, only the
-                // version tag differs); /forms/legacy-override has no per-tenant scoping either.
+                // version tag differs).
                 block(HttpMethod.GET, "$EPISTOLA_ADMIN_URL/validations", ENGINE_WIDE_REASON)
-                block(HttpMethod.GET, "$EPISTOLA_ADMIN_URL/forms/legacy-override", ENGINE_WIDE_REASON)
             }
     }
 }

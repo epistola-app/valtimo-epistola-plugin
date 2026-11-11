@@ -187,8 +187,7 @@ Do not quote the whole dotted key as one segment.
 > **Legacy format.** Forms authored before this change store `overrideMapping` as an object of
 > `"form:<componentKey>"` references (e.g. `{ "pv": { "motivation": "form:pv:motivation" } }`). These
 > keep working — the frontend converts them to JSONata on the fly — and persist in the new format the
-> next time the form is saved in the builder. The admin page's **Forms** tab lists forms still on the
-> legacy format (`GET /admin/forms/legacy-override`).
+> next time the form is saved in the builder.
 
 ### Pop out
 
@@ -245,9 +244,9 @@ POST …/preview                         POST …/preview/start
   {                                      {
     taskId,                                processDefinitionKey,
     sourceActivityId,                      sourceActivityId,
-    inputOverrides: { doc, pv },           documentId?,   ← existing-case flavour only
-    overrides                              inputOverrides: { doc, pv }
-  }                                      }
+    inputOverrides: { doc, pv }            documentId?,   ← existing-case flavour only
+  }                                        inputOverrides: { doc, pv }
+                                         }
   ↓                                      ↓
 process instance + case document       process definition resolved from the key;
 derived from the authorized task       no instance, case only if documentId given
@@ -295,7 +294,7 @@ In the Formio builder (no runtime context), the component shows a configuration 
 | --------------------- | --------------------------------------- | ---------------------------------------------------------------------- |
 | `PreviewService`      | `service/preview/PreviewService.java`   | Orchestrates preview generation with input overrides                   |
 | `OverlayMap`          | `service/preview/OverlayMap.java`       | Layered Map — checks overlay first, delegates to base                  |
-| `PreviewRequest`      | `web/rest/dto/PreviewRequest.java`      | Task-mode request DTO (`taskId` + overrides)                           |
+| `PreviewRequest`      | `web/rest/dto/PreviewRequest.java`      | Task-mode request DTO (`taskId`, `sourceActivityId`, `inputOverrides`) |
 | `StartPreviewRequest` | `web/rest/dto/StartPreviewRequest.java` | Start-mode request DTO (`processDefinitionKey`, optional `documentId`) |
 | `PreviewContext`      | `service/preview/PreviewContext.java`   | Resolved, already-authorized inputs both modes converge on             |
 

@@ -20,7 +20,6 @@ package app.epistola.valtimo.web.rest;
 import app.epistola.valtimo.authorization.EpistolaAdministration;
 import app.epistola.valtimo.authorization.EpistolaAdministrationActionProvider;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
-import app.epistola.valtimo.service.admin.EpistolaLegacyOverrideScanService;
 import com.ritense.authorization.AuthorizationService;
 import com.ritense.authorization.request.AuthorizationRequest;
 import com.ritense.authorization.request.EntityAuthorizationRequest;
@@ -45,24 +44,13 @@ class EpistolaAdminResourceAuthorizationTest {
 
     private AuthorizationService authorizationService;
     private EpistolaAdminService adminService;
-    private EpistolaLegacyOverrideScanService legacyOverrideScanService;
     private EpistolaAdminResource resource;
 
     @BeforeEach
     void setUp() {
         authorizationService = mock(AuthorizationService.class);
         adminService = mock(EpistolaAdminService.class);
-        legacyOverrideScanService = mock(EpistolaLegacyOverrideScanService.class);
-        resource = new EpistolaAdminResource(adminService, authorizationService, legacyOverrideScanService);
-    }
-
-    @Test
-    void legacyOverrideForms_requireEpistolaAdministrationManage() {
-        when(legacyOverrideScanService.findLegacyForms()).thenReturn(List.of());
-
-        resource.legacyOverrideForms();
-
-        verify(authorizationService).requirePermission(any());
+        resource = new EpistolaAdminResource(adminService, authorizationService);
     }
 
     @Test

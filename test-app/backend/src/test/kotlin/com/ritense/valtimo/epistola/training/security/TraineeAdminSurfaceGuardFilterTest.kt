@@ -154,7 +154,6 @@ class TraineeAdminSurfaceGuardFilterTest {
         val blocked =
             listOf(
                 "GET" to "/api/v1/plugin/epistola/admin/validations",
-                "GET" to "/api/v1/plugin/epistola/admin/forms/legacy-override",
             )
 
         for ((method, path) in blocked) {

@@ -36,9 +36,10 @@ package app.epistola.valtimo.composer;
  *       it fails with a message naming both versions.</li>
  * </ul>
  *
- * <p>The composer is alpha and its structures may still change. This is what makes changing them
- * safe: raise {@link #CURRENT}, and anything written by the newer plugin is refused by the older
- * one instead of being half-understood.
+ * <p>Since 1.0 these structures are part of the plugin's stability promise: within 1.x a change
+ * raises {@link #CURRENT} and keeps reading every older version, so nothing an installation stored
+ * stops working. Raising it is also what makes the change safe the other way: anything written by
+ * the newer plugin is refused by an older one instead of being half-understood.
  */
 public final class ComposerSchema {
 

@@ -47,14 +47,13 @@ export type { EnvironmentScope, RangeScope } from './release-scope';
  * backend {@code PreviewRequest} record. The backend derives the process
  * instance and case document from the authorized task, so only {@code taskId}
  * and {@code sourceActivityId} (which identifies the {@code generate-document}
- * process link) are sent; {@code overrides} and {@code inputOverrides} let the
- * caller substitute data before the JSONata mapping runs.
+ * process link) are sent; {@code inputOverrides} lets the caller substitute data
+ * before the JSONata mapping runs.
  */
 export interface PreviewBlobRequest {
   taskId: string;
   sourceActivityId?: string | null;
   inputOverrides?: Record<string, unknown> | null;
-  overrides?: Record<string, unknown> | null;
 }
 
 /**
@@ -311,22 +310,6 @@ export class EpistolaPluginService {
       documentId,
       processInstanceId: processInstanceId ?? null,
     });
-  }
-
-  /**
-   * Get a dynamically generated Formio form for retrying a failed document generation.
-   *
-   * The backend derives the process instance and case document from the authorized task,
-   * so only the task id (and optionally the source activity) is sent.
-   *
-   * @param taskId Operaton user task id (required — backend authorizes via OperatonTask:VIEW)
-   */
-  getRetryForm(taskId: string, sourceActivityId?: string): Observable<any> {
-    const params: Record<string, string> = { taskId };
-    if (sourceActivityId) {
-      params['sourceActivityId'] = sourceActivityId;
-    }
-    return this.http.get<any>(`${this.apiEndpoint}/retry-form`, { params });
   }
 
   /**

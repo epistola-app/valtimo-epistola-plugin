@@ -470,7 +470,6 @@ export class EpistolaDocumentPreviewComponent
       taskId,
       sourceActivityId: this.sourceActivityId!,
       inputOverrides: this.inputOverrides || null,
-      overrides: null,
     });
   }
 

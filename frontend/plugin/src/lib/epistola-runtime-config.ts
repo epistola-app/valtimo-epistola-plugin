@@ -26,7 +26,7 @@ export interface EpistolaRuntimeEnv {
  *
  * A feature listed here can be switched per environment from one build artifact. The default is
  * what an installation gets for saying nothing, so adding a feature here on `false` makes it
- * opt-in — which is the useful shape while something is alpha.
+ * opt-in.
  */
 const FEATURE_DEFAULTS = {
   composer: true,

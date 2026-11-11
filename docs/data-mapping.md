@@ -253,7 +253,7 @@ runtime type errors remain runtime concerns.
 
 ## Input Overrides
 
-Preview and retry flows can overlay input values before JSONata evaluation. This
+The document preview can overlay input values before JSONata evaluation. This
 lets a Formio form feed unsaved values into `$doc` or `$pv` while keeping the
 stored process-link mapping unchanged.
 
@@ -307,12 +307,12 @@ See [Rich text](rich-text.md) for the formats, what each keeps, and how to add o
 
 ## Key Files
 
-| File                                                                 | Role                                               |
-| -------------------------------------------------------------------- | -------------------------------------------------- |
-| `JsonataMappingService`                                              | Evaluates data mappings and scalar expressions.    |
-| `DefaultExpressionContext`                                           | Provides `$doc`, `$pv`, and `$case`.               |
-| `EpistolaToolingResource`                                            | Save-time JSONata syntax validation.               |
-| `generate-document-configuration.component.ts`                       | Stores `dataMapping` as a JSONata string.          |
-| `components/smart-expression-editor/`                                | Guided per-field JSONata authoring and validation. |
-| `components/jsonata-editor/jsonata-editor.component.ts`              | Whole-mapping Advanced editor.                     |
-| `service/preview/PreviewService` and `service/form/RetryFormService` | Apply preview/retry overrides before evaluation.   |
+| File                                                    | Role                                               |
+| ------------------------------------------------------- | -------------------------------------------------- |
+| `JsonataMappingService`                                 | Evaluates data mappings and scalar expressions.    |
+| `DefaultExpressionContext`                              | Provides `$doc`, `$pv`, and `$case`.               |
+| `EpistolaToolingResource`                               | Save-time JSONata syntax validation.               |
+| `generate-document-configuration.component.ts`          | Stores `dataMapping` as a JSONata string.          |
+| `components/smart-expression-editor/`                   | Guided per-field JSONata authoring and validation. |
+| `components/jsonata-editor/jsonata-editor.component.ts` | Whole-mapping Advanced editor.                     |
+| `service/preview/PreviewService`                        | Applies preview input overrides before evaluation. |

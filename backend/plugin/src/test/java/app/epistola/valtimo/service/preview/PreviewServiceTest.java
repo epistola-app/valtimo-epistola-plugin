@@ -119,7 +119,7 @@ class PreviewServiceTest {
             Map<String, Object> base = Map.of("a", 1);
             Map<String, Object> override = Map.of("b", 2);
 
-            Map<String, Object> result = PreviewService.deepMerge(base, override);
+            Map<String, Object> result = app.epistola.valtimo.mapping.MapMerge.deepMerge(base, override);
 
             assertEquals(1, result.get("a"));
             assertEquals(2, result.get("b"));
@@ -131,7 +131,7 @@ class PreviewServiceTest {
             Map<String, Object> base = Map.of("a", 1);
             Map<String, Object> override = Map.of("a", 2);
 
-            Map<String, Object> result = PreviewService.deepMerge(base, override);
+            Map<String, Object> result = app.epistola.valtimo.mapping.MapMerge.deepMerge(base, override);
 
             assertEquals(2, result.get("a"));
             assertEquals(1, result.size());
@@ -142,7 +142,7 @@ class PreviewServiceTest {
             Map<String, Object> base = Map.of("x", Map.of("a", 1));
             Map<String, Object> override = Map.of("x", Map.of("b", 2));
 
-            Map<String, Object> result = PreviewService.deepMerge(base, override);
+            Map<String, Object> result = app.epistola.valtimo.mapping.MapMerge.deepMerge(base, override);
 
             @SuppressWarnings("unchecked")
             Map<String, Object> nested = (Map<String, Object>) result.get("x");
@@ -155,7 +155,7 @@ class PreviewServiceTest {
             Map<String, Object> base = Map.of("x", Map.of("a", 1));
             Map<String, Object> override = Map.of("x", Map.of("a", 2));
 
-            Map<String, Object> result = PreviewService.deepMerge(base, override);
+            Map<String, Object> result = app.epistola.valtimo.mapping.MapMerge.deepMerge(base, override);
 
             @SuppressWarnings("unchecked")
             Map<String, Object> nested = (Map<String, Object>) result.get("x");
@@ -168,7 +168,7 @@ class PreviewServiceTest {
             Map<String, Object> base = Map.of("items", List.of(1, 2));
             Map<String, Object> override = Map.of("items", List.of(3));
 
-            Map<String, Object> result = PreviewService.deepMerge(base, override);
+            Map<String, Object> result = app.epistola.valtimo.mapping.MapMerge.deepMerge(base, override);
 
             assertEquals(List.of(3), result.get("items"));
         }
@@ -179,7 +179,7 @@ class PreviewServiceTest {
             Map<String, Object> override = new HashMap<>();
             override.put("a", null);
 
-            Map<String, Object> result = PreviewService.deepMerge(base, override);
+            Map<String, Object> result = app.epistola.valtimo.mapping.MapMerge.deepMerge(base, override);
 
             assertTrue(result.containsKey("a"));
             assertNull(result.get("a"));
@@ -191,7 +191,7 @@ class PreviewServiceTest {
 
         @Test
         void missingProcessInstanceId_throwsMissingContext() {
-            PreviewRequest request = new PreviewRequest("task-id-test", "activity-1", null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", "activity-1", null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request, "doc-123", null));
@@ -203,7 +203,7 @@ class PreviewServiceTest {
         void processInstanceNotFound_throwsProcessNotFound() {
             mockProcessInstanceNotFound("instance-1");
 
-            PreviewRequest request = new PreviewRequest("task-id-test", "activity-1", null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", "activity-1", null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request, "doc-123", "instance-1"));
@@ -217,7 +217,7 @@ class PreviewServiceTest {
             when(processLinkService.getProcessLinks("my-process:1:abc", "activity-1"))
                     .thenReturn(List.of());
 
-            PreviewRequest request = new PreviewRequest("task-id-test", "activity-1", null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", "activity-1", null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request, "doc-123", "instance-1"));
@@ -240,7 +240,7 @@ class PreviewServiceTest {
             when(processLinkService.getProcessLinks("my-process:1:abc"))
                     .thenReturn(List.of(link1, link2));
 
-            PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request, "doc-123", "instance-1"));
@@ -286,7 +286,7 @@ class PreviewServiceTest {
                     anyString(), any(), anyString(), any(), any()))
                     .thenThrow(new RuntimeException("Connection refused"));
 
-            PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null);
 
             PreviewException ex = assertThrows(PreviewException.class,
                     () -> previewService.generatePreview(request, "doc-123", "instance-1"));
@@ -346,7 +346,7 @@ class PreviewServiceTest {
             Map<String, Map<String, Object>> inputOverrides = new HashMap<>();
             inputOverrides.put("doc", Map.of("name", "override"));
 
-            PreviewRequest request = new PreviewRequest("task-id-test", null, null, inputOverrides);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, inputOverrides);
 
             previewService.generatePreview(request, "doc-123", "instance-1");
 
@@ -369,7 +369,7 @@ class PreviewServiceTest {
             Map<String, Map<String, Object>> inputOverrides = new HashMap<>();
             inputOverrides.put("pv", Map.of("status", "approved"));
 
-            PreviewRequest request = new PreviewRequest("task-id-test", null, null, inputOverrides);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, inputOverrides);
 
             previewService.generatePreview(request, "doc-123", "instance-1");
 
@@ -388,7 +388,7 @@ class PreviewServiceTest {
             when(jsonataMappingService.evaluate(any(EvaluationContext.class)))
                     .thenReturn(new LinkedHashMap<>());
 
-            PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null);
 
             previewService.generatePreview(request, "doc-123", "instance-1");
 
@@ -414,7 +414,7 @@ class PreviewServiceTest {
             when(jsonataMappingService.evaluateScalar(any(EvaluationContext.class)))
                     .thenReturn("letter-formal");
 
-            PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null);
 
             previewService.generatePreview(request, "doc-123", "instance-1");
 
@@ -438,7 +438,7 @@ class PreviewServiceTest {
             when(jsonataMappingService.evaluateScalar(any(EvaluationContext.class)))
                     .thenReturn("production");
 
-            PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null);
 
             previewService.generatePreview(request, "doc-123", "instance-1");
 
@@ -465,7 +465,7 @@ class PreviewServiceTest {
             when(jsonataMappingService.evaluateValue(argThat(ctx -> "$pv.briefversie".equals(ctx.getExpression()))))
                     .thenReturn("~1.9.0");
 
-            previewService.generatePreview(new PreviewRequest("task-id-test", null, null, null), "doc-123", "instance-1");
+            previewService.generatePreview(new PreviewRequest("task-id-test", null, null), "doc-123", "instance-1");
 
             // Evaluated as generation evaluates it, so the preview shows the release that will render.
             verify(epistolaService).previewDocument(
@@ -482,7 +482,7 @@ class PreviewServiceTest {
                     .thenReturn(new LinkedHashMap<>());
             when(jsonataMappingService.evaluateScalar(any(EvaluationContext.class))).thenReturn(" ");
 
-            PreviewRequest request = new PreviewRequest("task-id-test", null, null, null);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, null);
 
             previewService.generatePreview(request, "doc-123", "instance-1");
 
@@ -492,7 +492,7 @@ class PreviewServiceTest {
         }
 
         @Test
-        void inputOverridesCombinedWithOutputOverrides_bothApplied() {
+        void inputOverrides_applyBeforeTheMapping() {
             mockFullChain("instance-1", "my-process:1:abc");
 
             // JSONata evaluation returns data from input overrides
@@ -506,10 +506,7 @@ class PreviewServiceTest {
             Map<String, Map<String, Object>> inputOverrides = new HashMap<>();
             inputOverrides.put("doc", Map.of("name", "from-input-override"));
 
-            // Output overrides (post-JSONata) — should override the address field
-            Map<String, Object> outputOverrides = Map.of("address", "overridden-address");
-
-            PreviewRequest request = new PreviewRequest("task-id-test", null, outputOverrides, inputOverrides);
+            PreviewRequest request = new PreviewRequest("task-id-test", null, inputOverrides);
 
             previewService.generatePreview(request, "doc-123", "instance-1");
 
@@ -519,7 +516,7 @@ class PreviewServiceTest {
             Map<String, Object> docResolved = ctx.getDocumentResolver().apply("doc-123");
             assertInstanceOf(OverlayMap.class, docResolved);
 
-            // Verify the final data passed to epistolaService includes the output override
+            // The mapping's result is what is rendered: nothing is merged over it afterwards
             @SuppressWarnings("unchecked")
             ArgumentCaptor<Map<String, Object>> dataCaptor =
                     ArgumentCaptor.forClass(Map.class);
@@ -529,7 +526,7 @@ class PreviewServiceTest {
 
             Map<String, Object> finalData = dataCaptor.getValue();
             assertEquals("from-input-override", finalData.get("name"));
-            assertEquals("overridden-address", finalData.get("address"));
+            assertEquals("original-address", finalData.get("address"));
         }
     }
 

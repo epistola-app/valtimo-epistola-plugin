@@ -39,9 +39,6 @@ import java.util.Map;
  *       {@code PreviewService.generateStartPreview} hard-codes {@code processInstanceId = null}.
  *       There is no plumbing for a smuggled task to reach, so the absence of the field <i>is</i>
  *       the guarantee. Do not add one.</li>
- *   <li><b>{@code overrides}</b> (the post-mapping deep-merge) — that affordance exists only for
- *       the task-bound retry form's edited-payload flow. Omitting it keeps an arbitrary-JSON
- *       injection surface off this path.</li>
  *   <li><b>{@code documentDefinitionName}</b> — not needed, since authorization is against the
  *       process definition rather than the case type.</li>
  * </ul>
