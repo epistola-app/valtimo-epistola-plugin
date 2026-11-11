@@ -90,6 +90,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The compose stack's Epistola starts on a Suite 2.0 image.** Suite 2.0 refuses `localauth`
+  while its local users keep their shipped passwords, so `docker compose --profile server` (and the
+  browser E2E) stopped at boot. Compose now sets `LOCAL_AUTH_ADMIN_PASSWORD` and
+  `LOCAL_AUTH_USER_PASSWORD`; nothing signs in with them.
 - **A refused generation raises an incident that says what is missing.** When Epistola refuses a
   generation (a missing template, release, variant or environment, nothing deployed, no access), the
   incident read only "Failed to submit document generation request to Epistola". It now names what
