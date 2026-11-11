@@ -15,12 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   error, everything rolls back, and no incident is raised. Valtimo does not add the boundary. The
   admin page's usage overview now flags a generate step without it, and the demo processes have it.
 
-- **An environment or version-range expression that produces no value now fails** instead of falling
-  back. `$pv.omgeving` on a case without that variable, or `someEnv` without quotes, used to render
-  silently in the plugin's default environment (or with no range). It now raises an incident at the
-  step saying the expression produced no value. Write the fallback into the expression:
-  `$pv.omgeving ?: $plugin.defaultEnvironmentId`, or `""` for deliberately none. An empty field
-  still means the default.
+- **An environment, version-range or variant expression that produces no value now fails** instead
+  of falling back. `$pv.omgeving` on a case without that variable, or `someEnv` without quotes, used
+  to render silently in the plugin's default environment (or with no range, or in the template's
+  default variant). It now raises an incident at the step saying the expression produced no value.
+  Write the fallback into the expression: `$pv.omgeving ?: $plugin.defaultEnvironmentId`, or `""` for
+  deliberately none (for a variant: the default variant). An empty field still means the default.
 - **A generate link's `versionRange` is now JSONata, like its environment.** A fixed range is the
   string literal `"^1.4.0"`. A v1 link saved as a bare range (`^1.4.0`, only possible on
   `1.0.0-alpha.1`/`beta.1`) is refused when it runs, with a message showing the literal to write.
@@ -108,7 +108,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   The same for a composed letter and for rich text that cannot be converted. Fix the cause (the
   configuration, or the case's data) and retry the incident: the step runs again. The text never
   carries Epistola's own message, because the engine logs it. This needs the step marked
-  `asyncBefore` (see Upgrading).
+  `asyncBefore` (see Upgrading). Valtimo wraps an action's exception twice on its way to the engine,
+  which put _"Failed to invoke event listener method"_ in the incident instead; the plugin now looks
+  through those wrappers for its own actions' failures (`EpistolaIncidentMessagePlugin`), so a
+  transient failure also reads _"Failed to submit document generation request to Epistola"_.
 - **Choosing an environment a catalog is not deployed to no longer errors.** Every lookup for that
   catalog answered 404 with an empty body and showed its own untranslated "Failed to load …"
   message (templates, fields, variants, the release field), burying the one notice that explained

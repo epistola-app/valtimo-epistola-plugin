@@ -320,6 +320,22 @@ the step cannot add one for itself at run time. So a generate step is modelled `
 demo processes are, a test keeps them so (`DemoGenerateStepsAreAsyncTest`), and the admin usage
 overview flags a generate step that is not.
 
+**What reaches the engine is not what the step threw.** Found against a running Valtimo and Suite,
+after the tests above passed: every incident read _"Failed to invoke event listener method"_. Valtimo
+calls a process-link action by reflection (`PluginService.invoke`) from a Spring event listener
+(`ProcessLinkServiceTaskStartListener`), and neither unwraps, so the step's exception arrives inside an
+`InvocationTargetException` inside an `UndeclaredThrowableException`, and the engine takes the
+outermost message. The tests had called the action directly. `EpistolaIncidentMessagePlugin`
+therefore records a failed job with the message the action threw and the original chain as its
+cause: it looks through those two wrappers only, and only for an exception thrown out of the
+Epistola plugin's actions, so another plugin's failure is recorded as before. The integration test
+now calls the action the way Valtimo does.
+
+**The variant follows the second addendum's rule** (also found by hand): a variant expression that
+produced no value meant `null`, so the template's default variant, and a misspelt path sent every
+letter in the wrong variant without a word. It is now refused like an environment; `""` is the
+default variant.
+
 **Not done, and open:** letting a modeller catch a refusal with an error boundary event (a BPMN error
 when caught, an incident otherwise). Self-heal still matters for a result that arrives before the
 catch event subscribes, and is to be investigated separately.
