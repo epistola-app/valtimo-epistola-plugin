@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Upgrading
 
+- **Coming from 0.21.x?** Follow [Upgrading from 0.x to 1.0](docs/upgrading-from-0.x.md), a
+  checklist of everything below and in the 1.0 pre-releases that applies to a 0.x installation.
 - **Mark every generate step `asyncBefore`** (_Asynchronous before_), for document generation and
   for a composed letter alike. A refused generation raises an incident only when the step runs in a
   job of its own; without one, the person completing the previous task (or starting the case) gets an
