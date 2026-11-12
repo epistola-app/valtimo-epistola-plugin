@@ -274,7 +274,7 @@ is the worked example — it names the destination at fault and the failure's cl
 Two vectors that are easy to miss:
 
 - **`e.getMessage()` from a downstream library.** Valtimo's refused write reads `Failed to handle
-values … Values: {/besluit/x=gegrond}` — the value is in the message. So a message from outside
+  values … Values: {/besluit/x=gegrond}` — the value is in the message. So a message from outside
   this plugin is not safe to log just because our own format is.
 - **An attached cause.** `new SomeException(msg, cause)` puts that message into every log that
   prints the stack trace, which for anything propagating out of a web request is all of them. Where

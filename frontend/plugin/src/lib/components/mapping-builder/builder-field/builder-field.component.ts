@@ -43,9 +43,11 @@ import { needsRichTextHint } from '../../../utils/rich-text-mapping';
           [attr.data-testid]="'epistola-mapping-field-chevron-' + field.name"
           >{{ collapsed ? '&#x25B6;' : '&#x25BC;' }}</span
         >
-        <span class="builder-field__label" [attr.data-testid]="'epistola-mapping-field-label-' + field.name">{{
-          field.name
-        }}</span>
+        <span
+          class="builder-field__label"
+          [attr.data-testid]="'epistola-mapping-field-label-' + field.name"
+          >{{ field.name }}</span
+        >
         <span
           *ngIf="required"
           class="builder-field__required"

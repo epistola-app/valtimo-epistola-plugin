@@ -526,8 +526,8 @@ This use case requires additional Valtimo plugins and an OpenZaak instance.
 ```toml
 # libs.versions.toml
 valtimo-documenten-api = { module = "com.ritense.valtimo:documenten-api" }
-valtimo-catalogi-api   = { module = "com.ritense.valtimo:catalogi-api" }
-valtimo-open-zaak      = { module = "com.ritense.valtimo:open-zaak" }
+valtimo-catalogi-api = { module = "com.ritense.valtimo:catalogi-api" }
+valtimo-open-zaak = { module = "com.ritense.valtimo:open-zaak" }
 ```
 
 ```kotlin

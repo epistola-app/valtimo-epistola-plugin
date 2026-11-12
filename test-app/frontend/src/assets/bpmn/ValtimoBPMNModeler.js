@@ -559,7 +559,7 @@ window.ValtimoBPMNModeler = (function (e) {
       return (t && t.removeChild(e), e);
     }
     function b(e) {
-      for (var t; (t = e.firstChild); ) v(t);
+      for (var t; (t = e.firstChild);) v(t);
       return e;
     }
     function y(e) {
@@ -685,7 +685,7 @@ window.ValtimoBPMNModeler = (function (e) {
           !(function (e, t) {
             var n,
               i = E(t).documentElement;
-            if ((b(e), t)) for (n = i.firstChild; n; ) (r(n, e), (n = n.nextSibling));
+            if ((b(e), t)) for (n = i.firstChild; n;) (r(n, e), (n = n.nextSibling));
           })(e, t);
         } catch (e) {
           throw new Error('error parsing SVG: ' + e.message);
@@ -693,7 +693,7 @@ window.ValtimoBPMNModeler = (function (e) {
         return e;
       }
       return (function (e) {
-        for (var t = e.firstChild, n = []; t; ) (R(t, n), (t = t.nextSibling));
+        for (var t = e.firstChild, n = []; t;) (R(t, n), (t = t.nextSibling));
         return n.join('');
       })(e);
     }
@@ -771,7 +771,7 @@ window.ValtimoBPMNModeler = (function (e) {
       ((this.el = e), (this.list = e.classList));
     }
     function p(e) {
-      for (var t; e.childNodes.length; ) ((t = e.childNodes[0]), e.removeChild(t));
+      for (var t; e.childNodes.length;) ((t = e.childNodes[0]), e.removeChild(t));
       return e;
     }
     ((u.prototype.add = function (e) {
@@ -828,7 +828,7 @@ window.ValtimoBPMNModeler = (function (e) {
       };
     var h,
       m = function (e, t, n) {
-        for (var i = n ? e : e.parentNode; i && i !== document; ) {
+        for (var i = n ? e : e.parentNode; i && i !== document;) {
           if (f(i, t)) return i;
           i = i.parentNode;
         }
@@ -880,10 +880,10 @@ window.ValtimoBPMNModeler = (function (e) {
           s = o[1],
           c = o[2];
         (r = t.createElement('div')).innerHTML = s + e + c;
-        for (; a--; ) r = r.lastChild;
+        for (; a--;) r = r.lastChild;
         if (r.firstChild == r.lastChild) return r.removeChild(r.firstChild);
         var u = t.createDocumentFragment();
-        for (; r.firstChild; ) u.appendChild(r.removeChild(r.firstChild));
+        for (; r.firstChild;) u.appendChild(r.removeChild(r.firstChild));
         return u;
       },
       _ = !1;
@@ -1111,7 +1111,7 @@ window.ValtimoBPMNModeler = (function (e) {
       });
     }
     function a(e, t) {
-      for ('string' == typeof t && (t = [t]); (e = e.parent); ) if (o(e, t)) return e;
+      for ('string' == typeof t && (t = [t]); (e = e.parent);) if (o(e, t)) return e;
       return null;
     }
   },
@@ -1633,7 +1633,7 @@ window.ValtimoBPMNModeler = (function (e) {
       if (e.selectedIndex >= 0) return e.options[e.selectedIndex].value;
     }
     function h(e) {
-      for (var t = e; t.$parent; ) t = t.$parent;
+      for (var t = e; t.$parent;) t = t.$parent;
       return t;
     }
     function m(e, t) {
@@ -1685,7 +1685,7 @@ window.ValtimoBPMNModeler = (function (e) {
       (e.exports.filterElementsByType = m),
       (e.exports.findRootElementsByType = v),
       (e.exports.removeAllChildren = function (e) {
-        for (; e.firstChild; ) e.removeChild(e.firstChild);
+        for (; e.firstChild;) e.removeChild(e.firstChild);
       }),
       (e.exports.addEmptyParameter = b),
       (e.exports.refreshOptionsModel = y),
@@ -1892,7 +1892,7 @@ window.ValtimoBPMNModeler = (function (e) {
         var i;
         if (e)
           if (e.forEach) e.forEach(t, n);
-          else if (e.length !== s) for (i = 0; i < e.length; ) (t.call(n, e[i], i, e), i++);
+          else if (e.length !== s) for (i = 0; i < e.length;) (t.call(n, e[i], i, e), i++);
           else for (i in e) e.hasOwnProperty(i) && t.call(n, e[i], i, e);
       }
       function y(e, t, n) {
@@ -1924,7 +1924,7 @@ window.ValtimoBPMNModeler = (function (e) {
           : Object.assign;
       var g = y(
           function (e, t, n) {
-            for (var i = Object.keys(t), r = 0; r < i.length; )
+            for (var i = Object.keys(t), r = 0; r < i.length;)
               ((!n || (n && e[i[r]] === s)) && (e[i[r]] = t[i[r]]), r++);
             return e;
           },
@@ -1965,7 +1965,7 @@ window.ValtimoBPMNModeler = (function (e) {
         });
       }
       function T(e, t) {
-        for (; e; ) {
+        for (; e;) {
           if (e == t) return !0;
           e = e.parentNode;
         }
@@ -1979,7 +1979,7 @@ window.ValtimoBPMNModeler = (function (e) {
       }
       function A(e, t, n) {
         if (e.indexOf && !n) return e.indexOf(t);
-        for (var i = 0; i < e.length; ) {
+        for (var i = 0; i < e.length;) {
           if ((n && e[i][n] == t) || (!n && e[i] === t)) return i;
           i++;
         }
@@ -1989,7 +1989,7 @@ window.ValtimoBPMNModeler = (function (e) {
         return Array.prototype.slice.call(e, 0);
       }
       function k(e, t, n) {
-        for (var i = [], r = [], o = 0; o < e.length; ) {
+        for (var i = [], r = [], o = 0; o < e.length;) {
           var a = t ? e[o][t] : e[o];
           (A(r, a) < 0 && i.push(e[o]), (r[o] = a), o++);
         }
@@ -2004,7 +2004,7 @@ window.ValtimoBPMNModeler = (function (e) {
         );
       }
       function B(e, t) {
-        for (var n, i, r = t[0].toUpperCase() + t.slice(1), o = 0; o < u.length; ) {
+        for (var n, i, r = t[0].toUpperCase() + t.slice(1), o = 0; o < u.length;) {
           if ((i = (n = u[o]) ? n + r : t) in e) return i;
           o++;
         }
@@ -2127,14 +2127,14 @@ window.ValtimoBPMNModeler = (function (e) {
           (e.session.prevInput = n));
       }
       function ne(e) {
-        for (var t = [], n = 0; n < e.pointers.length; )
+        for (var t = [], n = 0; n < e.pointers.length;)
           ((t[n] = { clientX: d(e.pointers[n].clientX), clientY: d(e.pointers[n].clientY) }), n++);
         return { timeStamp: h(), pointers: t, center: ie(t), deltaX: e.deltaX, deltaY: e.deltaY };
       }
       function ie(e) {
         var t = e.length;
         if (1 === t) return { x: d(e[0].clientX), y: d(e[0].clientY) };
-        for (var n = 0, i = 0, r = 0; r < t; ) ((n += e[r].clientX), (i += e[r].clientY), r++);
+        for (var n = 0, i = 0, r = 0; r < t;) ((n += e[r].clientX), (i += e[r].clientY), r++);
         return { x: d(n / t), y: d(i / t) };
       }
       function re(e, t, n) {
@@ -2274,9 +2274,9 @@ window.ValtimoBPMNModeler = (function (e) {
                 })),
                 t === z)
               )
-                for (r = 0; r < o.length; ) ((i[o[r].identifier] = !0), r++);
+                for (r = 0; r < o.length;) ((i[o[r].identifier] = !0), r++);
               r = 0;
-              for (; r < a.length; )
+              for (; r < a.length;)
                 (i[a[r].identifier] && s.push(a[r]), t & ($ | G) && delete i[a[r].identifier], r++);
               if (!s.length) return;
               return [k(o.concat(s), 'identifier', !0), s];
@@ -2518,7 +2518,7 @@ window.ValtimoBPMNModeler = (function (e) {
           this.state = 32;
         },
         canEmit: function () {
-          for (var e = 0; e < this.requireFail.length; ) {
+          for (var e = 0; e < this.requireFail.length;) {
             if (!(this.requireFail[e].state & (32 | Ie))) return !1;
             e++;
           }
@@ -2834,7 +2834,7 @@ window.ValtimoBPMNModeler = (function (e) {
             var i = this.recognizers,
               r = t.curRecognizer;
             (!r || (r && r.state & Ve)) && (r = t.curRecognizer = null);
-            for (var o = 0; o < i.length; )
+            for (var o = 0; o < i.length;)
               ((n = i[o]),
                 2 === t.stopped || (r && n != r && !n.canRecognizeWith(r))
                   ? n.reset()
@@ -2903,7 +2903,7 @@ window.ValtimoBPMNModeler = (function (e) {
               (t.preventDefault = function () {
                 t.srcEvent.preventDefault();
               }));
-            for (var i = 0; i < n.length; ) (n[i](t), i++);
+            for (var i = 0; i < n.length;) (n[i](t), i++);
           }
         },
         destroy: function () {
@@ -3342,7 +3342,7 @@ window.ValtimoBPMNModeler = (function (e) {
           if (e.CSS && e.CSS.escape) return e.CSS.escape;
           var t = function (e) {
             if (0 == arguments.length) throw new TypeError('`CSS.escape` requires an argument.');
-            for (var t, n = String(e), i = n.length, r = -1, o = '', a = n.charCodeAt(0); ++r < i; )
+            for (var t, n = String(e), i = n.length, r = -1, o = '', a = n.charCodeAt(0); ++r < i;)
               0 != (t = n.charCodeAt(r))
                 ? (o +=
                     (t >= 1 && t <= 31) ||
@@ -3447,7 +3447,7 @@ window.ValtimoBPMNModeler = (function (e) {
     function c(e) {
       var t = -1,
         n = null == e ? 0 : e.length;
-      for (this.clear(); ++t < n; ) {
+      for (this.clear(); ++t < n;) {
         var i = e[t];
         this.set(i[0], i[1]);
       }
@@ -3462,7 +3462,7 @@ window.ValtimoBPMNModeler = (function (e) {
   function (e, t, n) {
     var i = n(52);
     e.exports = function (e, t) {
-      for (var n = e.length; n--; ) if (i(e[n][0], t)) return n;
+      for (var n = e.length; n--;) if (i(e[n][0], t)) return n;
       return -1;
     };
   },
@@ -3492,7 +3492,7 @@ window.ValtimoBPMNModeler = (function (e) {
   },
   function (e, t) {
     e.exports = function (e, t) {
-      for (var n = -1, i = null == e ? 0 : e.length, r = Array(i); ++n < i; ) r[n] = t(e[n], n, e);
+      for (var n = -1, i = null == e ? 0 : e.length, r = Array(i); ++n < i;) r[n] = t(e[n], n, e);
       return r;
     };
   },
@@ -3547,7 +3547,7 @@ window.ValtimoBPMNModeler = (function (e) {
   function (e, t) {
     var n = '__lodash_placeholder__';
     e.exports = function (e, t) {
-      for (var i = -1, r = e.length, o = 0, a = []; ++i < r; ) {
+      for (var i = -1, r = e.length, o = 0, a = []; ++i < r;) {
         var s = e[i];
         (s !== t && s !== n) || ((e[i] = n), (a[o++] = i));
       }
@@ -3927,7 +3927,7 @@ window.ValtimoBPMNModeler = (function (e) {
         var _,
           j = x.length,
           w = j;
-        for (; j--; )
+        for (; j--;)
           ((m = x[j]),
             (_ = 1 - m),
             (E[0][j] = _ * _ * _ * e + 3 * _ * _ * m * n + 3 * _ * m * m * r + m * m * m * s),
@@ -4120,7 +4120,7 @@ window.ValtimoBPMNModeler = (function (e) {
                     'r' == a)
                   )
                     i.push([t].concat(o));
-                  else for (; o.length >= n[a] && (i.push([t].concat(o.splice(0, n[a]))), n[a]); );
+                  else for (; o.length >= n[a] && (i.push([t].concat(o.splice(0, n[a]))), n[a]););
                 }),
               (i.toString = v.toString),
               (t.arr = m(i)),
@@ -4388,7 +4388,7 @@ window.ValtimoBPMNModeler = (function (e) {
           p = function (e, t) {
             if (e[t].length > 7) {
               e[t].shift();
-              for (var n = e[t]; n.length; )
+              for (var n = e[t]; n.length;)
                 ((d[t] = 'A'), r && (f[t] = 'A'), e.splice(t++, 0, ['C'].concat(n.splice(0, 6))));
               (e.splice(t, 1), (y = u(i.length, (r && r.length) || 0)));
             }
@@ -4477,7 +4477,7 @@ window.ValtimoBPMNModeler = (function (e) {
   },
   function (e, t) {
     e.exports = function (e, t) {
-      for (var n = -1, i = null == e ? 0 : e.length; ++n < i && !1 !== t(e[n], n, e); );
+      for (var n = -1, i = null == e ? 0 : e.length; ++n < i && !1 !== t(e[n], n, e););
       return e;
     };
   },
@@ -4532,7 +4532,7 @@ window.ValtimoBPMNModeler = (function (e) {
     function c(e) {
       var t = -1,
         n = null == e ? 0 : e.length;
-      for (this.clear(); ++t < n; ) {
+      for (this.clear(); ++t < n;) {
         var i = e[t];
         this.set(i[0], i[1]);
       }
@@ -4551,7 +4551,7 @@ window.ValtimoBPMNModeler = (function (e) {
     function a(e) {
       var t = -1,
         n = null == e ? 0 : e.length;
-      for (this.__data__ = new i(); ++t < n; ) this.add(e[t]);
+      for (this.__data__ = new i(); ++t < n;) this.add(e[t]);
     }
     ((a.prototype.add = a.prototype.push = r), (a.prototype.has = o), (e.exports = a));
   },
@@ -4574,7 +4574,7 @@ window.ValtimoBPMNModeler = (function (e) {
   },
   function (e, t) {
     e.exports = function (e, t) {
-      for (var n = -1, i = null == e ? 0 : e.length, r = 0, o = []; ++n < i; ) {
+      for (var n = -1, i = null == e ? 0 : e.length, r = 0, o = []; ++n < i;) {
         var a = e[n];
         t(a, n, e) && (o[r++] = a);
       }
@@ -4809,7 +4809,7 @@ window.ValtimoBPMNModeler = (function (e) {
       var m = -1,
         v = !0,
         b = n & s ? new i() : void 0;
-      for (p.set(e, t), p.set(t, e); ++m < d; ) {
+      for (p.set(e, t), p.set(t, e); ++m < d;) {
         var y = e[m],
           g = t[m];
         if (c) var x = l ? c(g, y, m, t, e, p) : c(y, g, m, e, t, p);
@@ -4837,7 +4837,7 @@ window.ValtimoBPMNModeler = (function (e) {
   },
   function (e, t) {
     e.exports = function (e, t) {
-      for (var n = -1, i = t.length, r = e.length; ++n < i; ) e[r + n] = t[n];
+      for (var n = -1, i = t.length, r = e.length; ++n < i;) e[r + n] = t[n];
       return e;
     };
   },
@@ -4913,7 +4913,7 @@ window.ValtimoBPMNModeler = (function (e) {
     var i = n(106),
       r = n(57);
     e.exports = function (e, t) {
-      for (var n = 0, o = (t = i(t, e)).length; null != e && n < o; ) e = e[r(t[n++])];
+      for (var n = 0, o = (t = i(t, e)).length; null != e && n < o;) e = e[r(t[n++])];
       return n && n == o ? e : void 0;
     };
   },
@@ -4960,13 +4960,13 @@ window.ValtimoBPMNModeler = (function (e) {
   },
   function (e, t) {
     e.exports = function (e, t, n, i) {
-      for (var r = e.length, o = n + (i ? 1 : -1); i ? o-- : ++o < r; ) if (t(e[o], o, e)) return o;
+      for (var r = e.length, o = n + (i ? 1 : -1); i ? o-- : ++o < r;) if (t(e[o], o, e)) return o;
       return -1;
     };
   },
   function (e, t) {
     e.exports = function (e, t, n) {
-      for (var i = -1, r = null == e ? 0 : e.length; ++i < r; ) if (n(t, e[i])) return !0;
+      for (var i = -1, r = null == e ? 0 : e.length; ++i < r;) if (n(t, e[i])) return !0;
       return !1;
     };
   },
@@ -4976,7 +4976,7 @@ window.ValtimoBPMNModeler = (function (e) {
     e.exports = function e(t, n, o, a, s) {
       var c = -1,
         u = t.length;
-      for (o || (o = r), s || (s = []); ++c < u; ) {
+      for (o || (o = r), s || (s = []); ++c < u;) {
         var p = t[c];
         n > 0 && o(p) ? (n > 1 ? e(p, n - 1, o, a, s) : i(s, p)) : a || (s[s.length] = p);
       }
@@ -5029,7 +5029,7 @@ window.ValtimoBPMNModeler = (function (e) {
             a,
             s = 0,
             c = 0;
-          for (t.length > e.length ? ((i = t), (o = e)) : ((i = e), (o = t)); s < i.length; )
+          for (t.length > e.length ? ((i = t), (o = e)) : ((i = e), (o = t)); s < i.length;)
             ((r = i.charAt(s)),
               (a = o.charAt(c)),
               r !== a
@@ -5220,7 +5220,7 @@ window.ValtimoBPMNModeler = (function (e) {
           if ('function' == typeof s) {
             var c = s(e, n);
             if (c) {
-              for (; n.firstChild; ) n.removeChild(n.firstChild);
+              for (; n.firstChild;) n.removeChild(n.firstChild);
               r(c, function (e) {
                 var t = i(
                   (function (e) {
@@ -5285,7 +5285,7 @@ window.ValtimoBPMNModeler = (function (e) {
         A = n & b,
         R = C ? void 0 : a(t);
       return function d() {
-        for (var f = arguments.length, h = Array(f), m = f; m--; ) h[m] = arguments[m];
+        for (var f = arguments.length, h = Array(f), m = f; m--;) h[m] = arguments[m];
         if (P)
           var v = c(d),
             b = o(h, v);
@@ -5320,8 +5320,8 @@ window.ValtimoBPMNModeler = (function (e) {
         ++c < u;
       )
         l[c] = t[c];
-      for (; ++o < s; ) (d || o < a) && (l[i[o]] = e[o]);
-      for (; p--; ) l[c++] = e[o++];
+      for (; ++o < s;) (d || o < a) && (l[i[o]] = e[o]);
+      for (; p--;) l[c++] = e[o++];
       return l;
     };
   },
@@ -5341,8 +5341,8 @@ window.ValtimoBPMNModeler = (function (e) {
         ++o < l;
       )
         d[o] = e[o];
-      for (var h = o; ++u < p; ) d[h + u] = t[u];
-      for (; ++s < c; ) (f || o < a) && (d[h + i[s]] = e[o++]);
+      for (var h = o; ++u < p;) d[h + u] = t[u];
+      for (; ++s < c;) (f || o < a) && (d[h + i[s]] = e[o++]);
       return d;
     };
   },
@@ -5390,7 +5390,7 @@ window.ValtimoBPMNModeler = (function (e) {
     e.exports = function (e, t) {
       var n = -1,
         i = e.length;
-      for (t || (t = Array(i)); ++n < i; ) t[n] = e[n];
+      for (t || (t = Array(i)); ++n < i;) t[n] = e[n];
       return t;
     };
   },
@@ -8799,7 +8799,7 @@ window.ValtimoBPMNModeler = (function (e) {
   function (e, t) {
     e.exports = function (e) {
       return function (t, n, i) {
-        for (var r = -1, o = Object(t), a = i(t), s = a.length; s--; ) {
+        for (var r = -1, o = Object(t), a = i(t), s = a.length; s--;) {
           var c = a[e ? s : ++r];
           if (!1 === n(o[c], c, o)) break;
         }
@@ -8836,7 +8836,7 @@ window.ValtimoBPMNModeler = (function (e) {
   },
   function (e, t) {
     e.exports = function (e, t) {
-      for (var n = -1, i = Array(e); ++n < e; ) i[n] = t(n);
+      for (var n = -1, i = Array(e); ++n < e;) i[n] = t(n);
       return i;
     };
   },
@@ -8970,7 +8970,7 @@ window.ValtimoBPMNModeler = (function (e) {
         var t = e.element,
           n = e.businessObject,
           s = (function (e) {
-            for (var t = e; t.$parent; ) t = t.$parent;
+            for (var t = e; t.$parent;) t = t.$parent;
             return t;
           })(n).rootElements,
           u = e.referenceType,
@@ -9056,11 +9056,11 @@ window.ValtimoBPMNModeler = (function (e) {
         u = c,
         p = !s;
       if (null == e) return !u;
-      for (e = Object(e); c--; ) {
+      for (e = Object(e); c--;) {
         var l = n[c];
         if (p && l[2] ? l[1] !== e[l[0]] : !(l[0] in e)) return !1;
       }
-      for (; ++c < u; ) {
+      for (; ++c < u;) {
         var d = (l = n[c])[0],
           f = e[d],
           h = l[1];
@@ -9207,7 +9207,7 @@ window.ValtimoBPMNModeler = (function (e) {
     function c(e) {
       var t = -1,
         n = null == e ? 0 : e.length;
-      for (this.clear(); ++t < n; ) {
+      for (this.clear(); ++t < n;) {
         var i = e[t];
         this.set(i[0], i[1]);
       }
@@ -9348,7 +9348,7 @@ window.ValtimoBPMNModeler = (function (e) {
   },
   function (e, t) {
     e.exports = function (e, t) {
-      for (var n = -1, i = null == e ? 0 : e.length; ++n < i; ) if (t(e[n], n, e)) return !0;
+      for (var n = -1, i = null == e ? 0 : e.length; ++n < i;) if (t(e[n], n, e)) return !0;
       return !1;
     };
   },
@@ -9431,7 +9431,7 @@ window.ValtimoBPMNModeler = (function (e) {
         p = i(e),
         l = p.length;
       if (l != i(t).length && !u) return !1;
-      for (var d = l; d--; ) {
+      for (var d = l; d--;) {
         var f = p[d];
         if (!(u ? f in t : o.call(t, f))) return !1;
       }
@@ -9439,7 +9439,7 @@ window.ValtimoBPMNModeler = (function (e) {
       if (h && c.get(t)) return h == t;
       var m = !0;
       (c.set(e, t), c.set(t, e));
-      for (var v = u; ++d < l; ) {
+      for (var v = u; ++d < l;) {
         var b = e[(f = p[d])],
           y = t[f];
         if (a) var g = u ? a(y, b, f, t, e, c) : a(b, y, f, e, t, c);
@@ -9511,7 +9511,7 @@ window.ValtimoBPMNModeler = (function (e) {
     var i = n(102),
       r = n(24);
     e.exports = function (e) {
-      for (var t = r(e), n = t.length; n--; ) {
+      for (var t = r(e), n = t.length; n--;) {
         var o = t[n],
           a = e[o];
         t[n] = [o, a, i(a)];
@@ -9624,7 +9624,7 @@ window.ValtimoBPMNModeler = (function (e) {
       s = n(69),
       c = n(57);
     e.exports = function (e, t, n) {
-      for (var u = -1, p = (t = i(t, e)).length, l = !1; ++u < p; ) {
+      for (var u = -1, p = (t = i(t, e)).length, l = !1; ++u < p;) {
         var d = c(t[u]);
         if (!(l = null != e && n(e, d))) break;
         e = e[d];
@@ -10458,10 +10458,10 @@ window.ValtimoBPMNModeler = (function (e) {
       return (
         (t = r(void 0 === t ? e.length - 1 : t, 0)),
         function () {
-          for (var o = arguments, a = -1, s = r(o.length - t, 0), c = Array(s); ++a < s; )
+          for (var o = arguments, a = -1, s = r(o.length - t, 0), c = Array(s); ++a < s;)
             c[a] = o[t + a];
           a = -1;
-          for (var u = Array(t + 1); ++a < t; ) u[a] = o[a];
+          for (var u = Array(t + 1); ++a < t;) u[a] = o[a];
           return ((u[t] = n(c)), i(e, this, u));
         }
       );
@@ -10497,8 +10497,8 @@ window.ValtimoBPMNModeler = (function (e) {
     e.exports = function (e, t, n) {
       var a = e.length;
       if (a < 2) return a ? o(e[0]) : [];
-      for (var s = -1, c = Array(a); ++s < a; )
-        for (var u = e[s], p = -1; ++p < a; ) p != s && (c[s] = i(c[s] || u, e[p], t, n));
+      for (var s = -1, c = Array(a); ++s < a;)
+        for (var u = e[s], p = -1; ++p < a;) p != s && (c[s] = i(c[s] || u, e[p], t, n));
       return o(r(c, 1), t, n);
     };
   },
@@ -10520,11 +10520,11 @@ window.ValtimoBPMNModeler = (function (e) {
       if (!h) return m;
       (n && (t = a(t, s(n))),
         p ? ((d = o), (f = !1)) : t.length >= u && ((d = c), (f = !1), (t = new i(t))));
-      e: for (; ++l < h; ) {
+      e: for (; ++l < h;) {
         var b = e[l],
           y = null == n ? b : n(b);
         if (((b = p || 0 !== b ? b : 0), f && y == y)) {
-          for (var g = v; g--; ) if (t[g] === y) continue e;
+          for (var g = v; g--;) if (t[g] === y) continue e;
           m.push(b);
         } else d(t, y, p) || m.push(b);
       }
@@ -10546,7 +10546,7 @@ window.ValtimoBPMNModeler = (function (e) {
   },
   function (e, t) {
     e.exports = function (e, t, n) {
-      for (var i = n - 1, r = e.length; ++i < r; ) if (e[i] === t) return i;
+      for (var i = n - 1, r = e.length; ++i < r;) if (e[i] === t) return i;
       return -1;
     };
   },
@@ -10580,11 +10580,11 @@ window.ValtimoBPMNModeler = (function (e) {
         if (v) return c(v);
         ((f = !1), (l = a), (m = new i()));
       } else m = t ? [] : h;
-      e: for (; ++p < d; ) {
+      e: for (; ++p < d;) {
         var b = e[p],
           y = t ? t(b) : b;
         if (((b = n || 0 !== b ? b : 0), f && y == y)) {
-          for (var g = m.length; g--; ) if (m[g] === y) continue e;
+          for (var g = m.length; g--;) if (m[g] === y) continue e;
           (t && m.push(y), h.push(b));
         } else l(m, y, n) || (m !== h && m.push(y), h.push(b));
       }
@@ -10708,7 +10708,7 @@ window.ValtimoBPMNModeler = (function (e) {
   },
   function (e, t) {
     e.exports = function (e, t, n, i) {
-      for (var r = -1, o = null == e ? 0 : e.length; ++r < o; ) {
+      for (var r = -1, o = null == e ? 0 : e.length; ++r < o;) {
         var a = e[r];
         t(i, a, n(a), e);
       }
@@ -11068,7 +11068,7 @@ window.ValtimoBPMNModeler = (function (e) {
     e.exports = function (e, t, n, o) {
       var a = !n;
       n || (n = {});
-      for (var s = -1, c = t.length; ++s < c; ) {
+      for (var s = -1, c = t.length; ++s < c;) {
         var u = t[s],
           p = o ? o(n[u], e[u], u, n, e) : void 0;
         (void 0 === p && (p = e[u]), a ? r(n, u, p) : i(n, u, p));
@@ -12241,7 +12241,7 @@ window.ValtimoBPMNModeler = (function (e) {
     e.exports = function (e, t, n) {
       var p = r(e);
       return function r() {
-        for (var l = arguments.length, d = Array(l), f = l, h = s(r); f--; ) d[f] = arguments[f];
+        for (var l = arguments.length, d = Array(l), f = l, h = s(r); f--;) d[f] = arguments[f];
         var m = l < 3 && d[0] !== h && d[l - 1] !== h ? [] : c(d, h);
         return (l -= m.length) < n
           ? a(e, t, o, r.placeholder, void 0, d, m, void 0, void 0, n - l)
@@ -12251,7 +12251,7 @@ window.ValtimoBPMNModeler = (function (e) {
   },
   function (e, t) {
     e.exports = function (e, t) {
-      for (var n = e.length, i = 0; n--; ) e[n] === t && ++i;
+      for (var n = e.length, i = 0; n--;) e[n] === t && ++i;
       return i;
     };
   },
@@ -12273,7 +12273,7 @@ window.ValtimoBPMNModeler = (function (e) {
     var i = n(285),
       r = Object.prototype.hasOwnProperty;
     e.exports = function (e) {
-      for (var t = e.name + '', n = i[t], o = r.call(i, t) ? n.length : 0; o--; ) {
+      for (var t = e.name + '', n = i[t], o = r.call(i, t) ? n.length : 0; o--;) {
         var a = n[o],
           s = a.func;
         if (null == s || s == e) return a.name;
@@ -12366,7 +12366,7 @@ window.ValtimoBPMNModeler = (function (e) {
       r = n(47),
       o = Math.min;
     e.exports = function (e, t) {
-      for (var n = e.length, a = o(t.length, n), s = i(e); a--; ) {
+      for (var n = e.length, a = o(t.length, n), s = i(e); a--;) {
         var c = t[a];
         e[a] = r(c, n) ? s[c] : void 0;
       }
@@ -12392,7 +12392,7 @@ window.ValtimoBPMNModeler = (function (e) {
           ++p < l;
         )
           d[p] = s[p];
-        for (; a--; ) d[p++] = arguments[++r];
+        for (; a--;) d[p++] = arguments[++r];
         return i(f, c ? n : this, d);
       };
     };
@@ -16216,7 +16216,7 @@ window.ValtimoBPMNModeler = (function (e) {
                       }),
                     },
                   )));
-              for (; -1 !== M; ) {
+              for (; -1 !== M;) {
                 if (-1 === (k = 60 === e.charCodeAt(M) ? M : e.indexOf('<', M)))
                   return C.length
                     ? b('unexpected end of file')
@@ -17000,7 +17000,7 @@ window.ValtimoBPMNModeler = (function (e) {
         if (((r = q[s] || (o && (o.getPackage(s) || {}).uri)), !(c = c || r || a.uriByPrefix(s))))
           throw new Error('no namespace uri given for prefix <' + s + '>');
         if (!(e = a.byUri(c))) {
-          for (n = s, i = 1; a.uriByPrefix(n); ) n = s + '_' + i++;
+          for (n = s, i = 1; a.uriByPrefix(n);) n = s + '_' + i++;
           e = this.logNamespace({ prefix: n, uri: c }, r === c);
         }
         return (s && a.mapPrefix(s, c), e);
@@ -17195,7 +17195,7 @@ window.ValtimoBPMNModeler = (function (e) {
         u(e);
       }
       function d() {
-        for (; i.length; ) i.shift()();
+        for (; i.length;) i.shift()();
       }
       function f(e, t) {
         (w(e, t), x(e.ioSpecification, t), g(e.artifacts, t), o(e));
@@ -18497,7 +18497,7 @@ window.ValtimoBPMNModeler = (function (e) {
       }
     }
     function Ye(e, t, n) {
-      for (var i, r = e.shift(), o = r; ; ) {
+      for (var i, r = e.shift(), o = r; ;) {
         if (
           (((i = Ke(o, n)).width = o ? i.width : 0),
           ' ' === o || '' === o || i.width < Math.round(t) || o.length < 2)
@@ -18521,7 +18521,7 @@ window.ValtimoBPMNModeler = (function (e) {
             r = [],
             o = 0;
           if (i.length > 1)
-            for (; (n = i.shift()); ) {
+            for (; (n = i.shift());) {
               if (!(n.length + o < t)) {
                 '-' === n && r.pop();
                 break;
@@ -18582,7 +18582,7 @@ window.ValtimoBPMNModeler = (function (e) {
             e
           );
         })();
-        for (Object(u.a)(h, f); p.length; ) l.push(Ye(p, d, f));
+        for (Object(u.a)(h, f); p.length;) l.push(Ye(p, d, f));
         var m,
           v =
             Object(s.w)(
@@ -20952,7 +20952,7 @@ window.ValtimoBPMNModeler = (function (e) {
                 n.connection,
                 (function (e) {
                   e = e.slice();
-                  for (var t, n, i, r = 0; e[r]; )
+                  for (var t, n, i, r = 0; e[r];)
                     ((t = e[r]),
                       (n = e[r - 1]),
                       0 === ht(t, (i = e[r + 1])) || mt(n, i, t) ? e.splice(r, 1) : r++);
@@ -21136,7 +21136,7 @@ window.ValtimoBPMNModeler = (function (e) {
     function Bi(e) {
       function t(e, t) {
         if (Object(s.l)(e)) {
-          for (var n = e.length; n--; ) if (Ai(e[n] - t) <= ki) return e[n];
+          for (var n = e.length; n--;) if (Ai(e[n] - t) <= ki) return e[n];
         } else {
           var i = t % (e = +e);
           if (i < ki) return t - i;
@@ -21288,7 +21288,7 @@ window.ValtimoBPMNModeler = (function (e) {
           (r = (function (e) {
             var t = Object(s.j)(e, 'id');
             return Object(s.e)(e, function (e) {
-              for (; (e = e.parent); ) if (t[e.id]) return !1;
+              for (; (e = e.parent);) if (t[e.id]) return !1;
               return !0;
             });
           })(r)),
@@ -21992,7 +21992,7 @@ window.ValtimoBPMNModeler = (function (e) {
           r
         );
       }
-      for (var o; (o = _r(e, n, t)); ) n = r(o);
+      for (var o; (o = _r(e, n, t));) n = r(o);
       return n;
     }
     function wr() {
@@ -26550,7 +26550,7 @@ window.ValtimoBPMNModeler = (function (e) {
                 Object(ke.is)(i, 'bpmn:Participant')
                   ? i
                   : (function (e, t) {
-                      for (; e.parent; ) {
+                      for (; e.parent;) {
                         if (Object(ke.is)(e.parent, t)) return e.parent;
                         e = e.parent;
                       }
@@ -26567,7 +26567,7 @@ window.ValtimoBPMNModeler = (function (e) {
                 return (function (e, t) {
                   var n = e.businessObject || e,
                     i = t.businessObject || t;
-                  for (; n.$parent; ) {
+                  for (; n.$parent;) {
                     if (n.$parent === i.processRef || i) return !0;
                     n = n.$parent;
                   }
@@ -27479,7 +27479,7 @@ window.ValtimoBPMNModeler = (function (e) {
       return Object(ke.getBusinessObject)(e).isForCompensation;
     }
     function jc(e) {
-      for (var t = e; (t = t.parent); ) {
+      for (var t = e; (t = t.parent);) {
         if (Object(ke.is)(t, 'bpmn:FlowElementsContainer')) return Object(ke.getBusinessObject)(t);
         if (Object(ke.is)(t, 'bpmn:Participant')) return Object(ke.getBusinessObject)(t).processRef;
       }
@@ -27503,7 +27503,7 @@ window.ValtimoBPMNModeler = (function (e) {
       return (
         -1 !==
         (function (e) {
-          for (var t = []; e; ) (e = e.parent) && t.push(e);
+          for (var t = []; e;) (e = e.parent) && t.push(e);
           return t;
         })(t).indexOf(e)
       );
@@ -27907,7 +27907,7 @@ window.ValtimoBPMNModeler = (function (e) {
         var r = i(e);
         r.containers &&
           (n = (function (e, n, i) {
-            for (var r = n; r && !Object(yr.isAny)(r, i); ) r = r.parent;
+            for (var r = n; r && !Object(yr.isAny)(r, i);) r = r.parent;
             if (!r)
               throw new Error(
                 t('no parent for {element} in {parent}', { element: e.id, parent: n.id }),
@@ -28243,7 +28243,7 @@ window.ValtimoBPMNModeler = (function (e) {
     function nu(e, t) {
       if ('function' != typeof t) throw new Error('removeFn iterator must be a function');
       if (e) {
-        for (var n; (n = e[0]); ) t(n);
+        for (var n; (n = e[0]);) t(n);
         return e;
       }
     }
@@ -28349,7 +28349,7 @@ window.ValtimoBPMNModeler = (function (e) {
           (t.validatedShapes = (function (e) {
             var t = Object(s.j)(e, 'id');
             return Object(s.e)(e, function (e) {
-              for (; e; ) {
+              for (; e;) {
                 if (e.host && t[e.host.id]) return !1;
                 e = e.parent;
               }
@@ -28839,7 +28839,7 @@ window.ValtimoBPMNModeler = (function (e) {
               a = e.processRef;
             a &&
               ((o = (function (e) {
-                for (; e && !Object(ke.is)(e, 'bpmn:Definitions'); ) e = e.$parent;
+                for (; e && !Object(ke.is)(e, 'bpmn:Definitions');) e = e.$parent;
                 return e;
               })(e.$parent || t)),
               e.$parent && (Object(as.c)(o.get('rootElements'), a), (a.$parent = null)),
@@ -32503,7 +32503,7 @@ window.ValtimoBPMNModeler = (function (e) {
           },
           h = function e(t, r) {
             if (!a[t] && -1 !== t.indexOf('.')) {
-              for (var o = t.split('.'), c = e(o.shift()); o.length; ) c = c[o.shift()];
+              for (var o = t.split('.'), c = e(o.shift()); o.length;) c = c[o.shift()];
               return c;
             }
             if (d(s, t)) return s[t];
