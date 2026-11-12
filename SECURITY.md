@@ -2,13 +2,10 @@
 
 ## Supported Versions
 
-| Version                                        | Supported |
-| ---------------------------------------------- | --------- |
-| Two most recently released minor release lines | Yes       |
-
-Security updates are provided for the two most recently released minor release
-lines. As long as fewer than two minor release lines have been released, all
-available minor release lines are supported.
+Security fixes ship as patch releases on the supported release lines, as
+[`SUPPORT.md`](SUPPORT.md) defines them: the newest minor line, and for three
+months after 1.0.0 the 0.21.x line. Pre-releases receive a fix in their next
+pre-release.
 
 Which Valtimo and Epistola Suite versions each release works with is recorded in
 [`COMPATIBILITY.md`](COMPATIBILITY.md).
