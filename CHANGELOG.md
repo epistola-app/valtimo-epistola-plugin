@@ -92,6 +92,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   jsonata `0.9.10`, json-schema-validator `2.0.8` (shaded), Lombok `1.18.48`, and for the tests
   Testcontainers `2.0.5` and the PostgreSQL driver `42.7.14`. jsoup and commonmark read a case's
   HTML and markdown rich text; their output is still checked against Epistola's own schemas.
+- **Patched transitive frontend dependencies** by raising the security floors in
+  `pnpm-workspace.yaml`: DOMPurify `3.4.17` and moment `2.31.0`, both shipped in the browser
+  (Form.io and Valtimo bring them), and for the dev server and tooling axios, proxy-addr,
+  follow-redirects, fast-uri, devalue (kept on 5.x), brace-expansion, js-yaml (kept on 4.x),
+  source-map-js, qs, morgan and the MCP SDK. Advisories against Angular 19 itself are fixed only in
+  20 and later, so they stay until Valtimo moves to a newer Angular.
 - **The letter composer is stable.** What it stores (a component's settings in the form, and the
   chosen letter on the process variable, at schema version 4) is now covered by 1.x: a later 1.x
   release keeps reading it, and a change raises the schema version. Its palette entry no longer says
