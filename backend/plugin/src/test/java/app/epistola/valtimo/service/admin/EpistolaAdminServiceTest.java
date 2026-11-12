@@ -149,7 +149,7 @@ class EpistolaAdminServiceTest {
             // The contract version the plugin ships, read from epistola-contract-version.txt
             // inside the client jar. Pinned deliberately: bumping the contract dependency
             // should be a conscious update here, not a silent drift.
-            assertThat(status.contractVersion()).isEqualTo("2.0.0-rc.2");
+            assertThat(status.contractVersion()).isEqualTo("2.0.0");
             assertThat(status.serverContractVersion()).isNull();
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
@@ -161,14 +161,14 @@ class EpistolaAdminServiceTest {
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("2.0.0", "2.0.0-rc.2"));
+                    .thenReturn(new EpistolaService.SystemInfo("2.0.0", "2.0.0"));
 
             List<ConnectionStatus> results = adminService.checkConnections();
 
             ConnectionStatus status = results.get(0);
             assertThat(status.serverVersion()).isEqualTo("2.0.0");
-            assertThat(status.contractVersion()).isEqualTo("2.0.0-rc.2");
-            assertThat(status.serverContractVersion()).isEqualTo("2.0.0-rc.2");
+            assertThat(status.contractVersion()).isEqualTo("2.0.0");
+            assertThat(status.serverContractVersion()).isEqualTo("2.0.0");
             assertThat(status.contractCompatibilitySeverity()).isEqualTo(ContractCompatibilitySeverity.OK);
         }
 
@@ -202,8 +202,6 @@ class EpistolaAdminServiceTest {
 
         @Test
         void shouldTreatNewerServerMinorAndPatchAsCompatible() {
-            // On the classifier, with release versions: while the plugin pins a 2.0 alpha, every
-            // other server is a warning (see shouldWarnWhenEitherSideIsAnotherPreRelease).
             assertThat(EpistolaAdminService.classifyContractCompatibility("2.0.0", "2.1.3"))
                     .isEqualTo(ContractCompatibilitySeverity.OK);
             assertThat(EpistolaAdminService.classifyContractCompatibility("2.1.0", "2.1.3"))
@@ -211,12 +209,14 @@ class EpistolaAdminServiceTest {
         }
 
         @Test
-        void shouldWarnWhilePinnedToAPreReleaseAndTheServerIsAnother() {
+        void shouldWarnWhenTheServerServesAPreReleaseOfThePinnedContract() {
+            // A Suite built from main serves 2.0.0-rc.2 while the plugin pins the released 2.0.0:
+            // a pre-release may differ from its release, so that is a warning, not OK.
             mockSinglePluginConfiguration();
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenReturn(List.of());
             when(epistolaService.getSystemInfo(BASE_URL, API_KEY))
-                    .thenReturn(new EpistolaService.SystemInfo("2.1.3", "2.1.3"));
+                    .thenReturn(new EpistolaService.SystemInfo("2.0.0-SNAPSHOT", "2.0.0-rc.2"));
 
             ConnectionStatus status = adminService.checkConnections().get(0);
 
@@ -280,7 +280,7 @@ class EpistolaAdminServiceTest {
             ConnectionStatus status = results.get(0);
             assertThat(status.reachable()).isFalse();
             assertThat(status.errorMessage()).isEqualTo("Connection refused");
-            assertThat(status.contractVersion()).isEqualTo("2.0.0-rc.2");
+            assertThat(status.contractVersion()).isEqualTo("2.0.0");
             assertThat(status.contractCompatibilitySeverity())
                     .isEqualTo(ContractCompatibilitySeverity.UNKNOWN);
         }

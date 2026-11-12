@@ -105,7 +105,7 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     private static final int LIST_PAGE_SIZE = 100;
     private static final int MAX_LIST_PAGES = 100;
-    /** What every generated client enum holds for a value it does not know (contract ≥ 2.0.0-rc.1). */
+    /** What every generated client enum holds for a value it does not know (since contract 2.0). */
     private static final String UNKNOWN_ENUM_VALUE =
             app.epistola.client.model.GenerationItemStatus.unknown_default_open_api.getValue();
 
@@ -709,11 +709,11 @@ public class EpistolaServiceImpl implements EpistolaService {
     }
 
     /**
-     * The templates across releases as the server lists them ({@code listCatalogTemplates}, contract
-     * 2.0.0-rc.2): one call instead of one per release. Null — and the caller lists release by release
-     * — when the server does not implement it yet (501, or 404/405 from one that does not know the
-     * route), and when an environment lists nothing, which may only mean the catalog is not deployed
-     * there: that is read catalog-wide, as the design scope reads it.
+     * The templates across releases as the server lists them ({@code listCatalogTemplates}): one call
+     * instead of one per release. Contract 2.0.0 lets a Suite answer 501 until it implements it, so
+     * null — and the caller lists release by release — when the server does not (501, or 404/405 from
+     * a pre-release server without the route), and when an environment lists nothing, which may only
+     * mean the catalog is not deployed there: that is read catalog-wide, as the design scope reads it.
      */
     private CatalogTemplates listedByServer(
             String baseUrl, String apiKey, String tenantId, CatalogRef ref, String environment) {
@@ -1267,7 +1267,7 @@ public class EpistolaServiceImpl implements EpistolaService {
 
     /**
      * Which part of a generation target does not exist. Epistola's {@code not-found} names it in a
-     * {@code missing} member when the server is new enough (proposed for contract 2.0); otherwise
+     * {@code missing} member, which contract 2.0.0 makes optional, so a server may leave it out; otherwise
      * the plugin checks the parts in the order Epistola resolves them — environment, catalog,
      * release, template, variant — with the reads it already makes, and stops at the first that is
      * not there. Only ever after a refusal, so the extra calls cost nothing on the normal path. A
@@ -1570,7 +1570,7 @@ public class EpistolaServiceImpl implements EpistolaService {
         if (status == null) {
             return GenerationJobStatus.PENDING;
         }
-        // Since contract 2.0.0-rc.1 the client reads a status a newer 2.x server added as this
+        // Since contract 2.0 the client reads a status a newer 2.x server added as this
         // sentinel rather than failing the response. Every terminal status is known, so an unknown
         // one is read as "not finished yet": the process keeps waiting instead of the check failing.
         if (UNKNOWN_ENUM_VALUE.equals(status)) {

@@ -114,7 +114,7 @@ class EpistolaServiceImplRetryTest {
     }
 
     /**
-     * Since contract 2.0.0-rc.1 the client reads a status a newer 2.x server added as
+     * Since contract 2.0 the client reads a status a newer 2.x server added as
      * {@code unknown_default_open_api} instead of failing the response. The job is not finished as
      * far as this plugin can tell, so the process keeps waiting rather than the check throwing.
      */
