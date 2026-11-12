@@ -21,7 +21,6 @@ import app.epistola.valtimo.logging.Failures;
 import app.epistola.valtimo.mapping.JsonataMappingService;
 import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.preview.PreviewService;
-import app.epistola.valtimo.service.form.RetryFormService;
 import app.epistola.valtimo.web.rest.dto.EvaluationRequest;
 import app.epistola.valtimo.web.rest.dto.EvaluationResult;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
@@ -73,7 +72,7 @@ import java.util.Map;
 /**
  * REST controller for Epistola generation, preview, and download operations.
  *
- * <p>Endpoints invoked from user task forms (preview, retry-form, download) authorize on
+ * <p>Endpoints invoked from user task forms (preview, download) authorize on
  * {@code OperatonTask:VIEW} and then <b>derive</b> the process instance and case document from that
  * task. The caller never supplies them, so there is no forgery vector and nothing to cross-check.
  *
@@ -103,7 +102,6 @@ public class EpistolaGenerationResource {
     private final PluginService pluginService;
     private final EpistolaService epistolaService;
     private final PreviewService previewService;
-    private final RetryFormService retryFormService;
     private final JsonataMappingService jsonataMappingService;
     private final com.ritense.document.service.DocumentService documentService;
     private final ObjectMapper objectMapper;
@@ -238,51 +236,6 @@ public class EpistolaGenerationResource {
         headers.setContentDisposition(contentDisposition);
 
         return ResponseEntity.ok().headers(headers).body(content);
-    }
-
-    /**
-     * Get a dynamically generated Formio form for retrying a failed document generation.
-     *
-     * <p>Requires {@code OperatonTask:VIEW} on the supplied {@code taskId}. The process
-     * instance and case document the form is built against are derived from that task —
-     * not supplied by the caller — so they cannot be forged.
-     *
-     * @param taskId            The Operaton user task ID providing the authorization context
-     * @param sourceActivityId  The BPMN activity ID of the original generate-document service task (optional)
-     * @return A Formio form definition with prefilled values
-     */
-    @GetMapping("/retry-form")
-    public ResponseEntity<ObjectNode> getRetryForm(
-            @RequestParam("taskId") String taskId,
-            @RequestParam(value = "sourceActivityId", required = false) String sourceActivityId
-    ) {
-        if (taskId == null || taskId.isBlank()) {
-            return ResponseEntity.badRequest().build();
-        }
-        OperatonTask task;
-        try {
-            task = requireTaskViewable(taskId);
-        } catch (TaskNotFoundException e) {
-            return ResponseEntity.notFound().build();
-        }
-        // Derive the document and process-instance context from the authorized task itself.
-        String documentId = caseDocumentIdOf(task);
-        String processInstanceId = task.getProcessInstanceId();
-
-        try {
-            ObjectNode form = retryFormService.generateRetryForm(processInstanceId, documentId, sourceActivityId);
-            return ResponseEntity.ok(form);
-        } catch (RetryFormService.RetryFormException e) {
-            log.warn("Failed to generate retry form ({}: {})", e.getReason(), Failures.describe(e));
-            return switch (e.getReason()) {
-                case PROCESS_NOT_FOUND, LINK_NOT_FOUND -> ResponseEntity.notFound().build();
-                case AMBIGUOUS_ACTIVITY, MISSING_TEMPLATE, NO_DOCUMENT_ID -> ResponseEntity.badRequest().build();
-                // Not the caller's request being wrong but this environment's: the mapping behind
-                // the failed generation cannot be evaluated now either, which is the form author's
-                // to fix. Same shape the composer uses for its own unusable configuration.
-                case MAPPING_FAILED -> ResponseEntity.unprocessableEntity().build();
-            };
-        }
     }
 
     /**

@@ -28,9 +28,6 @@ jest.mock('../components/epistola-document-preview/epistola-document-preview.for
 jest.mock('../composer/composer.registration', () => ({
   registerEpistolaComposerComponents: jest.fn(),
 }));
-jest.mock('../components/epistola-retry-form/epistola-retry-form.formio', () => ({
-  registerEpistolaRetryFormComponent: jest.fn(),
-}));
 jest.mock('../components/override-builder/override-builder.formio', () => ({
   registerEpistolaOverrideBuilderComponent: jest.fn(),
 }));
@@ -42,7 +39,6 @@ jest.mock('../utils/ckeditor-content-styles', () => ({ installCkEditorContentSty
 import { registerEpistolaDocumentComponent } from '../components/epistola-document/epistola-document.formio';
 import { registerEpistolaDocumentPreviewComponent } from '../components/epistola-document-preview/epistola-document-preview.formio';
 import { registerEpistolaComposerComponents } from '../composer/composer.registration';
-import { registerEpistolaRetryFormComponent } from '../components/epistola-retry-form/epistola-retry-form.formio';
 import { registerEpistolaOverrideBuilderComponent } from '../components/override-builder/override-builder.formio';
 import { registerEpistolaProcessLinkSelectorComponent } from '../components/process-link-selector/process-link-selector.formio';
 import { isEpistolaEnabled } from '../epistola-runtime-config';
@@ -51,7 +47,6 @@ import { EpistolaRegistrationService } from './epistola-registration.service';
 
 const registrationFunctions = [
   registerEpistolaDocumentComponent,
-  registerEpistolaRetryFormComponent,
   registerEpistolaOverrideBuilderComponent,
   registerEpistolaProcessLinkSelectorComponent,
   registerEpistolaDocumentPreviewComponent,

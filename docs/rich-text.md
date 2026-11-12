@@ -26,7 +26,7 @@ emphasis in another. Whoever knows the format says it:
   `$richText($doc.x, "html")`. `$richText(value)` without a format uses the default. A string
   mapped onto a rich-text field _without_ `$richText` is sent as it is, and Epistola refuses it
   ("string found, object expected"). The mapping builder warns about such a field.
-- **The plugin's own editors say it.** The letter composer and the retry form submit what was
+- **The plugin's own editor says it.** The letter composer submits what was
   typed into a rich-text editor as a _tagged value_ that names the editor's format,
   `{"$richText": {"format": "html", "kind": "BLOCK", "value": "<p>…</p>"}}`, and the plugin
   converts it when the data is sent. See [Where it happens](#where-it-happens). A composer's
@@ -56,8 +56,8 @@ epistola:
     default-format: html # html (default) | plain | markdown | prosemirror | your own
 ```
 
-The default decides two things: which editor the composer and the retry form show (and so the
-format of what they write back), and how `$richText(value)` without a format reads `value`. `html`
+The default decides two things: which editor the composer shows (and so the
+format of what it writes back), and how `$richText(value)` without a format reads `value`. `html`
 is the default because it is what Valtimo's WYSIWYG text areas write. A value from an ordinary
 **plain text area** is named, `$richText($doc.x, "plain")`, because read as HTML its line breaks
 collapse into spaces and a `<` followed by a letter starts a tag.
@@ -214,9 +214,9 @@ The test-app uses both paths on `besluit-bezwaar`, whose `motivation` is block r
   (`besluit-toelichting.form.json`), since a `fields` widget has no display type for HTML and
   would print the tags.
 
-## In the letter composer and the retry form
+## In the letter composer
 
-When the composer or a retry form asks for a rich-text field, it generates the editor itself,
+When the composer asks for a rich-text field, it generates the editor itself,
 matching the default format, so what a person types is already in the case's format:
 
 - `html` gives the CKEditor text area above, with the same toolbar and removed plugins.
@@ -236,13 +236,13 @@ exactly as it does for any WYSIWYG text area an author builds in Valtimo, and ne
 Valtimo overrides `Formio.cdn`. An installation where WYSIWYG fields already work needs nothing more.
 
 Each generated editor carries the format it writes and the field's kind (`epistolaRichText` on the
-Form.io component). The composer and the retry form read that to tag what was typed, and the
-composer's write-back gives the case the typed text itself, not the tag, so the case's own forms
+Form.io component). The composer reads that to tag what was typed, and its
+write-back gives the case the typed text itself, not the tag, so the case's own forms
 can show it.
 
-A value that is already a document, such as a retry form prefilled with what was rendered, is
-written back out in the default format, so the editor shows text rather than JSON. A value tagged
-earlier, a retry form's previous correction, is shown as it was typed.
+A value that is already a document, such as one the case holds as a document, is written back out
+in the default format, so the editor shows text rather than JSON. A value tagged earlier, an answer
+the case kept, is shown as it was typed.
 
 ## When something is lost
 

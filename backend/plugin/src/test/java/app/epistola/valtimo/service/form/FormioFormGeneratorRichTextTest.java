@@ -106,12 +106,12 @@ class FormioFormGeneratorRichTextTest {
     }
 
     /**
-     * The retry form's round trip: what was rendered is shown, taken back unchanged and tagged the
+     * The composer's round trip: a prefilled document is shown, taken back unchanged and tagged the
      * way the frontend tags it — from the component's own format and kind — and must convert to the
-     * same document, or a retry would lose the letter's formatting.
+     * same document, or submitting it untouched would lose its formatting.
      */
     @Test
-    void aRenderedDocumentSurvivesTheRetryFormsRoundTrip() {
+    void aPrefilledDocumentSurvivesTheFormsRoundTrip() {
         var converter = RichTextFixtures.converter("html");
         Map<String, Object> rendered = Map.of("type", "doc", "content", List.of(
                 Map.of("type", "paragraph", "content", List.of(

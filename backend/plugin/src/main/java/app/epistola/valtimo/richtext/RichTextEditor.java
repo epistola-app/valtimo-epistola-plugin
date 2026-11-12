@@ -23,7 +23,7 @@ import java.util.Map;
 
 /**
  * The Form.io component a person types a rich-text format into, for the forms the plugin generates
- * (the letter composer, the retry form).
+ * (the letter composer).
  *
  * <p>An extension point beside {@link RichTextFormat}, kept apart from it because the two change
  * for different reasons: a format changes with what a case stores, an editor with Form.io and its

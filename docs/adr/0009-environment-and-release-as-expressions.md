@@ -318,7 +318,13 @@ previous task, starting the case), who gets an error while the transaction rolls
 and nobody sees the diagnosis. Valtimo adds no such boundary itself (13.50; verified in its jars), and
 the step cannot add one for itself at run time. So a generate step is modelled `asyncBefore`: the
 demo processes are, a test keeps them so (`DemoGenerateStepsAreAsyncTest`), and the admin usage
-overview flags a generate step that is not.
+overview notes a generate step that is not.
+
+Rolling back is a legitimate alternative, not a mistake, and the plugin treats it as one an author may
+choose: the submit fails and keeps nothing, which suits a letter that is the point of the task and a
+cause the person submitting can fix. Measured on Valtimo 13.50, that person sees only Valtimo's
+generic _"An unexpected error occurred … referenceId"_ toast, and the diagnosis is in the server log
+under that id; docs/process-variables.md compares the two.
 
 **What reaches the engine is not what the step threw.** Found against a running Valtimo and Suite,
 after the tests above passed: every incident read _"Failed to invoke event listener method"_. Valtimo

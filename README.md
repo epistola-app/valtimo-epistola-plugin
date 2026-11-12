@@ -220,7 +220,7 @@ Implementation: `app.epistola.valtimo.deploy.EpistolaCatalogSyncTrigger` + `Cata
 
 The plugin enforces three layers of authorization on its REST endpoints:
 
-- **User-task endpoints** (`/preview`, `/retry-form`, `/documents/download`) require `OperatonTask:VIEW` on the supplied `taskId`. Process and case context are derived from that authorized task.
+- **User-task endpoints** (`/preview`, `/documents/download`) require `OperatonTask:VIEW` on the supplied `taskId`. Process and case context are derived from that authorized task.
 - **Admin endpoints** (`/admin/**`) require `EpistolaAdministration:MANAGE`. The plugin ships a default grant of this permission to `ROLE_ADMIN` via [`epistola-admin-default.permission.json`](backend/plugin/src/main/resources/config/epistola/permission/epistola-admin-default.permission.json) — override it in your application to assign the action to a different role.
 - **Configurator endpoints** (process-link configuration UI) are gated at the HTTP layer by `ROLE_ADMIN`, mirroring Valtimo's own process-link CRUD.
 
@@ -232,7 +232,6 @@ See [docs/authorization.md](docs/authorization.md) for the full endpoint matrix 
 | --------------------------- | --------------------------------------------------------------- | -------------------------------------------------------- |
 | `epistola-document`         | Render or download a PDF that has **already been generated**.   | [docs/document-component.md](docs/document-component.md) |
 | `epistola-document-preview` | Live preview of a document **before generation** (form-driven). | [docs/document-preview.md](docs/document-preview.md)     |
-| `epistola-retry-form`       | **Deprecated.** Correct the case and generate again instead.    | [docs/user-task-fallback.md](docs/user-task-fallback.md) |
 
 Using these inside a multi-step Valtimo Form Flow has its own rules — where to put the preview, where
 to generate, and how to read a field from an earlier step: see

@@ -1,8 +1,8 @@
 # Building Blocks for Epistola: Analysis
 
-> **Historical.** This analysis is about making the retry form reusable. The retry form is
-> deprecated since 0.21.0 and its auto-deployment (`EpistolaFormAutoDeployAspect`) is removed; a
-> failed generation is now handled by correcting the case and generating again, which needs no
+> **Historical.** This analysis is about making the retry form reusable. The retry form was
+> deprecated in 0.21.0 and removed in 1.0, along with its auto-deployment
+> (`EpistolaFormAutoDeployAspect`); a failed generation is now handled by correcting the case and generating again, which needs no
 > plugin form at all. See [user-task-fallback.md](user-task-fallback.md).
 
 ## What We Want to Achieve

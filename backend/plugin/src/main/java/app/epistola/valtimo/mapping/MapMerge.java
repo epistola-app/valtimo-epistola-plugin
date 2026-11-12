@@ -21,8 +21,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Merging of resolved template data. One implementation so a preview, a retry and a composed
- * letter all layer values the same way — a difference here would show up as a preview that does
+ * Merging of resolved template data. One implementation so a composed letter's preview and its
+ * generation layer values the same way — a difference here would show up as a preview that does
  * not match the document that follows.
  */
 public final class MapMerge {

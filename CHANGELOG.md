@@ -11,12 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Coming from 0.21.x?** Follow [Upgrading from 0.x to 1.0](docs/upgrading-from-0.x.md), a
   checklist of everything below and in the 1.0 pre-releases that applies to a 0.x installation.
-- **Mark every generate step `asyncBefore`** (_Asynchronous before_), for document generation and
-  for a composed letter alike. A refused generation raises an incident only when the step runs in a
-  job of its own; without one, the person completing the previous task (or starting the case) gets an
-  error, everything rolls back, and no incident is raised. Valtimo does not add the boundary. The
-  admin page's usage overview now flags a generate step without it, and the demo processes have it.
-  A process already running keeps the definition it started on, so the boundary you deploy protects
+- **Decide per generate step whether it is `asyncBefore`** (_Asynchronous before_), for document
+  generation and for a composed letter alike; it is the recommended default. A refused generation
+  raises an incident only when the step runs in a job of its own. Without one, the person completing
+  the previous task (or starting the case) sees Valtimo's generic "unexpected error" toast and their
+  submit rolls back, with no incident; that is a valid choice where they can fix the cause, and
+  [docs/process-variables.md](docs/process-variables.md) compares the two. Valtimo does not add the
+  boundary. The admin page's usage overview notes a generate step without it, and the demo processes
+  have it. A process already running keeps the definition it started on, so the boundary you deploy protects
   new instances only; the overview checks the latest definitions. Rehearsed from 0.21.0 on Suite
   1.5.1 to this version on Suite 2.0: a running process finished on its old definition (its bare
   catalog key resolved), a job submitted just before the upgrade was delivered after it, and letters
@@ -38,6 +40,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   JSONata. Older settings are read as the literals they meant and keep working unchanged; opening a
   composer in the form builder brings it to 4. An older plugin refuses schema-4 settings and letters,
   with a message naming both versions.
+- **The retry form is gone** (deprecated since 0.21.0). Correct the case and generate again instead,
+  as [docs/user-task-fallback.md](docs/user-task-fallback.md) describes. A form that still holds an
+  `epistola-retry-form` component shows nothing in its place; remove it. `generate-document` no
+  longer reads `epistolaEditedData`: a process that sets it gets the letter its mapping produces.
+  `epistola.retry-form.enabled: true` logs a warning and does nothing.
+- **`POST /preview` no longer takes `overrides`**, the merge after the mapping that only the retry
+  form sent. `inputOverrides`, which the document-preview component sends, is unchanged. A request
+  that still sends `overrides` has it ignored.
 
 ### Added
 
@@ -71,6 +81,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **The letter composer is stable.** What it stores (a component's settings in the form, and the
+  chosen letter on the process variable, at schema version 4) is now covered by 1.x: a later 1.x
+  release keeps reading it, and a change raises the schema version. Its palette entry no longer says
+  "(alpha)", and its settings no longer open with a warning.
+
 - **Every catalog is listed, whatever the environment.** A catalog not deployed to the link's or
   letter set's environment is marked in the list and can be chosen, with one warning that it will
   not render there until deployed, so a link can be configured before its catalog is rolled out.
@@ -94,6 +109,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   warns, as before. Nothing the plugin calls changed shape. The rest is outside what the plugin
   uses: paged `listAvailableCatalogReleases`, support-request permissions in place of feedback
   ones, per-resource consumer permission updates, bounded request inputs, and QR-code alt text.
+
+### Removed
+
+- **The retry form**: the `epistola-retry-form` Form.io component, `GET /retry-form`, the
+  `epistolaEditedData` and `epistolaSourceActivityId` variables it used, and the generation sources
+  behind it (ADR 0007). See Upgrading.
+- **`overrides` on `POST /preview`**. See Upgrading.
+- **The admin page's Forms tab** (`GET /admin/forms/legacy-override`), which listed forms whose
+  document preview still stores input overrides in the format from before JSONata. Such forms keep
+  working, and saving one in the form builder still converts it.
+- **`epistolaServerVersion` from `GET /admin/versions`**. It was always empty: a Suite's version is
+  per connection and comes with `/admin/health`.
 
 ### Fixed
 

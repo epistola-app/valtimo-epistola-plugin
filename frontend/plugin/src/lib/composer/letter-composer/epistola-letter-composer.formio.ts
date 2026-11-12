@@ -38,9 +38,7 @@ import {
 export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   type: 'epistola-letter-composer',
   selector: 'epistola-letter-composer-element',
-  // Alpha: the composer works, but its stored shapes may still change between releases. Saying so
-  // where an author picks it is the honest place — a changelog entry is not read at that moment.
-  title: 'Epistola Letter Composer (alpha)',
+  title: 'Epistola Letter Composer',
   group: 'basic',
   icon: 'envelope',
   emptyValue: null,
@@ -72,21 +70,6 @@ export const EPISTOLA_LETTER_COMPOSER_OPTIONS: FormioCustomComponentInfo = {
   },
   editForm: () => ({
     components: [
-      {
-        // An author choosing this component deserves to know before they build a case around it.
-        type: 'content',
-        key: 'epistolaComposerAlphaNotice',
-        html:
-          '<div style="border-left:4px solid #f1c21b;background:#fcf4d6;padding:.5rem .75rem;' +
-          'margin-bottom:1rem">' +
-          '<strong>Alpha.</strong> This component works and is safe to use, but the way it ' +
-          'saves its settings may still change. If that happens, a form you build now keeps ' +
-          'working — you may just need to reopen these settings once after an update and check ' +
-          'them. Your letters and your case data are never at risk.' +
-          '</div>',
-        weight: -10,
-        input: false,
-      },
       {
         type: 'textfield',
         key: 'key',

@@ -21,9 +21,9 @@
  * `ComposerSchema`, which is where the rule for reading it back is written.
  *
  * Two structures carry it: a component's settings in the form definition, and the composed letter
- * on the process variable. Both outlive the code that wrote them, and the composer is alpha, so
- * the version is what makes changing their shape safe: an older plugin refuses what a newer one
- * wrote rather than half-understanding it.
+ * on the process variable. Both outlive the code that wrote them, so the version is what makes
+ * changing their shape safe: an older plugin refuses what a newer one wrote rather than
+ * half-understanding it, and a newer one keeps reading every older version.
  *
  * Keep in step with `ComposerSchema.CURRENT`.
  */

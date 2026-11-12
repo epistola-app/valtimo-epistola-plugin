@@ -341,18 +341,6 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminVersionCheckedAt: 'Laatste controle op pluginupdates',
       epistolaAdminVersionRelease: 'Release',
       epistolaAdminVersionChangelog: 'Changelog',
-      epistolaAdminForms: 'Formulieren',
-      epistolaAdminFormName: 'Formulier',
-      epistolaAdminFormReadOnly: 'Alleen-lezen',
-      epistolaAdminFormReadOnlyHint:
-        'Dit formulier komt van het classpath en wordt bij een herstart vanuit de bron hersteld. Migreer daarom de formulierdefinitie in de bron.',
-      // TEMPORARY: legacy override-mapping format detection (admin "Forms" tab)
-      epistolaAdminLegacyOverrideTitle: 'Verouderd invoer-override formaat',
-      epistolaAdminLegacyOverrideIntro:
-        'Formulieren waarvan een document-voorbeeldcomponent de invoer-overrides nog als object opslaat ("form:"-verwijzingen) in plaats van als JSONata-expressie over $form. Ze blijven werken, maar worden pas naar het nieuwe formaat omgezet als je het formulier opnieuw opslaat in de formulierbouwer.',
-      epistolaAdminLegacyOverrideComponents: 'Verouderde componenten',
-      epistolaAdminNoLegacyOverride:
-        'Geen formulieren met het verouderde override-formaat gevonden.',
     },
     en: {
       title: 'Epistola Document Suite',
@@ -639,17 +627,6 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminVersionCheckedAt: 'Last plugin update check',
       epistolaAdminVersionRelease: 'Release',
       epistolaAdminVersionChangelog: 'Changelog',
-      epistolaAdminForms: 'Forms',
-      epistolaAdminFormName: 'Form',
-      epistolaAdminFormReadOnly: 'Read-only',
-      epistolaAdminFormReadOnlyHint:
-        'This form is deployed from the classpath and is restored from its source on restart. Migrate the source form definition instead.',
-      // TEMPORARY: legacy override-mapping format detection (admin "Forms" tab)
-      epistolaAdminLegacyOverrideTitle: 'Legacy input-override format',
-      epistolaAdminLegacyOverrideIntro:
-        'Forms whose document-preview component still stores input overrides as an object ("form:" references) instead of a JSONata expression over $form. They keep working, but only migrate to the new format once you re-save the form in the form builder.',
-      epistolaAdminLegacyOverrideComponents: 'Legacy components',
-      epistolaAdminNoLegacyOverride: 'No forms using the legacy override format found.',
     },
   },
 };

@@ -170,7 +170,7 @@ public class FormioFormGenerator {
     /**
      * An editor for a rich-text field, in the case's format: what the person types is what the case
      * keeps, and the conversion to Epistola's document happens on the way out. A value that is
-     * already a document — what was rendered, shown again on a retry form — is written back into
+     * already a document — a prefill the case holds as one — is written back into
      * that format so the editor shows text rather than JSON.
      *
      * <p>The component says which format its editor writes and which kind the field takes
@@ -191,7 +191,7 @@ public class FormioFormGenerator {
         if (field.description() != null && !field.description().isBlank()) {
             component.put("tooltip", field.description());
         }
-        // A value an editor tagged before — a retry form's earlier correction — is shown as typed.
+        // A value an editor tagged before — an earlier answer the case kept — is shown as typed.
         Object editorValue = richText.toEditorValue(RichTextValues.unwrap(value), kind);
         if (editorValue != null) {
             component.set("defaultValue", objectMapper.valueToTree(editorValue));

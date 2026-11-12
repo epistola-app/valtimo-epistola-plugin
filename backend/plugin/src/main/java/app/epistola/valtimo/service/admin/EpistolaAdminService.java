@@ -180,7 +180,7 @@ public class EpistolaAdminService {
      */
     public VersionInfo getVersions() {
         String pluginVersion = getPluginVersion();
-        return new VersionInfo(pluginVersion, null, versionCheckService.status(pluginVersion));
+        return new VersionInfo(pluginVersion, versionCheckService.status(pluginVersion));
     }
 
     private EpistolaService.SystemInfo fetchSystemInfo(EpistolaPlugin plugin) {
@@ -274,10 +274,11 @@ public class EpistolaAdminService {
                 String activityName = resolveActivityName(processDef.getId(), link.getActivityId());
                 String configTitle = resolveConfigurationTitle(link.getPluginConfigurationId());
                 List<String> problems = detectProblems(link, refCache);
+                List<String> notes = new ArrayList<>();
                 if (app.epistola.valtimo.domain.EpistolaProcessVariables.GENERATING_ACTION_KEYS
                                 .contains(link.getPluginActionDefinitionKey())
                         && !runsAsynchronously(processDef.getId(), link.getActivityId())) {
-                    problems.add(NO_ASYNC_BOUNDARY);
+                    notes.add(NO_ASYNC_BOUNDARY);
                 }
 
                 entries.add(new PluginUsageEntry(
@@ -291,7 +292,8 @@ public class EpistolaAdminService {
                         link.getPluginActionDefinitionKey(),
                         link.getPluginConfigurationId().toString(),
                         configTitle,
-                        problems
+                        problems,
+                        notes
                 ));
             }
         }
@@ -629,11 +631,13 @@ public class EpistolaAdminService {
     /**
      * A generate step that Epistola refuses raises an incident only when it runs in a job of its own:
      * without one the refusal goes back to whoever started the step (a task completed, a case started),
-     * who gets an error while the transaction rolls back, and no incident is raised (ADR 0009, third addendum).
+     * whose submit rolls back, and no incident is raised (ADR 0009, third addendum). That can be a
+     * deliberate choice, so it is a note, not a problem.
      */
-    static final String NO_ASYNC_BOUNDARY = "This step is not marked asynchronous before (asyncBefore): "
-            + "if Epistola refuses the generation, the person completing the previous step gets an error "
-            + "instead of an incident being raised. Mark the activity 'Asynchronous before' in the BPMN.";
+    static final String NO_ASYNC_BOUNDARY = "No async boundary (asyncBefore): if the generation cannot start, "
+            + "the person completing the previous step sees a generic error and their submit is rolled back, "
+            + "instead of an incident being raised. Fine if intended; otherwise mark the activity "
+            + "'Asynchronous before'.";
 
     /** Whether the activity starts a job of its own (asyncBefore); true when it cannot be told. */
     boolean runsAsynchronously(String processDefinitionId, String activityId) {

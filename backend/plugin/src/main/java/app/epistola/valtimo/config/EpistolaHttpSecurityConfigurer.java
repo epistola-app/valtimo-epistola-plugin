@@ -34,7 +34,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
  *       {@code ROLE_ADMIN} (the de-facto "process-link author" authority in Valtimo 13.21,
  *       since process-link CRUD itself requires ROLE_ADMIN).</li>
  *   <li><b>Controller layer (PBAC)</b> — fine-grained checks via {@code AuthorizationService}.
- *       Preview / retry-form bind the request to the supplied taskId's process and case
+ *       Preview binds the request to the supplied taskId's process and case
  *       document and require {@code OperatonTask:VIEW}; document download requires
  *       {@code OperatonTask:VIEW} on the supplied taskId. Admin endpoints check
  *       {@code EpistolaAdministration:MANAGE}.</li>
@@ -57,7 +57,7 @@ public class EpistolaHttpSecurityConfigurer implements HttpSecurityConfigurer {
                     .requestMatchers("/api/v1/plugin/epistola/validate-jsonata").hasAuthority("ROLE_ADMIN")
                     .requestMatchers("/api/v1/plugin/epistola/evaluate-mapping").hasAuthority("ROLE_ADMIN")
                     .requestMatchers("/api/v1/plugin/epistola/process-link-mapping").hasAuthority("ROLE_ADMIN")
-                    // All other Epistola endpoints (admin, preview, download, retry-form)
+                    // All other Epistola endpoints (admin, preview, download)
                     // authenticate at the HTTP layer; the controllers enforce PBAC.
                     .requestMatchers("/api/v1/plugin/epistola/**").authenticated()
             );

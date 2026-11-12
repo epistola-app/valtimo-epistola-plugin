@@ -28,7 +28,7 @@ import java.util.Map;
  * A letter a composer put on a process variable: the document, and what only a composer knows.
  *
  * <p>The same variable value read two ways. {@link DynamicDocument} is what it takes to render —
- * which the generate action and the retry form need, and which any process can write. This adds the
+ * which the generate action needs, and which any process can write. This adds the
  * one thing that exists only because a person filled a form: what they typed.
  *
  * <p>Two types rather than one with an optional field, because the optional field was doing the

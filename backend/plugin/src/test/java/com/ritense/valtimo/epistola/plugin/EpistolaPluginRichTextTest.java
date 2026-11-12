@@ -60,17 +60,14 @@ import static org.mockito.Mockito.when;
 
 /**
  * The generate actions with rich text (ADR 0008), through the client as it is wired, down to the
- * request Epistola receives. What a person typed into the plugin's editors — a retry form's
- * corrections, a composed letter — arrives tagged with its format and is sent as a document; what
- * a mapping produced is sent as mapped, because its author converts with {@code $richText}. A
- * conversion that fails lands on the process where its retry path can read it, naming the field,
- * never the text.
+ * request Epistola receives. What a person typed into the plugin's editors — a composed letter —
+ * arrives tagged with its format and is sent as a document; what a mapping produced is sent as
+ * mapped, because its author converts with {@code $richText}. A conversion that fails raises an
+ * incident naming the field, never the text.
  */
 class EpistolaPluginRichTextTest {
 
     private static final String HTML = "<p>Jansen, BSN <b>123456782</b></p>";
-    private static final String TAGGED_JSON = "{\"toelichting\": {\"$richText\": "
-            + "{\"format\": \"html\", \"kind\": \"BLOCK\", \"value\": \"" + HTML + "\"}}}";
 
     private EpistolaApiClientFactory factory;
     private GenerationApi generationApi;
@@ -134,19 +131,8 @@ class EpistolaPluginRichTextTest {
     }
 
     @Test
-    void sendsWhatARetryFormHadTypedAsADocument() {
-        when(execution.getVariable(EpistolaProcessVariables.EDITED_DATA)).thenReturn(TAGGED_JSON);
-
-        generate(plugin(RichTextFixtures.converter("html")));
-
-        assertThat(sent()).containsEntry("toelichting", document());
-    }
-
-    @Test
     void sendsAComposedLetterAsADocument() {
-        when(execution.getVariable(EpistolaProcessVariables.COMPOSED_LETTER)).thenReturn(Map.of(
-                "catalogId", "local/valtimo/catalog", "templateId", "besluit", "data", Map.of("toelichting",
-                        Map.of(RichTextValues.TAG, Map.of("format", "html", "kind", "BLOCK", "value", HTML)))));
+        givenAComposedLetterWithTypedText();
 
         plugin(RichTextFixtures.converter("html")).generateComposedDocument(execution, null, null, null,
                 "epistolaResult");
@@ -154,9 +140,15 @@ class EpistolaPluginRichTextTest {
         assertThat(sent()).containsEntry("toelichting", document());
     }
 
+    private void givenAComposedLetterWithTypedText() {
+        when(execution.getVariable(EpistolaProcessVariables.COMPOSED_LETTER)).thenReturn(Map.of(
+                "catalogId", "local/valtimo/catalog", "templateId", "besluit", "data", Map.of("toelichting",
+                        Map.of(RichTextValues.TAG, Map.of("format", "html", "kind", "BLOCK", "value", HTML)))));
+    }
+
     @Test
     @SuppressWarnings("unchecked")
-    void recordsAFailedConversionWhereTheProcessCanReadIt_withoutTheText() {
+    void aFailedConversionRaisesAnIncidentNamingTheField_withoutTheText() {
         RichTextFormat broken = new RichTextFormat() {
             @Override
             public String id() {
@@ -168,11 +160,12 @@ class EpistolaPluginRichTextTest {
                 throw new IllegalStateException("cannot parse " + value);
             }
         };
-        when(execution.getVariable(EpistolaProcessVariables.EDITED_DATA)).thenReturn(TAGGED_JSON);
+        givenAComposedLetterWithTypedText();
 
         // The text cannot become what the template takes: the step cannot start, an incident whose
         // text names the field and the format — never the text itself (ADR 0009, third addendum).
-        assertThatThrownBy(() -> generate(plugin(new RichTextConverter(List.of(broken), "html"))))
+        assertThatThrownBy(() -> plugin(new RichTextConverter(List.of(broken), "html"))
+                .generateComposedDocument(execution, null, null, null, "epistolaResult"))
                 .isInstanceOf(app.epistola.valtimo.service.DocumentGenerationRefusedException.class)
                 .hasMessageContaining("'toelichting'")
                 .hasMessageContaining("'html'")

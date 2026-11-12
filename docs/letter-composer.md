@@ -11,11 +11,10 @@ one offering three**, and adding a letter is one row in the component's settings
 
 Where its configuration lives, and why, is [ADR 0006](adr/0006-letter-composer-configuration.md).
 
-> **Alpha.** The composer works end to end and is covered by tests, but the shapes it stores may
-> still change between releases. What it stores carries a `schemaVersion` so a change is safe to
-> make — an older plugin refuses what a newer one wrote instead of misreading it (see
-> [What it stores](#what-it-stores)) — but a case built on it now may need revisiting. The palette
-> entry and the component's settings say so too, where an author will actually see it.
+> **Stable since 1.0.** What the composer stores is covered by 1.x: a later 1.x release keeps
+> reading it. What it stores carries a `schemaVersion`, so a change raises it and keeps reading the
+> older versions, and an older plugin refuses what a newer one wrote instead of misreading it (see
+> [What it stores](#what-it-stores)).
 
 ## It is a module of its own
 
@@ -869,11 +868,9 @@ the promise the composer makes. The rest are open.
   letter that names a variant would ignore it and render the default — a different document than
   the one approved — so `ComposerSchema.CURRENT` must be raised when it lands.
 
-- **A failed composed letter has no retry form.** `epistola-retry-form` rebuilds its inputs from a
-  `generate-document` link's own template and data mapping, and asks the employee to correct what
-  that mapping produced. A composed letter has neither: the template was chosen by the employee and
-  the data was resolved while they watched, both living on a process variable rather than in the
-  link. So the retry component finds no link and offers nothing.
+- **A failed composed letter cannot be corrected in place.** The template was chosen by the
+  employee and the data was resolved while they watched, both living on a process variable rather
+  than in a process link, so nothing rebuilds the letter for correction.
 
   Retrying a composed letter means composing it again — the same component, on a task the process
   routes to when generation fails, reading nothing from the previous attempt. That is a form the

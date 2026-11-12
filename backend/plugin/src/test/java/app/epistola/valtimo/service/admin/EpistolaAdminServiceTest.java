@@ -330,7 +330,6 @@ class EpistolaAdminServiceTest {
             VersionInfo info = adminService.getVersions();
 
             assertThat(info.pluginVersion()).isEqualTo("development");
-            assertThat(info.epistolaServerVersion()).isNull();
             verify(versionCheckService).status("development");
         }
     }
@@ -597,14 +596,15 @@ class EpistolaAdminServiceTest {
 
         @ParameterizedTest(name = "{0}")
         @org.junit.jupiter.params.provider.ValueSource(strings = {"camunda", "operaton"})
-        void flagsAGenerateStepWithoutAsyncBefore_becauseARefusalWouldNotRaiseAnIncident(String namespace) {
+        void notesAGenerateStepWithoutAsyncBefore_withoutCallingItAProblem(String namespace) {
             singleGenerateDocLink(createActionProps("cat-1", "tmpl-1"));
             when(repositoryService.getBpmnModelInstance(any())).thenReturn(bpmnWithServiceTask(namespace, false));
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenThrow(new RuntimeException("unreachable"));
 
-            assertThat(adminService.getPluginUsage().get(0).problems())
-                    .contains(EpistolaAdminService.NO_ASYNC_BOUNDARY);
+            var entry = adminService.getPluginUsage().get(0);
+            assertThat(entry.notes()).containsExactly(EpistolaAdminService.NO_ASYNC_BOUNDARY);
+            assertThat(entry.problems()).doesNotContain(EpistolaAdminService.NO_ASYNC_BOUNDARY);
         }
 
         @ParameterizedTest(name = "{0}")
@@ -615,8 +615,7 @@ class EpistolaAdminServiceTest {
             when(epistolaService.getCatalogs(BASE_URL, API_KEY, TENANT_ID, null))
                     .thenThrow(new RuntimeException("unreachable"));
 
-            assertThat(adminService.getPluginUsage().get(0).problems())
-                    .doesNotContain(EpistolaAdminService.NO_ASYNC_BOUNDARY);
+            assertThat(adminService.getPluginUsage().get(0).notes()).isEmpty();
         }
 
         @Test

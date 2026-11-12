@@ -84,7 +84,6 @@ class EpistolaGenerationResourceStartPreviewAuthorizationTest {
         var pluginService = mock(PluginService.class);
         var epistolaService = mock(EpistolaService.class);
         previewService = mock(app.epistola.valtimo.service.preview.PreviewService.class);
-        var retryFormService = mock(app.epistola.valtimo.service.form.RetryFormService.class);
         var jsonataMappingService = mock(app.epistola.valtimo.mapping.JsonataMappingService.class);
         documentService = mock(com.ritense.document.service.DocumentService.class);
         var objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
@@ -96,7 +95,7 @@ class EpistolaGenerationResourceStartPreviewAuthorizationTest {
         givenDeployedProcessDefinition(PROCESS_DEFINITION_ID);
 
         resource = new EpistolaGenerationResource(pluginService, epistolaService,
-                previewService, retryFormService, jsonataMappingService,
+                previewService, jsonataMappingService,
                 documentService, objectMapper, authorizationService, operatonTaskService,
                 mock(org.operaton.bpm.engine.RuntimeService.class), repositoryService,
                 new StartEventAuthorization(repositoryService, documentService, authorizationService));

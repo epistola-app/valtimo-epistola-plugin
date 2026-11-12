@@ -29,7 +29,6 @@ The HTTP layer is a coarse gate. The PBAC layer is where the real authorization 
 | Endpoint                                                   | HTTP gate     | PBAC check                                                                                                               |
 | ---------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `POST /api/v1/plugin/epistola/preview`                     | authenticated | `OperatonTask:VIEW` on `taskId`; process and case derived from task                                                      |
-| `GET /api/v1/plugin/epistola/retry-form`                   | authenticated | `OperatonTask:VIEW` on `taskId`; process and case derived from task                                                      |
 | `GET /api/v1/plugin/epistola/documents/download`           | authenticated | `OperatonTask:VIEW` on `taskId`; process and case derived from task                                                      |
 | `POST /api/v1/plugin/epistola/preview/start`               | authenticated | `OperatonExecution:CREATE` on the process definition; **plus** `JsonSchemaDocument:VIEW` when a `documentId` is supplied |
 | `GET /api/v1/plugin/epistola/admin/health`                 | authenticated | `EpistolaAdministration:MANAGE`                                                                                          |
@@ -51,7 +50,7 @@ Configuration:
 
 ## User-task endpoints
 
-`/preview`, `/retry-form`, and `/documents/download` are designed to be called from inside a user task form. The current principal must have `OperatonTask:VIEW` permission on `taskId`. The controller then derives the process instance and case document from that task, so the caller cannot combine an authorized task with another case's identity.
+`/preview` and `/documents/download` are designed to be called from inside a user task form. The current principal must have `OperatonTask:VIEW` permission on `taskId`. The controller then derives the process instance and case document from that task, so the caller cannot combine an authorized task with another case's identity.
 
 ### `/documents/download`
 
@@ -203,7 +202,7 @@ There is no `ProcessLink` PBAC action in Valtimo 13.21, so `ROLE_ADMIN` is the d
 
 ## Frontend implications
 
-The `epistola-document`, `epistola-document-preview`, and `epistola-retry-form` Formio components rely on knowing the active `taskInstanceId` so they can construct correctly-bound calls. Because Angular Elements bootstrap their own injector tree, the components cannot reach Valtimo's `TaskDetailContentComponent` via DI, and no Valtimo service exposes the task id to a custom Formio component at runtime.
+The `epistola-document` and `epistola-document-preview` Formio components rely on knowing the active `taskInstanceId` so they can construct correctly-bound calls. Because Angular Elements bootstrap their own injector tree, the components cannot reach Valtimo's `TaskDetailContentComponent` via DI, and no Valtimo service exposes the task id to a custom Formio component at runtime.
 
 The task id is delivered through **server-side form prefill**. The plugin registers a value resolver (`EpistolaTaskValueResolverFactory`, prefix `epistola:`) that exposes the current task's id during form prefill — Valtimo's `PrefillFormService` passes the `OperatonTask` itself as the resolver's `VariableScope`. Each component embeds a hidden carrier field with `properties.sourceKey: "epistola:taskId"`, which is therefore filled with the task id server-side; the components read it back from the prefilled form (`readPrefilledTaskId`). Embedding the carrier in the component's default `schema` is necessary but **not sufficient** — Formio's serializer drops schema that equals the registered default, so each task-bound component is additionally wrapped in `withPrefilledTaskIdCarrier` to keep the carrier in the saved form; see [Formio components](formio-components.md). This works in **every** task-open flow — both the direct task-open call and the task-list/case-detail flow that bulk-fetches process links and never issues the per-task call. (An earlier approach sniffed the per-task `GET /api/v2/process-link/task/{taskId}` call via an HTTP interceptor; it only worked in the direct-open flow and has been removed in favour of prefill.)
 

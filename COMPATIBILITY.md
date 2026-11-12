@@ -118,7 +118,7 @@ global `epistola.enabled` gate.
 
 ## Form-prefill dependency (task-context delivery)
 
-The Formio components (preview, download, retry-form) obtain the active user task id via a plugin
+The task-bound Formio components (preview, download) obtain the active user task id via a plugin
 `ValueResolverFactory` (`com.ritense.valueresolver.ValueResolverFactory`, prefix `epistola:`)
 that runs during Valtimo's server-side form prefill. This relies on two stable behaviours present
 across the supported range: the public value-resolver SPI, and `PrefillFormService` passing the

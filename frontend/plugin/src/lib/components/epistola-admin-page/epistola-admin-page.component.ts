@@ -31,7 +31,6 @@ import {
   ClasspathCatalog,
   ConnectionStatus,
   ContractCompatibilitySeverity,
-  LegacyOverrideForm,
   PendingJob,
   PluginUsageEntry,
   VersionCheckStatus,
@@ -68,8 +67,7 @@ export class EpistolaAdminPageComponent implements OnInit {
   cards: ConfigurationCard[] = [];
   selectedCard: ConfigurationCard | null = null;
   activeTab: 'actions' | 'pending' | 'catalogs' = 'actions';
-  // NOTE: the 'forms' tab is temporary while legacy override mappings are still supported.
-  overviewTab: 'configurations' | 'validations' | 'changelog' | 'forms' = 'configurations';
+  overviewTab: 'configurations' | 'validations' | 'changelog' = 'configurations';
   loading = false;
   pluginVersion: string | null = null;
   pluginContractVersion: string | null = null;
@@ -93,10 +91,6 @@ export class EpistolaAdminPageComponent implements OnInit {
     message: string;
   } | null = null;
 
-  // TEMPORARY: forms still using the legacy override-mapping object format.
-  legacyOverrideForms: LegacyOverrideForm[] | null = null;
-  legacyOverrideLoading = false;
-
   private connectionStatuses: ConnectionStatus[] = [];
   private usageEntries: PluginUsageEntry[] = [];
   private pendingJobs: PendingJob[] = [];
@@ -119,16 +113,6 @@ export class EpistolaAdminPageComponent implements OnInit {
   /** Scan cadence in whole minutes, for the "refreshes every N min" note. */
   get refreshIntervalMinutes(): number {
     return Math.round((this.validationReport?.refreshIntervalMs ?? 600000) / 60000);
-  }
-
-  /** Forms that still need their legacy override mapping migrated. */
-  get formsAttentionCount(): number {
-    return this.legacyOverrideForms?.length ?? 0;
-  }
-
-  /** Whether the legacy override scan has completed. */
-  get formsScanLoaded(): boolean {
-    return this.legacyOverrideForms !== null;
   }
 
   ngOnInit(): void {
@@ -285,30 +269,11 @@ export class EpistolaAdminPageComponent implements OnInit {
     this.updateUrl(this.selectedCard?.configurationId ?? null, tab);
   }
 
-  setOverviewTab(tab: 'configurations' | 'validations' | 'changelog' | 'forms'): void {
+  setOverviewTab(tab: 'configurations' | 'validations' | 'changelog'): void {
     this.overviewTab = tab;
     if (tab === 'changelog' && this.changelog === null && !this.changelogLoading) {
       this.loadChangelog();
     }
-    if (tab === 'forms' && this.legacyOverrideForms === null && !this.legacyOverrideLoading) {
-      this.loadLegacyOverrideForms();
-    }
-  }
-
-  // ---- TEMPORARY: legacy override-mapping format detection ----
-
-  private loadLegacyOverrideForms(): void {
-    this.legacyOverrideLoading = true;
-    this.adminService.getLegacyOverrideForms().subscribe({
-      next: (forms) => {
-        this.legacyOverrideForms = forms;
-        this.legacyOverrideLoading = false;
-      },
-      error: () => {
-        this.legacyOverrideForms = [];
-        this.legacyOverrideLoading = false;
-      },
-    });
   }
 
   private loadChangelog(): void {

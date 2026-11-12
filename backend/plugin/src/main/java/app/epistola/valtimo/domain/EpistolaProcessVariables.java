@@ -46,12 +46,6 @@ public final class EpistolaProcessVariables {
     /** Tenant ID of the Epistola instance that handled the request. */
     public static final String TENANT_ID = "epistolaTenantId";
 
-    /** JSON string with user-edited data from the retry form. Consumed and cleared by generate-document on retry. */
-    public static final String EDITED_DATA = "epistolaEditedData";
-
-    /** BPMN input parameter on the retry user task identifying the source generate-document activity. */
-    public static final String SOURCE_ACTIVITY_ID = "epistolaSourceActivityId";
-
     /** BPMN message name correlated when document generation completes. */
     public static final String MESSAGE_NAME = "EpistolaDocumentGenerated";
 

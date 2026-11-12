@@ -112,7 +112,6 @@ describe('EpistolaDocumentPreviewComponent', () => {
         taskId: 'task-1',
         sourceActivityId: 'generate-decision',
         inputOverrides: { pv: { decision: 'approved' } },
-        overrides: null,
       });
       expect(epistolaPluginService.previewStartToBlob).not.toHaveBeenCalled();
     });

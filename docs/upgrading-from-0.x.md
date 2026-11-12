@@ -39,11 +39,14 @@ just before the upgrade was delivered after it, and letters generated before it 
 
 ## Process links and processes
 
-- [ ] **Mark every generate step `asyncBefore`** (_Asynchronous before_ in the modeler), for
-      `generate-document` and for a composed letter. This was already needed in 0.x for a failure to
-      become an incident; without it the person completing the previous task gets an error and their
-      work rolls back. The admin page's usage overview now flags a generate step without it. A process
-      already running keeps the definition it started on, so the boundary protects new instances only.
+- [ ] **Decide per generate step whether it is `asyncBefore`** (_Asynchronous before_ in the
+      modeler), for `generate-document` and for a composed letter. This is unchanged from 0.x. With
+      it, a failure becomes an incident an administrator retries. Without it, the person completing
+      the previous task sees Valtimo's generic error and their submit rolls back. Both are valid;
+      [process-variables.md](process-variables.md) compares them, and `asyncBefore` is the
+      recommended default. The admin page's usage overview now notes a generate step without it. A
+      process already running keeps the definition it started on, so a boundary you add protects new
+      instances only.
 - [ ] **Check v1 links whose environment or variant is an expression.** An expression that produces
       no value (`$pv.omgeving` on a case without that variable, `someEnv` without quotes) used to fall
       back silently to the plugin's default environment or the template's default variant. It now
@@ -63,17 +66,26 @@ just before the upgrade was delivered after it, and letters generated before it 
       listener method"_, a Valtimo defect described in
       [valtimo-upstream-issues.md](valtimo-upstream-issues.md).
 
-## Letter composer (alpha)
+## Forms
 
-- [ ] **Settings migrate on their own.** Composer settings move to schema version 4 (environment and
-      ranges as JSONata). Older settings are read as the literals they meant; opening a composer in
-      the form builder brings it to 4.
+- [ ] **Remove the retry form, if you still use it.** It was deprecated in 0.21 and is gone in 1.0:
+      the `epistola-retry-form` component shows nothing, and `generate-document` no longer reads
+      `epistolaEditedData`, so a process that still sets it gets the letter its mapping produces.
+      Correct the case and generate again instead, as [user-task-fallback.md](user-task-fallback.md)
+      describes. `epistola.retry-form.enabled: true` only logs a warning now.
+- [ ] **Letter composer settings migrate on their own.** They move to schema version 4 (environment
+      and ranges as JSONata). Older settings are read as the literals they meant; opening a composer
+      in the form builder brings it to 4. The composer is no longer alpha: from 1.0 what it stores is
+      covered by 1.x.
+- [ ] **Nothing to do for document previews.** A preview whose input overrides are still in the
+      format from before JSONata keeps working; saving its form in the builder converts it. The
+      admin page no longer lists such forms.
 
 ## After the upgrade
 
 - [ ] Open the plugin's **admin page**: the health tab shows each connection's Suite version and
-      contract, and the usage overview shows bare catalog keys, generate steps without `asyncBefore`
-      and catalogs not deployed to a link's environment.
+      contract, and the usage overview shows bare catalog keys and catalogs not deployed to a link's
+      environment, and notes generate steps without `asyncBefore`.
 - [ ] Generate one letter per catalog in each environment you use.
 
 ## Rolling back
@@ -83,5 +95,7 @@ stored at a composer schema that 0.21 refuses (with a message naming both versio
 task waits until the upgrade is redone. Rolling the Suite back is governed by the Suite's own
 upgrade notes.
 
-If you scripted the admin API's catalog redeploy, note that it now reports the installed release
-(`catalogId`, `newlyInstalled`, `total`) instead of per-resource counts.
+If you scripted against the plugin's REST API, note that the admin catalog redeploy now reports the
+installed release (`catalogId`, `newlyInstalled`, `total`) instead of per-resource counts,
+`GET /admin/versions` no longer has `epistolaServerVersion`, `GET /retry-form` and
+`GET /admin/forms/legacy-override` are gone, and `POST /preview` ignores `overrides`.

@@ -27,7 +27,6 @@ import app.epistola.valtimo.deployment.EpistolaCatchEventLinkResolver;
 import app.epistola.valtimo.deployment.EpistolaCatchEventParseListener;
 import app.epistola.valtimo.deployment.EpistolaProcessDefinitionValidator;
 import app.epistola.valtimo.deployment.EpistolaProcessEnginePlugin;
-import app.epistola.valtimo.service.admin.EpistolaLegacyOverrideScanService; // TEMPORARY
 import app.epistola.valtimo.service.completion.EpistolaCatchEventStartListener;
 import app.epistola.valtimo.expression.EpistolaExpressionFunction;
 import app.epistola.valtimo.expression.ExpressionFunctionRegistry;
@@ -59,7 +58,6 @@ import app.epistola.valtimo.service.EpistolaService;
 import app.epistola.valtimo.service.EpistolaServiceImpl;
 import app.epistola.valtimo.service.form.FormioFormGenerator;
 import app.epistola.valtimo.service.suggestion.ProcessVariableDiscoveryService;
-import app.epistola.valtimo.service.form.RetryFormService;
 import app.epistola.valtimo.valueresolver.EpistolaTaskValueResolverFactory;
 import app.epistola.valtimo.web.rest.EpistolaAdminResource;
 import app.epistola.valtimo.web.rest.EpistolaGenerationResource;
@@ -299,55 +297,6 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnMissingBean(RetryFormService.class)
-    public RetryFormService retryFormService(
-            PluginService pluginService,
-            EpistolaService epistolaService,
-            RuntimeService runtimeService,
-            TaskService taskService,
-            ProcessLinkService processLinkService,
-            JsonataMappingService jsonataMappingService,
-            com.ritense.document.service.DocumentService documentService,
-            FormioFormGenerator formioFormGenerator,
-            java.util.List<app.epistola.valtimo.service.generation.GenerationSubjectSource>
-                    generationSubjectSources,
-            ObjectMapper objectMapper
-    ) {
-        return new RetryFormService(pluginService, epistolaService, runtimeService,
-                taskService, processLinkService, jsonataMappingService, documentService,
-                formioFormGenerator, generationSubjectSources, objectMapper);
-    }
-
-    /**
-     * Where a generation activity's template and data come from, one bean per kind of activity.
-     *
-     * <p>Injected as a list so adding a source is adding a bean: the retry form picks the one whose
-     * {@code supports} matches the activity's action, and nothing else has to be edited (ADR 0007).
-     */
-    @Bean
-    @ConditionalOnMissingBean(
-            app.epistola.valtimo.service.generation.ProcessLinkGenerationSource.class)
-    public app.epistola.valtimo.service.generation.ProcessLinkGenerationSource
-            processLinkGenerationSource(
-            JsonataMappingService jsonataMappingService,
-            RuntimeService runtimeService,
-            com.ritense.document.service.DocumentService documentService,
-            ObjectMapper objectMapper
-    ) {
-        return new app.epistola.valtimo.service.generation.ProcessLinkGenerationSource(
-                jsonataMappingService, runtimeService, documentService, objectMapper);
-    }
-
-    @Bean
-    @ConditionalOnMissingBean(
-            app.epistola.valtimo.service.generation.DynamicDocumentGenerationSource.class)
-    public app.epistola.valtimo.service.generation.DynamicDocumentGenerationSource
-            dynamicDocumentGenerationSource(RuntimeService runtimeService, ObjectMapper objectMapper) {
-        return new app.epistola.valtimo.service.generation.DynamicDocumentGenerationSource(
-                runtimeService, objectMapper);
-    }
-
-    @Bean
     @ConditionalOnMissingBean(app.epistola.valtimo.service.preview.PreviewService.class)
     public app.epistola.valtimo.service.preview.PreviewService previewService(
             PluginService pluginService,
@@ -399,7 +348,6 @@ public class EpistolaPluginAutoConfiguration {
             PluginService pluginService,
             EpistolaService epistolaService,
             app.epistola.valtimo.service.preview.PreviewService previewService,
-            RetryFormService retryFormService,
             JsonataMappingService jsonataMappingService,
             com.ritense.document.service.DocumentService documentService,
             ObjectMapper objectMapper,
@@ -410,7 +358,7 @@ public class EpistolaPluginAutoConfiguration {
             app.epistola.valtimo.web.rest.StartEventAuthorization startEventAuthorization
     ) {
         return new EpistolaGenerationResource(pluginService, epistolaService,
-                previewService, retryFormService, jsonataMappingService,
+                previewService, jsonataMappingService,
                 documentService, objectMapper, authorizationService, operatonTaskService,
                 runtimeService, repositoryService, startEventAuthorization);
     }
@@ -507,11 +455,9 @@ public class EpistolaPluginAutoConfiguration {
     @ConditionalOnMissingBean(EpistolaAdminResource.class)
     public EpistolaAdminResource epistolaAdminResource(
             EpistolaAdminService adminService,
-            com.ritense.authorization.AuthorizationService authorizationService,
-            // TEMPORARY: drop with the legacy override-format scan.
-            EpistolaLegacyOverrideScanService legacyOverrideScanService
+            com.ritense.authorization.AuthorizationService authorizationService
     ) {
-        return new EpistolaAdminResource(adminService, authorizationService, legacyOverrideScanService);
+        return new EpistolaAdminResource(adminService, authorizationService);
     }
 
     @Bean
@@ -586,24 +532,13 @@ public class EpistolaPluginAutoConfiguration {
     }
 
     /**
-     * The retry form's auto-deployment is gone (the retry form is deprecated), so a setting that
-     * still asks for it does nothing. Said once at startup rather than silently ignored.
+     * The retry form was removed in 1.0, so a setting that still asks for it does nothing. Said
+     * once at startup rather than silently ignored.
      */
     @Bean
     @ConditionalOnProperty(name = "epistola.retry-form.enabled", havingValue = "true")
     public org.springframework.beans.factory.SmartInitializingSingleton epistolaRetryFormSettingIgnored() {
-        return () -> log.warn("epistola.retry-form.enabled no longer deploys the epistola-retry-document form:"
-                + " the retry form is deprecated and its auto-deployment was removed. Add the form to the case"
-                + " yourself if you still use it; see docs/user-task-fallback.md.");
-    }
-
-    // TEMPORARY: admin-page detection of forms still using the legacy override-mapping object
-    // format. See EpistolaLegacyOverrideScanService.
-    @Bean
-    @ConditionalOnMissingBean(EpistolaLegacyOverrideScanService.class)
-    public EpistolaLegacyOverrideScanService epistolaLegacyOverrideScanService(
-            com.ritense.form.repository.FormDefinitionRepository formDefinitionRepository
-    ) {
-        return new EpistolaLegacyOverrideScanService(formDefinitionRepository);
+        return () -> log.warn("epistola.retry-form.enabled does nothing: the retry form was removed in 1.0."
+                + " Correct the case and generate again instead; see docs/user-task-fallback.md.");
     }
 }

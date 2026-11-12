@@ -322,45 +322,22 @@ public class EpistolaPlugin {
         boolean hasVariantId = actionConfig.variantId().isConfigured();
         boolean hasAttributes = !actionConfig.variantAttributes().isEmpty();
 
-        // Check if this is a retry with user-edited data from the fallback form.
-        Object rawEditedData = execution.getVariable(EpistolaProcessVariables.EDITED_DATA);
-        String editedDataJson = rawEditedData instanceof String s ? s : null;
-        boolean isRetry = editedDataJson != null && !editedDataJson.isBlank();
-
-        // Never the value: it is the letter's data as a person corrected it — names, identifiers,
-        // the text of a decision (CLAUDE.md, "Never log personal data").
-        log.debug("generate-document retry check: variable='{}', exists={}, isRetry={}, type={}",
-                EpistolaProcessVariables.EDITED_DATA, rawEditedData != null, isRetry,
-                rawEditedData != null ? rawEditedData.getClass().getSimpleName() : "null");
-
+        // Evaluate JSONata expression to produce the template data
+        var evalCtx = app.epistola.valtimo.mapping.EvaluationContext.builder()
+                .expression(actionConfig.dataMapping())
+                .documentResolver(this::loadDocumentContent)
+                .processVariableResolver(execution::getVariable)
+                .processVariableEnumerator(execution::getVariables)
+                .execution(execution)
+                .documentId(execution.getBusinessKey())
+                .operation("execution")
+                .extraBindings(PluginBinding.of(defaultEnvironmentId))
+                .build();
         Map<String, Object> resolvedData;
-        if (isRetry) {
-            log.debug("Retry detected: using edited data from '{}' process variable", EpistolaProcessVariables.EDITED_DATA);
-            try {
-                resolvedData = objectMapper.readValue(editedDataJson, MAP_TYPE);
-            } catch (Exception e) {
-                throw new IllegalStateException(
-                        "Failed to parse '" + EpistolaProcessVariables.EDITED_DATA + "' process variable as JSON", e);
-            }
-            // Clear the edited data so subsequent non-retry invocations resolve normally
-            execution.removeVariable(EpistolaProcessVariables.EDITED_DATA);
-        } else {
-            // Evaluate JSONata expression to produce the template data
-            var evalCtx = app.epistola.valtimo.mapping.EvaluationContext.builder()
-                    .expression(actionConfig.dataMapping())
-                    .documentResolver(this::loadDocumentContent)
-                    .processVariableResolver(execution::getVariable)
-                    .processVariableEnumerator(execution::getVariables)
-                    .execution(execution)
-                    .documentId(execution.getBusinessKey())
-                    .operation("execution")
-                    .extraBindings(PluginBinding.of(defaultEnvironmentId))
-                    .build();
-            try {
-                resolvedData = actionConfig.evaluateDataMapping(jsonataMappingService, evalCtx);
-            } catch (GenerateDocumentExpressionException e) {
-                throw refusedBy(e);
-            }
+        try {
+            resolvedData = actionConfig.evaluateDataMapping(jsonataMappingService, evalCtx);
+        } catch (GenerateDocumentExpressionException e) {
+            throw refusedBy(e);
         }
 
         var scalarEvalContext = buildEvalCtx(execution, null);

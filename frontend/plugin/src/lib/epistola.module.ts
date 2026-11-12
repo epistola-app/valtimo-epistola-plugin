@@ -31,7 +31,6 @@ import { GenerateDocumentConfigurationComponent } from './components/generate-do
 import { CheckJobStatusConfigurationComponent } from './components/check-job-status-configuration/check-job-status-configuration.component';
 import { DownloadDocumentConfigurationComponent } from './components/download-document-configuration/download-document-configuration.component';
 import { EpistolaDocumentComponent } from './components/epistola-document/epistola-document.component';
-import { EpistolaRetryFormComponent } from './components/epistola-retry-form/epistola-retry-form.component';
 import { EpistolaDocumentPreviewComponent } from './components/epistola-document-preview/epistola-document-preview.component';
 import { EpistolaAdminPageComponent } from './components/epistola-admin-page/epistola-admin-page.component';
 import { EpistolaPluginService, EpistolaAdminService, EpistolaMenuService } from './services';
@@ -53,7 +52,6 @@ import { EpistolaRegistrationService } from './services/epistola-registration.se
     CheckJobStatusConfigurationComponent,
     DownloadDocumentConfigurationComponent,
     EpistolaDocumentComponent,
-    EpistolaRetryFormComponent,
     EpistolaDocumentPreviewComponent,
     EpistolaAdminPageComponent,
   ],

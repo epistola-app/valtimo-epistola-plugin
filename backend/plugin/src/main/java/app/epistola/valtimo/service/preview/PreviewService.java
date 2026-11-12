@@ -22,7 +22,6 @@ import app.epistola.valtimo.logging.Failures;
 import app.epistola.valtimo.service.EpistolaService;
 
 import app.epistola.valtimo.mapping.JsonataMappingService;
-import app.epistola.valtimo.mapping.MapMerge;
 import app.epistola.valtimo.web.rest.dto.PreviewRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -80,8 +79,7 @@ public class PreviewService {
                 documentId,
                 processInstanceId,
                 request.sourceActivityId(),
-                request.inputOverrides(),
-                request.overrides()));
+                request.inputOverrides()));
     }
 
     /**
@@ -107,7 +105,7 @@ public class PreviewService {
                                             String sourceActivityId,
                                             Map<String, Map<String, Object>> inputOverrides) {
         return render(new PreviewContext(
-                processDefinitionId, documentId, null, sourceActivityId, inputOverrides, null));
+                processDefinitionId, documentId, null, sourceActivityId, inputOverrides));
     }
 
     private InputStream render(PreviewContext ctx) {
@@ -181,12 +179,6 @@ public class PreviewService {
             resolvedData = actionConfig.evaluateDataMapping(jsonataMappingService, evalCtxBuilder.build());
         } catch (app.epistola.valtimo.action.generate.GenerateDocumentExpressionException e) {
             throw expressionFailed(e);
-        }
-
-        // Deep-merge with output-level overrides (overrides win) — used by retry-form.
-        // Always null on the start path: StartPreviewRequest carries no such field.
-        if (ctx.outputOverrides() != null && !ctx.outputOverrides().isEmpty()) {
-            resolvedData = deepMerge(resolvedData, ctx.outputOverrides());
         }
 
         var scalarEvalContext = evalCtxBuilder.build();
@@ -302,10 +294,6 @@ public class PreviewService {
                 .orElse(null);
     }
 
-    /** Kept as a thin alias: the merge itself lives in {@link MapMerge} so every caller shares it. */
-    static Map<String, Object> deepMerge(Map<String, Object> base, Map<String, Object> overrides) {
-        return MapMerge.deepMerge(base, overrides);
-    }
 
     /**
      * Exception thrown when a preview cannot be generated.

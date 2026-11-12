@@ -39,7 +39,6 @@ export type ContractCompatibilitySeverity = 'OK' | 'WARNING' | 'ERROR' | 'UNKNOW
  */
 export interface VersionInfo {
   pluginVersion: string;
-  epistolaServerVersion?: string;
   versionCheck: VersionCheckStatus;
 }
 
@@ -102,6 +101,8 @@ export interface PluginUsageEntry {
   configurationId: string;
   configurationTitle: string;
   problems: string[];
+  /** Choices worth knowing about that may be deliberate; not problems. Absent from older backends. */
+  notes?: string[];
 }
 
 /**
@@ -197,18 +198,4 @@ export interface BpmnValidationReport {
   lastCheckedAt: string | null;
   refreshIntervalMs: number;
   violations: BpmnValidationViolation[];
-}
-
-/**
- * TEMPORARY. A form whose `epistola-document-preview` components still use the legacy
- * override-mapping object format (`{ scope: { path: "form:key" } }`) instead of the new
- * JSONata string over `$form`. Surfaced on the admin page so it can be re-saved in the
- * form builder, which migrates it. `readOnly` flags classpath-deployed forms (migrate
- * the source instead).
- */
-export interface LegacyOverrideForm {
-  formId: string;
-  name: string;
-  legacyComponents: number;
-  readOnly: boolean;
 }

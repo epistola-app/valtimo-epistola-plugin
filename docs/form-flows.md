@@ -1,8 +1,8 @@
 # Epistola in Valtimo Form Flows
 
 A Form Flow splits one user task across several screens. Epistola's task-bound components —
-[`epistola-document-preview`](document-preview.md), [`epistola-document`](document-component.md) and
-`epistola-retry-form` — work on any of those screens, because Valtimo's server-side prefill fills
+[`epistola-document-preview`](document-preview.md) and [`epistola-document`](document-component.md)
+— work on any of those screens, because Valtimo's server-side prefill fills
 their hidden task-id carrier on every step (see [formio-components.md](formio-components.md)).
 
 What changes in a Form Flow is **where data lives**. This page covers the four things that are easy

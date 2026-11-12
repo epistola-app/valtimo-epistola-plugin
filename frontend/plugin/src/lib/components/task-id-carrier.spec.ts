@@ -73,9 +73,6 @@ jest.mock('./epistola-document-preview/epistola-document-preview.component', () 
 jest.mock('./epistola-document/epistola-document.component', () => ({
   EpistolaDocumentComponent: class {},
 }));
-jest.mock('./epistola-retry-form/epistola-retry-form.component', () => ({
-  EpistolaRetryFormComponent: class {},
-}));
 jest.mock('../composer/letter-composer/epistola-letter-composer.component', () => ({
   EpistolaLetterComposerComponent: class {},
 }));
@@ -83,7 +80,6 @@ jest.mock('../composer/letter-composer/epistola-letter-composer.component', () =
 import { Components } from 'formiojs';
 import { registerEpistolaDocumentPreviewComponent } from './epistola-document-preview/epistola-document-preview.formio';
 import { registerEpistolaDocumentComponent } from './epistola-document/epistola-document.formio';
-import { registerEpistolaRetryFormComponent } from './epistola-retry-form/epistola-retry-form.formio';
 import { registerEpistolaLetterComposerComponent } from '../composer/letter-composer/epistola-letter-composer.formio';
 import { COMPOSER_SCHEMA_VERSION } from '../composer/composer-schema';
 import {
@@ -91,11 +87,7 @@ import {
   PREFILLED_TASK_ID_SOURCE_KEY,
 } from '../services/prefilled-task-id';
 
-const TASK_BOUND_TYPES = [
-  'epistola-document-preview',
-  'epistola-document',
-  'epistola-retry-form',
-] as const;
+const TASK_BOUND_TYPES = ['epistola-document-preview', 'epistola-document'] as const;
 
 function carriersOf(schema: any): any[] {
   const components = Array.isArray(schema?.components) ? schema.components : [];
@@ -120,7 +112,6 @@ describe('prefilled task-id carrier survives Formio schema serialization', () =>
     const injector: any = {};
     registerEpistolaDocumentPreviewComponent(injector);
     registerEpistolaDocumentComponent(injector);
-    registerEpistolaRetryFormComponent(injector);
   });
 
   describe.each(TASK_BOUND_TYPES)('%s', (type) => {
@@ -140,7 +131,7 @@ describe('prefilled task-id carrier survives Formio schema serialization', () =>
     });
 
     it('does not duplicate a carrier the stored form already has', () => {
-      // Hand-authored forms (e.g. the classpath retry form) already carry it.
+      // A hand-authored form may already carry it.
       const schema = persistedSchemaOf(type, {
         type,
         key: 'alreadyAuthored',
@@ -314,16 +305,15 @@ describe('document-id carrier (start-event preview)', () => {
     expect(documentCarriersOf(schema)).toHaveLength(1);
   });
 
-  /** The other two task-bound components have no use for it and must not grow one. */
-  it('is not added to the download or retry-form components', () => {
-    const injector: any = {};
-    registerEpistolaDocumentComponent(injector);
-    registerEpistolaRetryFormComponent(injector);
+  /** The other task-bound component has no use for it and must not grow one. */
+  it('is not added to the download component', () => {
+    registerEpistolaDocumentComponent({} as any);
 
-    for (const type of ['epistola-document', 'epistola-retry-form']) {
-      const schema = persistedSchemaOf(type, paletteDropPayloadFor(type));
-      expect(documentCarriersOf(schema)).toHaveLength(0);
-    }
+    const schema = persistedSchemaOf(
+      'epistola-document',
+      paletteDropPayloadFor('epistola-document'),
+    );
+    expect(documentCarriersOf(schema)).toHaveLength(0);
   });
 });
 
