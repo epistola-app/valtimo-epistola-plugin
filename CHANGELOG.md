@@ -95,6 +95,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without the range) where the link would render nothing, and reports why. Templates, fields,
   variants and attributes are all read from that one release.
 
+- **Epistola contract client `2.0.0-rc.2` → `2.0.0`, the released contract**
+  (`client-spring3-restclient`, `epistola-catalog`, and the mock server in
+  `docker/docker-compose.yml`). The API is the same as rc.2; only dependencies changed. The oldest
+  supported server is now contract `2.0.0` itself (`oldestSupportedServerTest`), and a Suite serving
+  any 2.0 pre-release gets the admin page's warning. Both additions of rc.2 stay optional in 2.0.0
+  (a Suite may answer `listCatalogTemplates` with 501, and `missing` may be absent), so the plugin
+  keeps its fallbacks for them. Suite 2.0.0 is not released yet; Suite `main` serves rc.2, which has
+  the same API.
 - **Epistola contract client `2.0.0-rc.1` → `2.0.0-rc.2`** (`client-spring3-restclient`,
   `epistola-catalog`, and the mock server in `docker/docker-compose.yml`). rc.2 adds two things the
   plugin now uses when the Suite offers them: `listCatalogTemplates`, which lists a catalog's templates

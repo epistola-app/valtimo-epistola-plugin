@@ -43,15 +43,15 @@ bundled classpath catalogs it imports carry a catalog **wire `schemaVersion`**, 
 gates imports against its own `[baseline, current]` window. A catalog below the suite's baseline
 is rejected with RFC-9457 `400 catalog-schema-too-old`.
 
-| Plugin build  | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema           | Compatible Epistola Suite                                                                    |
-| ------------- | --------------------------------------------- | ------------------------------------- | -------------------------------------------------------------------------------------------- |
-| Unreleased    | `2.0.0-rc.2`                                  | `4` (imported under `local/<tenant>`) | a Suite serving contract `2.0.0-rc.1` or later (Suite `main`, none released yet); **no 1.x** |
-| 1.0.0-beta.1  | `2.0.0-beta.2`                                | `4` (imported under `local/<tenant>`) | a Suite serving contract `2.0.0-beta.2` (`release/2.0`, none released yet); **no 1.x**       |
-| 1.0.0-alpha.1 | `2.0.0-alpha.5`                               | `4` (imported under `local/<tenant>`) | `2.0.0-alpha.1`; **no 1.x**                                                                  |
-| 0.21.0        | `1.4.0`                                       | `4`                                   | `>= 1.0.0`                                                                                   |
-| 0.20.0        | `1.3.1`                                       | `4`                                   | `>= 1.0.0`                                                                                   |
-| 0.12.0        | `0.8.0`                                       | `4`                                   | `>= 0.26.0`                                                                                  |
-| ≤ 0.11.x      | `0.6.0`                                       | `2`                                   | `<= 0.25.x` (broken on ≥ 0.26.0)                                                             |
+| Plugin build  | Contract client (`client-spring3-restclient`) | Bundled catalog wire schema           | Compatible Epistola Suite                                                                              |
+| ------------- | --------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Unreleased    | `2.0.0`                                       | `4` (imported under `local/<tenant>`) | a Suite serving contract `2.0.0` (none released yet; Suite `main`'s rc.2 has the same API); **no 1.x** |
+| 1.0.0-beta.1  | `2.0.0-beta.2`                                | `4` (imported under `local/<tenant>`) | a Suite serving contract `2.0.0-beta.2` (`release/2.0`, none released yet); **no 1.x**                 |
+| 1.0.0-alpha.1 | `2.0.0-alpha.5`                               | `4` (imported under `local/<tenant>`) | `2.0.0-alpha.1`; **no 1.x**                                                                            |
+| 0.21.0        | `1.4.0`                                       | `4`                                   | `>= 1.0.0`                                                                                             |
+| 0.20.0        | `1.3.1`                                       | `4`                                   | `>= 1.0.0`                                                                                             |
+| 0.12.0        | `0.8.0`                                       | `4`                                   | `>= 0.26.0`                                                                                            |
+| ≤ 0.11.x      | `0.6.0`                                       | `2`                                   | `<= 0.25.x` (broken on ≥ 0.26.0)                                                                       |
 
 Notes:
 
@@ -72,12 +72,13 @@ Notes:
   contract `0.16.1` — the one Epistola Suite `1.0.0` serves. Raise it with the Suite floor.
 - Contract **`2.0` is a break on the API, not on the wire floor.** The media type carries the major
   (`application/vnd.epistola.v2+json`), so a 2.x client is refused by every 1.x Suite with 406/415
-  and there is no mixed range: the Suite floor _is_ the first Suite serving 2.0. While 2.0 is a
-  pre-release that is no released Suite at all, and `oldestSupportedServerTest` runs against the
-  pre-release Suite `main` serves (`2.0.0-rc.1`) while the client is `2.0.0-rc.2`. rc.2 only adds
-  (`listCatalogTemplates`, the `missing` member of `not-found`), and the plugin falls back where an
-  rc.1 server lacks them: one template listing per release, and its own diagnosis of a refusal. A
-  pre-release changes in place, so the admin page warns on any other pre-release. The catalog wire baseline is still `4` (`CatalogSchemaMigrator.BASELINE_VERSION`),
+  and there is no mixed range: the Suite floor _is_ the first Suite serving 2.0, and
+  `oldestSupportedServerTest` runs against contract `2.0.0`. No Suite serving it is released yet;
+  Suite `main` serves `2.0.0-rc.2`, whose API is the same (2.0.0 changed only dependencies), and
+  the admin page warns on it as on any pre-release. Two parts of 2.0.0 are optional for a server —
+  `listCatalogTemplates` (a Suite may answer 501) and the `missing` member of `not-found` — and the
+  plugin falls back where a Suite lacks them: one template listing per release, and its own
+  diagnosis of a refusal. The catalog wire baseline is still `4` (`CatalogSchemaMigrator.BASELINE_VERSION`),
   so the bundled catalogs stay at wire 4 and the Suite migrates them to v8 on import, which needs
   a registry and namespace the v4 manifest does not have: the plugin sends
   `epistola.catalog-sync.registry`/`namespace` (default `local` and the tenant key padded to 3

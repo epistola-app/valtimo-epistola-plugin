@@ -85,7 +85,7 @@ class EpistolaServiceImplCatalogTemplatesTest {
                 .thenThrow(problem(501));
     }
 
-    // ── A server that lists them itself (contract 2.0.0-rc.2) ──
+    // ── A server that lists them itself (`listCatalogTemplates`) ──
 
     @Test
     void asksTheServerFirst_oneCallInsteadOfOnePerRelease() {
