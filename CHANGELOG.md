@@ -88,6 +88,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   by whoever uploaded it. A letter downloaded to a temporary resource is written and read by the
   engine, so a process that stores it on the case is not affected. The supported range stays
   `>=13.21.0, <14`.
+- **Backend libraries updated within their major versions**: jsoup `1.24.1`, commonmark `0.32.0`,
+  jsonata `0.9.10`, json-schema-validator `2.0.8` (shaded), Lombok `1.18.48`, and for the tests
+  Testcontainers `2.0.5` and the PostgreSQL driver `42.7.14`. jsoup and commonmark read a case's
+  HTML and markdown rich text; their output is still checked against Epistola's own schemas.
 - **The letter composer is stable.** What it stores (a component's settings in the form, and the
   chosen letter on the process variable, at schema version 4) is now covered by 1.x: a later 1.x
   release keeps reading it, and a change raises the schema version. Its palette entry no longer says
