@@ -1,0 +1,50 @@
+{
+  "$id": "evenement.schema",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Evenement",
+  "description": "Een evenement met programma en deelnemers. Wie zich aanmeldt, krijgt een persoonlijke uitnodiging.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "naam": { "type": "string", "minLength": 1 },
+    "datum": { "type": "string" },
+    "locatie": { "type": "string" },
+    "dagdelen": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "key": { "type": "string" },
+          "label": { "type": "string" },
+          "doelgroep": { "type": "string" },
+          "sessies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tijd": { "type": "string" },
+                "label": { "type": "string" },
+                "titel": { "type": "string" },
+                "omschrijving": { "type": "string" },
+                "pauze": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "deelnemers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "naam": { "type": "string" },
+          "organisatie": { "type": "string" },
+          "email": { "type": "string" },
+          "dagdelen": { "type": "array", "items": { "type": "string" } },
+          "aangemeldOp": { "type": "string" }
+        }
+      }
+    }
+  }
+}

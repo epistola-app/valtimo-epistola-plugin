@@ -135,7 +135,7 @@ class BundledCatalogSchemaVersionTest {
     }
 
     @Test
-    fun `every bundled loop and conditional uses a body slot`() {
+    fun `every bundled loop uses a body slot, and a conditional a body or else slot`() {
         bundledTemplateDetails().forEach { resource ->
             val templateModel =
                 resource.inputStream
@@ -148,6 +148,8 @@ class BundledCatalogSchemaVersionTest {
                 .path("nodes")
                 .filter { it.path("type").asText() in setOf("loop", "conditional") }
                 .forEach { node ->
+                    // A conditional may also render an `else` slot (Epistola's ConditionalNodeRenderer.ELSE_SLOT).
+                    val allowed = if (node.path("type").asText() == "conditional") setOf("body", "else") else setOf("body")
                     node.path("slots").forEach { slotId ->
                         assertThat(slots.path(slotId.asText()).path("name").asText())
                             .describedAs(
@@ -156,7 +158,7 @@ class BundledCatalogSchemaVersionTest {
                                 node.path("type").asText(),
                                 node.path("id").asText(),
                                 resource.description,
-                            ).isEqualTo("body")
+                            ).isIn(allowed)
                     }
                 }
         }

@@ -1,0 +1,36 @@
+[
+  {
+    "activityId": "startEvent",
+    "activityType": "bpmn:StartEvent:start",
+    "processLinkType": "form",
+    "formDefinitionName": "evenement-aanmelden"
+  },
+  {
+    "activityId": "generate-invitation",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+    "pluginActionDefinitionKey": "epistola-generate-document",
+    "actionProperties": {
+      "actionConfigVersion": 1,
+      "catalogId": "local/demo/gzac-uitnodiging",
+      "templateId": "uitnodiging",
+      "outputFormat": "\"PDF\"",
+      "filename": "\"uitnodiging-\" & $pv.naam & \".pdf\"",
+      "resultProcessVariable": "epistolaResult",
+      "dataMapping": "{\n  \"evenement\": { \"naam\": $doc.naam, \"datum\": $doc.datum, \"locatie\": $doc.locatie },\n  \"deelnemer\": { \"naam\": $pv.naam, \"organisatie\": $pv.organisatie },\n  \"dagdelen\": [$doc.dagdelen.(\n    $k := key;\n    {\n      \"key\": key,\n      \"label\": label,\n      \"doelgroep\": doelgroep,\n      \"aangemeld\": $k in $pv.dagdelenKeys,\n      \"sessies\": sessies\n    }\n  )]\n}"
+    }
+  },
+  {
+    "activityId": "download-invitation",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+    "pluginActionDefinitionKey": "epistola-download-document",
+    "actionProperties": {
+      "documentVariable": "epistolaResult",
+      "storageTarget": "TEMPORARY_RESOURCE",
+      "resourceIdVariable": "invitationResourceId"
+    }
+  }
+]

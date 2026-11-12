@@ -51,6 +51,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Demo app (test-app): case type `evenement` with a personal invitation.** An event case carries
+  its programme and participants; the action "Aanmelden" puts a participant on the list
+  (`registerParticipant` delegate, since Valtimo cannot append to a list in the case document) and
+  generates their invitation from the new bundled catalog `gzac-uitnodiging`, which shows every
+  daypart and mutes the ones they did not sign up for. The PDF is kept on the case and appears under
+  Documents. The start form carries the GZAC user day 2026 programme as its default. Built for the
+  TechTalk on the GZAC user day of 17 November 2026.
+
 - **`$plugin.defaultEnvironmentId` in expressions**: the plugin configuration's default environment,
   or `""` when none is configured, for an explicit fallback. `""` from an environment or range
   expression means deliberately none. A failing expression raises an incident naming the field and

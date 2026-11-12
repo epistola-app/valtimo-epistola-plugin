@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" id="Definitions_evenement_aanmaken" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="evenement-aanmaken" name="Evenement aanmaken" isExecutable="true" camunda:historyTimeToLive="P30D">
+    <bpmn:documentation>Creates an event case. The start form carries the GZAC user day programme and a few made-up participants as defaults, so the demo case is one click away.</bpmn:documentation>
+    <bpmn:startEvent id="startEvent">
+      <bpmn:outgoing>Flow_start_end</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_start_end" sourceRef="startEvent" targetRef="end" />
+    <bpmn:endEvent id="end">
+      <bpmn:incoming>Flow_start_end</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="evenement-aanmaken">
+      <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent">
+        <dc:Bounds x="152" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_di" bpmnElement="end">
+        <dc:Bounds x="272" y="99" width="36" height="36" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_start_end_di" bpmnElement="Flow_start_end">
+        <di:waypoint x="188" y="117" />
+        <di:waypoint x="272" y="117" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

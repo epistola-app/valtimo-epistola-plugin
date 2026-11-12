@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 4,
+  "catalog": {
+    "slug": "gzac-uitnodiging",
+    "name": "GZAC-uitnodiging",
+    "description": "Persoonlijke uitnodiging voor de GZAC-gebruikersdag, voor het zaaktype evenement"
+  },
+  "publisher": {
+    "name": "Epistola"
+  },
+  "release": {
+    "version": "1.0.0",
+    "releasedAt": "2026-11-12T00:00:00Z"
+  },
+  "resources": [
+    {
+      "type": "theme",
+      "slug": "gzac",
+      "name": "GZAC",
+      "detailUrl": "./resources/theme/gzac.json"
+    },
+    {
+      "type": "template",
+      "slug": "uitnodiging",
+      "name": "Persoonlijke uitnodiging",
+      "detailUrl": "./resources/template/uitnodiging.json"
+    }
+  ]
+}
