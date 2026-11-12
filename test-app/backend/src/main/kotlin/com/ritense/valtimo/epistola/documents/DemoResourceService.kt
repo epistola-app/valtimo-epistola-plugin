@@ -158,6 +158,24 @@ class DemoResourceService(
 
     override fun pending(id: UUID) = Unit
 
+    /**
+     * Valtimo 13.54 claims a file for the case it is attached to, so it cannot be attached to a
+     * second one. [StoreGeneratedLetterDelegate]'s event reaches this for every letter, and a
+     * letter is already bound to its case when it is stored ([store] records the key), so claiming
+     * it for that case is a no-op. Any other case is refused, as Valtimo refuses a file claimed
+     * elsewhere: the demo keeps each letter on the one case it was generated for.
+     */
+    @Transactional(readOnly = true)
+    override fun claimForDocument(
+        resourceId: UUID,
+        documentId: UUID,
+    ) {
+        val stored = require(resourceId)
+        check(stored.caseDocumentId == documentId.toString()) {
+            "Stored document $resourceId belongs to another case and cannot be attached to $documentId"
+        }
+    }
+
     override fun registerResource(resourceDTO: ResourceDTO): ResourceDTO =
         throw UnsupportedOperationException(
             "DemoResourceService stores files itself; there is no externally managed resource to register",

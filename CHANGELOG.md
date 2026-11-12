@@ -81,6 +81,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Valtimo `13.50.0` → `13.54.0`** (backend and frontend). Changelog-reviewed: nothing the plugin
+  uses changed, and Angular, Carbon and Form.io stay at the versions 13.50 used. Two things are
+  worth knowing on an installation: since 13.52 a boundary error event catches a BPMN error thrown
+  by a plugin action, and since 13.54 a file uploaded but not attached to a case can only be opened
+  by whoever uploaded it. A letter downloaded to a temporary resource is written and read by the
+  engine, so a process that stores it on the case is not affected. The supported range stays
+  `>=13.21.0, <14`.
+- **Backend libraries updated within their major versions**: jsoup `1.24.1`, commonmark `0.32.0`,
+  jsonata `0.9.10`, json-schema-validator `2.0.8` (shaded), Lombok `1.18.48`, and for the tests
+  Testcontainers `2.0.5` and the PostgreSQL driver `42.7.14`. jsoup and commonmark read a case's
+  HTML and markdown rich text; their output is still checked against Epistola's own schemas.
+- **Patched transitive frontend dependencies** by raising the security floors in
+  `pnpm-workspace.yaml`: DOMPurify `3.4.17` and moment `2.31.0`, both shipped in the browser
+  (Form.io and Valtimo bring them), and for the dev server and tooling axios, proxy-addr,
+  follow-redirects, fast-uri, devalue (kept on 5.x), brace-expansion, js-yaml (kept on 4.x),
+  source-map-js, qs, morgan and the MCP SDK. Advisories against Angular 19 itself are fixed only in
+  20 and later, so they stay until Valtimo moves to a newer Angular.
 - **The letter composer is stable.** What it stores (a component's settings in the form, and the
   chosen letter on the process variable, at schema version 4) is now covered by 1.x: a later 1.x
   release keeps reading it, and a change raises the schema version. Its palette entry no longer says

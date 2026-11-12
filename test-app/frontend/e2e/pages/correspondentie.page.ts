@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 import { expect, type Page } from '@playwright/test';
+import { START_CASE_BUTTON } from './case-list';
 
 /**
  * Getting to a Correspondentie dossier, shared by the letter-composer suites.
@@ -23,7 +24,7 @@ export async function createDossier(page: Page): Promise<void> {
   await page.goto('/cases/correspondentie');
   await page.getByRole('navigation', { name: /Side navigation/i }).waitFor({ timeout: 20_000 });
   // An empty case list shows the button twice (header and empty state).
-  await page.getByRole('button', { name: 'Creëer Nieuw Dossier' }).first().click();
+  await page.getByRole('button', { name: START_CASE_BUTTON }).first().click();
 
   // Carbon renders each tile twice, so the visible one has to be picked rather than the first match.
   const tile = page.locator('cds-clickable-tile').filter({ hasText: 'Brief kiezen en genereren' });

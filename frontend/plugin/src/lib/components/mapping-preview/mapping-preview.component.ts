@@ -89,8 +89,7 @@ import { EpistolaPluginService } from '../../services';
             *ngIf="!loading && result?.success"
             class="preview__code"
             data-testid="epistola-mapping-preview-produced-code"
-            >{{ result.result | json }}</pre
-          >
+            >{{ result.result | json }}</pre>
           <div
             *ngIf="!loading && result && !result.success"
             class="preview__error"

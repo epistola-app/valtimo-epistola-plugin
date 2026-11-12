@@ -110,7 +110,7 @@ Restart Claude Code after creating this file to load the MCP server.
 
 - Sidebar: Dashboard, Dossiers (expandable), Taken, Analyse, Admin, Development
 - Cases: click "Dossiers" to expand, then select a case type
-- New case: "Creëer Nieuw Dossier" button → FormIO form → "Indienen" to submit
+- New case: "Nieuw dossier aanmaken" button (Valtimo 13.53+; "Creëer Nieuw Dossier" before) → FormIO form → "Indienen" to submit
 
 **Form filling**: Playwright MCP can fill FormIO forms using `browser_fill_form` with the element refs from `browser_snapshot`.
 

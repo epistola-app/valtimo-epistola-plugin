@@ -122,6 +122,15 @@
       "dependencyDashboardApproval": false
     },
     {
+      "description": "Angular 19 accepts only TypeScript >=5.5 <5.9 (@angular/compiler-cli) and zone.js ~0.15.0 (@angular/core). A newer one splits the peer-resolved tree, so @valtimo/components resolves to two instances and the build fails. Lift with the Angular major, which Valtimo dictates",
+      "matchPackageNames": ["typescript"],
+      "allowedVersions": "<5.9"
+    },
+    {
+      "matchPackageNames": ["zone.js"],
+      "allowedVersions": "<0.16"
+    },
+    {
       "description": "Non-major Gradle updates already travel together in `backend dependencies`; these four rules only shape the majors, so that a major Spring Boot / Kotlin / Testcontainers / build-plugin bump is one dashboard entry instead of one per module and per version source",
       "matchUpdateTypes": ["major"],
       "matchPackageNames": ["org.springframework.boot*", "io.spring.dependency-management*"],

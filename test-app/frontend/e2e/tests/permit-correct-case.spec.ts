@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 import { expect, test } from '@playwright/test';
+import { START_CASE_BUTTON } from '../pages/case-list';
 
 /**
  * A refused letter is fixed by correcting the case, then generating again.
@@ -22,7 +23,7 @@ test.describe('Permit — correct the case after a refused letter', () => {
 
     await page.goto('/cases/permit');
     await page.getByRole('navigation', { name: /Side navigation/i }).waitFor({ timeout: 20_000 });
-    await page.getByRole('button', { name: 'Creëer Nieuw Dossier' }).first().click();
+    await page.getByRole('button', { name: START_CASE_BUTTON }).first().click();
 
     // The start form's defaults are valid apart from the BSN, which it leaves empty on purpose.
     await page.locator('input[name="data[applicant.firstName]"]').waitFor({ timeout: 20_000 });

@@ -65,14 +65,12 @@ import {
         *ngIf="viewMode === 'resolved' && templateFields && templateFields.length > 0"
         class="expected__code"
         data-testid="epistola-schema-code"
-        >{{ structureText }}</pre
-      >
+        >{{ structureText }}</pre>
       <pre
         *ngIf="viewMode === 'raw'"
         class="expected__code"
         data-testid="epistola-schema-raw-code"
-        >{{ rawSchemaText }}</pre
-      >
+        >{{ rawSchemaText }}</pre>
     </div>
   `,
   styles: [
