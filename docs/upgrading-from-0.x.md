@@ -13,12 +13,13 @@ just before the upgrade was delivered after it, and letters generated before it 
 
 - [ ] **Plan the Epistola Suite upgrade together with the plugin.** 1.0 speaks Epistola contract
       2.0, which no 1.x Suite serves (it refuses the request with 406/415), and 0.21 speaks contract 1.x.
-      Upgrade the Suite to 2.0 and the plugin to 1.0 in the same window. See
+      Upgrade the Suite to 2.0.0 or later and the plugin to 1.0 in the same window. See
       [COMPATIBILITY.md](../COMPATIBILITY.md) for the contract each build needs.
 - [ ] **Give the plugin's API key the `document-generator` role** beside `content-viewer`. From
       contract 2.0, downloading a generated document is granted by `document-generator`. A key that
       already has both is fine.
-- [ ] **Valtimo stays as it is.** 1.0 is built on the same Valtimo (13.50) as 0.21.
+- [ ] **Valtimo can stay as it is.** 1.0 is built on Valtimo 13.54 (0.21 on 13.50) and supports the
+      same range, `>=13.21.0, <14`.
 
 ## Catalogs
 
