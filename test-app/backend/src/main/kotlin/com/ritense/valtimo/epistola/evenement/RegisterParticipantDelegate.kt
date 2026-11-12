@@ -20,8 +20,8 @@ import java.time.temporal.ChronoUnit
  *
  * Reads the process variables `naam`, `organisatie`, `email` and `dagdelen`. Form.io's select boxes
  * submit `dagdelen` as an object (`{"ochtend": true, "middag": false}`); a list of keys is accepted
- * too. The chosen keys are also set as the process variable `dagdelenKeys`, so the invitation's data
- * mapping can test `$k in $pv.dagdelenKeys` without knowing which shape the form produced.
+ * too. `dagdelen` is written back as the list of chosen keys (`["ochtend"]`), so the invitation's
+ * data mapping passes it on as it is and the template decides per daypart whether it was chosen.
  *
  * Demo-only, like [com.ritense.valtimo.epistola.documents.StoreGeneratedLetterDelegate].
  */
@@ -48,7 +48,7 @@ class RegisterParticipantDelegate(
         val participants: List<Any?> = existing?.let { objectMapper.convertValue(it, List::class.java) } ?: emptyList()
 
         valueResolverDelegateService.handleValue(execution, DEELNEMERS, participants + participant)
-        execution.setVariable("dagdelenKeys", dagdelen)
+        execution.setVariable("dagdelen", dagdelen)
     }
 
     private fun required(

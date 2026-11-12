@@ -18,7 +18,7 @@
       "outputFormat": "\"PDF\"",
       "filename": "\"uitnodiging-\" & $pv.naam & \".pdf\"",
       "resultProcessVariable": "epistolaResult",
-      "dataMapping": "{\n  \"evenement\": { \"naam\": $doc.naam, \"datum\": $doc.datum, \"locatie\": $doc.locatie },\n  \"deelnemer\": { \"naam\": $pv.naam, \"organisatie\": $pv.organisatie },\n  \"dagdelen\": [$doc.dagdelen.(\n    $k := key;\n    {\n      \"key\": key,\n      \"label\": label,\n      \"doelgroep\": doelgroep,\n      \"aangemeld\": $k in $pv.dagdelenKeys,\n      \"sessies\": sessies\n    }\n  )]\n}"
+      "dataMapping": "{\n  \"evenement\": { \"naam\": $doc.naam, \"datum\": $doc.datum, \"locatie\": $doc.locatie },\n  \"deelnemer\": { \"naam\": $pv.naam, \"organisatie\": $pv.organisatie, \"dagdelen\": $pv.dagdelen },\n  \"dagdelen\": $doc.dagdelen\n}"
     }
   },
   {

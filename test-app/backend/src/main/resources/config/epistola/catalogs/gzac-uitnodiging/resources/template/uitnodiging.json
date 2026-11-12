@@ -26,13 +26,20 @@
         },
         "deelnemer": {
           "type": "object",
-          "required": ["naam", "organisatie"],
+          "required": ["naam", "organisatie", "dagdelen"],
           "properties": {
             "naam": {
               "type": "string"
             },
             "organisatie": {
               "type": "string"
+            },
+            "dagdelen": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "De dagdelen waarvoor de deelnemer zich heeft aangemeld, bv. [\"ochtend\"]"
             }
           }
         },
@@ -41,7 +48,7 @@
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": ["key", "label", "doelgroep", "aangemeld", "sessies"],
+            "required": ["key", "label", "doelgroep", "sessies"],
             "properties": {
               "key": {
                 "type": "string",
@@ -52,10 +59,6 @@
               },
               "doelgroep": {
                 "type": "string"
-              },
-              "aangemeld": {
-                "type": "boolean",
-                "description": "Heeft de deelnemer zich voor dit dagdeel aangemeld?"
               },
               "sessies": {
                 "type": "array",
@@ -100,14 +103,14 @@
           },
           "deelnemer": {
             "naam": "Jan Jansen",
-            "organisatie": "Gemeente Voorbeeld"
+            "organisatie": "Gemeente Voorbeeld",
+            "dagdelen": ["ochtend"]
           },
           "dagdelen": [
             {
               "key": "ochtend",
               "label": "Ochtend · TechTalks",
               "doelgroep": "voor ontwikkelaars, architecten en low-coders",
-              "aangemeld": true,
               "sessies": [
                 {
                   "tijd": "10.00",
@@ -172,7 +175,6 @@
               "key": "middag",
               "label": "Middag · Kennissnacks",
               "doelgroep": "voor iedereen toegankelijk",
-              "aangemeld": false,
               "sessies": [
                 {
                   "tijd": "13.40",
@@ -255,14 +257,14 @@
           },
           "deelnemer": {
             "naam": "Fatima de Vries",
-            "organisatie": "Gemeente Rivierstad"
+            "organisatie": "Gemeente Rivierstad",
+            "dagdelen": ["ochtend", "middag"]
           },
           "dagdelen": [
             {
               "key": "ochtend",
               "label": "Ochtend · TechTalks",
               "doelgroep": "voor ontwikkelaars, architecten en low-coders",
-              "aangemeld": true,
               "sessies": [
                 {
                   "tijd": "10.00",
@@ -327,7 +329,6 @@
               "key": "middag",
               "label": "Middag · Kennissnacks",
               "doelgroep": "voor iedereen toegankelijk",
-              "aangemeld": true,
               "sessies": [
                 {
                   "tijd": "13.40",
@@ -1336,7 +1337,7 @@
           "slots": ["s-74", "s-75"],
           "props": {
             "condition": {
-              "raw": "dagdeel.aangemeld = true",
+              "raw": "dagdeel.key in deelnemer.dagdelen",
               "language": "jsonata"
             },
             "inverse": false
