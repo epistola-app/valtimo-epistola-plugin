@@ -267,6 +267,26 @@ class DownloadDocumentE2ETest {
     }
 
     @Test
+    fun `a letter can be claimed by the case it was stored for, and by no other`() {
+        // Valtimo 13.54 claims a file for the case it is attached to when the delegate's
+        // DocumentRelatedFileSubmittedEvent arrives. Throwing there, as Valtimo's placeholder does,
+        // would fail every letter a process stores on its case.
+        val case = UUID.randomUUID()
+        val pdf = "%PDF-1.7 a letter".toByteArray()
+        val stored =
+            resourceService.store(
+                case.toString(),
+                RawFileUploadRequest("brief", "pdf", pdf.size.toLong(), "application/pdf", pdf),
+            )
+
+        resourceService.claimForDocument(stored.id(), case)
+
+        assertThat(runCatching { resourceService.claimForDocument(stored.id(), UUID.randomUUID()) }.exceptionOrNull())
+            .isInstanceOf(IllegalStateException::class.java)
+            .hasMessageContaining("belongs to another case")
+    }
+
+    @Test
     fun `the demo stores what a process generated, and refuses an upload`() {
         // The interface declares multipart overloads, so they exist; implementing them would quietly
         // turn the demo's table into a general file store. A person uploading in the UI never
