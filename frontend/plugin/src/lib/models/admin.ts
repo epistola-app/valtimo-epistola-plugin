@@ -101,6 +101,8 @@ export interface PluginUsageEntry {
   configurationId: string;
   configurationTitle: string;
   problems: string[];
+  /** Choices worth knowing about that may be deliberate; not problems. Absent from older backends. */
+  notes?: string[];
 }
 
 /**

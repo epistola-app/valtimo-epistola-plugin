@@ -39,11 +39,14 @@ just before the upgrade was delivered after it, and letters generated before it 
 
 ## Process links and processes
 
-- [ ] **Mark every generate step `asyncBefore`** (_Asynchronous before_ in the modeler), for
-      `generate-document` and for a composed letter. This was already needed in 0.x for a failure to
-      become an incident; without it the person completing the previous task gets an error and their
-      work rolls back. The admin page's usage overview now flags a generate step without it. A process
-      already running keeps the definition it started on, so the boundary protects new instances only.
+- [ ] **Decide per generate step whether it is `asyncBefore`** (_Asynchronous before_ in the
+      modeler), for `generate-document` and for a composed letter. This is unchanged from 0.x. With
+      it, a failure becomes an incident an administrator retries. Without it, the person completing
+      the previous task sees Valtimo's generic error and their submit rolls back. Both are valid;
+      [process-variables.md](process-variables.md) compares them, and `asyncBefore` is the
+      recommended default. The admin page's usage overview now notes a generate step without it. A
+      process already running keeps the definition it started on, so a boundary you add protects new
+      instances only.
 - [ ] **Check v1 links whose environment or variant is an expression.** An expression that produces
       no value (`$pv.omgeving` on a case without that variable, `someEnv` without quotes) used to fall
       back silently to the plugin's default environment or the template's default variant. It now
@@ -81,8 +84,8 @@ just before the upgrade was delivered after it, and letters generated before it 
 ## After the upgrade
 
 - [ ] Open the plugin's **admin page**: the health tab shows each connection's Suite version and
-      contract, and the usage overview shows bare catalog keys, generate steps without `asyncBefore`
-      and catalogs not deployed to a link's environment.
+      contract, and the usage overview shows bare catalog keys and catalogs not deployed to a link's
+      environment, and notes generate steps without `asyncBefore`.
 - [ ] Generate one letter per catalog in each environment you use.
 
 ## Rolling back

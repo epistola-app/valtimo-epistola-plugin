@@ -21,6 +21,10 @@ import java.util.List;
 
 /**
  * Describes a single usage of an Epistola plugin action within a process definition.
+ *
+ * <p>{@code problems} are what will go wrong (a dangling reference, an environment the catalog is
+ * not deployed to). {@code notes} are choices worth knowing about that may well be deliberate, such
+ * as a generate step without an async boundary; they do not count as problems.
  */
 public record PluginUsageEntry(
         String processLinkId,
@@ -33,5 +37,6 @@ public record PluginUsageEntry(
         String actionKey,
         String configurationId,
         String configurationTitle,
-        List<String> problems
+        List<String> problems,
+        List<String> notes
 ) {}

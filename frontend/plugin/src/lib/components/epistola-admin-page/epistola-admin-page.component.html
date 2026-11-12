@@ -509,6 +509,15 @@
                 >
                   {{ problem }}
                 </cds-tag>
+                <cds-tag
+                  *ngFor="let note of entry.notes ?? []"
+                  size="sm"
+                  type="cool-gray"
+                  class="d-block mb-1"
+                  data-testid="epistola-admin-usage-note"
+                >
+                  {{ note }}
+                </cds-tag>
               </td>
               <td>
                 <button

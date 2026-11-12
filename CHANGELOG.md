@@ -11,12 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Coming from 0.21.x?** Follow [Upgrading from 0.x to 1.0](docs/upgrading-from-0.x.md), a
   checklist of everything below and in the 1.0 pre-releases that applies to a 0.x installation.
-- **Mark every generate step `asyncBefore`** (_Asynchronous before_), for document generation and
-  for a composed letter alike. A refused generation raises an incident only when the step runs in a
-  job of its own; without one, the person completing the previous task (or starting the case) gets an
-  error, everything rolls back, and no incident is raised. Valtimo does not add the boundary. The
-  admin page's usage overview now flags a generate step without it, and the demo processes have it.
-  A process already running keeps the definition it started on, so the boundary you deploy protects
+- **Decide per generate step whether it is `asyncBefore`** (_Asynchronous before_), for document
+  generation and for a composed letter alike; it is the recommended default. A refused generation
+  raises an incident only when the step runs in a job of its own. Without one, the person completing
+  the previous task (or starting the case) sees Valtimo's generic "unexpected error" toast and their
+  submit rolls back, with no incident; that is a valid choice where they can fix the cause, and
+  [docs/process-variables.md](docs/process-variables.md) compares the two. Valtimo does not add the
+  boundary. The admin page's usage overview notes a generate step without it, and the demo processes
+  have it. A process already running keeps the definition it started on, so the boundary you deploy protects
   new instances only; the overview checks the latest definitions. Rehearsed from 0.21.0 on Suite
   1.5.1 to this version on Suite 2.0: a running process finished on its old definition (its bare
   catalog key resolved), a job submitted just before the upgrade was delivered after it, and letters

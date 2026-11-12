@@ -38,11 +38,24 @@ again with what was corrected. `status: FAILED` on the result variable is reserv
 accepted that then failed to render, delivered through the catch event
 ([ADR 0009](adr/0009-environment-and-release-as-expressions.md), third addendum).
 
-**Mark the generate step `asyncBefore`** (_Asynchronous before_ in the modeler). The incident is
-raised by the job that runs the step; without that job the refusal goes back to whoever started the
-step — the person completing the previous task, or starting the case — who gets an error while
-everything rolls back, and no incident is raised. Valtimo does not add the boundary for you. The admin
-page's usage overview flags a generate step without it.
+**An incident needs the step marked `asyncBefore`** (_Asynchronous before_ in the modeler). The
+incident is raised by the job that runs the step, and Valtimo does not add that job for you. Without
+it the refusal goes back to whoever started the step, and that is a valid design too. Choose per step:
+
+|                                                                 | `asyncBefore` (recommended default)                                       | No boundary: the submit rolls back                                                                                                                                                                        |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| The person who completed the previous task, or started the case | Their work is saved; the task completes                                   | Sees Valtimo's generic toast _"An unexpected error occurred — please contact support - referenceId: …"_; their submit is rolled back, the task stays open with what they typed, a new case is not created |
+| Who learns why                                                  | An administrator, from the incident (the diagnosis is in its stack trace) | Nobody in the UI. The diagnosis is in the server log under that `referenceId`                                                                                                                             |
+| A short Epistola outage                                         | Retried by the engine                                                     | Every submit fails until Epistola is back                                                                                                                                                                 |
+| Fixing it                                                       | Correct the case or the configuration, retry the incident                 | Correct it and submit again                                                                                                                                                                               |
+
+Rolling back suits a step whose letter is the point of the task and whose cause the person submitting
+can fix, such as a field they left empty. It is a poor fit for configuration problems (a template
+not deployed, a range that matches nothing), which they cannot fix and nobody else hears about. Where
+you choose it, catch what you can before the submit: required fields on the form, or a document
+preview, which does show the diagnosis. The admin page's usage overview notes a generate step without
+the boundary, without calling it a problem. Measured on the `permit` demo with its boundary removed
+and a variant that does not exist, on Valtimo 13.50.
 
 ## 2. Correlation plumbing
 
