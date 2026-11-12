@@ -81,6 +81,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Valtimo `13.50.0` → `13.54.0`** (backend and frontend). Changelog-reviewed: nothing the plugin
+  uses changed, and Angular, Carbon and Form.io stay at the versions 13.50 used. Two things are
+  worth knowing on an installation: since 13.52 a boundary error event catches a BPMN error thrown
+  by a plugin action, and since 13.54 a file uploaded but not attached to a case can only be opened
+  by whoever uploaded it. A letter downloaded to a temporary resource is written and read by the
+  engine, so a process that stores it on the case is not affected. The supported range stays
+  `>=13.21.0, <14`.
 - **The letter composer is stable.** What it stores (a component's settings in the form, and the
   chosen letter on the process variable, at schema version 4) is now covered by 1.x: a later 1.x
   release keeps reading it, and a change raises the schema version. Its palette entry no longer says
