@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-12
+
+### Summary
+
+- **The first stable release.** A later 1.x release keeps working with what 1.0 stores: plugin
+  configurations, process links, letter composer settings and composed letters.
+  [SUPPORT.md](SUPPORT.md) says what 1.x promises and how long each release line is supported.
+- **Needs Epistola Suite 2.x.** The plugin speaks Epistola contract 2.0, which no 1.x Suite serves,
+  so upgrade the Suite and the plugin together.
+  [Upgrading from 0.x to 1.0](docs/upgrading-from-0.x.md) is the checklist.
+- **Since 0.21.0**: catalogs are named `registry/namespace/key` and read through a release, and a
+  link saved under 0.x is resolved by its bare key; a generate link's environment, release and
+  variant can be JSONata, and an expression that produces no value fails instead of falling back;
+  a refused generation names what is missing, as an incident when the step is `asyncBefore`; the
+  letter composer is stable; the retry form is gone.
+- The entries below are what changed since `1.0.0-beta.1`; the `1.0.0-alpha.1` and
+  `1.0.0-beta.1` entries have the rest.
+
 ### Upgrading
 
 - **Coming from 0.21.x?** Follow [Upgrading from 0.x to 1.0](docs/upgrading-from-0.x.md), a
@@ -31,11 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Write the fallback into the expression: `$pv.omgeving ?: $plugin.defaultEnvironmentId`, or `""` for
   deliberately none (for a variant: the default variant). An empty field still means the default.
 - **A generate link's `versionRange` is now JSONata, like its environment.** A fixed range is the
-  string literal `"^1.4.0"`. A v1 link saved as a bare range (`^1.4.0`, only possible on
-  `1.0.0-alpha.1`/`beta.1`) is refused when it runs, with a message showing the literal to write.
-  Opening the link in the process-link editor quotes it for you, so saving it fixes it. That
-  includes a bare range that happens to read as JSONata — `1`, `1.4`, `*`, `x` — which would
-  otherwise be a number or nothing and fail every generation.
+  string literal `"^1.4.0"`. (Only a link saved on `1.0.0-alpha.1` or `beta.1` can hold a bare
+  range such as `^1.4.0`; it is refused when it runs, with the literal to write, and opening the
+  link in the process-link editor quotes it for you.)
 - **Letter composer settings are at schema version 4.** A letter set's environment and ranges are
   JSONata. Older settings are read as the literals they meant and keep working unchanged; opening a
   composer in the form builder brings it to 4. An older plugin refuses schema-4 settings and letters,
@@ -120,28 +136,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   without the range) where the link would render nothing, and reports why. Templates, fields,
   variants and attributes are all read from that one release.
 
-- **Epistola contract client `2.0.0-rc.2` → `2.0.0`, the released contract**
+- **Epistola contract client `2.0.0-beta.2` → `2.0.0`, the released contract**
   (`client-spring3-restclient`, `epistola-catalog`, and the mock server in
-  `docker/docker-compose.yml`). The API is the same as rc.2; only dependencies changed. The oldest
-  supported server is now contract `2.0.0` itself (`oldestSupportedServerTest`), and a Suite serving
-  any 2.0 pre-release gets the admin page's warning. Both additions of rc.2 stay optional in 2.0.0
-  (a Suite may answer `listCatalogTemplates` with 501, and `missing` may be absent), so the plugin
-  keeps its fallbacks for them. Suite 2.0.0 is not released yet; Suite `main` serves rc.2, which has
-  the same API.
-- **Epistola contract client `2.0.0-rc.1` → `2.0.0-rc.2`** (`client-spring3-restclient`,
-  `epistola-catalog`, and the mock server in `docker/docker-compose.yml`). rc.2 adds two things the
-  plugin now uses when the Suite offers them: `listCatalogTemplates`, which lists a catalog's templates
-  across its releases in one call, and the `missing` member of a `not-found` problem, which says what a
-  refused generation lacked. A Suite on rc.1 (Suite `main` today) lacks both, and the plugin falls
-  back: one template listing per release, and its own diagnosis. `oldestSupportedServerTest` keeps
-  running against rc.1 for that reason.
-- **Epistola contract client `2.0.0-beta.2` → `2.0.0-rc.1`** (`client-spring3-restclient`,
-  `epistola-catalog`, and the mock server in `docker/docker-compose.yml` and
-  `oldestSupportedServerTest`). This build needs a Suite serving contract `2.0.0-rc.1`; none is
-  released yet (Suite `main` pins it). On a Suite serving another pre-release, the admin page
-  warns, as before. Nothing the plugin calls changed shape. The rest is outside what the plugin
-  uses: paged `listAvailableCatalogReleases`, support-request permissions in place of feedback
-  ones, per-resource consumer permission updates, bounded request inputs, and QR-code alt text.
+  `docker/docker-compose.yml`). This build needs Suite **2.0.0** or later, released 2026-11-12; on a
+  Suite serving a 2.0 pre-release the admin page warns. Two additions are used when the Suite offers
+  them and stay optional: `listCatalogTemplates`, which lists a catalog's templates across its
+  releases in one call (else one listing per release), and the `missing` member of a `not-found`
+  problem, which says what a refused generation lacked (else the plugin's own diagnosis). The oldest
+  supported server is contract `2.0.0` itself (`oldestSupportedServerTest`).
+- **The compose stack and the README's `docker run` pin Suite `2.0.0-demo`** instead of
+  `latest-demo`, which follows the Suite's majors, and the README's flow now sets the local-auth
+  passwords Suite 2.0 requires.
 
 ### Removed
 
@@ -184,8 +189,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   message (templates, fields, variants, the release field), burying the one notice that explained
   it. It is now one translated warning, and the template and mapping stay usable.
 
-- **A job status that a newer 2.x server adds no longer fails the status check.** From `rc.1` the
-  client reads an unknown enum value as `unknown_default_open_api` instead of failing the whole
+- **A job status that a newer 2.x server adds no longer fails the status check.** The client
+  reads an unknown enum value as `unknown_default_open_api` instead of failing the whole
   response. `check-job-status` now reads that as `IN_PROGRESS`, so the process keeps waiting.
   Every finished status (`COMPLETED`, `FAILED`, `CANCELLED`) is already known, so this cannot hide
   a job that has finished.
