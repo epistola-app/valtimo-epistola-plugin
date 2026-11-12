@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-12
+
+### Fixed
+
+- **1.0.0 republished, unchanged, so the frontend can be installed.** npm refuses version `1.0.0`
+  of `@epistola.app/valtimo-plugin`: the package's first publish, in February 2026, used that
+  number and was later unpublished, and npm never lets a version be reused. So 1.0.0 exists on
+  Maven Central only. Install **1.0.1** for both the backend and the frontend; everything listed
+  under 1.0.0 below applies to it.
+
 ## [1.0.0] - 2026-11-12
 
 ### Summary
