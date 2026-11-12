@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 import { test, expect, type Page } from '@playwright/test';
+import { START_CASE_BUTTON } from '../pages/case-list';
 
 /**
  * Form Flow task transition, with the Epistola document preview on the confirmation step.
@@ -72,7 +73,7 @@ test.describe('Form Flow voorbeeld — transition with a preview on the confirma
     // Start a new dossier through the start form. `.first()`: an empty case list renders this
     // button twice, in the header and in the empty state, so an unscoped click fails strict mode
     // on a cold database — which is how this passed locally for months and failed on a runner.
-    await page.getByRole('button', { name: 'Creëer Nieuw Dossier' }).first().click();
+    await page.getByRole('button', { name: START_CASE_BUTTON }).first().click();
     const titleField = page.locator('input[name="data[title]"]');
     await titleField.waitFor({ timeout: 15_000 });
     await titleField.fill('Playwright Form Flow-test');
@@ -115,13 +116,14 @@ test.describe('Form Flow voorbeeld — transition with a preview on the confirma
       .toContain('Vervolgtaak Open');
 
     // Valtimo confirms the completion with a toast, so 'Genereer brief' stays on
-    // screen afterwards — its presence says nothing, but the toast does.
+    // screen afterwards — its presence says nothing, but the toast does. Valtimo
+    // 13.54 reworded it from "is succesvol afgerond" to "is voltooid".
     await expect
       .poll(visibleText, {
         timeout: 20_000,
         message: 'no completion notification for the finished task',
       })
-      .toContain('Genereer brief is succesvol afgerond');
+      .toMatch(/Genereer brief is (succesvol afgerond|voltooid)/);
 
     expect(
       failedRequests,

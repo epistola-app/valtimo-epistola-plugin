@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 import { expect, test } from '@playwright/test';
+import { START_CASE_BUTTON } from '../pages/case-list';
 
 /**
  * A composer on the form that **creates** the case.
@@ -18,10 +19,7 @@ test.describe('Letter composer — on the form that creates the case', () => {
 
     await page.goto('/cases/correspondentie');
     await page.getByRole('navigation', { name: /Side navigation/i }).waitFor({ timeout: 20_000 });
-    await page
-      .getByRole('button', { name: /Creëer Nieuw Dossier|Start Dossier/ })
-      .first()
-      .click();
+    await page.getByRole('button', { name: START_CASE_BUTTON }).first().click();
 
     // Two processes can create this case, so Valtimo asks which. Carbon renders each tile twice,
     // so the visible one has to be picked rather than the first match.

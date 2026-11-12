@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { START_CASE_BUTTON } from '../pages/case-list';
 
 /**
  * The document preview and the document component pop out of their form, like the composer's.
@@ -34,7 +35,7 @@ test.describe('Previews outside the composer — pop out', () => {
 
     await page.goto('/cases/permit');
     await page.getByRole('navigation', { name: /Side navigation/i }).waitFor({ timeout: 20_000 });
-    await page.getByRole('button', { name: 'Creëer Nieuw Dossier' }).first().click();
+    await page.getByRole('button', { name: START_CASE_BUTTON }).first().click();
 
     // A valid BSN, so the letter renders and the process goes straight on to review.
     await page.locator('input[name="data[applicant.bsn]"]').fill('123456782');
