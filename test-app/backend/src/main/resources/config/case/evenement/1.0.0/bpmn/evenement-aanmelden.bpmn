@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_evenement_aanmelden" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
+  <bpmn:error id="Error_EpistolaDocumentError" name="EpistolaDocumentError" />
+  <bpmn:process id="evenement-aanmelden" name="Aanmelden" isExecutable="true" camunda:historyTimeToLive="P30D">
+    <bpmn:documentation>Registers a participant on an event that is already open, then generates their personal invitation and keeps it on the case. The programme comes from the case, the participant from the start form.</bpmn:documentation>
+    <bpmn:startEvent id="startEvent">
+      <bpmn:outgoing>Flow_start_register</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_start_register" sourceRef="startEvent" targetRef="register-participant" />
+    <bpmn:serviceTask id="register-participant" name="Zet deelnemer op de lijst" camunda:delegateExpression="${registerParticipant}">
+      <bpmn:incoming>Flow_start_register</bpmn:incoming>
+      <bpmn:outgoing>Flow_register_generate</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_register_generate" sourceRef="register-participant" targetRef="generate-invitation" />
+    <bpmn:serviceTask id="generate-invitation" camunda:asyncBefore="true" name="Genereer uitnodiging" camunda:expression="${null}">
+      <bpmn:incoming>Flow_register_generate</bpmn:incoming>
+      <bpmn:outgoing>Flow_generate_wait</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="boundary-generate-error" name="EpistolaGenerationError" attachedToRef="generate-invitation">
+      <bpmn:outgoing>Flow_boundary_err</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_gen" errorRef="Error_EpistolaDocumentError" camunda:errorCodeVariable="errorCode" camunda:errorMessageVariable="errorMessage" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_boundary_err" sourceRef="boundary-generate-error" targetRef="end-error" />
+    <bpmn:sequenceFlow id="Flow_generate_wait" sourceRef="generate-invitation" targetRef="wait-for-generation" />
+    <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wacht op document">
+      <bpmn:incoming>Flow_generate_wait</bpmn:incoming>
+      <bpmn:outgoing>Flow_wait_check</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_EpistolaDocumentGenerated" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_wait_check" sourceRef="wait-for-generation" targetRef="check-generated" />
+    <bpmn:exclusiveGateway id="check-generated" name="Uitnodiging gegenereerd?">
+      <bpmn:incoming>Flow_wait_check</bpmn:incoming>
+      <bpmn:outgoing>Flow_generated_ok</bpmn:outgoing>
+      <bpmn:outgoing>Flow_generated_fail</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_generated_ok" name="Ja" sourceRef="check-generated" targetRef="download-invitation">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status == 'COMPLETED'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_generated_fail" name="Nee" sourceRef="check-generated" targetRef="end-error">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status != 'COMPLETED'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:serviceTask id="download-invitation" name="Haal de uitnodiging op" camunda:expression="${null}">
+      <bpmn:incoming>Flow_generated_ok</bpmn:incoming>
+      <bpmn:outgoing>Flow_download_store</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_download_store" sourceRef="download-invitation" targetRef="store-invitation" />
+    <bpmn:serviceTask id="store-invitation" name="Bewaar de uitnodiging op de zaak" camunda:delegateExpression="${storeGeneratedLetter}">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="resourceIdVariable">invitationResourceId</camunda:inputParameter>
+          <camunda:inputParameter name="fileName">uitnodiging-${naam}.pdf</camunda:inputParameter>
+          <camunda:inputParameter name="documentDefinitionName">evenement</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_download_store</bpmn:incoming>
+      <bpmn:outgoing>Flow_store_end</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_store_end" sourceRef="store-invitation" targetRef="end-success" />
+    <bpmn:endEvent id="end-success">
+      <bpmn:incoming>Flow_store_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="end-error">
+      <bpmn:incoming>Flow_generated_fail</bpmn:incoming>
+      <bpmn:incoming>Flow_boundary_err</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="evenement-aanmelden">
+      <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent"><dc:Bounds x="152" y="99" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="register-participant_di" bpmnElement="register-participant"><dc:Bounds x="240" y="77" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="generate-invitation_di" bpmnElement="generate-invitation"><dc:Bounds x="390" y="77" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="boundary-generate-error_di" bpmnElement="boundary-generate-error"><dc:Bounds x="422" y="139" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-for-generation_di" bpmnElement="wait-for-generation"><dc:Bounds x="542" y="99" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="check-generated_di" bpmnElement="check-generated" isMarkerVisible="true"><dc:Bounds x="625" y="92" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="download-invitation_di" bpmnElement="download-invitation"><dc:Bounds x="730" y="77" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="store-invitation_di" bpmnElement="store-invitation"><dc:Bounds x="880" y="77" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-success_di" bpmnElement="end-success"><dc:Bounds x="1032" y="99" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-error_di" bpmnElement="end-error"><dc:Bounds x="632" y="232" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_start_register_di" bpmnElement="Flow_start_register"><di:waypoint x="188" y="117" /><di:waypoint x="240" y="117" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_register_generate_di" bpmnElement="Flow_register_generate"><di:waypoint x="340" y="117" /><di:waypoint x="390" y="117" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_generate_wait_di" bpmnElement="Flow_generate_wait"><di:waypoint x="490" y="117" /><di:waypoint x="542" y="117" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_wait_check_di" bpmnElement="Flow_wait_check"><di:waypoint x="578" y="117" /><di:waypoint x="625" y="117" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_generated_ok_di" bpmnElement="Flow_generated_ok"><di:waypoint x="675" y="117" /><di:waypoint x="730" y="117" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_generated_fail_di" bpmnElement="Flow_generated_fail"><di:waypoint x="650" y="142" /><di:waypoint x="650" y="232" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_boundary_err_di" bpmnElement="Flow_boundary_err"><di:waypoint x="440" y="175" /><di:waypoint x="440" y="250" /><di:waypoint x="632" y="250" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_download_store_di" bpmnElement="Flow_download_store"><di:waypoint x="830" y="117" /><di:waypoint x="880" y="117" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_store_end_di" bpmnElement="Flow_store_end"><di:waypoint x="980" y="117" /><di:waypoint x="1032" y="117" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

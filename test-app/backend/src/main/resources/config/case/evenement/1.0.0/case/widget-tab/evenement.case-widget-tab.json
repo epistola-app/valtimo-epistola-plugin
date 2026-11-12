@@ -1,0 +1,136 @@
+[
+  {
+    "key": "programma",
+    "widgets": [
+      {
+        "type": "fields",
+        "key": "evenement",
+        "title": "Evenement",
+        "width": 2,
+        "highContrast": false,
+        "properties": {
+          "columns": [
+            [
+              {
+                "key": "naam",
+                "title": "Naam",
+                "value": "doc:naam"
+              }
+            ],
+            [
+              {
+                "key": "datum",
+                "title": "Datum",
+                "value": "doc:datum"
+              }
+            ],
+            [
+              {
+                "key": "locatie",
+                "title": "Locatie",
+                "value": "doc:locatie"
+              }
+            ]
+          ]
+        }
+      },
+      {
+        "type": "table",
+        "key": "dagdeel-0",
+        "title": "Ochtend",
+        "width": 2,
+        "highContrast": false,
+        "properties": {
+          "collection": "doc:/dagdelen/0/sessies",
+          "defaultPageSize": 20,
+          "firstColumnAsTitle": false,
+          "columns": [
+            {
+              "key": "tijd",
+              "title": "Tijd",
+              "value": "/tijd"
+            },
+            {
+              "key": "label",
+              "title": "",
+              "value": "/label"
+            },
+            {
+              "key": "titel",
+              "title": "Sessie",
+              "value": "/titel"
+            }
+          ]
+        }
+      },
+      {
+        "type": "table",
+        "key": "dagdeel-1",
+        "title": "Middag",
+        "width": 2,
+        "highContrast": false,
+        "properties": {
+          "collection": "doc:/dagdelen/1/sessies",
+          "defaultPageSize": 20,
+          "firstColumnAsTitle": false,
+          "columns": [
+            {
+              "key": "tijd",
+              "title": "Tijd",
+              "value": "/tijd"
+            },
+            {
+              "key": "label",
+              "title": "",
+              "value": "/label"
+            },
+            {
+              "key": "titel",
+              "title": "Sessie",
+              "value": "/titel"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "key": "deelnemers",
+    "widgets": [
+      {
+        "type": "table",
+        "key": "deelnemers",
+        "title": "Deelnemers",
+        "width": 4,
+        "highContrast": false,
+        "properties": {
+          "collection": "doc:/deelnemers",
+          "defaultPageSize": 20,
+          "firstColumnAsTitle": true,
+          "columns": [
+            {
+              "key": "naam",
+              "title": "Naam",
+              "value": "/naam"
+            },
+            {
+              "key": "organisatie",
+              "title": "Organisatie",
+              "value": "/organisatie"
+            },
+            {
+              "key": "dagdelen",
+              "title": "Dagdelen",
+              "value": "/dagdelen"
+            },
+            {
+              "key": "aangemeldOp",
+              "title": "Aangemeld op",
+              "value": "/aangemeldOp"
+            }
+          ]
+        }
+      }
+    ]
+  }
+]

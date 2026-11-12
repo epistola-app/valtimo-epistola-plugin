@@ -1,0 +1,14 @@
+[
+  {
+    "processDefinitionKey": "evenement-aanmaken",
+    "canInitializeDocument": true,
+    "startableByUser": true,
+    "processIsVisibleInMenu": true
+  },
+  {
+    "processDefinitionKey": "evenement-aanmelden",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
+  }
+]

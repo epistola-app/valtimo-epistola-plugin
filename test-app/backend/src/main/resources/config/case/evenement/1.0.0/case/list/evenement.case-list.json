@@ -1,0 +1,26 @@
+[
+  {
+    "title": "Evenement",
+    "key": "naam",
+    "path": "doc:naam",
+    "displayType": { "type": "text", "displayTypeParameters": {} },
+    "sortable": true,
+    "order": 0
+  },
+  {
+    "title": "Datum",
+    "key": "datum",
+    "path": "doc:datum",
+    "displayType": { "type": "text", "displayTypeParameters": {} },
+    "sortable": false,
+    "order": 1
+  },
+  {
+    "title": "Locatie",
+    "key": "locatie",
+    "path": "doc:locatie",
+    "displayType": { "type": "text", "displayTypeParameters": {} },
+    "sortable": false,
+    "order": 2
+  }
+]

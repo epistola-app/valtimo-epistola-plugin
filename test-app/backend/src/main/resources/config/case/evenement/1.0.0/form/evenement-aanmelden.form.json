@@ -1,0 +1,64 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "type": "htmlelement",
+      "key": "intro",
+      "tag": "p",
+      "content": "Meld een deelnemer aan. Na het aanmelden staat de persoonlijke uitnodiging bij Documenten."
+    },
+    {
+      "type": "textfield",
+      "key": "pv:naam",
+      "label": "Naam",
+      "input": true,
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "pv:organisatie",
+      "label": "Organisatie",
+      "input": true,
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "email",
+      "key": "pv:email",
+      "label": "E-mail",
+      "input": true,
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "selectboxes",
+      "key": "pv:dagdelen",
+      "label": "Ik kom naar",
+      "input": true,
+      "validate": {
+        "required": true
+      },
+      "values": [
+        {
+          "label": "Ochtend · TechTalks",
+          "value": "ochtend"
+        },
+        {
+          "label": "Middag · Kennissnacks",
+          "value": "middag"
+        }
+      ]
+    },
+    {
+      "type": "button",
+      "key": "submit",
+      "label": "Aanmelden",
+      "action": "submit",
+      "input": true
+    }
+  ]
+}

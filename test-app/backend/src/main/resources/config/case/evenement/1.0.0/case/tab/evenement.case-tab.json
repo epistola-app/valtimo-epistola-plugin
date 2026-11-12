@@ -1,0 +1,20 @@
+[
+  {
+    "key": "programma",
+    "name": "Programma",
+    "type": "widgets",
+    "contentKey": "programma",
+    "showTasks": true
+  },
+  {
+    "key": "deelnemers",
+    "name": "Deelnemers",
+    "type": "widgets",
+    "contentKey": "deelnemers",
+    "showTasks": false
+  },
+  { "key": "documents", "name": null, "type": "standard", "contentKey": "documents" },
+  { "key": "progress", "name": null, "type": "standard", "contentKey": "progress" },
+  { "key": "audit", "name": null, "type": "standard", "contentKey": "audit" },
+  { "key": "notes", "name": null, "type": "standard", "contentKey": "notes" }
+]

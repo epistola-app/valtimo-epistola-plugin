@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 4,
+  "resource": {
+    "type": "theme",
+    "slug": "gzac",
+    "name": "GZAC",
+    "description": "Huisstijl van events.gzac.nl, voor de uitnodiging van de GZAC-gebruikersdag.",
+    "documentStyles": {
+      "fontFamily": {
+        "slug": "inter",
+        "catalogKey": "system"
+      },
+      "fontSize": "9.5pt",
+      "color": "#111827",
+      "lineHeight": 1.4
+    },
+    "pageSettings": {
+      "format": "A4",
+      "orientation": "portrait",
+      "margins": {
+        "top": 18,
+        "right": 18,
+        "bottom": 18,
+        "left": 18
+      }
+    },
+    "blockStylePresets": {
+      "kicker": {
+        "label": "Kicker",
+        "styles": {
+          "fontFamily": {
+            "slug": "jetbrains-mono",
+            "catalogKey": "system"
+          },
+          "fontSize": "7pt",
+          "color": "#2f6eb5",
+          "letterSpacing": "1pt",
+          "fontWeight": "600"
+        }
+      },
+      "tijd": {
+        "label": "Tijd",
+        "styles": {
+          "fontFamily": {
+            "slug": "jetbrains-mono",
+            "catalogKey": "system"
+          },
+          "fontSize": "9pt",
+          "color": "#1b365d",
+          "fontWeight": "600"
+        }
+      }
+    }
+  }
+}

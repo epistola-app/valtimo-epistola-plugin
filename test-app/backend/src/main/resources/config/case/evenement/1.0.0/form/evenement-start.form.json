@@ -1,0 +1,287 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "type": "textfield",
+      "key": "naam",
+      "label": "Naam van het evenement",
+      "input": true,
+      "defaultValue": "GZAC Gebruikersdag 2026",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textfield",
+      "key": "datum",
+      "label": "Datum",
+      "input": true,
+      "defaultValue": "dinsdag 17 november 2026"
+    },
+    {
+      "type": "textfield",
+      "key": "locatie",
+      "label": "Locatie",
+      "input": true,
+      "defaultValue": "De Rode Hoed, Amsterdam"
+    },
+    {
+      "type": "datagrid",
+      "key": "dagdelen",
+      "label": "Programma",
+      "input": true,
+      "reorder": true,
+      "defaultValue": [
+        {
+          "key": "ochtend",
+          "label": "Ochtend · TechTalks",
+          "doelgroep": "voor ontwikkelaars, architecten en low-coders",
+          "sessies": [
+            {
+              "tijd": "10.00",
+              "label": "",
+              "titel": "Deur open",
+              "omschrijving": "",
+              "pauze": true
+            },
+            {
+              "tijd": "10.30",
+              "label": "TechTalk 1",
+              "titel": "Van Verzoek tot Archivering",
+              "omschrijving": "In één sessie zien we hoe we vanuit Open Formulieren een verzoek maken, het zaakdossier afhandelen met GZAC en in Open Archiefbeheer archiveren. Door Joeri Bekker (Maykin).",
+              "pauze": false
+            },
+            {
+              "tijd": "10.50",
+              "label": "TechTalk 2",
+              "titel": "Maatwerk: je wilt het niet, maar het is wel nodig",
+              "omschrijving": "De kern van GZAC is modelleren, niet programmeren. Hoe past maatwerk zó in GZAC dat het geen onderhoudsprobleem vormt? Maxim Buur toont het gloednieuwe Plugin Framework en vertelt over de strategie.",
+              "pauze": false
+            },
+            {
+              "tijd": "11.10",
+              "label": "TechTalk 3",
+              "titel": "Van Data naar Document",
+              "omschrijving": "Epistola is een gloednieuw open source component in het GZAC-ecosysteem. Sander de Groot van Epistola vertelt over documentgeneratie en geeft een live demo.",
+              "pauze": false
+            },
+            {
+              "tijd": "11.30",
+              "label": "",
+              "titel": "Pauze",
+              "omschrijving": "",
+              "pauze": true
+            },
+            {
+              "tijd": "12.00",
+              "label": "TechTalk 4",
+              "titel": "Integraal Klant- en Objectbeeld: live configuratie",
+              "omschrijving": "IKO kan een integraal klantbeeld opbouwen. Hoe koppel je IKO met GZAC, sluit je bronnen aan en toon je die data aan de gebruikers? Thomas Minke laat het live zien.",
+              "pauze": false
+            },
+            {
+              "tijd": "12.20",
+              "label": "TechTalk 5",
+              "titel": "Bouwblokken in praktijk",
+              "omschrijving": "In december 2025 gepresenteerd als beta, nu live in productie. Joeri Diederen van Raakvlak Advies laat in een live demo de kracht van hergebruik zien.",
+              "pauze": false
+            },
+            {
+              "tijd": "12.40",
+              "label": "TechTalk 6",
+              "titel": "Office integratie",
+              "omschrijving": "Samen met de gemeente Utrecht gebouwd: viewen, bewerken en opslaan van alle Microsoft-bestandstypen. Maurits van Beusekom en Thomas Luijken van Baseflow geven een live demo.",
+              "pauze": false
+            },
+            {
+              "tijd": "13.00",
+              "label": "",
+              "titel": "Lunch",
+              "omschrijving": "",
+              "pauze": true
+            }
+          ]
+        },
+        {
+          "key": "middag",
+          "label": "Middag · Kennissnacks",
+          "doelgroep": "voor iedereen toegankelijk",
+          "sessies": [
+            {
+              "tijd": "13.40",
+              "label": "",
+              "titel": "Opening",
+              "omschrijving": "Dagvoorzitter Vincent van Beek opent het middagprogramma en Anne Leguit kadert de ontwikkelingen vanuit het Platform Dienstverlening.",
+              "pauze": false
+            },
+            {
+              "tijd": "13.50",
+              "label": "Kennissnack 1",
+              "titel": "Koers van GZAC",
+              "omschrijving": "Rutger Haagsma deelt zijn visie op de ontwikkeling van GZAC. Nu en de komende jaren.",
+              "pauze": false
+            },
+            {
+              "tijd": "14.05",
+              "label": "Kennissnack 2",
+              "titel": "Productontwikkeling GZAC 2026",
+              "omschrijving": "Thomas Minke blikt terug op een jaar vol ontwikkeling binnen GZAC en laat zien wat er nog aankomt.",
+              "pauze": false
+            },
+            {
+              "tijd": "14.25",
+              "label": "Kennissnack 3",
+              "titel": "Klantcontactcentrum in Platform Dienstverlening",
+              "omschrijving": "Het KCC Sociaal Domein van de gemeente Den Haag verving KANA door Platform Dienstverlening. Wendy van Duijvenvoorde laat zien welke features daarvoor nodig waren.",
+              "pauze": false
+            },
+            {
+              "tijd": "14.40",
+              "label": "",
+              "titel": "Pauze",
+              "omschrijving": "",
+              "pauze": true
+            },
+            {
+              "tijd": "15.05",
+              "label": "Kennissnack 4",
+              "titel": "Usecase Gemeente Alkmaar: van G4 naar G50",
+              "omschrijving": "In 2026 nemen G50-gemeentes de stap naar open source. Sabine Kassels deelt waar zij tegenaan lopen bij aanbesteding en implementatie.",
+              "pauze": false
+            },
+            {
+              "tijd": "15.25",
+              "label": "",
+              "titel": "Paneldiscussie",
+              "omschrijving": "",
+              "pauze": false
+            },
+            {
+              "tijd": "15.45",
+              "label": "Kennissnack 5",
+              "titel": "GZAC en open source agentic AI",
+              "omschrijving": "GZAC blijkt een goede orkestrator van agents. Thomas van Maarseveen geeft een live demo van open source AI op hardware in Nederland.",
+              "pauze": false
+            },
+            {
+              "tijd": "16.00",
+              "label": "",
+              "titel": "Wrap-up door de dagvoorzitter",
+              "omschrijving": "",
+              "pauze": false
+            },
+            {
+              "tijd": "16.05",
+              "label": "",
+              "titel": "Borrel",
+              "omschrijving": "",
+              "pauze": true
+            },
+            {
+              "tijd": "17.00",
+              "label": "",
+              "titel": "Einde",
+              "omschrijving": "",
+              "pauze": true
+            }
+          ]
+        }
+      ],
+      "components": [
+        {
+          "type": "textfield",
+          "key": "key",
+          "label": "Sleutel",
+          "input": true
+        },
+        {
+          "type": "textfield",
+          "key": "label",
+          "label": "Dagdeel",
+          "input": true
+        },
+        {
+          "type": "textfield",
+          "key": "doelgroep",
+          "label": "Doelgroep",
+          "input": true
+        },
+        {
+          "type": "datagrid",
+          "key": "sessies",
+          "label": "Sessies",
+          "input": true,
+          "components": [
+            {
+              "type": "textfield",
+              "key": "tijd",
+              "label": "Tijd",
+              "input": true
+            },
+            {
+              "type": "textfield",
+              "key": "label",
+              "label": "Label",
+              "input": true
+            },
+            {
+              "type": "textfield",
+              "key": "titel",
+              "label": "Titel",
+              "input": true
+            },
+            {
+              "type": "textarea",
+              "key": "omschrijving",
+              "label": "Omschrijving",
+              "input": true,
+              "rows": 2
+            },
+            {
+              "type": "checkbox",
+              "key": "pauze",
+              "label": "Pauze",
+              "input": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "type": "hidden",
+      "key": "deelnemers",
+      "label": "Deelnemers",
+      "input": true,
+      "defaultValue": [
+        {
+          "naam": "Fatima el Amrani",
+          "organisatie": "Gemeente Voorbeeld",
+          "email": "f.elamrani@voorbeeld.example",
+          "dagdelen": ["ochtend", "middag"],
+          "aangemeldOp": "2026-11-02T09:14:00+01:00"
+        },
+        {
+          "naam": "Pieter Bakker",
+          "organisatie": "Gemeente Proefstad",
+          "email": "p.bakker@proefstad.example",
+          "dagdelen": ["ochtend"],
+          "aangemeldOp": "2026-11-04T16:40:00+01:00"
+        },
+        {
+          "naam": "Noor Visser",
+          "organisatie": "Waterschap Testland",
+          "email": "n.visser@testland.example",
+          "dagdelen": ["middag"],
+          "aangemeldOp": "2026-11-09T11:02:00+01:00"
+        }
+      ]
+    },
+    {
+      "type": "button",
+      "key": "submit",
+      "label": "Evenement aanmaken",
+      "action": "submit",
+      "input": true
+    }
+  ]
+}
