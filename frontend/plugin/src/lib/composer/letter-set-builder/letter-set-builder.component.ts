@@ -49,7 +49,23 @@ import {
   decodeJsonataStringLiteral,
   encodeJsonataStringLiteral,
 } from '../../utils/jsonata-literal';
+import { textExpressionProblem } from '../../utils/jsonata-bare-path';
 import { catalogLabel, matchCatalogId, sortCatalogs } from '../../utils/catalog-ref';
+import * as _jsonata from 'jsonata';
+
+// The package's default export, under both module systems (as elsewhere in the plugin).
+const jsonata = (_jsonata as any).default || _jsonata;
+
+/**
+ * Whether a stored environment is edited as an expression rather than picked from the list: anything
+ * but a literal naming one. That includes `""`, the deliberate "none" (ADR 0009) — picked from the
+ * list it would read as the connection's default, which is not what it means.
+ */
+export function isEnvironmentExpression(stored: string | null | undefined): boolean {
+  if (!stored) return false;
+  const literal = decodeJsonataStringLiteral(stored);
+  return literal === undefined || literal === '';
+}
 
 /** One letter on offer, as stored in the composer's settings. */
 export interface OfferedTemplate {
@@ -162,10 +178,20 @@ export interface LetterSet {
         data-testid="epistola-letter-set-environment-expression"
         autocomplete="off"
         placeholder="$pv.omgeving"
+        [attr.aria-label]="'letterSetEnvironmentExpression' | pluginTranslate: pluginId | async"
+        [attr.aria-invalid]="!!expressionProblem(value?.environmentId)"
         [disabled]="disabled"
         [ngModel]="value?.environmentId || ''"
         (ngModelChange)="onEnvironmentExpressionChange($event)"
       />
+      <div
+        *ngIf="environmentExpressionMode && expressionProblem(value?.environmentId) as problem"
+        class="field-error"
+        data-testid="epistola-letter-set-environment-expression-problem"
+        role="alert"
+      >
+        {{ problem }}
+      </div>
 
       <label class="field-label">{{
         'letterSetCatalog' | pluginTranslate: pluginId | async
@@ -251,6 +277,14 @@ export interface LetterSet {
             />
             {{ 'letterSetExpression' | pluginTranslate: pluginId | async }}
           </label>
+        </div>
+        <div
+          *ngIf="rangeProblem(SET_RANGE, value?.versionRange) as problem"
+          class="field-error"
+          data-testid="epistola-letter-set-version-range-problem"
+          role="alert"
+        >
+          {{ problem }}
         </div>
         <!-- The catalog's released versions, offered to pin one; a range is typed. -->
         <datalist id="epistola-letter-set-releases">
@@ -403,6 +437,14 @@ export interface LetterSet {
                       />
                       {{ 'letterSetExpression' | pluginTranslate: pluginId | async }}
                     </label>
+                  </div>
+                  <div
+                    *ngIf="rangeProblem(template.id, versionRangeOf(template.id)) as problem"
+                    class="field-error"
+                    [attr.data-testid]="'epistola-letter-set-version-range-problem-' + template.id"
+                    role="alert"
+                  >
+                    {{ problem }}
                   </div>
                 </div>
               </td>
@@ -673,6 +715,27 @@ export class EpistolaLetterSetBuilderComponent
     return decodeJsonataStringLiteral(stored) ?? '';
   }
 
+  /**
+   * What is wrong with an expression typed for an environment or a release, or null: it does not
+   * parse, or it can never produce text — a bare path (`acceptatie` for `"acceptatie"`), a number.
+   * Caught while configuring, because at run time it fails every letter (ADR 0009).
+   */
+  expressionProblem(expression: string | null | undefined): string | null {
+    const source = expression?.trim();
+    if (!source) return null;
+    try {
+      jsonata(source);
+    } catch (error: any) {
+      return error?.message || 'Invalid JSONata expression';
+    }
+    return textExpressionProblem(source);
+  }
+
+  /** {@link expressionProblem} for a range field, when it is edited as an expression. */
+  rangeProblem(field: string, stored: string | null | undefined): string | null {
+    return this.isRangeExpression(field, stored) ? this.expressionProblem(stored) : null;
+  }
+
   /** What a range field stores for what was typed: the expression, or the range as a literal. */
   private rangeValue(
     field: string,
@@ -767,9 +830,7 @@ export class EpistolaLetterSetBuilderComponent
     // arrives — otherwise reopening the settings would show an empty catalog and no letters.
     if (!this.restored && this.value?.pluginConfigurationId) {
       this.restored = true;
-      this.environmentExpressionMode =
-        !!this.value.environmentId &&
-        decodeJsonataStringLiteral(this.value.environmentId) === undefined;
+      this.environmentExpressionMode = isEnvironmentExpression(this.value.environmentId);
       this.loadEnvironments(this.value.pluginConfigurationId);
       this.loadCatalogs(this.value.pluginConfigurationId);
       this.refreshTemplates();

@@ -634,6 +634,38 @@ describe('EpistolaLetterSetBuilderComponent', () => {
       expect(component.environmentSelection).toBe(component.EXPRESSION);
     });
 
+    it('reopens "" (render in none) as the expression it is, not as the default environment', () => {
+      const { component } = createComponent({ ...saved(), environmentId: '""' });
+      component.ngOnChanges();
+
+      expect(component.environmentSelection).toBe(component.EXPRESSION);
+      expect(component.value?.environmentId).toBe('""');
+    });
+
+    it('says what is wrong with an environment expression that can never name one', () => {
+      const { component } = createComponent(saved());
+      component.ngOnChanges();
+
+      expect(component.expressionProblem('acceptatie')).toContain(
+        'Did you mean the text "acceptatie"',
+      );
+      expect(component.expressionProblem('1')).toContain('Did you mean "1"');
+      expect(component.expressionProblem('$pv.omgeving ((')).not.toBeNull();
+      expect(component.expressionProblem('$pv.omgeving')).toBeNull();
+      expect(component.expressionProblem('""')).toBeNull();
+    });
+
+    it('checks a range only when it is edited as an expression', () => {
+      const { component } = createComponent({ ...saved(), versionRange: '"^1.0.0"' });
+      component.ngOnChanges();
+
+      expect(component.rangeProblem(component.SET_RANGE, '"^1.0.0"')).toBeNull();
+      component.toggleSetRangeExpression(true);
+      expect(component.rangeProblem(component.SET_RANGE, 'briefversie')).toContain(
+        'Did you mean the text "briefversie"',
+      );
+    });
+
     it('stores no environment at all for the default, as a set saved before the field did', () => {
       const { component } = createComponent({ ...saved(), environmentId: '"acceptatie"' });
       component.ngOnChanges();

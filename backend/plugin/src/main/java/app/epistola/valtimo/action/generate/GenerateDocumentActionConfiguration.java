@@ -142,6 +142,46 @@ public record GenerateDocumentActionConfiguration(
     }
 
     /**
+     * The variant to render, by the same rule as the environment:
+     * <ul>
+     *   <li>none configured: none, so the template's default variant (or the variant attributes);</li>
+     *   <li>an expression producing a non-empty string: that variant;</li>
+     *   <li>one producing {@code ""}: deliberately none, the default variant;</li>
+     *   <li>one producing no value: refused. A path to nothing is a typo or a variable the case lacks,
+     *       and falling back rendered the letter in the default variant unnoticed — a citizen got the
+     *       wrong letter, and nothing said so.</li>
+     * </ul>
+     * A v0 link keeps its frozen behaviour: anything blank is none.
+     *
+     * @return the variant, or null for none
+     */
+    public String resolveVariant(JsonataMappingService mappingService, EvaluationContext context) {
+        if (variantId == null || !variantId.isConfigured()) {
+            return null;
+        }
+        if (variantId instanceof LiteralScalar || version < 1) {
+            String resolved = variantId.resolve(mappingService, context);
+            return resolved == null || resolved.isBlank() ? null : resolved;
+        }
+        Object value;
+        try {
+            value = mappingService.evaluateValue(context.withExpression(variantId.source()));
+        } catch (RuntimeException exception) {
+            throw GenerateDocumentExpressionException.evaluationFailed(
+                    version, "variantId", variantId.source(), context, exception);
+        }
+        if (value == null) {
+            throw GenerateDocumentExpressionException.noValue(version, "variantId", variantId.source(),
+                    "Write \"\" for the template's default variant, or fall back with ?: \"\".");
+        }
+        if (!(value instanceof String text)) {
+            throw GenerateDocumentExpressionException.invalidResult(version, "variantId", variantId.source(),
+                    "must evaluate to a string, such as \"formeel\"");
+        }
+        return text.isBlank() ? null : text.strip();
+    }
+
+    /**
      * The version range when it is configured as a string literal, read without evaluating — what a
      * static check can verify. Empty when none is configured or it is an expression only known at run
      * time.

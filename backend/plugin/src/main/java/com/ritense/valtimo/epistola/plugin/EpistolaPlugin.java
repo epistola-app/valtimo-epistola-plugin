@@ -406,9 +406,9 @@ public class EpistolaPlugin {
         String effectiveEnvironmentId =
                 actionConfig.resolveEnvironment(jsonataMappingService, scalarEvalContext, defaultEnvironmentId);
 
-        // Resolve variantId if it uses a JSONata expression
+        // The same rule: "" for the default variant, and no value is refused (see resolveVariant).
         String resolvedVariantId = hasVariantId
-                ? actionConfig.variantId().resolve(jsonataMappingService, scalarEvalContext)
+                ? actionConfig.resolveVariant(jsonataMappingService, scalarEvalContext)
                 : null;
         String resolvedCorrelationId = actionConfig.correlationId().isConfigured()
                 ? actionConfig.correlationId().resolve(jsonataMappingService, scalarEvalContext)

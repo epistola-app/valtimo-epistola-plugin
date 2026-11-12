@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: EUPL-1.2
  */
 
-import { barePathProblem } from '../../utils/jsonata-bare-path';
+import { barePathProblem, textExpressionProblem } from '../../utils/jsonata-bare-path';
 import {
   AfterViewInit,
   ChangeDetectionStrategy,
@@ -104,6 +104,8 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
   @Input() compact = false;
   @Input() allowTypedValues = true;
   @Input() allowNull = true;
+  /** The value must be text (an environment, a version range): a number or boolean is flagged too. */
+  @Input() expectsText = false;
   @Input() placeholder = '';
   @Input() testId = 'epistola-smart-expression';
   @Input() title = '';
@@ -725,11 +727,16 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     }
   }
 
+  /** Why valid JSONata can still never be right here: a bare path, or for a text field a number. */
+  private expressionProblem(source: string): string | null {
+    return this.expectsText ? textExpressionProblem(source) : barePathProblem(source);
+  }
+
   private loadExpression(source: string): void {
     const parsed = parseSimpleJsonataExpression(source);
     this.rawExpression = source;
     // A stored bare path (`someEnv`) is flagged as the link opens, not only once it is edited.
-    this.rawError = parsed.error ?? barePathProblem(source);
+    this.rawError = parsed.error ?? this.expressionProblem(source);
     this.rawRepresentable = parsed.representable;
     this.selectCompatible = this.computeSelectCompatibility(source);
     if (this.selectCompatible) {
@@ -739,7 +746,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
       this.simpleOriginalSource = source;
       this.simpleDirty = false;
       this.emitValidity(!this.required || !!this.selectedValue);
-    } else if (parsed.representable && parsed.expression && !barePathProblem(source)) {
+    } else if (parsed.representable && parsed.expression && !this.expressionProblem(source)) {
       // A bare path goes to Advanced, which shows why it can never produce a value.
       this.mode = 'simple';
       this.selectedValue = '';
@@ -1104,7 +1111,7 @@ export class SmartExpressionEditorComponent implements OnChanges, AfterViewInit,
     try {
       jsonata(value);
       // Valid JSONata that can never produce a value here: a forgotten quote or `$pv.`.
-      const barePath = barePathProblem(value);
+      const barePath = this.expressionProblem(value);
       this.rawError = barePath;
       this.rawRepresentable = parseSimpleJsonataExpression(value).representable;
       this.selectCompatible = this.computeSelectCompatibility(value);

@@ -20,11 +20,11 @@ Why it fails: correlation wakes a waiting execution by matching the per-job epis
       <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${letterType == 'a'}</bpmn:conditionExpression>
     </bpmn:sequenceFlow>
     <bpmn:sequenceFlow id="Flow_choose_b" name="Type B (default)" sourceRef="choose-type" targetRef="st-gen-b" />
-    <bpmn:serviceTask id="st-gen-a" name="Genereer Brief A" camunda:expression="${null}">
+    <bpmn:serviceTask id="st-gen-a" camunda:asyncBefore="true" name="Genereer Brief A" camunda:expression="${null}">
       <bpmn:incoming>Flow_choose_a</bpmn:incoming>
       <bpmn:outgoing>Flow_a_merge</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:serviceTask id="st-gen-b" name="Genereer Brief B" camunda:expression="${null}">
+    <bpmn:serviceTask id="st-gen-b" camunda:asyncBefore="true" name="Genereer Brief B" camunda:expression="${null}">
       <bpmn:incoming>Flow_choose_b</bpmn:incoming>
       <bpmn:outgoing>Flow_b_merge</bpmn:outgoing>
     </bpmn:serviceTask>

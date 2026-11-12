@@ -9,16 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Upgrading
 
-- **An environment or version-range expression that produces no value now fails** instead of falling
-  back. `$pv.omgeving` on a case without that variable, or `someEnv` without quotes, used to render
-  silently in the plugin's default environment (or with no range). It now raises an incident at the
-  step saying the expression produced no value. Write the fallback into the expression:
-  `$pv.omgeving ?: $plugin.defaultEnvironmentId`, or `""` for deliberately none. An empty field
-  still means the default.
+- **Coming from 0.21.x?** Follow [Upgrading from 0.x to 1.0](docs/upgrading-from-0.x.md), a
+  checklist of everything below and in the 1.0 pre-releases that applies to a 0.x installation.
+- **Mark every generate step `asyncBefore`** (_Asynchronous before_), for document generation and
+  for a composed letter alike. A refused generation raises an incident only when the step runs in a
+  job of its own; without one, the person completing the previous task (or starting the case) gets an
+  error, everything rolls back, and no incident is raised. Valtimo does not add the boundary. The
+  admin page's usage overview now flags a generate step without it, and the demo processes have it.
+  A process already running keeps the definition it started on, so the boundary you deploy protects
+  new instances only; the overview checks the latest definitions. Rehearsed from 0.21.0 on Suite
+  1.5.1 to this version on Suite 2.0: a running process finished on its old definition (its bare
+  catalog key resolved), a job submitted just before the upgrade was delivered after it, and letters
+  generated before it still download.
+
+- **An environment, version-range or variant expression that produces no value now fails** instead
+  of falling back. `$pv.omgeving` on a case without that variable, or `someEnv` without quotes, used
+  to render silently in the plugin's default environment (or with no range, or in the template's
+  default variant). It now raises an incident at the step saying the expression produced no value.
+  Write the fallback into the expression: `$pv.omgeving ?: $plugin.defaultEnvironmentId`, or `""` for
+  deliberately none (for a variant: the default variant). An empty field still means the default.
 - **A generate link's `versionRange` is now JSONata, like its environment.** A fixed range is the
   string literal `"^1.4.0"`. A v1 link saved as a bare range (`^1.4.0`, only possible on
   `1.0.0-alpha.1`/`beta.1`) is refused when it runs, with a message showing the literal to write.
-  Opening the link in the process-link editor quotes it for you, so saving it fixes it.
+  Opening the link in the process-link editor quotes it for you, so saving it fixes it. That
+  includes a bare range that happens to read as JSONata — `1`, `1.4`, `*`, `x` — which would
+  otherwise be a number or nothing and fail every generation.
 - **Letter composer settings are at schema version 4.** A letter set's environment and ranges are
   JSONata. Older settings are read as the literals they meant and keep working unchanged; opening a
   composer in the form builder brings it to 4. An older plugin refuses schema-4 settings and letters,
@@ -30,7 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or `""` when none is configured, for an explicit fallback. `""` from an environment or range
   expression means deliberately none. A failing expression raises an incident naming the field and
   the expression; for `$error("…")` it carries the author's own text. The expression editor flags a
-  bare path such as `someEnv`, which can never produce a value.
+  bare path such as `someEnv`, which can never produce a value, and for an environment, release or
+  variant a number such as `1`, which is not text. The letter-set builder checks its environment and
+  release expressions the same way.
 - **The release can be an expression.** A generate link's and a letter set's release is JSONata
   evaluated with the case (`$pv.briefversie`), as the environment already was; a letter set's
   environment can be an expression too. The result must be a string that is a version range; a
@@ -80,14 +97,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The bulk demo (`bulk-tax-letters`) generates its letters.** It failed on start with
+  _"Cannot resolve identifier 'taxpayers'"_: its parsing script task named its language
+  `camunda:scriptFormat`, which the engine does not read, so the script ran as a JUEL string and set
+  nothing. Valtimo has no Groovy engine to run it anyway, so a delegate (`parseTaxpayers`) now parses
+  the list, and `DemoScriptTasksTest` keeps script tasks out of the demo. The letter's `taxAmount` is
+  now mapped from `amount`, the field the start form asks for.
+- **The compose stack's Epistola starts on a Suite 2.0 image.** Suite 2.0 refuses `localauth`
+  while its local users keep their shipped passwords, so `docker compose --profile server` (and the
+  browser E2E) stopped at boot. Compose now sets `LOCAL_AUTH_ADMIN_PASSWORD` and
+  `LOCAL_AUTH_USER_PASSWORD`; nothing signs in with them.
 - **A refused generation raises an incident that says what is missing.** When Epistola refuses a
   generation (a missing template, release, variant or environment, nothing deployed, no access), the
-  incident read only "Failed to submit document generation request to Epistola". It now names what
+  failure said only "Failed to submit document generation request to Epistola". It now names what
   was asked for and the first part that does not exist, for example _"Template 'besluit' is not in
   catalog 'local/demo/brieven' in release 2.0.0 (selected by "^2.0.0" in environment 'staging')"_.
   The same for a composed letter and for rich text that cannot be converted. Fix the cause (the
   configuration, or the case's data) and retry the incident: the step runs again. The text never
-  carries Epistola's own message or a value from the case, because the engine logs it.
+  carries Epistola's own message, because the engine logs it. This needs the step marked
+  `asyncBefore` (see Upgrading). **Look in the incident's stack trace for it**: Valtimo wraps a
+  plugin action's exception twice on its way to the engine, so the incident's own message reads
+  _"Failed to invoke event listener method"_ for every plugin. That is a Valtimo defect, written up
+  with the fix in [docs/valtimo-upstream-issues.md](docs/valtimo-upstream-issues.md).
 - **Choosing an environment a catalog is not deployed to no longer errors.** Every lookup for that
   catalog answered 404 with an empty body and showed its own untranslated "Failed to load …"
   message (templates, fields, variants, the release field), burying the one notice that explained

@@ -50,7 +50,11 @@ import org.operaton.bpm.engine.impl.cfg.ProcessEngineConfigurationImpl;
 import org.operaton.bpm.engine.runtime.ProcessInstance;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.UndeclaredThrowableException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -69,10 +73,19 @@ import static org.mockito.Mockito.when;
  * configuration or the case's data) retrying it runs the step again with what was corrected (ADR
  * 0009, third addendum). Driven through the real {@code generate-document} action in a real engine,
  * behind the async boundary Valtimo deploys, because what matters is what the engine does with it.
+ *
+ * <p>The incident's own message is Valtimo's, not the step's: Valtimo calls the action by reflection
+ * and does not unwrap what it throws (see {@link GenerateDelegate}), so the summary line reads
+ * {@value #VALTIMO_WRAPPER} and the step's diagnosis is in the incident's stack trace. That is a
+ * Valtimo defect, written down in {@code docs/valtimo-upstream-issues.md}; these tests pin both
+ * halves, so they say so when Valtimo fixes it.
  */
 class EpistolaRefusalIncidentIntegrationTest {
 
     private static final String TENANT = "demo";
+
+    /** What Spring's event-listener adapter says around the action's exception. */
+    private static final String VALTIMO_WRAPPER = "Failed to invoke event listener method";
 
     private static final String BPMN = """
             <?xml version="1.0" encoding="UTF-8"?>
@@ -183,8 +196,9 @@ class EpistolaRefusalIncidentIntegrationTest {
         org.operaton.bpm.engine.runtime.Incident incident = failUntilIncident(pi);
 
         assertThat(incident.getActivityId()).isEqualTo("generate");
-        assertThat(incident.getIncidentMessage())
-                .startsWith("Template 'besluit' is not in catalog 'local/demo/brieven' in release 2.0.0")
+        assertThat(incident.getIncidentMessage()).isEqualTo(VALTIMO_WRAPPER);
+        assertThat(diagnosisOf(pi))
+                .contains("Template 'besluit' is not in catalog 'local/demo/brieven' in release 2.0.0")
                 .doesNotContain("Jansen");
         assertThat(runtimeService.getActiveActivityIds(pi.getId())).containsExactly("generate");
         assertThat(runtimeService.getVariable(pi.getId(), "letter")).isNull();
@@ -219,9 +233,10 @@ class EpistolaRefusalIncidentIntegrationTest {
         // `someEnv` without quotes: a path to nothing, which once rendered in the default unnoticed.
         GenerateDelegate.environment = "someEnv";
 
-        org.operaton.bpm.engine.runtime.Incident incident = failUntilIncident(startAsTheAppDoes());
+        ProcessInstance pi = startAsTheAppDoes();
+        failUntilIncident(pi);
 
-        assertThat(incident.getIncidentMessage()).contains("expression='someEnv'").contains("produced no value");
+        assertThat(diagnosisOf(pi)).contains("expression='someEnv'").contains("produced no value");
         org.mockito.Mockito.verifyNoInteractions(epistolaService);
     }
 
@@ -229,9 +244,10 @@ class EpistolaRefusalIncidentIntegrationTest {
     void aTransientFailure_isRetried_asAnyFailingStepIs() {
         refuseWith(new EpistolaApiException("Service Unavailable", null, 503, null, Map.of()));
 
-        org.operaton.bpm.engine.runtime.Incident incident = failUntilIncident(startAsTheAppDoes());
+        ProcessInstance pi = startAsTheAppDoes();
+        failUntilIncident(pi);
 
-        assertThat(incident.getIncidentMessage()).contains("Failed to submit document generation request to Epistola");
+        assertThat(diagnosisOf(pi)).contains("Failed to submit document generation request to Epistola");
     }
 
     /** Run the step's job until the engine gives up and raises an incident, as the job executor would. */
@@ -246,6 +262,11 @@ class EpistolaRefusalIncidentIntegrationTest {
             }
         }
         return runtimeService.createIncidentQuery().processInstanceId(pi.getId()).singleResult();
+    }
+
+    /** The failed job's stack trace: what Cockpit shows under the incident. */
+    private String diagnosisOf(ProcessInstance pi) {
+        return processEngine.getManagementService().getJobExceptionStacktrace(jobOf(pi).getId());
     }
 
     private org.operaton.bpm.engine.runtime.Job jobOf(ProcessInstance pi) {
@@ -266,15 +287,30 @@ class EpistolaRefusalIncidentIntegrationTest {
         return processEngine.getTaskService().createTaskQuery().processInstanceId(pi.getId()).singleResult().getName();
     }
 
-    /** The real generate-document action, as a process link would call it. */
+    /**
+     * The real generate-document action, called the way Valtimo calls a process link's action: by
+     * reflection ({@code PluginService.invoke}), from a Spring event listener
+     * ({@code ProcessLinkServiceTaskStartListener}). Neither unwraps, so what the action throws reaches
+     * the engine as an {@link InvocationTargetException} inside an {@link UndeclaredThrowableException}
+     * — which is why every incident reads "Failed to invoke event listener method". Calling the
+     * action directly here is how that went unseen.
+     */
     public static class GenerateDelegate implements JavaDelegate {
         /** The link's environment expression; none by default. */
         static String environment;
 
         @Override
-        public void execute(DelegateExecution execution) {
-            plugin.generateDocument(execution, 1, "local/demo/brieven", "besluit", null, null, environment, null,
-                    "{}", "\"PDF\"", "\"besluit.pdf\"", null, "letter");
+        public void execute(DelegateExecution execution) throws Exception {
+            Method action = Arrays.stream(EpistolaPlugin.class.getMethods())
+                    .filter(method -> method.getName().equals("generateDocument"))
+                    .findFirst().orElseThrow();
+            try {
+                action.invoke(plugin, execution, 1, "local/demo/brieven", "besluit", null, null, environment, null,
+                        "{}", "\"PDF\"", "\"besluit.pdf\"", null, "letter");
+            } catch (InvocationTargetException e) {
+                // What Spring's ApplicationListenerMethodAdapter does with a checked exception.
+                throw new UndeclaredThrowableException(e, "Failed to invoke event listener method");
+            }
         }
     }
 }

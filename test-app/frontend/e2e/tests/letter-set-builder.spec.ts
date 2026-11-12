@@ -115,7 +115,13 @@ test.describe('Letter set builder — configuring a composer', () => {
       { headers: { Authorization: `Bearer ${token}` } },
     );
     expect(configurations.ok()).toBe(true);
-    const pluginConfigurationId = (await configurations.json())[0].configurationId;
+    // The demo connection, which has the catalog this form offers from. Not merely the first: a
+    // stack that has run the training facility has a connection per trainee, without that catalog.
+    const connections: { configurationId: string; tenantId: string }[] =
+      await configurations.json();
+    const pluginConfigurationId = (
+      connections.find((connection) => connection.tenantId === 'demo') ?? connections[0]
+    ).configurationId;
     formId = await createFixtureForm(request, token, pluginConfigurationId);
     await request.dispose();
   });

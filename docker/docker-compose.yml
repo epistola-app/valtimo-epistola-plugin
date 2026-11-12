@@ -11,6 +11,11 @@ services:
     container_name: ved-epistola-server
     environment:
       SPRING_PROFILES_ACTIVE: demo,localauth
+      # Suite 2.0 refuses to start with 'localauth' while its local users keep the passwords it
+      # ships with (`admin`/`user`), unless the developer-only 'local' profile is on. Nothing here
+      # signs in to the Suite (the plugin uses its API key); these only let it start.
+      LOCAL_AUTH_ADMIN_PASSWORD: local-dev-admin
+      LOCAL_AUTH_USER_PASSWORD: local-dev-user
       SPRING_DATASOURCE_URL: jdbc:postgresql://ved-postgres:5432/epistola_suite
       SPRING_DATASOURCE_USERNAME: epistola
       SPRING_DATASOURCE_PASSWORD: epistola

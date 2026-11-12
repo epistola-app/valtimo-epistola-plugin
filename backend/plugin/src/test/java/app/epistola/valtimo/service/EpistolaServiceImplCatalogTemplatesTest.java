@@ -136,6 +136,22 @@ class EpistolaServiceImplCatalogTemplatesTest {
     }
 
     @Test
+    void anEnvironmentTheServerDoesNotKnow_isListedCatalogWide_asTheDesignScopeReadsIt() {
+        org.mockito.Mockito.reset(templatesApi);
+        when(templatesApi.listCatalogTemplates(any(), any(), any(), any(), eq(ENV), any(), any(), any()))
+                .thenThrow(problem(404));
+        when(templatesApi.listCatalogTemplates(eq(TENANT), eq("local"), eq("valtimo"), eq("brieven"), isNull(),
+                isNull(), anyInt(), anyInt()))
+                .thenReturn(new CatalogTemplateListResponse(List.of(
+                        new CatalogTemplateDto("besluit", "Besluit", List.of(release("2.1.0")), null)),
+                        new PageMeta(0, 100, 1, 1)));
+
+        assertThat(service.getCatalogTemplates(BASE_URL, API_KEY, TENANT, CATALOG, ENV).templates())
+                .containsExactly(new CatalogTemplates.Template("besluit", "Besluit", null, List.of("2.1.0"),
+                        new Read(null, "2.1.0")));
+    }
+
+    @Test
     void aServerThatDoesNotKnowTheRoute_isListedPerRelease() {
         org.mockito.Mockito.reset(templatesApi);
         when(templatesApi.listCatalogTemplates(any(), any(), any(), any(), any(), any(), any(), any()))
@@ -185,6 +201,17 @@ class EpistolaServiceImplCatalogTemplatesTest {
     @Test
     void aCatalogTheEnvironmentDoesNotServe_isListedCatalogWide() {
         deployed();
+        released("2.1.0");
+        templatesIn("2.1.0", "besluit");
+
+        assertThat(service.getCatalogTemplates(BASE_URL, API_KEY, TENANT, CATALOG, ENV).templates())
+                .extracting(CatalogTemplates.Template::read)
+                .containsExactly(new Read(null, "2.1.0"));
+    }
+
+    @Test
+    void anEnvironmentThatDoesNotExist_isListedCatalogWide() {
+        when(environmentsApi.listEnvironmentDeployments(TENANT, ENV)).thenThrow(problem(404));
         released("2.1.0");
         templatesIn("2.1.0", "besluit");
 

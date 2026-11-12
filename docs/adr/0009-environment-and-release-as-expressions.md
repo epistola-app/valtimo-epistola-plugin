@@ -311,6 +311,33 @@ Epistola's message; for an expression, the field and the expression, the author'
 `$error(...)` (JSONata error `D3137`) and otherwise only the error's class, because an evaluation error
 may quote the data it evaluated.
 
+**Only behind a job boundary.** The step throws into whatever transaction runs it. When that is a
+job — the generate activity marked `asyncBefore` — the job fails, its retries run out and the engine
+raises the incident. Without one, the exception goes back to whoever started the step (completing the
+previous task, starting the case), who gets an error while the transaction rolls back: no incident,
+and nobody sees the diagnosis. Valtimo adds no such boundary itself (13.50; verified in its jars), and
+the step cannot add one for itself at run time. So a generate step is modelled `asyncBefore`: the
+demo processes are, a test keeps them so (`DemoGenerateStepsAreAsyncTest`), and the admin usage
+overview flags a generate step that is not.
+
+**What reaches the engine is not what the step threw.** Found against a running Valtimo and Suite,
+after the tests above passed: every incident read _"Failed to invoke event listener method"_. Valtimo
+calls a process-link action by reflection (`PluginService.invoke`) from a Spring event listener
+(`ProcessLinkServiceTaskStartListener`), and neither unwraps, so the step's exception arrives inside an
+`InvocationTargetException` inside an `UndeclaredThrowableException`, and the engine takes the
+outermost message. The tests had called the action directly. The plugin does not work around it:
+replacing the engine's failed-job handling to unwrap its own actions' failures was tried and
+removed, as engine-wide machinery for a one-line defect in Valtimo that every plugin shares. So the
+diagnosis this addendum is about is in the incident's **stack trace**, and the incident's own message
+is Valtimo's until Valtimo unwraps the reflective call; the defect and its fix are written up in
+[docs/valtimo-upstream-issues.md](../valtimo-upstream-issues.md). The integration test now calls the
+action the way Valtimo does and pins both halves.
+
+**The variant follows the second addendum's rule** (also found by hand): a variant expression that
+produced no value meant `null`, so the template's default variant, and a misspelt path sent every
+letter in the wrong variant without a word. It is now refused like an environment; `""` is the
+default variant.
+
 **Not done, and open:** letting a modeller catch a refusal with an error boundary event (a BPMN error
 when caught, an incident otherwise). Self-heal still matters for a result that arrives before the
 catch event subscribes, and is to be investigated separately.

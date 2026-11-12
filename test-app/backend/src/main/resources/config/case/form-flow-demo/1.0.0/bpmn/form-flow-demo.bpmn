@@ -29,7 +29,7 @@
       <bpmn:outgoing>Flow_to_render</bpmn:outgoing>
     </bpmn:userTask>
 
-    <bpmn:serviceTask id="render-letter" name="Genereer brief" camunda:expression="${null}">
+    <bpmn:serviceTask id="render-letter" camunda:asyncBefore="true" name="Genereer brief" camunda:expression="${null}">
       <bpmn:incoming>Flow_to_render</bpmn:incoming>
       <bpmn:outgoing>Flow_to_end</bpmn:outgoing>
     </bpmn:serviceTask>

@@ -9,7 +9,7 @@ Why it fails: an event-based gateway places its EpistolaDocumentGenerated messag
       <bpmn:outgoing>Flow_start_gen</bpmn:outgoing>
     </bpmn:startEvent>
     <bpmn:sequenceFlow id="Flow_start_gen" sourceRef="startEvent" targetRef="generate-document" />
-    <bpmn:serviceTask id="generate-document" name="Generate document" camunda:expression="${null}">
+    <bpmn:serviceTask id="generate-document" camunda:asyncBefore="true" name="Generate document" camunda:expression="${null}">
       <bpmn:incoming>Flow_start_gen</bpmn:incoming>
       <bpmn:outgoing>Flow_gen_gw</bpmn:outgoing>
     </bpmn:serviceTask>
