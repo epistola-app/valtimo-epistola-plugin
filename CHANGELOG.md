@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **"Support for this plugin version ends soon" only shows on the line that is ending.** The release
+  metadata's support end date belongs to the oldest supported line (the `X.Y` of its minimum version),
+  but the admin page applied it to every supported version, the newest included: 1.0.1 was told to
+  plan an upgrade because 0.20 was ending, and would have been until 0.21 ends in February. A version
+  on a newer line now shows no end date that is not its own.
+
 ## [1.0.1] - 2026-11-12
 
 ### Fixed
