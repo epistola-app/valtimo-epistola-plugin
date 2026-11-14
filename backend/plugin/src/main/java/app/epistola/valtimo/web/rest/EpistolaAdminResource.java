@@ -143,17 +143,29 @@ public class EpistolaAdminResource {
      * CANCELLED) and message correlation ran (regardless of how many executions it
      * matched). Returns 409 if the job is still PENDING / IN_PROGRESS — the UI should
      * surface "still in progress, try again later" rather than treating that as an
-     * error. Returns 400 / 404-equivalent (mapped from {@link IllegalArgumentException}
-     * by Valtimo's global advice) when the execution doesn't exist or isn't waiting
-     * for an Epistola message.
+     * error. Returns 422 when no retry can wake the wait — it is pinned to something
+     * that is not an Epistola job id, or to a job Epistola does not know — so the
+     * operator must send the process back to its generate step. Returns 502 when
+     * Epistola could not answer for the job (unreachable, 5xx, or a refused API key). Every one of these carries the
+     * {@link ReconcileResult} with its {@code outcome}. Returns 400 / 404-equivalent
+     * (mapped from {@link IllegalArgumentException} by Valtimo's global advice) when
+     * the execution doesn't exist or isn't waiting for an Epistola message.
      */
     @PostMapping("/pending/{executionId}/reconcile")
     public ResponseEntity<ReconcileResult> reconcilePending(@PathVariable String executionId) {
         requireManagePermission();
         log.info("Manual reconcile requested for execution {}", executionId);
         ReconcileResult result = adminService.reconcile(executionId);
-        HttpStatus status = result.correlated() ? HttpStatus.OK : HttpStatus.CONFLICT;
-        return ResponseEntity.status(status).body(result);
+        return ResponseEntity.status(reconcileStatus(result.outcome())).body(result);
+    }
+
+    private static HttpStatus reconcileStatus(ReconcileResult.Outcome outcome) {
+        return switch (outcome) {
+            case CORRELATED -> HttpStatus.OK;
+            case STILL_RUNNING -> HttpStatus.CONFLICT;
+            case NOT_A_JOB, UNKNOWN_TO_EPISTOLA -> HttpStatus.UNPROCESSABLE_ENTITY;
+            case EPISTOLA_ERROR -> HttpStatus.BAD_GATEWAY;
+        };
     }
 
     /**

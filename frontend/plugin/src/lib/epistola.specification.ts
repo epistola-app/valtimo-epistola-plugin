@@ -281,8 +281,14 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminStatusWaiting: 'Wachtend',
       epistolaAdminStatusUnwired: 'Vastgelopen',
       epistolaAdminUnwiredTooltip:
-        'Deze taak heeft geen correlatie-token (epistolaWaitFor), dus de collector kan hem nooit hervatten — het proces is vastgelopen. Meestal een dubbelzinnig samengevoegd catch event (zie BPMN-validatie). Op te lossen in het procesmodel; hersynchroniseren werkt hier niet.',
-      epistolaAdminUnwiredHint: 'Niet te hersynchroniseren',
+        'Deze taak heeft geen correlatie-token (epistolaWaitFor), dus de collector kan hem nooit hervatten — het proces is vastgelopen. Meestal een dubbelzinnig samengevoegd catch event (zie BPMN-validatie), of een proces dat naar het catch event is verplaatst zonder listeners. Hersynchroniseren werkt hier niet: zet het proces terug naar de generate-document-stap om opnieuw te genereren, en pas het procesmodel aan als het vaker gebeurt.',
+      epistolaAdminUnwiredHint: 'Niet te hersynchroniseren — herstart vanaf de genereerstap',
+      epistolaAdminReconcileNotAJob:
+        'Dit proces wacht niet op een Epistola-taak (bijvoorbeeld een geweigerde generatie, zoals een ontwikkelversie van de plugin die vastlegde). Hersynchroniseren kan het niet hervatten; zet het proces terug naar de generate-document-stap om opnieuw te genereren.',
+      epistolaAdminReconcileUnknownJob:
+        'Epistola kent deze taak niet, meestal omdat het proces terug naar het catch event is gezet. Hersynchroniseren kan het niet hervatten; zet het proces terug naar de generate-document-stap om opnieuw te genereren.',
+      epistolaAdminReconcileEpistolaError:
+        'Epistola kon deze taak niet opvragen. Probeer het zo opnieuw, of controleer de verbinding op het overzicht.',
       epistolaAdminConfigurations: 'Configuraties',
       epistolaAdminValidations: 'BPMN-validatie',
       epistolaAdminNoValidations:
@@ -568,8 +574,14 @@ const epistolaPluginSpecification: PluginSpecification = {
       epistolaAdminStatusWaiting: 'Waiting',
       epistolaAdminStatusUnwired: 'Stuck',
       epistolaAdminUnwiredTooltip:
-        'This wait has no correlation token (epistolaWaitFor), so the collector can never resume it — the process is stuck. Usually an ambiguous merged catch event (see BPMN validation). Fix it in the process model; reconcile cannot recover it.',
-      epistolaAdminUnwiredHint: 'Cannot reconcile',
+        'This wait has no correlation token (epistolaWaitFor), so the collector can never resume it — the process is stuck. Usually an ambiguous merged catch event (see BPMN validation), or a process moved to its catch event with listeners skipped. Reconcile cannot recover it: move the process back to its generate-document step to generate again, and fix the process model if it keeps happening.',
+      epistolaAdminUnwiredHint: 'Cannot reconcile — restart from the generate step',
+      epistolaAdminReconcileNotAJob:
+        'This process is not waiting on an Epistola job (for instance a refused generation, as a development build of the plugin recorded it). Reconcile cannot resume it; move the process back to its generate-document step to generate again.',
+      epistolaAdminReconcileUnknownJob:
+        'Epistola does not know this job, usually because the process was moved back to its catch event. Reconcile cannot resume it; move the process back to its generate-document step to generate again.',
+      epistolaAdminReconcileEpistolaError:
+        "Epistola could not answer for this job. Try again in a moment, or check this connection's health on the overview.",
       epistolaAdminConfigurations: 'Configurations',
       epistolaAdminValidations: 'BPMN validation',
       epistolaAdminNoValidations:
