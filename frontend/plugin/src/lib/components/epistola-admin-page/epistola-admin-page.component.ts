@@ -23,6 +23,7 @@ import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { TabsModule } from 'carbon-components-angular/tabs';
 import { TagModule } from 'carbon-components-angular/tag';
 import { EpistolaAdminService } from '../../services/epistola-admin.service';
+import { reconcileFailureFeedback } from './reconcile-feedback';
 import {
   BpmnValidationReport,
   BpmnValidationViolation,
@@ -79,7 +80,10 @@ export class EpistolaAdminPageComponent implements OnInit {
   reconcileFeedback: {
     executionId: string;
     type: 'success' | 'pending' | 'error';
+    /** Shown as is when there is no {@link messageKey}. */
     message: string;
+    /** A translation key, preferred over {@link message}. */
+    messageKey?: string;
   } | null = null;
 
   catalogs: ClasspathCatalog[] = [];
@@ -332,24 +336,7 @@ export class EpistolaAdminPageComponent implements OnInit {
       },
       error: (err) => {
         this.reconcilingExecutionIds.delete(job.executionId);
-        // 409 from the backend = job is still PENDING/IN_PROGRESS, surface as
-        // informational rather than an error.
-        if (err?.status === 409) {
-          const status = err.error?.epistolaStatus ?? 'still pending';
-          this.reconcileFeedback = {
-            executionId: job.executionId,
-            type: 'pending',
-            message: `Epistola: ${status}. Try again in a moment.`,
-          };
-        } else {
-          const message =
-            err?.error?.detail ?? err?.error?.message ?? err?.message ?? 'unknown error';
-          this.reconcileFeedback = {
-            executionId: job.executionId,
-            type: 'error',
-            message,
-          };
-        }
+        this.reconcileFeedback = { executionId: job.executionId, ...reconcileFailureFeedback(err) };
       },
     });
   }

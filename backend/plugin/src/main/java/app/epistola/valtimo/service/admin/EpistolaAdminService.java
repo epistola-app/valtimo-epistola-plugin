@@ -419,8 +419,10 @@ public class EpistolaAdminService {
      *         for an Epistola message, has no jobPath variable, or no plugin configuration
      *         is registered for its tenant.
      * @return a {@link ReconcileResult}; {@link ReconcileResult#correlated()} is
-     *         {@code false} when Epistola reports a non-terminal status — the
-     *         caller should map that to HTTP 409 so the UI can surface "still pending".
+     *         {@code false} when nothing was delivered, and {@link ReconcileResult#outcome()} says
+     *         why: the job is still running, the wait is pinned to something Epistola cannot answer
+     *         for (no retry can wake it — the process must go back to its generate step), or
+     *         Epistola could not be reached.
      */
     public ReconcileResult reconcile(String executionId) {
         if (executionId == null || executionId.isBlank()) {
@@ -442,16 +444,41 @@ public class EpistolaAdminService {
             // Execution exists and has the subscription but lost the variable somehow;
             // we can't reconstruct (tenantId, requestId) without it.
             throw new IllegalArgumentException(
-                    "Execution " + executionId + " has no " + EpistolaProcessVariables.WAIT_FOR + " variable");
+                    "Execution " + executionId + " has no " + EpistolaProcessVariables.WAIT_FOR + " variable, "
+                            + "so no result can wake it. Move the process back to its generate-document step "
+                            + "to start a new generation.");
         }
 
         String[] parts = EpistolaMessageCorrelationService.parseJobPath(jobPath);
         String tenantId = parts[0];
         String requestId = parts[1];
 
+        if (!isJobId(requestId)) {
+            // Development builds just before 1.0.0 (#221) pinned "refused-<uuid>" for a generation
+            // Epistola refused, and an author can set epistolaWaitFor by hand. Neither is a job Epistola
+            // can answer for (the client refuses to send it), so asking would only fail; the way out
+            // is a new generation.
+            log.info("Reconcile: execution {} waits on '{}', which is not an Epistola job id — "
+                    + "the process must go back to its generate step", execution.getId(), requestId);
+            return unresolved(execution, tenantId, requestId, ReconcileResult.Outcome.NOT_A_JOB);
+        }
+
         EpistolaPlugin plugin = findPluginForTenant(tenantId);
-        GenerationJobDetail detail = epistolaService.getJobStatus(
-                plugin.getBaseUrl(), plugin.getApiKey(), tenantId, requestId);
+        GenerationJobDetail detail;
+        try {
+            detail = epistolaService.getJobStatus(plugin.getBaseUrl(), plugin.getApiKey(), tenantId, requestId);
+        } catch (EpistolaApiException e) {
+            // A 404/410 is Epistola saying it does not know this job — typically a process moved back
+            // to its catch event, waiting on a job that is gone. Retrying cannot change that answer.
+            // Any other failure (a refused API key, a 5xx, no connection) is about the connection,
+            // not the job, so it must not send the operator back to the generate step.
+            ReconcileResult.Outcome outcome = isJobGone(e)
+                    ? ReconcileResult.Outcome.UNKNOWN_TO_EPISTOLA
+                    : ReconcileResult.Outcome.EPISTOLA_ERROR;
+            log.warn("Reconcile: could not read job tenantId={}, requestId={} for execution {} (HTTP {}, {}): {}",
+                    tenantId, requestId, execution.getId(), e.getHttpStatus(), Failures.describe(e), outcome);
+            return unresolved(execution, tenantId, requestId, outcome);
+        }
         GenerationJobStatus status = detail.getStatus();
 
         if (!isTerminal(status)) {
@@ -464,7 +491,8 @@ public class EpistolaAdminService {
                     requestId,
                     status.name(),
                     null,
-                    false
+                    false,
+                    ReconcileResult.Outcome.STILL_RUNNING
             );
         }
 
@@ -485,8 +513,39 @@ public class EpistolaAdminService {
                 requestId,
                 status.name(),
                 count,
-                true
+                true,
+                ReconcileResult.Outcome.CORRELATED
         );
+    }
+
+    private static ReconcileResult unresolved(Execution execution, String tenantId, String requestId,
+                                              ReconcileResult.Outcome outcome) {
+        return new ReconcileResult(
+                execution.getId(),
+                execution.getProcessInstanceId(),
+                tenantId,
+                requestId,
+                null,
+                null,
+                false,
+                outcome
+        );
+    }
+
+    private static boolean isJobGone(EpistolaApiException e) {
+        Integer status = e.getHttpStatus();
+        return status != null && (status == 404 || status == 410);
+    }
+
+    /** Epistola's generation job ids are UUIDs; anything else is not a job it can answer for. */
+    private static boolean isJobId(String requestId) {
+        try {
+            UUID.fromString(requestId);
+            // UUID.fromString accepts shortened groups ("1-2-3-4-5"); a job id is the canonical form.
+            return requestId.length() == 36;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private static boolean isTerminal(GenerationJobStatus status) {

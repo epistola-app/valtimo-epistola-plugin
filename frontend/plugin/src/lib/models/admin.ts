@@ -106,19 +106,37 @@ export interface PluginUsageEntry {
 }
 
 /**
+ * Why a reconcile did or did not deliver a result:
+ * - `CORRELATED` (200): the job had finished and its result was delivered.
+ * - `STILL_RUNNING` (409): Epistola is still working on it; try again later.
+ * - `NOT_A_JOB` / `UNKNOWN_TO_EPISTOLA` (422): the wait is pinned to something Epistola cannot answer
+ *   for, so no retry can resume it — the process must go back to its generate step.
+ * - `EPISTOLA_ERROR` (502): Epistola could not answer (unreachable, 5xx, refused API key); a later
+ *   retry, or a fixed connection, may work.
+ */
+export type ReconcileOutcome =
+  | 'CORRELATED'
+  | 'STILL_RUNNING'
+  | 'NOT_A_JOB'
+  | 'UNKNOWN_TO_EPISTOLA'
+  | 'EPISTOLA_ERROR';
+
+/**
  * Outcome of a manual reconcile attempt for a stuck Epistola catch event.
  * `correlated=true` means the Epistola job is in a terminal state and message
- * correlation ran (count = how many process instances received it). `false`
- * means the job is still PENDING/IN_PROGRESS — the backend returns 409.
+ * correlation ran (count = how many process instances received it). Otherwise
+ * `outcome` says why nothing was delivered.
  */
 export interface ReconcileResult {
   executionId: string;
   processInstanceId: string;
   tenantId: string;
   requestId: string;
-  epistolaStatus: string;
+  epistolaStatus: string | null;
   correlatedCount: number | null;
   correlated: boolean;
+  /** Absent from older backends; fall back to the HTTP status there. */
+  outcome?: ReconcileOutcome;
 }
 
 /**
