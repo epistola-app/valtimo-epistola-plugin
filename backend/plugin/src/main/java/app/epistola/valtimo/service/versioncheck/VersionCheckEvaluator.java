@@ -26,6 +26,12 @@ import java.time.ZoneOffset;
 
 public final class VersionCheckEvaluator {
 
+    /**
+     * A document older than this says nothing about support: its line statuses held on the day it
+     * was generated, and the website could not refresh it since.
+     */
+    static final Duration MAX_DOCUMENT_AGE = Duration.ofDays(7);
+
     private VersionCheckEvaluator() {
     }
 
@@ -51,6 +57,11 @@ public final class VersionCheckEvaluator {
                     "Release metadata did not include " + productKey);
         }
 
+        if (product.lines() != null) {
+            return fromLines(document, product, currentVersion, checkedAt);
+        }
+
+        // An older document without lines: derive the status from the floor, as before.
         boolean preRelease = current.get().isPreRelease();
         var stable = product.stable();
         var track = preRelease && product.prerelease() != null && product.prerelease().version() != null
@@ -91,6 +102,55 @@ public final class VersionCheckEvaluator {
                 supportedUntil,
                 latest.isEmpty() ? "Release metadata did not include a comparable version" : null
         );
+    }
+
+    /**
+     * The status from the running version's line, whose support status the website decided. The
+     * offered release is the line's own patch first, then a newer line, then (for a pre-release
+     * build) a newer pre-release.
+     */
+    private static VersionCheckStatus fromLines(
+            EpistolaReleasesDocument document,
+            EpistolaReleasesDocument.ProductReleases product,
+            String currentVersion,
+            Instant checkedAt
+    ) {
+        var lookup = LineLookup.evaluate(product, currentVersion);
+        var status = stale(document, checkedAt) ? LineLookup.Status.UNKNOWN : lookup.status();
+        var stable = product.stable();
+        // The admin page treats a local -SNAPSHOT build as the release it leads to (as before); only
+        // a real pre-release build is a pre-release here and is offered a newer pre-release.
+        boolean preRelease = SemVersion.parse(currentVersion).map(SemVersion::isPreRelease).orElse(false);
+        var offered = lookup.patch() != null ? lookup.patch()
+                : lookup.newerRelease() != null ? lookup.newerRelease()
+                : preRelease ? lookup.nextPrerelease() : null;
+        var shown = offered != null ? offered : stable;
+        boolean ending = status == LineLookup.Status.ENDING;
+        boolean ended = status == LineLookup.Status.ENDED;
+
+        return new VersionCheckStatus(
+                true,
+                checkedAt,
+                currentVersion,
+                true,
+                preRelease,
+                shown != null ? shown.version() : null,
+                offered != null,
+                shown != null ? shown.releaseUrl() : null,
+                shown != null ? shown.changelogUrl() : null,
+                stable != null ? stable.version() : null,
+                stable != null ? stable.releaseUrl() : null,
+                stable != null ? stable.changelogUrl() : null,
+                !ended,
+                ending,
+                product.support() != null ? product.support().minVersion() : null,
+                ending || ended ? lookup.supportEnds() : null,
+                null
+        );
+    }
+
+    private static boolean stale(EpistolaReleasesDocument document, Instant checkedAt) {
+        return document.generatedAt() != null && document.generatedAt().plus(MAX_DOCUMENT_AGE).isBefore(checkedAt);
     }
 
     /** True when {@code version}'s {@code major.minor} line comes after {@code floor}'s. */

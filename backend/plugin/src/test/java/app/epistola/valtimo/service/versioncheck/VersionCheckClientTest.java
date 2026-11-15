@@ -89,6 +89,50 @@ class VersionCheckClientTest {
     }
 
     @Test
+    void fetchReadsLinesAndIgnoresFieldsItDoesNotKnow() {
+        server.createContext("/releases.json", exchange -> {
+            byte[] body = """
+                    {
+                      "schemaVersion": 1,
+                      "generatedAt": "2026-11-14T11:55:00.000Z",
+                      "somethingAddedLater": {"anything": true},
+                      "products": {
+                        "valtimo-epistola-plugin": {
+                          "stable": {"version": "1.0.1", "releaseUrl": "https://example.test/v1.0.1",
+                                     "changelogUrl": null, "publishedAt": "2026-11-13T10:00:00Z"},
+                          "prerelease": {"version": "1.0.0-beta.1", "releaseUrl": "https://example.test/b1",
+                                         "changelogUrl": null, "publishedAt": null},
+                          "lines": [
+                            {"line": "1.0", "latest": {"version": "1.0.1", "releaseUrl": "https://example.test/v1.0.1",
+                             "changelogUrl": null, "publishedAt": null}, "supportEnds": null, "status": "supported"},
+                            {"line": "0.21", "latest": {"version": "0.21.0", "releaseUrl": "https://example.test/v0.21.0",
+                             "changelogUrl": null, "publishedAt": null}, "supportEnds": "2027-02-12", "status": "ending",
+                             "alsoAddedLater": 1}
+                          ],
+                          "support": {"minVersion": "0.21.0"}
+                        }
+                      }
+                    }
+                    """.getBytes();
+            exchange.getResponseHeaders().add("Content-Type", "application/json");
+            exchange.sendResponseHeaders(200, body.length);
+            exchange.getResponseBody().write(body);
+            exchange.close();
+        });
+
+        EpistolaReleasesDocument document = new VersionCheckClient(restClient()).fetch(
+                "http://127.0.0.1:" + port + "/releases.json", "0.21.0", null);
+
+        assertThat(document.generatedAt()).isEqualTo(java.time.Instant.parse("2026-11-14T11:55:00Z"));
+        var product = document.products().get("valtimo-epistola-plugin");
+        assertThat(product.next()).isNull();
+        assertThat(product.lines()).extracting(EpistolaReleasesDocument.ReleaseLine::line).containsExactly("1.0", "0.21");
+        assertThat(product.lines().get(1).supportEnds()).isEqualTo("2027-02-12");
+        assertThat(product.lines().get(1).status()).isEqualTo("ending");
+        assertThat(LineLookup.evaluate(product, "0.21.0").status()).isEqualTo(LineLookup.Status.ENDING);
+    }
+
+    @Test
     void fetchTreats404AsMetadataUnavailable() {
         server.createContext("/.well-known/epistola/releases.json", exchange -> {
             exchange.sendResponseHeaders(404, -1);

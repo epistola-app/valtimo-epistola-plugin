@@ -36,11 +36,23 @@ public record SemVersion(
         return !preRelease.isEmpty();
     }
 
+    /** Parses {@code version}, reading a {@code -SNAPSHOT} build as the release it leads to. */
     public static Optional<SemVersion> parse(String version) {
         if (version == null || version.isBlank()) {
             return Optional.empty();
         }
-        String withoutBuild = normalize(version.trim()).split("\\+", 2)[0];
+        return parseStrict(normalize(version.trim()));
+    }
+
+    /**
+     * Parses {@code version} as SemVer, where a {@code -SNAPSHOT} build is a pre-release. The line
+     * lookup uses this, so the plugin answers the published test cases like every other client.
+     */
+    public static Optional<SemVersion> parseStrict(String version) {
+        if (version == null || version.isBlank()) {
+            return Optional.empty();
+        }
+        String withoutBuild = version.trim().split("\\+", 2)[0];
         String[] coreAndPre = withoutBuild.split("-", 2);
         String[] coreParts = coreAndPre[0].split("\\.");
         if (coreParts.length != 3) {
