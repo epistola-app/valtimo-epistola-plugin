@@ -24,6 +24,7 @@ import { TabsModule } from 'carbon-components-angular/tabs';
 import { TagModule } from 'carbon-components-angular/tag';
 import { EpistolaAdminService } from '../../services/epistola-admin.service';
 import { reconcileFailureFeedback } from './reconcile-feedback';
+import { versionCheckNotice } from './version-check-notice';
 import {
   BpmnValidationReport,
   BpmnValidationViolation,
@@ -185,79 +186,16 @@ export class EpistolaAdminPageComponent implements OnInit {
     return `${displayVersion} (contract ${contractVersion})`;
   }
 
-  get versionCheckNoticeType(): 'error' | 'warning' | 'info' | 'success' | null {
-    const status = this.versionCheck;
-    if (!status) {
-      return null;
-    }
-    if (!status.enabled) {
-      return 'info';
-    }
-    if (!status.supported) {
-      return 'error';
-    }
-    if (status.supportEndingSoon) {
-      return 'warning';
-    }
-    if (status.preRelease || status.updateAvailable) {
-      return 'info';
-    }
-    if (!status.metadataAvailable || status.lastError) {
-      return 'warning';
-    }
-    return null;
+  get versionCheckNoticeType(): 'error' | 'warning' | 'info' | null {
+    return versionCheckNotice(this.versionCheck)?.type ?? null;
   }
 
   get versionCheckTitleKey(): string | null {
-    const status = this.versionCheck;
-    if (!status) {
-      return null;
-    }
-    if (!status.enabled) {
-      return 'epistolaAdminVersionCheckDisabledTitle';
-    }
-    if (!status.supported) {
-      return 'epistolaAdminVersionUnsupportedTitle';
-    }
-    if (status.supportEndingSoon) {
-      return 'epistolaAdminVersionSupportEndingTitle';
-    }
-    if (status.preRelease) {
-      return 'epistolaAdminVersionPrereleaseTitle';
-    }
-    if (status.updateAvailable) {
-      return 'epistolaAdminVersionUpdateTitle';
-    }
-    if (!status.metadataAvailable || status.lastError) {
-      return 'epistolaAdminVersionMetadataUnavailableTitle';
-    }
-    return null;
+    return versionCheckNotice(this.versionCheck)?.titleKey ?? null;
   }
 
   get versionCheckBodyKey(): string | null {
-    const status = this.versionCheck;
-    if (!status) {
-      return null;
-    }
-    if (!status.enabled) {
-      return 'epistolaAdminVersionCheckDisabledBody';
-    }
-    if (!status.supported) {
-      return 'epistolaAdminVersionUnsupportedBody';
-    }
-    if (status.supportEndingSoon) {
-      return 'epistolaAdminVersionSupportEndingBody';
-    }
-    if (status.preRelease) {
-      return 'epistolaAdminVersionPrereleaseBody';
-    }
-    if (status.updateAvailable) {
-      return 'epistolaAdminVersionUpdateBody';
-    }
-    if (!status.metadataAvailable || status.lastError) {
-      return 'epistolaAdminVersionMetadataUnavailableBody';
-    }
-    return null;
+    return versionCheckNotice(this.versionCheck)?.bodyKey ?? null;
   }
 
   backToOverview(): void {

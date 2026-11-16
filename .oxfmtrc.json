@@ -15,5 +15,11 @@
       }
     }
   ],
-  "ignorePatterns": ["**/node_modules/**", "**/dist/**", "**/build/**", "**/charts/**"]
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/charts/**",
+    "backend/plugin/src/test/resources/releases/releases.conformance.json"
+  ]
 }

@@ -85,7 +85,9 @@ them in the next pre-release, or in the release they lead up to.
 An end date may be **extended, never brought forward**. The supported versions are published as
 release metadata, and the plugin's admin page reads it: it warns when a newer version is available,
 when the running version is no longer supported, and when support is ending soon (see the
-[README](README.md); `epistola.version-check.enabled=false` turns the check off).
+[README](README.md); `epistola.version-check.enabled=false`, or the environment variable
+`EPISTOLA_VERSIONCHECK_ENABLED=false`, turns the check off). Epistola publishes each line's status
+with the metadata, so a change to these periods reaches running plugins without an upgrade.
 
 ## Platform compatibility
 
