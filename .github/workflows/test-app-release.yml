@@ -6,8 +6,12 @@ name: Test-app release
 # that only affect the test-app (e.g. the training facility) and should reach
 # the demo without a plugin release.
 #
-# Both images are always published under the same tag, because the infra pin
-# bump resolves the backend and frontend pins from one tag. The tag carries a
+# Neither this workflow nor release.yml moves the demo's pins: the fleet's
+# configuration lives in the internal infra repository on Forgejo (the GitHub
+# copy is archived), and the demo's pins are set there.
+#
+# Both images are always published under the same tag, because the demo pins
+# the backend and frontend from one tag. The tag carries a
 # prerelease suffix (<last plugin release>-testapp.<run number>), so it can
 # never collide with a real plugin release and never moves the X.Y / X.Y.Z tags.
 
@@ -18,11 +22,6 @@ on:
         description: "Image tag override (X.Y.Z-<suffix>). Empty = <last plugin release>-testapp.<run number>."
         required: false
         type: string
-      promote:
-        description: "Dispatch the infra pin bump for the demo afterwards."
-        required: false
-        type: boolean
-        default: true
 
 permissions:
   contents: read
@@ -225,22 +224,3 @@ jobs:
         with:
           sarif_file: trivy-image-frontend.sarif
           category: trivy-image-frontend
-
-  promote-demo:
-    name: Trigger demo pin bump
-    needs: [version, docker-backend, docker-frontend]
-    if: inputs.promote
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger infra pin bump
-        env:
-          GH_TOKEN: ${{ secrets.INFRA_DISPATCH_TOKEN }}
-          TAG: ${{ needs.version.outputs.tag }}
-        run: |
-          # Same dispatch as release.yml: pin only after both images have been
-          # published and signed, under the one tag both pins resolve from.
-          gh workflow run app-pin-bump.yml \
-            -R epistola-app/epistola-nix-infra \
-            --ref main \
-            -f app=valtimo \
-            -f tag="$TAG"

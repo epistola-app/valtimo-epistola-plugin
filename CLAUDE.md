@@ -4,6 +4,8 @@
 
 Run `pnpm format` before every `git commit` that touches `.md`, `.yaml`, `.yml`, `.ts`, or `.json` files — `pnpm format:check` is the gate CI runs, easier to fix locally than to chase down after pushing. Other pre-push gates (`pnpm test`, `./gradlew :backend:plugin:test`, `pnpm build`) are listed in [Testing](#testing).
 
+Two changelogs. `CHANGELOG.md` is the plugin's: it is bundled with the plugin and shown on its admin page, so it lists only what changes for someone who installs the plugin. Changes to the test app (`test-app/`: demo case types, bundled demo catalogs, its frontend, its tests) go in `test-app/CHANGELOG.md`. A change that touches both gets an entry in each, each saying what it means for that reader.
+
 ## Build Order
 
 The frontend plugin must be built BEFORE the test-app frontend:

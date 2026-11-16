@@ -29,7 +29,8 @@
           "required": ["naam", "organisatie", "dagdelen"],
           "properties": {
             "naam": {
-              "type": "string"
+              "type": "string",
+              "minLength": 1
             },
             "organisatie": {
               "type": "string"

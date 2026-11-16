@@ -71,9 +71,10 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
      * Carrier {@code sourceKey} ({@value}) for the case document a <b>start form</b> is opened
      * against, used by the start-event preview's start-on-existing-case flavour.
      *
-     * <p>Filled through {@link #createResolver(String)} — the document-scoped overload — which is
-     * the only one Valtimo reaches when prefilling a start form. Empty on a brand-new-case start
-     * form, because Valtimo skips prefill entirely when there is no document.
+     * <p>Filled through the document-scoped resolver, which Valtimo reaches via
+     * {@link #createResolver(Map)} with a {@code documentId} property when prefilling a start form.
+     * Empty on a brand-new-case start form, because Valtimo skips prefill entirely when there is no
+     * document.
      */
     public static final String SOURCE_KEY_DOCUMENT_ID = PREFIX + ":" + KEY_DOCUMENT_ID;
 
@@ -112,9 +113,10 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
     /**
      * Resolution without a process/task context (document-only).
      *
-     * <p>This is the overload Valtimo reaches when prefilling a <b>start form</b> that is opened
-     * against an existing case ({@code PrefillFormService.prefillValueResolverFields} falls through
-     * to {@code resolveValues(documentId, keys)} when both the task and the execution are null). It
+     * <p>This is the resolver for a <b>start form</b> opened against an existing case
+     * ({@code PrefillFormService.prefillValueResolverFields} calls {@code resolveValues(documentId,
+     * keys)} when both the task and the execution are null, which reaches this factory through
+     * {@link #createResolver(Map)} with a {@code documentId} property). It
      * therefore resolves {@code epistola:documentId}, which the start-event preview needs so it can
      * name the case without reading the never-cleared frontend {@code FormIoStateService}.
      *
@@ -129,11 +131,13 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
     }
 
     /**
-     * Property-map entry point used by {@code ValueResolverService.resolveValues(processInstanceId,
-     * variableScope, keys)} — the path Valtimo's form prefill actually takes. The Kotlin interface's
-     * default would route this back to {@link #createResolver(String, VariableScope)}, but a Java
-     * implementor must do it explicitly (Kotlin interface defaults aren't inherited in Java). Without
-     * this, the prefill receives a null resolver and the carrier field never gets the task id.
+     * Property-map entry point, the path Valtimo's form prefill actually takes for both overloads:
+     * {@code ValueResolverService.resolveValues(processInstanceId, variableScope, keys)} passes
+     * {@code processInstanceId} and {@code variableScope}, and {@code resolveValues(documentId, keys)}
+     * passes {@code documentId} (Valtimo 13.54). The Kotlin interface's default would route these back
+     * to the matching overload, but a Java implementor must do it explicitly (Kotlin interface
+     * defaults aren't inherited in Java). Without this, the prefill receives a null resolver and the
+     * carrier field stays empty: the task id on a task form, the case on a start form.
      */
     @Override
     public Function<String, Object> createResolver(Map<String, ?> properties) {
@@ -141,6 +145,9 @@ public class EpistolaTaskValueResolverFactory implements ValueResolverFactory {
         Object variableScope = properties.get(ValueResolverPropertyKey.VARIABLE_SCOPE);
         if (processInstanceId instanceof String pid && variableScope instanceof VariableScope scope) {
             return createResolver(pid, scope);
+        }
+        if (properties.get(ValueResolverPropertyKey.DOCUMENT_ID) instanceof String documentId) {
+            return createResolver(documentId);
         }
         return requestedValue -> null;
     }

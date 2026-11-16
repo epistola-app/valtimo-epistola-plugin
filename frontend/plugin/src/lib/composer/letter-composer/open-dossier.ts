@@ -19,9 +19,10 @@
 /**
  * Which dossier the user currently has open, read from the route.
  *
- * <p>A start form is the one place the case cannot come from a task, and Valtimo does not prefill
- * value-resolver fields on its `start-form?documentId=` route, so the server-prefilled carrier
- * arrives empty there. The route does say which case is on screen, and using it is sound for the
+ * <p>A start form is the one place the case cannot come from a task. The server-prefilled
+ * `epistola:documentId` carrier names it there, but up to plugin 1.0.1 that carrier arrived empty: the
+ * value resolver did not answer Valtimo's document-scoped prefill. The route is the fallback for that
+ * case. It does say which case is on screen, and using it is sound for the
  * same reason ADR 0004 gives for the start-event preview: the id selects *which* case is checked,
  * never *whether* it is — the backend still requires permission to start the process and to view
  * that case before it reads a single field.
