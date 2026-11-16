@@ -171,6 +171,31 @@ describe('EpistolaDocumentPreviewComponent', () => {
     });
 
     /**
+     * Valtimo does not prefill value-resolver fields on `start-form?documentId=`, so on a process
+     * started from an open case the carrier is empty and the case must come from the route.
+     */
+    it('falls back to the case on screen when the carrier arrives empty', () => {
+      Object.defineProperty(globalThis, 'location', {
+        value: {
+          pathname: '/cases/evenement/document/da0e0dd2-6cae-4ed1-87cd-b24aa7a7c884/summary',
+        },
+        configurable: true,
+      });
+      try {
+        const { component, epistolaPluginService } = createComponent();
+        component.previewContext = 'start';
+
+        component.ngOnChanges(changes('sourceActivityId', 'inputOverrides'));
+
+        expect(epistolaPluginService.previewStartToBlob).toHaveBeenCalledWith(
+          expect.objectContaining({ documentId: 'da0e0dd2-6cae-4ed1-87cd-b24aa7a7c884' }),
+        );
+      } finally {
+        delete (globalThis as { location?: unknown }).location;
+      }
+    });
+
+    /**
      * The misconfiguration guard. A start-mode preview dropped on a user-task form would be
      * authorized on permission to start the process rather than on that task, weakening the
      * form's gate — so it must render nothing rather than pick a mode.

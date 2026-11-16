@@ -37,6 +37,7 @@ import { PANEL_MEMORY_KEYS } from '../../utils/floating-panel';
 import { PluginTranslatePipeModule } from '@valtimo/plugin';
 import { EpistolaPreviewFrameComponent } from '../epistola-preview-frame/epistola-preview-frame.component';
 import { shouldLoadPreview } from './preview-utils';
+import { readOpenDossierId } from '../../composer/letter-composer/open-dossier';
 import {
   isLegacyOverrideMapping,
   legacyOverrideToJsonata,
@@ -496,7 +497,9 @@ export class EpistolaDocumentPreviewComponent
     return this.epistolaPluginService.previewStartToBlob({
       processDefinitionKey: this.processDefinitionKey,
       sourceActivityId: this.sourceActivityId!,
-      documentId: this.startDocumentId ?? null,
+      // Valtimo leaves the carrier empty on `start-form?documentId=`, so fall back to the case on
+      // screen, as the letter composer does (see readOpenDossierId for why that is sound).
+      documentId: this.startDocumentId ?? readOpenDossierId(globalThis.location?.pathname),
       inputOverrides: this.inputOverrides || null,
     });
   }

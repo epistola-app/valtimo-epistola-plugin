@@ -19,10 +19,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Test app: a reminder to one participant of an event.** The process "Herinnering sturen" on
   `evenement` picks the participant from the case in its start form, takes an optional note and
   previews the reminder before generating it. No code: a select reads the participant list the
-  form is prefilled with (`doc:/deelnemers`), and the generate-document mapping finds the chosen
+  form is prefilled with (a plain `deelnemers` key: Valtimo prefills a start form from the case
+  document, not through value resolvers), and the generate-document mapping finds the chosen
   participant by e-mail address. The letter composer cannot offer a choice whose options come from
   the case, which is why this one has a process of its own. Both built for the TechTalk on the
   GZAC user day of 17 November 2026.
+
+### Fixed
+
+- **The document preview on a start form opened from a case now shows that case.** Valtimo leaves
+  the `epistola:documentId` carrier empty on `start-form?documentId=`, so a start-mode preview of a
+  process started on an existing case rendered with an empty `$doc` and failed on every required
+  field. It now falls back to the case on screen, as the letter composer already did; the backend
+  still checks permission to view that case before reading it.
 
 ## [1.0.1] - 2026-11-12
 
