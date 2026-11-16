@@ -1,0 +1,1097 @@
+{
+  "schemaVersion": 4,
+  "resource": {
+    "type": "template",
+    "themeId": "gzac",
+    "slug": "presentielijst",
+    "name": "Presentielijst",
+    "dataModel": {
+      "type": "object",
+      "required": [
+        "evenement",
+        "dagdelen",
+        "deelnemers",
+        "lijstVoor",
+        "zaal"
+      ],
+      "properties": {
+        "evenement": {
+          "type": "object",
+          "required": [
+            "naam",
+            "datum",
+            "locatie"
+          ],
+          "properties": {
+            "naam": {
+              "type": "string"
+            },
+            "datum": {
+              "type": "string"
+            },
+            "locatie": {
+              "type": "string"
+            }
+          }
+        },
+        "dagdelen": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "key",
+              "label",
+              "doelgroep",
+              "sessies"
+            ],
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "doelgroep": {
+                "type": "string"
+              },
+              "sessies": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "tijd",
+                    "titel",
+                    "pauze"
+                  ],
+                  "properties": {
+                    "tijd": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "titel": {
+                      "type": "string"
+                    },
+                    "omschrijving": {
+                      "type": "string"
+                    },
+                    "pauze": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "deelnemers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "naam",
+              "organisatie",
+              "dagdelen"
+            ],
+            "properties": {
+              "naam": {
+                "type": "string"
+              },
+              "organisatie": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "dagdelen": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "lijstVoor": {
+          "type": "string",
+          "title": "Dagdeel",
+          "enum": [
+            "ochtend",
+            "middag"
+          ]
+        },
+        "zaal": {
+          "type": "string",
+          "title": "Zaal"
+        }
+      }
+    },
+    "dataExamples": [
+      {
+        "name": "Ochtend",
+        "data": {
+          "evenement": {
+            "naam": "GZAC Gebruikersdag 2026",
+            "datum": "dinsdag 17 november 2026",
+            "locatie": "De Rode Hoed, Amsterdam"
+          },
+          "dagdelen": [
+            {
+              "key": "ochtend",
+              "label": "Ochtend · TechTalks",
+              "doelgroep": "voor ontwikkelaars, architecten en low-coders",
+              "sessies": [
+                {
+                  "tijd": "10.00",
+                  "titel": "Deur open",
+                  "pauze": true
+                },
+                {
+                  "tijd": "10.30",
+                  "titel": "Van Verzoek tot Archivering",
+                  "pauze": false,
+                  "label": "TechTalk 1",
+                  "omschrijving": "In één sessie zien we hoe we vanuit Open Formulieren een verzoek maken, het zaakdossier afhandelen met GZAC en in Open Archiefbeheer archiveren. Door Joeri Bekker (Maykin)."
+                },
+                {
+                  "tijd": "10.50",
+                  "titel": "Maatwerk: je wilt het niet, maar het is wel nodig",
+                  "pauze": false,
+                  "label": "TechTalk 2",
+                  "omschrijving": "De kern van GZAC is modelleren, niet programmeren. Hoe past maatwerk zó in GZAC dat het geen onderhoudsprobleem vormt? Maxim Buur toont het gloednieuwe Plugin Framework en vertelt over de strategie."
+                },
+                {
+                  "tijd": "11.10",
+                  "titel": "Van Data naar Document",
+                  "pauze": false,
+                  "label": "TechTalk 3",
+                  "omschrijving": "Epistola is een gloednieuw open source component in het GZAC-ecosysteem. Sander de Groot van Epistola vertelt over documentgeneratie en geeft een live demo."
+                },
+                {
+                  "tijd": "11.30",
+                  "titel": "Pauze",
+                  "pauze": true
+                },
+                {
+                  "tijd": "12.00",
+                  "titel": "Integraal Klant- en Objectbeeld: live configuratie",
+                  "pauze": false,
+                  "label": "TechTalk 4",
+                  "omschrijving": "IKO kan een integraal klantbeeld opbouwen. Hoe koppel je IKO met GZAC, sluit je bronnen aan en toon je die data aan de gebruikers? Thomas Minke laat het live zien."
+                },
+                {
+                  "tijd": "12.20",
+                  "titel": "Bouwblokken in praktijk",
+                  "pauze": false,
+                  "label": "TechTalk 5",
+                  "omschrijving": "In december 2025 gepresenteerd als beta, nu live in productie. Joeri Diederen van Raakvlak Advies laat in een live demo de kracht van hergebruik zien."
+                },
+                {
+                  "tijd": "12.40",
+                  "titel": "Office integratie",
+                  "pauze": false,
+                  "label": "TechTalk 6",
+                  "omschrijving": "Samen met de gemeente Utrecht gebouwd: viewen, bewerken en opslaan van alle Microsoft-bestandstypen. Maurits van Beusekom en Thomas Luijken van Baseflow geven een live demo."
+                },
+                {
+                  "tijd": "13.00",
+                  "titel": "Lunch",
+                  "pauze": true
+                }
+              ]
+            },
+            {
+              "key": "middag",
+              "label": "Middag · Kennissnacks",
+              "doelgroep": "voor iedereen toegankelijk",
+              "sessies": [
+                {
+                  "tijd": "13.40",
+                  "titel": "Opening",
+                  "pauze": false,
+                  "omschrijving": "Dagvoorzitter Vincent van Beek opent het middagprogramma en Anne Leguit kadert de ontwikkelingen vanuit het Platform Dienstverlening."
+                },
+                {
+                  "tijd": "13.50",
+                  "titel": "Koers van GZAC",
+                  "pauze": false,
+                  "label": "Kennissnack 1",
+                  "omschrijving": "Rutger Haagsma deelt zijn visie op de ontwikkeling van GZAC. Nu en de komende jaren."
+                },
+                {
+                  "tijd": "14.05",
+                  "titel": "Productontwikkeling GZAC 2026",
+                  "pauze": false,
+                  "label": "Kennissnack 2",
+                  "omschrijving": "Thomas Minke blikt terug op een jaar vol ontwikkeling binnen GZAC en laat zien wat er nog aankomt."
+                },
+                {
+                  "tijd": "14.25",
+                  "titel": "Klantcontactcentrum in Platform Dienstverlening",
+                  "pauze": false,
+                  "label": "Kennissnack 3",
+                  "omschrijving": "Het KCC Sociaal Domein van de gemeente Den Haag verving KANA door Platform Dienstverlening. Wendy van Duijvenvoorde laat zien welke features daarvoor nodig waren."
+                },
+                {
+                  "tijd": "14.40",
+                  "titel": "Pauze",
+                  "pauze": true
+                },
+                {
+                  "tijd": "15.05",
+                  "titel": "Usecase Gemeente Alkmaar: van G4 naar G50",
+                  "pauze": false,
+                  "label": "Kennissnack 4",
+                  "omschrijving": "In 2026 nemen G50-gemeentes de stap naar open source. Sabine Kassels deelt waar zij tegenaan lopen bij aanbesteding en implementatie."
+                },
+                {
+                  "tijd": "15.25",
+                  "titel": "Paneldiscussie",
+                  "pauze": false
+                },
+                {
+                  "tijd": "15.45",
+                  "titel": "GZAC en open source agentic AI",
+                  "pauze": false,
+                  "label": "Kennissnack 5",
+                  "omschrijving": "GZAC blijkt een goede orkestrator van agents. Thomas van Maarseveen geeft een live demo van open source AI op hardware in Nederland."
+                },
+                {
+                  "tijd": "16.00",
+                  "titel": "Wrap-up door de dagvoorzitter",
+                  "pauze": false
+                },
+                {
+                  "tijd": "16.05",
+                  "titel": "Borrel",
+                  "pauze": true
+                },
+                {
+                  "tijd": "17.00",
+                  "titel": "Einde",
+                  "pauze": true
+                }
+              ]
+            }
+          ],
+          "deelnemers": [
+            {
+              "naam": "Jan Jansen",
+              "organisatie": "Gemeente Voorbeeld",
+              "email": "jan.jansen@voorbeeld.nl",
+              "dagdelen": [
+                "ochtend"
+              ]
+            },
+            {
+              "naam": "Fatima de Vries",
+              "organisatie": "Gemeente Rivierstad",
+              "email": "f.devries@rivierstad.nl",
+              "dagdelen": [
+                "ochtend",
+                "middag"
+              ]
+            },
+            {
+              "naam": "Pieter Bakker",
+              "organisatie": "Gemeente Heuvelland",
+              "email": "p.bakker@heuvelland.nl",
+              "dagdelen": [
+                "middag"
+              ]
+            },
+            {
+              "naam": "Sanne Visser",
+              "organisatie": "Waterschap De Polder",
+              "email": "s.visser@depolder.nl",
+              "dagdelen": [
+                "ochtend",
+                "middag"
+              ]
+            },
+            {
+              "naam": "Mohamed el Amrani",
+              "organisatie": "Gemeente Kustdorp",
+              "email": "m.elamrani@kustdorp.nl",
+              "dagdelen": [
+                "ochtend"
+              ]
+            }
+          ],
+          "lijstVoor": "ochtend",
+          "zaal": "Grote zaal"
+        }
+      },
+      {
+        "name": "Middag",
+        "data": {
+          "evenement": {
+            "naam": "GZAC Gebruikersdag 2026",
+            "datum": "dinsdag 17 november 2026",
+            "locatie": "De Rode Hoed, Amsterdam"
+          },
+          "dagdelen": [
+            {
+              "key": "ochtend",
+              "label": "Ochtend · TechTalks",
+              "doelgroep": "voor ontwikkelaars, architecten en low-coders",
+              "sessies": [
+                {
+                  "tijd": "10.00",
+                  "titel": "Deur open",
+                  "pauze": true
+                },
+                {
+                  "tijd": "10.30",
+                  "titel": "Van Verzoek tot Archivering",
+                  "pauze": false,
+                  "label": "TechTalk 1",
+                  "omschrijving": "In één sessie zien we hoe we vanuit Open Formulieren een verzoek maken, het zaakdossier afhandelen met GZAC en in Open Archiefbeheer archiveren. Door Joeri Bekker (Maykin)."
+                },
+                {
+                  "tijd": "10.50",
+                  "titel": "Maatwerk: je wilt het niet, maar het is wel nodig",
+                  "pauze": false,
+                  "label": "TechTalk 2",
+                  "omschrijving": "De kern van GZAC is modelleren, niet programmeren. Hoe past maatwerk zó in GZAC dat het geen onderhoudsprobleem vormt? Maxim Buur toont het gloednieuwe Plugin Framework en vertelt over de strategie."
+                },
+                {
+                  "tijd": "11.10",
+                  "titel": "Van Data naar Document",
+                  "pauze": false,
+                  "label": "TechTalk 3",
+                  "omschrijving": "Epistola is een gloednieuw open source component in het GZAC-ecosysteem. Sander de Groot van Epistola vertelt over documentgeneratie en geeft een live demo."
+                },
+                {
+                  "tijd": "11.30",
+                  "titel": "Pauze",
+                  "pauze": true
+                },
+                {
+                  "tijd": "12.00",
+                  "titel": "Integraal Klant- en Objectbeeld: live configuratie",
+                  "pauze": false,
+                  "label": "TechTalk 4",
+                  "omschrijving": "IKO kan een integraal klantbeeld opbouwen. Hoe koppel je IKO met GZAC, sluit je bronnen aan en toon je die data aan de gebruikers? Thomas Minke laat het live zien."
+                },
+                {
+                  "tijd": "12.20",
+                  "titel": "Bouwblokken in praktijk",
+                  "pauze": false,
+                  "label": "TechTalk 5",
+                  "omschrijving": "In december 2025 gepresenteerd als beta, nu live in productie. Joeri Diederen van Raakvlak Advies laat in een live demo de kracht van hergebruik zien."
+                },
+                {
+                  "tijd": "12.40",
+                  "titel": "Office integratie",
+                  "pauze": false,
+                  "label": "TechTalk 6",
+                  "omschrijving": "Samen met de gemeente Utrecht gebouwd: viewen, bewerken en opslaan van alle Microsoft-bestandstypen. Maurits van Beusekom en Thomas Luijken van Baseflow geven een live demo."
+                },
+                {
+                  "tijd": "13.00",
+                  "titel": "Lunch",
+                  "pauze": true
+                }
+              ]
+            },
+            {
+              "key": "middag",
+              "label": "Middag · Kennissnacks",
+              "doelgroep": "voor iedereen toegankelijk",
+              "sessies": [
+                {
+                  "tijd": "13.40",
+                  "titel": "Opening",
+                  "pauze": false,
+                  "omschrijving": "Dagvoorzitter Vincent van Beek opent het middagprogramma en Anne Leguit kadert de ontwikkelingen vanuit het Platform Dienstverlening."
+                },
+                {
+                  "tijd": "13.50",
+                  "titel": "Koers van GZAC",
+                  "pauze": false,
+                  "label": "Kennissnack 1",
+                  "omschrijving": "Rutger Haagsma deelt zijn visie op de ontwikkeling van GZAC. Nu en de komende jaren."
+                },
+                {
+                  "tijd": "14.05",
+                  "titel": "Productontwikkeling GZAC 2026",
+                  "pauze": false,
+                  "label": "Kennissnack 2",
+                  "omschrijving": "Thomas Minke blikt terug op een jaar vol ontwikkeling binnen GZAC en laat zien wat er nog aankomt."
+                },
+                {
+                  "tijd": "14.25",
+                  "titel": "Klantcontactcentrum in Platform Dienstverlening",
+                  "pauze": false,
+                  "label": "Kennissnack 3",
+                  "omschrijving": "Het KCC Sociaal Domein van de gemeente Den Haag verving KANA door Platform Dienstverlening. Wendy van Duijvenvoorde laat zien welke features daarvoor nodig waren."
+                },
+                {
+                  "tijd": "14.40",
+                  "titel": "Pauze",
+                  "pauze": true
+                },
+                {
+                  "tijd": "15.05",
+                  "titel": "Usecase Gemeente Alkmaar: van G4 naar G50",
+                  "pauze": false,
+                  "label": "Kennissnack 4",
+                  "omschrijving": "In 2026 nemen G50-gemeentes de stap naar open source. Sabine Kassels deelt waar zij tegenaan lopen bij aanbesteding en implementatie."
+                },
+                {
+                  "tijd": "15.25",
+                  "titel": "Paneldiscussie",
+                  "pauze": false
+                },
+                {
+                  "tijd": "15.45",
+                  "titel": "GZAC en open source agentic AI",
+                  "pauze": false,
+                  "label": "Kennissnack 5",
+                  "omschrijving": "GZAC blijkt een goede orkestrator van agents. Thomas van Maarseveen geeft een live demo van open source AI op hardware in Nederland."
+                },
+                {
+                  "tijd": "16.00",
+                  "titel": "Wrap-up door de dagvoorzitter",
+                  "pauze": false
+                },
+                {
+                  "tijd": "16.05",
+                  "titel": "Borrel",
+                  "pauze": true
+                },
+                {
+                  "tijd": "17.00",
+                  "titel": "Einde",
+                  "pauze": true
+                }
+              ]
+            }
+          ],
+          "deelnemers": [
+            {
+              "naam": "Jan Jansen",
+              "organisatie": "Gemeente Voorbeeld",
+              "email": "jan.jansen@voorbeeld.nl",
+              "dagdelen": [
+                "ochtend"
+              ]
+            },
+            {
+              "naam": "Fatima de Vries",
+              "organisatie": "Gemeente Rivierstad",
+              "email": "f.devries@rivierstad.nl",
+              "dagdelen": [
+                "ochtend",
+                "middag"
+              ]
+            },
+            {
+              "naam": "Pieter Bakker",
+              "organisatie": "Gemeente Heuvelland",
+              "email": "p.bakker@heuvelland.nl",
+              "dagdelen": [
+                "middag"
+              ]
+            },
+            {
+              "naam": "Sanne Visser",
+              "organisatie": "Waterschap De Polder",
+              "email": "s.visser@depolder.nl",
+              "dagdelen": [
+                "ochtend",
+                "middag"
+              ]
+            },
+            {
+              "naam": "Mohamed el Amrani",
+              "organisatie": "Gemeente Kustdorp",
+              "email": "m.elamrani@kustdorp.nl",
+              "dagdelen": [
+                "ochtend"
+              ]
+            }
+          ],
+          "lijstVoor": "middag",
+          "zaal": "Koepelzaal"
+        }
+      }
+    ],
+    "templateModel": {
+      "modelVersion": 1,
+      "root": "n-27",
+      "nodes": {
+        "n-1": {
+          "id": "n-1",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "NAAM"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontFamily": {
+              "slug": "jetbrains-mono",
+              "catalogKey": "system"
+            },
+            "fontSize": "7pt",
+            "color": "#ffffff",
+            "fontWeight": "600",
+            "letterSpacing": "0.8pt"
+          }
+        },
+        "n-2": {
+          "id": "n-2",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "ORGANISATIE"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontFamily": {
+              "slug": "jetbrains-mono",
+              "catalogKey": "system"
+            },
+            "fontSize": "7pt",
+            "color": "#ffffff",
+            "fontWeight": "600",
+            "letterSpacing": "0.8pt"
+          }
+        },
+        "n-3": {
+          "id": "n-3",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "PARAAF"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontFamily": {
+              "slug": "jetbrains-mono",
+              "catalogKey": "system"
+            },
+            "fontSize": "7pt",
+            "color": "#ffffff",
+            "fontWeight": "600",
+            "letterSpacing": "0.8pt"
+          }
+        },
+        "n-4": {
+          "id": "n-4",
+          "type": "columns",
+          "slots": [
+            "s-5",
+            "s-6",
+            "s-7"
+          ],
+          "props": {
+            "columnSizes": [
+              5,
+              5,
+              3
+            ],
+            "gap": 0,
+            "columnStyles": [
+              {
+                "padding": "5pt 8pt",
+                "backgroundColor": "#1b365d"
+              },
+              {
+                "padding": "5pt 8pt",
+                "backgroundColor": "#1b365d"
+              },
+              {
+                "padding": "5pt 8pt",
+                "backgroundColor": "#1b365d"
+              }
+            ]
+          },
+          "styles": {
+            "keepWithNext": true
+          }
+        },
+        "n-8": {
+          "id": "n-8",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "d.naam"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontWeight": "600"
+          }
+        },
+        "n-9": {
+          "id": "n-9",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "d.organisatie"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "color": "#4b5563"
+          }
+        },
+        "n-10": {
+          "id": "n-10",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": " "
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        },
+        "n-11": {
+          "id": "n-11",
+          "type": "columns",
+          "slots": [
+            "s-12",
+            "s-13",
+            "s-14"
+          ],
+          "props": {
+            "columnSizes": [
+              5,
+              5,
+              3
+            ],
+            "gap": 0,
+            "columnStyles": [
+              {
+                "padding": "7pt 8pt"
+              },
+              {
+                "padding": "7pt 8pt"
+              },
+              {
+                "padding": "7pt 8pt",
+                "borderLeft": "0.75pt solid #e5e7eb"
+              }
+            ]
+          },
+          "styles": {
+            "borderBottom": "0.75pt solid #e5e7eb",
+            "keepTogether": true
+          }
+        },
+        "n-15": {
+          "id": "n-15",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "dagdeel.label"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontFamily": {
+              "slug": "source-serif-4",
+              "catalogKey": "system"
+            },
+            "fontSize": "24pt",
+            "color": "#1b365d",
+            "fontWeight": "700",
+            "marginBottom": "2pt"
+          }
+        },
+        "n-16": {
+          "id": "n-16",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.naam"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": " · "
+                    },
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.datum"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": " · "
+                    },
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "zaal"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": ", "
+                    },
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.locatie"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontSize": "10pt",
+            "color": "#4b5563",
+            "marginBottom": "14pt"
+          }
+        },
+        "n-17": {
+          "id": "n-17",
+          "type": "conditional",
+          "slots": [
+            "s-18"
+          ],
+          "props": {
+            "condition": {
+              "raw": "dagdeel.key = lijstVoor",
+              "language": "jsonata"
+            },
+            "inverse": false
+          }
+        },
+        "n-19": {
+          "id": "n-19",
+          "type": "loop",
+          "slots": [
+            "s-20"
+          ],
+          "props": {
+            "expression": {
+              "raw": "dagdelen",
+              "language": "jsonata"
+            },
+            "itemAlias": "dagdeel"
+          }
+        },
+        "n-21": {
+          "id": "n-21",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "// PRESENTIELIJST"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "marginBottom": "6pt"
+          },
+          "stylePreset": "kicker"
+        },
+        "n-22": {
+          "id": "n-22",
+          "type": "conditional",
+          "slots": [
+            "s-23"
+          ],
+          "props": {
+            "condition": {
+              "raw": "lijstVoor in d.dagdelen",
+              "language": "jsonata"
+            },
+            "inverse": false
+          }
+        },
+        "n-24": {
+          "id": "n-24",
+          "type": "loop",
+          "slots": [
+            "s-25"
+          ],
+          "props": {
+            "expression": {
+              "raw": "deelnemers",
+              "language": "jsonata"
+            },
+            "itemAlias": "d"
+          }
+        },
+        "n-26": {
+          "id": "n-26",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.naam"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": " · "
+                    },
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.datum"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": " · "
+                    },
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.locatie"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontSize": "7pt",
+            "color": "#9ca3af",
+            "marginTop": "10pt"
+          }
+        },
+        "n-27": {
+          "id": "n-27",
+          "type": "root",
+          "slots": [
+            "s-28"
+          ],
+          "props": {}
+        }
+      },
+      "slots": {
+        "s-5": {
+          "id": "s-5",
+          "nodeId": "n-4",
+          "name": "column-0",
+          "children": [
+            "n-1"
+          ]
+        },
+        "s-6": {
+          "id": "s-6",
+          "nodeId": "n-4",
+          "name": "column-1",
+          "children": [
+            "n-2"
+          ]
+        },
+        "s-7": {
+          "id": "s-7",
+          "nodeId": "n-4",
+          "name": "column-2",
+          "children": [
+            "n-3"
+          ]
+        },
+        "s-12": {
+          "id": "s-12",
+          "nodeId": "n-11",
+          "name": "column-0",
+          "children": [
+            "n-8"
+          ]
+        },
+        "s-13": {
+          "id": "s-13",
+          "nodeId": "n-11",
+          "name": "column-1",
+          "children": [
+            "n-9"
+          ]
+        },
+        "s-14": {
+          "id": "s-14",
+          "nodeId": "n-11",
+          "name": "column-2",
+          "children": [
+            "n-10"
+          ]
+        },
+        "s-18": {
+          "id": "s-18",
+          "nodeId": "n-17",
+          "name": "body",
+          "children": [
+            "n-15",
+            "n-16"
+          ]
+        },
+        "s-20": {
+          "id": "s-20",
+          "nodeId": "n-19",
+          "name": "body",
+          "children": [
+            "n-17"
+          ]
+        },
+        "s-23": {
+          "id": "s-23",
+          "nodeId": "n-22",
+          "name": "body",
+          "children": [
+            "n-11"
+          ]
+        },
+        "s-25": {
+          "id": "s-25",
+          "nodeId": "n-24",
+          "name": "body",
+          "children": [
+            "n-22"
+          ]
+        },
+        "s-28": {
+          "id": "s-28",
+          "nodeId": "n-27",
+          "name": "children",
+          "children": [
+            "n-21",
+            "n-19",
+            "n-4",
+            "n-24",
+            "n-26"
+          ]
+        }
+      },
+      "themeRef": {
+        "type": "inherit"
+      }
+    },
+    "variants": [
+      {
+        "id": "default",
+        "isDefault": true,
+        "title": "Standaard",
+        "attributes": {}
+      }
+    ]
+  }
+}

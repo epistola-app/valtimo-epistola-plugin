@@ -1,0 +1,68 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "type": "epistola-letter-composer",
+      "key": "pv:evenementBrief",
+      "input": true,
+      "prefill": false,
+      "label": "Welke brief wilt u maken?",
+      "placeholder": "— kies een brief —",
+      "components": [
+        {
+          "type": "hidden",
+          "key": "epistolaTaskId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola:taskId"
+          }
+        },
+        {
+          "type": "hidden",
+          "key": "epistolaDocumentId",
+          "input": true,
+          "label": "Epistola Document Id",
+          "persistent": false,
+          "properties": {
+            "sourceKey": "epistola:documentId"
+          }
+        }
+      ],
+      "epistola": {
+        "letterSet": {
+          "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+          "catalogId": "gzac-uitnodiging",
+          "templates": [
+            {
+              "templateId": "herinnering",
+              "label": "Herinnering aan een deelnemer"
+            },
+            {
+              "templateId": "badges",
+              "label": "Badges voor alle deelnemers",
+              "dataMapping": "{ \"deelnemers\": $doc.deelnemers }"
+            },
+            {
+              "templateId": "presentielijst",
+              "label": "Presentielijst",
+              "dataMapping": "{ \"deelnemers\": $doc.deelnemers }"
+            }
+          ]
+        },
+        "dataMapping": "{\n  \"evenement\": { \"naam\": $doc.naam, \"datum\": $doc.datum, \"locatie\": $doc.locatie },\n  \"dagdelen\": $doc.dagdelen\n}",
+        "askOptionalFields": false,
+        "schemaVersion": 1
+      }
+    },
+    {
+      "key": "submit",
+      "type": "button",
+      "input": true,
+      "label": "Maak brief",
+      "action": "submit",
+      "theme": "primary"
+    }
+  ]
+}

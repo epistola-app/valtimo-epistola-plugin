@@ -1,0 +1,1208 @@
+{
+  "schemaVersion": 4,
+  "resource": {
+    "type": "template",
+    "themeId": "gzac",
+    "slug": "herinnering",
+    "name": "Herinnering",
+    "dataModel": {
+      "type": "object",
+      "required": [
+        "evenement",
+        "dagdelen",
+        "deelnemer",
+        "boodschap"
+      ],
+      "properties": {
+        "evenement": {
+          "type": "object",
+          "required": [
+            "naam",
+            "datum",
+            "locatie"
+          ],
+          "properties": {
+            "naam": {
+              "type": "string"
+            },
+            "datum": {
+              "type": "string"
+            },
+            "locatie": {
+              "type": "string"
+            }
+          }
+        },
+        "dagdelen": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "key",
+              "label",
+              "doelgroep",
+              "sessies"
+            ],
+            "properties": {
+              "key": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "doelgroep": {
+                "type": "string"
+              },
+              "sessies": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "tijd",
+                    "titel",
+                    "pauze"
+                  ],
+                  "properties": {
+                    "tijd": {
+                      "type": "string"
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "titel": {
+                      "type": "string"
+                    },
+                    "omschrijving": {
+                      "type": "string"
+                    },
+                    "pauze": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "deelnemer": {
+          "type": "object",
+          "title": "Deelnemer",
+          "required": [
+            "naam",
+            "organisatie",
+            "aangemeldVoor"
+          ],
+          "properties": {
+            "naam": {
+              "type": "string",
+              "title": "Naam"
+            },
+            "organisatie": {
+              "type": "string",
+              "title": "Organisatie"
+            },
+            "aangemeldVoor": {
+              "type": "string",
+              "title": "Aangemeld voor",
+              "enum": [
+                "ochtend",
+                "middag",
+                "hele dag"
+              ]
+            }
+          }
+        },
+        "boodschap": {
+          "type": "string",
+          "title": "Persoonlijke boodschap",
+          "description": "Een paar zinnen van de organisatie, bijvoorbeeld over parkeren of de borrel"
+        }
+      }
+    },
+    "dataExamples": [
+      {
+        "name": "Hele dag",
+        "data": {
+          "evenement": {
+            "naam": "GZAC Gebruikersdag 2026",
+            "datum": "dinsdag 17 november 2026",
+            "locatie": "De Rode Hoed, Amsterdam"
+          },
+          "dagdelen": [
+            {
+              "key": "ochtend",
+              "label": "Ochtend · TechTalks",
+              "doelgroep": "voor ontwikkelaars, architecten en low-coders",
+              "sessies": [
+                {
+                  "tijd": "10.00",
+                  "titel": "Deur open",
+                  "pauze": true
+                },
+                {
+                  "tijd": "10.30",
+                  "titel": "Van Verzoek tot Archivering",
+                  "pauze": false,
+                  "label": "TechTalk 1",
+                  "omschrijving": "In één sessie zien we hoe we vanuit Open Formulieren een verzoek maken, het zaakdossier afhandelen met GZAC en in Open Archiefbeheer archiveren. Door Joeri Bekker (Maykin)."
+                },
+                {
+                  "tijd": "10.50",
+                  "titel": "Maatwerk: je wilt het niet, maar het is wel nodig",
+                  "pauze": false,
+                  "label": "TechTalk 2",
+                  "omschrijving": "De kern van GZAC is modelleren, niet programmeren. Hoe past maatwerk zó in GZAC dat het geen onderhoudsprobleem vormt? Maxim Buur toont het gloednieuwe Plugin Framework en vertelt over de strategie."
+                },
+                {
+                  "tijd": "11.10",
+                  "titel": "Van Data naar Document",
+                  "pauze": false,
+                  "label": "TechTalk 3",
+                  "omschrijving": "Epistola is een gloednieuw open source component in het GZAC-ecosysteem. Sander de Groot van Epistola vertelt over documentgeneratie en geeft een live demo."
+                },
+                {
+                  "tijd": "11.30",
+                  "titel": "Pauze",
+                  "pauze": true
+                },
+                {
+                  "tijd": "12.00",
+                  "titel": "Integraal Klant- en Objectbeeld: live configuratie",
+                  "pauze": false,
+                  "label": "TechTalk 4",
+                  "omschrijving": "IKO kan een integraal klantbeeld opbouwen. Hoe koppel je IKO met GZAC, sluit je bronnen aan en toon je die data aan de gebruikers? Thomas Minke laat het live zien."
+                },
+                {
+                  "tijd": "12.20",
+                  "titel": "Bouwblokken in praktijk",
+                  "pauze": false,
+                  "label": "TechTalk 5",
+                  "omschrijving": "In december 2025 gepresenteerd als beta, nu live in productie. Joeri Diederen van Raakvlak Advies laat in een live demo de kracht van hergebruik zien."
+                },
+                {
+                  "tijd": "12.40",
+                  "titel": "Office integratie",
+                  "pauze": false,
+                  "label": "TechTalk 6",
+                  "omschrijving": "Samen met de gemeente Utrecht gebouwd: viewen, bewerken en opslaan van alle Microsoft-bestandstypen. Maurits van Beusekom en Thomas Luijken van Baseflow geven een live demo."
+                },
+                {
+                  "tijd": "13.00",
+                  "titel": "Lunch",
+                  "pauze": true
+                }
+              ]
+            },
+            {
+              "key": "middag",
+              "label": "Middag · Kennissnacks",
+              "doelgroep": "voor iedereen toegankelijk",
+              "sessies": [
+                {
+                  "tijd": "13.40",
+                  "titel": "Opening",
+                  "pauze": false,
+                  "omschrijving": "Dagvoorzitter Vincent van Beek opent het middagprogramma en Anne Leguit kadert de ontwikkelingen vanuit het Platform Dienstverlening."
+                },
+                {
+                  "tijd": "13.50",
+                  "titel": "Koers van GZAC",
+                  "pauze": false,
+                  "label": "Kennissnack 1",
+                  "omschrijving": "Rutger Haagsma deelt zijn visie op de ontwikkeling van GZAC. Nu en de komende jaren."
+                },
+                {
+                  "tijd": "14.05",
+                  "titel": "Productontwikkeling GZAC 2026",
+                  "pauze": false,
+                  "label": "Kennissnack 2",
+                  "omschrijving": "Thomas Minke blikt terug op een jaar vol ontwikkeling binnen GZAC en laat zien wat er nog aankomt."
+                },
+                {
+                  "tijd": "14.25",
+                  "titel": "Klantcontactcentrum in Platform Dienstverlening",
+                  "pauze": false,
+                  "label": "Kennissnack 3",
+                  "omschrijving": "Het KCC Sociaal Domein van de gemeente Den Haag verving KANA door Platform Dienstverlening. Wendy van Duijvenvoorde laat zien welke features daarvoor nodig waren."
+                },
+                {
+                  "tijd": "14.40",
+                  "titel": "Pauze",
+                  "pauze": true
+                },
+                {
+                  "tijd": "15.05",
+                  "titel": "Usecase Gemeente Alkmaar: van G4 naar G50",
+                  "pauze": false,
+                  "label": "Kennissnack 4",
+                  "omschrijving": "In 2026 nemen G50-gemeentes de stap naar open source. Sabine Kassels deelt waar zij tegenaan lopen bij aanbesteding en implementatie."
+                },
+                {
+                  "tijd": "15.25",
+                  "titel": "Paneldiscussie",
+                  "pauze": false
+                },
+                {
+                  "tijd": "15.45",
+                  "titel": "GZAC en open source agentic AI",
+                  "pauze": false,
+                  "label": "Kennissnack 5",
+                  "omschrijving": "GZAC blijkt een goede orkestrator van agents. Thomas van Maarseveen geeft een live demo van open source AI op hardware in Nederland."
+                },
+                {
+                  "tijd": "16.00",
+                  "titel": "Wrap-up door de dagvoorzitter",
+                  "pauze": false
+                },
+                {
+                  "tijd": "16.05",
+                  "titel": "Borrel",
+                  "pauze": true
+                },
+                {
+                  "tijd": "17.00",
+                  "titel": "Einde",
+                  "pauze": true
+                }
+              ]
+            }
+          ],
+          "deelnemer": {
+            "naam": "Fatima de Vries",
+            "organisatie": "Gemeente Rivierstad",
+            "aangemeldVoor": "hele dag"
+          },
+          "boodschap": "Kom je met de auto? Parkeren kan in garage Westerdok, op vijf minuten lopen. Na afloop staat de borrel klaar."
+        }
+      },
+      {
+        "name": "Alleen ochtend",
+        "data": {
+          "evenement": {
+            "naam": "GZAC Gebruikersdag 2026",
+            "datum": "dinsdag 17 november 2026",
+            "locatie": "De Rode Hoed, Amsterdam"
+          },
+          "dagdelen": [
+            {
+              "key": "ochtend",
+              "label": "Ochtend · TechTalks",
+              "doelgroep": "voor ontwikkelaars, architecten en low-coders",
+              "sessies": [
+                {
+                  "tijd": "10.00",
+                  "titel": "Deur open",
+                  "pauze": true
+                },
+                {
+                  "tijd": "10.30",
+                  "titel": "Van Verzoek tot Archivering",
+                  "pauze": false,
+                  "label": "TechTalk 1",
+                  "omschrijving": "In één sessie zien we hoe we vanuit Open Formulieren een verzoek maken, het zaakdossier afhandelen met GZAC en in Open Archiefbeheer archiveren. Door Joeri Bekker (Maykin)."
+                },
+                {
+                  "tijd": "10.50",
+                  "titel": "Maatwerk: je wilt het niet, maar het is wel nodig",
+                  "pauze": false,
+                  "label": "TechTalk 2",
+                  "omschrijving": "De kern van GZAC is modelleren, niet programmeren. Hoe past maatwerk zó in GZAC dat het geen onderhoudsprobleem vormt? Maxim Buur toont het gloednieuwe Plugin Framework en vertelt over de strategie."
+                },
+                {
+                  "tijd": "11.10",
+                  "titel": "Van Data naar Document",
+                  "pauze": false,
+                  "label": "TechTalk 3",
+                  "omschrijving": "Epistola is een gloednieuw open source component in het GZAC-ecosysteem. Sander de Groot van Epistola vertelt over documentgeneratie en geeft een live demo."
+                },
+                {
+                  "tijd": "11.30",
+                  "titel": "Pauze",
+                  "pauze": true
+                },
+                {
+                  "tijd": "12.00",
+                  "titel": "Integraal Klant- en Objectbeeld: live configuratie",
+                  "pauze": false,
+                  "label": "TechTalk 4",
+                  "omschrijving": "IKO kan een integraal klantbeeld opbouwen. Hoe koppel je IKO met GZAC, sluit je bronnen aan en toon je die data aan de gebruikers? Thomas Minke laat het live zien."
+                },
+                {
+                  "tijd": "12.20",
+                  "titel": "Bouwblokken in praktijk",
+                  "pauze": false,
+                  "label": "TechTalk 5",
+                  "omschrijving": "In december 2025 gepresenteerd als beta, nu live in productie. Joeri Diederen van Raakvlak Advies laat in een live demo de kracht van hergebruik zien."
+                },
+                {
+                  "tijd": "12.40",
+                  "titel": "Office integratie",
+                  "pauze": false,
+                  "label": "TechTalk 6",
+                  "omschrijving": "Samen met de gemeente Utrecht gebouwd: viewen, bewerken en opslaan van alle Microsoft-bestandstypen. Maurits van Beusekom en Thomas Luijken van Baseflow geven een live demo."
+                },
+                {
+                  "tijd": "13.00",
+                  "titel": "Lunch",
+                  "pauze": true
+                }
+              ]
+            },
+            {
+              "key": "middag",
+              "label": "Middag · Kennissnacks",
+              "doelgroep": "voor iedereen toegankelijk",
+              "sessies": [
+                {
+                  "tijd": "13.40",
+                  "titel": "Opening",
+                  "pauze": false,
+                  "omschrijving": "Dagvoorzitter Vincent van Beek opent het middagprogramma en Anne Leguit kadert de ontwikkelingen vanuit het Platform Dienstverlening."
+                },
+                {
+                  "tijd": "13.50",
+                  "titel": "Koers van GZAC",
+                  "pauze": false,
+                  "label": "Kennissnack 1",
+                  "omschrijving": "Rutger Haagsma deelt zijn visie op de ontwikkeling van GZAC. Nu en de komende jaren."
+                },
+                {
+                  "tijd": "14.05",
+                  "titel": "Productontwikkeling GZAC 2026",
+                  "pauze": false,
+                  "label": "Kennissnack 2",
+                  "omschrijving": "Thomas Minke blikt terug op een jaar vol ontwikkeling binnen GZAC en laat zien wat er nog aankomt."
+                },
+                {
+                  "tijd": "14.25",
+                  "titel": "Klantcontactcentrum in Platform Dienstverlening",
+                  "pauze": false,
+                  "label": "Kennissnack 3",
+                  "omschrijving": "Het KCC Sociaal Domein van de gemeente Den Haag verving KANA door Platform Dienstverlening. Wendy van Duijvenvoorde laat zien welke features daarvoor nodig waren."
+                },
+                {
+                  "tijd": "14.40",
+                  "titel": "Pauze",
+                  "pauze": true
+                },
+                {
+                  "tijd": "15.05",
+                  "titel": "Usecase Gemeente Alkmaar: van G4 naar G50",
+                  "pauze": false,
+                  "label": "Kennissnack 4",
+                  "omschrijving": "In 2026 nemen G50-gemeentes de stap naar open source. Sabine Kassels deelt waar zij tegenaan lopen bij aanbesteding en implementatie."
+                },
+                {
+                  "tijd": "15.25",
+                  "titel": "Paneldiscussie",
+                  "pauze": false
+                },
+                {
+                  "tijd": "15.45",
+                  "titel": "GZAC en open source agentic AI",
+                  "pauze": false,
+                  "label": "Kennissnack 5",
+                  "omschrijving": "GZAC blijkt een goede orkestrator van agents. Thomas van Maarseveen geeft een live demo van open source AI op hardware in Nederland."
+                },
+                {
+                  "tijd": "16.00",
+                  "titel": "Wrap-up door de dagvoorzitter",
+                  "pauze": false
+                },
+                {
+                  "tijd": "16.05",
+                  "titel": "Borrel",
+                  "pauze": true
+                },
+                {
+                  "tijd": "17.00",
+                  "titel": "Einde",
+                  "pauze": true
+                }
+              ]
+            }
+          ],
+          "deelnemer": {
+            "naam": "Jan Jansen",
+            "organisatie": "Gemeente Voorbeeld",
+            "aangemeldVoor": "ochtend"
+          },
+          "boodschap": "De deur gaat om 10.00 uur open. Koffie staat klaar."
+        }
+      }
+    ],
+    "templateModel": {
+      "modelVersion": 1,
+      "root": "n-37",
+      "nodes": {
+        "n-1": {
+          "id": "n-1",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "dagdeel.label"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontFamily": {
+              "slug": "source-serif-4",
+              "catalogKey": "system"
+            },
+            "fontSize": "14pt",
+            "fontWeight": "700",
+            "color": "#1b365d",
+            "marginBottom": "1pt"
+          }
+        },
+        "n-2": {
+          "id": "n-2",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "dagdeel.doelgroep"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontSize": "8pt",
+            "color": "#4b5563",
+            "marginBottom": "6pt"
+          }
+        },
+        "n-3": {
+          "id": "n-3",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "sessie.tijd"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "stylePreset": "tijd"
+        },
+        "n-4": {
+          "id": "n-4",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "sessie.titel"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "color": "#4b5563"
+          }
+        },
+        "n-5": {
+          "id": "n-5",
+          "type": "columns",
+          "slots": [
+            "s-6",
+            "s-7"
+          ],
+          "props": {
+            "columnSizes": [
+              1,
+              6
+            ],
+            "gap": 0,
+            "columnStyles": [
+              {
+                "padding": "4pt 8pt",
+                "backgroundColor": "#f3f4f6",
+                "borderLeft": "2.5pt solid #e5e7eb"
+              },
+              {
+                "padding": "4pt 8pt",
+                "backgroundColor": "#f3f4f6"
+              }
+            ]
+          },
+          "styles": {
+            "borderBottom": "0.75pt solid #e5e7eb",
+            "keepTogether": true
+          }
+        },
+        "n-8": {
+          "id": "n-8",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "sessie.tijd"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "stylePreset": "tijd"
+        },
+        "n-9": {
+          "id": "n-9",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "sessie.label"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "marginBottom": "1pt"
+          },
+          "stylePreset": "kicker"
+        },
+        "n-10": {
+          "id": "n-10",
+          "type": "conditional",
+          "slots": [
+            "s-11"
+          ],
+          "props": {
+            "condition": {
+              "raw": "$exists(sessie.label)",
+              "language": "jsonata"
+            },
+            "inverse": false
+          }
+        },
+        "n-12": {
+          "id": "n-12",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "sessie.titel"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontSize": "10pt",
+            "fontWeight": "600",
+            "marginBottom": "1pt"
+          }
+        },
+        "n-13": {
+          "id": "n-13",
+          "type": "columns",
+          "slots": [
+            "s-14",
+            "s-15"
+          ],
+          "props": {
+            "columnSizes": [
+              1,
+              6
+            ],
+            "gap": 0,
+            "columnStyles": [
+              {
+                "padding": "4pt 8pt",
+                "borderLeft": "2.5pt solid #2f6eb5"
+              },
+              {
+                "padding": "4pt 8pt"
+              }
+            ]
+          },
+          "styles": {
+            "borderBottom": "0.75pt solid #e5e7eb",
+            "keepTogether": true
+          }
+        },
+        "n-16": {
+          "id": "n-16",
+          "type": "conditional",
+          "slots": [
+            "s-17",
+            "s-18"
+          ],
+          "props": {
+            "condition": {
+              "raw": "sessie.pauze = true",
+              "language": "jsonata"
+            },
+            "inverse": false
+          }
+        },
+        "n-19": {
+          "id": "n-19",
+          "type": "loop",
+          "slots": [
+            "s-20"
+          ],
+          "props": {
+            "expression": {
+              "raw": "dagdeel.sessies",
+              "language": "jsonata"
+            },
+            "itemAlias": "sessie"
+          }
+        },
+        "n-21": {
+          "id": "n-21",
+          "type": "container",
+          "slots": [
+            "s-22"
+          ],
+          "props": {},
+          "styles": {
+            "backgroundColor": "#f5f8fd",
+            "borderLeft": "4pt solid #1b365d",
+            "padding": "10pt 12pt",
+            "marginBottom": "12pt"
+          }
+        },
+        "n-23": {
+          "id": "n-23",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "// HERINNERING"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "marginBottom": "6pt"
+          },
+          "stylePreset": "kicker"
+        },
+        "n-24": {
+          "id": "n-24",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Tot snel, "
+                    },
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "deelnemer.naam"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": "!"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontFamily": {
+              "slug": "source-serif-4",
+              "catalogKey": "system"
+            },
+            "fontSize": "24pt",
+            "color": "#1b365d",
+            "fontWeight": "700",
+            "marginBottom": "2pt"
+          }
+        },
+        "n-25": {
+          "id": "n-25",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "deelnemer.organisatie"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontSize": "10pt",
+            "color": "#4b5563",
+            "marginBottom": "12pt"
+          }
+        },
+        "n-26": {
+          "id": "n-26",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "Nog even ter herinnering: op "
+                    },
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.datum"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": " ben je welkom op de "
+                    },
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.naam"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": " in "
+                    },
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.locatie"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": ". Je bent aangemeld voor de "
+                    },
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "deelnemer.aangemeldVoor"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": "."
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontSize": "10pt",
+            "marginBottom": "12pt"
+          }
+        },
+        "n-27": {
+          "id": "n-27",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "// VAN DE ORGANISATIE"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "marginBottom": "3pt"
+          },
+          "stylePreset": "kicker"
+        },
+        "n-28": {
+          "id": "n-28",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "boodschap"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontSize": "10pt"
+          }
+        },
+        "n-29": {
+          "id": "n-29",
+          "type": "container",
+          "slots": [
+            "s-30"
+          ],
+          "props": {},
+          "styles": {
+            "border": "0.75pt solid #2f6eb5",
+            "borderRadius": "4pt",
+            "padding": "8pt 12pt",
+            "marginBottom": "16pt"
+          }
+        },
+        "n-31": {
+          "id": "n-31",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "JOUW PROGRAMMA"
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "marginBottom": "6pt"
+          },
+          "stylePreset": "kicker"
+        },
+        "n-32": {
+          "id": "n-32",
+          "type": "conditional",
+          "slots": [
+            "s-33"
+          ],
+          "props": {
+            "condition": {
+              "raw": "deelnemer.aangemeldVoor = 'hele dag' or dagdeel.key = deelnemer.aangemeldVoor",
+              "language": "jsonata"
+            },
+            "inverse": false
+          }
+        },
+        "n-34": {
+          "id": "n-34",
+          "type": "loop",
+          "slots": [
+            "s-35"
+          ],
+          "props": {
+            "expression": {
+              "raw": "dagdelen",
+              "language": "jsonata"
+            },
+            "itemAlias": "dagdeel"
+          }
+        },
+        "n-36": {
+          "id": "n-36",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.naam"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": " · "
+                    },
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.datum"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": " · "
+                    },
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.locatie"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontSize": "7pt",
+            "color": "#9ca3af",
+            "marginTop": "10pt"
+          }
+        },
+        "n-37": {
+          "id": "n-37",
+          "type": "root",
+          "slots": [
+            "s-38"
+          ],
+          "props": {}
+        }
+      },
+      "slots": {
+        "s-6": {
+          "id": "s-6",
+          "nodeId": "n-5",
+          "name": "column-0",
+          "children": [
+            "n-3"
+          ]
+        },
+        "s-7": {
+          "id": "s-7",
+          "nodeId": "n-5",
+          "name": "column-1",
+          "children": [
+            "n-4"
+          ]
+        },
+        "s-11": {
+          "id": "s-11",
+          "nodeId": "n-10",
+          "name": "body",
+          "children": [
+            "n-9"
+          ]
+        },
+        "s-14": {
+          "id": "s-14",
+          "nodeId": "n-13",
+          "name": "column-0",
+          "children": [
+            "n-8"
+          ]
+        },
+        "s-15": {
+          "id": "s-15",
+          "nodeId": "n-13",
+          "name": "column-1",
+          "children": [
+            "n-10",
+            "n-12"
+          ]
+        },
+        "s-17": {
+          "id": "s-17",
+          "nodeId": "n-16",
+          "name": "body",
+          "children": [
+            "n-5"
+          ]
+        },
+        "s-18": {
+          "id": "s-18",
+          "nodeId": "n-16",
+          "name": "else",
+          "children": [
+            "n-13"
+          ]
+        },
+        "s-20": {
+          "id": "s-20",
+          "nodeId": "n-19",
+          "name": "body",
+          "children": [
+            "n-16"
+          ]
+        },
+        "s-22": {
+          "id": "s-22",
+          "nodeId": "n-21",
+          "name": "children",
+          "children": [
+            "n-1",
+            "n-2",
+            "n-19"
+          ]
+        },
+        "s-30": {
+          "id": "s-30",
+          "nodeId": "n-29",
+          "name": "children",
+          "children": [
+            "n-27",
+            "n-28"
+          ]
+        },
+        "s-33": {
+          "id": "s-33",
+          "nodeId": "n-32",
+          "name": "body",
+          "children": [
+            "n-21"
+          ]
+        },
+        "s-35": {
+          "id": "s-35",
+          "nodeId": "n-34",
+          "name": "body",
+          "children": [
+            "n-32"
+          ]
+        },
+        "s-38": {
+          "id": "s-38",
+          "nodeId": "n-37",
+          "name": "children",
+          "children": [
+            "n-23",
+            "n-24",
+            "n-25",
+            "n-26",
+            "n-29",
+            "n-31",
+            "n-34",
+            "n-36"
+          ]
+        }
+      },
+      "themeRef": {
+        "type": "inherit"
+      }
+    },
+    "variants": [
+      {
+        "id": "default",
+        "isDefault": true,
+        "title": "Standaard",
+        "attributes": {}
+      }
+    ]
+  }
+}

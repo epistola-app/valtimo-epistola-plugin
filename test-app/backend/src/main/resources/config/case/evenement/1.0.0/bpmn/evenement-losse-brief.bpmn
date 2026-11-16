@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:camunda="http://camunda.org/schema/1.0/bpmn" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" id="Definitions_evenement_losse_brief" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
+  <bpmn:error id="Error_EpistolaDocumentError" name="EpistolaDocumentError" />
+  <bpmn:process id="evenement-losse-brief" name="Losse brief" isExecutable="true" camunda:historyTimeToLive="P30D">
+    <bpmn:documentation>A letter about an event that is already open: a reminder, badges for every participant or an attendance list. The letter composer sits on this process's start form, so choosing the letter, filling in what the case does not hold and the preview all happen in the Start dialog; the process only generates what was chosen and keeps it on the case. Same shape as correspondentie-ad-hoc-letter, see docs/letter-composer.md.</bpmn:documentation>
+    <bpmn:startEvent id="startEvent">
+      <bpmn:outgoing>Flow_start_generate</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_start_generate" sourceRef="startEvent" targetRef="generate-chosen-letter" />
+    <bpmn:serviceTask id="generate-chosen-letter" camunda:asyncBefore="true" name="Genereer gekozen brief" camunda:expression="${null}">
+      <bpmn:incoming>Flow_start_generate</bpmn:incoming>
+      <bpmn:outgoing>Flow_generate_wait</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:boundaryEvent id="boundary-generate-error" name="EpistolaGenerationError" attachedToRef="generate-chosen-letter">
+      <bpmn:outgoing>Flow_boundary_err</bpmn:outgoing>
+      <bpmn:errorEventDefinition id="ErrorEventDefinition_gen" errorRef="Error_EpistolaDocumentError" camunda:errorCodeVariable="errorCode" camunda:errorMessageVariable="errorMessage" />
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_boundary_err" sourceRef="boundary-generate-error" targetRef="end-error" />
+    <bpmn:sequenceFlow id="Flow_generate_wait" sourceRef="generate-chosen-letter" targetRef="wait-for-generation" />
+    <bpmn:intermediateCatchEvent id="wait-for-generation" name="Wacht op document">
+      <bpmn:incoming>Flow_generate_wait</bpmn:incoming>
+      <bpmn:outgoing>Flow_wait_check</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MessageEventDefinition_1" messageRef="Message_EpistolaDocumentGenerated" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:sequenceFlow id="Flow_wait_check" sourceRef="wait-for-generation" targetRef="check-generated" />
+    <bpmn:exclusiveGateway id="check-generated" name="Brief gegenereerd?">
+      <bpmn:incoming>Flow_wait_check</bpmn:incoming>
+      <bpmn:outgoing>Flow_generated_ok</bpmn:outgoing>
+      <bpmn:outgoing>Flow_generated_fail</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_generated_ok" name="Ja" sourceRef="check-generated" targetRef="download-letter">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status == 'COMPLETED'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:sequenceFlow id="Flow_generated_fail" name="Nee" sourceRef="check-generated" targetRef="end-error">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">${epistolaResult.status != 'COMPLETED'}</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:serviceTask id="download-letter" name="Haal de brief op" camunda:expression="${null}">
+      <bpmn:incoming>Flow_generated_ok</bpmn:incoming>
+      <bpmn:outgoing>Flow_download_store</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_download_store" sourceRef="download-letter" targetRef="store-letter" />
+    <bpmn:serviceTask id="store-letter" name="Bewaar de brief op de zaak" camunda:delegateExpression="${storeGeneratedLetter}">
+      <bpmn:extensionElements>
+        <camunda:inputOutput>
+          <camunda:inputParameter name="resourceIdVariable">letterResourceId</camunda:inputParameter>
+          <camunda:inputParameter name="fileName">brief-evenement.pdf</camunda:inputParameter>
+          <camunda:inputParameter name="documentDefinitionName">evenement</camunda:inputParameter>
+        </camunda:inputOutput>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_download_store</bpmn:incoming>
+      <bpmn:outgoing>Flow_store_end</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:sequenceFlow id="Flow_store_end" sourceRef="store-letter" targetRef="end-success" />
+    <bpmn:endEvent id="end-success">
+      <bpmn:incoming>Flow_store_end</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="end-error">
+      <bpmn:incoming>Flow_generated_fail</bpmn:incoming>
+      <bpmn:incoming>Flow_boundary_err</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="evenement-losse-brief">
+      <bpmndi:BPMNShape id="startEvent_di" bpmnElement="startEvent"><dc:Bounds x="152" y="99" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="generate-chosen-letter_di" bpmnElement="generate-chosen-letter"><dc:Bounds x="240" y="77" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="boundary-generate-error_di" bpmnElement="boundary-generate-error"><dc:Bounds x="272" y="139" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="wait-for-generation_di" bpmnElement="wait-for-generation"><dc:Bounds x="392" y="99" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="check-generated_di" bpmnElement="check-generated" isMarkerVisible="true"><dc:Bounds x="475" y="92" width="50" height="50" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="download-letter_di" bpmnElement="download-letter"><dc:Bounds x="580" y="77" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="store-letter_di" bpmnElement="store-letter"><dc:Bounds x="730" y="77" width="100" height="80" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-success_di" bpmnElement="end-success"><dc:Bounds x="882" y="99" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end-error_di" bpmnElement="end-error"><dc:Bounds x="482" y="232" width="36" height="36" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_start_generate_di" bpmnElement="Flow_start_generate"><di:waypoint x="188" y="117" /><di:waypoint x="240" y="117" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_generate_wait_di" bpmnElement="Flow_generate_wait"><di:waypoint x="340" y="117" /><di:waypoint x="392" y="117" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_wait_check_di" bpmnElement="Flow_wait_check"><di:waypoint x="428" y="117" /><di:waypoint x="475" y="117" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_generated_ok_di" bpmnElement="Flow_generated_ok"><di:waypoint x="525" y="117" /><di:waypoint x="580" y="117" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_generated_fail_di" bpmnElement="Flow_generated_fail"><di:waypoint x="500" y="142" /><di:waypoint x="500" y="232" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_boundary_err_di" bpmnElement="Flow_boundary_err"><di:waypoint x="290" y="175" /><di:waypoint x="290" y="250" /><di:waypoint x="482" y="250" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_download_store_di" bpmnElement="Flow_download_store"><di:waypoint x="680" y="117" /><di:waypoint x="730" y="117" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_store_end_di" bpmnElement="Flow_store_end"><di:waypoint x="830" y="117" /><di:waypoint x="882" y="117" /></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>

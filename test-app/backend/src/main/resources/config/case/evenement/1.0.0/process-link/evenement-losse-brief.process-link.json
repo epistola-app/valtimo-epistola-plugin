@@ -1,0 +1,31 @@
+[
+  {
+    "activityId": "startEvent",
+    "activityType": "bpmn:StartEvent:start",
+    "processLinkType": "form",
+    "formDefinitionName": "evenement-losse-brief"
+  },
+  {
+    "activityId": "generate-chosen-letter",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+    "pluginActionDefinitionKey": "epistola-generate-dynamic-document",
+    "actionProperties": {
+      "letterVariable": "evenementBrief",
+      "resultProcessVariable": "epistolaResult"
+    }
+  },
+  {
+    "activityId": "download-letter",
+    "activityType": "bpmn:ServiceTask:start",
+    "processLinkType": "plugin",
+    "pluginConfigurationId": "e6525773-1863-4e92-92a1-9ed79508a819",
+    "pluginActionDefinitionKey": "epistola-download-document",
+    "actionProperties": {
+      "documentVariable": "epistolaResult",
+      "storageTarget": "TEMPORARY_RESOURCE",
+      "resourceIdVariable": "letterResourceId"
+    }
+  }
+]

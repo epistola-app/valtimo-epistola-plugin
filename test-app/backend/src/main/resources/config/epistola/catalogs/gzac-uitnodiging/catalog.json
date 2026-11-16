@@ -3,14 +3,14 @@
   "catalog": {
     "slug": "gzac-uitnodiging",
     "name": "GZAC-uitnodiging",
-    "description": "Persoonlijke uitnodiging voor de GZAC-gebruikersdag, voor het zaaktype evenement"
+    "description": "Persoonlijke uitnodiging en losse brieven (herinnering, badges, presentielijst) voor de GZAC-gebruikersdag, voor het zaaktype evenement"
   },
   "publisher": {
     "name": "Epistola"
   },
   "release": {
-    "version": "1.0.0",
-    "releasedAt": "2026-11-12T00:00:00Z"
+    "version": "1.1.0",
+    "releasedAt": "2026-11-16T00:00:00Z"
   },
   "resources": [
     {
@@ -24,6 +24,24 @@
       "slug": "uitnodiging",
       "name": "Persoonlijke uitnodiging",
       "detailUrl": "./resources/template/uitnodiging.json"
+    },
+    {
+      "type": "template",
+      "slug": "herinnering",
+      "name": "Herinnering",
+      "detailUrl": "./resources/template/herinnering.json"
+    },
+    {
+      "type": "template",
+      "slug": "badges",
+      "name": "Badges",
+      "detailUrl": "./resources/template/badges.json"
+    },
+    {
+      "type": "template",
+      "slug": "presentielijst",
+      "name": "Presentielijst",
+      "detailUrl": "./resources/template/presentielijst.json"
     }
   ]
 }
