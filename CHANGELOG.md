@@ -32,11 +32,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **The document preview on a start form opened from a case now shows that case.** Valtimo leaves
-  the `epistola:documentId` carrier empty on `start-form?documentId=`, so a start-mode preview of a
-  process started on an existing case rendered with an empty `$doc` and failed on every required
-  field. It now falls back to the case on screen, as the letter composer already did; the backend
-  still checks permission to view that case before reading it.
+- **The document preview on a start form opened from a case now shows that case.** A start-mode
+  preview of a process started on an existing case rendered with an empty `$doc` and failed on
+  every required field, because its `epistola:documentId` carrier arrived empty. Valtimo 13.54 does
+  prefill it: `resolveValues(documentId, keys)` reaches the value resolver through
+  `createResolver(Map)` with a `documentId` property, and the plugin's Java factory only answered the
+  task-scoped properties there. It now routes `documentId` to the document-scoped resolver, so the
+  carrier is filled. The letter composer gets the same carrier and no longer needs its fallback to
+  the case in the route, which stays as a fallback.
 
 ## [1.0.1] - 2026-11-12
 
