@@ -7,29 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- **Test app: a letter about an event, sent ad hoc from the case.** The case type `evenement` gets
-  a process "Losse brief" with the letter composer on its start form, offering two letters from
-  the bundled catalog `gzac-uitnodiging` (now 1.3.0): badges with a QR code for every participant,
-  and an attendance list per daypart. The case supplies the event, the programme and the
-  participants; each letter asks the employee for a few fields of its own (the kind of badge and
-  what its QR code holds, the daypart and room of the list), with a live preview before anything
-  is generated.
-- **Test app: a reminder to one participant of an event.** The process "Herinnering sturen" on
-  `evenement` picks the participant from the case in its start form, takes an optional note and
-  previews the reminder before generating it. No code: a select reads the participant list the
-  form is prefilled with (a plain `deelnemers` key: Valtimo prefills a start form from the case
-  document, not through value resolvers), and the generate-document mapping finds the chosen
-  participant by e-mail address. The letter composer cannot offer a choice whose options come from
-  the case, which is why this one has a process of its own. Both built for the TechTalk on the
-  GZAC user day of 17 November 2026.
-- **Test app: the event's sign-up form previews the invitation.** "Aanmelden" on `evenement` shows
-  the invitation next to the form while it is filled in. "Ik kom naar" is now a multi-select, so
-  the preview gets the chosen dayparts as the same list the invitation is generated from. The
-  invitation's contract requires a participant name of at least one character, so the preview
-  waits for one instead of rendering a letter addressed to nobody.
-
 ### Fixed
 
 - **The document preview on a start form opened from a case now shows that case.** A start-mode
@@ -38,8 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   prefill it: `resolveValues(documentId, keys)` reaches the value resolver through
   `createResolver(Map)` with a `documentId` property, and the plugin's Java factory only answered the
   task-scoped properties there. It now routes `documentId` to the document-scoped resolver, so the
-  carrier is filled. The letter composer gets the same carrier and no longer needs its fallback to
-  the case in the route, which stays as a fallback.
+  carrier is filled. The letter composer reads the same carrier first; its fallback to the case in
+  the route stays for a form whose carrier is missing.
 
 ## [1.0.1] - 2026-11-12
 
