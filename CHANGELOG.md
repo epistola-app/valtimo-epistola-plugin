@@ -43,6 +43,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (unreachable, 5xx, a refused API key) says to retry or check the connection. The endpoint
   returns an `outcome` with each answer: 422 for a wait no retry can resume, 502 when Epistola
   could not answer. A _Stuck_ row (no correlation token) now gives the same advice.
+- **"Support for this plugin version ends soon" only shows on the line that is ending.** The release
+  metadata's support end date belongs to the oldest supported line (the `X.Y` of its minimum version),
+  but the admin page applied it to every supported version, the newest included: 1.0.1 was told to
+  plan an upgrade because 0.20 was ending, and would have been until 0.21 ends in February. A version
+  on a newer line now shows no end date that is not its own.
 
 ## [1.0.1] - 2026-11-12
 

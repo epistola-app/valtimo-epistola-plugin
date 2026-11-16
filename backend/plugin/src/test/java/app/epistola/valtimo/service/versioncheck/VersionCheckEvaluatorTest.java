@@ -108,6 +108,53 @@ class VersionCheckEvaluatorTest {
     }
 
     @Test
+    void patchOnFloorLineIsToldSupportIsEnding() {
+        VersionCheckStatus status = evaluateWithFloor("0.21.4", "0.21.0", "2026-08-01");
+
+        assertThat(status.supportEndingSoon()).isTrue();
+        assertThat(status.supportedUntil()).isEqualTo("2026-08-01");
+    }
+
+    @Test
+    void newerMajorDoesNotInheritFloorLineEndOfSupport() {
+        // The 1.0.1 case: 0.20's last day came near, and the newest release was told to upgrade.
+        VersionCheckStatus status = evaluateWithFloor("1.0.1", "0.20.0", "2026-07-09");
+
+        assertThat(status.supported()).isTrue();
+        assertThat(status.supportEndingSoon()).isFalse();
+        assertThat(status.supportedUntil()).isNull();
+        assertThat(status.minSupportedVersion()).isEqualTo("0.20.0");
+    }
+
+    @Test
+    void newerMinorDoesNotInheritFloorLineEndOfSupport() {
+        VersionCheckStatus status = evaluateWithFloor("1.2.0", "1.1.0", "2026-08-01");
+
+        assertThat(status.supportEndingSoon()).isFalse();
+        assertThat(status.supportedUntil()).isNull();
+    }
+
+    @Test
+    void withoutParseableFloorUntilAppliesAsPublished() {
+        VersionCheckStatus status = evaluateWithFloor("1.0.1", null, "2026-08-01");
+
+        assertThat(status.supportEndingSoon()).isTrue();
+    }
+
+    private VersionCheckStatus evaluateWithFloor(String current, String minVersion, String until) {
+        return VersionCheckEvaluator.evaluate(
+                document(
+                        release("1.0.1", null),
+                        null,
+                        new EpistolaReleasesDocument.SupportPolicy(minVersion, until)),
+                PRODUCT_KEY,
+                current,
+                checkedAt,
+                Duration.ofDays(90)
+        );
+    }
+
+    @Test
     void missingProductMetadataDoesNotReportUpdate() {
         VersionCheckStatus status = VersionCheckEvaluator.evaluate(
                 new EpistolaReleasesDocument(1, Map.of()),

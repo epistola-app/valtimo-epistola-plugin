@@ -62,7 +62,12 @@ public final class VersionCheckEvaluator {
         String minSupportedVersion = product.support() != null ? product.support().minVersion() : null;
         var minSupported = SemVersion.parse(minSupportedVersion);
         boolean supported = minSupported.isEmpty() || current.get().compareTo(minSupported.get()) >= 0;
-        String supportedUntil = product.support() != null ? product.support().until() : null;
+        // `until` is the last supported day of the floor's line, the X.Y that `minVersion` names, not
+        // of every supported version: a newer line ends later, or not at all, and the document does
+        // not carry its date. So a version on a newer line neither reports that date nor is told its
+        // support is ending. Without a parseable floor there is no line to compare against.
+        boolean onNewerLine = minSupported.isPresent() && newerLine(current.get(), minSupported.get());
+        String supportedUntil = product.support() != null && !onNewerLine ? product.support().until() : null;
         boolean supportEndingSoon = supported
                 && withinDeprecationWindow(supportedUntil, checkedAt, deprecationWindow);
         var linkRelease = !supported && stable != null ? stable : track;
@@ -86,6 +91,13 @@ public final class VersionCheckEvaluator {
                 supportedUntil,
                 latest.isEmpty() ? "Release metadata did not include a comparable version" : null
         );
+    }
+
+    /** True when {@code version}'s {@code major.minor} line comes after {@code floor}'s. */
+    private static boolean newerLine(SemVersion version, SemVersion floor) {
+        int major = version.core().get(0);
+        int floorMajor = floor.core().get(0);
+        return major > floorMajor || (major == floorMajor && version.core().get(1) > floor.core().get(1));
     }
 
     private static boolean withinDeprecationWindow(
