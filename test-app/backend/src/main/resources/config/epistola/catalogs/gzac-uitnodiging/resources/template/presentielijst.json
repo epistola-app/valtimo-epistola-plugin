@@ -7,21 +7,11 @@
     "name": "Presentielijst",
     "dataModel": {
       "type": "object",
-      "required": [
-        "evenement",
-        "dagdelen",
-        "deelnemers",
-        "lijstVoor",
-        "zaal"
-      ],
+      "required": ["evenement", "dagdelen", "deelnemers", "lijstVoor", "zaal"],
       "properties": {
         "evenement": {
           "type": "object",
-          "required": [
-            "naam",
-            "datum",
-            "locatie"
-          ],
+          "required": ["naam", "datum", "locatie"],
           "properties": {
             "naam": {
               "type": "string"
@@ -39,12 +29,7 @@
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": [
-              "key",
-              "label",
-              "doelgroep",
-              "sessies"
-            ],
+            "required": ["key", "label", "doelgroep", "sessies"],
             "properties": {
               "key": {
                 "type": "string"
@@ -59,11 +44,7 @@
                 "type": "array",
                 "items": {
                   "type": "object",
-                  "required": [
-                    "tijd",
-                    "titel",
-                    "pauze"
-                  ],
+                  "required": ["tijd", "titel", "pauze"],
                   "properties": {
                     "tijd": {
                       "type": "string"
@@ -90,11 +71,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": [
-              "naam",
-              "organisatie",
-              "dagdelen"
-            ],
+            "required": ["naam", "organisatie", "dagdelen"],
             "properties": {
               "naam": {
                 "type": "string"
@@ -117,10 +94,7 @@
         "lijstVoor": {
           "type": "string",
           "title": "Dagdeel",
-          "enum": [
-            "ochtend",
-            "middag"
-          ]
+          "enum": ["ochtend", "middag"]
         },
         "zaal": {
           "type": "string",
@@ -281,43 +255,31 @@
               "naam": "Jan Jansen",
               "organisatie": "Gemeente Voorbeeld",
               "email": "jan.jansen@voorbeeld.nl",
-              "dagdelen": [
-                "ochtend"
-              ]
+              "dagdelen": ["ochtend"]
             },
             {
               "naam": "Fatima de Vries",
               "organisatie": "Gemeente Rivierstad",
               "email": "f.devries@rivierstad.nl",
-              "dagdelen": [
-                "ochtend",
-                "middag"
-              ]
+              "dagdelen": ["ochtend", "middag"]
             },
             {
               "naam": "Pieter Bakker",
               "organisatie": "Gemeente Heuvelland",
               "email": "p.bakker@heuvelland.nl",
-              "dagdelen": [
-                "middag"
-              ]
+              "dagdelen": ["middag"]
             },
             {
               "naam": "Sanne Visser",
               "organisatie": "Waterschap De Polder",
               "email": "s.visser@depolder.nl",
-              "dagdelen": [
-                "ochtend",
-                "middag"
-              ]
+              "dagdelen": ["ochtend", "middag"]
             },
             {
               "naam": "Mohamed el Amrani",
               "organisatie": "Gemeente Kustdorp",
               "email": "m.elamrani@kustdorp.nl",
-              "dagdelen": [
-                "ochtend"
-              ]
+              "dagdelen": ["ochtend"]
             }
           ],
           "lijstVoor": "ochtend",
@@ -476,43 +438,31 @@
               "naam": "Jan Jansen",
               "organisatie": "Gemeente Voorbeeld",
               "email": "jan.jansen@voorbeeld.nl",
-              "dagdelen": [
-                "ochtend"
-              ]
+              "dagdelen": ["ochtend"]
             },
             {
               "naam": "Fatima de Vries",
               "organisatie": "Gemeente Rivierstad",
               "email": "f.devries@rivierstad.nl",
-              "dagdelen": [
-                "ochtend",
-                "middag"
-              ]
+              "dagdelen": ["ochtend", "middag"]
             },
             {
               "naam": "Pieter Bakker",
               "organisatie": "Gemeente Heuvelland",
               "email": "p.bakker@heuvelland.nl",
-              "dagdelen": [
-                "middag"
-              ]
+              "dagdelen": ["middag"]
             },
             {
               "naam": "Sanne Visser",
               "organisatie": "Waterschap De Polder",
               "email": "s.visser@depolder.nl",
-              "dagdelen": [
-                "ochtend",
-                "middag"
-              ]
+              "dagdelen": ["ochtend", "middag"]
             },
             {
               "naam": "Mohamed el Amrani",
               "organisatie": "Gemeente Kustdorp",
               "email": "m.elamrani@kustdorp.nl",
-              "dagdelen": [
-                "ochtend"
-              ]
+              "dagdelen": ["ochtend"]
             }
           ],
           "lijstVoor": "middag",
@@ -620,17 +570,9 @@
         "n-4": {
           "id": "n-4",
           "type": "columns",
-          "slots": [
-            "s-5",
-            "s-6",
-            "s-7"
-          ],
+          "slots": ["s-5", "s-6", "s-7"],
           "props": {
-            "columnSizes": [
-              5,
-              5,
-              3
-            ],
+            "columnSizes": [5, 5, 3],
             "gap": 0,
             "columnStyles": [
               {
@@ -727,17 +669,9 @@
         "n-11": {
           "id": "n-11",
           "type": "columns",
-          "slots": [
-            "s-12",
-            "s-13",
-            "s-14"
-          ],
+          "slots": ["s-12", "s-13", "s-14"],
           "props": {
-            "columnSizes": [
-              5,
-              5,
-              3
-            ],
+            "columnSizes": [5, 5, 3],
             "gap": 0,
             "columnStyles": [
               {
@@ -851,9 +785,7 @@
         "n-17": {
           "id": "n-17",
           "type": "conditional",
-          "slots": [
-            "s-18"
-          ],
+          "slots": ["s-18"],
           "props": {
             "condition": {
               "raw": "dagdeel.key = lijstVoor",
@@ -865,9 +797,7 @@
         "n-19": {
           "id": "n-19",
           "type": "loop",
-          "slots": [
-            "s-20"
-          ],
+          "slots": ["s-20"],
           "props": {
             "expression": {
               "raw": "dagdelen",
@@ -904,9 +834,7 @@
         "n-22": {
           "id": "n-22",
           "type": "conditional",
-          "slots": [
-            "s-23"
-          ],
+          "slots": ["s-23"],
           "props": {
             "condition": {
               "raw": "lijstVoor in d.dagdelen",
@@ -918,9 +846,7 @@
         "n-24": {
           "id": "n-24",
           "type": "loop",
-          "slots": [
-            "s-25"
-          ],
+          "slots": ["s-25"],
           "props": {
             "expression": {
               "raw": "deelnemers",
@@ -980,9 +906,7 @@
         "n-27": {
           "id": "n-27",
           "type": "root",
-          "slots": [
-            "s-28"
-          ],
+          "slots": ["s-28"],
           "props": {}
         }
       },
@@ -991,94 +915,67 @@
           "id": "s-5",
           "nodeId": "n-4",
           "name": "column-0",
-          "children": [
-            "n-1"
-          ]
+          "children": ["n-1"]
         },
         "s-6": {
           "id": "s-6",
           "nodeId": "n-4",
           "name": "column-1",
-          "children": [
-            "n-2"
-          ]
+          "children": ["n-2"]
         },
         "s-7": {
           "id": "s-7",
           "nodeId": "n-4",
           "name": "column-2",
-          "children": [
-            "n-3"
-          ]
+          "children": ["n-3"]
         },
         "s-12": {
           "id": "s-12",
           "nodeId": "n-11",
           "name": "column-0",
-          "children": [
-            "n-8"
-          ]
+          "children": ["n-8"]
         },
         "s-13": {
           "id": "s-13",
           "nodeId": "n-11",
           "name": "column-1",
-          "children": [
-            "n-9"
-          ]
+          "children": ["n-9"]
         },
         "s-14": {
           "id": "s-14",
           "nodeId": "n-11",
           "name": "column-2",
-          "children": [
-            "n-10"
-          ]
+          "children": ["n-10"]
         },
         "s-18": {
           "id": "s-18",
           "nodeId": "n-17",
           "name": "body",
-          "children": [
-            "n-15",
-            "n-16"
-          ]
+          "children": ["n-15", "n-16"]
         },
         "s-20": {
           "id": "s-20",
           "nodeId": "n-19",
           "name": "body",
-          "children": [
-            "n-17"
-          ]
+          "children": ["n-17"]
         },
         "s-23": {
           "id": "s-23",
           "nodeId": "n-22",
           "name": "body",
-          "children": [
-            "n-11"
-          ]
+          "children": ["n-11"]
         },
         "s-25": {
           "id": "s-25",
           "nodeId": "n-24",
           "name": "body",
-          "children": [
-            "n-22"
-          ]
+          "children": ["n-22"]
         },
         "s-28": {
           "id": "s-28",
           "nodeId": "n-27",
           "name": "children",
-          "children": [
-            "n-21",
-            "n-19",
-            "n-4",
-            "n-24",
-            "n-26"
-          ]
+          "children": ["n-21", "n-19", "n-4", "n-24", "n-26"]
         }
       },
       "themeRef": {

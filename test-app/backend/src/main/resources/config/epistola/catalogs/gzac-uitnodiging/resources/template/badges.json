@@ -7,21 +7,11 @@
     "name": "Badges",
     "dataModel": {
       "type": "object",
-      "required": [
-        "evenement",
-        "dagdelen",
-        "deelnemers",
-        "soort",
-        "qrCode"
-      ],
+      "required": ["evenement", "dagdelen", "deelnemers", "soort", "qrCode"],
       "properties": {
         "evenement": {
           "type": "object",
-          "required": [
-            "naam",
-            "datum",
-            "locatie"
-          ],
+          "required": ["naam", "datum", "locatie"],
           "properties": {
             "naam": {
               "type": "string"
@@ -39,12 +29,7 @@
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": [
-              "key",
-              "label",
-              "doelgroep",
-              "sessies"
-            ],
+            "required": ["key", "label", "doelgroep", "sessies"],
             "properties": {
               "key": {
                 "type": "string"
@@ -59,11 +44,7 @@
                 "type": "array",
                 "items": {
                   "type": "object",
-                  "required": [
-                    "tijd",
-                    "titel",
-                    "pauze"
-                  ],
+                  "required": ["tijd", "titel", "pauze"],
                   "properties": {
                     "tijd": {
                       "type": "string"
@@ -90,11 +71,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": [
-              "naam",
-              "organisatie",
-              "dagdelen"
-            ],
+            "required": ["naam", "organisatie", "dagdelen"],
             "properties": {
               "naam": {
                 "type": "string"
@@ -117,19 +94,12 @@
         "soort": {
           "type": "string",
           "title": "Soort badge",
-          "enum": [
-            "Deelnemer",
-            "Spreker",
-            "Organisatie"
-          ]
+          "enum": ["Deelnemer", "Spreker", "Organisatie"]
         },
         "qrCode": {
           "type": "string",
           "title": "Wat staat er in de QR-code?",
-          "enum": [
-            "Check-in",
-            "Visitekaartje"
-          ],
+          "enum": ["Check-in", "Visitekaartje"],
           "description": "Check-in: een link om de deelnemer bij de deur af te vinken. Visitekaartje: naam, organisatie en e-mail om op te slaan."
         }
       }
@@ -287,43 +257,31 @@
               "naam": "Jan Jansen",
               "organisatie": "Gemeente Voorbeeld",
               "email": "jan.jansen@voorbeeld.nl",
-              "dagdelen": [
-                "ochtend"
-              ]
+              "dagdelen": ["ochtend"]
             },
             {
               "naam": "Fatima de Vries",
               "organisatie": "Gemeente Rivierstad",
               "email": "f.devries@rivierstad.nl",
-              "dagdelen": [
-                "ochtend",
-                "middag"
-              ]
+              "dagdelen": ["ochtend", "middag"]
             },
             {
               "naam": "Pieter Bakker",
               "organisatie": "Gemeente Heuvelland",
               "email": "p.bakker@heuvelland.nl",
-              "dagdelen": [
-                "middag"
-              ]
+              "dagdelen": ["middag"]
             },
             {
               "naam": "Sanne Visser",
               "organisatie": "Waterschap De Polder",
               "email": "s.visser@depolder.nl",
-              "dagdelen": [
-                "ochtend",
-                "middag"
-              ]
+              "dagdelen": ["ochtend", "middag"]
             },
             {
               "naam": "Mohamed el Amrani",
               "organisatie": "Gemeente Kustdorp",
               "email": "m.elamrani@kustdorp.nl",
-              "dagdelen": [
-                "ochtend"
-              ]
+              "dagdelen": ["ochtend"]
             }
           ],
           "soort": "Deelnemer",
@@ -482,26 +440,19 @@
               "naam": "Jan Jansen",
               "organisatie": "Gemeente Voorbeeld",
               "email": "jan.jansen@voorbeeld.nl",
-              "dagdelen": [
-                "ochtend"
-              ]
+              "dagdelen": ["ochtend"]
             },
             {
               "naam": "Fatima de Vries",
               "organisatie": "Gemeente Rivierstad",
               "email": "f.devries@rivierstad.nl",
-              "dagdelen": [
-                "ochtend",
-                "middag"
-              ]
+              "dagdelen": ["ochtend", "middag"]
             },
             {
               "naam": "Pieter Bakker",
               "organisatie": "Gemeente Heuvelland",
               "email": "p.bakker@heuvelland.nl",
-              "dagdelen": [
-                "middag"
-              ]
+              "dagdelen": ["middag"]
             }
           ],
           "soort": "Deelnemer",
@@ -549,9 +500,7 @@
         "n-2": {
           "id": "n-2",
           "type": "container",
-          "slots": [
-            "s-3"
-          ],
+          "slots": ["s-3"],
           "props": {},
           "styles": {
             "backgroundColor": "#1b365d",
@@ -594,9 +543,7 @@
         "n-5": {
           "id": "n-5",
           "type": "conditional",
-          "slots": [
-            "s-6"
-          ],
+          "slots": ["s-6"],
           "props": {
             "condition": {
               "raw": "dagdeel.key in rij.links.dagdelen",
@@ -608,9 +555,7 @@
         "n-7": {
           "id": "n-7",
           "type": "loop",
-          "slots": [
-            "s-8"
-          ],
+          "slots": ["s-8"],
           "props": {
             "expression": {
               "raw": "dagdelen",
@@ -723,15 +668,9 @@
         "n-13": {
           "id": "n-13",
           "type": "columns",
-          "slots": [
-            "s-14",
-            "s-15"
-          ],
+          "slots": ["s-14", "s-15"],
           "props": {
-            "columnSizes": [
-              3,
-              2
-            ],
+            "columnSizes": [3, 2],
             "gap": 0,
             "columnStyles": [
               {
@@ -747,9 +686,7 @@
         "n-16": {
           "id": "n-16",
           "type": "container",
-          "slots": [
-            "s-17"
-          ],
+          "slots": ["s-17"],
           "props": {},
           "styles": {
             "border": "0.75pt dashed #9ca3af",
@@ -792,9 +729,7 @@
         "n-19": {
           "id": "n-19",
           "type": "container",
-          "slots": [
-            "s-20"
-          ],
+          "slots": ["s-20"],
           "props": {},
           "styles": {
             "backgroundColor": "#1b365d",
@@ -837,9 +772,7 @@
         "n-22": {
           "id": "n-22",
           "type": "conditional",
-          "slots": [
-            "s-23"
-          ],
+          "slots": ["s-23"],
           "props": {
             "condition": {
               "raw": "dagdeel.key in rij.rechts.dagdelen",
@@ -851,9 +784,7 @@
         "n-24": {
           "id": "n-24",
           "type": "loop",
-          "slots": [
-            "s-25"
-          ],
+          "slots": ["s-25"],
           "props": {
             "expression": {
               "raw": "dagdelen",
@@ -966,15 +897,9 @@
         "n-30": {
           "id": "n-30",
           "type": "columns",
-          "slots": [
-            "s-31",
-            "s-32"
-          ],
+          "slots": ["s-31", "s-32"],
           "props": {
-            "columnSizes": [
-              3,
-              2
-            ],
+            "columnSizes": [3, 2],
             "gap": 0,
             "columnStyles": [
               {
@@ -990,9 +915,7 @@
         "n-33": {
           "id": "n-33",
           "type": "container",
-          "slots": [
-            "s-34"
-          ],
+          "slots": ["s-34"],
           "props": {},
           "styles": {
             "border": "0.75pt dashed #9ca3af",
@@ -1002,9 +925,7 @@
         "n-35": {
           "id": "n-35",
           "type": "conditional",
-          "slots": [
-            "s-36"
-          ],
+          "slots": ["s-36"],
           "props": {
             "condition": {
               "raw": "$exists(rij.rechts)",
@@ -1016,20 +937,11 @@
         "n-37": {
           "id": "n-37",
           "type": "columns",
-          "slots": [
-            "s-38",
-            "s-39"
-          ],
+          "slots": ["s-38", "s-39"],
           "props": {
-            "columnSizes": [
-              1,
-              1
-            ],
+            "columnSizes": [1, 1],
             "gap": 10,
-            "columnStyles": [
-              {},
-              {}
-            ]
+            "columnStyles": [{}, {}]
           },
           "styles": {
             "keepTogether": true,
@@ -1039,9 +951,7 @@
         "n-40": {
           "id": "n-40",
           "type": "loop",
-          "slots": [
-            "s-41"
-          ],
+          "slots": ["s-41"],
           "props": {
             "expression": {
               "raw": "$count(deelnemers) > 0 ? [$map([0..$floor(($count(deelnemers) - 1) / 2)], function($i) { {\"links\": deelnemers[$i * 2], \"rechts\": deelnemers[$i * 2 + 1]} })] : []",
@@ -1053,9 +963,7 @@
         "n-42": {
           "id": "n-42",
           "type": "root",
-          "slots": [
-            "s-43"
-          ],
+          "slots": ["s-43"],
           "props": {}
         }
       },
@@ -1064,145 +972,103 @@
           "id": "s-3",
           "nodeId": "n-2",
           "name": "children",
-          "children": [
-            "n-1"
-          ]
+          "children": ["n-1"]
         },
         "s-6": {
           "id": "s-6",
           "nodeId": "n-5",
           "name": "body",
-          "children": [
-            "n-4"
-          ]
+          "children": ["n-4"]
         },
         "s-8": {
           "id": "s-8",
           "nodeId": "n-7",
           "name": "body",
-          "children": [
-            "n-5"
-          ]
+          "children": ["n-5"]
         },
         "s-14": {
           "id": "s-14",
           "nodeId": "n-13",
           "name": "column-0",
-          "children": [
-            "n-9",
-            "n-10",
-            "n-11",
-            "n-7"
-          ]
+          "children": ["n-9", "n-10", "n-11", "n-7"]
         },
         "s-15": {
           "id": "s-15",
           "nodeId": "n-13",
           "name": "column-1",
-          "children": [
-            "n-12"
-          ]
+          "children": ["n-12"]
         },
         "s-17": {
           "id": "s-17",
           "nodeId": "n-16",
           "name": "children",
-          "children": [
-            "n-2",
-            "n-13"
-          ]
+          "children": ["n-2", "n-13"]
         },
         "s-20": {
           "id": "s-20",
           "nodeId": "n-19",
           "name": "children",
-          "children": [
-            "n-18"
-          ]
+          "children": ["n-18"]
         },
         "s-23": {
           "id": "s-23",
           "nodeId": "n-22",
           "name": "body",
-          "children": [
-            "n-21"
-          ]
+          "children": ["n-21"]
         },
         "s-25": {
           "id": "s-25",
           "nodeId": "n-24",
           "name": "body",
-          "children": [
-            "n-22"
-          ]
+          "children": ["n-22"]
         },
         "s-31": {
           "id": "s-31",
           "nodeId": "n-30",
           "name": "column-0",
-          "children": [
-            "n-26",
-            "n-27",
-            "n-28",
-            "n-24"
-          ]
+          "children": ["n-26", "n-27", "n-28", "n-24"]
         },
         "s-32": {
           "id": "s-32",
           "nodeId": "n-30",
           "name": "column-1",
-          "children": [
-            "n-29"
-          ]
+          "children": ["n-29"]
         },
         "s-34": {
           "id": "s-34",
           "nodeId": "n-33",
           "name": "children",
-          "children": [
-            "n-19",
-            "n-30"
-          ]
+          "children": ["n-19", "n-30"]
         },
         "s-36": {
           "id": "s-36",
           "nodeId": "n-35",
           "name": "body",
-          "children": [
-            "n-33"
-          ]
+          "children": ["n-33"]
         },
         "s-38": {
           "id": "s-38",
           "nodeId": "n-37",
           "name": "column-0",
-          "children": [
-            "n-16"
-          ]
+          "children": ["n-16"]
         },
         "s-39": {
           "id": "s-39",
           "nodeId": "n-37",
           "name": "column-1",
-          "children": [
-            "n-35"
-          ]
+          "children": ["n-35"]
         },
         "s-41": {
           "id": "s-41",
           "nodeId": "n-40",
           "name": "body",
-          "children": [
-            "n-37"
-          ]
+          "children": ["n-37"]
         },
         "s-43": {
           "id": "s-43",
           "nodeId": "n-42",
           "name": "children",
-          "children": [
-            "n-40"
-          ]
+          "children": ["n-40"]
         }
       },
       "themeRef": {

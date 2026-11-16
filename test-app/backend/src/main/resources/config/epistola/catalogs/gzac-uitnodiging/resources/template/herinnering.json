@@ -7,19 +7,11 @@
     "name": "Herinnering",
     "dataModel": {
       "type": "object",
-      "required": [
-        "evenement",
-        "dagdelen",
-        "deelnemer"
-      ],
+      "required": ["evenement", "dagdelen", "deelnemer"],
       "properties": {
         "evenement": {
           "type": "object",
-          "required": [
-            "naam",
-            "datum",
-            "locatie"
-          ],
+          "required": ["naam", "datum", "locatie"],
           "properties": {
             "naam": {
               "type": "string"
@@ -37,12 +29,7 @@
           "minItems": 1,
           "items": {
             "type": "object",
-            "required": [
-              "key",
-              "label",
-              "doelgroep",
-              "sessies"
-            ],
+            "required": ["key", "label", "doelgroep", "sessies"],
             "properties": {
               "key": {
                 "type": "string"
@@ -57,11 +44,7 @@
                 "type": "array",
                 "items": {
                   "type": "object",
-                  "required": [
-                    "tijd",
-                    "titel",
-                    "pauze"
-                  ],
+                  "required": ["tijd", "titel", "pauze"],
                   "properties": {
                     "tijd": {
                       "type": "string"
@@ -86,11 +69,7 @@
         },
         "deelnemer": {
           "type": "object",
-          "required": [
-            "naam",
-            "organisatie",
-            "dagdelen"
-          ],
+          "required": ["naam", "organisatie", "dagdelen"],
           "properties": {
             "naam": {
               "type": "string"
@@ -264,10 +243,7 @@
           "deelnemer": {
             "naam": "Fatima de Vries",
             "organisatie": "Gemeente Rivierstad",
-            "dagdelen": [
-              "ochtend",
-              "middag"
-            ]
+            "dagdelen": ["ochtend", "middag"]
           },
           "toelichting": "Kom je met de auto? Parkeren kan in garage Westerdok, op vijf minuten lopen. Na afloop staat de borrel klaar."
         }
@@ -422,9 +398,7 @@
           "deelnemer": {
             "naam": "Jan Jansen",
             "organisatie": "Gemeente Voorbeeld",
-            "dagdelen": [
-              "ochtend"
-            ]
+            "dagdelen": ["ochtend"]
           }
         }
       }
@@ -547,15 +521,9 @@
         "n-5": {
           "id": "n-5",
           "type": "columns",
-          "slots": [
-            "s-6",
-            "s-7"
-          ],
+          "slots": ["s-6", "s-7"],
           "props": {
-            "columnSizes": [
-              1,
-              6
-            ],
+            "columnSizes": [1, 6],
             "gap": 0,
             "columnStyles": [
               {
@@ -628,9 +596,7 @@
         "n-10": {
           "id": "n-10",
           "type": "conditional",
-          "slots": [
-            "s-11"
-          ],
+          "slots": ["s-11"],
           "props": {
             "condition": {
               "raw": "$exists(sessie.label)",
@@ -670,15 +636,9 @@
         "n-13": {
           "id": "n-13",
           "type": "columns",
-          "slots": [
-            "s-14",
-            "s-15"
-          ],
+          "slots": ["s-14", "s-15"],
           "props": {
-            "columnSizes": [
-              1,
-              6
-            ],
+            "columnSizes": [1, 6],
             "gap": 0,
             "columnStyles": [
               {
@@ -698,10 +658,7 @@
         "n-16": {
           "id": "n-16",
           "type": "conditional",
-          "slots": [
-            "s-17",
-            "s-18"
-          ],
+          "slots": ["s-17", "s-18"],
           "props": {
             "condition": {
               "raw": "sessie.pauze = true",
@@ -713,9 +670,7 @@
         "n-19": {
           "id": "n-19",
           "type": "loop",
-          "slots": [
-            "s-20"
-          ],
+          "slots": ["s-20"],
           "props": {
             "expression": {
               "raw": "dagdeel.sessies",
@@ -727,9 +682,7 @@
         "n-21": {
           "id": "n-21",
           "type": "container",
-          "slots": [
-            "s-22"
-          ],
+          "slots": ["s-22"],
           "props": {},
           "styles": {
             "backgroundColor": "#f5f8fd",
@@ -941,9 +894,7 @@
         "n-29": {
           "id": "n-29",
           "type": "container",
-          "slots": [
-            "s-30"
-          ],
+          "slots": ["s-30"],
           "props": {},
           "styles": {
             "border": "0.75pt solid #2f6eb5",
@@ -955,9 +906,7 @@
         "n-31": {
           "id": "n-31",
           "type": "conditional",
-          "slots": [
-            "s-32"
-          ],
+          "slots": ["s-32"],
           "props": {
             "condition": {
               "raw": "$exists(toelichting) and $length($trim(toelichting)) > 0",
@@ -994,9 +943,7 @@
         "n-34": {
           "id": "n-34",
           "type": "conditional",
-          "slots": [
-            "s-35"
-          ],
+          "slots": ["s-35"],
           "props": {
             "condition": {
               "raw": "dagdeel.key in deelnemer.dagdelen",
@@ -1008,9 +955,7 @@
         "n-36": {
           "id": "n-36",
           "type": "loop",
-          "slots": [
-            "s-37"
-          ],
+          "slots": ["s-37"],
           "props": {
             "expression": {
               "raw": "dagdelen",
@@ -1070,9 +1015,7 @@
         "n-39": {
           "id": "n-39",
           "type": "root",
-          "slots": [
-            "s-40"
-          ],
+          "slots": ["s-40"],
           "props": {}
         }
       },
@@ -1081,124 +1024,85 @@
           "id": "s-6",
           "nodeId": "n-5",
           "name": "column-0",
-          "children": [
-            "n-3"
-          ]
+          "children": ["n-3"]
         },
         "s-7": {
           "id": "s-7",
           "nodeId": "n-5",
           "name": "column-1",
-          "children": [
-            "n-4"
-          ]
+          "children": ["n-4"]
         },
         "s-11": {
           "id": "s-11",
           "nodeId": "n-10",
           "name": "body",
-          "children": [
-            "n-9"
-          ]
+          "children": ["n-9"]
         },
         "s-14": {
           "id": "s-14",
           "nodeId": "n-13",
           "name": "column-0",
-          "children": [
-            "n-8"
-          ]
+          "children": ["n-8"]
         },
         "s-15": {
           "id": "s-15",
           "nodeId": "n-13",
           "name": "column-1",
-          "children": [
-            "n-10",
-            "n-12"
-          ]
+          "children": ["n-10", "n-12"]
         },
         "s-17": {
           "id": "s-17",
           "nodeId": "n-16",
           "name": "body",
-          "children": [
-            "n-5"
-          ]
+          "children": ["n-5"]
         },
         "s-18": {
           "id": "s-18",
           "nodeId": "n-16",
           "name": "else",
-          "children": [
-            "n-13"
-          ]
+          "children": ["n-13"]
         },
         "s-20": {
           "id": "s-20",
           "nodeId": "n-19",
           "name": "body",
-          "children": [
-            "n-16"
-          ]
+          "children": ["n-16"]
         },
         "s-22": {
           "id": "s-22",
           "nodeId": "n-21",
           "name": "children",
-          "children": [
-            "n-1",
-            "n-2",
-            "n-19"
-          ]
+          "children": ["n-1", "n-2", "n-19"]
         },
         "s-30": {
           "id": "s-30",
           "nodeId": "n-29",
           "name": "children",
-          "children": [
-            "n-27",
-            "n-28"
-          ]
+          "children": ["n-27", "n-28"]
         },
         "s-32": {
           "id": "s-32",
           "nodeId": "n-31",
           "name": "body",
-          "children": [
-            "n-29"
-          ]
+          "children": ["n-29"]
         },
         "s-35": {
           "id": "s-35",
           "nodeId": "n-34",
           "name": "body",
-          "children": [
-            "n-21"
-          ]
+          "children": ["n-21"]
         },
         "s-37": {
           "id": "s-37",
           "nodeId": "n-36",
           "name": "body",
-          "children": [
-            "n-34"
-          ]
+          "children": ["n-34"]
         },
         "s-40": {
           "id": "s-40",
           "nodeId": "n-39",
           "name": "children",
-          "children": [
-            "n-23",
-            "n-24",
-            "n-25",
-            "n-26",
-            "n-31",
-            "n-33",
-            "n-36",
-            "n-38"
-          ]
+          "children": ["n-23", "n-24", "n-25", "n-26", "n-31", "n-33", "n-36", "n-38"]
         }
       },
       "themeRef": {
