@@ -32,6 +32,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   invitation's contract requires a participant name of at least one character, so the preview
   waits for one instead of rendering a letter addressed to nobody.
 
+- **Instructions for a speaker, as an ad-hoc letter on `evenement`.** The letter composer of
+  "Losse brief" offers a third letter (catalog `gzac-uitnodiging` 1.4.3): the case supplies the
+  event and the programme, the employee fills in the speaker, session, room and time, and optional
+  extra instructions in a WYSIWYG editor (a rich-text block field). The instructions fill the first
+  page; the programme follows on a page of its own. Its data contract uses only
+  what the Epistola contract editor can edit (no `title`, `enum` or `minLength`), so a field can be
+  added to it live; the template already shows a sentence for `presentatieAanleverenVoor` once that
+  field exists and is filled. The composer now also asks for optional fields, so a field added that
+  way shows up without being marked required.
+
 ### Changed
 
 - **The test app is built with Kotlin 2.4 and runs on the standard library it is compiled
