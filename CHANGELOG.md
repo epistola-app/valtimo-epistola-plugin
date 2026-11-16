@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **A release refuses a version npm or Maven Central has already seen, before it publishes
+  anything.** 1.0.0 reached Maven Central and was then refused by npm, which reserves even an
+  unpublished version for good, so it had to be released again as 1.0.1. The check reads npm's
+  `time` (which still lists an unpublished version) rather than `versions`, and runs before either
+  registry is touched.
+- **A release publishes only a commit whose CI run passed, instead of running the tests again.**
+  The Release workflow waits up to 40 minutes for a successful CI run of the released commit (CI
+  runs on every push to `main` and checks everything the release used to repeat) and stops if there
+  is none. The images build as soon as that is confirmed, without waiting for the packages to be
+  published.
+- **A release that stopped halfway can be finished.** Re-run it from its tag with `resume`
+  (`gh workflow run release.yml --ref vX.Y.Z -f version=X.Y.Z -f resume=true`), and a registry that
+  already has the version is skipped.
+
 ### Fixed
 
 - **The document preview on a start form opened from a case now shows that case.** A start-mode
