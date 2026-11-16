@@ -44,11 +44,16 @@
               "templateId": "presentielijst",
               "label": "Presentielijst",
               "dataMapping": "{ \"deelnemers\": $doc.deelnemers }"
+            },
+            {
+              "templateId": "sprekerinstructies",
+              "label": "Instructies voor een spreker",
+              "dataMapping": "{}"
             }
           ]
         },
         "dataMapping": "{\n  \"evenement\": { \"naam\": $doc.naam, \"datum\": $doc.datum, \"locatie\": $doc.locatie },\n  \"dagdelen\": $doc.dagdelen\n}",
-        "askOptionalFields": false,
+        "askOptionalFields": true,
         "schemaVersion": 1
       }
     },

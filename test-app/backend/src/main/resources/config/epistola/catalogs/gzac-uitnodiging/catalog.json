@@ -3,13 +3,13 @@
   "catalog": {
     "slug": "gzac-uitnodiging",
     "name": "GZAC-uitnodiging",
-    "description": "Persoonlijke uitnodiging en losse brieven (herinnering, badges, presentielijst) voor de GZAC-gebruikersdag, voor het zaaktype evenement"
+    "description": "Persoonlijke uitnodiging en losse brieven (herinnering, badges, presentielijst, instructies voor sprekers) voor de GZAC-gebruikersdag, voor het zaaktype evenement"
   },
   "publisher": {
     "name": "Epistola"
   },
   "release": {
-    "version": "1.3.0",
+    "version": "1.4.1",
     "releasedAt": "2026-11-16T00:00:00Z"
   },
   "resources": [
@@ -42,6 +42,12 @@
       "slug": "presentielijst",
       "name": "Presentielijst",
       "detailUrl": "./resources/template/presentielijst.json"
+    },
+    {
+      "type": "template",
+      "slug": "sprekerinstructies",
+      "name": "Instructies voor sprekers",
+      "detailUrl": "./resources/template/sprekerinstructies.json"
     }
   ]
 }
