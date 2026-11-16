@@ -127,7 +127,9 @@ public class EpistolaProperties {
         private Duration maxJitter = Duration.ofHours(1);
 
         /**
-         * How far ahead of support.until an admin warning starts showing.
+         * How far ahead of support.until an admin warning starts showing, for release metadata
+         * without per-line statuses (an older or mirrored document). Metadata with lines carries
+         * the status Epistola decided for each line, and then this setting has no effect.
          */
         private Duration deprecationWarningWindow = Duration.ofDays(90);
 

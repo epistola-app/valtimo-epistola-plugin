@@ -339,6 +339,9 @@ const epistolaPluginSpecification: PluginSpecification = {
         'Versiecontrole kon release-informatie niet ophalen',
       epistolaAdminVersionMetadataUnavailableBody:
         'De laatst bekende status wordt gebruikt als die beschikbaar is. Controleer netwerktoegang of de geconfigureerde releases-URL.',
+      epistolaAdminVersionMetadataUnusableTitle: 'Release-informatie zegt niets over ondersteuning',
+      epistolaAdminVersionMetadataUnusableBody:
+        'De release-informatie is opgehaald, maar is verouderd of onvolledig, dus wordt er niets over ondersteuning getoond. Dit lost zich vanzelf op zodra Epistola nieuwe release-informatie publiceert.',
       epistolaAdminVersionCurrent: 'Huidig',
       epistolaAdminVersionLatest: 'Nieuwste',
       epistolaAdminVersionLatestStable: 'Nieuwste stabiele versie',
@@ -631,6 +634,9 @@ const epistolaPluginSpecification: PluginSpecification = {
         'Version check could not fetch release information',
       epistolaAdminVersionMetadataUnavailableBody:
         'The last known status is used when available. Check network access or the configured releases URL.',
+      epistolaAdminVersionMetadataUnusableTitle: 'Release information says nothing about support',
+      epistolaAdminVersionMetadataUnusableBody:
+        'The release information was fetched, but it is out of date or incomplete, so nothing is shown about support. This resolves itself once Epistola publishes fresh release information.',
       epistolaAdminVersionCurrent: 'Current',
       epistolaAdminVersionLatest: 'Latest',
       epistolaAdminVersionLatestStable: 'Latest stable',

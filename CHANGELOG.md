@@ -11,12 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Epistola decides whether a plugin version is supported, not the plugin.** The release metadata
   now lists every release line with its status (`supported`, `ending`, `ended`), and the admin page
-  shows the status of the line it runs, with that line's end date. A change to the support policy
-  (a grace period, an extension) reaches running plugins without an upgrade, and there is no 90-day
-  warning window in the plugin any more. The page offers the line's own newest patch first, then the
-  newest release. Metadata more than seven days old, an unknown status, or a build of a line not
-  released yet says nothing about support. Metadata without lines falls back to the minimum-version
-  check. The published test cases run in the plugin's tests (`releases.conformance.json`).
+  shows the status of the line it runs, with that line's end date. A change to the support policy (a
+  grace period, an extension) reaches running plugins without an upgrade, and the plugin applies no
+  warning window of its own. On a supported line the page offers the line's own newest patch first,
+  then the newest release; on a line that is ending or has ended it offers the newest release,
+  because the line's patch would not keep it supported. The minimum supported version is no longer
+  shown beside a line's status, which it could contradict, and "latest" is never a release older
+  than the running build. Metadata more than seven days old (or not saying when it was made), an
+  unknown status, or a build of a line not released yet says nothing about support; for metadata
+  that is old or undated the page says so, instead of reporting a network problem or falling silent.
+  Metadata without lines falls back to the minimum-version check, the only place
+  `epistola.version-check.deprecation-warning-window` still applies. The published test cases run in
+  the plugin's tests (`releases.conformance.json`).
 - **A release refuses a version npm or Maven Central has already seen, before it publishes
   anything.** 1.0.0 reached Maven Central and was then refused by npm, which reserves even an
   unpublished version for good, so it had to be released again as 1.0.1. The check reads npm's

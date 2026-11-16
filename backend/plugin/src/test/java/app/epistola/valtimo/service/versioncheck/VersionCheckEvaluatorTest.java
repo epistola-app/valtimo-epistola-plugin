@@ -202,6 +202,7 @@ class VersionCheckEvaluatorTest {
         assertThat(status.supportedUntil()).isNull();
         assertThat(status.updateAvailable()).isFalse();
         assertThat(status.latestVersion()).isEqualTo("1.0.1");
+        assertThat(status.lastError()).isNull();
     }
 
     @Test
@@ -252,6 +253,80 @@ class VersionCheckEvaluatorTest {
         assertThat(status.supportEndingSoon()).isFalse();
         assertThat(status.supportedUntil()).isNull();
         assertThat(status.updateAvailable()).isTrue();
+        // ...and says why, rather than falling silent: an ended version would otherwise look fine.
+        assertThat(status.lastError()).contains("more than 7 days ago");
+    }
+
+    @Test
+    void aDocumentThatDoesNotSayWhenItWasGeneratedSaysNothingAboutSupport() {
+        var dated = linesDocument();
+        var undated = new EpistolaReleasesDocument(1, null, dated.products());
+
+        var status = VersionCheckEvaluator.evaluate(undated, PRODUCT_KEY, "0.20.1", LINES_GENERATED_AT, Duration.ofDays(90));
+
+        assertThat(status.supported()).isTrue();
+        assertThat(status.supportedUntil()).isNull();
+        assertThat(status.lastError()).contains("does not say when it was generated");
+    }
+
+    @Test
+    void anEndedLineWithAnOlderPatchIsOfferedTheNewerRelease() {
+        // 0.20.1 is 0.20's patch, but it is as unsupported as 0.20.0: the way out is the newer line.
+        var status = fromLines("0.20.0", LINES_GENERATED_AT);
+
+        assertThat(status.supported()).isFalse();
+        assertThat(status.updateAvailable()).isTrue();
+        assertThat(status.latestVersion()).isEqualTo("1.0.1");
+        assertThat(status.releaseUrl()).isEqualTo("https://example.test/v1.0.1");
+    }
+
+    @Test
+    void anEndingLineWithAnOlderPatchIsOfferedTheNewerRelease() {
+        var stable = release("1.0.1", "https://example.test/v1.0.1");
+        var document = new EpistolaReleasesDocument(1, LINES_GENERATED_AT, Map.of(
+                PRODUCT_KEY,
+                new EpistolaReleasesDocument.ProductReleases(
+                        stable, null, null,
+                        List.of(
+                                new EpistolaReleasesDocument.ReleaseLine("1.0", stable, null, "supported"),
+                                new EpistolaReleasesDocument.ReleaseLine(
+                                        "0.21", release("0.21.1", "https://example.test/v0.21.1"), "2027-02-12", "ending")),
+                        null)));
+
+        var status = VersionCheckEvaluator.evaluate(document, PRODUCT_KEY, "0.21.0", LINES_GENERATED_AT, Duration.ofDays(90));
+
+        assertThat(status.supportEndingSoon()).isTrue();
+        assertThat(status.latestVersion()).isEqualTo("1.0.1");
+        assertThat(status.releaseUrl()).isEqualTo("https://example.test/v1.0.1");
+    }
+
+    @Test
+    void theLegacyFloorIsNotShownBesideTheLinesStatus() {
+        // The document still carries support.minVersion 0.21.0 for older clients.
+        assertThat(fromLines("0.21.0", LINES_GENERATED_AT).minSupportedVersion()).isNull();
+        assertThat(fromLines("0.20.1", LINES_GENERATED_AT).minSupportedVersion()).isNull();
+    }
+
+    @Test
+    void aPreReleaseAheadOfEverythingPublishedShowsNoOlderReleaseAsLatest() {
+        var stable = release("1.0.1", "https://example.test/v1.0.1");
+        var document = new EpistolaReleasesDocument(1, LINES_GENERATED_AT, Map.of(
+                PRODUCT_KEY,
+                new EpistolaReleasesDocument.ProductReleases(
+                        stable, null, release("1.1.0-rc.1", "https://example.test/v1.1.0-rc.1"),
+                        List.of(new EpistolaReleasesDocument.ReleaseLine("1.0", stable, null, "supported")),
+                        null)));
+
+        var onTheNewest = VersionCheckEvaluator.evaluate(
+                document, PRODUCT_KEY, "1.1.0-rc.1", LINES_GENERATED_AT, Duration.ofDays(90));
+        assertThat(onTheNewest.updateAvailable()).isFalse();
+        assertThat(onTheNewest.latestVersion()).isEqualTo("1.1.0-rc.1");
+
+        var aheadOfIt = VersionCheckEvaluator.evaluate(
+                document, PRODUCT_KEY, "1.1.0-rc.2", LINES_GENERATED_AT, Duration.ofDays(90));
+        assertThat(aheadOfIt.updateAvailable()).isFalse();
+        assertThat(aheadOfIt.latestVersion()).isNull();
+        assertThat(aheadOfIt.latestStableVersion()).isEqualTo("1.0.1");
     }
 
     @Test

@@ -24,6 +24,7 @@ import app.epistola.valtimo.service.versioncheck.EpistolaReleasesDocument.Releas
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * What the releases document says about the running plugin version, read from {@code lines}.
@@ -115,6 +116,11 @@ public final class LineLookup {
         };
     }
 
+    /** Orders two versions by their {@code major.minor} line alone, ignoring patch and pre-release. */
+    static int compareLines(SemVersion a, SemVersion b) {
+        return compareLines(lineOf(a), lineOf(b));
+    }
+
     private static int[] lineOf(SemVersion version) {
         return new int[] {version.core().get(0), version.core().get(1)};
     }
@@ -123,8 +129,10 @@ public final class LineLookup {
         return a[0] != b[0] ? Integer.compare(a[0], b[0]) : Integer.compare(a[1], b[1]);
     }
 
+    private static final Pattern LINE = Pattern.compile("\\d+\\.\\d+");
+
     private static int[] parseLine(String line) {
-        if (line == null || !line.matches("\\d+\\.\\d+")) {
+        if (line == null || !LINE.matcher(line).matches()) {
             return null;
         }
         String[] parts = line.split("\\.");
