@@ -34,6 +34,22 @@ plugins {
     alias(libs.plugins.docker.compose)
 }
 
+// Spring Boot's dependency management pins every org.jetbrains.kotlin artifact to its own
+// kotlin.version (1.9.25 for Boot 3.5), the Kotlin compiler included. From Kotlin 2.4 the compiler
+// reaches the build through kotlin-build-tools, where that pin applies, and a 1.9 compiler fails
+// the build ("GRANULARITY is available only since 2.3.0"). Keep it on the Kotlin plugin's version.
+extra["kotlin.version"] = libs.versions.kotlin.get()
+
+// ktlint embeds a Kotlin compiler of its own, and the same pin would move that one too: to 2.4,
+// whose compiler API ktlint 1.x cannot drive ("Extensions storage is not registered"). The pin
+// governs the application's dependencies, not a tool's, so ktlint gets the version it asks for.
+configurations.matching { it.name.startsWith("ktlint") }.configureEach {
+    resolutionStrategy.eachDependency {
+        val declared = requested.version
+        if (requested.group == "org.jetbrains.kotlin" && declared != null) useVersion(declared)
+    }
+}
+
 java.sourceCompatibility = JavaVersion.VERSION_21
 java.targetCompatibility = JavaVersion.VERSION_21
 
