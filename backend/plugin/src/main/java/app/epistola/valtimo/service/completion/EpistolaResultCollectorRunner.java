@@ -59,7 +59,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *         (fired after delete) — lets us react to UI-driven config changes without
  *         waiting for the scheduled tick.</li>
  * </ol>
- * Each tick walks {@link PluginService#findPluginConfigurations(Class, java.util.function.Function)},
+ * Each tick walks {@code PluginService.findPluginConfigurations(Class, Function)},
  * starts collectors for new configurations, stops collectors for removed ones, and
  * restarts collectors whose URL/API-key/tenant changed. {@link PreDestroy} stops
  * everything.

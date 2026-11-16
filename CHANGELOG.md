@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **CI builds the backend Javadoc.** Maven Central needs a javadoc jar, so a Javadoc error only
+  surfaced at the release's last step: 1.0.2 reached npm and its images, and not Maven Central,
+  over one unresolvable `{@link}`. That link is now plain code, and a Javadoc error fails the PR.
+- **A resumed release keeps an image that is already published.** Like npm and Maven Central, the
+  demo images are skipped when the registry already has the version, so finishing a release no
+  longer replaces their tags with new digests. A resumed run also updates the GitHub Release with
+  the install instructions and SBOMs, which before only the first run did.
+
 ## [1.0.2] - 2026-11-16
 
 ### Changed
