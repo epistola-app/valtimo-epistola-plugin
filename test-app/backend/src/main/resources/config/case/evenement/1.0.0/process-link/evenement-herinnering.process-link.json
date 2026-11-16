@@ -16,9 +16,9 @@
       "catalogId": "local/demo/gzac-uitnodiging",
       "templateId": "herinnering",
       "outputFormat": "\"PDF\"",
-      "filename": "\"herinnering-\" & $doc.deelnemers[email = $pv.deelnemer].naam & \".pdf\"",
+      "filename": "\"herinnering-\" & ($doc.deelnemers[email = $pv.deelnemer])[-1].naam & \".pdf\"",
       "resultProcessVariable": "epistolaResult",
-      "dataMapping": "{\n  \"evenement\": { \"naam\": $doc.naam, \"datum\": $doc.datum, \"locatie\": $doc.locatie },\n  \"deelnemer\": $doc.deelnemers[email = $pv.deelnemer].{ \"naam\": naam, \"organisatie\": organisatie, \"dagdelen\": dagdelen },\n  \"dagdelen\": $doc.dagdelen,\n  \"toelichting\": $pv.toelichting\n}"
+      "dataMapping": "{\n  \"evenement\": { \"naam\": $doc.naam, \"datum\": $doc.datum, \"locatie\": $doc.locatie },\n  \"deelnemer\": ($doc.deelnemers[email = $pv.deelnemer])[-1].{ \"naam\": naam, \"organisatie\": organisatie, \"dagdelen\": dagdelen },\n  \"dagdelen\": $doc.dagdelen,\n  \"toelichting\": $pv.toelichting\n}"
     }
   },
   {
