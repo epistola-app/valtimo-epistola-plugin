@@ -9,7 +9,7 @@
     },
     {
       "type": "hidden",
-      "key": "doc:/deelnemers",
+      "key": "deelnemers",
       "label": "Deelnemers uit de zaak",
       "input": true,
       "persistent": false
@@ -21,11 +21,11 @@
       "input": true,
       "dataSrc": "custom",
       "data": {
-        "custom": "values = data['doc:/deelnemers'] || [];"
+        "custom": "values = data.deelnemers || [];"
       },
       "valueProperty": "email",
       "template": "<span>{{ item.naam }} ({{ item.organisatie }})</span>",
-      "refreshOn": "doc:/deelnemers",
+      "refreshOn": "deelnemers",
       "validate": {
         "required": true
       }

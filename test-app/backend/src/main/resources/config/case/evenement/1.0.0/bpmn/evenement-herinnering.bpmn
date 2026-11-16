@@ -3,7 +3,7 @@
   <bpmn:message id="Message_EpistolaDocumentGenerated" name="EpistolaDocumentGenerated" />
   <bpmn:error id="Error_EpistolaDocumentError" name="EpistolaDocumentError" />
   <bpmn:process id="evenement-herinnering" name="Herinnering sturen" isExecutable="true" camunda:historyTimeToLive="P30D">
-    <bpmn:documentation>Sends one participant of an event that is already open a reminder with the programme of the dayparts they signed up for. The start form picks the participant from the case (a select filled from the case's own participant list, prefilled through doc:/deelnemers), takes an optional note and previews the reminder; the generate-document mapping finds the participant by e-mail address. No code: the participant list is read by the form, not by a delegate.</bpmn:documentation>
+    <bpmn:documentation>Sends one participant of an event that is already open a reminder with the programme of the dayparts they signed up for. The start form picks the participant from the case (a select filled from the case's own participant list, prefilled from the case document under the plain key deelnemers), takes an optional note and previews the reminder; the generate-document mapping finds the participant by e-mail address. No code: the participant list is read by the form, not by a delegate.</bpmn:documentation>
     <bpmn:startEvent id="startEvent">
       <bpmn:outgoing>Flow_start_generate</bpmn:outgoing>
     </bpmn:startEvent>
