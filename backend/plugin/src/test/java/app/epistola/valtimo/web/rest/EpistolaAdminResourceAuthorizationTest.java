@@ -20,6 +20,7 @@ package app.epistola.valtimo.web.rest;
 import app.epistola.valtimo.authorization.EpistolaAdministration;
 import app.epistola.valtimo.authorization.EpistolaAdministrationActionProvider;
 import app.epistola.valtimo.service.admin.EpistolaAdminService;
+import app.epistola.valtimo.web.rest.dto.ReconcileResult;
 import com.ritense.authorization.AuthorizationService;
 import com.ritense.authorization.request.AuthorizationRequest;
 import com.ritense.authorization.request.EntityAuthorizationRequest;
@@ -78,6 +79,27 @@ class EpistolaAdminResourceAuthorizationTest {
                 new app.epistola.valtimo.web.rest.dto.CatalogRedeployResult(
                         "demo", "1.1", false, null, false, 0, "connection refused", null));
         assertThat(resource.redeployCatalog("cfg", "demo").getStatusCode().value()).isEqualTo(502);
+    }
+
+    @Test
+    void reconcilePending_mapsOutcomeToHttpStatus() {
+        // Delivered → 200; still running → 409 (try later); no retry can wake it → 422 (send the
+        // process back to its generate step); Epistola unreachable → 502 (retry might help).
+        assertThat(reconcileStatusFor(ReconcileResult.Outcome.CORRELATED)).isEqualTo(200);
+        assertThat(reconcileStatusFor(ReconcileResult.Outcome.STILL_RUNNING)).isEqualTo(409);
+        assertThat(reconcileStatusFor(ReconcileResult.Outcome.NOT_A_JOB)).isEqualTo(422);
+        assertThat(reconcileStatusFor(ReconcileResult.Outcome.UNKNOWN_TO_EPISTOLA)).isEqualTo(422);
+        assertThat(reconcileStatusFor(ReconcileResult.Outcome.EPISTOLA_ERROR)).isEqualTo(502);
+        verify(authorizationService, times(ReconcileResult.Outcome.values().length)).requirePermission(any());
+    }
+
+    private int reconcileStatusFor(ReconcileResult.Outcome outcome) {
+        var result = new ReconcileResult("exec-1", "pi-1", "tenant", "req", null, null,
+                outcome == ReconcileResult.Outcome.CORRELATED, outcome);
+        when(adminService.reconcile("exec-1")).thenReturn(result);
+        var response = resource.reconcilePending("exec-1");
+        assertThat(response.getBody()).isSameAs(result);
+        return response.getStatusCode().value();
     }
 
     @Test

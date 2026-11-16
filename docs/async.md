@@ -399,12 +399,40 @@ on the affected row:
 4. If the job is still `PENDING` / `IN_PROGRESS`, the button reports "Epistola:
    <status>. Try again in a moment." — there is nothing to correlate yet.
 
+Reconcile only delivers the result of the job the wait is pinned to. It never
+starts a new generation, so some stuck waits it cannot resume:
+
+- **The process was moved back to its catch event** (by a BPMN loop, or by
+  process-instance modification in Cockpit) without passing its
+  `generate-document` step. The wait is pinned to the earlier job, whose result
+  has already been delivered. If Epistola no longer knows that job, the row reports
+  that, rather than failing with a server error.
+- **The wait is pinned to something that is not a job id**, such as the
+  `refused-<uuid>` that development builds just before 1.0.0 recorded for a
+  generation Epistola refused (no release wrote it), or a hand-set
+  `epistolaWaitFor`. Epistola is not asked.
+- **The row is marked _Stuck_** (no `epistolaWaitFor` token, e.g. moved to the
+  catch event with listeners skipped). There is no button.
+
+In each case, move the process back to its **`generate-document` service task**
+instead: it starts a new generation, and the catch event waits for that one.
+
 The endpoint is also reachable directly:
 
 ```
 POST /api/v1/plugin/epistola/admin/pending/{executionId}/reconcile
 ```
 
-Requires `EpistolaAdministration:MANAGE`. Returns 200 on success, 409 when the
-job is still in flight, 400 / 404-equivalent on a malformed or unknown
-execution id.
+Requires `EpistolaAdministration:MANAGE`. Every answer except the 400 carries
+the result with an `outcome`:
+
+| Status | `outcome`             | Meaning                                                                                       |
+| ------ | --------------------- | --------------------------------------------------------------------------------------------- |
+| 200    | `CORRELATED`          | The job had finished; its result was delivered.                                               |
+| 409    | `STILL_RUNNING`       | The job is still in flight; try again later.                                                  |
+| 422    | `NOT_A_JOB`           | The wait is pinned to something that is not a job id (`refused-…`).                           |
+| 422    | `UNKNOWN_TO_EPISTOLA` | Epistola answered 404/410 for the job. Send the process back to `generate-document`.          |
+| 502    | `EPISTOLA_ERROR`      | Epistola could not answer (unreachable, 5xx, refused API key); retry or check the connection. |
+
+A malformed or unknown execution id, or a wait without an `epistolaWaitFor`
+token, is a 400 / 404-equivalent.

@@ -609,8 +609,12 @@
                   [class.text-success]="reconcileFeedback.type === 'success'"
                   [class.text-warning]="reconcileFeedback.type === 'pending'"
                   [class.text-danger]="reconcileFeedback.type === 'error'"
+                  [attr.data-testid]="'epistola-admin-reconcile-feedback-' + job.executionId"
                 >
-                  {{ reconcileFeedback.message }}
+                  <ng-container *ngIf="reconcileFeedback.messageKey; else plainFeedback">
+                    {{ reconcileFeedback.messageKey | pluginTranslate: 'epistola' | async }}
+                  </ng-container>
+                  <ng-template #plainFeedback>{{ reconcileFeedback.message }}</ng-template>
                 </div>
               </td>
             </tr>

@@ -84,6 +84,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class EpistolaAdminServiceTest {
@@ -1205,17 +1206,20 @@ class EpistolaAdminServiceTest {
     @Nested
     class Reconcile {
 
+        private static final String REQ_1 = "6f1c2a3b-4d5e-4f60-8a7b-9c0d1e2f3a4b";
+        private static final String REQ_2 = "0a1b2c3d-4e5f-4a6b-8c7d-8e9f0a1b2c3d";
+
         @Test
         void shouldCorrelateWhenJobIsTerminal() {
             mockSinglePluginConfiguration();
-            mockExecutionWithSubscription("exec-1", "pi-1", TENANT_ID + "/req-1");
-            when(epistolaService.getJobStatus(BASE_URL, API_KEY, TENANT_ID, "req-1"))
+            mockExecutionWithSubscription("exec-1", "pi-1", TENANT_ID + "/" + REQ_1);
+            when(epistolaService.getJobStatus(BASE_URL, API_KEY, TENANT_ID, REQ_1))
                     .thenReturn(GenerationJobDetail.builder()
-                            .requestId("req-1")
+                            .requestId(REQ_1)
                             .status(GenerationJobStatus.FAILED)
                             .errorMessage("validation failed")
                             .build());
-            when(correlationService.correlateCompletion(TENANT_ID, "req-1", "FAILED", null, "validation failed"))
+            when(correlationService.correlateCompletion(TENANT_ID, REQ_1, "FAILED", null, "validation failed"))
                     .thenReturn(1);
 
             ReconcileResult result = adminService.reconcile("exec-1");
@@ -1224,16 +1228,17 @@ class EpistolaAdminServiceTest {
             assertThat(result.correlatedCount()).isEqualTo(1);
             assertThat(result.epistolaStatus()).isEqualTo("FAILED");
             assertThat(result.tenantId()).isEqualTo(TENANT_ID);
-            assertThat(result.requestId()).isEqualTo("req-1");
+            assertThat(result.requestId()).isEqualTo(REQ_1);
+            assertThat(result.outcome()).isEqualTo(ReconcileResult.Outcome.CORRELATED);
         }
 
         @Test
         void shouldNotCorrelateWhenJobIsStillPending() {
             mockSinglePluginConfiguration();
-            mockExecutionWithSubscription("exec-1", "pi-1", TENANT_ID + "/req-2");
-            when(epistolaService.getJobStatus(BASE_URL, API_KEY, TENANT_ID, "req-2"))
+            mockExecutionWithSubscription("exec-1", "pi-1", TENANT_ID + "/" + REQ_2);
+            when(epistolaService.getJobStatus(BASE_URL, API_KEY, TENANT_ID, REQ_2))
                     .thenReturn(GenerationJobDetail.builder()
-                            .requestId("req-2")
+                            .requestId(REQ_2)
                             .status(GenerationJobStatus.IN_PROGRESS)
                             .build());
 
@@ -1242,6 +1247,58 @@ class EpistolaAdminServiceTest {
             assertThat(result.correlated()).isFalse();
             assertThat(result.correlatedCount()).isNull();
             assertThat(result.epistolaStatus()).isEqualTo("IN_PROGRESS");
+            assertThat(result.outcome()).isEqualTo(ReconcileResult.Outcome.STILL_RUNNING);
+        }
+
+        @Test
+        void aRefusedTokenFromAnOlderPlugin_isNotAJob_andEpistolaIsNotAsked() {
+            // Development builds just before #221 pinned "refused-<uuid>" for a refused generation. The
+            // generated client refuses to send that (it is no UUID), which surfaced as a 500.
+            mockExecutionWithSubscription("exec-1", "pi-1", TENANT_ID + "/refused-" + REQ_1);
+
+            ReconcileResult result = adminService.reconcile("exec-1");
+
+            assertThat(result.correlated()).isFalse();
+            assertThat(result.outcome()).isEqualTo(ReconcileResult.Outcome.NOT_A_JOB);
+            assertThat(result.requestId()).isEqualTo("refused-" + REQ_1);
+            verifyNoInteractions(epistolaService, correlationService);
+        }
+
+        @Test
+        void aJobEpistolaDoesNotKnow_isReportedAsSuch_notThrown() {
+            // A process moved back to its catch event waits on a job that may be gone: Epistola's
+            // 404/410 is final, so it is an outcome for the operator rather than an error.
+            mockSinglePluginConfiguration();
+            mockExecutionWithSubscription("exec-1", "pi-1", TENANT_ID + "/" + REQ_1);
+            when(epistolaService.getJobStatus(BASE_URL, API_KEY, TENANT_ID, REQ_1))
+                    .thenThrow(new EpistolaApiException("Failed to fetch job status", null, 404, null, null))
+                    .thenThrow(new EpistolaApiException("Failed to fetch job status", null, 410, null, null));
+
+            for (int attempt = 0; attempt < 2; attempt++) {
+                ReconcileResult result = adminService.reconcile("exec-1");
+                assertThat(result.correlated()).isFalse();
+                assertThat(result.outcome()).isEqualTo(ReconcileResult.Outcome.UNKNOWN_TO_EPISTOLA);
+            }
+            verifyNoInteractions(correlationService);
+        }
+
+        @Test
+        void aFailureAboutTheConnection_isNotBlamedOnTheJob() {
+            // A 5xx, no connection at all, or a refused API key says nothing about whether the job
+            // exists, so it must not send the operator back to the generate step.
+            mockSinglePluginConfiguration();
+            mockExecutionWithSubscription("exec-1", "pi-1", TENANT_ID + "/" + REQ_1);
+            when(epistolaService.getJobStatus(BASE_URL, API_KEY, TENANT_ID, REQ_1))
+                    .thenThrow(new EpistolaApiException("Failed to fetch job status", null, 503, null, null))
+                    .thenThrow(new EpistolaApiException("Failed to fetch job status", null, null, null, null))
+                    .thenThrow(new EpistolaApiException("Failed to fetch job status", null, 401, null, null))
+                    .thenThrow(new EpistolaApiException("Failed to fetch job status", null, 403, null, null));
+
+            for (int attempt = 0; attempt < 4; attempt++) {
+                assertThat(adminService.reconcile("exec-1").outcome())
+                        .isEqualTo(ReconcileResult.Outcome.EPISTOLA_ERROR);
+            }
+            verifyNoInteractions(correlationService);
         }
 
         @Test
@@ -1283,7 +1340,7 @@ class EpistolaAdminServiceTest {
             when(pluginService.findPluginConfigurations(eq(EpistolaPlugin.class), any()))
                     .thenReturn(List.of(config));
             when(pluginService.createInstance(config)).thenReturn(plugin);
-            mockExecutionWithSubscription("exec-1", "pi-1", TENANT_ID + "/req-3");
+            mockExecutionWithSubscription("exec-1", "pi-1", TENANT_ID + "/" + REQ_2);
 
             assertThatThrownBy(() -> adminService.reconcile("exec-1"))
                     .isInstanceOf(IllegalArgumentException.class)

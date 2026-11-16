@@ -33,6 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   task-scoped properties there. It now routes `documentId` to the document-scoped resolver, so the
   carrier is filled. The letter composer reads the same carrier first; its fallback to the case in
   the route stays for a form whose carrier is missing.
+- **Reconcile on the admin page's Pending Jobs tab no longer fails with a server error for a wait
+  it cannot resume.** When a process is moved back to its `EpistolaDocumentGenerated` catch event,
+  without passing its `generate-document` step, the wait is pinned to the earlier job. When that is
+  no job id at all, such as the `refused-<uuid>` that development builds just before 1.0.0 wrote,
+  the button answered with a 500, and it can do the same when Epistola no longer knows the job
+  (404/410). Reconcile now tells these cases apart and says what to do: move the process back to
+  its `generate-document` step to generate again. A failure that is about the connection instead
+  (unreachable, 5xx, a refused API key) says to retry or check the connection. The endpoint
+  returns an `outcome` with each answer: 422 for a wait no retry can resume, 502 when Epistola
+  could not answer. A _Stuck_ row (no correlation token) now gives the same advice.
 - **"Support for this plugin version ends soon" only shows on the line that is ending.** The release
   metadata's support end date belongs to the oldest supported line (the `X.Y` of its minimum version),
   but the admin page applied it to every supported version, the newest included: 1.0.1 was told to

@@ -146,8 +146,9 @@ class EpistolaServiceImplRetryTest {
                 .thenThrow(new HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE));
 
         EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 2);
-        assertThrows(EpistolaApiException.class,
+        EpistolaApiException thrown = assertThrows(EpistolaApiException.class,
                 () -> service.getJobStatus("http://x", "key", TENANT, REQUEST_ID));
+        assertEquals(503, thrown.getHttpStatus());
 
         // first try + 2 retries = 3 invocations
         verify(generationApi, times(3)).listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1));
@@ -162,8 +163,10 @@ class EpistolaServiceImplRetryTest {
                 .thenThrow(new HttpClientErrorException(HttpStatus.NOT_FOUND));
 
         EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 2);
-        assertThrows(EpistolaApiException.class,
+        EpistolaApiException thrown = assertThrows(EpistolaApiException.class,
                 () -> service.getJobStatus("http://x", "key", TENANT, REQUEST_ID));
+        // The admin reconcile tells "Epistola does not know this job" from "unavailable" by this status.
+        assertEquals(404, thrown.getHttpStatus());
 
         // 4xx is a definitive answer — exactly one invocation, no retry
         verify(generationApi, times(1)).listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1));
@@ -264,8 +267,12 @@ class EpistolaServiceImplRetryTest {
         when(generationApi.listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1))).thenThrow(clientProblem);
 
         EpistolaServiceImpl service = new EpistolaServiceImpl(factory, 2);
-        assertThrows(EpistolaApiException.class,
+        EpistolaApiException thrown = assertThrows(EpistolaApiException.class,
                 () -> service.getJobStatus("http://x", "key", TENANT, REQUEST_ID));
+        assertEquals(404, thrown.getHttpStatus());
+        // check-job-status raises this as an incident, which the engine logs: Epistola's own detail
+        // ("No such job") stays out of the message.
+        assertEquals("Failed to fetch job status", thrown.getMessage());
 
         verify(generationApi, times(1)).listGenerationJobItems(eq(TENANT), any(UUID.class), isNull(), eq(0), eq(1));
     }

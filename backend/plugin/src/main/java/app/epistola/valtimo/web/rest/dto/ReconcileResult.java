@@ -26,10 +26,11 @@ package app.epistola.valtimo.web.rest.dto;
  * could legitimately be 0 if a concurrent reconcile / late natural correlation
  * already picked up the same execution.
  *
- * <p>{@code correlated=false} means the Epistola job is still in flight
- * ({@code epistolaStatus} = PENDING / IN_PROGRESS); the controller maps that
- * to HTTP 409 so the UI can surface a "try again later" message without
- * treating it as an error.
+ * <p>{@code outcome} says why when nothing was correlated, so the admin page can tell the operator
+ * what to do: wait ({@link Outcome#STILL_RUNNING}), retry or check the connection ({@link Outcome#EPISTOLA_ERROR}),
+ * or send the process back to its generate step, because retrying can never wake it
+ * ({@link Outcome#NOT_A_JOB}, {@link Outcome#UNKNOWN_TO_EPISTOLA}). The controller maps each to its
+ * own HTTP status.
  */
 public record ReconcileResult(
         String executionId,
@@ -38,5 +39,31 @@ public record ReconcileResult(
         String requestId,
         String epistolaStatus,
         Integer correlatedCount,
-        boolean correlated
-) {}
+        boolean correlated,
+        Outcome outcome
+) {
+
+    public enum Outcome {
+        /** The job had finished and its result was delivered to the waiting process. */
+        CORRELATED,
+        /** Epistola is still working on the job; nothing to deliver yet. */
+        STILL_RUNNING,
+        /**
+         * The wait is pinned to something that is not an Epistola job id — development builds just
+         * before 1.0.0 wrote {@code refused-<uuid>} for a generation Epistola refused, and an author
+         * can set {@code epistolaWaitFor} by hand. No retry can wake it.
+         */
+        NOT_A_JOB,
+        /**
+         * Epistola answered that it does not know this job (404/410), e.g. because the process was
+         * moved back to its catch event and is waiting on a job that is gone. No retry can wake it.
+         */
+        UNKNOWN_TO_EPISTOLA,
+        /**
+         * Epistola could not answer for the job: unreachable, a 5xx, or a refusal that is about the
+         * connection rather than the job (a 401/403 from a wrong API key). A later retry, or a fixed
+         * connection, may work.
+         */
+        EPISTOLA_ERROR
+    }
+}

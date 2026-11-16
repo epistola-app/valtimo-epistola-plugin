@@ -1101,8 +1101,22 @@ public class EpistolaServiceImpl implements EpistolaService {
             throw e;
         } catch (Exception e) {
             log.error("Failed to fetch job status for tenant {}, requestId {}: {}", tenantId, requestId, e.getMessage());
-            throw new EpistolaApiException("Failed to fetch job status", e);
+            // Keep the message fixed — check-job-status raises it as an incident, which the engine logs —
+            // but carry the downstream status, so a caller can tell "Epistola does not know this job"
+            // (4xx) from "Epistola is unavailable" (5xx, connectivity).
+            throw new EpistolaApiException("Failed to fetch job status", e, downstreamStatus(e), null, null);
         }
+    }
+
+    /** The HTTP status Epistola answered with, or {@code null} when the failure was not a response. */
+    private static Integer downstreamStatus(Throwable failure) {
+        if (failure instanceof ProblemDetailException problem) {
+            return problem.getProblemStatus();
+        }
+        if (failure instanceof RestClientResponseException response) {
+            return response.getStatusCode().value();
+        }
+        return null;
     }
 
     @Override
