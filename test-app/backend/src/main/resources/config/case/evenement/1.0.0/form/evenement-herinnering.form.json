@@ -1,0 +1,78 @@
+{
+  "display": "form",
+  "components": [
+    {
+      "type": "htmlelement",
+      "key": "intro",
+      "tag": "p",
+      "content": "Stuur een deelnemer een herinnering met het programma van de dagdelen waarvoor die zich heeft aangemeld. De herinnering staat daarna bij Documenten."
+    },
+    {
+      "type": "hidden",
+      "key": "deelnemers",
+      "label": "Deelnemers uit de zaak",
+      "input": true,
+      "persistent": false
+    },
+    {
+      "type": "select",
+      "key": "pv:deelnemer",
+      "label": "Deelnemer",
+      "input": true,
+      "dataSrc": "custom",
+      "data": {
+        "custom": "values = data.deelnemers || [];"
+      },
+      "valueProperty": "email",
+      "template": "<span>{{ item.naam }} ({{ item.organisatie }})</span>",
+      "refreshOn": "deelnemers",
+      "validate": {
+        "required": true
+      }
+    },
+    {
+      "type": "textarea",
+      "key": "pv:toelichting",
+      "label": "Toelichting",
+      "description": "Optioneel. Staat in een kader boven het programma.",
+      "input": true,
+      "rows": 3
+    },
+    {
+      "type": "epistola-document-preview",
+      "key": "preview",
+      "input": false,
+      "label": "Voorbeeld herinnering",
+      "previewContext": "start",
+      "processDefinitionKey": "evenement-herinnering",
+      "sourceActivityId": "generate-reminder",
+      "components": [
+        {
+          "type": "hidden",
+          "key": "epistolaTaskId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": { "sourceKey": "epistola:taskId" }
+        },
+        {
+          "type": "hidden",
+          "key": "epistolaDocumentId",
+          "input": true,
+          "label": "Epistola Document Id",
+          "persistent": false,
+          "properties": { "sourceKey": "epistola:documentId" }
+        }
+      ]
+    },
+    {
+      "type": "button",
+      "key": "submit",
+      "label": "Herinnering maken",
+      "action": "submit",
+      "input": true,
+      "theme": "primary",
+      "disableOnInvalid": true
+    }
+  ]
+}
