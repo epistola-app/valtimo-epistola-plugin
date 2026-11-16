@@ -459,7 +459,7 @@
     ],
     "templateModel": {
       "modelVersion": 1,
-      "root": "n-49",
+      "root": "n-52",
       "nodes": {
         "n-1": {
           "id": "n-1",
@@ -763,12 +763,12 @@
             "gap": 0,
             "columnStyles": [
               {
-                "padding": "4pt 8pt",
+                "padding": "2pt 8pt",
                 "backgroundColor": "#f3f4f6",
                 "borderLeft": "2.5pt solid #e5e7eb"
               },
               {
-                "padding": "4pt 8pt",
+                "padding": "2pt 8pt",
                 "backgroundColor": "#f3f4f6"
               }
             ]
@@ -825,7 +825,7 @@
             }
           },
           "styles": {
-            "marginBottom": "1pt"
+            "marginBottom": "0pt"
           },
           "stylePreset": "kicker"
         },
@@ -864,9 +864,9 @@
             }
           },
           "styles": {
-            "fontSize": "10pt",
+            "fontSize": "9pt",
             "fontWeight": "600",
-            "marginBottom": "1pt"
+            "marginBottom": "0pt"
           }
         },
         "n-22": {
@@ -878,11 +878,11 @@
             "gap": 0,
             "columnStyles": [
               {
-                "padding": "4pt 8pt",
+                "padding": "2pt 8pt",
                 "borderLeft": "2.5pt solid #2f6eb5"
               },
               {
-                "padding": "4pt 8pt"
+                "padding": "2pt 8pt"
               }
             ]
           },
@@ -921,7 +921,7 @@
           "slots": ["s-31"],
           "props": {},
           "styles": {
-            "marginBottom": "10pt"
+            "marginBottom": "8pt"
           }
         },
         "n-32": {
@@ -1179,6 +1179,12 @@
         },
         "n-45": {
           "id": "n-45",
+          "type": "pagebreak",
+          "slots": [],
+          "props": {}
+        },
+        "n-46": {
+          "id": "n-46",
           "type": "text",
           "slots": [],
           "props": {
@@ -1190,7 +1196,7 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "HET PROGRAMMA"
+                      "text": "// HET PROGRAMMA"
                     }
                   ]
                 }
@@ -1202,10 +1208,81 @@
           },
           "stylePreset": "kicker"
         },
-        "n-46": {
-          "id": "n-46",
+        "n-47": {
+          "id": "n-47",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.naam"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontFamily": {
+              "slug": "source-serif-4",
+              "catalogKey": "system"
+            },
+            "fontSize": "24pt",
+            "color": "#1b365d",
+            "fontWeight": "700",
+            "marginBottom": "2pt"
+          }
+        },
+        "n-48": {
+          "id": "n-48",
+          "type": "text",
+          "slots": [],
+          "props": {
+            "content": {
+              "type": "doc",
+              "content": [
+                {
+                  "type": "paragraph",
+                  "content": [
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.datum"
+                      }
+                    },
+                    {
+                      "type": "text",
+                      "text": " · "
+                    },
+                    {
+                      "type": "expression",
+                      "attrs": {
+                        "expression": "evenement.locatie"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          },
+          "styles": {
+            "fontSize": "10pt",
+            "color": "#4b5563",
+            "marginBottom": "14pt"
+          }
+        },
+        "n-49": {
+          "id": "n-49",
           "type": "loop",
-          "slots": ["s-47"],
+          "slots": ["s-50"],
           "props": {
             "expression": {
               "raw": "dagdelen",
@@ -1214,8 +1291,8 @@
             "itemAlias": "dagdeel"
           }
         },
-        "n-48": {
-          "id": "n-48",
+        "n-51": {
+          "id": "n-51",
           "type": "text",
           "slots": [],
           "props": {
@@ -1262,10 +1339,10 @@
             "marginTop": "10pt"
           }
         },
-        "n-49": {
-          "id": "n-49",
+        "n-52": {
+          "id": "n-52",
           "type": "root",
-          "slots": ["s-50"],
+          "slots": ["s-53"],
           "props": {}
         }
       },
@@ -1360,17 +1437,30 @@
           "name": "body",
           "children": ["n-41", "n-42"]
         },
-        "s-47": {
-          "id": "s-47",
-          "nodeId": "n-46",
-          "name": "body",
-          "children": ["n-30"]
-        },
         "s-50": {
           "id": "s-50",
           "nodeId": "n-49",
+          "name": "body",
+          "children": ["n-30"]
+        },
+        "s-53": {
+          "id": "s-53",
+          "nodeId": "n-52",
           "name": "children",
-          "children": ["n-32", "n-33", "n-34", "n-7", "n-39", "n-43", "n-45", "n-46", "n-48"]
+          "children": [
+            "n-32",
+            "n-33",
+            "n-34",
+            "n-7",
+            "n-39",
+            "n-43",
+            "n-45",
+            "n-46",
+            "n-47",
+            "n-48",
+            "n-49",
+            "n-51"
+          ]
         }
       },
       "themeRef": {
