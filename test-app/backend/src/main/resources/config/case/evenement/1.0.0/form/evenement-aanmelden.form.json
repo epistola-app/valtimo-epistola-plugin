@@ -35,21 +35,53 @@
       }
     },
     {
-      "type": "selectboxes",
+      "type": "select",
       "key": "pv:dagdelen",
       "label": "Ik kom naar",
       "input": true,
+      "multiple": true,
+      "widget": "choicesjs",
+      "dataSrc": "values",
+      "data": {
+        "values": [
+          {
+            "label": "Ochtend · TechTalks",
+            "value": "ochtend"
+          },
+          {
+            "label": "Middag · Kennissnacks",
+            "value": "middag"
+          }
+        ]
+      },
       "validate": {
         "required": true
-      },
-      "values": [
+      }
+    },
+    {
+      "type": "epistola-document-preview",
+      "key": "preview",
+      "input": false,
+      "label": "Voorbeeld uitnodiging",
+      "previewContext": "start",
+      "processDefinitionKey": "evenement-aanmelden",
+      "sourceActivityId": "generate-invitation",
+      "components": [
         {
-          "label": "Ochtend · TechTalks",
-          "value": "ochtend"
+          "type": "hidden",
+          "key": "epistolaTaskId",
+          "input": true,
+          "label": "Epistola Task Id",
+          "persistent": false,
+          "properties": { "sourceKey": "epistola:taskId" }
         },
         {
-          "label": "Middag · Kennissnacks",
-          "value": "middag"
+          "type": "hidden",
+          "key": "epistolaDocumentId",
+          "input": true,
+          "label": "Epistola Document Id",
+          "persistent": false,
+          "properties": { "sourceKey": "epistola:documentId" }
         }
       ]
     },
@@ -58,7 +90,8 @@
       "key": "submit",
       "label": "Aanmelden",
       "action": "submit",
-      "input": true
+      "input": true,
+      "disableOnInvalid": true
     }
   ]
 }

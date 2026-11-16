@@ -10,5 +10,17 @@
     "canInitializeDocument": false,
     "startableByUser": true,
     "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "evenement-losse-brief",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "evenement-herinnering",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
   }
 ]
