@@ -35,6 +35,11 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./gradlew :backend:plugin:build
 
+      # Maven Central needs a javadoc jar, so a Javadoc error stops a release at the very last step
+      # (1.0.2 reached npm and not Maven Central this way). Fail here instead.
+      - name: Javadoc
+        run: ./gradlew :backend:plugin:javadoc
+
       - name: Build test-app (compile only)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
