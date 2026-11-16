@@ -36,10 +36,6 @@
           "catalogId": "gzac-uitnodiging",
           "templates": [
             {
-              "templateId": "herinnering",
-              "label": "Herinnering aan een deelnemer"
-            },
-            {
               "templateId": "badges",
               "label": "Badges voor alle deelnemers",
               "dataMapping": "{ \"deelnemers\": $doc.deelnemers }"

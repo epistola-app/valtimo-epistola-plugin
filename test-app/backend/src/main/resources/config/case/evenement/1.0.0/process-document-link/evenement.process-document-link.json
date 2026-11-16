@@ -16,5 +16,11 @@
     "canInitializeDocument": false,
     "startableByUser": true,
     "processIsVisibleInMenu": false
+  },
+  {
+    "processDefinitionKey": "evenement-herinnering",
+    "canInitializeDocument": false,
+    "startableByUser": true,
+    "processIsVisibleInMenu": false
   }
 ]

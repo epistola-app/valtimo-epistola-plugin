@@ -10,13 +10,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Test app: a letter about an event, sent ad hoc from the case.** The case type `evenement` gets
-  a process "Losse brief" with the letter composer on its start form, offering three letters from
-  the bundled catalog `gzac-uitnodiging` (now 1.1.0): a reminder to one participant, badges with a
-  QR code for every participant, and an attendance list per daypart. The case supplies the event,
-  the programme and the participants; each letter asks the employee for a few fields of its own
-  (who the reminder is for and a personal message, the kind of badge and what its QR code holds,
-  the daypart and room of the list), with a live preview before anything is generated. Built for
-  the TechTalk on the GZAC user day of 17 November 2026.
+  a process "Losse brief" with the letter composer on its start form, offering two letters from
+  the bundled catalog `gzac-uitnodiging` (now 1.2.0): badges with a QR code for every participant,
+  and an attendance list per daypart. The case supplies the event, the programme and the
+  participants; each letter asks the employee for a few fields of its own (the kind of badge and
+  what its QR code holds, the daypart and room of the list), with a live preview before anything
+  is generated.
+- **Test app: a reminder to one participant of an event.** The process "Herinnering sturen" on
+  `evenement` picks the participant from the case in its start form, takes an optional note and
+  previews the reminder before generating it. No code: a select reads the participant list the
+  form is prefilled with (`doc:/deelnemers`), and the generate-document mapping finds the chosen
+  participant by e-mail address. The letter composer cannot offer a choice whose options come from
+  the case, which is why this one has a process of its own. Both built for the TechTalk on the
+  GZAC user day of 17 November 2026.
 
 ## [1.0.1] - 2026-11-12
 

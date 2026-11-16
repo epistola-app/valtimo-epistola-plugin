@@ -10,8 +10,7 @@
       "required": [
         "evenement",
         "dagdelen",
-        "deelnemer",
-        "boodschap"
+        "deelnemer"
       ],
       "properties": {
         "evenement": {
@@ -87,36 +86,30 @@
         },
         "deelnemer": {
           "type": "object",
-          "title": "Deelnemer",
           "required": [
             "naam",
             "organisatie",
-            "aangemeldVoor"
+            "dagdelen"
           ],
           "properties": {
             "naam": {
-              "type": "string",
-              "title": "Naam"
+              "type": "string"
             },
             "organisatie": {
-              "type": "string",
-              "title": "Organisatie"
+              "type": "string"
             },
-            "aangemeldVoor": {
-              "type": "string",
-              "title": "Aangemeld voor",
-              "enum": [
-                "ochtend",
-                "middag",
-                "hele dag"
-              ]
+            "dagdelen": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "De dagdelen waarvoor de deelnemer zich heeft aangemeld"
             }
           }
         },
-        "boodschap": {
+        "toelichting": {
           "type": "string",
-          "title": "Persoonlijke boodschap",
-          "description": "Een paar zinnen van de organisatie, bijvoorbeeld over parkeren of de borrel"
+          "description": "Extra toelichting van de organisatie, bijvoorbeeld over parkeren of de borrel"
         }
       }
     },
@@ -271,9 +264,12 @@
           "deelnemer": {
             "naam": "Fatima de Vries",
             "organisatie": "Gemeente Rivierstad",
-            "aangemeldVoor": "hele dag"
+            "dagdelen": [
+              "ochtend",
+              "middag"
+            ]
           },
-          "boodschap": "Kom je met de auto? Parkeren kan in garage Westerdok, op vijf minuten lopen. Na afloop staat de borrel klaar."
+          "toelichting": "Kom je met de auto? Parkeren kan in garage Westerdok, op vijf minuten lopen. Na afloop staat de borrel klaar."
         }
       },
       {
@@ -426,15 +422,16 @@
           "deelnemer": {
             "naam": "Jan Jansen",
             "organisatie": "Gemeente Voorbeeld",
-            "aangemeldVoor": "ochtend"
-          },
-          "boodschap": "De deur gaat om 10.00 uur open. Koffie staat klaar."
+            "dagdelen": [
+              "ochtend"
+            ]
+          }
         }
       }
     ],
     "templateModel": {
       "modelVersion": 1,
-      "root": "n-37",
+      "root": "n-39",
       "nodes": {
         "n-1": {
           "id": "n-1",
@@ -878,17 +875,7 @@
                     },
                     {
                       "type": "text",
-                      "text": ". Je bent aangemeld voor de "
-                    },
-                    {
-                      "type": "expression",
-                      "attrs": {
-                        "expression": "deelnemer.aangemeldVoor"
-                      }
-                    },
-                    {
-                      "type": "text",
-                      "text": "."
+                      "text": ". Hieronder staat het programma van de dagdelen waarvoor je je hebt aangemeld."
                     }
                   ]
                 }
@@ -913,7 +900,7 @@
                   "content": [
                     {
                       "type": "text",
-                      "text": "// VAN DE ORGANISATIE"
+                      "text": "// TOELICHTING"
                     }
                   ]
                 }
@@ -939,7 +926,7 @@
                     {
                       "type": "expression",
                       "attrs": {
-                        "expression": "boodschap"
+                        "expression": "toelichting"
                       }
                     }
                   ]
@@ -967,6 +954,20 @@
         },
         "n-31": {
           "id": "n-31",
+          "type": "conditional",
+          "slots": [
+            "s-32"
+          ],
+          "props": {
+            "condition": {
+              "raw": "$exists(toelichting) and $length($trim(toelichting)) > 0",
+              "language": "jsonata"
+            },
+            "inverse": false
+          }
+        },
+        "n-33": {
+          "id": "n-33",
           "type": "text",
           "slots": [],
           "props": {
@@ -990,25 +991,25 @@
           },
           "stylePreset": "kicker"
         },
-        "n-32": {
-          "id": "n-32",
+        "n-34": {
+          "id": "n-34",
           "type": "conditional",
           "slots": [
-            "s-33"
+            "s-35"
           ],
           "props": {
             "condition": {
-              "raw": "deelnemer.aangemeldVoor = 'hele dag' or dagdeel.key = deelnemer.aangemeldVoor",
+              "raw": "dagdeel.key in deelnemer.dagdelen",
               "language": "jsonata"
             },
             "inverse": false
           }
         },
-        "n-34": {
-          "id": "n-34",
+        "n-36": {
+          "id": "n-36",
           "type": "loop",
           "slots": [
-            "s-35"
+            "s-37"
           ],
           "props": {
             "expression": {
@@ -1018,8 +1019,8 @@
             "itemAlias": "dagdeel"
           }
         },
-        "n-36": {
-          "id": "n-36",
+        "n-38": {
+          "id": "n-38",
           "type": "text",
           "slots": [],
           "props": {
@@ -1066,11 +1067,11 @@
             "marginTop": "10pt"
           }
         },
-        "n-37": {
-          "id": "n-37",
+        "n-39": {
+          "id": "n-39",
           "type": "root",
           "slots": [
-            "s-38"
+            "s-40"
           ],
           "props": {}
         }
@@ -1160,12 +1161,12 @@
             "n-28"
           ]
         },
-        "s-33": {
-          "id": "s-33",
-          "nodeId": "n-32",
+        "s-32": {
+          "id": "s-32",
+          "nodeId": "n-31",
           "name": "body",
           "children": [
-            "n-21"
+            "n-29"
           ]
         },
         "s-35": {
@@ -1173,22 +1174,30 @@
           "nodeId": "n-34",
           "name": "body",
           "children": [
-            "n-32"
+            "n-21"
           ]
         },
-        "s-38": {
-          "id": "s-38",
-          "nodeId": "n-37",
+        "s-37": {
+          "id": "s-37",
+          "nodeId": "n-36",
+          "name": "body",
+          "children": [
+            "n-34"
+          ]
+        },
+        "s-40": {
+          "id": "s-40",
+          "nodeId": "n-39",
           "name": "children",
           "children": [
             "n-23",
             "n-24",
             "n-25",
             "n-26",
-            "n-29",
             "n-31",
-            "n-34",
-            "n-36"
+            "n-33",
+            "n-36",
+            "n-38"
           ]
         }
       },
