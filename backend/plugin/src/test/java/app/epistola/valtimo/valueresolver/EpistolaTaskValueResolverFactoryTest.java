@@ -127,6 +127,20 @@ class EpistolaTaskValueResolverFactoryTest {
         assertThat(resolver.apply("documentId")).isEqualTo("3f2504e0-4f89-11d3-9a0c-0305e82c3301");
     }
 
+    /**
+     * What Valtimo 13.54 actually calls on a start form opened against an existing case:
+     * {@code resolveValues(documentId, keys)} becomes {@code createResolver(Map.of("documentId", id))}.
+     * Without routing that to the document-scoped resolver, the carrier stayed empty.
+     */
+    @Test
+    void resolvesTheDocumentIdViaThePropertyMapPath() {
+        Function<String, Object> resolver =
+                factory.createResolver(Map.of("documentId", "3f2504e0-4f89-11d3-9a0c-0305e82c3301"));
+
+        assertThat(resolver.apply("documentId")).isEqualTo("3f2504e0-4f89-11d3-9a0c-0305e82c3301");
+        assertThat(resolver.apply("taskId")).isNull();
+    }
+
     @Test
     void taskScopedResolverDoesNotYieldADocumentId() {
         // documentId is only meaningful on the document-scoped overload; a task form's carrier for
