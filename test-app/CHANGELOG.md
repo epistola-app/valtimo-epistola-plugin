@@ -47,6 +47,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `promote` input is gone. The demo's configuration now lives in the internal infra repository on
   Forgejo (the GitHub copy is archived), and the demo is pinned there by hand.
 
+### Fixed
+
+- **"Herinnering sturen" no longer fails for a participant who signed up twice.** With the same
+  e-mail address in the case's participant list more than once, the mapping found every match and
+  sent the reminder template a list instead of one participant ("/deelnemer: array found, object
+  expected"). It now takes the latest sign-up for that address, in both the data and the file name.
+
 ## Plugin 1.0.0 - 2026-11-12
 
 ### Added
