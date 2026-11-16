@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: Epistola Nederland B.V.
+//
+// SPDX-License-Identifier: EUPL-1.2
+
 // The specification is a plain object, but it imports the Angular components it names, which are
 // not loadable under ts-jest — stubbed away, as in composer.translations.spec.ts.
 jest.mock('@valtimo/plugin', () => ({}));
