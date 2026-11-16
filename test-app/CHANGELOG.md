@@ -32,6 +32,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   invitation's contract requires a participant name of at least one character, so the preview
   waits for one instead of rendering a letter addressed to nobody.
 
+### Removed
+
+- **Publishing the demo images no longer bumps the demo's pins.** Neither the release nor the
+  test-app release workflow dispatches the infra pin bump any more, and the test-app release's
+  `promote` input is gone. The demo's configuration now lives in the internal infra repository on
+  Forgejo (the GitHub copy is archived), and the demo is pinned there by hand.
+
 ## Plugin 1.0.0 - 2026-11-12
 
 ### Added
