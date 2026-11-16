@@ -32,6 +32,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   invitation's contract requires a participant name of at least one character, so the preview
   waits for one instead of rendering a letter addressed to nobody.
 
+### Changed
+
+- **The test app is built with Kotlin 2.4 and runs on the standard library it is compiled
+  against.** Spring Boot's dependency management pinned every Kotlin artifact to Boot's own 1.9.25,
+  so the application ran on the 1.9.25 standard library whatever the Kotlin plugin said. From
+  Kotlin 2.4 the pin reaches the compiler as well and breaks the build. `kotlin.version` now follows the Kotlin plugin, and ktlint
+  keeps the Kotlin compiler it was built with.
+
 ### Removed
 
 - **Publishing the demo images no longer bumps the demo's pins.** Neither the release nor the
