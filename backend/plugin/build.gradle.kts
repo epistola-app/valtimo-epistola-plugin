@@ -2,7 +2,6 @@
 //
 // SPDX-License-Identifier: EUPL-1.2
 
-import com.vanniktech.maven.publish.SonatypeHost
 import org.gradle.api.publish.maven.MavenPublication
 import org.gradle.api.publish.maven.tasks.AbstractPublishToMaven
 import org.gradle.plugins.signing.Sign
@@ -288,7 +287,7 @@ afterEvaluate {
 }
 
 mavenPublishing {
-    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, automaticRelease = true)
+    publishToMavenCentral(automaticRelease = true)
     signAllPublications()
     coordinates("app.epistola.valtimo", "epistola-plugin", version.toString())
 
