@@ -40,6 +40,28 @@ plugins {
 // the build ("GRANULARITY is available only since 2.3.0"). Keep it on the Kotlin plugin's version.
 extra["kotlin.version"] = libs.versions.kotlin.get()
 
+// Security floors for the demo image (2026-11-19). Spring Boot 3.5.16 and Valtimo 13.54 resolve these
+// below a release with the fix (trivy on demo-backend 1.0.2): Tomcat (FORM/DIGEST authentication and
+// security-constraint bypasses), Netty (SNI routing bypass, HTTP/1 and HTTP/2 codec issues), Jackson,
+// httpcore5, BouncyCastle (name-constraints bypass) and Guava. Drop a line once Boot or Valtimo manage
+// that version or newer. Spring Framework itself stays on 6.2.19: its open-source line ends there, and
+// the fixes are in 7.0 (Boot 4), which waits on Valtimo.
+extra["tomcat.version"] = "10.1.62"
+extra["netty.version"] = "4.1.141.Final"
+extra["jackson-bom.version"] = "2.21.8"
+extra["httpcore5.version"] = "5.4.4"
+dependencyManagement {
+    dependencies {
+        dependencySet("org.bouncycastle:1.87") {
+            entry("bcprov-jdk18on")
+            entry("bcpkix-jdk18on")
+            entry("bcutil-jdk18on")
+            entry("bcjmail-jdk18on")
+        }
+        dependency("com.google.guava:guava:33.8.0-jre")
+    }
+}
+
 // ktlint embeds a Kotlin compiler of its own, and the same pin would move that one too: to 2.4,
 // whose compiler API ktlint 1.x cannot drive ("Extensions storage is not registered"). The pin
 // governs the application's dependencies, not a tool's, so ktlint gets the version it asks for.

@@ -64,6 +64,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   sent the reminder template a list instead of one participant ("/deelnemer: array found, object
   expected"). It now takes the latest sign-up for that address, in both the data and the file name.
 
+### Security
+
+- **The demo images take this month's security fixes.** The backend raises the libraries that Spring
+  Boot 3.5.16 and Valtimo 13.54 resolve below a fixed release: Tomcat 10.1.62 (FORM and DIGEST
+  authentication and security-constraint bypasses), Netty 4.1.141, Jackson 2.21.8, httpcore5 5.4.4,
+  BouncyCastle 1.87 and Guava 33.8.0. Spring Framework stays on 6.2.19, the last open-source 6.2
+  release; its remaining fixes need Spring 7, which waits on Valtimo. The backend image starts Java with
+  `-XX:-UseBASE64Intrinsics` against Java4Shell (CVE-2026-114938) until Temurin ships a fixed JDK. The
+  frontend image runs `apk upgrade`, which brings in Alpine's fixed brotli, musl, expat, libxslt, curl
+  and zlib before the base image has them.
+
 ## Plugin 1.0.0 - 2026-11-12
 
 ### Added
